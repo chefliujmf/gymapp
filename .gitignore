@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-ssr
+dev-dist
+*.tsbuildinfo
+*.local
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Scraped / personal content — never commit
+src/data/centr/*.json
+public/media/
+.secrets/
