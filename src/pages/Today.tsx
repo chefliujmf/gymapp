@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { workouts, programs, allWorkoutsById } from '../data/catalog'
@@ -9,8 +9,11 @@ function todayISO() {
 }
 
 export default function Today() {
+  const navigate = useNavigate()
   const enrollment = useLiveQuery(() => db.enrollments.toArray())
   const todaysLogs = useLiveQuery(() => db.logs.where('date').equals(todayISO()).toArray())
+  const session = useLiveQuery(() => db.activeSession.get('current'))
+  const activeWorkout = session ? allWorkoutsById[session.workoutId] : undefined
 
   const active = enrollment?.[0]
   const program = active ? programs.find((p) => p.id === active.programId) : undefined
@@ -30,6 +33,17 @@ export default function Today() {
         <span className="eyebrow">{greeting}</span>
         <h1>Ready to train?</h1>
       </div>
+
+      {activeWorkout && (
+        <div className="resume" onClick={() => navigate(`/workouts/${activeWorkout.id}`)}>
+          <span style={{ fontSize: 24 }}>⏳</span>
+          <div className="grow">
+            Resume workout
+            <small>{activeWorkout.title}</small>
+          </div>
+          <button className="go">Continue →</button>
+        </div>
+      )}
 
       <div className="hero">
         <span className="eyebrow">{program ? `${program.title} · ${todayDay?.label}` : "Today's pick"}</span>

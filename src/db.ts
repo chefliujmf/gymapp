@@ -27,16 +27,35 @@ export interface Setting {
   value: string
 }
 
+/**
+ * The single in-progress workout. Persisted on every change so that locking
+ * the phone / backgrounding the PWA / the tab being evicted never loses state —
+ * reopening resumes exactly here. Timers store ABSOLUTE epoch ms (restEndsAt),
+ * never a running countdown, so they stay correct across a screen-off gap.
+ */
+export interface ActiveSession {
+  key: 'current'
+  workoutId: string
+  startedAt: number
+  /** exercise index (0-based) -> number of sets completed */
+  setsDone: Record<number, number>
+  /** absolute epoch ms when the current rest ends, or null if not resting */
+  restEndsAt: number | null
+  updatedAt: number
+}
+
 const db = new Dexie('gymapp') as Dexie & {
   logs: EntityTable<WorkoutLog, 'id'>
   enrollments: EntityTable<ProgramEnrollment, 'id'>
   settings: EntityTable<Setting, 'key'>
+  activeSession: EntityTable<ActiveSession, 'key'>
 }
 
-db.version(1).stores({
+db.version(2).stores({
   logs: '++id, workoutId, date, completedAt',
   enrollments: '++id, programId',
   settings: 'key',
+  activeSession: 'key',
 })
 
 export { db }
@@ -53,6 +72,35 @@ export async function getSetting(key: string): Promise<string | undefined> {
 
 export async function setSetting(key: string, value: string) {
   return db.settings.put({ key, value })
+}
+
+// --- active session (resume-after-lock) ----------------------------------
+
+export async function getActiveSession() {
+  return db.activeSession.get('current')
+}
+
+export async function startSession(workoutId: string) {
+  const session: ActiveSession = {
+    key: 'current',
+    workoutId,
+    startedAt: Date.now(),
+    setsDone: {},
+    restEndsAt: null,
+    updatedAt: Date.now(),
+  }
+  await db.activeSession.put(session)
+  return session
+}
+
+export async function saveSession(patch: Partial<ActiveSession>) {
+  const cur = await getActiveSession()
+  if (!cur) return
+  await db.activeSession.put({ ...cur, ...patch, updatedAt: Date.now() })
+}
+
+export async function clearSession() {
+  await db.activeSession.delete('current')
 }
 
 export async function enrollInProgram(programId: string) {
