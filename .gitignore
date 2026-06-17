@@ -15,3 +15,10 @@ src/data/coach/*.json
 src/data/recipes/*.json
 public/media/
 .secrets/
+
+# Scraped media staging (~10GB: 5.4GB meditation audio + 3.9GB recipe images).
+# Never commit — audio lives on the XPS server, backed up to Google Drive.
+downloaded_pages/
+
+# generated catalog (derived from personal scraped content)
+src/data/generated/
