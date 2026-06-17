@@ -307,7 +307,7 @@ export const mealPlan: MealPlanDay[] = [
 // Optionally merge content collected from your own Centr account.
 // scripts/centr-collect.mjs writes JSON into src/data/centr/ (gitignored).
 const collected = import.meta.glob<{ default: { workouts?: Workout[]; programs?: Program[]; recipes?: Recipe[] } }>(
-  './centr/*.json',
+  ['./centr/*.json', './coach/*.json', './recipes/*.json'],
   { eager: true },
 )
 for (const mod of Object.values(collected)) {

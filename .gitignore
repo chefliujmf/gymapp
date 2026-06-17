@@ -9,8 +9,9 @@ dev-dist
 .env.*
 !.env.example
 
-# Scraped / personal content — never commit
+# Scraped / personal / imported content — never commit
 src/data/centr/*.json
 src/data/coach/*.json
+src/data/recipes/*.json
 public/media/
 .secrets/

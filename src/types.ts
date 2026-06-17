@@ -76,6 +76,8 @@ export interface Recipe {
   tags: string[]
   diet?: ('vegan' | 'vegetarian' | 'high-protein' | 'low-carb' | 'gluten-free')[]
   servings?: number
+  /** original recipe source URL (e.g. TheMealDB / blog) */
+  source?: string
 }
 
 export interface Trainer {

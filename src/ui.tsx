@@ -118,17 +118,23 @@ export function MindCard({ m }: { m: MindSession }) {
   )
 }
 
+export function Thumb({ src, fallback, className = 'thumb' }: { src?: string; fallback: string; className?: string }) {
+  if (src) return <div className={className} style={{ backgroundImage: `url(${src})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+  return <div className={className}>{fallback}</div>
+}
+
 export function RecipeCard({ r }: { r: Recipe }) {
   return (
     <Link to={`/recipes/${r.id}`} className="card">
       <div className="card-row">
-        <div className="thumb">{categoryIcon[r.category]}</div>
+        <Thumb src={r.thumbnail} fallback={categoryIcon[r.category]} />
         <div className="card-body">
           <h3>{r.title}</h3>
           <div className="meta">
             <span>{r.minutes} min</span>
-            <span className="dot">{r.kcal} kcal</span>
-            <span className="dot">{r.protein}g protein</span>
+            {r.kcal > 0 && <span className="dot">{r.kcal} kcal</span>}
+            {r.protein > 0 && <span className="dot">{r.protein}g protein</span>}
+            {r.kcal === 0 && r.diet?.[0] && <span className="dot">{r.diet[0]}</span>}
           </div>
         </div>
       </div>
