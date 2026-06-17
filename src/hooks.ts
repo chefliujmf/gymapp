@@ -1,4 +1,29 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+
+/**
+ * Short beeps via Web Audio for countdown cues. The AudioContext is created
+ * lazily and resumed on use, so the first call must happen after a user gesture
+ * (entering the player counts). No-op if Web Audio is unavailable.
+ */
+export function useBeeper() {
+  const ctxRef = useRef<AudioContext | null>(null)
+  return useCallback((freq = 880, dur = 0.12, gain = 0.25) => {
+    try {
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      if (!ctxRef.current) ctxRef.current = new AC()
+      const c = ctxRef.current
+      if (c.state === 'suspended') c.resume()
+      const o = c.createOscillator(); const g = c.createGain()
+      o.type = 'sine'; o.frequency.value = freq
+      o.connect(g); g.connect(c.destination)
+      const t = c.currentTime
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.exponentialRampToValueAtTime(gain, t + 0.01)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+      o.start(t); o.stop(t + dur)
+    } catch { /* no audio */ }
+  }, [])
+}
 
 /**
  * Ticking clock that is correct after the screen has been off.

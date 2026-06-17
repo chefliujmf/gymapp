@@ -26,7 +26,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        // Stream video from Emby/origin at runtime — cache thumbnails only.
+        // The catalog data (recipes + 796 endurance workouts) makes the bundle
+        // ~2.5MB; precache it so the app works fully offline.
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        // Media streams from origin at runtime — cache thumbnails only.
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.destination === 'image',
@@ -41,5 +44,17 @@ export default defineConfig({
       devOptions: { enabled: true },
     }),
   ],
-  server: { host: true, port: 5173 },
+  server: {
+    host: true,
+    port: 5173,
+    // Proxy intervals.icu so the browser can read the plan without CORS issues.
+    // In production a serverless function does the same (keeps the key server-side).
+    proxy: {
+      '/icu': {
+        target: 'https://intervals.icu',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/icu/, ''),
+      },
+    },
+  },
 })
