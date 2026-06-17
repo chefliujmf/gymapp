@@ -18,6 +18,8 @@ export interface Exercise {
   prescription: string
   /** optional cue or coaching note */
   note?: string
+  /** external demonstration link (e.g. MuscleWiki search for this movement) */
+  demoUrl?: string
 }
 
 export interface Workout {

@@ -12,6 +12,9 @@ export interface WorkoutLog {
   date: string
   completedAt: number
   notes?: string
+  /** total sets completed and total volume (sum of weight × reps) */
+  setsCompleted?: number
+  volume?: number
 }
 
 export interface ProgramEnrollment {
@@ -27,6 +30,13 @@ export interface Setting {
   value: string
 }
 
+/** One logged set: weight + reps + whether it's been completed. */
+export interface SetEntry {
+  weight?: number
+  reps?: number
+  done: boolean
+}
+
 /**
  * The single in-progress workout. Persisted on every change so that locking
  * the phone / backgrounding the PWA / the tab being evicted never loses state —
@@ -37,8 +47,8 @@ export interface ActiveSession {
   key: 'current'
   workoutId: string
   startedAt: number
-  /** exercise index (0-based) -> number of sets completed */
-  setsDone: Record<number, number>
+  /** exercise index (0-based) -> the sets logged for it (weight × reps) */
+  sets: Record<number, SetEntry[]>
   /** absolute epoch ms when the current rest ends, or null if not resting */
   restEndsAt: number | null
   updatedAt: number
@@ -57,6 +67,16 @@ db.version(2).stores({
   settings: 'key',
   activeSession: 'key',
 })
+// v3 changed the ActiveSession shape (per-set weight/reps). Drop any in-flight
+// session from the old shape rather than migrate a half-finished workout.
+db.version(3)
+  .stores({
+    logs: '++id, workoutId, date, completedAt',
+    enrollments: '++id, programId',
+    settings: 'key',
+    activeSession: 'key',
+  })
+  .upgrade((tx) => tx.table('activeSession').clear())
 
 export { db }
 
@@ -80,12 +100,12 @@ export async function getActiveSession() {
   return db.activeSession.get('current')
 }
 
-export async function startSession(workoutId: string) {
+export async function startSession(workoutId: string, sets: Record<number, SetEntry[]>) {
   const session: ActiveSession = {
     key: 'current',
     workoutId,
     startedAt: Date.now(),
-    setsDone: {},
+    sets,
     restEndsAt: null,
     updatedAt: Date.now(),
   }

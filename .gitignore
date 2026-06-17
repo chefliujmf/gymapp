@@ -11,5 +11,6 @@ dev-dist
 
 # Scraped / personal content — never commit
 src/data/centr/*.json
+src/data/coach/*.json
 public/media/
 .secrets/
