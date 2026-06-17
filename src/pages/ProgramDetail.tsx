@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { allProgramsById, allWorkoutsById } from '../data/catalog'
 import { disciplineIcon } from '../ui'
 import { db, enrollInProgram } from '../db'
+import { programProgress } from '../progress'
 
 export default function ProgramDetail() {
   const { id } = useParams()
@@ -12,8 +13,16 @@ export default function ProgramDetail() {
     () => (id ? db.enrollments.where('programId').equals(id).first() : undefined),
     [id],
   )
+  const logs = useLiveQuery(() => db.logs.toArray())
 
   if (!p) return <div className="empty"><div className="big">🤷</div>Program not found.</div>
+
+  const prog = programProgress(p, logs)
+  const trainingDays = p.schedule.filter((d) => d.workoutId)
+  const upNext = trainingDays.length ? trainingDays[prog.completed % trainingDays.length] : undefined
+  const upNextWorkout = upNext?.workoutId ? allWorkoutsById[upNext.workoutId] : undefined
+  // numbered circles, capped so very long programs stay tidy
+  const circles = Math.min(prog.total, 42)
 
   return (
     <div>
@@ -25,27 +34,51 @@ export default function ProgramDetail() {
       </div>
 
       <div className="detail-body">
-        <span className="eyebrow">{p.weeks}-week program</span>
-        <h1>{p.title}</h1>
-        <p style={{ color: 'var(--text-dim)', marginTop: 0 }}>{p.summary}</p>
+        <span className="eyebrow">Program</span>
+        <h1 style={{ textTransform: 'uppercase' }}>{p.title}</h1>
+        <p className="lead">{p.summary}</p>
 
-        <div className="stat-grid">
-          <div className="stat"><div className="v">{p.weeks}</div><div className="k">weeks</div></div>
-          <div className="stat"><div className="v">{p.daysPerWeek}</div><div className="k">days/wk</div></div>
-          <div className="stat"><div className="v" style={{ fontSize: 13 }}>{p.level}</div><div className="k">level</div></div>
-          <div className="stat"><div className="v">{p.schedule.length}</div><div className="k">days</div></div>
+        {/* progress */}
+        <div className="section-title" style={{ marginBottom: 6 }}>
+          Progress<span className="see-all">{prog.completed}/{prog.total}</span>
         </div>
+        <div className="progress"><span style={{ width: `${Math.round(prog.pct * 100)}%` }} /></div>
 
-        {enrollment ? (
-          <button className="btn" disabled style={{ background: 'var(--bg-elev2)', color: 'var(--accent)' }}>
-            ✓ Enrolled
-          </button>
-        ) : (
-          <button className="btn" onClick={() => enrollInProgram(p.id)}>Start this program</button>
+        {/* up next */}
+        {upNextWorkout && (
+          <>
+            <div className="section-title">Up next</div>
+            <Link to={`/workouts/${upNextWorkout.id}`} className="card">
+              <div className="card-row">
+                <div className="thumb">{disciplineIcon[upNextWorkout.discipline]}</div>
+                <div className="card-body">
+                  <span className="eyebrow">{upNext?.label}</span>
+                  <h3>{upNextWorkout.title}</h3>
+                  <div className="meta"><span>{upNextWorkout.duration} min</span><span className="dot">{upNextWorkout.level}</span></div>
+                </div>
+              </div>
+            </Link>
+          </>
         )}
 
+        {enrollment ? (
+          <button className="btn btn--ghost" disabled style={{ marginTop: 16 }}>✓ Enrolled</button>
+        ) : (
+          <button className="btn" style={{ marginTop: 16 }} onClick={() => enrollInProgram(p.id)}>Start this program</button>
+        )}
+
+        {/* numbered day circles */}
+        <div className="section-title">Sessions</div>
+        <div className="circles">
+          {Array.from({ length: circles }, (_, i) => (
+            <span key={i} className={'circle' + (i < prog.completed ? ' circle--done' : i === prog.completed ? ' circle--now' : '')}>
+              {i + 1}
+            </span>
+          ))}
+        </div>
+
         <div className="section-title">Week structure</div>
-        <ul className="plain">
+        <ul className="plain stack">
           {p.schedule.map((d) => {
             const w = d.workoutId ? allWorkoutsById[d.workoutId] : null
             const inner = (
@@ -60,7 +93,7 @@ export default function ProgramDetail() {
               </div>
             )
             return (
-              <li key={d.day} className="card" style={{ marginBottom: 10 }}>
+              <li key={d.day} className="card">
                 {w ? <Link to={`/workouts/${w.id}`}>{inner}</Link> : inner}
               </li>
             )

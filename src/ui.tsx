@@ -1,6 +1,31 @@
 import { Link } from 'react-router-dom'
 import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind } from './types'
 
+const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+
+/** Mon–Sun strip for the current week, today highlighted. Centr's signature header. */
+export function WeekStrip() {
+  const now = new Date()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d
+  })
+  const todayKey = now.toDateString()
+  return (
+    <div className="week">
+      {days.map((d) => (
+        <button key={d.toDateString()} className={d.toDateString() === todayKey ? 'on' : ''}>
+          {DOW[d.getDay()]}
+          <b>{d.getDate()}</b>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export const disciplineIcon: Record<Discipline, string> = {
   strength: '🏋️',
   hiit: '🔥',
