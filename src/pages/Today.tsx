@@ -1,37 +1,53 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
-import { workouts, programs, allWorkoutsById, mealPlan, allRecipesById, mindSessions } from '../data/catalog'
-import { WorkoutCard, WeekStrip, disciplineIcon, mindIcon } from '../ui'
-import { programProgress } from '../progress'
+import { WeekStrip } from '../ui'
+import { fetchEvents, eventObjective, sportOf, type IcuEvent } from '../intervals'
+import { setPlanEvents } from '../plan'
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10)
+const iso = (d: Date) => d.toISOString().slice(0, 10)
+const todayISO = () => iso(new Date())
+function weekRange(): [string, string] {
+  const now = new Date(); const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+  const end = new Date(mon); end.setDate(mon.getDate() + 13)
+  return [iso(mon), iso(end)]
+}
+const sportIcon = (e: IcuEvent) => { const s = sportOf(e); return s === 'cycling' ? '🚴' : s === 'gym' ? '🏋️' : e.type === 'Run' ? '🏃' : '🎯' }
+const fmtDay = (s: string) => new Date(s + 'T00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
+
+function PlanCard({ e, showDate }: { e: IcuEvent; showDate?: boolean }) {
+  const obj = eventObjective(e)
+  const mins = e.moving_time ? Math.round(e.moving_time / 60) : undefined
+  return (
+    <Link to={`/plan/${e.id}`} className="card">
+      <div className="card-row">
+        <div className="thumb">{sportIcon(e)}</div>
+        <div className="card-body">
+          <span className="eyebrow">{e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}</span>
+          <h3>{e.name}</h3>
+          {obj && <div className="meta" style={{ display: 'block', whiteSpace: 'normal' }}>{obj.length > 110 ? obj.slice(0, 110) + '…' : obj}</div>}
+          {mins && <div className="meta"><span>{mins} min</span>{e.icu_training_load ? <span className="dot">{e.icu_training_load} TSS</span> : null}</div>}
+        </div>
+      </div>
+    </Link>
+  )
 }
 
 export default function Today() {
-  const navigate = useNavigate()
-  const enrollment = useLiveQuery(() => db.enrollments.toArray())
+  const [selDay, setSelDay] = useState(todayISO())
   const todaysLogs = useLiveQuery(() => db.logs.where('date').equals(todayISO()).toArray())
-  const session = useLiveQuery(() => db.activeSession.get('current'))
-  const activeWorkout = session ? allWorkoutsById[session.workoutId] : undefined
+  const [events, setEvents] = useState<IcuEvent[] | null>(null)
+  const [err, setErr] = useState<string>()
 
-  const allLogs = useLiveQuery(() => db.logs.toArray())
-  const active = enrollment?.[0]
-  const program = (active ? programs.find((p) => p.id === active.programId) : undefined) ?? programs[0]
-  const enrolled = !!active
-  const dayIdx = active ? active.currentDayIndex % program.schedule.length : 0
-  const todayDay = program.schedule[dayIdx]
-  const featured = todayDay?.workoutId ? allWorkoutsById[todayDay.workoutId] : workouts[0]
-  const prog = programProgress(program, allLogs)
-  const nextDay = program.schedule.find((d) => d.workoutId)
+  useEffect(() => {
+    const [a, b] = weekRange()
+    fetchEvents(a, b).then((evs) => { setEvents(evs); setPlanEvents(evs) }).catch((e) => setErr((e as Error).message))
+  }, [])
 
-  const greeting = (() => {
-    const h = new Date().getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 18) return 'Good afternoon'
-    return 'Good evening'
-  })()
+  const greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' })()
+  const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay)
+  const upcoming = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) > selDay).sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
 
   return (
     <div>
@@ -40,91 +56,45 @@ export default function Today() {
         <h1>Ready to train?</h1>
       </div>
 
-      <WeekStrip />
-
-      {activeWorkout && (
-        <div className="resume" onClick={() => navigate(`/workouts/${activeWorkout.id}`)}>
-          <span style={{ fontSize: 24 }}>⏳</span>
-          <div className="grow">
-            Resume workout
-            <small>{activeWorkout.title}</small>
-          </div>
-          <button className="go">Continue →</button>
-        </div>
-      )}
-
-      <div className="section-title" style={{ marginTop: 8 }}>Your program</div>
-      <Link to={`/programs/${program.id}`} className="card">
-        <div className="thumb thumb--wide">{disciplineIcon[program.discipline]}</div>
-        <div style={{ padding: '14px 16px 16px' }}>
-          <h3 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800 }}>{program.title}</h3>
-          <div className="meta">
-            {nextDay && <span>Next: <b style={{ color: 'var(--text)' }}>{nextDay.label}</b></span>}
-            {!enrolled && <span className="dot">Tap to start</span>}
-          </div>
-          <div className="progress"><span style={{ width: `${Math.round(prog.pct * 100)}%` }} /></div>
-          <div className="meta"><span>{prog.completed}/{prog.total} sessions</span></div>
-        </div>
-      </Link>
-
-      <div className="section-title">Planner workout</div>
-      <Link to={`/workouts/${featured.id}`} className="card">
-        <div className="card-row">
-          <div className="thumb">{disciplineIcon[featured.discipline]}</div>
-          <div className="card-body">
-            <span className="eyebrow">{enrolled ? todayDay?.label ?? 'Self-guided' : 'Self-guided'}</span>
-            <h3>{featured.title}</h3>
-            <div className="meta"><span>{featured.duration} min</span><span className="dot">{featured.level}</span></div>
-          </div>
-        </div>
-      </Link>
+      <WeekStrip selected={selDay} onSelect={setSelDay} />
 
       {todaysLogs && todaysLogs.length > 0 && (
-        <p style={{ color: 'var(--text-dim)', fontWeight: 700, marginTop: 14 }}>
-          ✓ {todaysLogs.length} workout{todaysLogs.length > 1 ? 's' : ''} logged today — nice.
-        </p>
+        <p style={{ color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — nice.</p>
       )}
 
-      <div className="section-title">Today's plan</div>
-      <div className="stack">
-        {(() => {
-          const meal = allRecipesById[mealPlan[0].lunch]
-          const mind = mindSessions[0]
-          return (
-            <>
-              {meal && (
-                <Link to={`/recipes/${meal.id}`} className="card">
-                  <div className="card-row">
-                    <div className="thumb">🥗</div>
-                    <div className="card-body">
-                      <span className="eyebrow">Eat</span>
-                      <h3>{meal.title}</h3>
-                      <div className="meta"><span>{meal.kcal} kcal</span><span className="dot">{meal.protein}g protein</span></div>
-                    </div>
-                  </div>
-                </Link>
-              )}
-              <Link to={`/mind/${mind.id}`} className="card">
-                <div className="card-row">
-                  <div className="thumb">{mindIcon[mind.kind]}</div>
-                  <div className="card-body">
-                    <span className="eyebrow">Mind</span>
-                    <h3>{mind.title}</h3>
-                    <div className="meta"><span>{mind.duration} min</span><span className="dot">{mind.kind}</span></div>
-                  </div>
-                </div>
-              </Link>
-            </>
-          )
-        })()}
-      </div>
+      <div className="section-title" style={{ marginTop: 8 }}>{selDay === todayISO() ? "Today's plan" : fmtDay(selDay)}</div>
+      {err === 'NO_KEY' ? (
+        <div className="card" style={{ padding: 18 }}>
+          <p className="meta" style={{ margin: 0 }}>Connect intervals.icu to see your coach's plan here.</p>
+          <Link to="/profile" className="btn btn--ghost" style={{ marginTop: 12 }}>Connect →</Link>
+        </div>
+      ) : err ? (
+        <p className="meta">Couldn't load plan: {err}</p>
+      ) : events === null ? (
+        <p className="meta">Loading your plan…</p>
+      ) : dayEvents.length === 0 ? (
+        <p className="meta">Nothing scheduled — rest day or self-guided.</p>
+      ) : (
+        <div className="stack">{dayEvents.map((e) => <PlanCard key={e.id} e={e} />)}</div>
+      )}
 
-      <div className="section-title">
-        Quick start
-        <Link to="/workouts" className="see-all">All →</Link>
-      </div>
+      {upcoming.length > 0 && (
+        <>
+          <div className="section-title">Coming up</div>
+          <div className="stack">{upcoming.map((e) => <PlanCard key={e.id} e={e} showDate />)}</div>
+        </>
+      )}
+
+      <div className="section-title">Jump in</div>
       <div className="stack">
-        {workouts.slice(0, 4).map((w) => <WorkoutCard key={w.id} w={w} />)}
+        {[
+          { to: '/exercises', icon: '💪', label: 'Train' },
+          { to: '/cycle', icon: '🚴', label: 'Ride' },
+          { to: '/eat', icon: '🥗', label: 'Eat' },
+          { to: '/mind', icon: '🧘', label: 'Mind' },
+        ].map((j) => (
+          <Link key={j.to} to={j.to} className="card"><div className="card-row"><div className="thumb">{j.icon}</div><div className="card-body"><h3>{j.label}</h3></div></div></Link>
+        ))}
       </div>
     </div>
   )

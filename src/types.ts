@@ -16,9 +16,17 @@ export interface Exercise {
   name: string
   /** e.g. "3 x 10", "40s on / 20s off", "5 min" */
   prescription: string
+  /** work duration in seconds (for the guided timed player) */
+  seconds?: number
+  /** rest in seconds after this exercise */
+  rest?: number
   /** optional cue or coaching note */
   note?: string
-  /** external demonstration link (e.g. MuscleWiki search for this movement) */
+  /** demonstration still image */
+  image?: string
+  /** demonstration video (direct .mp4) */
+  video?: string
+  /** fallback external demo link when no image/video is available */
   demoUrl?: string
 }
 
@@ -33,8 +41,7 @@ export interface Workout {
   /** short marketing-style blurb */
   summary: string
   coach?: string
-  /** Playback source. Either an Emby stream URL or any direct video URL.
-   *  Left blank until you wire content in. */
+  /** Optional direct video URL. Usually blank — demos link out to MuscleWiki. */
   videoUrl?: string
   thumbnail?: string
   exercises?: Exercise[]
@@ -98,7 +105,7 @@ export interface MindSession {
   duration: number // minutes
   summary: string
   coach?: string
-  audioUrl?: string // point at an Emby/audio stream
+  audioUrl?: string // direct audio URL (the meditation .mp3)
 }
 
 /** A single day in the rotating weekly meal plan. */
@@ -108,4 +115,58 @@ export interface MealPlanDay {
   lunch: string
   dinner: string
   snack: string
+}
+
+// --- Endurance (JOIN: cycling + running) ----------------------------------
+// Structured interval workouts. Cycling targets power as a % of FTP
+// (rawPower); running targets pace/threshold similarly. The player scales the
+// % target to the athlete's own FTP/threshold, plus a human-readable range.
+export type EnduranceSport = 'cycling' | 'running'
+
+export interface EnduranceInterval {
+  /** seconds */
+  duration: number
+  /** target as % of threshold (FTP for cycling), e.g. 65 */
+  rawPower: number
+  /** display range from source, e.g. "162-189" W (cycling) or pace (running) */
+  power?: string
+  /** display heart-rate range, e.g. "117-134" */
+  heartRate?: string
+}
+
+export interface EnduranceBlock {
+  /** how many times the intervals in this block repeat */
+  numRepeats: number
+  intervals: EnduranceInterval[]
+}
+
+/** A single exercise in the library (the gym building block). */
+export interface LibExercise {
+  id: string
+  name: string
+  image?: string
+  video?: string
+  /** Female demo variant (MuscleWiki provides both). */
+  imageFemale?: string
+  videoFemale?: string
+  seconds?: number
+  category: string // Legs | Push | Pull | Core | Cardio | Mobility | Full body
+  muscle?: string // primary muscle (MuscleWiki)
+  equipment?: string // Barbell | Dumbbells | Bodyweight | … (MuscleWiki)
+  difficulty?: string
+  source?: 'centr' | 'musclewiki'
+}
+
+export interface EnduranceWorkout {
+  id: string
+  name: string
+  sport: EnduranceSport
+  category: string // Vo2max | Threshold | Strength | Endurance | Performance tests
+  /** minutes */
+  duration: number
+  intensity?: number
+  stress?: number
+  description?: string
+  thumbnail?: string
+  blocks: EnduranceBlock[]
 }

@@ -15,6 +15,8 @@ export interface WorkoutLog {
   /** total sets completed and total volume (sum of weight × reps) */
   setsCompleted?: number
   volume?: number
+  /** full per-exercise set snapshot, for progressive-overload prefill */
+  sets?: Record<number, SetEntry[]>
 }
 
 export interface ProgramEnrollment {
@@ -28,6 +30,31 @@ export interface ProgramEnrollment {
 export interface Setting {
   key: string
   value: string
+}
+
+/** One exercise inside a built workout template.
+ * mode 'timed'  → countdown for `seconds`, auto-advance (circuits/mobility).
+ * mode 'reps'   → `sets` × `reps` (optional `weight`), log weight×reps per set. */
+export interface TemplateExercise {
+  exId?: string
+  name: string
+  image?: string
+  video?: string
+  mode?: 'timed' | 'reps' // default 'timed' (back-compat)
+  seconds: number
+  rest: number
+  sets?: number
+  reps?: number
+  weight?: number
+}
+
+/** A workout the user assembled from the exercise library. */
+export interface WorkoutTemplate {
+  id?: number
+  name: string
+  rounds: number
+  exercises: TemplateExercise[]
+  createdAt: number
 }
 
 /** One logged set: weight + reps + whether it's been completed. */
@@ -59,6 +86,7 @@ const db = new Dexie('gymapp') as Dexie & {
   enrollments: EntityTable<ProgramEnrollment, 'id'>
   settings: EntityTable<Setting, 'key'>
   activeSession: EntityTable<ActiveSession, 'key'>
+  templates: EntityTable<WorkoutTemplate, 'id'>
 }
 
 db.version(2).stores({
@@ -77,13 +105,46 @@ db.version(3)
     activeSession: 'key',
   })
   .upgrade((tx) => tx.table('activeSession').clear())
+// v4: workout templates assembled from the exercise library.
+db.version(4).stores({
+  logs: '++id, workoutId, date, completedAt',
+  enrollments: '++id, programId',
+  settings: 'key',
+  activeSession: 'key',
+  templates: '++id, createdAt',
+})
 
 export { db }
+
+// --- workout templates -----------------------------------------------------
+
+export async function saveTemplate(t: Omit<WorkoutTemplate, 'id' | 'createdAt'> & { id?: number }) {
+  if (t.id != null) {
+    await db.templates.update(t.id, { name: t.name, rounds: t.rounds, exercises: t.exercises })
+    return t.id
+  }
+  return db.templates.add({ name: t.name, rounds: t.rounds, exercises: t.exercises, createdAt: Date.now() })
+}
+export async function listTemplates() {
+  return db.templates.orderBy('createdAt').reverse().toArray()
+}
+export async function getTemplate(id: number) {
+  return db.templates.get(id)
+}
+export async function deleteTemplate(id: number) {
+  return db.templates.delete(id)
+}
 
 // --- convenience helpers ---------------------------------------------------
 
 export async function logWorkout(entry: Omit<WorkoutLog, 'id' | 'completedAt'>) {
   return db.logs.add({ ...entry, completedAt: Date.now() })
+}
+
+/** Most recent completed log for a workout — used to prefill last weights/reps. */
+export async function lastLogForWorkout(workoutId: string): Promise<WorkoutLog | undefined> {
+  const logs = await db.logs.where('workoutId').equals(workoutId).toArray()
+  return logs.sort((a, b) => b.completedAt - a.completedAt)[0]
 }
 
 export async function getSetting(key: string): Promise<string | undefined> {

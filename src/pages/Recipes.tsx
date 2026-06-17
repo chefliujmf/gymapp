@@ -1,20 +1,35 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { recipes } from '../data/catalog'
 import type { Recipe } from '../types'
 import { RecipeCard } from '../ui'
 
 const cats: (Recipe['category'] | 'all')[] = ['all', 'breakfast', 'lunch', 'dinner', 'snack']
+const CAP = 80
 
 export default function Recipes() {
   const [cat, setCat] = useState<Recipe['category'] | 'all'>('all')
-  const list = cat === 'all' ? recipes : recipes.filter((r) => r.category === cat)
+  const [q, setQ] = useState('')
+
+  const list = useMemo(() => {
+    const needle = q.trim().toLowerCase()
+    return recipes.filter(
+      (r) =>
+        (cat === 'all' || r.category === cat) &&
+        (!needle ||
+          r.title.toLowerCase().includes(needle) ||
+          r.tags.some((t) => t.toLowerCase().includes(needle)) ||
+          r.ingredients.some((i) => i.toLowerCase().includes(needle))),
+    )
+  }, [cat, q])
 
   return (
     <div>
       <div className="page-head">
         <h1>Recipes</h1>
-        <p>Fuel that matches your training</p>
+        <p>{recipes.length} recipes — fuel that matches your training</p>
       </div>
+
+      <input className="search" placeholder="Search recipes, ingredients, tags…" value={q} onChange={(e) => setQ(e.target.value)} />
 
       <div className="chips">
         {cats.map((c) => (
@@ -24,9 +39,13 @@ export default function Recipes() {
         ))}
       </div>
 
+      <p className="meta" style={{ margin: '4px 2px 10px' }}>
+        {list.length} recipe{list.length === 1 ? '' : 's'}{list.length > CAP ? ` — showing first ${CAP}` : ''}
+      </p>
+
       <div className="stack">
-        {list.map((r) => <RecipeCard key={r.id} r={r} />)}
-        {list.length === 0 && <p className="empty">Nothing here yet.</p>}
+        {list.slice(0, CAP).map((r) => <RecipeCard key={r.id} r={r} />)}
+        {list.length === 0 && <p className="empty">Nothing matches.</p>}
       </div>
     </div>
   )

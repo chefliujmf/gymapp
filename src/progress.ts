@@ -2,7 +2,7 @@ import type { Program } from './types'
 import type { WorkoutLog } from './db'
 
 /**
- * Program completion, Centr-style (e.g. 3/84). Total = every non-rest session
+ * Program completion, (e.g. 3/84). Total = every non-rest session
  * across the whole program (weeks × training days). Completed = logged
  * workouts whose id is part of this program, capped at the total.
  */

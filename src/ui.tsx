@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
-import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind } from './types'
+import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind, EnduranceWorkout } from './types'
 
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
-/** Mon–Sun strip for the current week, today highlighted. Centr's signature header. */
-export function WeekStrip() {
+/** Mon–Sun strip for the current week, today highlighted. week header. */
+export function WeekStrip({ selected, onSelect }: { selected?: string; onSelect?: (iso: string) => void } = {}) {
   const now = new Date()
   const monday = new Date(now)
   monday.setDate(now.getDate() - ((now.getDay() + 6) % 7))
@@ -16,12 +16,16 @@ export function WeekStrip() {
   const todayKey = now.toDateString()
   return (
     <div className="week">
-      {days.map((d) => (
-        <button key={d.toDateString()} className={d.toDateString() === todayKey ? 'on' : ''}>
-          {DOW[d.getDay()]}
-          <b>{d.getDate()}</b>
-        </button>
-      ))}
+      {days.map((d) => {
+        const iso = d.toISOString().slice(0, 10)
+        const on = selected ? iso === selected : d.toDateString() === todayKey
+        return (
+          <button key={iso} className={on ? 'on' : ''} onClick={() => onSelect?.(iso)}>
+            {DOW[d.getDay()]}
+            <b>{d.getDate()}</b>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -54,7 +58,6 @@ export function WorkoutCard({ w }: { w: Workout }) {
           <div className="meta">
             <span>{w.duration} min</span>
             <span className="dot">{w.discipline}</span>
-            <span className="dot">{w.level}</span>
           </div>
         </div>
       </div>
@@ -72,7 +75,6 @@ export function ProgramCard({ p }: { p: Program }) {
           <div className="meta">
             <span>{p.weeks} weeks</span>
             <span className="dot">{p.daysPerWeek}×/week</span>
-            <span className="dot">{p.level}</span>
           </div>
         </div>
       </div>
@@ -136,6 +138,85 @@ export function RecipeCard({ r }: { r: Recipe }) {
             {r.protein > 0 && <span className="dot">{r.protein}g protein</span>}
             {r.kcal === 0 && r.diet?.[0] && <span className="dot">{r.diet[0]}</span>}
           </div>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+// --- Endurance (cycling / running) ----------------------------------------
+
+/** Power-zone colour for a % of FTP/threshold — mirrors JOIN's profile graph. */
+export function zoneColor(pct: number): string {
+  if (pct < 60) return '#7fd1ff'   // recovery
+  if (pct < 76) return '#43d9a3'   // endurance
+  if (pct < 91) return '#ffd23f'   // tempo
+  if (pct < 106) return '#ff9f43'  // threshold
+  if (pct < 121) return '#ff6b6b'  // vo2max
+  return '#e63946'                 // anaerobic
+}
+
+/** Flatten blocks (expanding numRepeats) into a single list of intervals. */
+export function flattenIntervals(w: EnduranceWorkout) {
+  const out: { duration: number; rawPower: number; power?: string; heartRate?: string }[] = []
+  for (const b of w.blocks) {
+    for (let r = 0; r < (b.numRepeats || 1); r++) {
+      for (const iv of b.intervals) out.push(iv)
+    }
+  }
+  return out
+}
+
+/** Training Stress Score, computed from the structured intervals.
+ *  TSS = Σ(duration_s · IF²) / 3600 · 100, with IF = %FTP / 100 per segment.
+ *  (JOIN's `stress` field is a 1–5 difficulty rating, not TSS.) */
+export function computeTSS(w: EnduranceWorkout): number {
+  let weighted = 0
+  for (const iv of flattenIntervals(w)) {
+    const intensityFactor = (iv.rawPower || 0) / 100
+    weighted += (iv.duration || 0) * intensityFactor * intensityFactor
+  }
+  return Math.round((weighted / 3600) * 100)
+}
+
+/** join.cc-style interval profile rendered from the structured data. */
+export function IntervalProfile({ w, height = 90 }: { w: EnduranceWorkout; height?: number }) {
+  const ivs = flattenIntervals(w)
+  const total = ivs.reduce((s, i) => s + (i.duration || 0), 0) || 1
+  const maxP = Math.max(120, ...ivs.map((i) => i.rawPower || 0))
+  return (
+    <div className="profile" style={{ height, display: 'flex', alignItems: 'flex-end', gap: 1, width: '100%' }}>
+      {ivs.map((iv, idx) => (
+        <div
+          key={idx}
+          title={`${Math.round(iv.duration)}s @ ${iv.rawPower}%${iv.power ? ` (${iv.power}W)` : ''}`}
+          style={{
+            flexGrow: iv.duration / total,
+            flexBasis: 0,
+            height: `${Math.max(6, ((iv.rawPower || 0) / maxP) * 100)}%`,
+            background: zoneColor(iv.rawPower || 0),
+            borderRadius: '2px 2px 0 0',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+export const sportIcon: Record<string, string> = { cycling: '🚴', running: '🏃' }
+
+export function EnduranceCard({ w }: { w: EnduranceWorkout }) {
+  return (
+    <Link to={`/cycle/${w.id}`} className="card">
+      <div className="card-row" style={{ alignItems: 'stretch' }}>
+        <div className="card-body">
+          <h3>{w.name}</h3>
+          <div className="meta">
+            <span>{sportIcon[w.sport]} {w.duration} min</span>
+            <span className="dot">{w.category}</span>
+            <span className="dot">{computeTSS(w)} TSS</span>
+          </div>
+          <div style={{ marginTop: 10 }}><IntervalProfile w={w} height={44} /></div>
         </div>
       </div>
     </Link>

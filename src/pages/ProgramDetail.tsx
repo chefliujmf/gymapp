@@ -54,7 +54,7 @@ export default function ProgramDetail() {
                 <div className="card-body">
                   <span className="eyebrow">{upNext?.label}</span>
                   <h3>{upNextWorkout.title}</h3>
-                  <div className="meta"><span>{upNextWorkout.duration} min</span><span className="dot">{upNextWorkout.level}</span></div>
+                  <div className="meta"><span>{upNextWorkout.duration} min</span></div>
                 </div>
               </div>
             </Link>

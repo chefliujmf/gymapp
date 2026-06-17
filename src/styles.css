@@ -6,7 +6,7 @@
   --text: #111114;
   --text-dim: #74747e;
   --ink: #15151a;           /* dark pills / primary buttons */
-  --accent: #dcff1e;        /* Centr-style yellow */
+  --accent: #dcff1e;        /* accent yellow */
   --accent-press: #c8eb00;
   --danger: #e23b3b;
   --radius: 14px;
@@ -170,3 +170,207 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .resume .grow { flex: 1; min-width: 0; }
 .resume small { display: block; font-weight: 600; opacity: 0.7; }
 .resume .go { background: var(--accent); color: var(--ink); border: none; border-radius: 999px; padding: 10px 14px; font-weight: 800; }
+
+.search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  margin: 4px 0 10px;
+  border: 1px solid var(--border, #e6e6ea);
+  border-radius: 12px;
+  background: var(--card, #fff);
+  font-size: 15px;
+  color: inherit;
+}
+.search:focus { outline: none; border-color: var(--accent, #6c5ce7); }
+
+.video-poster {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--card, #f0f0f3);
+}
+
+.ex-last {
+  font-size: 12px;
+  color: var(--accent, #6c5ce7);
+  background: color-mix(in srgb, var(--accent, #6c5ce7) 10%, transparent);
+  padding: 4px 8px;
+  border-radius: 8px;
+  margin: 6px 0 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ex-head { display: flex; gap: 12px; align-items: center; }
+.ex-head-text { min-width: 0; flex: 1; }
+.ex-thumb {
+  width: 60px; height: 60px; flex-shrink: 0;
+  border: none; padding: 0; cursor: pointer;
+  border-radius: 10px; background-size: cover; background-position: center;
+  position: relative;
+}
+.ex-play {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 18px; background: rgba(0,0,0,.28); border-radius: 10px;
+}
+.ex-video { width: 100%; border-radius: 12px; margin-top: 10px; background: #000; max-height: 320px; }
+
+/* Full-width, mobile-first exercise demo media */
+.ex-media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  background: #0c0c0e;
+  object-fit: cover;
+}
+.ex-media--img { background-size: cover; background-position: center; }
+
+.ex-media--img { position: relative; display: flex; align-items: center; justify-content: center; }
+.ex-play-btn {
+  width: 56px; height: 56px; border-radius: 999px; border: none; cursor: pointer;
+  background: rgba(0,0,0,.55); color: #fff; font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  padding-left: 4px; backdrop-filter: blur(2px);
+  box-shadow: 0 2px 12px rgba(0,0,0,.3);
+}
+.ex-play-btn:active { transform: scale(.94); }
+
+/* Ride player controls */
+.player-x { background: rgba(255,255,255,.12); color:#fff; border:none; width:28px; height:28px; border-radius:999px; font-size:14px; cursor:pointer; }
+.rctrl { background: rgba(255,255,255,.12); color:#fff; border:none; min-width:64px; height:54px; border-radius:14px; font-size:20px; cursor:pointer; }
+.rctrl--big { min-width:88px; background: var(--accent, #dcff1e); color:#111; }
+.rctrl:active { transform: scale(.96); }
+
+/* Compact exercise rows on the workout detail */
+.ex-row { display:flex; gap:12px; align-items:center; padding:8px; border-radius:14px; background:var(--card,#fff); cursor:pointer; }
+.ex-row:active { background:rgba(0,0,0,.04); }
+.ex-thumb-sm { position:relative; flex:0 0 56px; width:56px; height:56px; border-radius:10px; background:#e9e9ee center/cover no-repeat; }
+.ex-play-sm { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; background:rgba(0,0,0,.28); border-radius:10px; }
+.ex-row-text h4 { margin:0; font-size:15px; }
+.ex-video-inline { width:100%; border-radius:12px; margin-top:6px; background:#000; max-height:60vh; }
+
+/* Sticky Start bar on detail pages */
+.start-bar { position:fixed; left:0; right:0; bottom:0; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:linear-gradient(to top, var(--bg,#fff) 70%, transparent); z-index:20; max-width:520px; margin:0 auto; }
+.start-bar .btn { width:100%; }
+
+/* Player media (gym follow-along) */
+.gp-media { width:100%; aspect-ratio:1/1; max-height:46vh; object-fit:cover; background:#000; }
+
+/* Segmented toggle (Exercises | Workouts) */
+.seg { display:flex; gap:4px; background:rgba(0,0,0,.05); border-radius:12px; padding:4px; margin:0 0 12px; }
+.seg__btn { flex:1; text-align:center; padding:8px; border-radius:9px; font-size:14px; font-weight:600; color:var(--muted,#666); text-decoration:none; cursor:pointer; }
+.seg__btn--active { background:var(--card,#fff); color:var(--ink,#111); box-shadow:0 1px 3px rgba(0,0,0,.08); }
+
+/* Exercise library grid */
+.ex-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+.ex-card { text-decoration:none; color:inherit; }
+.ex-card__img { position:relative; width:100%; aspect-ratio:1/1; border-radius:14px; background:#e9e9ee center/cover no-repeat; }
+.ex-card__play { position:absolute; right:8px; bottom:8px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff; background:rgba(0,0,0,.45); border-radius:999px; }
+.ex-card__name { margin-top:6px; font-size:13px; font-weight:600; line-height:1.25; }
+
+/* Exercise detail hero video */
+.detail-hero--video { background:#000; display:flex; align-items:center; justify-content:center; }
+.ex-hero-video { width:100%; height:100%; max-height:46vh; object-fit:contain; background:#000; }
+
+/* Extra-small exercise thumb for the library list */
+.ex-thumb-xs { flex:0 0 44px; width:44px; height:44px; border-radius:9px; background:#e9e9ee center/cover no-repeat; }
+
+/* Builder inline number inputs */
+.mini { font-size:12px; color:var(--muted,#666); display:inline-flex; align-items:center; gap:3px; }
+.mini input { width:48px; padding:3px 5px; border:1px solid rgba(0,0,0,.15); border-radius:7px; font-size:13px; text-align:center; }
+
+/* ---- Gym follow-along player (immersive) ---- */
+.gp { position:fixed; inset:0; background:#000; color:#fff; overflow:hidden; display:flex; justify-content:center; }
+/* Constrain to a phone-width column so the low-res demo clips never upscale
+   (which blurs them) on wide screens. */
+.gp-frame { position:relative; width:100%; max-width:480px; height:100dvh; overflow:hidden; background:#0c0c0e; }
+.gp-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.gp-scrim { position:absolute; inset:0; background:linear-gradient(to bottom, rgba(0,0,0,.5) 0%, rgba(0,0,0,.05) 28%, rgba(0,0,0,.3) 66%, rgba(0,0,0,.82) 100%); }
+.gp-close { position:absolute; top:14px; left:14px; z-index:6; }
+.gp-title { position:absolute; top:18px; left:0; right:0; text-align:center; font-size:13px; opacity:.85; z-index:4; pointer-events:none; }
+.gp-center { position:absolute; left:0; right:0; top:46%; transform:translateY(-50%); text-align:center; z-index:4; padding:0 20px; pointer-events:none; }
+.gp-kicker { letter-spacing:2px; font-size:16px; opacity:.85; }
+.gp-timer { font-size:84px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; text-shadow:0 2px 22px rgba(0,0,0,.6); }
+.gp-timer--pulse { animation:gppulse .5s ease-in-out; }
+@keyframes gppulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.13)} }
+.gp-group { text-transform:uppercase; letter-spacing:1.5px; font-size:12px; opacity:.75; margin-top:8px; }
+.gp-name { margin:4px 0 0; font-size:26px; text-shadow:0 2px 16px rgba(0,0,0,.7); }
+.gp-sub { opacity:.75; font-size:13px; margin-top:2px; }
+.gp-upnext { position:absolute; left:16px; bottom:148px; display:flex; gap:10px; align-items:center; background:rgba(0,0,0,.45); border-radius:12px; padding:8px 14px 8px 8px; z-index:4; }
+.gp-upnext-k { font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:.65; }
+.gp-upnext-n { font-size:14px; font-weight:600; }
+.gp-dots { position:absolute; left:16px; right:16px; bottom:118px; display:flex; gap:4px; justify-content:center; flex-wrap:wrap; z-index:4; }
+.gp-dots span { width:7px; height:7px; border-radius:999px; background:#fff; }
+.gp-controls { position:absolute; left:0; right:0; bottom:calc(22px + env(safe-area-inset-bottom)); display:flex; gap:10px; justify-content:center; z-index:6; }
+.gp-paused { position:absolute; inset:0; z-index:7; background:rgba(0,0,0,.62); color:#fff; border:none; font-size:16px; display:flex; align-items:center; justify-content:center; text-align:center; cursor:pointer; }
+.gp--summary { display:flex; align-items:center; justify-content:center; }
+.gp-done { text-align:center; padding:24px; max-width:360px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+.gp-done .btn { width:100%; }
+
+/* Progress streak banner */
+.streak-banner { background:linear-gradient(90deg,#ff8a3d,#ff5e62); color:#fff; font-weight:700; text-align:center; padding:12px; border-radius:14px; margin-bottom:12px; }
+
+/* Mini segmented toggle (builder Timed/Sets×reps) */
+.seg--mini { padding:3px; gap:3px; }
+.seg--mini .seg__btn { padding:5px 6px; font-size:12px; }
+
+/* Gym player — sets×reps logging panel */
+.gp-log { position:absolute; left:16px; right:16px; bottom:96px; z-index:6; display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; background:rgba(0,0,0,.5); padding:12px; border-radius:16px; }
+.gp-log-f { display:inline-flex; align-items:center; gap:5px; font-size:13px; color:#fff; opacity:.9; }
+.gp-log-f input { width:66px; padding:8px; border-radius:10px; border:none; font-size:19px; text-align:center; background:#fff; color:#111; }
+.gp-log-x { font-size:18px; opacity:.7; }
+.gp-doneset { background:var(--accent,#dcff1e); color:#111; border:none; padding:13px; border-radius:12px; font-weight:800; font-size:15px; cursor:pointer; flex-basis:100%; }
+
+/* Horizontally scrollable chip row (equipment) */
+.chips--scroll { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.chips--scroll::-webkit-scrollbar { display:none; }
+.chips--scroll .chip { flex:0 0 auto; }
+
+/* History editable set inputs */
+.hist-in { width:64px; padding:5px 6px; border:1px solid rgba(0,0,0,.15); border-radius:8px; font-size:14px; text-align:center; }
+
+/* ===== Gym player v2 — app-style (not full-bleed video) ===== */
+.gp2 { position:fixed; inset:0; background:var(--bg,#fff); color:var(--ink,#111); display:flex; flex-direction:column; align-items:center; }
+.gp2 > * { width:100%; max-width:440px; }
+.gp2-top { display:flex; align-items:center; justify-content:space-between; padding:12px 16px 4px; }
+.gp2-x { width:34px; height:34px; border-radius:999px; border:none; background:rgba(0,0,0,.06); font-size:15px; cursor:pointer; }
+.gp2-title { font-size:14px; font-weight:600; color:var(--text-dim,#888); }
+.gp2-stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; background:#0c0c0e; border-radius:18px; margin:6px 16px; overflow:hidden; }
+.gp2-stage--rest { background:#0b1f2e; }
+.gp2-vid { width:100%; height:100%; object-fit:contain; }
+.gp2-restbig { color:#7fd1ff; font-size:26px; font-weight:800; letter-spacing:3px; }
+.gp2-info { text-align:center; padding:10px 16px 0; }
+.gp2-group { text-transform:uppercase; letter-spacing:1.5px; font-size:11px; color:var(--text-dim,#999); }
+.gp2-name { margin:2px 0 0; font-size:23px; font-weight:800; }
+.gp2-sub { color:var(--text-dim,#888); font-size:13px; margin-top:2px; }
+.gp2-timer { text-align:center; font-size:58px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; padding:4px 0; }
+.gp2-timer--rest { color:#2aa7e0; }
+.gp2-timer--pulse { animation:gppulse .5s ease-in-out; }
+@keyframes gppulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+.gp2-logbar { display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; padding:8px 16px; }
+.gp2-logbar--mini { padding:2px 16px; }
+.gp2-f { display:inline-flex; align-items:center; gap:5px; font-size:13px; color:var(--text-dim,#888); }
+.gp2-f input { width:70px; padding:10px; border-radius:12px; border:1px solid rgba(0,0,0,.18); font-size:20px; text-align:center; font-weight:700; }
+.gp2-x2 { font-size:18px; color:var(--text-dim,#999); }
+.gp2-done { flex-basis:100%; background:var(--accent,#dcff1e); color:#111; border:none; padding:14px; border-radius:14px; font-weight:800; font-size:16px; cursor:pointer; }
+.gp2-loglink { display:block; margin:0 auto; background:none; border:none; color:#0a8050; font-weight:700; font-size:14px; cursor:pointer; padding:4px; }
+.gp2-dots { display:flex; gap:4px; justify-content:center; flex-wrap:wrap; padding:8px 16px 4px; }
+.gp2-dots span { width:7px; height:7px; border-radius:999px; background:rgba(0,0,0,.15); }
+.gp2-dots span.on { background:var(--ink,#111); }
+.gp2-next { display:flex; gap:10px; align-items:center; justify-content:center; padding:2px 16px; }
+.gp2-next-thumb { width:36px; height:36px; border-radius:9px; background:#eee center/cover no-repeat; }
+.gp2-next-k { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim,#999); }
+.gp2-next-n { font-size:14px; font-weight:600; }
+.gp2-controls { display:flex; gap:12px; justify-content:center; padding:10px 16px calc(14px + env(safe-area-inset-bottom)); }
+.gp2-ctrl { min-width:66px; height:54px; border-radius:16px; border:none; background:rgba(0,0,0,.06); font-size:18px; cursor:pointer; }
+.gp2-ctrl--play { min-width:96px; background:var(--accent,#dcff1e); color:#111; }
+.gp2--done { justify-content:center; }
+.gp2-donecard { text-align:center; padding:24px; max-width:360px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.gp2-donecard .btn { width:100%; }
+
+/* Coach notes (raw markdown plan) */
+.coach-notes { white-space:pre-wrap; word-break:break-word; font-family:inherit; font-size:13px; line-height:1.5; color:var(--text-dim,#555); background:rgba(0,0,0,.03); border-radius:12px; padding:14px; margin-top:8px; overflow-x:auto; }

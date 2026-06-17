@@ -2,7 +2,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 const tabs = [
   { to: '/', label: 'Today', icon: '🏠', end: true },
-  { to: '/train', label: 'Train', icon: '💪', end: false },
+  { to: '/exercises', label: 'Train', icon: '💪', end: false },
+  { to: '/cycle', label: 'Ride', icon: '🚴', end: false },
   { to: '/eat', label: 'Eat', icon: '🥗', end: false },
   { to: '/mind', label: 'Mind', icon: '🧘', end: false },
   { to: '/profile', label: 'Profile', icon: '👤', end: false },
@@ -11,7 +12,7 @@ const tabs = [
 export default function App() {
   const { pathname } = useLocation()
   // Hide the tab bar on detail pages for an immersive view.
-  const isDetail = /\/(workouts|programs|recipes|trainers|mind)\/[^/]+$/.test(pathname)
+  const isDetail = /\/(workouts|exercises|programs|recipes|trainers|mind|cycle|plan)\/[^/]+$/.test(pathname) || pathname === '/ride-player' || pathname === '/build' || /\/play$/.test(pathname)
 
   return (
     <div className="app-shell">
