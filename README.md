@@ -35,16 +35,24 @@ Want a real `.apk` for the Play Store or sideloading? Wrap this PWA with
 [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap) (TWA) — no code
 changes needed.
 
-## Hosting on the XPS (Emby/Deluge) box
+## Hosting on the XPS (Emby/Deluge) box — live
 
-The build is just static files. Any of these work:
+Deployed and served over HTTPS on the tailnet via Tailscale Serve:
 
-- Drop `dist/` behind the reverse proxy already fronting Emby (nginx/Caddy), or
-- `docker run` a tiny nginx serving `dist/`, or
-- Serve it from Emby's web root.
+```bash
+# build locally, copy to the box, serve (one-time)
+npm run build
+rsync -az --delete dist/ jmf@100.104.241.95:/home/jmf/gymapp/dist/
+ssh root@100.104.241.95 'tailscale serve --bg /home/jmf/gymapp/dist'
+```
 
-PWA install **requires HTTPS** (localhost is exempt for testing). Use your
-existing reverse-proxy TLS or a self-signed cert on the LAN.
+Live at **https://jmf-xps-13-9343.tail8ece92.ts.net/** (tailnet-only, auto TLS
+cert via Tailscale, MagicDNS). The serve config persists across reboots, so
+**redeploys are just the rsync line** — Tailscale picks up the new files with no
+restart. Stop with `tailscale serve --https=443 off`.
+
+PWA install **requires HTTPS** — Tailscale Serve provides a valid cert
+automatically, which is why this route is used instead of plain nginx:80.
 
 ### Wiring up video (Emby)
 
