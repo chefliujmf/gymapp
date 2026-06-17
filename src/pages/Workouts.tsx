@@ -3,7 +3,7 @@ import { workouts } from '../data/catalog'
 import type { Discipline } from '../types'
 import { WorkoutCard } from '../ui'
 
-const filters: (Discipline | 'all')[] = ['all', 'strength', 'hiit', 'cardio', 'mobility', 'yoga']
+const filters: (Discipline | 'all')[] = ['all', 'strength', 'yoga', 'pilates', 'mobility', 'hiit']
 
 export default function Workouts() {
   const [filter, setFilter] = useState<Discipline | 'all'>('all')

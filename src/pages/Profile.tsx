@@ -4,8 +4,8 @@ import { db, getSetting, setSetting } from '../db'
 
 export default function Profile() {
   const logs = useLiveQuery(() => db.logs.toArray())
-  const embyUrl = useLiveQuery(() => getSetting('embyBaseUrl'))
   const units = useLiveQuery(() => getSetting('units'))
+  const diet = useLiveQuery(() => getSetting('diet'))
 
   const totalMin = (logs ?? []).reduce((s, l) => s + l.duration, 0)
 
@@ -31,14 +31,15 @@ export default function Profile() {
 
       <Link to="/progress" className="btn btn--ghost" style={{ marginTop: 6 }}>📈 View full progress</Link>
 
-      <div className="section-title">Video source (Emby)</div>
-      <p className="meta" style={{ marginTop: -4 }}>Base URL of your Emby server so workouts can stream video.</p>
-      <input
-        className="field"
-        placeholder="http://10.0.0.182:8096"
-        defaultValue={embyUrl ?? ''}
-        onBlur={(e) => setSetting('embyBaseUrl', e.target.value.trim())}
-      />
+      <div className="section-title">Diet</div>
+      <div className="chips">
+        {['vegetarian', 'vegan', 'no preference'].map((d) => (
+          <button key={d} className={'chip' + ((diet ?? 'vegetarian') === d ? ' chip--active' : '')} onClick={() => setSetting('diet', d)}>
+            {d}
+          </button>
+        ))}
+      </div>
+      <p className="meta" style={{ marginTop: 6 }}>Recipes and the meal plan are filtered to your diet.</p>
 
       <div className="section-title">Units</div>
       <div className="chips">
@@ -48,6 +49,9 @@ export default function Profile() {
           </button>
         ))}
       </div>
+
+      <div className="section-title">Exercise demos</div>
+      <p className="meta" style={{ marginTop: -4 }}>Each exercise links to a MuscleWiki demo video. Demos open in a new tab.</p>
 
       <div className="section-title">Data</div>
       <button className="btn btn--ghost" style={{ color: 'var(--danger)' }} onClick={clearData}>
