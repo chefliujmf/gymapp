@@ -68,6 +68,19 @@ a { color: inherit; text-decoration: none; }
 .eyebrow { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
 
 .section-title { font-size: 18px; font-weight: 700; margin: 24px 0 12px; }
+.see-all { float: right; color: var(--text-dim); font-size: 14px; font-weight: 600; }
+
+.field {
+  width: 100%;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 14px;
+  outline: none;
+}
+.field:focus { border-color: var(--accent); }
 
 /* ---------- Cards ---------- */
 .card {

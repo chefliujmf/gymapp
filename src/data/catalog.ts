@@ -1,4 +1,4 @@
-import type { Workout, Program, Recipe } from '../types'
+import type { Workout, Program, Recipe, Trainer, MindSession, MealPlanDay } from '../types'
 
 // ---------------------------------------------------------------------------
 // Seed catalog. This is starter content so the app is usable on day one.
@@ -211,6 +211,48 @@ export const recipes: Recipe[] = [
   },
 ]
 
+export const trainers: Trainer[] = [
+  {
+    id: 't-alex',
+    name: 'Alex Rivera',
+    specialty: 'Strength & Conditioning',
+    bio: 'Coaches progressive strength work with a focus on clean technique and steady overload.',
+    disciplines: ['strength', 'hiit', 'mobility'],
+  },
+  {
+    id: 't-mia',
+    name: 'Mia Chen',
+    specialty: 'Yoga & Mobility',
+    bio: 'Flow and restorative sessions built to balance hard training and recovery.',
+    disciplines: ['yoga', 'mobility', 'pilates'],
+  },
+  {
+    id: 't-dev',
+    name: 'Dev Okafor',
+    specialty: 'Boxing & Cardio',
+    bio: 'High-energy conditioning and boxing fundamentals for engine and footwork.',
+    disciplines: ['boxing', 'cardio', 'hiit'],
+  },
+]
+
+export const mindSessions: MindSession[] = [
+  { id: 'm-calm', title: 'Calm the Noise', kind: 'meditation', duration: 10, summary: 'A guided sit to settle a busy mind.', coach: 'Mia Chen' },
+  { id: 'm-box-breath', title: 'Box Breathing', kind: 'breathwork', duration: 6, summary: '4-4-4-4 breathing to steady the nervous system.', coach: 'Dev Okafor' },
+  { id: 'm-sleep', title: 'Wind Down for Sleep', kind: 'sleep', duration: 20, summary: 'A slow body-scan to ease into rest.', coach: 'Mia Chen' },
+  { id: 'm-focus', title: 'Pre-Workout Focus', kind: 'focus', duration: 5, summary: 'Short priming session before you train.', coach: 'Alex Rivera' },
+]
+
+// Rotating 7-day meal plan referencing recipe ids. Drives the shopping list.
+export const mealPlan: MealPlanDay[] = [
+  { day: 1, breakfast: 'r-protein-oats', lunch: 'r-chicken-rice-bowl', dinner: 'r-salmon-greens', snack: 'r-recovery-smoothie' },
+  { day: 2, breakfast: 'r-protein-oats', lunch: 'r-chicken-rice-bowl', dinner: 'r-salmon-greens', snack: 'r-recovery-smoothie' },
+  { day: 3, breakfast: 'r-protein-oats', lunch: 'r-salmon-greens', dinner: 'r-chicken-rice-bowl', snack: 'r-recovery-smoothie' },
+  { day: 4, breakfast: 'r-protein-oats', lunch: 'r-chicken-rice-bowl', dinner: 'r-salmon-greens', snack: 'r-recovery-smoothie' },
+  { day: 5, breakfast: 'r-protein-oats', lunch: 'r-salmon-greens', dinner: 'r-chicken-rice-bowl', snack: 'r-recovery-smoothie' },
+  { day: 6, breakfast: 'r-protein-oats', lunch: 'r-chicken-rice-bowl', dinner: 'r-salmon-greens', snack: 'r-recovery-smoothie' },
+  { day: 7, breakfast: 'r-protein-oats', lunch: 'r-salmon-greens', dinner: 'r-chicken-rice-bowl', snack: 'r-recovery-smoothie' },
+]
+
 // Optionally merge content collected from your own Centr account.
 // scripts/centr-collect.mjs writes JSON into src/data/centr/ (gitignored).
 // Zero files = this is a no-op, app runs on seed content alone.
@@ -228,3 +270,5 @@ for (const mod of Object.values(collected)) {
 export const allWorkoutsById = Object.fromEntries(workouts.map((w) => [w.id, w]))
 export const allProgramsById = Object.fromEntries(programs.map((p) => [p.id, p]))
 export const allRecipesById = Object.fromEntries(recipes.map((r) => [r.id, r]))
+export const allTrainersById = Object.fromEntries(trainers.map((t) => [t.id, t]))
+export const allMindById = Object.fromEntries(mindSessions.map((m) => [m.id, m]))

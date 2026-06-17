@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import type { Discipline, Workout, Program, Recipe } from './types'
+import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind } from './types'
 
 export const disciplineIcon: Record<Discipline, string> = {
   strength: '🏋️',
@@ -48,6 +48,44 @@ export function ProgramCard({ p }: { p: Program }) {
             <span>{p.weeks} weeks</span>
             <span className="dot">{p.daysPerWeek}×/week</span>
             <span className="dot">{p.level}</span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+export const mindIcon: Record<MindKind, string> = {
+  meditation: '🧘',
+  breathwork: '🌬️',
+  sleep: '🌙',
+  focus: '🎯',
+}
+
+export function TrainerCard({ t }: { t: Trainer }) {
+  return (
+    <Link to={`/trainers/${t.id}`} className="card">
+      <div className="card-row">
+        <div className="thumb" style={{ borderRadius: 999 }}>{t.name.charAt(0)}</div>
+        <div className="card-body">
+          <h3>{t.name}</h3>
+          <div className="meta">{t.specialty}</div>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+export function MindCard({ m }: { m: MindSession }) {
+  return (
+    <Link to={`/mind/${m.id}`} className="card">
+      <div className="card-row">
+        <div className="thumb">{mindIcon[m.kind]}</div>
+        <div className="card-body">
+          <h3>{m.title}</h3>
+          <div className="meta">
+            <span>{m.duration} min</span>
+            <span className="dot">{m.kind}</span>
           </div>
         </div>
       </div>

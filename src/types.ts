@@ -72,4 +72,36 @@ export interface Recipe {
   steps: string[]
   thumbnail?: string
   tags: string[]
+  diet?: ('vegan' | 'vegetarian' | 'high-protein' | 'low-carb' | 'gluten-free')[]
+  servings?: number
+}
+
+export interface Trainer {
+  id: string
+  name: string
+  specialty: string
+  bio: string
+  disciplines: Discipline[]
+  avatar?: string
+}
+
+export type MindKind = 'meditation' | 'breathwork' | 'sleep' | 'focus'
+
+export interface MindSession {
+  id: string
+  title: string
+  kind: MindKind
+  duration: number // minutes
+  summary: string
+  coach?: string
+  audioUrl?: string // point at an Emby/audio stream
+}
+
+/** A single day in the rotating weekly meal plan. */
+export interface MealPlanDay {
+  day: number // 1..7
+  breakfast: string // recipe id
+  lunch: string
+  dinner: string
+  snack: string
 }

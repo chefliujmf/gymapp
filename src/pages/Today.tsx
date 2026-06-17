@@ -1,8 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
-import { workouts, programs, allWorkoutsById } from '../data/catalog'
-import { WorkoutCard, disciplineIcon } from '../ui'
+import { workouts, programs, allWorkoutsById, mealPlan, allRecipesById, mindSessions } from '../data/catalog'
+import { WorkoutCard, disciplineIcon, mindIcon } from '../ui'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -74,9 +74,43 @@ export default function Today() {
         </Link>
       )}
 
+      <div className="section-title">Today's plan</div>
+      <div className="stack">
+        {(() => {
+          const meal = allRecipesById[mealPlan[0].lunch]
+          const mind = mindSessions[0]
+          return (
+            <>
+              {meal && (
+                <Link to={`/recipes/${meal.id}`} className="card">
+                  <div className="card-row">
+                    <div className="thumb">🥗</div>
+                    <div className="card-body">
+                      <span className="eyebrow">Eat</span>
+                      <h3>{meal.title}</h3>
+                      <div className="meta"><span>{meal.kcal} kcal</span><span className="dot">{meal.protein}g protein</span></div>
+                    </div>
+                  </div>
+                </Link>
+              )}
+              <Link to={`/mind/${mind.id}`} className="card">
+                <div className="card-row">
+                  <div className="thumb">{mindIcon[mind.kind]}</div>
+                  <div className="card-body">
+                    <span className="eyebrow">Mind</span>
+                    <h3>{mind.title}</h3>
+                    <div className="meta"><span>{mind.duration} min</span><span className="dot">{mind.kind}</span></div>
+                  </div>
+                </div>
+              </Link>
+            </>
+          )
+        })()}
+      </div>
+
       <div className="section-title">
         Quick start
-        <Link to="/workouts" style={{ float: 'right', color: 'var(--text-dim)', fontSize: 14, fontWeight: 600 }}>All →</Link>
+        <Link to="/workouts" className="see-all">All →</Link>
       </div>
       <div className="stack">
         {workouts.slice(0, 4).map((w) => <WorkoutCard key={w.id} w={w} />)}
