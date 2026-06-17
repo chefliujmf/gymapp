@@ -52,53 +52,10 @@ function gymToWorkout(w) {
   }
 }
 
-function pct(target) {
-  if (target?.power_pct_ftp) {
-    const [a, b] = target.power_pct_ftp
-    return `${Math.round(a * 100)}-${Math.round(b * 100)}% FTP`
-  }
-  if (target?.rpe) return `RPE ${target.rpe.join('-')}`
-  return ''
-}
-
-function bikeToWorkout(w) {
-  const steps = []
-  const push = (arr, label) => {
-    for (const blk of arr || []) {
-      const inner = blk.steps || [blk]
-      const reps = blk.repeat && blk.repeat > 1 ? `${blk.repeat}× ` : ''
-      for (const s of inner) {
-        const mins = s.duration_sec ? `${Math.round(s.duration_sec / 60)} min` : ''
-        steps.push({
-          name: `${label}${s.type ? ' · ' + s.type.replace('_', ' ') : ''}`,
-          prescription: [reps + mins, pct(s.target)].filter(Boolean).join(' @ '),
-          note: s.notes || undefined,
-        })
-      }
-    }
-  }
-  push(w.warmup, 'Warm-up')
-  push(w.main_set, 'Main')
-  push(w.cooldown, 'Cool-down')
-  if (!steps.length) return null
-  const totalMin = w.constraints?.max_duration_min || Math.round((w.estimated_duration_sec || 3600) / 60)
-  return {
-    id: 'coach-' + slug(w.workout_id || w.title),
-    title: w.title || 'Coach Ride',
-    discipline: 'cardio',
-    duration: totalMin,
-    level: 'advanced',
-    equipment: w.constraints?.equipment || ['bike'],
-    summary: w.objective || 'Coach-prescribed ride.',
-    coach: 'Your Coach',
-    planned_date: w.planned_date || null,
-    exercises: steps,
-  }
-}
-
+// This is a MUSCLE app: import only the coach's GYM/strength sessions
+// (those with a gym_table). Bike rides are intentionally skipped.
 function convert(w) {
   if (w.gym_table) return gymToWorkout(w)
-  if (w.main_set || w.warmup) return bikeToWorkout(w)
   return null
 }
 
@@ -128,12 +85,12 @@ const dated = workouts
 
 const program = {
   id: 'coach-training-plan',
-  title: 'My Training Plan',
-  discipline: 'cardio',
+  title: 'My Coach Gym Plan',
+  discipline: 'strength',
   weeks: Math.max(1, Math.ceil(dated.length / 7)),
   daysPerWeek: Math.min(7, dated.length || 1),
-  level: 'advanced',
-  summary: 'Your live plan imported from your cycling coach — rides and gym sessions in order.',
+  level: 'intermediate',
+  summary: 'Your gym training as prescribed by your cycling coach — the strength sessions that support your riding.',
   schedule: (dated.length ? dated : workouts).map((w, i) => ({
     day: i + 1,
     label: w.planned_date || w.discipline,
