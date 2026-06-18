@@ -83,10 +83,14 @@ const stripBrand = (s) => String(s || '').replace(/\bCentr\b:?\s*/gi, '').trim()
 const MEAL_TAGS = { breakfast: 'breakfast', lunch: 'lunch', dinner: 'dinner', snack: 'snack' }
 function mealCategory(r, isSnack) {
   if (isSnack) return 'snack'
-  for (const t of r.tags || []) {
-    const n = String(t.name || '').toLowerCase()
-    if (MEAL_TAGS[n]) return MEAL_TAGS[n]
-  }
+  // Centr encodes meal type as `type_meals_<x>` and/or human tags like
+  // "Breakfast & Brunch" / "Dinner". Match those, breakfast first.
+  const tags = (r.tags || []).map((t) => String(t.name || '').toLowerCase())
+  const has = (s) => tags.some((t) => t.includes(s))
+  if (has('type_meals_breakfast') || has('breakfast') || has('brunch')) return 'breakfast'
+  if (has('type_snacks') || has('type_meals_dessert') || has('dessert') || has('snack')) return 'snack'
+  if (has('type_meals_lunch') || tags.includes('lunch') || has('worklunch')) return 'lunch'
+  if (has('type_meals_dinner') || tags.includes('dinner')) return 'dinner'
   return 'dinner'
 }
 function fmtIngredient(i) {
