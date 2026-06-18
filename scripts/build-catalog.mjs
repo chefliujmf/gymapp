@@ -33,6 +33,19 @@ const driveAudioUrl = (slug) =>
     ? `https://drive.usercontent.google.com/download?id=${DRIVE_AUDIO_MAP[slug]}&export=download`
     : undefined
 
+// filename -> Google Drive id for self-hosted exercise media (videos + MW posters).
+const DRIVE_MEDIA_MAP = (() => {
+  const p = join(__dirname, 'drive-media-map.json')
+  return existsSync(p) ? readJson(p) : {}
+})()
+const mediaBase = (u) => { try { return decodeURIComponent(new URL(u).pathname.split('/').pop()) } catch { return String(u).split('/').pop() } }
+/** Repoint a media URL at its Drive copy when we've self-hosted it. */
+const driveMediaUrl = (url) => {
+  if (!url) return url
+  const id = DRIVE_MEDIA_MAP[mediaBase(url)]
+  return id ? `https://drive.usercontent.google.com/download?id=${id}&export=download` : url
+}
+
 function pickImg(imageList) {
   if (!imageList) return undefined
   const order = ['landscapewidedesktop2x', 'landscape32medium2x', 'landscape32medium1x',
@@ -128,7 +141,7 @@ function mapWorkout(d) {
         rest: e.rest || undefined,
         note: g.title || undefined,
         image,
-        video,
+        video: driveMediaUrl(video),
         // Only fall back to a MuscleWiki search link when we have no image.
         demoUrl: image ? undefined : (e.title ? 'https://musclewiki.com/exercises?search=' + encodeURIComponent(e.title) : undefined),
       }
@@ -249,10 +262,10 @@ function mapMuscleWiki(e) {
   return {
     id: 'mw-' + e.slug,
     name: stripBrand(e.name),
-    image: male.og_image || female.og_image,
-    video: male.branded_video || undefined,
-    imageFemale: female.og_image || undefined,
-    videoFemale: female.branded_video || undefined,
+    image: driveMediaUrl(male.og_image || female.og_image),
+    video: driveMediaUrl(male.branded_video || undefined),
+    imageFemale: driveMediaUrl(female.og_image || undefined),
+    videoFemale: driveMediaUrl(female.branded_video || undefined),
     category: mwCategory(e),
     muscle: (e.muscles_primary || [])[0]?.name || undefined,
     equipment: e.category?.name || undefined,
@@ -292,7 +305,7 @@ function extractExercises(files) {
               const video = (e.media || []).map((m) => m.value).find((v) => String(v).toLowerCase().endsWith('.mp4'))
               if (!image && !video) continue // need a demo to be useful
               byId.set(id, {
-                id, name: stripBrand(e.title), image, video,
+                id, name: stripBrand(e.title), image, video: driveMediaUrl(video),
                 seconds: e.durationInSeconds || undefined,
                 category: categorize(e.title),
               })
