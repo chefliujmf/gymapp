@@ -39,9 +39,14 @@ const DRIVE_MEDIA_MAP = (() => {
   return existsSync(p) ? readJson(p) : {}
 })()
 const mediaBase = (u) => { try { return decodeURIComponent(new URL(u).pathname.split('/').pop()) } catch { return String(u).split('/').pop() } }
+// Drive download URLs send Content-Disposition: attachment and Drive is not a
+// video CDN (slow, rate-limited) — they don't play inline. Serve from the fast
+// origins (MuscleWiki / jwplayer); the Drive copies stay as a cold backup. Flip
+// this on only once media lives on a proper inline-serving static host.
+const SELF_HOST_MEDIA = false
 /** Repoint a media URL at its Drive copy when we've self-hosted it. */
 const driveMediaUrl = (url) => {
-  if (!url) return url
+  if (!SELF_HOST_MEDIA || !url) return url
   const id = DRIVE_MEDIA_MAP[mediaBase(url)]
   return id ? `https://drive.usercontent.google.com/download?id=${id}&export=download` : url
 }

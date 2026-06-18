@@ -359,8 +359,9 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .gp2-done { flex-basis:100%; background:var(--accent,#dcff1e); color:#111; border:none; padding:14px; border-radius:14px; font-weight:800; font-size:16px; cursor:pointer; }
 .gp2-loglink { display:block; margin:0 auto; background:none; border:none; color:#0a8050; font-weight:700; font-size:14px; cursor:pointer; padding:4px; }
 .gp2-dots { display:flex; gap:4px; justify-content:center; flex-wrap:wrap; padding:8px 16px 4px; }
-.gp2-dots span { width:7px; height:7px; border-radius:999px; background:rgba(0,0,0,.15); }
-.gp2-dots span.on { background:var(--ink,#111); }
+.gp2-dot { width:8px; height:8px; border-radius:999px; background:rgba(0,0,0,.15); border:none; padding:0; cursor:pointer; transition:width .15s; }
+.gp2-dot.on { background:rgba(0,0,0,.45); }
+.gp2-dot.cur { width:22px; background:var(--ink,#111); }
 .gp2-next { display:flex; gap:10px; align-items:center; justify-content:center; padding:2px 16px; }
 .gp2-next-thumb { width:36px; height:36px; border-radius:9px; background:#eee center/cover no-repeat; }
 .gp2-next-k { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim,#999); }

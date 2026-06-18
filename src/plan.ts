@@ -29,6 +29,7 @@ const toks = (s: string) => norm(s).split(' ').filter((w) => w && !STOP.has(w))
 
 /** Match a coach exercise label ("Dumbbell bench press or machine chest press")
  * to the best library demo by significant-word overlap. */
+export function matchExercise(name: string) { return findLib(name) }
 function findLib(name: string) {
   const want = toks(name)
   if (!want.length) return undefined

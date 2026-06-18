@@ -6,7 +6,6 @@ import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { getSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
 import { getGymSession } from '../plan'
 
-const READY = 10
 
 interface PlayerEx {
   name: string; exId?: string
@@ -31,7 +30,7 @@ function enrich(name: string, exId: string | undefined, img?: string, vid?: stri
 }
 
 function buildSteps(exs: PlayerEx[]): Step[] {
-  const steps: Step[] = [{ kind: 'ready', duration: READY, next: exs[0] }]
+  const steps: Step[] = [] // no "get ready" — start on the first exercise
   exs.forEach((ex, i) => {
     if (ex.mode === 'reps') {
       const sets = Math.max(1, ex.sets)
@@ -105,11 +104,21 @@ export default function GymPlayer() {
   const [done, setDone] = useState(false)
   const [log, setLog] = useState<Record<number, SetEntry[]>>({})
 
+  // Build steps and resume in-progress position/log across a refresh.
   useEffect(() => {
     if (!w) return
-    setSteps(buildSteps(w.exercises)); setIdx(0); setSegStart(Date.now())
+    setSteps(buildSteps(w.exercises))
+    const saved = sessionStorage.getItem('gp:' + w.workoutId)
+    if (saved) {
+      try { const s = JSON.parse(saved); setIdx(s.idx ?? 0); setLog(s.log ?? {}); setSegStart(Date.now()); return } catch { /* fall through */ }
+    }
+    setIdx(0); setSegStart(Date.now())
     lastLogForWorkout(w.workoutId).then((prev) => { if (prev?.sets) setLog(prev.sets) })
   }, [w])
+
+  useEffect(() => {
+    if (w && !done) sessionStorage.setItem('gp:' + w.workoutId, JSON.stringify({ idx, log }))
+  }, [idx, log, w, done])
 
   const now = useNow(250)
   useWakeLock(true)
@@ -150,6 +159,7 @@ export default function GymPlayer() {
   async function finish() {
     setDone(true)
     if (!w) return
+    sessionStorage.removeItem('gp:' + w.workoutId)
     const flat = Object.values(log).flat()
     const setsCompleted = flat.filter((s) => s?.done).length
     const volume = flat.reduce((v, s) => v + (s?.done ? (s.weight || 0) * (s.reps || 0) : 0), 0)
@@ -182,7 +192,10 @@ export default function GymPlayer() {
     : cur.kind === 'set' ? `Set ${cur.setNo} / ${cur.sets} · target ${cur.reps} reps`
     : cur.kind === 'rest' ? `Up next · ${cur.nextNo} / ${totalEx}` : `Starting · ${totalEx} exercises`
   const setEntry = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 1]) : undefined
-  const doneCount = cur.kind === 'set' ? cur.exNo - 1 : cur.kind === 'timed' ? cur.exNo : cur.kind === 'rest' ? cur.nextNo - 1 : 0
+  const prevSet = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 2]) : undefined // carry weight/reps forward
+  const setWeight = setEntry?.weight ?? prevSet?.weight ?? (cur.kind === 'set' ? cur.weight : undefined) ?? ''
+  const setReps = setEntry?.reps ?? prevSet?.reps ?? (cur.kind === 'set' ? cur.reps : undefined) ?? ''
+  const curExNo = cur.kind === 'set' ? cur.exNo : cur.kind === 'timed' ? cur.exNo : cur.kind === 'rest' ? cur.nextNo : 0
 
   return (
     <div className="gp2">
@@ -206,9 +219,9 @@ export default function GymPlayer() {
 
       {cur.kind === 'set' ? (
         <div className="gp2-logbar">
-          <label className="gp2-f">weight<input type="number" inputMode="decimal" value={setEntry?.weight ?? cur.weight ?? ''} onChange={(e) => logSet(cur.exIndex, cur.setNo, { weight: e.target.value === '' ? undefined : Number(e.target.value) })} />kg</label>
+          <label className="gp2-f">weight<input type="number" inputMode="decimal" value={setWeight} onChange={(e) => logSet(cur.exIndex, cur.setNo, { weight: e.target.value === '' ? undefined : Number(e.target.value) })} />kg</label>
           <span className="gp2-x2">×</span>
-          <label className="gp2-f"><input type="number" inputMode="numeric" value={setEntry?.reps ?? cur.reps ?? ''} onChange={(e) => logSet(cur.exIndex, cur.setNo, { reps: e.target.value === '' ? undefined : Number(e.target.value) })} />reps</label>
+          <label className="gp2-f"><input type="number" inputMode="numeric" value={setReps} onChange={(e) => logSet(cur.exIndex, cur.setNo, { reps: e.target.value === '' ? undefined : Number(e.target.value) })} />reps</label>
           <button className="gp2-done" onClick={() => { logSet(cur.exIndex, cur.setNo, { done: true }); advance() }}>Done set →</button>
         </div>
       ) : (
@@ -216,7 +229,10 @@ export default function GymPlayer() {
       )}
 
       <div className="gp2-dots">
-        {w.exercises.map((_, i) => <span key={i} className={i < doneCount ? 'on' : ''} />)}
+        {w.exercises.map((ex, i) => {
+          const firstStep = steps.findIndex((s) => (s.kind === 'timed' || s.kind === 'set') && s.exNo === i + 1)
+          return <button key={i} className={'gp2-dot' + (i + 1 < curExNo ? ' on' : '') + (i + 1 === curExNo ? ' cur' : '')} title={ex.name} onClick={() => firstStep >= 0 && jump(firstStep)} />
+        })}
       </div>
 
       {upNext && showVid && (

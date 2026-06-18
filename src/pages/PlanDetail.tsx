@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { getPlanEvent, gymSessionFromEvent, setGymSession } from '../plan'
+import { getPlanEvent, gymSessionFromEvent, setGymSession, matchExercise } from '../plan'
 import { eventObjective, parseGymTable, sportOf, flattenIcuSteps } from '../intervals'
 import { setCurrentRide } from '../ride'
 import { getSetting } from '../db'
@@ -26,39 +26,41 @@ export default function PlanDetail() {
     navigate('/ride-player')
   }
 
+  const kind = e.category === 'TARGET' ? 'Target' : sport === 'gym' ? 'Gym' : sport === 'cycling' ? 'Ride' : e.type
+  const dateLabel = new Date(e.start_date_local).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
+
   return (
     <div>
       <Link to="/" className="back">← Today</Link>
       <div className="page-head">
-        <span className="eyebrow">{e.category === 'TARGET' ? 'Target' : sport === 'gym' ? 'Gym' : sport === 'cycling' ? 'Ride' : e.type} · {new Date(e.start_date_local).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+        <span className="eyebrow">{kind} · {dateLabel}{mins ? ` · ${mins} min` : ''}{e.icu_training_load ? ` · ${e.icu_training_load} TSS` : ''}</span>
         <h1>{e.name}</h1>
       </div>
 
-      {(mins || e.icu_training_load) && (
-        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
-          {mins ? <div className="stat"><div className="v">{mins}</div><div className="k">min</div></div> : null}
-          {e.icu_training_load ? <div className="stat"><div className="v">{e.icu_training_load}</div><div className="k">TSS</div></div> : null}
-        </div>
-      )}
-
-      {obj && <p className="lead" style={{ marginTop: 12 }}>{obj}</p>}
+      {obj && <p className="lead" style={{ marginTop: 4 }}>{obj}</p>}
 
       {gym.length > 0 && (
         <>
           <button className="btn" onClick={startGym}>▶ Start workout</button>
           <div className="section-title">Main set</div>
           <div className="stack" style={{ gap: 8 }}>
-            {gym.map((r, i) => (
-              <div key={i} className="card" style={{ padding: '12px 14px' }}>
-                <div className="meta" style={{ marginBottom: 2 }}>{r.type}</div>
-                <h3 style={{ fontSize: 15, margin: 0 }}>{r.exercise}</h3>
-                <div className="meta" style={{ marginTop: 4 }}>
-                  <span><b style={{ color: 'var(--ink,#111)' }}>{r.sets}×{r.reps}</b></span>
-                  {r.rest && <span className="dot">rest {r.rest}</span>}
+            {gym.map((r, i) => {
+              const demo = matchExercise(r.exercise)
+              return (
+                <div key={i} className="ex-row" style={{ alignItems: 'flex-start' }}>
+                  <div className="ex-thumb-sm" style={demo?.image ? { backgroundImage: `url(${demo.image})` } : undefined} />
+                  <div className="ex-row-text" style={{ flex: 1 }}>
+                    <div className="eyebrow" style={{ fontSize: 11 }}>{r.type}</div>
+                    <h4>{r.exercise}</h4>
+                    <div className="meta" style={{ marginTop: 2 }}>
+                      <span><b style={{ color: 'var(--ink,#111)' }}>{r.sets}×{r.reps}</b></span>
+                      {r.rest && <span className="dot">rest {r.rest}</span>}
+                    </div>
+                    {r.cue && <div className="meta" style={{ display: 'block', whiteSpace: 'normal', marginTop: 3 }}>{r.cue}</div>}
+                  </div>
                 </div>
-                {r.cue && <div className="meta" style={{ display: 'block', whiteSpace: 'normal', marginTop: 4 }}>{r.cue}</div>}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </>
       )}
