@@ -318,11 +318,18 @@ function extractExercises(files) {
 // Drive (esp. Centr's jwplayer ids) never lose their meaning.
 const fileBase = (u) => { try { return decodeURIComponent(new URL(u).pathname.split('/').pop()) } catch { return String(u).split('/').pop() } }
 const csvCell = (v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
+// Recover the original (Drive) filename even after a URL has been remapped to a Drive id.
+const ID_TO_NAME = Object.fromEntries(Object.entries(DRIVE_MEDIA_MAP).map(([n, i]) => [i, n]))
+const origFile = (url) => {
+  if (!url) return ''
+  const m = String(url).match(/[?&]id=([^&]+)/)
+  return (m && ID_TO_NAME[m[1]]) || fileBase(url)
+}
 function writeVideoManifest(exs) {
   const rows = []
   for (const e of exs) {
-    if (e.video) rows.push({ file: fileBase(e.video), exercise: e.name, source: e.source || 'centr', gender: e.source === 'musclewiki' ? 'male' : '', category: e.category, muscle: e.muscle || '', equipment: e.equipment || '' })
-    if (e.videoFemale) rows.push({ file: fileBase(e.videoFemale), exercise: e.name, source: e.source || '', gender: 'female', category: e.category, muscle: e.muscle || '', equipment: e.equipment || '' })
+    if (e.video) rows.push({ file: origFile(e.video), exercise: e.name, source: e.source || 'centr', gender: e.source === 'musclewiki' ? 'male' : '', category: e.category, muscle: e.muscle || '', equipment: e.equipment || '' })
+    if (e.videoFemale) rows.push({ file: origFile(e.videoFemale), exercise: e.name, source: e.source || '', gender: 'female', category: e.category, muscle: e.muscle || '', equipment: e.equipment || '' })
   }
   const cols = ['file', 'exercise', 'source', 'gender', 'category', 'muscle', 'equipment']
   writeFileSync(join(__dirname, '..', 'video-manifest.json'), JSON.stringify(rows, null, 0))
