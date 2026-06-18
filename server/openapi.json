@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "description": "Push planned sessions into a Platyplus account (rich indoor-execution detail). The coach dual-writes: the same `id` goes here AND to the intervals.icu event `external_id`, so Platyplus's Today merges them into one card (no duplicates). Authenticate with the per-user API token from Profile → Account."
   },
-  "servers": [{ "url": "https://gymmingapp.duckdns.org" }],
+  "servers": [{ "url": "https://platyplus.duckdns.org" }],
   "security": [{ "bearerAuth": [] }],
   "paths": {
     "/api/plan": {

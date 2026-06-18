@@ -19,7 +19,7 @@ import { load, save, newId } from './store.js'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
 const PORT = Number(process.env.PORT || 80)
-const RP_ID = process.env.RP_ID || 'gymmingapp.duckdns.org'
+const RP_ID = process.env.RP_ID || 'platyplus.duckdns.org'
 const ORIGIN = process.env.ORIGIN || `https://${RP_ID}`
 const RP_NAME = 'Platyplus'
 const COOKIE = 'gymapp_sess'

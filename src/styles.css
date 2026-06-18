@@ -466,6 +466,7 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 
 /* ---- top app bar (brand left, Profile + Log out right) ----------------- */
 .app-bar {
+  position: relative; z-index: 50;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 10px 16px;
   background: rgba(13,14,18,.72); backdrop-filter: blur(10px);
