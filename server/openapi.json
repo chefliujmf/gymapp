@@ -1,0 +1,93 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "GymApp Coach API",
+    "version": "1.0.0",
+    "description": "Push planned sessions into a GymApp account (rich indoor-execution detail). The coach dual-writes: the same `id` goes here AND to the intervals.icu event `external_id`, so GymApp's Today merges them into one card (no duplicates). Authenticate with the per-user API token from Profile → Account."
+  },
+  "servers": [{ "url": "https://gymmingapp.duckdns.org" }],
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/api/plan": {
+      "post": {
+        "summary": "Create or update a planned session (upsert by id)",
+        "description": "Idempotent: re-POST the same id to update it.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" },
+            "examples": {
+              "ride": { "value": { "id": "2026-06-20-vo2", "date": "2026-06-20", "sport": "ride", "title": "VO2 5x4", "ftp": 260, "segments": [ { "duration": 600, "powerStart": 50, "powerEnd": 60, "label": "warmup" }, { "duration": 240, "powerStart": 115, "powerEnd": 115, "label": "VO2" }, { "duration": 180, "powerStart": 50, "powerEnd": 50, "label": "recover" } ] } },
+              "gym": { "value": { "id": "2026-06-21-push", "date": "2026-06-21", "sport": "gym", "title": "Push Day", "rounds": 3, "exercises": [ { "name": "Bench Press", "mode": "reps", "sets": 4, "reps": 8, "weight": 60, "rest": 90 }, { "name": "Plank", "mode": "timed", "seconds": 45, "rest": 15 } ] } },
+              "run": { "value": { "id": "2026-06-22-tempo", "date": "2026-06-22", "sport": "run", "title": "Tempo 3x8", "segments": [ { "duration": 600, "powerStart": 70, "powerEnd": 70 }, { "duration": 480, "powerStart": 95, "powerEnd": 95, "hr": "165" } ] } }
+            } } }
+        },
+        "responses": {
+          "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" } } } },
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" } } } },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Invalid API token" }
+        }
+      }
+    },
+    "/api/plans": {
+      "get": {
+        "summary": "List planned sessions",
+        "parameters": [
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" }, "description": "YYYY-MM-DD inclusive" },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" }, "description": "YYYY-MM-DD inclusive" }
+        ],
+        "responses": { "200": { "description": "Array of plans", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Plan" } } } } } }
+      }
+    },
+    "/api/plan/{id}": {
+      "get": { "summary": "Get one plan", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Plan", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" } } } }, "404": { "description": "Not found" } } },
+      "delete": { "summary": "Delete a plan", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Deleted" } } }
+    }
+  },
+  "components": {
+    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer", "description": "Per-user API token (Profile → Account → API token)." } },
+    "schemas": {
+      "Segment": {
+        "type": "object",
+        "description": "One ride/run interval. power is % of FTP (ride) or % of threshold (run).",
+        "required": ["duration", "powerStart", "powerEnd"],
+        "properties": {
+          "duration": { "type": "integer", "description": "seconds" },
+          "powerStart": { "type": "number", "description": "% FTP/threshold at start (ramp start)" },
+          "powerEnd": { "type": "number", "description": "% at end (= start for steady)" },
+          "label": { "type": "string" },
+          "hr": { "type": "string", "description": "target bpm" }
+        }
+      },
+      "Exercise": {
+        "type": "object",
+        "required": ["name", "mode"],
+        "properties": {
+          "name": { "type": "string" },
+          "exId": { "type": "string", "description": "optional GymApp library id for the demo video" },
+          "mode": { "type": "string", "enum": ["timed", "reps"] },
+          "seconds": { "type": "integer", "description": "for mode=timed" },
+          "sets": { "type": "integer", "description": "for mode=reps" },
+          "reps": { "type": "integer", "description": "for mode=reps" },
+          "weight": { "type": "number" },
+          "rest": { "type": "integer", "description": "seconds between sets" }
+        }
+      },
+      "Plan": {
+        "type": "object",
+        "required": ["id", "date", "sport", "title"],
+        "properties": {
+          "id": { "type": "string", "description": "Shared id — also set as the intervals.icu event external_id." },
+          "date": { "type": "string", "format": "date", "description": "YYYY-MM-DD" },
+          "sport": { "type": "string", "enum": ["gym", "ride", "run"] },
+          "title": { "type": "string" },
+          "notes": { "type": "string" },
+          "ftp": { "type": "number", "description": "ride only; defaults to athlete FTP if omitted" },
+          "segments": { "type": "array", "items": { "$ref": "#/components/schemas/Segment" }, "description": "ride/run" },
+          "rounds": { "type": "integer", "description": "gym only" },
+          "exercises": { "type": "array", "items": { "$ref": "#/components/schemas/Exercise" }, "description": "gym only" }
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Home, Dumbbell, Bike, Footprints, Salad, Brain, User } from 'lucide-react'
+import { Home, Dumbbell, Bike, Footprints, Salad, Brain } from 'lucide-react'
+import AccountMenu from './auth/AccountMenu'
 
 const tabs = [
   { to: '/', label: 'Today', icon: <Home strokeWidth={1.75} />, end: true },
@@ -8,16 +9,21 @@ const tabs = [
   { to: '/run', label: 'Run', icon: <Footprints strokeWidth={1.75} />, end: false },
   { to: '/eat', label: 'Eat', icon: <Salad strokeWidth={1.75} />, end: false },
   { to: '/mind', label: 'Mind', icon: <Brain strokeWidth={1.75} />, end: false },
-  { to: '/profile', label: 'Profile', icon: <User strokeWidth={1.75} />, end: false },
 ]
 
 export default function App() {
   const { pathname } = useLocation()
-  // Hide the tab bar on detail pages for an immersive view.
+  // Hide chrome on detail/player pages for an immersive view.
   const isDetail = /\/(workouts|exercises|programs|recipes|trainers|mind|cycle|plan)\/[^/]+$/.test(pathname) || pathname === '/ride-player' || pathname === '/run-player' || pathname === '/build' || /\/play$/.test(pathname)
 
   return (
     <div className="app-shell">
+      {!isDetail && (
+        <header className="app-bar">
+          <span className="app-bar__brand">GymApp</span>
+          <AccountMenu />
+        </header>
+      )}
       <main className="app-main">
         <Outlet />
       </main>

@@ -5,7 +5,7 @@ FROM node:20-alpine
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
-COPY server.js store.js ./
+COPY server.js store.js openapi.json ./
 ENV STATIC_DIR=/usr/share/nginx/html
 ENV DATA_FILE=/data/store.json
 ENV PORT=80

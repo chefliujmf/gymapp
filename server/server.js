@@ -38,11 +38,16 @@ if (!store.users.length) {
     info: {},
     icuKey: process.env.SEED_ICU_KEY || '',
     icuAthlete: process.env.SEED_ICU_ATHLETE || 'i28814',
+    apiToken: randomBytes(24).toString('base64url'),
+    plans: [],
     createdAt: Date.now(),
   })
   save(store)
   console.log('Seeded admin user.')
 }
+// Backfill api tokens / plan arrays for any user created before these existed.
+for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = [] }
+save(store)
 // Late-seed the admin's intervals.icu key if it wasn't stored yet (idempotent).
 const seedKey = process.env.SEED_ICU_KEY
 if (seedKey) {
@@ -71,7 +76,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').toLowerCase(); return store.users.find((u) => u.username.toLowerCase() === l || u.email === l) }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -93,6 +98,14 @@ const tempPassword = () => randomBytes(6).toString('base64url')
 
 // ---- app -----------------------------------------------------------------
 const app = express()
+app.set('trust proxy', true) // behind NPM — honor X-Forwarded-Proto
+// Force HTTPS so the Secure session cookie always sticks (only acts on traffic
+// that actually came through the proxy as http; leaves direct localhost alone).
+app.use((req, res, next) => {
+  const xfp = req.headers['x-forwarded-proto']
+  if (xfp && xfp !== 'https') return res.redirect(308, ORIGIN + req.originalUrl)
+  next()
+})
 app.use(express.json())
 app.use(cookieParser())
 
@@ -186,6 +199,14 @@ app.put('/auth/icu', auth, (req, res) => {
   save(store); res.json(pub(req.user))
 })
 
+// profile picture — small client-resized data URL stored on the account
+app.put('/auth/avatar', auth, (req, res) => {
+  const a = String(req.body.avatar || '')
+  if (a && !/^data:image\/(png|jpeg|webp);base64,/.test(a)) return res.status(400).json({ error: 'expected a data:image URL' })
+  if (a.length > 400000) return res.status(413).json({ error: 'image too large (resize client-side)' })
+  req.user.avatar = a; save(store); res.json(pub(req.user))
+})
+
 // profile info (arbitrary general fields: displayName, etc.)
 app.put('/auth/profile', auth, (req, res) => {
   req.user.info = { ...(req.user.info || {}), ...(req.body || {}) }
@@ -201,7 +222,7 @@ app.post('/auth/users', auth, admin, async (req, res) => {
   if (!username || !email.includes('@')) return res.status(400).json({ error: 'username + valid email required' })
   if (findByLogin(username) || findByLogin(email)) return res.status(409).json({ error: 'User already exists' })
   const temp = tempPassword()
-  const u = { id: newId(), username, email, role: req.body.role === 'admin' ? 'admin' : 'user', passwordHash: bcrypt.hashSync(temp, 10), passkeys: [], info: {}, createdAt: Date.now() }
+  const u = { id: newId(), username, email, role: req.body.role === 'admin' ? 'admin' : 'user', passwordHash: bcrypt.hashSync(temp, 10), passkeys: [], info: {}, icuKey: '', icuAthlete: 'i28814', apiToken: randomBytes(24).toString('base64url'), plans: [], createdAt: Date.now() }
   store.users.push(u); save(store)
   const emailed = await sendMail(email, 'Your GymApp account', `You've been added to GymApp.\nUsername: ${username}\nTemporary password: ${temp}\nSign in at ${ORIGIN} and change it.`).catch(() => false)
   res.json({ user: pub(u), tempPassword: temp, emailed })
@@ -216,6 +237,61 @@ app.delete('/auth/users/:id', auth, admin, (req, res) => {
   if (req.params.id === req.user.id) return res.status(400).json({ error: "You can't delete yourself" })
   store.users = store.users.filter((u) => u.id !== req.params.id); save(store); res.json({ ok: true })
 })
+
+// ---- coach API token (shown to its owner only) ---------------------------
+app.get('/auth/token', auth, (req, res) => res.json({ token: req.user.apiToken }))
+app.post('/auth/token/rotate', auth, (req, res) => { req.user.apiToken = randomBytes(24).toString('base64url'); save(store); res.json({ token: req.user.apiToken }) })
+
+// The app (session) reads its own plans for the Today merge-by-id.
+app.get('/auth/plans', auth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
+
+// ---- coach REST API (Bearer token) ---------------------------------------
+// The cyclingcoach dual-writes each session here (rich execution detail) and to
+// intervals.icu (calendar/load), linked by the shared `id` it provides. See /api/docs.
+function apiAuth(req, res, next) {
+  const t = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+  const u = t && store.users.find((x) => x.apiToken === t)
+  if (!u) return res.status(401).json({ error: 'invalid api token' })
+  req.user = u; next()
+}
+function plansInRange(u, from, to) {
+  let p = u.plans || []
+  if (from) p = p.filter((x) => x.date >= from)
+  if (to) p = p.filter((x) => x.date <= to)
+  return p.sort((a, b) => (a.date < b.date ? -1 : 1))
+}
+function validatePlan(b) {
+  if (!b || typeof b !== 'object') return 'body must be a JSON object'
+  if (!b.id || typeof b.id !== 'string') return 'id (string, your shared id) is required'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return 'date (YYYY-MM-DD) is required'
+  if (!['gym', 'ride', 'run'].includes(b.sport)) return "sport must be 'gym' | 'ride' | 'run'"
+  if (!b.title || typeof b.title !== 'string') return 'title (string) is required'
+  return null
+}
+
+// Upsert a planned session by id (idempotent — re-POST to update).
+app.post('/api/plan', apiAuth, (req, res) => {
+  const err = validatePlan(req.body)
+  if (err) return res.status(400).json({ error: err })
+  const plan = {
+    id: req.body.id, date: req.body.date, sport: req.body.sport, title: req.body.title,
+    notes: req.body.notes || '', updatedAt: Date.now(),
+    ...(req.body.sport === 'gym'
+      ? { rounds: Number(req.body.rounds) || 1, exercises: Array.isArray(req.body.exercises) ? req.body.exercises : [] }
+      : { ftp: Number(req.body.ftp) || undefined, segments: Array.isArray(req.body.segments) ? req.body.segments : [] }),
+  }
+  const i = req.user.plans.findIndex((p) => p.id === plan.id)
+  if (i >= 0) req.user.plans[i] = plan; else req.user.plans.push(plan)
+  save(store)
+  res.status(i >= 0 ? 200 : 201).json(plan)
+})
+app.get('/api/plans', apiAuth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
+app.get('/api/plan/:id', apiAuth, (req, res) => { const p = (req.user.plans || []).find((x) => x.id === req.params.id); return p ? res.json(p) : res.status(404).json({ error: 'not found' }) })
+app.delete('/api/plan/:id', apiAuth, (req, res) => { req.user.plans = (req.user.plans || []).filter((x) => x.id !== req.params.id); save(store); res.json({ ok: true }) })
+
+// ---- OpenAPI spec + Swagger UI (public docs) -----------------------------
+app.get('/api/openapi.json', (req, res) => res.sendFile(join(__dirname, 'openapi.json')))
+app.get('/api/docs', (req, res) => res.type('html').send(`<!doctype html><html><head><meta charset="utf-8"><title>GymApp Coach API</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css"></head><body><div id="ui"></div><script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script><script>window.onload=()=>SwaggerUIBundle({url:'/api/openapi.json',dom_id:'#ui'})</script></body></html>`))
 
 // ---- intervals.icu proxy (session required) ------------------------------
 app.all('/icu/*', auth, async (req, res) => {

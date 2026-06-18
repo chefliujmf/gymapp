@@ -7,6 +7,7 @@ export interface User {
   email: string
   role: 'admin' | 'user'
   info: Record<string, unknown>
+  avatar: string
   passkeys: Passkey[]
   hasIcuKey: boolean
   icuAthlete: string
@@ -46,6 +47,9 @@ export const authApi = {
   reset: (email: string, code: string, newPassword: string) => req<{ ok: boolean }>('/password/reset', { body: { email, code, newPassword } }),
   saveProfile: (info: Record<string, unknown>) => req<User>('/profile', { method: 'PUT', body: info }),
   saveIcu: (icuKey: string, icuAthlete: string) => req<User>('/icu', { method: 'PUT', body: { icuKey, icuAthlete } }),
+  saveAvatar: (avatar: string) => req<User>('/avatar', { method: 'PUT', body: { avatar } }),
+  getToken: () => req<{ token: string }>('/token'),
+  rotateToken: () => req<{ token: string }>('/token/rotate', { method: 'POST' }),
 
   listUsers: () => req<User[]>('/users'),
   addUser: (username: string, email: string, role: 'admin' | 'user') => req<{ user: User; tempPassword: string; emailed: boolean }>('/users', { body: { username, email, role } }),

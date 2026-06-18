@@ -26,6 +26,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Let server routes (API/Swagger, auth, intervals proxy) bypass the SPA
+        // shell fallback — else navigating to /api/docs loads the app and errors.
+        navigateFallbackDenylist: [/^\/api/, /^\/auth/, /^\/icu/],
         // The catalog data (recipes + 796 endurance workouts) makes the bundle
         // ~2.5MB; precache it so the app works fully offline.
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,

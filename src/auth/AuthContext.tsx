@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (DEV) {
       // No auth backend in `vite dev` — act as a signed-in admin so dev isn't gated.
-      apply({ id: 'dev', username: 'dev', email: 'dev@local', role: 'admin', info: {}, passkeys: [], hasIcuKey: true, icuAthlete: 'i28814' })
+      apply({ id: 'dev', username: 'dev', email: 'dev@local', role: 'admin', info: {}, avatar: '', passkeys: [], hasIcuKey: true, icuAthlete: 'i28814' })
       setLoading(false)
       return
     }

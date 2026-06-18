@@ -55,9 +55,8 @@ export default function Profile() {
 
       <div className="section-title">Data</div>
       <button className="btn btn--ghost" style={{ color: 'var(--danger)' }} onClick={clearData}>
-        Clear all data on this device
+        Clear cached data on this device
       </button>
-      <p className="meta" style={{ marginTop: 10 }}>All your logs and progress are stored only on this device.</p>
     </div>
   )
 }
