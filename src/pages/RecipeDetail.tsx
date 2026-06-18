@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { allRecipesById } from '../data/catalog'
+import AddToCalendar from '../AddToCalendar'
 
 export default function RecipeDetail() {
   const { id } = useParams()
@@ -25,6 +26,8 @@ export default function RecipeDetail() {
       <div className="detail-body">
         <span className="eyebrow">{r.category}</span>
         <h1>{r.title}</h1>
+
+        <AddToCalendar item={{ type: 'meal', title: r.title, refId: r.id, mealType: r.category, kcal: r.kcal }} />
 
         {hasMacros ? (
           <div className="stat-grid">

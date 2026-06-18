@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { allMindById } from '../data/catalog'
 import { mindIcon } from '../ui'
 import { useNow } from '../hooks'
+import AddToCalendar from '../AddToCalendar'
 
 function fmt(s: number) {
   const m = Math.floor(s / 60)
@@ -36,6 +37,11 @@ export default function MindDetail() {
         <h1>{m.title}</h1>
         <p style={{ color: 'var(--text-dim)', marginTop: 0 }}>{m.summary}</p>
         {m.coach && <p className="meta" style={{ justifyContent: 'center' }}>with {m.coach}</p>}
+
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <AddToCalendar item={{ type: 'mind', title: m.title, refId: m.id, minutes: m.duration }} label="Assign to a day" />
+        </div>
+
 
         <div style={{ fontSize: 64, fontWeight: 900, margin: '24px 0 8px', fontVariantNumeric: 'tabular-nums' }}>
           {fmt(left)}

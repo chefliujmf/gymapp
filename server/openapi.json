@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Platyplus Coach API",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Push planned sessions into a Platyplus account (rich indoor-execution detail). The coach dual-writes: the same `id` goes here AND to the intervals.icu event `external_id`, so Platyplus's Today merges them into one card (no duplicates). Authenticate with the per-user API token from Profile → Account."
   },
   "servers": [{ "url": "https://platyplus.duckdns.org" }],
@@ -42,11 +42,60 @@
     "/api/plan/{id}": {
       "get": { "summary": "Get one plan", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Plan", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" } } } }, "404": { "description": "Not found" } } },
       "delete": { "summary": "Delete a plan", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Deleted" } } }
+    },
+    "/auth/items": {
+      "get": {
+        "summary": "List calendar items (meal/mind/note) for the signed-in user",
+        "description": "Session (cookie) auth — used by the app UI, not the coach API.",
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": { "200": { "description": "Array of items", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/CalItem" } } } } }, "401": { "description": "Not signed in" } }
+      },
+      "post": {
+        "summary": "Add/update a calendar item (assign a recipe / mind session to a day)",
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CalItem" }, "examples": {
+          "meal": { "value": { "date": "2026-06-22", "type": "meal", "title": "Protein porridge", "refId": "r-5-ingredient-choc-chip-protein-porridge", "mealType": "breakfast", "kcal": 420 } },
+          "mind": { "value": { "date": "2026-06-22", "type": "mind", "title": "Body scan", "refId": "m-body-scan", "minutes": 10 } }
+        } } } },
+        "responses": { "200": { "description": "Updated" }, "201": { "description": "Created" }, "400": { "description": "Validation error" }, "401": { "description": "Not signed in" } }
+      }
+    },
+    "/auth/items/{id}": {
+      "delete": { "summary": "Delete a calendar item", "security": [{ "cookieAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Deleted" } } }
+    },
+    "/auth/plans": {
+      "get": { "summary": "List the signed-in user's workout plans (session auth)", "security": [{ "cookieAuth": [] }], "parameters": [ { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } }, { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } } ], "responses": { "200": { "description": "Array of plans", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Plan" } } } } } } },
+      "post": { "summary": "Create/update a workout plan from the UI (also pushes to intervals.icu)", "security": [{ "cookieAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" } } } }, "responses": { "200": { "description": "Updated" }, "201": { "description": "Created" } } }
+    },
+    "/auth/plans/{id}": {
+      "delete": { "summary": "Delete a workout plan", "security": [{ "cookieAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Deleted" } } }
     }
   },
   "components": {
-    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer", "description": "Per-user API token (Profile → Account → API token)." } },
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "description": "Per-user API token (Profile → Account → API token)." },
+      "cookieAuth": { "type": "apiKey", "in": "cookie", "name": "gymapp_sess", "description": "Session cookie from /auth/login or passkey login (browser/UI only)." }
+    },
     "schemas": {
+      "CalItem": {
+        "type": "object",
+        "required": ["date", "type"],
+        "properties": {
+          "id": { "type": "string" },
+          "date": { "type": "string", "format": "date", "description": "YYYY-MM-DD" },
+          "type": { "type": "string", "enum": ["meal", "mind", "note"] },
+          "title": { "type": "string" },
+          "refId": { "type": "string", "description": "catalog id of the recipe / mind session / etc." },
+          "mealType": { "type": "string" },
+          "kcal": { "type": "integer" },
+          "minutes": { "type": "integer" },
+          "notes": { "type": "string" }
+        }
+      },
       "Segment": {
         "type": "object",
         "description": "One ride/run interval. power is % of FTP (ride) or % of threshold (run).",
