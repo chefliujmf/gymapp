@@ -4,8 +4,9 @@ import { exercises as library } from '../data/catalog'
 import { saveTemplate, getTemplate, type TemplateExercise } from '../db'
 import { scheduleGymWorkout } from '../intervals'
 import { getDraft, clearDraft } from '../builderDraft'
+import { localISO } from '../date'
 
-const todayISO = () => new Date().toISOString().slice(0, 10)
+const todayISO = () => localISO()
 
 export default function WorkoutBuilder() {
   const navigate = useNavigate()

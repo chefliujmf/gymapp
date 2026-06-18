@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting, setSetting } from '../db'
 import { fetchAthleteFtp, fetchEvents, getIcuConfig, setIcuConfig } from '../intervals'
+import { localISO } from '../date'
 
 function weekRange(): [string, string] {
   const now = new Date()
   const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7))
   const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
-  const iso = (d: Date) => d.toISOString().slice(0, 10)
+  const iso = localISO
   return [iso(mon), iso(sun)]
 }
 

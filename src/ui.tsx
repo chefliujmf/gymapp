@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind, EnduranceWorkout } from './types'
+import { localISO } from './date'
 
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
@@ -17,7 +18,7 @@ export function WeekStrip({ selected, onSelect }: { selected?: string; onSelect?
   return (
     <div className="week">
       {days.map((d) => {
-        const iso = d.toISOString().slice(0, 10)
+        const iso = localISO(d)
         const on = selected ? iso === selected : d.toDateString() === todayKey
         return (
           <button key={iso} className={on ? 'on' : ''} onClick={() => onSelect?.(iso)}>

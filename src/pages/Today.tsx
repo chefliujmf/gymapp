@@ -5,9 +5,10 @@ import { db } from '../db'
 import { WeekStrip } from '../ui'
 import { fetchEvents, eventObjective, sportOf, type IcuEvent } from '../intervals'
 import { setPlanEvents } from '../plan'
+import { localISO } from '../date'
 
-const iso = (d: Date) => d.toISOString().slice(0, 10)
-const todayISO = () => iso(new Date())
+const iso = localISO
+const todayISO = () => localISO()
 function weekRange(): [string, string] {
   const now = new Date(); const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7))
   const end = new Date(mon); end.setDate(mon.getDate() + 13)

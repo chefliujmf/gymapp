@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type WorkoutLog, type SetEntry } from '../db'
+import { localISO } from '../date'
 import { disciplineIcon } from '../ui'
 import type { Discipline } from '../types'
 
@@ -14,9 +15,9 @@ function startOfWeek() {
 
 /** Consecutive days with a logged session, ending today (1-day grace). */
 function dayStreak(times: number[]): number {
-  const days = new Set(times.map((t) => new Date(t).toISOString().slice(0, 10)))
+  const days = new Set(times.map((t) => localISO(new Date(t))))
   const d = new Date(); d.setHours(0, 0, 0, 0)
-  const iso = (x: Date) => x.toISOString().slice(0, 10)
+  const iso = (x: Date) => localISO(x)
   if (!days.has(iso(d))) d.setDate(d.getDate() - 1) // finished yesterday still counts today
   let streak = 0
   while (days.has(iso(d))) { streak++; d.setDate(d.getDate() - 1) }

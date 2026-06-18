@@ -4,6 +4,7 @@ import { getCurrentRide, wattsAt } from '../ride'
 import { zoneColor, sportIcon } from '../ui'
 import { useNow, useWakeLock } from '../hooks'
 import { logWorkout } from '../db'
+import { localISO } from '../date'
 
 function clock(s: number) {
   const m = Math.floor(s / 60)
@@ -48,7 +49,7 @@ export default function RidePlayer() {
       title: ride?.title ?? 'Ride',
       discipline: ride?.sport ?? 'cycling',
       duration: Math.round(total / 60),
-      date: new Date().toISOString().slice(0, 10),
+      date: localISO(),
     })
     navigate('/progress')
   }

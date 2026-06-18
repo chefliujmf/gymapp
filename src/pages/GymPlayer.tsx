@@ -5,6 +5,7 @@ import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { getSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
 import { getGymSession } from '../plan'
+import { localISO } from '../date'
 
 
 interface PlayerEx {
@@ -163,7 +164,7 @@ export default function GymPlayer() {
     const flat = Object.values(log).flat()
     const setsCompleted = flat.filter((s) => s?.done).length
     const volume = flat.reduce((v, s) => v + (s?.done ? (s.weight || 0) * (s.reps || 0) : 0), 0)
-    await logWorkout({ workoutId: w.workoutId, title: w.title, discipline: w.discipline, duration: w.duration, date: new Date().toISOString().slice(0, 10), sets: log, setsCompleted, volume })
+    await logWorkout({ workoutId: w.workoutId, title: w.title, discipline: w.discipline, duration: w.duration, date: localISO(), sets: log, setsCompleted, volume })
   }
 
   if (!w || !cur) return <div className="page-head"><h1>No workout loaded</h1><button className="btn" onClick={() => navigate(-1)}>Back</button></div>
