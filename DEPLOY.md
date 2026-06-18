@@ -11,6 +11,37 @@ Pixel. Goal: serve the built `dist/` over HTTPS and reverse-proxy intervals.icu.
 > **Check first** that `gymmingapp.duckdns.org` isn't already used by another vhost
 > (e.g. Home Assistant). If it is, give gymapp its own subdomain instead.
 
+## ⭐ Your setup: NPM (HA Green) + isolated container on the XPS
+
+The build is already staged on the XPS at `~/gymapp/dist` + `~/gymapp/nginx.conf`.
+Two manual steps (they need your docker/sudo + the NPM UI):
+
+**1. Start the container on the XPS** (isolated nginx — does NOT touch host nginx):
+
+```bash
+ssh jmf@10.0.0.182      # or the Tailscale IP
+sudo docker run -d --name gymapp --restart unless-stopped -p 8088:80 \
+  -v /home/jmf/gymapp/dist:/usr/share/nginx/html:ro \
+  -v /home/jmf/gymapp/nginx.conf:/etc/nginx/conf.d/default.conf:ro \
+  nginx:alpine
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8088/    # expect 200
+```
+*(Optional, so I can manage it next time without sudo: `sudo usermod -aG docker jmf` then re-login.)*
+
+**2. In Nginx Proxy Manager (HA Green), add one Proxy Host:**
+- **Details:** Domain `gymmingapp.duckdns.org` · Scheme `http` · Forward Hostname `10.0.0.182` · Forward Port `8088` · ✅ Block Common Exploits · ✅ Websockets Support
+- **SSL:** Request a new Let's Encrypt cert → use **DNS Challenge → DuckDNS** (paste your DuckDNS token) · ✅ Force SSL · ✅ HTTP/2
+- *(No custom locations needed — the container already handles `/icu` + SPA routing.)*
+
+**3. Router:** ensure 443 (and 80) forward to HA Green/NPM (probably already, since NPM is your reverse proxy). Confirm `10.0.0.182:8088` is reachable from HA Green (same LAN).
+
+**To update later:** I re-`rsync` the new `dist/` to the XPS and you run
+`sudo docker restart gymapp` (or nothing — the volume is live; just hard-refresh).
+
+---
+
+## Reference (generic)
+
 ## 1. Build
 
 ```bash
