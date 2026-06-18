@@ -18,7 +18,8 @@ function monthGrid(y: number, m: number): string[] {
   return Array.from({ length: 42 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return localISO(d) })
 }
 const colorFor = (s: string) => (s === 'cycling' || s === 'ride' ? '#34e07d' : s === 'running' || s === 'run' ? '#ffb13d' : s === 'gym' ? '#7fd1ff' : s === 'meal' ? '#ff8fb1' : s === 'mind' ? '#b98cff' : '#9aa3b2')
-const iconFor = (s: string) => (s === 'cycling' || s === 'ride' ? <Bike size={15} /> : s === 'running' || s === 'run' ? <Footprints size={15} /> : s === 'gym' ? <Dumbbell size={15} /> : s === 'meal' ? <Salad size={15} /> : s === 'mind' ? <Brain size={15} /> : <StickyNote size={15} />)
+const iconFor = (s: string, sz = 15) => (s === 'cycling' || s === 'ride' ? <Bike size={sz} /> : s === 'running' || s === 'run' ? <Footprints size={sz} /> : s === 'gym' ? <Dumbbell size={sz} /> : s === 'meal' ? <Salad size={sz} /> : s === 'mind' ? <Brain size={sz} /> : <StickyNote size={sz} />)
+const titleOf = (e: Entry) => (e.k === 'plan' ? e.plan.title : e.k === 'event' ? e.ev.name : e.item.title)
 
 type Entry = { k: 'plan'; plan: CoachPlan } | { k: 'event'; ev: IcuEvent } | { k: 'item'; item: CalItem }
 
@@ -86,7 +87,13 @@ export default function Calendar() {
           return (
             <button key={day} className={'cal-cell' + (day === sel ? ' cal-cell--sel' : '') + (inMonth ? '' : ' cal-cell--dim')} onClick={() => setSel(day)}>
               <span className={'cal-num' + (day === todayISO ? ' cal-num--today' : '')}>{Number(day.slice(8, 10))}</span>
-              <span className="cal-dots">{es.slice(0, 4).map((e, i) => <i key={i} style={{ background: colorFor(kindOf(e)) }} />)}</span>
+              <span className="cal-evs">
+                {es.slice(0, 3).map((e, i) => {
+                  const c = colorFor(kindOf(e))
+                  return <span key={i} className="cal-ev" style={{ background: c + '22', color: c }}>{iconFor(kindOf(e), 10)}<em>{titleOf(e)}</em></span>
+                })}
+                {es.length > 3 && <span className="cal-more">+{es.length - 3}</span>}
+              </span>
             </button>
           )
         })}

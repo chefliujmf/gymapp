@@ -532,16 +532,19 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .cal-dow { margin-bottom: 4px; }
 .cal-dowcell { text-align: center; font-size: 11px; color: var(--muted, #9aa3b2); font-weight: 700; padding: 2px 0; }
 .cal-cell {
-  min-height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-  gap: 4px; padding: 6px 0 6px; border-radius: 10px; border: 1px solid transparent;
-  background: var(--card, #1b1e26); color: var(--text, #e7ebf0); cursor: pointer;
+  min-height: 80px; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+  gap: 3px; padding: 4px 3px; border-radius: 10px; border: 1px solid transparent;
+  background: var(--card, #1b1e26); color: var(--text, #e7ebf0); cursor: pointer; overflow: hidden;
 }
-.cal-cell--dim { opacity: .38; }
+.cal-cell--dim { opacity: .42; }
 .cal-cell--sel { border-color: var(--accent, #34e07d); }
-.cal-num { font-size: 13px; font-weight: 600; line-height: 1; }
-.cal-num--today { color: #07140c; background: var(--accent, #34e07d); border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; }
-.cal-dots { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; min-height: 6px; }
-.cal-dots i { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+.cal-num { font-size: 12px; font-weight: 600; line-height: 1; align-self: flex-start; padding: 1px 2px; }
+.cal-num--today { color: #07140c; background: var(--accent, #34e07d); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; }
+.cal-evs { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cal-ev { display: flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 600; line-height: 1.3; padding: 1px 3px; border-radius: 4px; white-space: nowrap; overflow: hidden; }
+.cal-ev svg { flex: none; }
+.cal-ev em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
+.cal-more { font-size: 9px; color: var(--text-dim, #9aa3b2); padding-left: 3px; }
 .cal-day-head { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 8px; }
 .cal-entry { display: flex; align-items: center; padding: 10px 12px; }
 .cal-entry__main { display: flex; align-items: center; gap: 12px; flex: 1; background: none; border: none; text-align: left; cursor: pointer; color: inherit; padding: 0; }
