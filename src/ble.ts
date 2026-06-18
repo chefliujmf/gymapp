@@ -1,102 +1,113 @@
-// Web Bluetooth: heart-rate strap (Polar) + smart trainer (Tacx via FTMS).
-// Works on Android Chrome (Pixel) over HTTPS/localhost. iOS Safari is unsupported.
-// Trainer: reads live power/cadence and can drive ERG (set target watts).
+// Web Bluetooth: smart trainer (Tacx/FTMS, with ERG) + heart-rate (Polar/HRS).
+// Chrome/Edge on Android (Pixel) or desktop, over HTTPS/localhost. One pairing
+// flow for any device; previously-granted devices auto-reconnect via getDevices().
 
 export const bleSupported = () => typeof navigator !== 'undefined' && 'bluetooth' in navigator
+type BT = { requestDevice(o: unknown): Promise<BluetoothDevice>; getDevices?(): Promise<BluetoothDevice[]> }
+const bt = () => (navigator as unknown as { bluetooth: BT }).bluetooth
 
-type AnyNavigator = Navigator & { bluetooth: { requestDevice(o: unknown): Promise<BluetoothDevice> } }
-const bt = () => (navigator as AnyNavigator).bluetooth
+const HR = 'heart_rate'
+const HRM = 'heart_rate_measurement'
+const FTMS = 0x1826
+const IDB = 0x2ad2
+const CTRL = 0x2ad9
+const CPS = 0x1818
+const CPM = 0x2a63
 
-// --- Heart rate (standard BLE Heart Rate Service 0x180D) -------------------
-export interface HRHandle { device: BluetoothDevice; disconnect(): void }
-export async function connectHeartRate(onBpm: (bpm: number) => void): Promise<HRHandle> {
-  const device = await bt().requestDevice({ filters: [{ services: ['heart_rate'] }] })
-  const server = await device.gatt!.connect()
-  const svc = await server.getPrimaryService('heart_rate')
-  const ch = await svc.getCharacteristic('heart_rate_measurement')
-  await ch.startNotifications()
-  ch.addEventListener('characteristicvaluechanged', (e) => {
-    const v = (e.target as unknown as { value: DataView }).value
-    const flags = v.getUint8(0)
-    onBpm(flags & 0x1 ? v.getUint16(1, true) : v.getUint8(1))
-  })
-  return { device, disconnect: () => device.gatt?.disconnect() }
-}
-
-// --- Trainer (FTMS 0x1826, with Cycling Power 0x1818 fallback) -------------
 export interface TrainerData { power?: number; cadence?: number; speed?: number }
-export interface TrainerHandle {
+export type DeviceRole = 'trainer' | 'hr'
+export interface Attached {
+  role: DeviceRole
   device: BluetoothDevice
-  /** ERG: set target power in watts (FTMS only; no-op if unsupported). */
-  setTargetPower(watts: number): Promise<void>
-  hasErg: boolean
+  name: string
+  hasErg?: boolean
+  setTargetPower?(watts: number): Promise<void>
   disconnect(): void
 }
+export interface AttachCbs { onTrainer?: (d: TrainerData) => void; onHr?: (bpm: number) => void }
 
-const FTMS = 0x1826
-const FTMS_INDOOR_BIKE = 0x2ad2
-const FTMS_CONTROL = 0x2ad9
-const CPS = 0x1818
-const CPS_MEAS = 0x2a63
+// Remember which role each granted device played, so reconnection is instant.
+const ROLE_KEY = 'bleRoles'
+const loadRoles = (): Record<string, DeviceRole> => { try { return JSON.parse(localStorage.getItem(ROLE_KEY) || '{}') } catch { return {} } }
+const saveRole = (id: string, r: DeviceRole) => { const m = loadRoles(); m[id] = r; localStorage.setItem(ROLE_KEY, JSON.stringify(m)) }
 
-/** Parse FTMS Indoor Bike Data (0x2AD2) — walk fields per the flags. */
+const dv = (e: Event) => (e.target as unknown as { value: DataView }).value
+async function hasService(server: BluetoothRemoteGATTServer, uuid: number) {
+  try { await server.getPrimaryService(uuid); return true } catch { return false }
+}
+
 function parseIndoorBike(v: DataView): TrainerData {
-  const flags = v.getUint16(0, true)
-  let o = 2
-  const out: TrainerData = {}
-  if (!(flags & 0x1)) { out.speed = v.getUint16(o, true) / 100; o += 2 } // bit0=0 → inst speed present (0.01 km/h)
-  if (flags & 0x2) o += 2                      // avg speed
-  if (flags & 0x4) { out.cadence = v.getUint16(o, true) / 2; o += 2 }    // inst cadence (0.5 rpm)
-  if (flags & 0x8) o += 2                      // avg cadence
-  if (flags & 0x10) o += 3                     // total distance
-  if (flags & 0x20) o += 2                     // resistance
-  if (flags & 0x40) { out.power = v.getInt16(o, true); o += 2 }          // inst power (W)
+  const flags = v.getUint16(0, true); let o = 2; const out: TrainerData = {}
+  if (!(flags & 0x1)) { out.speed = v.getUint16(o, true) / 100; o += 2 }
+  if (flags & 0x2) o += 2
+  if (flags & 0x4) { out.cadence = v.getUint16(o, true) / 2; o += 2 }
+  if (flags & 0x8) o += 2
+  if (flags & 0x10) o += 3
+  if (flags & 0x20) o += 2
+  if (flags & 0x40) { out.power = v.getInt16(o, true); o += 2 }
   return out
 }
 
-export async function connectTrainer(onData: (d: TrainerData) => void): Promise<TrainerHandle> {
-  const device = await bt().requestDevice({
-    filters: [{ services: [FTMS] }, { services: [CPS] }],
-    optionalServices: [FTMS, CPS, 'cycling_power'],
-  })
-  const server = await device.gatt!.connect()
-
+async function attachTrainer(server: BluetoothRemoteGATTServer, onData?: (d: TrainerData) => void) {
   let control: BluetoothRemoteGATTCharacteristic | undefined
   let hasErg = false
-  try {
+  if (await hasService(server, FTMS)) {
     const svc = await server.getPrimaryService(FTMS)
-    const bike = await svc.getCharacteristic(FTMS_INDOOR_BIKE)
+    const bike = await svc.getCharacteristic(IDB)
     await bike.startNotifications()
-    bike.addEventListener('characteristicvaluechanged', (e) =>
-      onData(parseIndoorBike((e.target as unknown as { value: DataView }).value)))
-    try {
-      control = await svc.getCharacteristic(FTMS_CONTROL)
-      await control.startNotifications()
-      await control.writeValue(new Uint8Array([0x00])) // request control
-      hasErg = true
-    } catch { /* read-only trainer */ }
-  } catch {
-    // Fallback: Cycling Power Service (power only, no ERG)
+    bike.addEventListener('characteristicvaluechanged', (e) => onData?.(parseIndoorBike(dv(e))))
+    try { control = await svc.getCharacteristic(CTRL); await control.startNotifications(); await control.writeValue(new Uint8Array([0x00])); hasErg = true } catch { /* read-only */ }
+  } else {
     const svc = await server.getPrimaryService(CPS)
-    const meas = await svc.getCharacteristic(CPS_MEAS)
+    const meas = await svc.getCharacteristic(CPM)
     await meas.startNotifications()
-    meas.addEventListener('characteristicvaluechanged', (e) => {
-      const v = (e.target as unknown as { value: DataView }).value
-      onData({ power: v.getInt16(2, true) }) // flags(2) then inst power(2)
-    })
+    meas.addEventListener('characteristicvaluechanged', (e) => onData?.({ power: dv(e).getInt16(2, true) }))
   }
+  const setTargetPower = async (watts: number) => {
+    if (!control) return
+    const buf = new ArrayBuffer(3); const d = new DataView(buf)
+    d.setUint8(0, 0x05); d.setInt16(1, Math.round(watts), true)
+    await control.writeValue(buf)
+  }
+  return { hasErg, setTargetPower }
+}
 
-  return {
-    device,
-    hasErg,
-    async setTargetPower(watts: number) {
-      if (!control) return
-      const buf = new ArrayBuffer(3)
-      const dv = new DataView(buf)
-      dv.setUint8(0, 0x05)                 // Set Target Power opcode
-      dv.setInt16(1, Math.round(watts), true)
-      await control.writeValue(buf)
-    },
-    disconnect: () => device.gatt?.disconnect(),
+async function attachHR(server: BluetoothRemoteGATTServer, onBpm?: (bpm: number) => void) {
+  const svc = await server.getPrimaryService(HR)
+  const ch = await svc.getCharacteristic(HRM)
+  await ch.startNotifications()
+  ch.addEventListener('characteristicvaluechanged', (e) => { const v = dv(e); const f = v.getUint8(0); onBpm?.(f & 0x1 ? v.getUint16(1, true) : v.getUint8(1)) })
+}
+
+async function attach(device: BluetoothDevice, cb: AttachCbs): Promise<Attached> {
+  const server = await device.gatt!.connect()
+  let role = loadRoles()[device.id]
+  if (!role) role = (await hasService(server, FTMS)) || (await hasService(server, CPS)) ? 'trainer' : 'hr'
+  if (role === 'trainer') {
+    const { hasErg, setTargetPower } = await attachTrainer(server, cb.onTrainer)
+    saveRole(device.id, 'trainer')
+    return { role, device, name: device.name || 'Trainer', hasErg, setTargetPower, disconnect: () => device.gatt?.disconnect() }
   }
+  await attachHR(server, cb.onHr)
+  saveRole(device.id, 'hr')
+  return { role, device, name: device.name || 'HR monitor', disconnect: () => device.gatt?.disconnect() }
+}
+
+/** Pair a new device (one chooser for trainer or HR). */
+export async function pairDevice(cb: AttachCbs): Promise<Attached> {
+  const device = await bt().requestDevice({
+    filters: [{ services: [HR] }, { services: [FTMS] }, { services: [CPS] }],
+    optionalServices: [HR, FTMS, CPS, 'cycling_power'],
+  })
+  return attach(device, cb)
+}
+
+/** Silently reconnect to previously-granted devices (no chooser). */
+export async function reconnectKnown(cb: AttachCbs): Promise<Attached[]> {
+  if (!bt().getDevices) return []
+  const out: Attached[] = []
+  for (const d of await bt().getDevices!()) {
+    try { out.push(await attach(d, cb)) } catch { /* not in range / failed */ }
+  }
+  return out
 }

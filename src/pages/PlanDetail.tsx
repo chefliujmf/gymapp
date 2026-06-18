@@ -6,7 +6,6 @@ import { SegmentProfile } from '../ui'
 import { setCurrentRide } from '../ride'
 import { getSetting } from '../db'
 import { gymTSS, rpeIntensity } from '../tss'
-import { BleConnect } from '../BleContext'
 
 export default function PlanDetail() {
   const { id } = useParams()
@@ -94,7 +93,6 @@ export default function PlanDetail() {
           <div className="card" style={{ padding: 16, marginTop: 6 }}>
             <SegmentProfile segs={flattenIcuSteps(e.workout_doc?.steps)} />
           </div>
-          <BleConnect />
           <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ Ride now (indoor)</button>
           <p className="meta" style={{ marginTop: 8, textAlign: 'center' }}>Riding outdoors? It's already on your Wahoo — intervals.icu syncs it. "Ride now" is for the indoor trainer.</p>
         </>

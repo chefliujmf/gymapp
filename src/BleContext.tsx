@@ -1,60 +1,72 @@
-// App-wide Bluetooth state so devices pair BEFORE a ride (like JOIN) and the
-// connection persists into the workout (handles live at the provider, not a page).
-import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
-import { bleSupported, connectHeartRate, connectTrainer, type HRHandle, type TrainerData, type TrainerHandle } from './ble'
+// App-wide Bluetooth: one device panel that remembers previously-granted devices
+// and silently reconnects (Web Bluetooth getDevices()), so pairing is one-time
+// and reconnection is instant. Handles live at the provider (persist across nav).
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Bike, HeartPulse } from 'lucide-react'
+import { bleSupported, pairDevice, reconnectKnown, type Attached, type TrainerData } from './ble'
 
 interface BleCtx {
   supported: boolean
-  hr?: number
+  trainer: Attached | null
+  hrDev: Attached | null
   live: TrainerData
-  trState: 'idle' | 'on' | 'erg'
-  hrState: 'idle' | 'on'
-  connectTrainer(): Promise<void>
-  connectHr(): Promise<void>
-  setTargetPower(w: number): void
+  bpm?: number
+  scanning: boolean
+  reconnect(): Promise<void>
+  addDevice(): Promise<void>
+  setTargetPower(watts: number): void
 }
 const Ctx = createContext<BleCtx | null>(null)
 export const useBle = () => useContext(Ctx) as BleCtx
 
 export function BleProvider({ children }: { children: ReactNode }) {
-  const [hr, setHr] = useState<number>()
+  const [trainer, setTrainer] = useState<Attached | null>(null)
+  const [hrDev, setHrDev] = useState<Attached | null>(null)
   const [live, setLive] = useState<TrainerData>({})
-  const [trState, setTrState] = useState<'idle' | 'on' | 'erg'>('idle')
-  const [hrState, setHrState] = useState<'idle' | 'on'>('idle')
-  const trainerRef = useRef<TrainerHandle | null>(null)
-  const hrRef = useRef<HRHandle | null>(null)
+  const [bpm, setBpm] = useState<number>()
+  const [scanning, setScanning] = useState(false)
+  const cbs = useRef({ onTrainer: setLive, onHr: setBpm }).current
 
-  async function connectTrainerFn() {
-    try { const h = await connectTrainer(setLive); trainerRef.current = h; setTrState(h.hasErg ? 'erg' : 'on') } catch { /* cancelled */ }
+  function place(a: Attached) { if (a.role === 'trainer') setTrainer(a); else setHrDev(a) }
+
+  async function reconnect() {
+    if (!bleSupported()) return
+    try { (await reconnectKnown(cbs)).forEach(place) } catch { /* none in range */ }
   }
-  async function connectHrFn() {
-    try { const h = await connectHeartRate(setHr); hrRef.current = h; setHrState('on') } catch { /* cancelled */ }
+  async function addDevice() {
+    setScanning(true)
+    try { place(await pairDevice(cbs)) } catch { /* cancelled */ } finally { setScanning(false) }
   }
-  const setTargetPower = (w: number) => { void hrRef.current; trainerRef.current?.setTargetPower(w) }
+  const setTargetPower = (w: number) => { trainer?.setTargetPower?.(w) }
 
   return (
-    <Ctx.Provider value={{ supported: bleSupported(), hr, live, trState, hrState, connectTrainer: connectTrainerFn, connectHr: connectHrFn, setTargetPower }}>
+    <Ctx.Provider value={{ supported: bleSupported(), trainer, hrDev, live, bpm, scanning, reconnect, addDevice, setTargetPower }}>
       {children}
     </Ctx.Provider>
   )
 }
 
-/** Reusable pair-devices row — show on a ride detail before starting. */
-export function BleConnect() {
+/** Full device panel — auto-reconnects known devices on open; one "Add" button. */
+export function BleDevices() {
   const ble = useBle()
+  useEffect(() => { ble.reconnect() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!ble.supported) return (
-    <p className="meta" style={{ textAlign: 'center', marginTop: 8 }}>
-      To pair a trainer/HR, open in <b>Chrome</b> (Android or desktop). Brave &amp; Safari don't support Bluetooth.
+    <p className="meta" style={{ textAlign: 'center', margin: '12px 0' }}>
+      To pair a trainer/HR, use <b>Chrome</b> or <b>Edge</b>. Firefox, Safari &amp; Brave don't support Web Bluetooth.
     </p>
   )
   return (
-    <div className="chips" style={{ justifyContent: 'center', marginTop: 8 }}>
-      <button className={'chip' + (ble.trState !== 'idle' ? ' chip--active' : '')} onClick={ble.connectTrainer}>
-        {ble.trState === 'erg' ? '✓ Trainer · ERG' : ble.trState === 'on' ? '✓ Trainer' : '🚴 Connect trainer'}
-      </button>
-      <button className={'chip' + (ble.hrState === 'on' ? ' chip--active' : '')} onClick={ble.connectHr}>
-        {ble.hrState === 'on' ? '✓ HR' : '♥ Connect HR'}
-      </button>
+    <div className="ble-devices">
+      <div className={'ble-dev' + (ble.trainer ? ' on' : '')}>
+        <Bike size={22} />
+        <div><b>{ble.trainer ? ble.trainer.name : 'Smart trainer'}</b><small>{ble.trainer ? (ble.trainer.hasErg ? 'Connected · ERG' : 'Connected') : 'Not connected'}</small></div>
+      </div>
+      <div className={'ble-dev' + (ble.hrDev ? ' on' : '')}>
+        <HeartPulse size={22} />
+        <div><b>{ble.hrDev ? ble.hrDev.name : 'Heart rate'}</b><small>{ble.hrDev ? 'Connected' : 'Not connected'}</small></div>
+      </div>
+      <button className="btn btn--ghost" onClick={ble.addDevice} disabled={ble.scanning}>{ble.scanning ? 'Scanning…' : '＋ Add a device'}</button>
     </div>
   )
 }

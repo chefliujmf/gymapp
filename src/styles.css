@@ -423,3 +423,13 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .tab__icon svg { width: 22px; height: 22px; }
 .tab__icon { filter: none; opacity: .6; }
 .tab--active .tab__icon { opacity: 1; }
+
+/* Ride setup + device panel */
+.rp-setup { flex:1; display:flex; flex-direction:column; justify-content:center; gap:10px; padding:16px; }
+.rp-setup-meta { text-align:center; opacity:.7; font-size:14px; }
+.rp-setup-pair { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:1px; opacity:.6; margin-top:8px; }
+.ble-devices { display:flex; flex-direction:column; gap:8px; }
+.ble-dev { display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:14px; padding:12px 14px; color:var(--text-dim); }
+.ble-dev.on { color:var(--text); border-color:var(--accent); background:rgba(52,224,125,.08); }
+.ble-dev b { display:block; font-size:15px; }
+.ble-dev small { opacity:.7; }
