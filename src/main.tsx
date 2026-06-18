@@ -26,6 +26,7 @@ import RidePlayer from './pages/RidePlayer'
 import Profile from './pages/Profile'
 import Progress from './pages/Progress'
 import PlanDetail from './pages/PlanDetail'
+import { BleProvider } from './BleContext'
 
 const router = createBrowserRouter([
   {
@@ -72,7 +73,9 @@ async function boot() {
   }
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <BleProvider>
+        <RouterProvider router={router} />
+      </BleProvider>
     </StrictMode>,
   )
 }

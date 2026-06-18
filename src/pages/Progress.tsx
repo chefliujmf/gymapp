@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type WorkoutLog, type SetEntry } from '../db'
 import { localISO } from '../date'
@@ -25,6 +26,7 @@ function dayStreak(times: number[]): number {
 }
 
 export default function Progress() {
+  const navigate = useNavigate()
   const logs = useLiveQuery(() => db.logs.orderBy('completedAt').reverse().toArray())
   const [open, setOpen] = useState<number | undefined>()
 
@@ -46,6 +48,7 @@ export default function Progress() {
 
   return (
     <div>
+      <button className="back" onClick={() => navigate(-1)}>← Back</button>
       <div className="page-head">
         <h1>Progress</h1>
         <p>Everything you've logged, on this device</p>

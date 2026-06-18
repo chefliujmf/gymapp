@@ -3,6 +3,7 @@ import { allEnduranceById } from '../data/catalog'
 import { IntervalProfile, zoneColor, sportIcon, computeTSS } from '../ui'
 import { setCurrentRide, segmentsFromEndurance } from '../ride'
 import { getSetting } from '../db'
+import { BleConnect } from '../BleContext'
 
 function fmtDur(s: number) {
   const m = Math.floor(s / 60)
@@ -41,7 +42,8 @@ export default function CycleDetail() {
 
       {w.description && <p className="meta" style={{ marginTop: 12 }}>{w.description}</p>}
 
-      <button className="btn" style={{ marginTop: 14 }} onClick={ride}>▶ Ride now (indoor)</button>
+      <BleConnect />
+      <button className="btn" style={{ marginTop: 10 }} onClick={ride}>▶ Ride now (indoor)</button>
       <p className="meta" style={{ marginTop: 8 }}>Outdoor rides go to your Wahoo via intervals.icu. "Ride now" is for the indoor trainer.</p>
 
       <div className="section-title" style={{ marginTop: 18 }}>Structure</div>

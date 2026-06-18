@@ -5,7 +5,7 @@ import { zoneColor, sportIcon } from '../ui'
 import { useNow, useWakeLock } from '../hooks'
 import { logWorkout } from '../db'
 import { localISO } from '../date'
-import { bleSupported, connectHeartRate, connectTrainer, type HRHandle, type TrainerData, type TrainerHandle } from '../ble'
+import { useBle, BleConnect } from '../BleContext'
 
 function clock(s: number) {
   const m = Math.floor(s / 60)
@@ -25,22 +25,10 @@ export default function RidePlayer() {
   const now = useNow(250)
   useWakeLock(true)
 
-  // --- Bluetooth: trainer (Tacx, ERG) + heart rate (Polar) ---
-  const [hr, setHr] = useState<number | undefined>()
-  const [live, setLive] = useState<TrainerData>({})
-  const [trState, setTrState] = useState<'idle' | 'on' | 'erg'>('idle')
-  const [hrState, setHrState] = useState<'idle' | 'on'>('idle')
-  const trainerRef = useRef<TrainerHandle | null>(null)
-  const hrRef = useRef<HRHandle | null>(null)
+  // Bluetooth lives in the app-wide store (paired before the ride, persists in).
+  const ble = useBle()
+  const { hr, live, trState, hrState } = ble
   const lastErg = useRef(0)
-
-  async function connectTr() {
-    try { const h = await connectTrainer(setLive); trainerRef.current = h; setTrState(h.hasErg ? 'erg' : 'on') } catch { /* cancelled */ }
-  }
-  async function connectHr() {
-    try { const h = await connectHeartRate(setHr); hrRef.current = h; setHrState('on') } catch { /* cancelled */ }
-  }
-  useEffect(() => () => { trainerRef.current?.disconnect(); hrRef.current?.disconnect() }, [])
 
   const total = segs.reduce((s, x) => s + x.duration, 0)
   const cur = segs[idx]
@@ -63,11 +51,10 @@ export default function RidePlayer() {
 
   // ERG: keep the trainer's target power matched to the interval (throttled writes).
   useEffect(() => {
-    const t = trainerRef.current
-    if (!t?.hasErg || paused || !cur) return
+    if (ble.trState !== 'erg' || paused || !cur) return
     const target = wattsAt(cur, paused ? pausedAt / 1000 : (now - segStart) / 1000, ftp)
-    if (Math.abs(target - lastErg.current) >= 2) { lastErg.current = target; t.setTargetPower(target) }
-  }, [now, idx, paused, cur, segStart, pausedAt, ftp])
+    if (Math.abs(target - lastErg.current) >= 2) { lastErg.current = target; ble.setTargetPower(target) }
+  }, [now, idx, paused, cur, segStart, pausedAt, ftp, ble])
 
   async function finish() {
     await logWorkout({
@@ -97,13 +84,8 @@ export default function RidePlayer() {
         <button className="rp-fin" onClick={finish}>Finish</button>
       </div>
 
-      {/* connect row */}
-      {bleSupported() ? (
-        <div className="rp-conn">
-          <button className={'rp-pill' + (trState !== 'idle' ? ' on' : '')} onClick={connectTr}>{trState === 'erg' ? '✓ Trainer · ERG' : trState === 'on' ? '✓ Trainer' : '🚴 Connect trainer'}</button>
-          <button className={'rp-pill' + (hrState === 'on' ? ' on' : '')} onClick={connectHr}>{hrState === 'on' ? '✓ HR' : '♥ Connect HR'}</button>
-        </div>
-      ) : <div className="rp-note">Bluetooth pairing needs Chrome on Android over HTTPS</div>}
+      {/* connect row (shared store; usually already paired on the ride detail) */}
+      <BleConnect />
 
       <div className="rp-main">
         {/* target */}
