@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { allEnduranceById } from '../data/catalog'
-import { IntervalProfile, flattenIntervals, zoneColor, sportIcon, computeTSS } from '../ui'
+import { IntervalProfile, zoneColor, sportIcon, computeTSS } from '../ui'
 import { setCurrentRide, segmentsFromEndurance } from '../ride'
 import { getSetting } from '../db'
 
@@ -10,40 +10,11 @@ function fmtDur(s: number) {
   return m ? `${m}:${String(sec).padStart(2, '0')}` : `${sec}s`
 }
 
-/** Build a Zwift .zwo workout file from the structured intervals. */
-function toZwo(name: string, description: string, intervals: { duration: number; rawPower: number }[]) {
-  const steps = intervals
-    .map((iv) => `    <SteadyState Duration="${Math.round(iv.duration)}" Power="${(iv.rawPower / 100).toFixed(3)}"/>`)
-    .join('\n')
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<workout_file>
-  <author>JOIN (via gymapp)</author>
-  <name>${name.replace(/[<&>]/g, '')}</name>
-  <description>${description.replace(/[<&>]/g, '')}</description>
-  <sportType>bike</sportType>
-  <workout>
-${steps}
-  </workout>
-</workout_file>`
-}
-
-function download(filename: string, text: string, type: string) {
-  const blob = new Blob([text], { type })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
 export default function CycleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const w = id ? allEnduranceById[id] : undefined
   if (!w) return <div className="page-head"><Link to="/cycle" className="back">← Ride</Link><h1>Not found</h1></div>
-
-  const ivs = flattenIntervals(w)
 
   async function ride() {
     const ftp = Number(await getSetting('ftp')) || 260
@@ -71,12 +42,7 @@ export default function CycleDetail() {
       {w.description && <p className="meta" style={{ marginTop: 12 }}>{w.description}</p>}
 
       <button className="btn" style={{ marginTop: 14 }} onClick={ride}>▶ Ride now (indoor)</button>
-
-      <div className="chips" style={{ marginTop: 12 }}>
-        <button className="chip" onClick={() => download(`${w.id}.zwo`, toZwo(w.name, w.description || '', ivs), 'application/xml')}>
-          ⬇ Export .zwo (Zwift)
-        </button>
-      </div>
+      <p className="meta" style={{ marginTop: 8 }}>Outdoor rides go to your Wahoo via intervals.icu. "Ride now" is for the indoor trainer.</p>
 
       <div className="section-title" style={{ marginTop: 18 }}>Structure</div>
       <div className="stack">
