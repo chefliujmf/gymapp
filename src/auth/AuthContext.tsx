@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { authApi, type User } from './api'
-import { setSetting } from '../db'
+import { setSetting, syncLogsFromServer } from '../db'
 import Login from '../pages/Login'
 
 interface Ctx {
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       return
     }
-    ;(async () => { await refresh(); setLoading(false) })()
+    ;(async () => { await refresh(); setLoading(false); syncLogsFromServer() })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

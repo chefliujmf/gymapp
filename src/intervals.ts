@@ -16,6 +16,8 @@ export interface IcuStep {
 
 export interface IcuEvent {
   id: number
+  /** coach's shared id — links this calendar event to a rich gymapp plan */
+  external_id?: string
   start_date_local: string
   category: string // WORKOUT | TARGET | NOTE | ...
   type: string // Ride | VirtualRide | WeightTraining | Run | ...

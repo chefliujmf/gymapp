@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, type WorkoutLog, type SetEntry } from '../db'
+import { db, editLog, deleteLog, type WorkoutLog, type SetEntry } from '../db'
 import { localISO } from '../date'
 import { disciplineIcon } from '../ui'
 import type { Discipline } from '../types'
@@ -43,7 +43,7 @@ export default function Progress() {
     arr[si] = { ...arr[si], ...patch, done: true }
     sets[exi] = arr
     const volume = Object.values(sets).flat().reduce((v: number, s: SetEntry) => v + (s?.done ? (s.weight || 0) * (s.reps || 0) : 0), 0)
-    if (l.id != null) await db.logs.update(l.id, { sets, volume })
+    await editLog(l, { sets, volume })
   }
 
   return (
@@ -94,7 +94,7 @@ export default function Progress() {
               {open === l.id && (
                 <div style={{ padding: '10px 4px 2px', borderTop: '1px solid var(--line,#eee)', marginTop: 10 }}>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <label className="mini">duration<input type="number" defaultValue={l.duration} onBlur={(e) => l.id && db.logs.update(l.id, { duration: Number(e.target.value) || 0 })} />min</label>
+                    <label className="mini">duration<input type="number" defaultValue={l.duration} onBlur={(e) => editLog(l, { duration: Number(e.target.value) || 0 })} />min</label>
                   </div>
                   {l.sets && Object.keys(l.sets).length > 0 && (
                     <div style={{ marginTop: 8 }}>
@@ -113,7 +113,7 @@ export default function Progress() {
                       ))}
                     </div>
                   )}
-                  <button className="btn btn--ghost" style={{ color: 'var(--danger,#c00)', marginTop: 6 }} onClick={() => l.id && confirm('Delete this entry?') && db.logs.delete(l.id)}>Delete entry</button>
+                  <button className="btn btn--ghost" style={{ color: 'var(--danger,#c00)', marginTop: 6 }} onClick={() => confirm('Delete this entry?') && deleteLog(l)}>Delete entry</button>
                 </div>
               )}
             </li>

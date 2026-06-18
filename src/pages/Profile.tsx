@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, getSetting, setSetting } from '../db'
+import { db, getSetting, setSetting, clearLogs } from '../db'
 import AccountSection from '../auth/AccountSection'
 
 export default function Profile() {
@@ -12,8 +12,8 @@ export default function Profile() {
   const totalMin = (logs ?? []).reduce((s, l) => s + l.duration, 0)
 
   async function clearData() {
-    if (!confirm('Clear all logs and progress on this device? This cannot be undone.')) return
-    await db.logs.clear()
+    if (!confirm('Clear all your logs and progress (on every device)? This cannot be undone.')) return
+    await clearLogs()
     await db.enrollments.clear()
     await db.activeSession.clear()
   }

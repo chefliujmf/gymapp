@@ -46,7 +46,7 @@ if (!store.users.length) {
   console.log('Seeded admin user.')
 }
 // Backfill api tokens / plan arrays for any user created before these existed.
-for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = [] }
+for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = [] }
 save(store)
 // Late-seed the admin's intervals.icu key if it wasn't stored yet (idempotent).
 const seedKey = process.env.SEED_ICU_KEY
@@ -244,6 +244,17 @@ app.post('/auth/token/rotate', auth, (req, res) => { req.user.apiToken = randomB
 
 // The app (session) reads its own plans for the Today merge-by-id.
 app.get('/auth/plans', auth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
+
+// Workout logs — stored per account so they sync across devices.
+app.get('/auth/logs', auth, (req, res) => res.json(req.user.logs || []))
+app.post('/auth/logs', auth, (req, res) => {
+  const b = req.body || {}
+  const log = { sid: newId(), workoutId: b.workoutId || '', title: b.title || '', discipline: b.discipline || '', duration: Number(b.duration) || 0, date: b.date || new Date().toISOString().slice(0, 10), completedAt: b.completedAt || Date.now(), setsCompleted: b.setsCompleted, volume: b.volume, tss: b.tss, sets: b.sets, notes: b.notes }
+  req.user.logs = req.user.logs || []; req.user.logs.push(log); save(store); res.status(201).json(log)
+})
+app.put('/auth/logs/:sid', auth, (req, res) => { const l = (req.user.logs || []).find((x) => x.sid === req.params.sid); if (!l) return res.status(404).json({ error: 'not found' }); Object.assign(l, req.body || {}, { sid: l.sid }); save(store); res.json(l) })
+app.delete('/auth/logs/:sid', auth, (req, res) => { req.user.logs = (req.user.logs || []).filter((x) => x.sid !== req.params.sid); save(store); res.json({ ok: true }) })
+app.delete('/auth/logs', auth, (req, res) => { req.user.logs = []; save(store); res.json({ ok: true }) })
 
 // ---- coach REST API (Bearer token) ---------------------------------------
 // The cyclingcoach dual-writes each session here (rich execution detail) and to

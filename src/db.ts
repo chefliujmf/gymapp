@@ -17,6 +17,8 @@ export interface WorkoutLog {
   volume?: number
   /** estimated training stress (gym: Friel time×RPE; rides: from intervals) */
   tss?: number
+  /** server id once synced to the account (logs live server-side + mirror here) */
+  sid?: string
   /** full per-exercise set snapshot, for progressive-overload prefill */
   sets?: Record<number, SetEntry[]>
 }
@@ -139,8 +141,53 @@ export async function deleteTemplate(id: number) {
 
 // --- convenience helpers ---------------------------------------------------
 
+// --- log sync (logs live server-side per account; Dexie mirrors for reactivity) ---
+async function srv(path: string, opts: { method?: string; body?: unknown } = {}) {
+  const res = await fetch('/auth' + path, {
+    method: opts.method || (opts.body ? 'POST' : 'GET'),
+    headers: opts.body ? { 'content-type': 'application/json' } : undefined,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    credentials: 'same-origin',
+  })
+  if (!res.ok) throw new Error('srv ' + res.status)
+  return res.status === 204 ? null : res.json()
+}
+
+/** Pull the account's logs into Dexie so all the useLiveQuery views stay reactive.
+ * No-op on failure (dev/offline) — local logs are kept. */
+export async function syncLogsFromServer() {
+  try {
+    const remote = (await srv('/logs')) as WorkoutLog[]
+    await db.transaction('rw', db.logs, async () => {
+      await db.logs.clear()
+      if (remote.length) await db.logs.bulkAdd(remote.map(({ id, ...r }) => r as WorkoutLog))
+    })
+  } catch { /* dev/offline: keep local */ }
+}
+
 export async function logWorkout(entry: Omit<WorkoutLog, 'id' | 'completedAt'>) {
-  return db.logs.add({ ...entry, completedAt: Date.now() })
+  const rec = { ...entry, completedAt: Date.now() } as WorkoutLog
+  try {
+    const saved = (await srv('/logs', { body: rec })) as WorkoutLog
+    const { id, ...rest } = saved
+    return db.logs.add(rest as WorkoutLog)
+  } catch {
+    return db.logs.add(rec) // dev/offline: local only
+  }
+}
+
+/** Edit a log (Dexie by local id + server by sid). */
+export async function editLog(log: WorkoutLog, patch: Partial<WorkoutLog>) {
+  if (log.id != null) await db.logs.update(log.id, patch)
+  if (log.sid) srv('/logs/' + log.sid, { method: 'PUT', body: patch }).catch(() => {})
+}
+export async function deleteLog(log: WorkoutLog) {
+  if (log.id != null) await db.logs.delete(log.id)
+  if (log.sid) srv('/logs/' + log.sid, { method: 'DELETE' }).catch(() => {})
+}
+export async function clearLogs() {
+  await db.logs.clear()
+  srv('/logs', { method: 'DELETE' }).catch(() => {})
 }
 
 /** Most recent completed log for a workout — used to prefill last weights/reps. */

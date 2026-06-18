@@ -1,12 +1,33 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { WeekStrip } from '../ui'
 import { fetchEvents, eventObjective, sportOf, type IcuEvent } from '../intervals'
-import { setPlanEvents } from '../plan'
+import { setPlanEvents, fetchGymPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
+import { setCurrentRide } from '../ride'
 import { localISO } from '../date'
 import { Bike, Dumbbell, Footprints, Target, Salad, Brain } from 'lucide-react'
+
+const planIcon = (s: CoachPlan['sport']) => (s === 'ride' ? <Bike strokeWidth={1.75} /> : s === 'run' ? <Footprints strokeWidth={1.75} /> : <Dumbbell strokeWidth={1.75} />)
+
+/** A coach-pushed plan that isn't mirrored by an intervals event — runs in-app. */
+function CoachPlanCard({ p, onRun, showDate, fmtDay }: { p: CoachPlan; onRun: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string }) {
+  const mins = p.sport === 'gym' ? undefined : Math.round((p.segments || []).reduce((s, x) => s + x.duration, 0) / 60)
+  return (
+    <button className="card" style={{ textAlign: 'left', width: '100%' }} onClick={() => onRun(p)}>
+      <div className="card-row">
+        <div className="thumb">{planIcon(p.sport)}</div>
+        <div className="card-body">
+          <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}</span>
+          <h3>{p.title}</h3>
+          {p.notes && <div className="meta" style={{ display: 'block', whiteSpace: 'normal' }}>{p.notes.length > 110 ? p.notes.slice(0, 110) + '…' : p.notes}</div>}
+          <div className="meta">{mins ? <span>{mins} min</span> : <span>{(p.exercises || []).length} exercises{p.rounds && p.rounds > 1 ? ` · ${p.rounds} rounds` : ''}</span>}<span className="dot">▶ start</span></div>
+        </div>
+      </div>
+    </button>
+  )
+}
 
 const iso = localISO
 const todayISO = () => localISO()
@@ -40,16 +61,29 @@ export default function Today() {
   const [selDay, setSelDay] = useState(todayISO())
   const todaysLogs = useLiveQuery(() => db.logs.where('date').equals(todayISO()).toArray())
   const [events, setEvents] = useState<IcuEvent[] | null>(null)
+  const [plans, setPlans] = useState<CoachPlan[]>([])
   const [err, setErr] = useState<string>()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const [a, b] = weekRange()
     fetchEvents(a, b).then((evs) => { setEvents(evs); setPlanEvents(evs) }).catch((e) => setErr((e as Error).message))
+    fetchGymPlans(a, b).then(setPlans)
   }, [])
 
+  function runPlan(p: CoachPlan) {
+    if (p.sport === 'gym') { setGymSession(gymSessionFromPlan(p)); navigate('/gym-session/play') }
+    else { setCurrentRide({ title: p.title, sport: p.sport === 'ride' ? 'cycling' : 'running', segments: p.segments || [], ftp: p.ftp || 260, source: p.id }); navigate(p.sport === 'ride' ? '/ride-player' : '/run-player') }
+  }
+
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' })()
+  // Merge-by-id: a coach plan whose id matches an intervals event's external_id is
+  // already shown as that event's card — only show un-mirrored plans, so no dupes.
+  const linkedIds = new Set((events ?? []).map((e) => e.external_id).filter(Boolean))
   const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay)
+  const dayPlans = plans.filter((p) => p.date === selDay && !linkedIds.has(p.id))
   const upcoming = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) > selDay).sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
+  const upcomingPlans = plans.filter((p) => p.date > selDay && !linkedIds.has(p.id)).sort((a, b) => a.date.localeCompare(b.date))
 
   return (
     <div>
@@ -74,16 +108,22 @@ export default function Today() {
         <p className="meta">Couldn't load plan: {err}</p>
       ) : events === null ? (
         <p className="meta">Loading your plan…</p>
-      ) : dayEvents.length === 0 ? (
+      ) : dayEvents.length === 0 && dayPlans.length === 0 ? (
         <p className="meta">Nothing scheduled — rest day or self-guided.</p>
       ) : (
-        <div className="stack">{dayEvents.map((e) => <PlanCard key={e.id} e={e} />)}</div>
+        <div className="stack">
+          {dayEvents.map((e) => <PlanCard key={e.id} e={e} />)}
+          {dayPlans.map((p) => <CoachPlanCard key={p.id} p={p} onRun={runPlan} fmtDay={fmtDay} />)}
+        </div>
       )}
 
-      {upcoming.length > 0 && (
+      {(upcoming.length > 0 || upcomingPlans.length > 0) && (
         <>
           <div className="section-title">Coming up</div>
-          <div className="stack">{upcoming.map((e) => <PlanCard key={e.id} e={e} showDate />)}</div>
+          <div className="stack">
+            {upcoming.map((e) => <PlanCard key={e.id} e={e} showDate />)}
+            {upcomingPlans.map((p) => <CoachPlanCard key={p.id} p={p} onRun={runPlan} showDate fmtDay={fmtDay} />)}
+          </div>
         </>
       )}
 

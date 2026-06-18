@@ -2,8 +2,44 @@
 // stashed so a detail page can read one by id; a gym event's markdown table is
 // parsed into a playable session (media resolved from the library by name).
 import { exercises as library, allExercisesById } from './data/catalog'
-import { parseGymTable, parseGymWorkout, type IcuEvent } from './intervals'
+import { parseGymTable, parseGymWorkout, type IcuEvent, type Segment } from './intervals'
 import { rpeIntensity } from './tss'
+
+// --- coach plans pushed via the gymapp API (rich execution detail) -------
+export interface CoachPlan {
+  id: string
+  date: string
+  sport: 'gym' | 'ride' | 'run'
+  title: string
+  notes?: string
+  ftp?: number
+  segments?: Segment[]
+  rounds?: number
+  exercises?: Array<{ name: string; exId?: string; mode?: 'timed' | 'reps'; seconds?: number; sets?: number; reps?: number; weight?: number; rest?: number }>
+}
+
+/** Fetch the account's coach-pushed plans for a date range (session-authed). */
+export async function fetchGymPlans(from: string, to: string): Promise<CoachPlan[]> {
+  try {
+    const res = await fetch(`/auth/plans?from=${from}&to=${to}`, { credentials: 'same-origin' })
+    return res.ok ? await res.json() : []
+  } catch { return [] }
+}
+
+/** Convert a coach gym plan into a playable session (media resolved from library). */
+export function gymSessionFromPlan(p: CoachPlan): AdHocSession {
+  const exercises: AdHocEx[] = []
+  for (let r = 0; r < (p.rounds || 1); r++)
+    for (const x of p.exercises || []) {
+      const lib = (x.exId && allExercisesById[x.exId]) || findLib(x.name)
+      exercises.push({
+        name: x.name, exId: lib?.id, image: lib?.image, video: lib?.video, imageFemale: lib?.imageFemale, videoFemale: lib?.videoFemale,
+        mode: x.mode || 'reps', seconds: x.seconds || 0, rest: x.rest || 0, sets: x.sets || 3, reps: x.reps || 10,
+        note: (x.mode || 'reps') === 'reps' ? `${x.sets || 3}×${x.reps || 10}` : undefined,
+      })
+    }
+  return { workoutId: 'plan-' + p.id, title: p.title, exercises }
+}
 
 export function setPlanEvents(evs: IcuEvent[]) { sessionStorage.setItem('planEvents', JSON.stringify(evs)) }
 export function getPlanEvent(id: string): IcuEvent | undefined {
