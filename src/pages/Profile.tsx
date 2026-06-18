@@ -68,10 +68,6 @@ export default function Profile() {
       <input className="search" placeholder={`Athlete id (${icu?.athleteId ?? 'i28814'})`} value={athlete} onChange={(e) => setAthlete(e.target.value)} />
       <button className="btn" onClick={saveIcu}>Save & sync from intervals.icu</button>
       {status && <p className="meta" style={{ marginTop: 8 }}>{status}</p>}
-      <p className="meta" style={{ marginTop: 8 }}>
-        Your athlete metrics come from intervals.icu — <b>FTP {ftp ?? '—'}{ftp ? 'W' : ''}</b> (scales cycling power),
-        and weight / sleep / wellness sync from there too. Nothing to type here.
-      </p>
 
       <div className="section-title">Diet</div>
       <div className="chips">
