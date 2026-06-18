@@ -20,7 +20,7 @@ export default function App() {
     <div className="app-shell">
       {!isDetail && (
         <header className="app-bar">
-          <span className="app-bar__brand">GymApp</span>
+          <span className="app-bar__brand"><img src="/favicon.svg" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</span>
           <AccountMenu />
         </header>
       )}

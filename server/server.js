@@ -21,7 +21,7 @@ const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
 const PORT = Number(process.env.PORT || 80)
 const RP_ID = process.env.RP_ID || 'gymmingapp.duckdns.org'
 const ORIGIN = process.env.ORIGIN || `https://${RP_ID}`
-const RP_NAME = 'GymApp'
+const RP_NAME = 'Platyplus'
 const COOKIE = 'gymapp_sess'
 const ICU = 'https://intervals.icu'
 
@@ -156,7 +156,7 @@ app.post('/auth/password/forgot', async (req, res) => {
   if (u) {
     const code = String(Math.floor(100000 + Math.random() * 900000))
     store.resets[u.id] = { codeHash: sha(code), expiresAt: Date.now() + 15 * 6e4 }; save(store)
-    await sendMail(u.email, 'Your GymApp reset code', `Your reset code is ${code}. It expires in 15 minutes.`).catch(() => {})
+    await sendMail(u.email, 'Your Platyplus reset code', `Your reset code is ${code}. It expires in 15 minutes.`).catch(() => {})
   }
   res.json({ ok: true, emailSent: !!mailer })
 })
@@ -224,13 +224,13 @@ app.post('/auth/users', auth, admin, async (req, res) => {
   const temp = tempPassword()
   const u = { id: newId(), username, email, role: req.body.role === 'admin' ? 'admin' : 'user', passwordHash: bcrypt.hashSync(temp, 10), passkeys: [], info: {}, icuKey: '', icuAthlete: 'i28814', apiToken: randomBytes(24).toString('base64url'), plans: [], createdAt: Date.now() }
   store.users.push(u); save(store)
-  const emailed = await sendMail(email, 'Your GymApp account', `You've been added to GymApp.\nUsername: ${username}\nTemporary password: ${temp}\nSign in at ${ORIGIN} and change it.`).catch(() => false)
+  const emailed = await sendMail(email, 'Your Platyplus account', `You've been added to Platyplus.\nUsername: ${username}\nTemporary password: ${temp}\nSign in at ${ORIGIN} and change it.`).catch(() => false)
   res.json({ user: pub(u), tempPassword: temp, emailed })
 })
 app.post('/auth/users/:id/reset', auth, admin, async (req, res) => {
   const u = findById(req.params.id); if (!u) return res.status(404).json({ error: 'not found' })
   const temp = tempPassword(); u.passwordHash = bcrypt.hashSync(temp, 10); save(store)
-  const emailed = await sendMail(u.email, 'Your GymApp password was reset', `Your new temporary password is ${temp}. Sign in at ${ORIGIN} and change it.`).catch(() => false)
+  const emailed = await sendMail(u.email, 'Your Platyplus password was reset', `Your new temporary password is ${temp}. Sign in at ${ORIGIN} and change it.`).catch(() => false)
   res.json({ tempPassword: temp, emailed })
 })
 app.delete('/auth/users/:id', auth, admin, (req, res) => {
@@ -302,7 +302,7 @@ app.delete('/api/plan/:id', apiAuth, (req, res) => { req.user.plans = (req.user.
 
 // ---- OpenAPI spec + Swagger UI (public docs) -----------------------------
 app.get('/api/openapi.json', (req, res) => res.sendFile(join(__dirname, 'openapi.json')))
-app.get('/api/docs', (req, res) => res.type('html').send(`<!doctype html><html><head><meta charset="utf-8"><title>GymApp Coach API</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css"></head><body><div id="ui"></div><script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script><script>window.onload=()=>SwaggerUIBundle({url:'/api/openapi.json',dom_id:'#ui'})</script></body></html>`))
+app.get('/api/docs', (req, res) => res.type('html').send(`<!doctype html><html><head><meta charset="utf-8"><title>Platyplus Coach API</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css"></head><body><div id="ui"></div><script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script><script>window.onload=()=>SwaggerUIBundle({url:'/api/openapi.json',dom_id:'#ui'})</script></body></html>`))
 
 // ---- intervals.icu proxy (session required) ------------------------------
 app.all('/icu/*', auth, async (req, res) => {

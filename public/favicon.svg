@@ -1,10 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="14" fill="#0d0d0f"/>
-  <g fill="#e8ff3a">
-    <rect x="12" y="29" width="40" height="6" rx="3"/>
-    <rect x="14" y="22" width="5" height="20" rx="2"/>
-    <rect x="9" y="26" width="4" height="12" rx="2"/>
-    <rect x="45" y="22" width="5" height="20" rx="2"/>
-    <rect x="51" y="26" width="4" height="12" rx="2"/>
+  <!-- head -->
+  <ellipse cx="32" cy="28" rx="16.5" ry="14.5" fill="#34e07d"/>
+  <!-- sweatband across the forehead -->
+  <path d="M17.5 23 Q32 16.5 46.5 23" stroke="#ff6b6b" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- the "plus" (Platyplus) -->
+  <g stroke="#ffffff" stroke-width="1.9" stroke-linecap="round">
+    <path d="M32 17.5 L32 21.5"/>
+    <path d="M30 19.5 L34 19.5"/>
   </g>
+  <!-- game-face brows -->
+  <g stroke="#0d0d0f" stroke-width="2.6" stroke-linecap="round">
+    <path d="M22.5 27 L29 28.5"/>
+    <path d="M41.5 27 L35 28.5"/>
+  </g>
+  <!-- beady eyes -->
+  <circle cx="27" cy="30.5" r="2.2" fill="#0d0d0f"/>
+  <circle cx="37" cy="30.5" r="2.2" fill="#0d0d0f"/>
+  <!-- the signature flat duck bill -->
+  <ellipse cx="32" cy="44" rx="15" ry="7" fill="#175c3a"/>
+  <ellipse cx="32" cy="42.5" rx="15" ry="5.8" fill="#249457"/>
+  <circle cx="28" cy="41" r="1.2" fill="#0d0d0f"/>
+  <circle cx="36" cy="41" r="1.2" fill="#0d0d0f"/>
 </svg>

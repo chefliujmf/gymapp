@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "GymApp Coach API",
+    "title": "Platyplus Coach API",
     "version": "1.0.0",
-    "description": "Push planned sessions into a GymApp account (rich indoor-execution detail). The coach dual-writes: the same `id` goes here AND to the intervals.icu event `external_id`, so GymApp's Today merges them into one card (no duplicates). Authenticate with the per-user API token from Profile → Account."
+    "description": "Push planned sessions into a Platyplus account (rich indoor-execution detail). The coach dual-writes: the same `id` goes here AND to the intervals.icu event `external_id`, so Platyplus's Today merges them into one card (no duplicates). Authenticate with the per-user API token from Profile → Account."
   },
   "servers": [{ "url": "https://gymmingapp.duckdns.org" }],
   "security": [{ "bearerAuth": [] }],
@@ -64,7 +64,7 @@
         "required": ["name", "mode"],
         "properties": {
           "name": { "type": "string" },
-          "exId": { "type": "string", "description": "optional GymApp library id for the demo video" },
+          "exId": { "type": "string", "description": "optional Platyplus library id for the demo video" },
           "mode": { "type": "string", "enum": ["timed", "reps"] },
           "seconds": { "type": "integer", "description": "for mode=timed" },
           "sets": { "type": "integer", "description": "for mode=reps" },
