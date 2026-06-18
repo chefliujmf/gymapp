@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Dumbbell, Flame, Activity, Flower2, StretchHorizontal, Swords, Brain, Moon, Wind, Target, Bike, Footprints, Coffee, Sandwich, UtensilsCrossed, Apple } from 'lucide-react'
 import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind, EnduranceWorkout } from './types'
@@ -124,7 +125,15 @@ export function MindCard({ m }: { m: MindSession }) {
 }
 
 export function Thumb({ src, fallback, className = 'thumb' }: { src?: string; fallback: ReactNode; className?: string }) {
-  if (src) return <div className={className} style={{ backgroundImage: `url(${src})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+  const [failed, setFailed] = useState(false)
+  if (src && !failed) {
+    return (
+      <div className={className}>
+        <img src={src} alt="" loading="lazy" onError={() => setFailed(true)}
+             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: 'inherit' }} />
+      </div>
+    )
+  }
   return <div className={className}>{fallback}</div>
 }
 

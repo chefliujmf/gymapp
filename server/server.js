@@ -18,6 +18,7 @@ import { load, save, newId } from './store.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
+const MEDIA_DIR = process.env.MEDIA_DIR || '/srv/media'   // self-hosted images/video/audio
 const PORT = Number(process.env.PORT || 80)
 const RP_ID = process.env.RP_ID || 'platyplus.duckdns.org'
 const ORIGIN = process.env.ORIGIN || `https://${RP_ID}`
@@ -396,6 +397,8 @@ app.all('/icu/*', auth, async (req, res) => {
 })
 
 // ---- static SPA ----------------------------------------------------------
+// Self-hosted media (range requests for video seeking + long immutable cache).
+app.use('/media', express.static(MEDIA_DIR, { maxAge: '365d', immutable: true }))
 app.use(express.static(STATIC_DIR, { index: false, setHeaders: (res, p) => { if (p.endsWith('index.html') || p.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache') } }))
 app.get('*', (req, res) => res.sendFile(join(STATIC_DIR, 'index.html')))
 

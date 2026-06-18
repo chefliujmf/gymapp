@@ -23,33 +23,31 @@ const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'))
 const listJson = (dir) =>
   existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.json') && !f.startsWith('_')) : []
 
-// slug -> Google Drive file id, for meditation audio hosted in the user's Drive.
+// Maps kept only for the video manifest/index generation (id <-> filename).
 const DRIVE_AUDIO_MAP = (() => {
   const p = join(__dirname, 'drive-audio-map.json')
   return existsSync(p) ? readJson(p) : {}
 })()
-const driveAudioUrl = (slug) =>
-  DRIVE_AUDIO_MAP[slug]
-    ? `https://drive.usercontent.google.com/download?id=${DRIVE_AUDIO_MAP[slug]}&export=download`
-    : undefined
-
-// filename -> Google Drive id for self-hosted exercise media (videos + MW posters).
 const DRIVE_MEDIA_MAP = (() => {
   const p = join(__dirname, 'drive-media-map.json')
   return existsSync(p) ? readJson(p) : {}
 })()
 const mediaBase = (u) => { try { return decodeURIComponent(new URL(u).pathname.split('/').pop()) } catch { return String(u).split('/').pop() } }
-// Drive download URLs send Content-Disposition: attachment and Drive is not a
-// video CDN (slow, rate-limited) — they don't play inline. Serve from the fast
-// origins (MuscleWiki / jwplayer); the Drive copies stay as a cold backup. Flip
-// this on only once media lives on a proper inline-serving static host.
-const SELF_HOST_MEDIA = false
-/** Repoint a media URL at its Drive copy when we've self-hosted it. */
-const driveMediaUrl = (url) => {
-  if (!SELF_HOST_MEDIA || !url) return url
-  const id = DRIVE_MEDIA_MAP[mediaBase(url)]
-  return id ? `https://drive.usercontent.google.com/download?id=${id}&export=download` : url
-}
+
+// ---- Self-hosted media (100% independent) --------------------------------
+// No Centr / MuscleWiki / jwplayer / JOIN URL ever reaches the catalog. Every
+// media reference becomes a /media/... path on OUR server when we hold the file
+// locally; otherwise it is dropped (undefined) and the UI shows an emoji
+// placeholder. The independence gate at the bottom FAILS the build if any
+// third-party media URL slips through.
+const lsSet = (dir, pred) => { try { return new Set(readdirSync(join(DL, dir)).filter(pred)) } catch { return new Set() } }
+const VIDEO_FILES = new Set([...lsSet('exercise_videos', (f) => f.endsWith('.mp4')), ...lsSet('mw_media', (f) => f.endsWith('.mp4'))])
+const OG_IMG_FILES = lsSet('mw_media', (f) => f.startsWith('og-') && f.endsWith('.jpg'))
+const AUDIO_FILES = lsSet('meditation_audio', (f) => f.endsWith('.mp3'))
+const selfHostVideo = (url) => { const b = url ? mediaBase(url) : ''; return VIDEO_FILES.has(b) ? `/media/video/${b}` : undefined }
+const selfHostExImg = (url) => { const b = url ? mediaBase(url) : ''; return OG_IMG_FILES.has(b) ? `/media/images/mw_media/${b}` : undefined }
+const selfHostAudio = (slug) => (slug && AUDIO_FILES.has(slug + '.mp3') ? `/media/audio/${slug}.mp3` : undefined)
+const localImg = (subdir, slug) => (slug && existsSync(join(DL, subdir, slug + '.jpg')) ? `/media/images/${subdir}/${slug}.jpg` : undefined)
 
 function pickImg(imageList) {
   if (!imageList) return undefined
@@ -104,7 +102,7 @@ function mapRecipe(d, isSnack) {
     fat: num(r.fat),
     ingredients: (r.ingredients || []).map(fmtIngredient).filter(Boolean),
     steps: (r.methods || []).map((m) => m.text).filter(Boolean),
-    thumbnail: pickImg(r.imageList),
+    thumbnail: localImg(isSnack ? 'snacks_images' : 'recipes_images', r.urlPartial),
     tags: [...new Set((r.tags || []).map((t) => t.name).filter(Boolean))].slice(0, 8),
     servings: r.serves || undefined,
     diet: ['vegetarian'],
@@ -135,8 +133,8 @@ function mapWorkout(d) {
   const discipline = workoutDiscipline(`${title} ${rt.summary || ''} ${set0?.title || ''}`)
   const exercises = (wk?.groups || []).flatMap((g) =>
     (g.exercises || []).map((e) => {
-      const image = pickExerciseImg(e.imageList)
-      const video = (e.media || []).map((m) => m.value).find((v) => String(v).toLowerCase().endsWith('.mp4'))
+      const rawImg = pickExerciseImg(e.imageList)
+      const rawVid = (e.media || []).map((m) => m.value).find((v) => String(v).toLowerCase().endsWith('.mp4'))
       return {
         name: e.title,
         prescription: e.durationInSeconds
@@ -145,10 +143,8 @@ function mapWorkout(d) {
         seconds: e.durationInSeconds || undefined,
         rest: e.rest || undefined,
         note: g.title || undefined,
-        image,
-        video: driveMediaUrl(video),
-        // Only fall back to a MuscleWiki search link when we have no image.
-        demoUrl: image ? undefined : (e.title ? 'https://musclewiki.com/exercises?search=' + encodeURIComponent(e.title) : undefined),
+        image: selfHostExImg(rawImg),
+        video: selfHostVideo(rawVid),
       }
     }),
   )
@@ -169,7 +165,7 @@ function mapWorkout(d) {
     equipment: [],
     summary: stripBrand(rt.summary || ''),
     exercises,
-    thumbnail: pickImg(set0?.imageList),
+    thumbnail: localImg('workouts_images', rt.urlPartial),
   }
 }
 
@@ -188,8 +184,8 @@ function mapMind(d) {
     duration: 0, // not provided by source; player reads it from the audio
     summary: stripBrand(a.summary || a.introText || ''),
     coach: (a.authors || []).map((x) => x.name).filter(Boolean).join(', ') || undefined,
-    // Prefer the user's Drive copy; fall back to the source mp3.
-    audioUrl: driveAudioUrl(slug) || mp3,
+    // Self-hosted from our server; if we don't hold the file, the UI handles it.
+    audioUrl: selfHostAudio(slug),
   }
 }
 
@@ -205,7 +201,7 @@ function mapEndurance(d) {
     intensity: d.intensity,
     stress: d.stress,
     description: d.description || '',
-    thumbnail: d.imageUrl || undefined,
+    thumbnail: localImg('endurance_images', String(d.workoutId)),
     blocks: (d.blocks || []).map((b) => ({
       numRepeats: b.numRepeats || 1,
       intervals: (b.intervals || []).map((iv) => ({
@@ -267,10 +263,10 @@ function mapMuscleWiki(e) {
   return {
     id: 'mw-' + e.slug,
     name: stripBrand(e.name),
-    image: driveMediaUrl(male.og_image || female.og_image),
-    video: driveMediaUrl(male.branded_video || undefined),
-    imageFemale: driveMediaUrl(female.og_image || undefined),
-    videoFemale: driveMediaUrl(female.branded_video || undefined),
+    image: selfHostExImg(male.og_image || female.og_image),
+    video: selfHostVideo(male.branded_video || undefined),
+    imageFemale: selfHostExImg(female.og_image || undefined),
+    videoFemale: selfHostVideo(female.branded_video || undefined),
     category: mwCategory(e),
     muscle: (e.muscles_primary || [])[0]?.name || undefined,
     equipment: e.category?.name || undefined,
@@ -306,11 +302,11 @@ function extractExercises(files) {
             for (const e of g.exercises || []) {
               const id = 'e-' + (e.contentId || e.title)
               if (!e.title || byId.has(id)) continue
-              const image = pickExerciseImg(e.imageList)
-              const video = (e.media || []).map((m) => m.value).find((v) => String(v).toLowerCase().endsWith('.mp4'))
-              if (!image && !video) continue // need a demo to be useful
+              const rawImg = pickExerciseImg(e.imageList)
+              const rawVid = (e.media || []).map((m) => m.value).find((v) => String(v).toLowerCase().endsWith('.mp4'))
+              if (!rawImg && !rawVid) continue // need a demo to be useful
               byId.set(id, {
-                id, name: stripBrand(e.title), image, video: driveMediaUrl(video),
+                id, name: stripBrand(e.title), image: selfHostExImg(rawImg), video: selfHostVideo(rawVid),
                 seconds: e.durationInSeconds || undefined,
                 category: categorize(e.title),
               })
@@ -376,4 +372,24 @@ console.log('video manifest:', writeVideoManifest(exercises), '-> video-manifest
 console.log('mind:      ', build('mind', mind))
 console.log('endurance: ', build('endurance', endurance),
   `(cycling ${endurance.filter((e) => e?.sport === 'cycling').length}, running ${endurance.filter((e) => e?.sport === 'running').length})`)
+// ---- Independence gate ---------------------------------------------------
+// Fail the build if ANY third-party media host still appears in the catalog.
+{
+  const BAD = /centr\.com|musclewiki|jwplayer|jwplatform|digitaloceanspaces|drive\.google|googleusercontent|cdn\./i
+  const leaks = new Map()
+  for (const [name, arr] of Object.entries({ recipes, workouts, exercises, mind, endurance })) {
+    for (const u of (JSON.stringify(arr).match(/https?:\/\/[^"\\\s]+/g) || [])) {
+      if (!BAD.test(u)) continue
+      const host = u.replace(/(https?:\/\/[^/]+).*/, '$1')
+      leaks.set(`${name} ${host}`, (leaks.get(`${name} ${host}`) || 0) + 1)
+    }
+  }
+  if (leaks.size) {
+    console.error('\nINDEPENDENCE GATE FAILED — third-party media URLs still in the catalog:')
+    for (const [k, n] of leaks) console.error(`  ${String(n).padStart(5)}  ${k}`)
+    process.exit(1)
+  }
+  console.log('independence gate: OK — no third-party media URLs in the catalog')
+}
+
 console.log('written to', OUT)

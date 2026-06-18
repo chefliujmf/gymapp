@@ -13,6 +13,7 @@ services:
       - "./auth.env"          # RP_ID, ORIGIN, SEED_* — secrets, not in git
     volumes:
       - "./dist:/usr/share/nginx/html:ro"
+      - "./media:/srv/media:ro"   # self-hosted media — served at /media/* by server.js
       - "./data:/data"        # store.json (accounts/passkeys) — backed up
     ports:
       - "8088:80"
