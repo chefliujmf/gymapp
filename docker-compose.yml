@@ -1,0 +1,18 @@
+# Platyplus (gymapp): auth + static SPA + intervals.icu proxy, one Node container.
+# Reproducible recipe for what used to be a manual `docker run`.
+# Update the app = rsync new dist/ then `docker compose restart` (no rebuild
+# unless server/ changes, then `docker compose up -d --build`).
+services:
+  gymapp:
+    build:
+      context: ./server
+    image: gymapp-auth
+    container_name: gymapp
+    restart: unless-stopped
+    env_file:
+      - "./auth.env"          # RP_ID, ORIGIN, SEED_* — secrets, not in git
+    volumes:
+      - "./dist:/usr/share/nginx/html:ro"
+      - "./data:/data"        # store.json (accounts/passkeys) — backed up
+    ports:
+      - "8088:80"

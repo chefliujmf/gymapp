@@ -7,6 +7,7 @@ type Mode = 'login' | 'forgot' | 'reset'
 
 export default function Login() {
   const { apply } = useAuth()
+  const passkeySupported = typeof window !== 'undefined' && !!window.PublicKeyCredential
   const [mode, setMode] = useState<Mode>('login')
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
@@ -15,11 +16,14 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [note, setNote] = useState('')
-
-  const passkeySupported = typeof window !== 'undefined' && !!window.PublicKeyCredential
+  // Passkey-first: keep the password field hidden behind a link unless there's
+  // no passkey support, so the passkey is the obvious primary path.
+  const [usePassword, setUsePassword] = useState(!passkeySupported)
 
   async function doPassword(e: React.FormEvent) {
-    e.preventDefault(); setErr(''); setBusy(true)
+    e.preventDefault()
+    if (!usePassword) { if (login) doPasskey(); return }
+    setErr(''); setBusy(true)
     try { await apply(await authApi.login(login, password)) }
     catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
@@ -47,12 +51,19 @@ export default function Login() {
         {mode === 'login' && (
           <form onSubmit={doPassword} className="auth-form">
             <input className="search" placeholder="Username or email" value={login} autoCapitalize="none" onChange={(e) => setLogin(e.target.value)} />
-            <input className="search" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <button className="btn" disabled={busy || !login || !password}>Sign in</button>
             {passkeySupported && (
-              <button type="button" className="btn btn--ghost auth-passkey" disabled={busy || !login} onClick={doPasskey}>
+              <button type="button" className="btn auth-passkey" disabled={busy || !login} onClick={doPasskey}>
                 <Fingerprint size={18} /> Sign in with fingerprint / passkey
               </button>
+            )}
+            {usePassword && (
+              <input className="search" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            )}
+            {usePassword && (
+              <button className="btn" disabled={busy || !login || !password}>Sign in</button>
+            )}
+            {passkeySupported && !usePassword && (
+              <button type="button" className="auth-link" onClick={() => setUsePassword(true)}>Use password instead</button>
             )}
             <button type="button" className="auth-link" onClick={() => { setErr(''); setNote(''); setMode('forgot') }}>Forgot password?</button>
           </form>
