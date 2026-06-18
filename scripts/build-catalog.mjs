@@ -43,9 +43,15 @@ const mediaBase = (u) => { try { return decodeURIComponent(new URL(u).pathname.s
 const lsSet = (dir, pred) => { try { return new Set(readdirSync(join(DL, dir)).filter(pred)) } catch { return new Set() } }
 const VIDEO_FILES = new Set([...lsSet('exercise_videos', (f) => f.endsWith('.mp4')), ...lsSet('mw_media', (f) => f.endsWith('.mp4'))])
 const OG_IMG_FILES = lsSet('mw_media', (f) => f.startsWith('og-') && f.endsWith('.jpg'))
+const CENTR_IMG_FILES = lsSet('centr_images', (f) => /\.(jpg|jpeg|png|webp)$/i.test(f))
 const AUDIO_FILES = lsSet('meditation_audio', (f) => f.endsWith('.mp3'))
 const selfHostVideo = (url) => { const b = url ? mediaBase(url) : ''; return VIDEO_FILES.has(b) ? `/media/video/${b}` : undefined }
-const selfHostExImg = (url) => { const b = url ? mediaBase(url) : ''; return OG_IMG_FILES.has(b) ? `/media/images/mw_media/${b}` : undefined }
+const selfHostExImg = (url) => {
+  const b = url ? mediaBase(url) : ''
+  if (OG_IMG_FILES.has(b)) return `/media/images/mw_media/${b}`
+  if (CENTR_IMG_FILES.has(b)) return `/media/images/centr_images/${b}`
+  return undefined
+}
 const selfHostAudio = (slug) => (slug && AUDIO_FILES.has(slug + '.mp3') ? `/media/audio/${slug}.mp3` : undefined)
 const localImg = (subdir, slug) => (slug && existsSync(join(DL, subdir, slug + '.jpg')) ? `/media/images/${subdir}/${slug}.jpg` : undefined)
 
