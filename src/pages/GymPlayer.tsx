@@ -133,20 +133,36 @@ export default function GymPlayer() {
   function jump(to: number) { setIdx(to); setSegStart(Date.now()); setPaused(false); setPausedAt(0) }
   function advance() { if (idx + 1 < steps.length) jump(idx + 1); else finish() }
 
+  // Time-based auto-advance from ABSOLUTE time, so the timer keeps running while
+  // the screen is off and simply catches up on wake (no pause, no drift). useNow
+  // ticks every 250ms and the instant the tab becomes visible again.
   useEffect(() => {
     if (!cur || paused || done || isManual) return
     const d = (cur as { duration: number }).duration
-    const t = setTimeout(advance, Math.max(0, d * 1000 - (Date.now() - segStart)))
-    return () => clearTimeout(t)
+    if (now - segStart >= d * 1000) {
+      if (idx + 1 < steps.length) { setIdx(idx + 1); setSegStart(segStart + d * 1000) }
+      else finish()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idx, paused, segStart, done, isManual])
+  }, [now, cur, paused, segStart, done, isManual, idx, steps])
 
+  // Countdown cues: short "bip" for the last 5 seconds…
   const lastSec = useRef(-1)
   useEffect(() => {
     if (paused || !cur || done || isManual) return
     const s = Math.ceil(remaining)
-    if (s !== lastSec.current) { lastSec.current = s; if (s >= 1 && s <= 3) beep(880, 0.08) }
+    if (s !== lastSec.current) { lastSec.current = s; if (s >= 1 && s <= 5) beep(880, 0.09) }
   }, [remaining, paused, cur, done, isManual, beep])
+
+  // …then a long "biiiip" on the transition to the next step.
+  const firstStep = useRef(true)
+  useEffect(() => {
+    if (firstStep.current) { firstStep.current = false; return }
+    if (cur && cur.kind !== 'rest') beep(1320, 0.45, 0.32)
+    else if (cur) beep(660, 0.45, 0.3)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx])
+
 
   function logSet(exIndex: number, setNo: number, patch: Partial<SetEntry>) {
     setLog((L) => {
@@ -201,9 +217,9 @@ export default function GymPlayer() {
   return (
     <div className="gp2">
       <div className="gp2-top">
-        <button className="gp2-x" onClick={() => { if (confirm('Stop the workout?')) navigate(-1) }}>✕</button>
+        <button className="gp2-x" onClick={() => { if (confirm('Quit without logging?')) navigate(-1) }}>✕</button>
         <div className="gp2-title">{w.title}</div>
-        <div style={{ width: 34 }} />
+        <button className="gp2-finish" onClick={() => { if (confirm('Finish & log this workout now?')) finish() }}>Finish</button>
       </div>
 
       <div className={'gp2-stage' + (cur.kind === 'rest' ? ' gp2-stage--rest' : '')}>
