@@ -32,7 +32,7 @@ export function segmentsFromEndurance(w: EnduranceWorkout): Segment[] {
   for (const b of w.blocks) {
     for (let r = 0; r < (b.numRepeats || 1); r++) {
       for (const iv of b.intervals) {
-        out.push({ duration: iv.duration, powerStart: iv.rawPower, powerEnd: iv.rawPower })
+        out.push({ duration: iv.duration, powerStart: iv.rawPower, powerEnd: iv.rawPower, label: iv.power, hr: iv.heartRate })
       }
     }
   }

@@ -386,3 +386,33 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 
 /* Always-available Finish button in the player header */
 .gp2-finish { border:none; background:var(--accent-grad); color:var(--on-accent); font-weight:800; font-size:13px; padding:7px 14px; border-radius:999px; cursor:pointer; box-shadow:0 4px 14px -4px rgba(52,224,125,0.5); }
+
+/* ===== Ride player ===== */
+.rp { position:fixed; inset:0; background:#0e0f13; color:#fff; display:flex; flex-direction:column; max-width:520px; margin:0 auto; }
+.rp-top { display:flex; align-items:center; justify-content:space-between; padding:12px 14px 4px; }
+.rp-x { width:32px; height:32px; border-radius:999px; border:none; background:rgba(255,255,255,.12); color:#fff; font-size:14px; cursor:pointer; }
+.rp-title { font-size:13px; opacity:.75; }
+.rp-fin { border:none; background:var(--accent-grad); color:var(--on-accent); font-weight:800; font-size:12px; padding:7px 13px; border-radius:999px; cursor:pointer; }
+.rp-conn { display:flex; gap:8px; justify-content:center; padding:6px 14px; }
+.rp-pill { border:none; background:rgba(255,255,255,.1); color:#fff; font-size:12px; font-weight:700; padding:7px 13px; border-radius:999px; cursor:pointer; }
+.rp-pill.on { background:rgba(52,224,125,.22); color:var(--accent); }
+.rp-note { text-align:center; opacity:.45; font-size:11px; padding:4px 14px; }
+.rp-main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+.rp-target { font-size:80px; font-weight:800; line-height:1; }
+.rp-target span { font-size:24px; opacity:.7; }
+.rp-sub { opacity:.7; font-size:13px; }
+.rp-live { display:flex; gap:14px; margin-top:14px; }
+.rp-stat { background:rgba(255,255,255,.06); border-radius:12px; padding:8px 16px; text-align:center; min-width:66px; }
+.rp-stat b { display:block; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; }
+.rp-stat small { font-size:10px; opacity:.55; text-transform:uppercase; letter-spacing:1px; }
+.rp-timer { font-size:46px; font-weight:800; font-variant-numeric:tabular-nums; margin-top:18px; }
+.rp-iv { opacity:.6; font-size:13px; }
+.rp-profile { position:relative; display:flex; align-items:flex-end; gap:1px; height:120px; padding:0 14px; margin:6px 0; }
+.rp-bar { flex-basis:0; border-radius:3px 3px 0 0; min-width:1px; }
+.rp-cursor { position:absolute; top:0; bottom:0; width:2px; background:#fff; opacity:.55; }
+.rp-tot { text-align:center; opacity:.6; font-size:13px; }
+.rp .gp2-controls, .rp-controls { display:flex; gap:10px; justify-content:center; padding:14px; }
+
+/* %FTP labels on the interval profile */
+.profile-lbl { position:absolute; top:-15px; left:50%; transform:translateX(-50%); font-size:10px; font-weight:800; color:var(--text); white-space:nowrap; }
+.profile { overflow:visible; margin-top:16px; }

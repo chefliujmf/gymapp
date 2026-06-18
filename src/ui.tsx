@@ -181,25 +181,25 @@ export function computeTSS(w: EnduranceWorkout): number {
 }
 
 /** join.cc-style interval profile rendered from the structured data. */
-export function IntervalProfile({ w, height = 90 }: { w: EnduranceWorkout; height?: number }) {
+export function IntervalProfile({ w, height = 110 }: { w: EnduranceWorkout; height?: number }) {
   const ivs = flattenIntervals(w)
   const total = ivs.reduce((s, i) => s + (i.duration || 0), 0) || 1
   const maxP = Math.max(120, ...ivs.map((i) => i.rawPower || 0))
+  const ftpY = (100 / maxP) * 100
   return (
-    <div className="profile" style={{ height, display: 'flex', alignItems: 'flex-end', gap: 1, width: '100%' }}>
-      {ivs.map((iv, idx) => (
-        <div
-          key={idx}
-          title={`${Math.round(iv.duration)}s @ ${iv.rawPower}%${iv.power ? ` (${iv.power}W)` : ''}`}
-          style={{
-            flexGrow: iv.duration / total,
-            flexBasis: 0,
-            height: `${Math.max(6, ((iv.rawPower || 0) / maxP) * 100)}%`,
-            background: zoneColor(iv.rawPower || 0),
-            borderRadius: '2px 2px 0 0',
-          }}
-        />
-      ))}
+    <div className="profile" style={{ height, position: 'relative', display: 'flex', alignItems: 'flex-end', gap: 1, width: '100%' }}>
+      {/* FTP (100%) reference line */}
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: `${ftpY}%`, borderTop: '1px dashed rgba(255,255,255,.22)', pointerEvents: 'none' }} />
+      <span style={{ position: 'absolute', right: 2, bottom: `calc(${ftpY}% + 2px)`, fontSize: 9, color: 'rgba(255,255,255,.45)' }}>FTP</span>
+      {ivs.map((iv, idx) => {
+        const showVal = idx === 0 || ivs[idx - 1].rawPower !== iv.rawPower
+        return (
+          <div key={idx} title={`${Math.round(iv.duration)}s @ ${iv.rawPower}%${iv.power ? ` (${iv.power}W)` : ''}`}
+            style={{ position: 'relative', flexGrow: iv.duration / total, flexBasis: 0, height: `${Math.max(6, ((iv.rawPower || 0) / maxP) * 100)}%`, background: zoneColor(iv.rawPower || 0), borderRadius: '2px 2px 0 0' }}>
+            {showVal && <span className="profile-lbl">{iv.rawPower}%</span>}
+          </div>
+        )
+      })}
     </div>
   )
 }

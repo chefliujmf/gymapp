@@ -88,62 +88,58 @@ export default function RidePlayer() {
   const pctNow = Math.round(cur.powerStart + (cur.powerEnd - cur.powerStart) * (cur.duration ? Math.min(1, elapsedInSeg / cur.duration) : 0))
   const next = segs[idx + 1]
 
+  const over = live.power != null && trState !== 'idle' ? live.power - watts : undefined
   return (
-    <div className="player" style={{ background: '#0c0c0e', minHeight: '100dvh', color: '#fff', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14 }}>
-        <button className="player-x" onClick={() => { if (confirm('Stop the ride?')) navigate(-1) }}>✕</button>
-        <div style={{ opacity: 0.7, fontSize: 13 }}>{sportIcon[ride.sport]} {ride.title}</div>
-        <div style={{ width: 28 }} />
+    <div className="rp">
+      <div className="rp-top">
+        <button className="rp-x" onClick={() => { if (confirm('Stop the ride?')) navigate(-1) }}>✕</button>
+        <div className="rp-title">{sportIcon[ride.sport]} {ride.title}</div>
+        <button className="rp-fin" onClick={finish}>Finish</button>
       </div>
 
       {/* connect row */}
       {bleSupported() ? (
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', padding: '0 14px' }}>
-          <button className="rctrl" style={{ minWidth: 0, height: 34, padding: '0 12px', fontSize: 12, background: trState !== 'idle' ? 'rgba(52,224,125,.2)' : undefined }} onClick={connectTr}>
-            {trState === 'erg' ? '✓ Trainer (ERG)' : trState === 'on' ? '✓ Trainer' : '🚴 Connect trainer'}
-          </button>
-          <button className="rctrl" style={{ minWidth: 0, height: 34, padding: '0 12px', fontSize: 12, background: hrState === 'on' ? 'rgba(52,224,125,.2)' : undefined }} onClick={connectHr}>
-            {hrState === 'on' ? '✓ HR' : '♥ Connect HR'}
-          </button>
+        <div className="rp-conn">
+          <button className={'rp-pill' + (trState !== 'idle' ? ' on' : '')} onClick={connectTr}>{trState === 'erg' ? '✓ Trainer · ERG' : trState === 'on' ? '✓ Trainer' : '🚴 Connect trainer'}</button>
+          <button className={'rp-pill' + (hrState === 'on' ? ' on' : '')} onClick={connectHr}>{hrState === 'on' ? '✓ HR' : '♥ Connect HR'}</button>
         </div>
-      ) : (
-        <div style={{ textAlign: 'center', opacity: 0.5, fontSize: 11, padding: '0 14px' }}>Bluetooth needs Chrome on Android over HTTPS</div>
-      )}
+      ) : <div className="rp-note">Bluetooth pairing needs Chrome on Android over HTTPS</div>}
 
-      {/* big target + live actuals */}
-      <div style={{ textAlign: 'center', marginTop: 8 }}>
-        <div style={{ fontSize: 68, fontWeight: 800, lineHeight: 1, color: zoneColor(pctNow) }}>{watts}<span style={{ fontSize: 22 }}>W</span></div>
-        <div style={{ opacity: 0.7 }}>target · {pctNow}% FTP{cur.powerStart !== cur.powerEnd ? ' · ramp' : ''}</div>
+      <div className="rp-main">
+        {/* target */}
+        <div className="rp-target" style={{ color: zoneColor(pctNow) }}>{watts}<span>W</span></div>
+        <div className="rp-sub">target · {pctNow}% FTP{cur.label ? ` · ${cur.label}W` : ''}{cur.hr ? ` · ${cur.hr} bpm` : ''}{cur.powerStart !== cur.powerEnd ? ' · ramp' : ''}</div>
+
+        {/* live actuals */}
         {(trState !== 'idle' || hrState === 'on') && (
-          <div style={{ display: 'flex', gap: 18, justifyContent: 'center', marginTop: 10, fontSize: 15, fontWeight: 700 }}>
-            {trState !== 'idle' && <span>⚡ {live.power ?? '–'}<small style={{ opacity: .6 }}>W</small></span>}
-            {trState !== 'idle' && live.cadence != null && <span>{Math.round(live.cadence)}<small style={{ opacity: .6 }}>rpm</small></span>}
-            {hrState === 'on' && <span style={{ color: '#ff6b6b' }}>♥ {hr ?? '–'}</span>}
+          <div className="rp-live">
+            {trState !== 'idle' && <div className="rp-stat"><b style={{ color: over != null ? (Math.abs(over) <= 10 ? 'var(--accent)' : over > 0 ? '#ffb13d' : '#7fd1ff') : undefined }}>{live.power ?? '–'}</b><small>watts</small></div>}
+            {trState !== 'idle' && <div className="rp-stat"><b>{live.cadence != null ? Math.round(live.cadence) : '–'}</b><small>rpm</small></div>}
+            {hrState === 'on' && <div className="rp-stat"><b style={{ color: '#ff6b6b' }}>{hr ?? '–'}</b><small>bpm</small></div>}
           </div>
         )}
-        <div style={{ fontSize: 40, fontWeight: 700, marginTop: 12, fontVariantNumeric: 'tabular-nums' }}>{clock(remaining)}</div>
-        <div style={{ opacity: 0.6, fontSize: 13 }}>interval {idx + 1} / {segs.length}{next ? ` · next ${Math.round(next.powerStart)}%` : ' · last'}</div>
+
+        <div className="rp-timer">{clock(remaining)}</div>
+        <div className="rp-iv">interval {idx + 1} / {segs.length}{next ? ` · next ${Math.round(next.powerStart)}% FTP` : ' · last interval'}</div>
       </div>
 
-      {/* moving profile */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 1, padding: '24px 12px', position: 'relative' }}>
+      {/* profile graph */}
+      <div className="rp-profile">
         {segs.map((s, i) => (
-          <div key={i} style={{
-            flexGrow: s.duration / total, flexBasis: 0,
-            height: `${Math.max(8, (Math.max(s.powerStart, s.powerEnd) / 150) * 100)}%`,
+          <div key={i} className="rp-bar" style={{
+            flexGrow: s.duration / total,
+            height: `${Math.max(10, Math.min(100, (Math.max(s.powerStart, s.powerEnd) / 150) * 100))}%`,
             background: zoneColor(Math.max(s.powerStart, s.powerEnd)),
-            opacity: i === idx ? 1 : i < idx ? 0.35 : 0.7,
-            borderRadius: '3px 3px 0 0',
-            outline: i === idx ? '2px solid #fff' : 'none',
+            opacity: i === idx ? 1 : i < idx ? 0.3 : 0.62,
+            outline: i === idx ? '1.5px solid #fff' : 'none',
           }} />
         ))}
-        <div style={{ position: 'absolute', left: `calc(12px + ${(elapsedTotal / total) * 100}% )`, top: 0, bottom: 0, width: 2, background: '#fff', opacity: 0.5 }} />
+        <div className="rp-cursor" style={{ left: `${(elapsedTotal / total) * 100}%` }} />
       </div>
-
-      <div style={{ textAlign: 'center', opacity: 0.6, fontSize: 13 }}>{clock(elapsedTotal)} / {clock(total)}</div>
+      <div className="rp-tot">{clock(elapsedTotal)} / {clock(total)}</div>
 
       {/* controls */}
-      <div style={{ display: 'flex', gap: 10, padding: 16, justifyContent: 'center' }}>
+      <div className="rp-controls">
         <button className="rctrl" onClick={() => { setIdx(Math.max(0, idx - 1)); setSegStart(Date.now()); setPaused(false); setPausedAt(0) }}>‹‹</button>
         <button className="rctrl rctrl--big" onClick={() => { if (paused) { setSegStart(Date.now() - pausedAt); setPaused(false) } else { setPausedAt(now - segStart); setPaused(true) } }}>
           {paused ? '▶' : '⏸'}

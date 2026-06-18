@@ -63,10 +63,9 @@ export default function CycleDetail() {
         <IntervalProfile w={w} height={110} />
       </div>
 
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginTop: 12 }}>
+      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)', marginTop: 12 }}>
         <div className="stat"><div className="v">{w.duration}</div><div className="k">minutes</div></div>
         <div className="stat"><div className="v">{computeTSS(w)}</div><div className="k">TSS</div></div>
-        {w.intensity != null && <div className="stat"><div className="v">{Math.round(w.intensity)}/5</div><div className="k">difficulty</div></div>}
       </div>
 
       {w.description && <p className="meta" style={{ marginTop: 12 }}>{w.description}</p>}

@@ -160,7 +160,7 @@ export function gymTemplateId(e: IcuEvent): number | undefined {
 // --- normalization --------------------------------------------------------
 
 /** A flattened player segment: ramps from powerStart% to powerEnd% of FTP. */
-export interface Segment { duration: number; powerStart: number; powerEnd: number }
+export interface Segment { duration: number; powerStart: number; powerEnd: number; label?: string; hr?: string }
 
 /** Flatten workout_doc steps, expanding repeat blocks, into player segments. */
 export function flattenIcuSteps(steps: IcuStep[] = []): Segment[] {
