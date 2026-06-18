@@ -6,6 +6,7 @@ import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { getSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
 import { getGymSession } from '../plan'
 import { localISO } from '../date'
+import { gymTSS, type GymIntensity } from '../tss'
 
 
 interface PlayerEx {
@@ -15,7 +16,7 @@ interface PlayerEx {
   seconds: number; rest: number; sets: number; reps: number; weight?: number
   group?: string
 }
-interface Session { workoutId: string; title: string; discipline: string; duration: number; exercises: PlayerEx[] }
+interface Session { workoutId: string; title: string; discipline: string; duration: number; exercises: PlayerEx[]; intensity?: GymIntensity }
 
 type Step =
   | { kind: 'ready'; duration: number; next?: PlayerEx }
@@ -81,7 +82,7 @@ export default function GymPlayer() {
     if (!s) return
     const exs: PlayerEx[] = s.exercises.map((x) => ({ ...enrich(x.name, x.exId, x.image, x.video), mode: x.mode, seconds: x.seconds, rest: x.rest, sets: x.sets, reps: x.reps, group: x.note }))
     const dur = Math.round(exs.reduce((a, e) => a + (e.mode === 'reps' ? e.sets * (30 + e.rest) : e.seconds + e.rest), 0) / 60)
-    setW({ workoutId: s.workoutId, title: s.title, discipline: 'strength', duration: dur, exercises: exs })
+    setW({ workoutId: s.workoutId, title: s.title, discipline: 'strength', duration: dur, exercises: exs, intensity: s.intensity })
   }, [isSession])
 
   useEffect(() => {
@@ -180,7 +181,8 @@ export default function GymPlayer() {
     const flat = Object.values(log).flat()
     const setsCompleted = flat.filter((s) => s?.done).length
     const volume = flat.reduce((v, s) => v + (s?.done ? (s.weight || 0) * (s.reps || 0) : 0), 0)
-    await logWorkout({ workoutId: w.workoutId, title: w.title, discipline: w.discipline, duration: w.duration, date: localISO(), sets: log, setsCompleted, volume })
+    const tss = gymTSS(w.duration, w.intensity)
+    await logWorkout({ workoutId: w.workoutId, title: w.title, discipline: w.discipline, duration: w.duration, date: localISO(), sets: log, setsCompleted, volume, tss })
   }
 
   if (!w || !cur) return <div className="page-head"><h1>No workout loaded</h1><button className="btn" onClick={() => navigate(-1)}>Back</button></div>
@@ -191,9 +193,10 @@ export default function GymPlayer() {
         <div style={{ fontSize: 56 }}>🎉</div>
         <h1 style={{ margin: '8px 0 2px' }}>Workout complete</h1>
         <p style={{ color: 'var(--text-dim,#888)' }}>{w.title}</p>
-        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)', width: '100%', marginTop: 16 }}>
+        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', width: '100%', marginTop: 16 }}>
           <div className="stat"><div className="v">{totalEx}</div><div className="k">exercises</div></div>
           <div className="stat"><div className="v">{w.duration}</div><div className="k">minutes</div></div>
+          <div className="stat"><div className="v">{gymTSS(w.duration, w.intensity)}</div><div className="k">TSS</div></div>
         </div>
         <button className="btn" style={{ marginTop: 20 }} onClick={() => navigate('/progress')}>View progress</button>
         <button className="btn btn--ghost" onClick={() => navigate('/exercises')}>Done</button>

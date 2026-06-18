@@ -3,6 +3,7 @@
 // parsed into a playable session (media resolved from the library by name).
 import { exercises as library, allExercisesById } from './data/catalog'
 import { parseGymTable, parseGymWorkout, type IcuEvent } from './intervals'
+import { rpeIntensity } from './tss'
 
 export function setPlanEvents(evs: IcuEvent[]) { sessionStorage.setItem('planEvents', JSON.stringify(evs)) }
 export function getPlanEvent(id: string): IcuEvent | undefined {
@@ -13,7 +14,7 @@ export interface AdHocEx {
   name: string; exId?: string; image?: string; video?: string; imageFemale?: string; videoFemale?: string
   mode: 'timed' | 'reps'; seconds: number; rest: number; sets: number; reps: number; note?: string
 }
-export interface AdHocSession { workoutId: string; title: string; exercises: AdHocEx[] }
+export interface AdHocSession { workoutId: string; title: string; exercises: AdHocEx[]; intensity?: 'low' | 'moderate' | 'high' }
 
 export function setGymSession(s: AdHocSession) { sessionStorage.setItem('gymSession', JSON.stringify(s)) }
 export function getGymSession(): AdHocSession | null {
@@ -61,7 +62,7 @@ export function gymSessionFromEvent(e: IcuEvent): AdHocSession {
           note: x.mode === 'reps' ? `${x.sets}×${x.reps}` : undefined,
         })
       }
-    return { workoutId: 'icu-' + e.id, title: e.name, exercises }
+    return { workoutId: 'icu-' + e.id, title: e.name, exercises, intensity: rpeIntensity(e.description || '') }
   }
   // Current coach format: the markdown "Main Set" table.
   const exercises: AdHocEx[] = parseGymTable(e.description || '').map((r) => {
@@ -71,5 +72,5 @@ export function gymSessionFromEvent(e: IcuEvent): AdHocSession {
       mode: 'reps', seconds: 0, rest: lastNum(r.rest), sets: r.sets || 3, reps: firstNum(r.reps) || 10, note: r.reps,
     }
   })
-  return { workoutId: 'icu-' + e.id, title: e.name, exercises }
+  return { workoutId: 'icu-' + e.id, title: e.name, exercises, intensity: rpeIntensity(e.description || '') }
 }

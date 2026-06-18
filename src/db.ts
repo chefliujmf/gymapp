@@ -15,6 +15,8 @@ export interface WorkoutLog {
   /** total sets completed and total volume (sum of weight × reps) */
   setsCompleted?: number
   volume?: number
+  /** estimated training stress (gym: Friel time×RPE; rides: from intervals) */
+  tss?: number
   /** full per-exercise set snapshot, for progressive-overload prefill */
   sets?: Record<number, SetEntry[]>
 }

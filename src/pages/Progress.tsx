@@ -81,6 +81,7 @@ export default function Progress() {
                   <div className="meta">
                     <span>{new Date(l.completedAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
                     <span className="dot">{l.duration} min</span>
+                    {!!l.tss && <span className="dot">{l.tss} TSS</span>}
                     {!!l.volume && <span className="dot">{l.volume} kg vol</span>}
                   </div>
                 </div>

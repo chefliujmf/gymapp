@@ -4,6 +4,7 @@ import { getPlanEvent, gymSessionFromEvent, setGymSession, matchExercise } from 
 import { eventObjective, parseGymTable, sportOf, flattenIcuSteps } from '../intervals'
 import { setCurrentRide } from '../ride'
 import { getSetting } from '../db'
+import { gymTSS, rpeIntensity } from '../tss'
 
 export default function PlanDetail() {
   const { id } = useParams()
@@ -34,7 +35,7 @@ export default function PlanDetail() {
     <div>
       <Link to="/" className="back">← Today</Link>
       <div className="page-head">
-        <span className="eyebrow">{kind} · {dateLabel}{mins ? ` · ${mins} min` : ''}{e.icu_training_load ? ` · ${e.icu_training_load} TSS` : ''}</span>
+        <span className="eyebrow">{kind} · {dateLabel}{mins ? ` · ${mins} min` : ''}{e.icu_training_load ? ` · ${e.icu_training_load} TSS` : (sport === 'gym' && mins ? ` · ~${gymTSS(mins, rpeIntensity(e.description || ''))} TSS` : '')}</span>
         <h1>{e.name}</h1>
       </div>
 
