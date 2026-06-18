@@ -188,17 +188,6 @@ export default function Today() {
         </>
       )}
 
-      <div className="section-title">Jump in</div>
-      <div className="stack">
-        {[
-          { to: '/exercises', icon: <Dumbbell strokeWidth={1.75} />, label: 'Train' },
-          { to: '/cycle', icon: <Bike strokeWidth={1.75} />, label: 'Ride' },
-          { to: '/eat', icon: <Salad strokeWidth={1.75} />, label: 'Eat' },
-          { to: '/mind', icon: <Brain strokeWidth={1.75} />, label: 'Mind' },
-        ].map((j) => (
-          <Link key={j.to} to={j.to} className="card"><div className="card-row"><div className="thumb">{j.icon}</div><div className="card-body"><h3>{j.label}</h3></div></div></Link>
-        ))}
-      </div>
     </div>
   )
 }

@@ -280,25 +280,74 @@ function validatePlan(b) {
   return null
 }
 
+// --- Platyplus -> intervals.icu push (the fan-out; coach only writes here) --
+const ICU_API = 'https://intervals.icu/api/v1'
+function icuFetch(user, path, opts = {}) {
+  return fetch(ICU_API + path, { ...opts, headers: { authorization: 'Basic ' + Buffer.from('API_KEY:' + user.icuKey).toString('base64'), 'content-type': 'application/json', accept: 'application/json', ...(opts.headers || {}) } })
+}
+// Map a plan to an intervals calendar event. Rides/runs carry a structured
+// workout_doc (power steps) so intervals pushes a real interval workout to Wahoo.
+function planToIcuEvent(plan) {
+  const ev = { start_date_local: plan.date + 'T00:00:00', category: 'WORKOUT', name: plan.title, external_id: plan.id, description: plan.notes || '' }
+  if (plan.sport === 'ride' || plan.sport === 'run') {
+    const segs = plan.segments || []
+    ev.type = plan.sport === 'ride' ? 'Ride' : 'Run'
+    ev.moving_time = segs.reduce((s, x) => s + (Number(x.duration) || 0), 0)
+    if (segs.length) ev.workout_doc = { steps: segs.map((s) => ({ duration: Number(s.duration) || 0, power: { start: Number(s.powerStart) || 0, end: Number(s.powerEnd) || 0, units: '%ftp' }, ...(s.label ? { text: s.label } : {}) })) }
+  } else {
+    ev.type = 'WeightTraining'
+    ev.description = `[gymapp] ${plan.rounds || 1} rounds\n` + (plan.exercises || []).map((x) => `• ${x.name}${x.exId ? ` [${x.exId}]` : ''} — ${(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}`).join('\n') + (plan.notes ? `\n\n${plan.notes}` : '')
+  }
+  return ev
+}
+// Create or update the mirror event (tracked by plan.icuEventId).
+async function pushPlanToIcu(user, plan) {
+  if (!user.icuKey) return { skipped: 'no intervals key' }
+  const ath = user.icuAthlete || 'i28814'
+  const ev = planToIcuEvent(plan)
+  try {
+    if (plan.icuEventId) {
+      const r = await icuFetch(user, `/athlete/${ath}/events/${plan.icuEventId}`, { method: 'PUT', body: JSON.stringify(ev) })
+      if (r.ok) return { updated: plan.icuEventId }
+      if (r.status !== 404) return { error: `update ${r.status}` }
+    }
+    const r = await icuFetch(user, `/athlete/${ath}/events`, { method: 'POST', body: JSON.stringify(ev) })
+    if (!r.ok) return { error: `create ${r.status}` }
+    const created = await r.json()
+    plan.icuEventId = created.id; save(store)
+    return { created: created.id }
+  } catch (e) { return { error: String(e.message || e) } }
+}
+async function deleteIcuEvent(user, plan) {
+  if (!user.icuKey || !plan?.icuEventId) return
+  try { await icuFetch(user, `/athlete/${user.icuAthlete || 'i28814'}/events/${plan.icuEventId}`, { method: 'DELETE' }) } catch { /* best effort */ }
+}
+
 // Upsert a planned session by id (idempotent — re-POST to update).
-app.post('/api/plan', apiAuth, (req, res) => {
+app.post('/api/plan', apiAuth, async (req, res) => {
   const err = validatePlan(req.body)
   if (err) return res.status(400).json({ error: err })
+  const i = req.user.plans.findIndex((p) => p.id === req.body.id)
   const plan = {
     id: req.body.id, date: req.body.date, sport: req.body.sport, title: req.body.title,
     notes: req.body.notes || '', updatedAt: Date.now(),
+    icuEventId: i >= 0 ? req.user.plans[i].icuEventId : undefined, // keep the mirror link on update
     ...(req.body.sport === 'gym'
       ? { rounds: Number(req.body.rounds) || 1, exercises: Array.isArray(req.body.exercises) ? req.body.exercises : [] }
       : { ftp: Number(req.body.ftp) || undefined, segments: Array.isArray(req.body.segments) ? req.body.segments : [] }),
   }
-  const i = req.user.plans.findIndex((p) => p.id === plan.id)
   if (i >= 0) req.user.plans[i] = plan; else req.user.plans.push(plan)
   save(store)
-  res.status(i >= 0 ? 200 : 201).json(plan)
+  const icu = await pushPlanToIcu(req.user, plan) // fan out to intervals (-> Wahoo)
+  res.status(i >= 0 ? 200 : 201).json({ ...plan, icu })
 })
 app.get('/api/plans', apiAuth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
 app.get('/api/plan/:id', apiAuth, (req, res) => { const p = (req.user.plans || []).find((x) => x.id === req.params.id); return p ? res.json(p) : res.status(404).json({ error: 'not found' }) })
-app.delete('/api/plan/:id', apiAuth, (req, res) => { req.user.plans = (req.user.plans || []).filter((x) => x.id !== req.params.id); save(store); res.json({ ok: true }) })
+app.delete('/api/plan/:id', apiAuth, async (req, res) => {
+  const plan = (req.user.plans || []).find((x) => x.id === req.params.id)
+  await deleteIcuEvent(req.user, plan) // remove the mirror from intervals too
+  req.user.plans = (req.user.plans || []).filter((x) => x.id !== req.params.id); save(store); res.json({ ok: true })
+})
 
 // ---- OpenAPI spec + Swagger UI (public docs) -----------------------------
 app.get('/api/openapi.json', (req, res) => res.sendFile(join(__dirname, 'openapi.json')))
