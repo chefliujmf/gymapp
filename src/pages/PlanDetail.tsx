@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getPlanEvent, gymSessionFromEvent, setGymSession, matchExercise } from '../plan'
 import { eventObjective, parseGymTable, sportOf, flattenIcuSteps } from '../intervals'
+import { SegmentProfile } from '../ui'
 import { setCurrentRide } from '../ride'
 import { getSetting } from '../db'
 import { gymTSS, rpeIntensity } from '../tss'
@@ -87,7 +88,15 @@ export default function PlanDetail() {
         </>
       )}
 
-      {isRide && <button className="btn" style={{ marginTop: 14 }} onClick={startRide}>▶ Ride now (indoor)</button>}
+      {isRide && (
+        <>
+          <div className="card" style={{ padding: 16, marginTop: 6 }}>
+            <SegmentProfile segs={flattenIcuSteps(e.workout_doc?.steps)} />
+          </div>
+          <button className="btn" style={{ marginTop: 14 }} onClick={startRide}>▶ Ride now (indoor)</button>
+          <p className="meta" style={{ marginTop: 8, textAlign: 'center' }}>Riding outdoors? It's already on your Wahoo — intervals.icu syncs it. "Ride now" is for the indoor trainer.</p>
+        </>
+      )}
 
       {/* The full coach narrative (fueling, recovery, mental focus) stays in
           intervals.icu — gymapp shows only what you need to execute. */}

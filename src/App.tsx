@@ -1,12 +1,13 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Home, Dumbbell, Bike, Salad, Brain, User } from 'lucide-react'
 
 const tabs = [
-  { to: '/', label: 'Today', icon: '🏠', end: true },
-  { to: '/exercises', label: 'Train', icon: '💪', end: false },
-  { to: '/cycle', label: 'Ride', icon: '🚴', end: false },
-  { to: '/eat', label: 'Eat', icon: '🥗', end: false },
-  { to: '/mind', label: 'Mind', icon: '🧘', end: false },
-  { to: '/profile', label: 'Profile', icon: '👤', end: false },
+  { to: '/', label: 'Today', icon: <Home strokeWidth={1.75} />, end: true },
+  { to: '/exercises', label: 'Train', icon: <Dumbbell strokeWidth={1.75} />, end: false },
+  { to: '/cycle', label: 'Ride', icon: <Bike strokeWidth={1.75} />, end: false },
+  { to: '/eat', label: 'Eat', icon: <Salad strokeWidth={1.75} />, end: false },
+  { to: '/mind', label: 'Mind', icon: <Brain strokeWidth={1.75} />, end: false },
+  { to: '/profile', label: 'Profile', icon: <User strokeWidth={1.75} />, end: false },
 ]
 
 export default function App() {

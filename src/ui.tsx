@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { Dumbbell, Flame, Activity, Flower2, StretchHorizontal, Swords, Brain, Moon, Wind, Target, Bike, Footprints, Coffee, Sandwich, UtensilsCrossed, Apple } from 'lucide-react'
 import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind, EnduranceWorkout } from './types'
 import { localISO } from './date'
 
@@ -31,29 +33,29 @@ export function WeekStrip({ selected, onSelect }: { selected?: string; onSelect?
   )
 }
 
-export const disciplineIcon: Record<Discipline, string> = {
-  strength: '🏋️',
-  hiit: '🔥',
-  cardio: '🚴',
-  yoga: '🧘',
-  pilates: '🤸',
-  mobility: '🌀',
-  boxing: '🥊',
-  meditation: '🌙',
+export const disciplineIcon: Record<Discipline, ReactNode> = {
+  strength: <Dumbbell strokeWidth={1.75} />,
+  hiit: <Flame strokeWidth={1.75} />,
+  cardio: <Activity strokeWidth={1.75} />,
+  yoga: <Flower2 strokeWidth={1.75} />,
+  pilates: <StretchHorizontal strokeWidth={1.75} />,
+  mobility: <StretchHorizontal strokeWidth={1.75} />,
+  boxing: <Swords strokeWidth={1.75} />,
+  meditation: <Brain strokeWidth={1.75} />,
 }
 
-const categoryIcon: Record<Recipe['category'], string> = {
-  breakfast: '🍳',
-  lunch: '🥗',
-  dinner: '🍽️',
-  snack: '🥤',
+const categoryIcon: Record<Recipe['category'], ReactNode> = {
+  breakfast: <Coffee strokeWidth={1.75} />,
+  lunch: <Sandwich strokeWidth={1.75} />,
+  dinner: <UtensilsCrossed strokeWidth={1.75} />,
+  snack: <Apple strokeWidth={1.75} />,
 }
 
 export function WorkoutCard({ w }: { w: Workout }) {
   return (
     <Link to={`/workouts/${w.id}`} className="card">
       <div className="card-row">
-        <div className="thumb">{disciplineIcon[w.discipline]}</div>
+        <Thumb src={w.thumbnail} fallback={disciplineIcon[w.discipline]} />
         <div className="card-body">
           <h3>{w.title}</h3>
           <div className="meta">
@@ -83,11 +85,11 @@ export function ProgramCard({ p }: { p: Program }) {
   )
 }
 
-export const mindIcon: Record<MindKind, string> = {
-  meditation: '🧘',
-  breathwork: '🌬️',
-  sleep: '🌙',
-  focus: '🎯',
+export const mindIcon: Record<MindKind, ReactNode> = {
+  meditation: <Brain strokeWidth={1.75} />,
+  breathwork: <Wind strokeWidth={1.75} />,
+  sleep: <Moon strokeWidth={1.75} />,
+  focus: <Target strokeWidth={1.75} />,
 }
 
 export function TrainerCard({ t }: { t: Trainer }) {
@@ -121,7 +123,7 @@ export function MindCard({ m }: { m: MindSession }) {
   )
 }
 
-export function Thumb({ src, fallback, className = 'thumb' }: { src?: string; fallback: string; className?: string }) {
+export function Thumb({ src, fallback, className = 'thumb' }: { src?: string; fallback: ReactNode; className?: string }) {
   if (src) return <div className={className} style={{ backgroundImage: `url(${src})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
   return <div className={className}>{fallback}</div>
 }
@@ -181,6 +183,29 @@ export function computeTSS(w: EnduranceWorkout): number {
 }
 
 /** join.cc-style interval profile rendered from the structured data. */
+/** Profile from flat segments (intervals.icu workout_doc / ride player). */
+export function SegmentProfile({ segs, height = 110 }: { segs: { duration: number; powerStart: number; powerEnd: number }[]; height?: number }) {
+  const total = segs.reduce((s, i) => s + i.duration, 0) || 1
+  const maxP = Math.max(120, ...segs.map((s) => Math.max(s.powerStart, s.powerEnd)))
+  const ftpY = (100 / maxP) * 100
+  if (!segs.length) return null
+  return (
+    <div className="profile" style={{ height, position: 'relative', display: 'flex', alignItems: 'flex-end', gap: 1, width: '100%' }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: `${ftpY}%`, borderTop: '1px dashed rgba(255,255,255,.22)', pointerEvents: 'none' }} />
+      <span style={{ position: 'absolute', right: 2, bottom: `calc(${ftpY}% + 2px)`, fontSize: 9, color: 'rgba(255,255,255,.45)' }}>FTP</span>
+      {segs.map((s, idx) => {
+        const p = Math.max(s.powerStart, s.powerEnd)
+        const showVal = idx === 0 || Math.max(segs[idx - 1].powerStart, segs[idx - 1].powerEnd) !== p
+        return (
+          <div key={idx} style={{ position: 'relative', flexGrow: s.duration / total, flexBasis: 0, height: `${Math.max(6, (p / maxP) * 100)}%`, background: zoneColor(p), borderRadius: '2px 2px 0 0' }}>
+            {showVal && <span className="profile-lbl">{p}%</span>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function IntervalProfile({ w, height = 110 }: { w: EnduranceWorkout; height?: number }) {
   const ivs = flattenIntervals(w)
   const total = ivs.reduce((s, i) => s + (i.duration || 0), 0) || 1
@@ -204,7 +229,7 @@ export function IntervalProfile({ w, height = 110 }: { w: EnduranceWorkout; heig
   )
 }
 
-export const sportIcon: Record<string, string> = { cycling: '🚴', running: '🏃' }
+export const sportIcon: Record<string, ReactNode> = { cycling: <Bike size={16} style={{ verticalAlign: '-3px' }} />, running: <Footprints size={16} style={{ verticalAlign: '-3px' }} /> }
 
 export function EnduranceCard({ w }: { w: EnduranceWorkout }) {
   return (

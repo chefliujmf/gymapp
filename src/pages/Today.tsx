@@ -6,6 +6,7 @@ import { WeekStrip } from '../ui'
 import { fetchEvents, eventObjective, sportOf, type IcuEvent } from '../intervals'
 import { setPlanEvents } from '../plan'
 import { localISO } from '../date'
+import { Bike, Dumbbell, Footprints, Target, Salad, Brain } from 'lucide-react'
 
 const iso = localISO
 const todayISO = () => localISO()
@@ -14,7 +15,7 @@ function weekRange(): [string, string] {
   const end = new Date(mon); end.setDate(mon.getDate() + 13)
   return [iso(mon), iso(end)]
 }
-const sportIcon = (e: IcuEvent) => { const s = sportOf(e); return s === 'cycling' ? '🚴' : s === 'gym' ? '🏋️' : e.type === 'Run' ? '🏃' : '🎯' }
+const sportIcon = (e: IcuEvent) => { const s = sportOf(e); return s === 'cycling' ? <Bike strokeWidth={1.75} /> : s === 'gym' ? <Dumbbell strokeWidth={1.75} /> : e.type === 'Run' ? <Footprints strokeWidth={1.75} /> : <Target strokeWidth={1.75} /> }
 const fmtDay = (s: string) => new Date(s + 'T00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
 
 function PlanCard({ e, showDate }: { e: IcuEvent; showDate?: boolean }) {
@@ -89,10 +90,10 @@ export default function Today() {
       <div className="section-title">Jump in</div>
       <div className="stack">
         {[
-          { to: '/exercises', icon: '💪', label: 'Train' },
-          { to: '/cycle', icon: '🚴', label: 'Ride' },
-          { to: '/eat', icon: '🥗', label: 'Eat' },
-          { to: '/mind', icon: '🧘', label: 'Mind' },
+          { to: '/exercises', icon: <Dumbbell strokeWidth={1.75} />, label: 'Train' },
+          { to: '/cycle', icon: <Bike strokeWidth={1.75} />, label: 'Ride' },
+          { to: '/eat', icon: <Salad strokeWidth={1.75} />, label: 'Eat' },
+          { to: '/mind', icon: <Brain strokeWidth={1.75} />, label: 'Mind' },
         ].map((j) => (
           <Link key={j.to} to={j.to} className="card"><div className="card-row"><div className="thumb">{j.icon}</div><div className="card-body"><h3>{j.label}</h3></div></div></Link>
         ))}

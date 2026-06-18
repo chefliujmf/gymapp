@@ -416,3 +416,10 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 /* %FTP labels on the interval profile */
 .profile-lbl { position:absolute; top:-15px; left:50%; transform:translateX(-50%); font-size:10px; font-weight:800; color:var(--text); white-space:nowrap; }
 .profile { overflow:visible; margin-top:16px; }
+
+/* ---- Lucide icon sizing per context ---- */
+.thumb svg { width: 30px; height: 30px; }
+.thumb--wide svg { width: 54px; height: 54px; }
+.tab__icon svg { width: 22px; height: 22px; }
+.tab__icon { filter: none; opacity: .6; }
+.tab--active .tab__icon { opacity: 1; }
