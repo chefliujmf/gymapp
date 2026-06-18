@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCurrentRide, wattsAt } from '../ride'
 import { zoneColor, sportIcon } from '../ui'
 import { useNow, useWakeLock } from '../hooks'
 import { logWorkout } from '../db'
 import { localISO } from '../date'
+import { bleSupported, connectHeartRate, connectTrainer, type HRHandle, type TrainerData, type TrainerHandle } from '../ble'
 
 function clock(s: number) {
   const m = Math.floor(s / 60)
@@ -24,6 +25,23 @@ export default function RidePlayer() {
   const now = useNow(250)
   useWakeLock(true)
 
+  // --- Bluetooth: trainer (Tacx, ERG) + heart rate (Polar) ---
+  const [hr, setHr] = useState<number | undefined>()
+  const [live, setLive] = useState<TrainerData>({})
+  const [trState, setTrState] = useState<'idle' | 'on' | 'erg'>('idle')
+  const [hrState, setHrState] = useState<'idle' | 'on'>('idle')
+  const trainerRef = useRef<TrainerHandle | null>(null)
+  const hrRef = useRef<HRHandle | null>(null)
+  const lastErg = useRef(0)
+
+  async function connectTr() {
+    try { const h = await connectTrainer(setLive); trainerRef.current = h; setTrState(h.hasErg ? 'erg' : 'on') } catch { /* cancelled */ }
+  }
+  async function connectHr() {
+    try { const h = await connectHeartRate(setHr); hrRef.current = h; setHrState('on') } catch { /* cancelled */ }
+  }
+  useEffect(() => () => { trainerRef.current?.disconnect(); hrRef.current?.disconnect() }, [])
+
   const total = segs.reduce((s, x) => s + x.duration, 0)
   const cur = segs[idx]
   const elapsedInSeg = paused ? pausedAt / 1000 : (now - segStart) / 1000
@@ -42,6 +60,14 @@ export default function RidePlayer() {
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, paused, segStart])
+
+  // ERG: keep the trainer's target power matched to the interval (throttled writes).
+  useEffect(() => {
+    const t = trainerRef.current
+    if (!t?.hasErg || paused || !cur) return
+    const target = wattsAt(cur, paused ? pausedAt / 1000 : (now - segStart) / 1000, ftp)
+    if (Math.abs(target - lastErg.current) >= 2) { lastErg.current = target; t.setTargetPower(target) }
+  }, [now, idx, paused, cur, segStart, pausedAt, ftp])
 
   async function finish() {
     await logWorkout({
@@ -70,11 +96,32 @@ export default function RidePlayer() {
         <div style={{ width: 28 }} />
       </div>
 
-      {/* big target */}
+      {/* connect row */}
+      {bleSupported() ? (
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', padding: '0 14px' }}>
+          <button className="rctrl" style={{ minWidth: 0, height: 34, padding: '0 12px', fontSize: 12, background: trState !== 'idle' ? 'rgba(52,224,125,.2)' : undefined }} onClick={connectTr}>
+            {trState === 'erg' ? '✓ Trainer (ERG)' : trState === 'on' ? '✓ Trainer' : '🚴 Connect trainer'}
+          </button>
+          <button className="rctrl" style={{ minWidth: 0, height: 34, padding: '0 12px', fontSize: 12, background: hrState === 'on' ? 'rgba(52,224,125,.2)' : undefined }} onClick={connectHr}>
+            {hrState === 'on' ? '✓ HR' : '♥ Connect HR'}
+          </button>
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', opacity: 0.5, fontSize: 11, padding: '0 14px' }}>Bluetooth needs Chrome on Android over HTTPS</div>
+      )}
+
+      {/* big target + live actuals */}
       <div style={{ textAlign: 'center', marginTop: 8 }}>
-        <div style={{ fontSize: 72, fontWeight: 800, lineHeight: 1, color: zoneColor(pctNow) }}>{watts}<span style={{ fontSize: 22 }}>W</span></div>
-        <div style={{ opacity: 0.7 }}>{pctNow}% FTP{cur.powerStart !== cur.powerEnd ? ' · ramp' : ''}</div>
-        <div style={{ fontSize: 40, fontWeight: 700, marginTop: 14, fontVariantNumeric: 'tabular-nums' }}>{clock(remaining)}</div>
+        <div style={{ fontSize: 68, fontWeight: 800, lineHeight: 1, color: zoneColor(pctNow) }}>{watts}<span style={{ fontSize: 22 }}>W</span></div>
+        <div style={{ opacity: 0.7 }}>target · {pctNow}% FTP{cur.powerStart !== cur.powerEnd ? ' · ramp' : ''}</div>
+        {(trState !== 'idle' || hrState === 'on') && (
+          <div style={{ display: 'flex', gap: 18, justifyContent: 'center', marginTop: 10, fontSize: 15, fontWeight: 700 }}>
+            {trState !== 'idle' && <span>⚡ {live.power ?? '–'}<small style={{ opacity: .6 }}>W</small></span>}
+            {trState !== 'idle' && live.cadence != null && <span>{Math.round(live.cadence)}<small style={{ opacity: .6 }}>rpm</small></span>}
+            {hrState === 'on' && <span style={{ color: '#ff6b6b' }}>♥ {hr ?? '–'}</span>}
+          </div>
+        )}
+        <div style={{ fontSize: 40, fontWeight: 700, marginTop: 12, fontVariantNumeric: 'tabular-nums' }}>{clock(remaining)}</div>
         <div style={{ opacity: 0.6, fontSize: 13 }}>interval {idx + 1} / {segs.length}{next ? ` · next ${Math.round(next.powerStart)}%` : ' · last'}</div>
       </div>
 

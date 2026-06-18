@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="web-bluetooth" />
 /// <reference types="vite-plugin-pwa/client" />
 
 interface ImportMetaEnv {
