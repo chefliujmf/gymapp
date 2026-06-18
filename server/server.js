@@ -46,7 +46,7 @@ if (!store.users.length) {
   console.log('Seeded admin user.')
 }
 // Backfill api tokens / plan arrays for any user created before these existed.
-for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = [] }
+for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = []; if (!u.items) u.items = [] }
 save(store)
 // Late-seed the admin's intervals.icu key if it wasn't stored yet (idempotent).
 const seedKey = process.env.SEED_ICU_KEY
@@ -244,6 +244,29 @@ app.post('/auth/token/rotate', auth, (req, res) => { req.user.apiToken = randomB
 
 // The app (session) reads its own plans for the Today merge-by-id.
 app.get('/auth/plans', auth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
+// Calendar authoring (session): create/update/delete workout plans from the UI
+// — same path as the coach API, so it auto-pushes to intervals.
+app.post('/auth/plans', auth, async (req, res) => { const r = await upsertPlan(req.user, req.body); res.status(r.status).json(r.body) })
+app.delete('/auth/plans/:id', auth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
+
+// Non-workout calendar items (meal / mind / note) — Platyplus only, no intervals push.
+app.get('/auth/items', auth, (req, res) => {
+  let items = req.user.items || []
+  if (req.query.from) items = items.filter((x) => x.date >= req.query.from)
+  if (req.query.to) items = items.filter((x) => x.date <= req.query.to)
+  res.json(items.sort((a, b) => (a.date < b.date ? -1 : 1)))
+})
+app.post('/auth/items', auth, (req, res) => {
+  const b = req.body || {}
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return res.status(400).json({ error: 'date (YYYY-MM-DD) required' })
+  if (!['meal', 'mind', 'note'].includes(b.type)) return res.status(400).json({ error: 'type must be meal|mind|note' })
+  req.user.items = req.user.items || []
+  const item = { id: b.id || newId(), date: b.date, type: b.type, title: b.title || '', refId: b.refId || '', mealType: b.mealType || '', kcal: b.kcal, minutes: b.minutes, notes: b.notes || '', updatedAt: Date.now() }
+  const i = req.user.items.findIndex((x) => x.id === item.id)
+  if (i >= 0) req.user.items[i] = item; else req.user.items.push(item)
+  save(store); res.status(i >= 0 ? 200 : 201).json(item)
+})
+app.delete('/auth/items/:id', auth, (req, res) => { req.user.items = (req.user.items || []).filter((x) => x.id !== req.params.id); save(store); res.json({ ok: true }) })
 
 // Workout logs — stored per account so they sync across devices.
 app.get('/auth/logs', auth, (req, res) => res.json(req.user.logs || []))
@@ -322,32 +345,34 @@ async function deleteIcuEvent(user, plan) {
   if (!user.icuKey || !plan?.icuEventId) return
   try { await icuFetch(user, `/athlete/${user.icuAthlete || 'i28814'}/events/${plan.icuEventId}`, { method: 'DELETE' }) } catch { /* best effort */ }
 }
+// Shared upsert/delete for workout plans (used by both the coach API and the UI).
+async function upsertPlan(user, body) {
+  const err = validatePlan(body); if (err) return { status: 400, body: { error: err } }
+  const i = user.plans.findIndex((p) => p.id === body.id)
+  const plan = {
+    id: body.id, date: body.date, sport: body.sport, title: body.title,
+    notes: body.notes || '', updatedAt: Date.now(),
+    icuEventId: i >= 0 ? user.plans[i].icuEventId : undefined,
+    ...(body.sport === 'gym'
+      ? { rounds: Number(body.rounds) || 1, exercises: Array.isArray(body.exercises) ? body.exercises : [] }
+      : { ftp: Number(body.ftp) || undefined, segments: Array.isArray(body.segments) ? body.segments : [] }),
+  }
+  if (i >= 0) user.plans[i] = plan; else user.plans.push(plan)
+  save(store)
+  const icu = await pushPlanToIcu(user, plan)
+  return { status: i >= 0 ? 200 : 201, body: { ...plan, icu } }
+}
+async function deletePlanById(user, id) {
+  const plan = (user.plans || []).find((x) => x.id === id)
+  await deleteIcuEvent(user, plan)
+  user.plans = (user.plans || []).filter((x) => x.id !== id); save(store)
+}
 
 // Upsert a planned session by id (idempotent — re-POST to update).
-app.post('/api/plan', apiAuth, async (req, res) => {
-  const err = validatePlan(req.body)
-  if (err) return res.status(400).json({ error: err })
-  const i = req.user.plans.findIndex((p) => p.id === req.body.id)
-  const plan = {
-    id: req.body.id, date: req.body.date, sport: req.body.sport, title: req.body.title,
-    notes: req.body.notes || '', updatedAt: Date.now(),
-    icuEventId: i >= 0 ? req.user.plans[i].icuEventId : undefined, // keep the mirror link on update
-    ...(req.body.sport === 'gym'
-      ? { rounds: Number(req.body.rounds) || 1, exercises: Array.isArray(req.body.exercises) ? req.body.exercises : [] }
-      : { ftp: Number(req.body.ftp) || undefined, segments: Array.isArray(req.body.segments) ? req.body.segments : [] }),
-  }
-  if (i >= 0) req.user.plans[i] = plan; else req.user.plans.push(plan)
-  save(store)
-  const icu = await pushPlanToIcu(req.user, plan) // fan out to intervals (-> Wahoo)
-  res.status(i >= 0 ? 200 : 201).json({ ...plan, icu })
-})
+app.post('/api/plan', apiAuth, async (req, res) => { const r = await upsertPlan(req.user, req.body); res.status(r.status).json(r.body) })
 app.get('/api/plans', apiAuth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
 app.get('/api/plan/:id', apiAuth, (req, res) => { const p = (req.user.plans || []).find((x) => x.id === req.params.id); return p ? res.json(p) : res.status(404).json({ error: 'not found' }) })
-app.delete('/api/plan/:id', apiAuth, async (req, res) => {
-  const plan = (req.user.plans || []).find((x) => x.id === req.params.id)
-  await deleteIcuEvent(req.user, plan) // remove the mirror from intervals too
-  req.user.plans = (req.user.plans || []).filter((x) => x.id !== req.params.id); save(store); res.json({ ok: true })
-})
+app.delete('/api/plan/:id', apiAuth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
 
 // ---- OpenAPI spec + Swagger UI (public docs) -----------------------------
 app.get('/api/openapi.json', (req, res) => res.sendFile(join(__dirname, 'openapi.json')))
