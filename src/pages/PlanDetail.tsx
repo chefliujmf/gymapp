@@ -9,7 +9,8 @@ export default function PlanDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const e = id ? getPlanEvent(id) : undefined
-  const [notes, setNotes] = useState(false)
+  const [open, setOpen] = useState<Set<number>>(new Set())
+  const toggle = (i: number) => setOpen((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n })
 
   if (!e) return <div className="page-head"><Link to="/" className="back">← Today</Link><h1>Plan not found</h1><p className="meta">Open it from Today so it can load.</p></div>
 
@@ -43,21 +44,41 @@ export default function PlanDetail() {
         <>
           <button className="btn" onClick={startGym}>▶ Start workout</button>
           <div className="section-title">Main set</div>
+          <p className="meta" style={{ margin: '-4px 2px 8px' }}>Tap an exercise to preview the demo & cues.</p>
           <div className="stack" style={{ gap: 8 }}>
             {gym.map((r, i) => {
               const demo = matchExercise(r.exercise)
+              const isOpen = open.has(i)
               return (
-                <div key={i} className="ex-row" style={{ alignItems: 'flex-start' }}>
-                  <div className="ex-thumb-sm" style={demo?.image ? { backgroundImage: `url(${demo.image})` } : undefined} />
-                  <div className="ex-row-text" style={{ flex: 1 }}>
-                    <div className="eyebrow" style={{ fontSize: 11 }}>{r.type}</div>
-                    <h4>{r.exercise}</h4>
-                    <div className="meta" style={{ marginTop: 2 }}>
-                      <span><b style={{ color: 'var(--ink,#111)' }}>{r.sets}×{r.reps}</b></span>
-                      {r.rest && <span className="dot">rest {r.rest}</span>}
+                <div key={i} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div className="ex-row" style={{ alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => toggle(i)}>
+                    <div className="ex-thumb-sm" style={demo?.image ? { backgroundImage: `url(${demo.image})` } : undefined}>
+                      {demo?.video && <span className="ex-play-sm">▶</span>}
                     </div>
-                    {r.cue && <div className="meta" style={{ display: 'block', whiteSpace: 'normal', marginTop: 3 }}>{r.cue}</div>}
+                    <div className="ex-row-text" style={{ flex: 1 }}>
+                      <div className="eyebrow" style={{ fontSize: 11 }}>{r.type}</div>
+                      <h4>{r.exercise}</h4>
+                      <div className="meta" style={{ marginTop: 2 }}>
+                        <span><b style={{ color: 'var(--ink,#111)' }}>{r.sets}×{r.reps}</b></span>
+                        {r.rest && <span className="dot">rest {r.rest}</span>}
+                      </div>
+                    </div>
+                    <span style={{ opacity: 0.4, padding: '2px 4px' }}>{isOpen ? '▾' : '›'}</span>
                   </div>
+                  {isOpen && (
+                    <div style={{ padding: '0 12px 12px' }}>
+                      {demo?.video
+                        ? <video className="ex-video-inline" src={demo.video} poster={demo.image} controls autoPlay loop muted playsInline />
+                        : demo?.image && <img className="ex-video-inline" src={demo.image} alt={r.exercise} />}
+                      {r.cue && <p className="meta" style={{ whiteSpace: 'normal', marginTop: 8 }}><b>Coach:</b> {r.cue}</p>}
+                      {(demo?.equipment || demo?.muscle) && (
+                        <div className="chips" style={{ marginTop: 4 }}>
+                          {[demo?.equipment, demo?.muscle, demo?.difficulty].filter(Boolean).map((x) => <span key={x} className="chip">{x}</span>)}
+                        </div>
+                      )}
+                      {demo && <Link to={`/exercises/${demo.id}`} className="see-all" style={{ display: 'inline-block', marginTop: 6 }}>Full exercise →</Link>}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -67,14 +88,8 @@ export default function PlanDetail() {
 
       {isRide && <button className="btn" style={{ marginTop: 14 }} onClick={startRide}>▶ Ride now (indoor)</button>}
 
-      {e.description && (
-        <>
-          <button className="see-all" style={{ background: 'none', border: 'none', cursor: 'pointer', marginTop: 16, padding: 0 }} onClick={() => setNotes((n) => !n)}>
-            {notes ? '▾ Coach notes' : '› Coach notes (fueling, cues, recovery)'}
-          </button>
-          {notes && <pre className="coach-notes">{e.description}</pre>}
-        </>
-      )}
+      {/* The full coach narrative (fueling, recovery, mental focus) stays in
+          intervals.icu — gymapp shows only what you need to execute. */}
     </div>
   )
 }
