@@ -30,6 +30,9 @@ export async function getIcuConfig() {
   return {
     apiKey: await getSetting('icu_api_key'),
     athleteId: (await getSetting('icu_athlete_id')) || DEFAULT_ATHLETE,
+    // When true, the key lives server-side (per-account) and the /icu proxy
+    // injects it — the browser sends no Authorization but is still "connected".
+    serverKey: (await getSetting('icu_server_key')) === '1',
   }
 }
 export async function setIcuConfig(apiKey: string, athleteId?: string) {
@@ -37,13 +40,19 @@ export async function setIcuConfig(apiKey: string, athleteId?: string) {
   if (athleteId) await setSetting('icu_athlete_id', athleteId.trim())
 }
 
+/** Headers for an /icu call. Authorization is added only when a client-side key
+ * exists; otherwise the server-side proxy injects the account's stored key. */
+function icuHeaders(apiKey?: string, extra: Record<string, string> = {}): Record<string, string> {
+  const h: Record<string, string> = { Accept: 'application/json', ...extra }
+  if (apiKey) h.Authorization = 'Basic ' + btoa('API_KEY:' + apiKey)
+  return h
+}
+
 /** Read the athlete's cycling FTP from intervals.icu (source of truth). */
 export async function fetchAthleteFtp(): Promise<number | undefined> {
-  const { apiKey, athleteId } = await getIcuConfig()
-  if (!apiKey) return undefined
-  const res = await fetch(`${ICU}/athlete/${athleteId}`, {
-    headers: { Authorization: 'Basic ' + btoa('API_KEY:' + apiKey), Accept: 'application/json' },
-  })
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return undefined
+  const res = await fetch(`${ICU}/athlete/${athleteId}`, { headers: icuHeaders(apiKey) })
   if (!res.ok) return undefined
   const a = await res.json()
   const ss = (a.sportSettings || []).find((s: { types?: string[] }) => (s.types || []).some((t) => /ride/i.test(t))) || (a.sportSettings || [])[0]
@@ -51,11 +60,9 @@ export async function fetchAthleteFtp(): Promise<number | undefined> {
 }
 
 export async function fetchEvents(oldest: string, newest: string): Promise<IcuEvent[]> {
-  const { apiKey, athleteId } = await getIcuConfig()
-  if (!apiKey) throw new Error('NO_KEY')
-  const res = await fetch(`${ICU}/athlete/${athleteId}/events?oldest=${oldest}&newest=${newest}`, {
-    headers: { Authorization: 'Basic ' + btoa('API_KEY:' + apiKey), Accept: 'application/json' },
-  })
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) throw new Error('NO_KEY')
+  const res = await fetch(`${ICU}/athlete/${athleteId}/events?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey) })
   if (!res.ok) throw new Error(`ICU_${res.status}`)
   return res.json()
 }
@@ -64,11 +71,11 @@ export async function fetchEvents(oldest: string, newest: string): Promise<IcuEv
 
 /** Create a planned event on the intervals.icu calendar. */
 export async function createEvent(ev: Partial<IcuEvent> & { start_date_local: string }): Promise<IcuEvent> {
-  const { apiKey, athleteId } = await getIcuConfig()
-  if (!apiKey) throw new Error('NO_KEY')
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) throw new Error('NO_KEY')
   const res = await fetch(`${ICU}/athlete/${athleteId}/events`, {
     method: 'POST',
-    headers: { Authorization: 'Basic ' + btoa('API_KEY:' + apiKey), 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: icuHeaders(apiKey, { 'Content-Type': 'application/json' }),
     body: JSON.stringify(ev),
   })
   if (!res.ok) throw new Error(`ICU_${res.status}`)

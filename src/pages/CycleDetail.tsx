@@ -14,17 +14,19 @@ export default function CycleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const w = id ? allEnduranceById[id] : undefined
-  if (!w) return <div className="page-head"><Link to="/cycle" className="back">← Ride</Link><h1>Not found</h1></div>
+  const isRun = w?.sport === 'running'
+  const backTo = isRun ? '/run' : '/cycle'
+  if (!w) return <div className="page-head"><Link to={backTo} className="back">← Back</Link><h1>Not found</h1></div>
 
-  async function ride() {
+  async function start() {
     const ftp = Number(await getSetting('ftp')) || 260
     setCurrentRide({ title: w!.name, sport: w!.sport, segments: segmentsFromEndurance(w!), ftp, source: w!.id })
-    navigate('/ride-player')
+    navigate(isRun ? '/run-player' : '/ride-player')
   }
 
   return (
     <div>
-      <Link to="/cycle" className="back">← Ride</Link>
+      <Link to={backTo} className="back">← {isRun ? 'Run' : 'Ride'}</Link>
       <div className="page-head">
         <span className="eyebrow">{sportIcon[w.sport]} {w.sport} · {w.category}</span>
         <h1>{w.name}</h1>
@@ -41,8 +43,8 @@ export default function CycleDetail() {
 
       {w.description && <p className="meta" style={{ marginTop: 12 }}>{w.description}</p>}
 
-      <button className="btn" style={{ marginTop: 10 }} onClick={ride}>▶ Ride now (indoor)</button>
-      <p className="meta" style={{ marginTop: 8 }}>Outdoor rides go to your Wahoo via intervals.icu. "Ride now" is for the indoor trainer.</p>
+      <button className="btn" style={{ marginTop: 10 }} onClick={start}>▶ {isRun ? 'Start run (audio cues)' : 'Ride now (indoor)'}</button>
+      <p className="meta" style={{ marginTop: 8 }}>{isRun ? 'Spoken cues call out each interval & target — eyes up, treadmill or outdoor.' : 'Outdoor rides go to your Wahoo via intervals.icu. "Ride now" is for the indoor trainer.'}</p>
 
       <div className="section-title" style={{ marginTop: 18 }}>Structure</div>
       <div className="stack">

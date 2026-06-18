@@ -433,3 +433,33 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .ble-dev.on { color:var(--text); border-color:var(--accent); background:rgba(52,224,125,.08); }
 .ble-dev b { display:block; font-size:15px; }
 .ble-dev small { opacity:.7; }
+
+/* ---- auth (login screen + account) ------------------------------------- */
+.auth-wrap, .auth-splash {
+  min-height: 100dvh; display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: var(--bg);
+}
+.auth-card {
+  width: 100%; max-width: 360px; background: var(--card, #1b1e26);
+  border: 1px solid var(--border, #2a2e38); border-radius: 18px; padding: 28px 22px;
+  box-shadow: var(--card-shadow, 0 10px 40px rgba(0,0,0,.4));
+}
+.auth-logo {
+  font-weight: 800; font-size: 26px; letter-spacing: -.5px; text-align: center;
+  margin-bottom: 20px; color: var(--accent, #34e07d);
+  text-shadow: 0 0 24px var(--glow, rgba(52,224,125,.35));
+}
+.auth-form { display: flex; flex-direction: column; gap: 10px; }
+.auth-form .btn { margin-top: 4px; }
+.auth-passkey { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.auth-link {
+  background: none; border: none; color: var(--muted, #9aa3b2); font-size: 13px;
+  text-align: center; cursor: pointer; padding: 6px; margin-top: 2px;
+}
+.auth-note { color: var(--accent, #34e07d); font-size: 13px; text-align: center; margin-top: 12px; }
+.auth-err { color: var(--danger, #ff6b6b); font-size: 13px; text-align: center; margin-top: 12px; }
+.icon-btn {
+  background: none; border: none; color: var(--muted, #9aa3b2); cursor: pointer;
+  padding: 6px; border-radius: 8px; display: inline-flex; align-items: center;
+}
+.icon-btn:hover { color: var(--danger, #ff6b6b); background: rgba(255,255,255,.04); }

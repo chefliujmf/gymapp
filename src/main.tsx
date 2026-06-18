@@ -21,12 +21,15 @@ import RecipeDetail from './pages/RecipeDetail'
 import Mind from './pages/Mind'
 import MindDetail from './pages/MindDetail'
 import Cycle from './pages/Cycle'
+import Run from './pages/Run'
 import CycleDetail from './pages/CycleDetail'
 import RidePlayer from './pages/RidePlayer'
+import RunPlayer from './pages/RunPlayer'
 import Profile from './pages/Profile'
 import Progress from './pages/Progress'
 import PlanDetail from './pages/PlanDetail'
 import { BleProvider } from './BleContext'
+import { AuthProvider, Gate } from './auth/AuthContext'
 
 const router = createBrowserRouter([
   {
@@ -54,8 +57,10 @@ const router = createBrowserRouter([
       { path: 'mind', element: <Mind /> },
       { path: 'mind/:id', element: <MindDetail /> },
       { path: 'cycle', element: <Cycle /> },
+      { path: 'run', element: <Run /> },
       { path: 'cycle/:id', element: <CycleDetail /> },
       { path: 'ride-player', element: <RidePlayer /> },
+      { path: 'run-player', element: <RunPlayer /> },
       { path: 'profile', element: <Profile /> },
       { path: 'progress', element: <Progress /> },
     ],
@@ -73,9 +78,13 @@ async function boot() {
   }
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <BleProvider>
-        <RouterProvider router={router} />
-      </BleProvider>
+      <AuthProvider>
+        <Gate>
+          <BleProvider>
+            <RouterProvider router={router} />
+          </BleProvider>
+        </Gate>
+      </AuthProvider>
     </StrictMode>,
   )
 }

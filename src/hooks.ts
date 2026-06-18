@@ -50,6 +50,19 @@ export function useNow(intervalMs = 1000): number {
   return now
 }
 
+/** Spoken cues via the Web Speech API — for hands-free running guidance. */
+export function useSpeech() {
+  return useCallback((text: string) => {
+    try {
+      if (!('speechSynthesis' in window)) return
+      const u = new SpeechSynthesisUtterance(text)
+      u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0
+      window.speechSynthesis.cancel()
+      window.speechSynthesis.speak(u)
+    } catch { /* no TTS */ }
+  }, [])
+}
+
 /**
  * Optional screen wake lock — keeps the display on while a workout is active,
  * for users who prefer not to lock between sets. Re-acquires on visibility.

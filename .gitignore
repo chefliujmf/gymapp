@@ -22,3 +22,7 @@ downloaded_pages/
 
 # generated catalog (derived from personal scraped content)
 src/data/generated/
+server/node_modules
+server/data
+*.env
+auth.env
