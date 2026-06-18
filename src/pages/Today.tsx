@@ -1,13 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../db'
+import { db, getSetting } from '../db'
 import { WeekStrip } from '../ui'
 import { fetchEvents, eventObjective, sportOf, type IcuEvent } from '../intervals'
 import { setPlanEvents, fetchGymPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
+import { recipes, mindSessions } from '../data/catalog'
+import type { Recipe } from '../types'
 import { localISO } from '../date'
 import { Bike, Dumbbell, Footprints, Target, Salad, Brain } from 'lucide-react'
+
+// Stable daily pick: same item all day, rotates with the date (+salt for variety).
+function pickByDate<T>(arr: T[], dateStr: string, salt = 0): T | undefined {
+  if (!arr.length) return undefined
+  let h = salt >>> 0
+  for (let i = 0; i < dateStr.length; i++) h = (h * 31 + dateStr.charCodeAt(i)) >>> 0
+  return arr[h % arr.length]
+}
 
 const planIcon = (s: CoachPlan['sport']) => (s === 'ride' ? <Bike strokeWidth={1.75} /> : s === 'run' ? <Footprints strokeWidth={1.75} /> : <Dumbbell strokeWidth={1.75} />)
 
@@ -60,6 +70,7 @@ function PlanCard({ e, showDate }: { e: IcuEvent; showDate?: boolean }) {
 export default function Today() {
   const [selDay, setSelDay] = useState(todayISO())
   const todaysLogs = useLiveQuery(() => db.logs.where('date').equals(todayISO()).toArray())
+  const diet = useLiveQuery(() => getSetting('diet'))
   const [events, setEvents] = useState<IcuEvent[] | null>(null)
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [err, setErr] = useState<string>()
@@ -84,6 +95,18 @@ export default function Today() {
   const dayPlans = plans.filter((p) => p.date === selDay && !linkedIds.has(p.id))
   const upcoming = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) > selDay).sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
   const upcomingPlans = plans.filter((p) => p.date > selDay && !linkedIds.has(p.id)).sort((a, b) => a.date.localeCompare(b.date))
+
+  // Daily fuel (diet-aware) + a mind reset for the selected day.
+  const dietOk = (r: Recipe) => {
+    const p = diet ?? 'vegetarian'
+    if (p === 'no preference') return true
+    if (p === 'vegan') return !!r.diet?.includes('vegan')
+    return !!(r.diet?.includes('vegetarian') || r.diet?.includes('vegan'))
+  }
+  const meals = (['breakfast', 'lunch', 'dinner'] as const)
+    .map((cat, i) => pickByDate(recipes.filter((r) => r.category === cat && dietOk(r)), selDay, i + 1))
+    .filter(Boolean) as Recipe[]
+  const meditation = pickByDate(mindSessions, selDay, 7)
 
   return (
     <div>
@@ -123,6 +146,44 @@ export default function Today() {
           <div className="stack">
             {upcoming.map((e) => <PlanCard key={e.id} e={e} showDate />)}
             {upcomingPlans.map((p) => <CoachPlanCard key={p.id} p={p} onRun={runPlan} showDate fmtDay={fmtDay} />)}
+          </div>
+        </>
+      )}
+
+      {meals.length > 0 && (
+        <>
+          <div className="section-title">Fuel{selDay !== todayISO() ? ` · ${fmtDay(selDay)}` : ''}</div>
+          <div className="stack">
+            {meals.map((r) => (
+              <Link key={r.id} to={`/recipes/${r.id}`} className="card">
+                <div className="card-row">
+                  <div className="thumb">{r.thumbnail ? <img src={r.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : <Salad strokeWidth={1.75} />}</div>
+                  <div className="card-body">
+                    <span className="eyebrow">{r.category}</span>
+                    <h3>{r.title}</h3>
+                    <div className="meta"><span>{r.minutes} min</span><span className="dot">{r.kcal} kcal</span><span className="dot">{r.protein}g protein</span></div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
+      {meditation && (
+        <>
+          <div className="section-title">Reset your mind</div>
+          <div className="stack">
+            <Link to={`/mind/${meditation.id}`} className="card">
+              <div className="card-row">
+                <div className="thumb"><Brain strokeWidth={1.75} /></div>
+                <div className="card-body">
+                  <span className="eyebrow">{meditation.kind}</span>
+                  <h3>{meditation.title}</h3>
+                  <div className="meta"><span>{meditation.duration} min</span>{meditation.coach ? <span className="dot">{meditation.coach}</span> : null}</div>
+                </div>
+              </div>
+            </Link>
           </div>
         </>
       )}
