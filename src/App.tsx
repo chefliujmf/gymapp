@@ -1,9 +1,10 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Home, Dumbbell, Bike, Footprints, Salad, Brain } from 'lucide-react'
+import { Home, CalendarDays, Dumbbell, Bike, Footprints, Salad, Brain } from 'lucide-react'
 import AccountMenu from './auth/AccountMenu'
 
 const tabs = [
   { to: '/', label: 'Today', icon: <Home strokeWidth={1.75} />, end: true },
+  { to: '/plan', label: 'Plan', icon: <CalendarDays strokeWidth={1.75} />, end: false },
   { to: '/exercises', label: 'Train', icon: <Dumbbell strokeWidth={1.75} />, end: false },
   { to: '/cycle', label: 'Ride', icon: <Bike strokeWidth={1.75} />, end: false },
   { to: '/run', label: 'Run', icon: <Footprints strokeWidth={1.75} />, end: false },

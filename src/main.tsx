@@ -22,6 +22,7 @@ import Mind from './pages/Mind'
 import MindDetail from './pages/MindDetail'
 import Cycle from './pages/Cycle'
 import Run from './pages/Run'
+import Calendar from './pages/Calendar'
 import CycleDetail from './pages/CycleDetail'
 import RidePlayer from './pages/RidePlayer'
 import RunPlayer from './pages/RunPlayer'
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <Today /> },
+      { path: 'plan', element: <Calendar /> },
       { path: 'train', element: <Train /> },
       { path: 'exercises', element: <Exercises /> },
       { path: 'exercises/:id', element: <ExerciseDetail /> },
