@@ -27,3 +27,4 @@ server/data
 *.env
 auth.env
 server/dev-data
+media-opt

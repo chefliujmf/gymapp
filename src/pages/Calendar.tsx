@@ -11,7 +11,7 @@ import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, Trash2, 
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-type View = 'day' | 'week' | 'month' | 'year' | 'schedule'
+type View = 'day' | 'week' | 'month' | 'schedule'
 
 function monthGrid(y: number, m: number): string[] {
   const startOffset = (new Date(y, m, 1).getDay() + 6) % 7
@@ -50,7 +50,6 @@ export default function Calendar() {
   const monthCells = useMemo(() => monthGrid(cur.y, cur.m), [cur])
   const range = useMemo<[string, string]>(() => {
     if (view === 'schedule') return [todayISO, addDays(todayISO, 120)]
-    if (view === 'year') return [`${cur.y}-01-01`, `${cur.y}-12-31`]
     if (view === 'day') return [sel, sel]
     if (view === 'week') { const w = weekDays(sel); return [w[0], w[6]] }
     return [monthCells[0], monthCells[41]]
@@ -120,12 +119,11 @@ export default function Calendar() {
   }
 
   // ---- header: view switcher + contextual nav -----------------------------
-  const VIEWS: [View, string][] = [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['year', 'Year'], ['schedule', 'Schedule']]
-  const title = view === 'month' ? `${MONTHS[cur.m]} ${cur.y}` : view === 'year' ? `${cur.y}` : view === 'day' ? fmtFull(sel) : view === 'week' ? `Week of ${new Date(weekDays(sel)[0] + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Schedule'
+  const VIEWS: [View, string][] = [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['schedule', 'Schedule']]
+  const title = view === 'month' ? `${MONTHS[cur.m]} ${cur.y}` : view === 'day' ? fmtFull(sel) : view === 'week' ? `Week of ${new Date(weekDays(sel)[0] + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Schedule'
   const nav = (dir: -1 | 1) => {
     if (view === 'day') setSel((s) => addDays(s, dir))
     else if (view === 'week') setSel((s) => addDays(s, dir * 7))
-    else if (view === 'year') setCur((c) => ({ ...c, y: c.y + dir }))
     else setCur((c) => ({ y: c.m === (dir === 1 ? 11 : 0) ? c.y + dir : c.y, m: (c.m + 12 + dir) % 12 }))
   }
   const goToday = () => { const t = new Date(); setSel(localISO()); setCur({ y: t.getFullYear(), m: t.getMonth() }) }
@@ -205,27 +203,6 @@ export default function Calendar() {
             {entriesFor(sel).map((e, i) => <EntryCard key={i} e={e} />)}
           </div>
         </>
-      )}
-
-      {/* ---- YEAR ---- (12 mini months, tap to open) */}
-      {view === 'year' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          {MONTHS.map((mn, m) => {
-            const cells = monthGrid(cur.y, m)
-            return (
-              <button key={m} className="card" style={{ padding: 8, textAlign: 'left' }} onClick={() => { setCur({ y: cur.y, m }); changeView('month') }}>
-                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{mn.slice(0, 3)}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
-                  {cells.map((day) => {
-                    const inM = Number(day.slice(5, 7)) === m + 1
-                    const has = inM && entriesFor(day).length > 0
-                    return <span key={day} style={{ fontSize: 8, textAlign: 'center', color: !inM ? 'transparent' : day === todayISO ? '#2fb968' : has ? '#fff' : '#55555f', fontWeight: has || day === todayISO ? 800 : 400 }}>{Number(day.slice(8, 10))}</span>
-                  })}
-                </div>
-              </button>
-            )
-          })}
-        </div>
       )}
 
       {/* ---- SCHEDULE ---- (agenda: each day with entries, today forward) */}
