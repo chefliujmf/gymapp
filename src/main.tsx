@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import './styles.css'
 import App from './App'
 import Today from './pages/Today'
+import Admin from './pages/Admin'
 import Train from './pages/Train'
 import Workouts from './pages/Workouts'
 import WorkoutDetail from './pages/WorkoutDetail'
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
       { path: 'workouts/:id', element: <WorkoutDetail /> },
       { path: 'workouts/:id/play', element: <GymPlayer /> },
       { path: 'build', element: <WorkoutBuilder /> },
+      { path: 'admin', element: <Admin /> },
       { path: 'template/:id/play', element: <GymPlayer /> },
       { path: 'gym-session/play', element: <GymPlayer /> },
       { path: 'plan/:id', element: <PlanDetail /> },

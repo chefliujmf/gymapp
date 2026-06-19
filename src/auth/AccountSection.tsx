@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Fingerprint, Trash2, Camera, Copy, RefreshCw } from 'lucide-react'
-import { authApi, type User } from './api'
+import { authApi } from './api'
 import { useAuth } from './AuthContext'
 
 /** Center-crop + resize an image file to a square data URL. */
@@ -22,7 +22,7 @@ function resizeImage(file: File, size: number): Promise<string> {
 }
 
 export default function AccountSection() {
-  const { user, apply, refresh } = useAuth()
+  const { user, apply } = useAuth()
   const fileRef = useRef<HTMLInputElement>(null)
   if (!user) return null
   const passkeySupported = typeof window !== 'undefined' && !!window.PublicKeyCredential
@@ -127,48 +127,6 @@ export default function AccountSection() {
         <button className="btn btn--ghost" onClick={rotate} style={{ width: 'auto', padding: '8px 14px' }}><RefreshCw size={16} /> Rotate</button>
       </div>
       {tkMsg && <p className="meta" style={{ marginTop: 8 }}>{tkMsg}</p>}
-
-      {user.role === 'admin' && <AdminUsers onChange={refresh} selfId={user.id} />}
-    </>
-  )
-}
-
-function AdminUsers({ onChange, selfId }: { onChange: () => void; selfId: string }) {
-  const [users, setUsers] = useState<User[]>([])
-  const [u, setU] = useState(''); const [em, setEm] = useState(''); const [role, setRole] = useState<'user' | 'admin'>('user')
-  const [msg, setMsg] = useState('')
-  const list = async () => { try { setUsers(await authApi.listUsers()) } catch { /* not admin / dev */ } }
-  useEffect(() => { list() }, [])
-
-  async function add() {
-    setMsg('')
-    try { const r = await authApi.addUser(u, em, role); setU(''); setEm(''); setMsg(`✓ Added ${r.user.username}. Temp password: ${r.tempPassword}${r.emailed ? ' (emailed)' : ''}`); list(); onChange() }
-    catch (e) { setMsg('✗ ' + (e as Error).message) }
-  }
-  async function reset(id: string) { try { const r = await authApi.resetUser(id); setMsg(`Temp password: ${r.tempPassword}${r.emailed ? ' (emailed)' : ''}`) } catch (e) { setMsg('✗ ' + (e as Error).message) } }
-  async function del(id: string) { if (!confirm('Remove this user?')) return; await authApi.deleteUser(id); list() }
-
-  return (
-    <>
-      <div className="section-title">Admin · Users</div>
-      <div className="stack">
-        {users.map((x) => (
-          <div key={x.id} className="card card-row" style={{ padding: '10px 14px', justifyContent: 'space-between' }}>
-            <div><strong>{x.username}</strong> <span className="meta">{x.email} · {x.role}</span></div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button className="btn btn--ghost" style={{ width: 'auto', padding: '6px 10px' }} onClick={() => reset(x.id)}>Reset</button>
-              {x.id !== selfId && <button className="icon-btn" onClick={() => del(x.id)} aria-label="Remove"><Trash2 size={16} /></button>}
-            </div>
-          </div>
-        ))}
-      </div>
-      <input className="search" placeholder="New username" value={u} autoCapitalize="none" onChange={(e) => setU(e.target.value)} />
-      <input className="search" placeholder="Email" value={em} autoCapitalize="none" onChange={(e) => setEm(e.target.value)} />
-      <div className="chips">
-        {(['user', 'admin'] as const).map((r) => <button key={r} className={'chip' + (role === r ? ' chip--active' : '')} onClick={() => setRole(r)}>{r}</button>)}
-      </div>
-      <button className="btn" onClick={add} disabled={!u || !em}>Add user</button>
-      {msg && <p className="meta" style={{ marginTop: 8, wordBreak: 'break-all' }}>{msg}</p>}
     </>
   )
 }

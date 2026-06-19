@@ -1,0 +1,72 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Trash2 } from 'lucide-react'
+import { authApi, type User } from '../auth/api'
+import { useAuth } from '../auth/AuthContext'
+
+// Simple, admin-only user management. Mobile-first cards + role badges.
+export default function Admin() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [users, setUsers] = useState<User[]>([])
+  const [u, setU] = useState('')
+  const [em, setEm] = useState('')
+  const [role, setRole] = useState<'user' | 'admin'>('user')
+  const [msg, setMsg] = useState('')
+
+  const list = async () => { try { setUsers(await authApi.listUsers()) } catch { setUsers([]) } }
+  useEffect(() => { list() }, [])
+
+  if (user && user.role !== 'admin') return <div className="empty"><div className="big">🔒</div>Admins only.</div>
+
+  async function add() {
+    setMsg('')
+    try { const r = await authApi.addUser(u, em, role); setU(''); setEm(''); setMsg(`✓ Added ${r.user.username}. Temp password: ${r.tempPassword}${r.emailed ? ' (emailed)' : ''}`); list() }
+    catch (e) { setMsg('✗ ' + (e as Error).message) }
+  }
+  async function reset(id: string) {
+    if (!confirm('Reset this user’s password to a new temporary one?')) return
+    try { const r = await authApi.resetUser(id); setMsg(`Temp password: ${r.tempPassword}${r.emailed ? ' (emailed)' : ''}`) }
+    catch (e) { setMsg('✗ ' + (e as Error).message) }
+  }
+  async function del(id: string) { if (!confirm('Remove this user? This cannot be undone.')) return; await authApi.deleteUser(id); list() }
+
+  const badge = (r: string) => ({ background: r === 'admin' ? '#b98cff22' : '#34e07d22', color: r === 'admin' ? '#b98cff' : '#34e07d', padding: '3px 9px', borderRadius: 999, fontSize: 12, fontWeight: 700 })
+
+  return (
+    <div>
+      <button onClick={() => navigate(-1)} aria-label="Back" style={{ background: 'none', border: 0, color: 'var(--text-dim, #8a8a99)', fontSize: 15, padding: '10px 0', cursor: 'pointer' }}>‹ Back</button>
+      <div className="page-head">
+        <h1>Admin</h1>
+        <p>Manage who can access Platyplus</p>
+      </div>
+
+      <div className="section-title">Users · {users.length}</div>
+      <div className="stack">
+        {users.map((x) => (
+          <div key={x.id} className="card card-row" style={{ padding: '12px 14px', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ minWidth: 0 }}>
+              <strong>{x.username}</strong>
+              <div className="meta" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.email}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+              <span style={badge(x.role)}>{x.role}</span>
+              <button className="btn btn--ghost" style={{ width: 'auto', padding: '6px 10px' }} onClick={() => reset(x.id)}>Reset</button>
+              {x.id !== user?.id && <button className="icon-btn" onClick={() => del(x.id)} aria-label="Remove"><Trash2 size={16} /></button>}
+            </div>
+          </div>
+        ))}
+        {!users.length && <p className="meta">No users loaded (sign in as an admin).</p>}
+      </div>
+
+      <div className="section-title">Add user</div>
+      <input className="search" placeholder="Username" value={u} autoCapitalize="none" onChange={(e) => setU(e.target.value)} />
+      <input className="search" placeholder="Email" value={em} autoCapitalize="none" onChange={(e) => setEm(e.target.value)} />
+      <div className="chips">
+        {(['user', 'admin'] as const).map((r) => <button key={r} className={'chip' + (role === r ? ' chip--active' : '')} onClick={() => setRole(r)}>{r}</button>)}
+      </div>
+      <button className="btn" onClick={add} disabled={!u || !em}>Add user</button>
+      {msg && <p className="meta" style={{ marginTop: 8, wordBreak: 'break-all' }}>{msg}</p>}
+    </div>
+  )
+}
