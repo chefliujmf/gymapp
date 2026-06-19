@@ -58,13 +58,13 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/icu/, ''),
       },
-      // Local dev: serve real media (images/video/audio) from PROD, read-only.
-      // Lets `npm run dev` show the full UI with real images without a local copy.
+      // Media (images/video/audio): real files from PROD, read-only.
       '/media': { target: 'https://platyplus.duckdns.org', changeOrigin: true, secure: true },
-      // Read prod catalog-adjacent auth endpoints if signed in; writes are NOT
-      // recommended in dev (they'd hit prod). Use the XPS staging stack for
-      // authed write flows. (Login may not persist over http localhost.)
-      '/auth': { target: 'https://platyplus.duckdns.org', changeOrigin: true, secure: true },
+      // API + auth: the LOCAL dev backend (npm run dev:api) — isolated dev data,
+      // RP_ID=localhost so passkeys work, never touches prod. Start both with
+      // `npm run dev:full`.
+      '/auth': { target: 'http://localhost:8088', changeOrigin: true },
+      '/api': { target: 'http://localhost:8088', changeOrigin: true },
     },
   },
 })

@@ -2,18 +2,21 @@
 
 Iterate on the UI fast, without deploying to prod.
 
-## Run
+## Run (full local stack — frontend + its own API, no prod writes)
 ```bash
-npm install      # first time
-npm run dev      # http://localhost:5173 (Vite HMR)
+npm install            # first time (also: cd server && npm install)
+npm run dev:full       # backend (:8088, dev data) + Vite (:5173) together
+# open http://localhost:5173  — log in with  jmfiset / devpass
 ```
-- Full UI loads with the bundled catalog.
-- **Media (images/video/audio) is proxied read-only from prod** (`vite.config.ts`)
-  — real images show; nothing is ever written to prod.
-- `/icu` and `/auth` are also proxied to prod. ⚠️ Authed **write** flows (saving
-  calendar items/plans) would hit your **prod** account — don't test writes here;
-  that's what the planned XPS staging stack is for. Login may not persist over
-  http localhost (prod sets a Secure cookie); you don't need to be logged in for UI work.
+- **Frontend** (Vite HMR) at `:5173`.
+- **API + auth** run locally (`npm run dev:api`, `scripts/dev-api.sh`) against an
+  **isolated dev store** (`server/dev-data/store.json`, gitignored) — **never
+  touches prod**. `RP_ID=localhost` so **passkeys work** on localhost.
+- **Media** (images/video/audio) is proxied **read-only from prod** — real images
+  show without a local copy.
+- `/icu` (intervals) is proxied straight to intervals.icu; the dev account has no
+  key, so Today shows the "connect" prompt — fine for UI work.
+- Frontend-only (no API needed)? `npm run dev`.
 
 ## Promote to prod (when validated)
 ```bash

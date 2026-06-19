@@ -26,3 +26,4 @@ server/node_modules
 server/data
 *.env
 auth.env
+server/dev-data

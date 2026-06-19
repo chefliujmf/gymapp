@@ -6,6 +6,8 @@
   "description": "Personal self-hosted fitness app (Centr-style) — installable PWA",
   "scripts": {
     "dev": "vite",
+    "dev:api": "bash scripts/dev-api.sh",
+    "dev:full": "concurrently -k -n api,web -c green,cyan \"npm:dev:api\" \"npm:dev\"",
     "build": "node scripts/build-catalog.mjs && tsc -b && vite build",
     "preview": "vite preview",
     "seed:centr": "node scripts/seed-from-centr.mjs",
@@ -25,6 +27,7 @@
     "@types/react-dom": "^19.0.2",
     "@types/web-bluetooth": "^0.0.21",
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^10.0.3",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
     "vite-plugin-pwa": "^0.21.1"
