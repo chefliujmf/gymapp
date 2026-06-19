@@ -38,7 +38,14 @@ is the deploy. **If GitHub-triggered CD is ever wanted**, the only sound shape i
 builds `dist/` and uploads it as a release artifact, and a self-hosted runner on the XPS
 downloads + deploys that prebuilt artifact (no rebuild). Not built — flagged in the backlog.
 
-**Promote dev → prod:** merge `dev` → `main` (CI gates it), then `npm run deploy`.
+**Promote dev → prod** (main is branch-protected — no direct pushes):
+1. Open a PR `dev` → `main` (`gh pr create -B main -H dev` or the GitHub UI).
+2. CI (`build`) must go green — required before merge.
+3. Merge the PR (self-merge is fine; 0 approvals required).
+4. `npm run deploy` from the Mac to ship `dist` to the XPS.
+
+*Escape hatch:* protection (incl. admin enforcement) can be toggled off in
+GitHub → Settings → Branches if you're ever truly stuck.
 
 ## ⭐ Your setup: NPM (HA Green) + isolated container on the XPS
 
