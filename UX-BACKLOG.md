@@ -88,6 +88,10 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
   These get injected as the assistant's per-user context/system material, mirroring how
   `cyclingcoach` structures a coached athlete. Store per-account, server-side; the `gymdata`
   tools + this profile together define that user's assistant.
+  - **Brain repos already exist**: JM → `chefliujmf/cyclingcoach`; Bert →
+    `chefliujmf/bertfitnesscoach` (scaffolded 2026-06-19 from cyclingcoach, see its
+    `ADAPT.md` — still needs profile/sport/woman-specific adaptation). The chatbot's
+    per-user context should source from the matching brain repo.
 - Caveat to honor: subscription = personal use + one shared rate-limit pool (5h windows).
   Fine at 2 users; do NOT open to real users on the subscription — that's the API trigger.
 - **If sold → BYO-AI (multi-tenant)**: let each new user connect **their own** AI in
