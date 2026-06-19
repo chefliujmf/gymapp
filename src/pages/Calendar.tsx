@@ -7,7 +7,7 @@ import { calApi, newId, type CalItem } from '../calendar'
 import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
 import { listTemplates, getSetting, type WorkoutTemplate } from '../db'
 import { localISO } from '../date'
-import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, Trash2, Repeat, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -41,7 +41,7 @@ export default function Calendar() {
   const [items, setItems] = useState<CalItem[]>([])
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const [ftp, setFtp] = useState(260)
-  const [adding, setAdding] = useState(false)
+  const [sheet, setSheet] = useState<{ date: string; replacing?: Entry } | null>(null)
   const todayISO = localISO()
 
   const changeView = (v: View) => { setView(v); try { localStorage.setItem('calView', v) } catch { /* ignore */ } }
@@ -94,7 +94,7 @@ export default function Calendar() {
         : e.item.type === 'meal' ? `${e.item.mealType || 'meal'}${e.item.kcal ? ` · ${e.item.kcal} kcal` : ''}` : e.item.type === 'mind' ? `${e.item.minutes || ''} min` : 'note'
 
   // Entry card (used by day/week/schedule list rendering).
-  const EntryCard = ({ e }: { e: Entry }) => {
+  const EntryCard = ({ e, day }: { e: Entry; day: string }) => {
     const kind = kindOf(e)
     return (
       <div className="card cal-entry">
@@ -102,7 +102,12 @@ export default function Calendar() {
           <span className="cal-chip" style={{ background: colorFor(kind) + '22', color: colorFor(kind) }}>{iconFor(kind)}</span>
           <span className="card-body"><h3>{titleOf(e)}</h3>{e.k === 'item' && e.item.type === 'note' && e.item.notes ? <div className="meta" style={{ whiteSpace: 'normal' }}>{e.item.notes}</div> : <div className="meta">{subOf(e)}</div>}</span>
         </button>
-        {e.k !== 'event' && <button className="icon-btn" onClick={() => delEntry(e)} aria-label="Remove"><Trash2 size={16} /></button>}
+        {e.k !== 'event' && (
+          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <button className="icon-btn" onClick={() => setSheet({ date: day, replacing: e })} aria-label="Substitute" title="Substitute"><Repeat size={16} /></button>
+            <button className="icon-btn" onClick={() => delEntry(e)} aria-label="Remove" title="Remove"><Trash2 size={16} /></button>
+          </div>
+        )}
       </div>
     )
   }
@@ -163,11 +168,11 @@ export default function Calendar() {
           <div className="cal-month-detail">
             <div className="cal-day-head">
               <div className="section-title" style={{ margin: 0 }}>{fmtFull(sel)}</div>
-              <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setAdding(true)}><Plus size={16} /> Add</button>
+              <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setSheet({ date: sel })}><Plus size={16} /> Add</button>
             </div>
             <div className="stack">
               {entriesFor(sel).length === 0 && <p className="meta">Nothing planned. Tap “Add”.</p>}
-              {entriesFor(sel).map((e, i) => <EntryCard key={i} e={e} />)}
+              {entriesFor(sel).map((e, i) => <EntryCard key={i} e={e} day={sel} />)}
             </div>
           </div>
         </div>
@@ -182,9 +187,9 @@ export default function Calendar() {
               <div key={day} className="card" style={{ padding: 12, border: day === todayISO ? '1px solid #2fb968' : undefined }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: es.length ? 8 : 0 }}>
                   <strong style={{ color: day === todayISO ? '#2fb968' : undefined }}>{fmtShort(day)}</strong>
-                  <button className="icon-btn" onClick={() => { setSel(day); setAdding(true) }} aria-label="Add"><Plus size={16} /></button>
+                  <button className="icon-btn" onClick={() => setSheet({ date: day })} aria-label="Add"><Plus size={16} /></button>
                 </div>
-                <div className="stack" style={{ gap: 6 }}>{es.map((e, i) => <EntryCard key={i} e={e} />)}</div>
+                <div className="stack" style={{ gap: 6 }}>{es.map((e, i) => <EntryCard key={i} e={e} day={day} />)}</div>
               </div>
             )
           })}
@@ -196,11 +201,11 @@ export default function Calendar() {
         <>
           <div className="cal-day-head">
             <div className="section-title" style={{ margin: 0 }}>{entriesFor(sel).length} planned</div>
-            <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setAdding(true)}><Plus size={16} /> Add</button>
+            <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setSheet({ date: sel })}><Plus size={16} /> Add</button>
           </div>
           <div className="stack">
             {entriesFor(sel).length === 0 && <p className="meta">Nothing planned for {fmtShort(sel)}. Tap “Add”.</p>}
-            {entriesFor(sel).map((e, i) => <EntryCard key={i} e={e} />)}
+            {entriesFor(sel).map((e, i) => <EntryCard key={i} e={e} day={sel} />)}
           </div>
         </>
       )}
@@ -215,25 +220,35 @@ export default function Calendar() {
             return days.map((day) => (
               <div key={day}>
                 <div className="section-title" style={{ margin: '0 0 6px', color: day === todayISO ? '#2fb968' : undefined }}>{day === todayISO ? 'Today · ' : ''}{fmtFull(day)}</div>
-                <div className="stack" style={{ gap: 6 }}>{entriesFor(day).map((e, i) => <EntryCard key={i} e={e} />)}</div>
+                <div className="stack" style={{ gap: 6 }}>{entriesFor(day).map((e, i) => <EntryCard key={i} e={e} day={day} />)}</div>
               </div>
             ))
           })()}
         </div>
       )}
 
-      {adding && <AddSheet date={sel} ftp={ftp} templates={templates} onClose={() => setAdding(false)} onAdded={() => { setAdding(false); reload() }} />}
+      {sheet && <AddSheet date={sheet.date} replacing={sheet.replacing} ftp={ftp} templates={templates} onClose={() => setSheet(null)} onAdd={reload} onReplaced={() => { if (sheet.replacing) delEntry(sheet.replacing); setSheet(null) }} />}
     </div>
   )
 }
 
-function AddSheet({ date, ftp, templates, onClose, onAdded }: { date: string; ftp: number; templates: WorkoutTemplate[]; onClose: () => void; onAdded: () => void }) {
+function AddSheet({ date, replacing, ftp, templates, onClose, onAdd, onReplaced }: { date: string; replacing?: Entry; ftp: number; templates: WorkoutTemplate[]; onClose: () => void; onAdd: () => void; onReplaced: () => void }) {
   const [type, setType] = useState<'' | 'ride' | 'run' | 'gym' | 'meal' | 'mind' | 'note'>('')
   const [q, setQ] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  const [count, setCount] = useState(0)
 
-  async function add(fn: () => Promise<unknown>) { setBusy(true); try { await fn(); onAdded() } catch { setBusy(false) } }
+  // Replace mode adds one then swaps out the old entry. Otherwise stay open so
+  // you can quick-add several to the same day; "Done" closes.
+  async function add(fn: () => Promise<unknown>) {
+    setBusy(true)
+    try {
+      await fn()
+      if (replacing) { onReplaced(); return }
+      setCount((c) => c + 1); setNote(''); onAdd()
+    } catch { /* keep the sheet open */ } finally { setBusy(false) }
+  }
 
   const rideRun = (sport: 'ride' | 'run') => endurance.filter((w) => w.sport === (sport === 'ride' ? 'cycling' : 'running') && (!q || w.name.toLowerCase().includes(q.toLowerCase()))).slice(0, 40)
   const meals = recipes.filter((r) => !q || r.title.toLowerCase().includes(q.toLowerCase())).slice(0, 40)
@@ -242,7 +257,7 @@ function AddSheet({ date, ftp, templates, onClose, onAdded }: { date: string; ft
   return (
     <div className="sheet-overlay" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head"><strong>Add to {new Date(date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</strong><button className="icon-btn" onClick={onClose}><X size={18} /></button></div>
+        <div className="sheet-head"><strong>{replacing ? 'Substitute on' : 'Add to'} {new Date(date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{count > 0 ? ` · ${count} added` : ''}</strong><button className="btn" style={{ width: 'auto', padding: '6px 14px' }} onClick={onClose}>{count > 0 ? 'Done' : <X size={18} />}</button></div>
 
         {!type && (
           <div className="sheet-types">

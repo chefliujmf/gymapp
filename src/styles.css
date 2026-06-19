@@ -553,13 +553,9 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .cal-viewbtn--on { background: var(--bg-elev2, #0f0f12); color: var(--text, #fff); }
 .cal-today { border: 0; background: none; color: var(--accent, #2fb968); font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 8px; }
 
-/* Month: calendar + day-detail side-by-side on wide screens; stacked on phones. */
+/* Month: single-column, mobile-first everywhere (grid, then the day's detail). */
 .cal-month-layout { display: flex; flex-direction: column; }
 .cal-month-detail .cal-day-head { margin-top: 8px; }
-@media (min-width: 760px) {
-  .cal-month-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; align-items: start; }
-  .cal-month-detail { position: sticky; top: 8px; }
-}
 .cal-entry { display: flex; align-items: center; padding: 10px 12px; }
 .cal-entry__main { display: flex; align-items: center; gap: 12px; flex: 1; background: none; border: none; text-align: left; cursor: pointer; color: inherit; padding: 0; }
 .cal-chip { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
