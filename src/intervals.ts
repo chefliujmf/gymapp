@@ -84,6 +84,18 @@ export async function createEvent(ev: Partial<IcuEvent> & { start_date_local: st
   return res.json()
 }
 
+/** Delete a planned event from the intervals.icu calendar (the coach's source
+ * of truth). Used by the calendar's Remove/Substitute on intervals entries. */
+export async function deleteEvent(id: number): Promise<void> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) throw new Error('NO_KEY')
+  const res = await fetch(`${ICU}/athlete/${athleteId}/events/${id}`, {
+    method: 'DELETE',
+    headers: icuHeaders(apiKey),
+  })
+  if (!res.ok) throw new Error(`ICU_${res.status}`)
+}
+
 // --- gym workout interchange format --------------------------------------
 // A planned gym workout is encoded in the event description so that BOTH gymapp
 // and the cyclingcoach can produce/consume it via the intervals.icu REST API.

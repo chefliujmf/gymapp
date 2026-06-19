@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { fetchEvents, sportOf, type IcuEvent } from '../intervals'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { fetchEvents, deleteEvent, sportOf, type IcuEvent } from '../intervals'
 import { fetchGymPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
 import { setCurrentRide, segmentsFromEndurance } from '../ride'
 import { calApi, newId, type CalItem } from '../calendar'
@@ -32,10 +32,13 @@ type Entry = { k: 'plan'; plan: CoachPlan } | { k: 'event'; ev: IcuEvent } | { k
 
 export default function Calendar() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const now = new Date()
-  const [view, setView] = useState<View>(() => (typeof localStorage !== 'undefined' && (localStorage.getItem('calView') as View)) || 'month')
-  const [cur, setCur] = useState({ y: now.getFullYear(), m: now.getMonth() })
-  const [sel, setSel] = useState(localISO())
+  const qDay = params.get('d')
+  const qView = params.get('v') as View | null
+  const [view, setView] = useState<View>(() => qView || (typeof localStorage !== 'undefined' && (localStorage.getItem('calView') as View)) || 'month')
+  const [cur, setCur] = useState(() => { const d = qDay ? new Date(qDay + 'T00:00') : now; return { y: d.getFullYear(), m: d.getMonth() } })
+  const [sel, setSel] = useState(qDay || localISO())
   const [events, setEvents] = useState<IcuEvent[]>([])
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [items, setItems] = useState<CalItem[]>([])
@@ -77,9 +80,14 @@ export default function Calendar() {
     if (p.sport === 'gym') { setGymSession(gymSessionFromPlan(p)); navigate('/gym-session/play') }
     else { setCurrentRide({ title: p.title, sport: p.sport === 'ride' ? 'cycling' : 'running', segments: p.segments || [], ftp: p.ftp || ftp, source: p.id }); navigate(p.sport === 'ride' ? '/ride-player' : '/run-player') }
   }
-  async function delEntry(e: Entry) {
+  async function delEntry(e: Entry, confirmEvent = true) {
     if (e.k === 'plan') await calApi.delPlan(e.plan.id)
     else if (e.k === 'item') await calApi.delItem(e.item.id)
+    else if (e.k === 'event') {
+      // Intervals events are the coach's calendar — deleting writes back there.
+      if (confirmEvent && !confirm(`Remove “${e.ev.name}” from your intervals calendar?`)) return
+      try { await deleteEvent(e.ev.id) } catch { alert('Could not remove that intervals event.'); return }
+    }
     reload()
   }
   function openEntry(e: Entry) {
@@ -102,12 +110,10 @@ export default function Calendar() {
           <span className="cal-chip" style={{ background: colorFor(kind) + '22', color: colorFor(kind) }}>{iconFor(kind)}</span>
           <span className="card-body"><h3>{titleOf(e)}</h3>{e.k === 'item' && e.item.type === 'note' && e.item.notes ? <div className="meta" style={{ whiteSpace: 'normal' }}>{e.item.notes}</div> : <div className="meta">{subOf(e)}</div>}</span>
         </button>
-        {e.k !== 'event' && (
-          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <button className="icon-btn" onClick={() => setSheet({ date: day, replacing: e })} aria-label="Substitute" title="Substitute"><Repeat size={16} /></button>
-            <button className="icon-btn" onClick={() => delEntry(e)} aria-label="Remove" title="Remove"><Trash2 size={16} /></button>
-          </div>
-        )}
+        <div className="cal-entry__actions">
+          <button className="entry-act" onClick={() => setSheet({ date: day, replacing: e })} aria-label="Substitute" title="Substitute"><Repeat size={15} /></button>
+          <button className="entry-act entry-act--del" onClick={() => delEntry(e)} aria-label="Remove" title="Remove"><Trash2 size={15} /></button>
+        </div>
       </div>
     )
   }
@@ -227,7 +233,7 @@ export default function Calendar() {
         </div>
       )}
 
-      {sheet && <AddSheet date={sheet.date} replacing={sheet.replacing} ftp={ftp} templates={templates} onClose={() => setSheet(null)} onAdd={reload} onReplaced={() => { if (sheet.replacing) delEntry(sheet.replacing); setSheet(null) }} />}
+      {sheet && <AddSheet date={sheet.date} replacing={sheet.replacing} ftp={ftp} templates={templates} onClose={() => setSheet(null)} onAdd={reload} onReplaced={() => { if (sheet.replacing) delEntry(sheet.replacing, false); setSheet(null) }} />}
     </div>
   )
 }
