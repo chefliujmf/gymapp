@@ -1,0 +1,39 @@
+name: Deploy
+
+# Continuous deploy: every push to main (i.e. a merged PR) runs on the XPS
+# self-hosted runner, which builds with the pre-synced generated catalog and
+# deploys locally into the docker compose stack, gated by the healthcheck.
+#
+# The catalog (~3.6 MB) is synced out-of-band to /home/jmf/content/generated on
+# the XPS (filesystem, NOT git — it's derived from scraped content). The served
+# media already lives on the XPS, so the built /media/... paths resolve.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, xps]
+    env:
+      DEPLOY_LOCAL: "1"
+      GYMAPP_DIR: /home/jmf/gymapp
+      BUILD_CMD: npm run build:app
+      CATALOG_DIR: /home/jmf/content/generated
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restore generated catalog (synced, not in git)
+        run: |
+          if [ ! -d "$CATALOG_DIR" ]; then echo "missing $CATALOG_DIR — sync the catalog first"; exit 1; fi
+          mkdir -p src/data/generated
+          cp -a "$CATALOG_DIR/." src/data/generated/
+          ls -la src/data/generated
+      - run: npm ci
+      - run: bash scripts/deploy.sh

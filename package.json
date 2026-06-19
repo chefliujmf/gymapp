@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "seed:centr": "node scripts/seed-from-centr.mjs",
     "build:catalog": "node scripts/build-catalog.mjs",
-    "deploy": "bash scripts/deploy.sh"
+    "deploy": "bash scripts/deploy.sh",
+    "build:app": "tsc -b && vite build"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.3.0",
