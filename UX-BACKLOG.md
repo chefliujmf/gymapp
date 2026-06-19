@@ -66,7 +66,8 @@ Tackle UX roughly top-down; the calendar is the centerpiece most items hang off.
   XPS* doesn't fit — the build needs the 24 GB gitignored scraped Centr/MuscleWiki content
   (third-party IP), which lives only on the Mac. Only sound shape if wanted: Mac builds `dist/`
   → uploads as a release artifact → self-hosted XPS runner downloads + deploys it (no rebuild).
-- ⬜ **Branch protection on `main`**: require the CI check before merge (PR-based promotion).
+- ✅ **Branch protection on `main`**: requires `build` CI check + PR, enforced for admins.
+  Promotion is now PR-based (`gh pr create -B main -H dev` → CI green → merge → `npm run deploy`).
 - ⬜ **Monitoring routine**: scheduled check of `docker ps` health + `docker logs`
   to maintain the PWAs and act on issues (logs already set up for this).
 - ⬜ **Unified media manifest**: single inventory of every self-hosted asset
