@@ -8,6 +8,8 @@ export default function Profile() {
   const units = useLiveQuery(() => getSetting('units'))
   const diet = useLiveQuery(() => getSetting('diet'))
   const ftp = useLiveQuery(() => getSetting('ftp'))
+  const calView = useLiveQuery(() => getSetting('calView'))
+  const setCalView = (v: string) => { setSetting('calView', v); try { localStorage.setItem('calView', v) } catch { /* ignore */ } }
 
   const totalMin = (logs ?? []).reduce((s, l) => s + l.duration, 0)
 
@@ -40,6 +42,15 @@ export default function Profile() {
         {['vegetarian', 'vegan', 'no preference'].map((d) => (
           <button key={d} className={'chip' + ((diet ?? 'vegetarian') === d ? ' chip--active' : '')} onClick={() => setSetting('diet', d)}>
             {d}
+          </button>
+        ))}
+      </div>
+
+      <div className="section-title">Calendar starts on</div>
+      <div className="chips">
+        {[['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['schedule', 'Schedule']].map(([v, label]) => (
+          <button key={v} className={'chip' + ((calView ?? 'month') === v ? ' chip--active' : '')} onClick={() => setCalView(v)}>
+            {label}
           </button>
         ))}
       </div>

@@ -123,3 +123,27 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
   "not obvious it's a different section."
 - ⬜ **Dev account mirror**: dev shows initials "DE" + no avatar; copy prod display name +
   avatar so dev looks like the real account (dev store is intentionally isolated).
+- ✅ Substitute/Remove on **every** calendar entry incl intervals events (writes back via
+  `/icu` DELETE) **and** on the **Today** page; calendar deep-links via `?d=&v=`.
+- ⬜ Calendar **default view = Profile preference** (user wants **Week**); set in Profile.
+- ✅ Month day-detail reads as a **distinct panel** (bordered card + spacing).
+
+## Ride / Strava / devices (session-3 cont.)
+- ⬜ **Remove the "(indoor)" tag** shown on rides.
+- ⬜ **Push rides properly to Strava** — **NOT built yet.** Today `RidePlayer.finish()` only
+  calls `logWorkout()` (local Dexie progress log); nothing leaves the device. Proper path:
+  1. **Record the live stream** during the ride (power/cadence/HR + time) — currently shown
+     live but not stored.
+  2. **Build a `.TCX` or `.FIT`** from that stream (sport, start time, name, samples).
+  3. **Upload**: either to **intervals.icu** (`POST .../activities` or file upload, which can
+     forward to Strava) **or** directly to **Strava** via OAuth upload API. Pick based on which
+     provider the user linked (ties into BYO-Strava below).
+  4. Verify it lands with correct **sport/type/name** and the structured-workout association.
+- ⬜ **BYO Strava (multi-provider activity source)**: a user may not use intervals.icu at all
+  — let them **link their own Strava** (OAuth) in account settings as an alternative source/
+  sink for activities. Same provider-abstraction idea as BYO-AI: `intervals | strava | …`.
+- ⬜ **Ride device pairing labels are too specific**: we added "HR" + "Trainer".
+  - HR can be a **chest strap OR a watch** (Garmin, Coros, Apple Watch, …) — don't assume a strap.
+  - Trainer **brand is unknown** (Wahoo/Tacx/Saris/…) — keep it generic.
+  → Use neutral labels ("Heart rate", "Trainer / power") + a generic device icon; show the
+  actual advertised device name from the Web Bluetooth/ANT pairing rather than a hardcoded brand.

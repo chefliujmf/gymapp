@@ -64,9 +64,10 @@ export function BleDevices() {
       </div>
       <div className={'ble-dev' + (ble.hrDev ? ' on' : '')}>
         <HeartPulse size={22} />
-        <div><b>{ble.hrDev ? ble.hrDev.name : 'Heart rate'}</b><small>{ble.hrDev ? 'Connected' : 'Not connected'}</small></div>
+        <div><b>{ble.hrDev ? ble.hrDev.name : 'Heart rate'}</b><small>{ble.hrDev ? 'Connected' : 'Watch or strap · not connected'}</small></div>
       </div>
       <button className="btn btn--ghost" onClick={ble.addDevice} disabled={ble.scanning}>{ble.scanning ? 'Scanning…' : '＋ Add a device'}</button>
+      <p className="meta" style={{ textAlign: 'center', margin: '8px 0 0' }}>Any brand works — trainer, power meter, or a heart-rate watch/strap (Garmin, Coros, Wahoo…).</p>
     </div>
   )
 }

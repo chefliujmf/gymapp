@@ -43,8 +43,8 @@ export default function CycleDetail() {
 
       {w.description && <p className="meta" style={{ marginTop: 12 }}>{w.description}</p>}
 
-      <button className="btn" style={{ marginTop: 10 }} onClick={start}>▶ {isRun ? 'Start run (audio cues)' : 'Ride now (indoor)'}</button>
-      <p className="meta" style={{ marginTop: 8 }}>{isRun ? 'Spoken cues call out each interval & target — eyes up, treadmill or outdoor.' : 'Outdoor rides go to your Wahoo via intervals.icu. "Ride now" is for the indoor trainer.'}</p>
+      <button className="btn" style={{ marginTop: 10 }} onClick={start}>▶ {isRun ? 'Start run (audio cues)' : 'Ride now'}</button>
+      <p className="meta" style={{ marginTop: 8 }}>{isRun ? 'Spoken cues call out each interval & target — eyes up, treadmill or outdoor.' : 'Guided ERG workout on a smart trainer. Outdoor rides sync from your bike computer.'}</p>
 
       <div className="section-title" style={{ marginTop: 18 }}>Structure</div>
       <div className="stack">

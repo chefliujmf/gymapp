@@ -574,8 +574,12 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 
 /* Month: mobile-first single column. Selected-day detail sits ABOVE the grid so
    today's list is visible on open without scrolling past the (tall) month grid. */
-.cal-month-layout { display: flex; flex-direction: column-reverse; gap: 10px; }
-.cal-month-detail .cal-day-head { margin-top: 0; }
+.cal-month-layout { display: flex; flex-direction: column-reverse; gap: 14px; }
+.cal-month-detail {
+  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px; padding: 4px 12px 12px;
+}
+.cal-month-detail .cal-day-head { margin-top: 8px; }
 .cal-entry { display: flex; align-items: center; padding: 10px 12px; }
 .cal-entry__main { display: flex; align-items: center; gap: 12px; flex: 1; background: none; border: none; text-align: left; cursor: pointer; color: inherit; padding: 0; }
 .cal-chip { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex: none; }

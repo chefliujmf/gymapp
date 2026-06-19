@@ -5,7 +5,7 @@ import { fetchGymPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from
 import { setCurrentRide, segmentsFromEndurance } from '../ride'
 import { calApi, newId, type CalItem } from '../calendar'
 import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
-import { listTemplates, getSetting, type WorkoutTemplate } from '../db'
+import { listTemplates, getSetting, setSetting, type WorkoutTemplate } from '../db'
 import { localISO } from '../date'
 import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, Trash2, Repeat, ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -47,7 +47,7 @@ export default function Calendar() {
   const [sheet, setSheet] = useState<{ date: string; replacing?: Entry } | null>(null)
   const todayISO = localISO()
 
-  const changeView = (v: View) => { setView(v); try { localStorage.setItem('calView', v) } catch { /* ignore */ } }
+  const changeView = (v: View) => { setView(v); setSetting('calView', v); try { localStorage.setItem('calView', v) } catch { /* ignore */ } }
 
   // Load a window wide enough for the active view.
   const monthCells = useMemo(() => monthGrid(cur.y, cur.m), [cur])
