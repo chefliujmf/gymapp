@@ -32,13 +32,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => { await authApi.logout().catch(() => {}); setUser(null) }
 
   useEffect(() => {
-    if (DEV) {
-      // No auth backend in `vite dev` — act as a signed-in admin so dev isn't gated.
-      apply({ id: 'dev', username: 'dev', email: 'dev@local', role: 'admin', info: {}, avatar: '', passkeys: [], hasIcuKey: true, icuAthlete: 'i28814' })
-      setLoading(false)
-      return
-    }
-    ;(async () => { await refresh(); setLoading(false); syncLogsFromServer() })()
+    ;(async () => {
+      try {
+        // Use the real backend (dev runs server.js on :8088 via the vite proxy).
+        await apply(await authApi.me())
+      } catch (e) {
+        // "HTTP 4xx" means the backend is up but we're signed out → show Login.
+        // A network error (no backend, e.g. plain `npm run dev`) → in DEV fall back
+        // to a mock admin so the app stays usable; otherwise sign out.
+        const httpErr = e instanceof Error && /^HTTP \d/.test(e.message)
+        if (DEV && !httpErr) {
+          await apply({ id: 'dev', username: 'dev', email: 'dev@local', role: 'admin', info: {}, avatar: '', passkeys: [], hasIcuKey: true, icuAthlete: 'i28814' })
+        } else {
+          setUser(null)
+        }
+      }
+      setLoading(false); syncLogsFromServer()
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

@@ -88,6 +88,9 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
   These get injected as the assistant's per-user context/system material, mirroring how
   `cyclingcoach` structures a coached athlete. Store per-account, server-side; the `gymdata`
   tools + this profile together define that user's assistant.
+  - **Coach persona name** is per-user, editable from the **Profile page**. Defaults:
+    JM → **Tadej**, wife → **Bert**. Store as an account setting (`coachName`); the chatbot
+    addresses itself by it. (Profile field is inert until the chatbot exists, so deferred.)
   - **Brain repos already exist**: JM → `chefliujmf/cyclingcoach`; Bert →
     `chefliujmf/bertfitnesscoach` (scaffolded 2026-06-19 from cyclingcoach, see its
     `ADAPT.md` — still needs profile/sport/woman-specific adaptation). The chatbot's
