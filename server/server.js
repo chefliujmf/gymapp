@@ -10,6 +10,7 @@ import nodemailer from 'nodemailer'
 import { randomBytes, createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { readFileSync, existsSync } from 'node:fs'
 import {
   generateRegistrationOptions, verifyRegistrationResponse,
   generateAuthenticationOptions, verifyAuthenticationResponse,
@@ -251,23 +252,9 @@ app.post('/auth/plans', auth, async (req, res) => { const r = await upsertPlan(r
 app.delete('/auth/plans/:id', auth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
 
 // Non-workout calendar items (meal / mind / note) — Platyplus only, no intervals push.
-app.get('/auth/items', auth, (req, res) => {
-  let items = req.user.items || []
-  if (req.query.from) items = items.filter((x) => x.date >= req.query.from)
-  if (req.query.to) items = items.filter((x) => x.date <= req.query.to)
-  res.json(items.sort((a, b) => (a.date < b.date ? -1 : 1)))
-})
-app.post('/auth/items', auth, (req, res) => {
-  const b = req.body || {}
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return res.status(400).json({ error: 'date (YYYY-MM-DD) required' })
-  if (!['meal', 'mind', 'note'].includes(b.type)) return res.status(400).json({ error: 'type must be meal|mind|note' })
-  req.user.items = req.user.items || []
-  const item = { id: b.id || newId(), date: b.date, type: b.type, title: b.title || '', refId: b.refId || '', mealType: b.mealType || '', kcal: b.kcal, minutes: b.minutes, notes: b.notes || '', updatedAt: Date.now() }
-  const i = req.user.items.findIndex((x) => x.id === item.id)
-  if (i >= 0) req.user.items[i] = item; else req.user.items.push(item)
-  save(store); res.status(i >= 0 ? 200 : 201).json(item)
-})
-app.delete('/auth/items/:id', auth, (req, res) => { req.user.items = (req.user.items || []).filter((x) => x.id !== req.params.id); save(store); res.json({ ok: true }) })
+app.get('/auth/items', auth, (req, res) => res.json(itemsInRange(req.user, req.query.from, req.query.to)))
+app.post('/auth/items', auth, (req, res) => { const r = upsertItem(req.user, req.body || {}); res.status(r.status).json(r.body) })
+app.delete('/auth/items/:id', auth, (req, res) => { deleteItemById(req.user, req.params.id); res.json({ ok: true }) })
 
 // Workout logs — stored per account so they sync across devices.
 app.get('/auth/logs', auth, (req, res) => res.json(req.user.logs || []))
@@ -369,11 +356,62 @@ async function deletePlanById(user, id) {
   user.plans = (user.plans || []).filter((x) => x.id !== id); save(store)
 }
 
+// ---- calendar items (meal/mind/note) — shared by the UI (/auth) and API (/api).
+function itemsInRange(user, from, to) {
+  let items = user.items || []
+  if (from) items = items.filter((x) => x.date >= from)
+  if (to) items = items.filter((x) => x.date <= to)
+  return items.sort((a, b) => (a.date < b.date ? -1 : 1))
+}
+function validateItem(b) {
+  if (!b || typeof b !== 'object') return 'body must be a JSON object'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return 'date (YYYY-MM-DD) is required'
+  if (!['meal', 'mind', 'note'].includes(b.type)) return "type must be 'meal' | 'mind' | 'note'"
+  return null
+}
+function upsertItem(user, b) {
+  const err = validateItem(b); if (err) return { status: 400, body: { error: err } }
+  user.items = user.items || []
+  const item = { id: b.id || newId(), date: b.date, type: b.type, title: b.title || '', refId: b.refId || '', mealType: b.mealType || '', kcal: b.kcal, minutes: b.minutes, notes: b.notes || '', updatedAt: Date.now() }
+  const i = user.items.findIndex((x) => x.id === item.id)
+  if (i >= 0) user.items[i] = item; else user.items.push(item)
+  save(store)
+  return { status: i >= 0 ? 200 : 201, body: item }
+}
+function deleteItemById(user, id) {
+  user.items = (user.items || []).filter((x) => x.id !== id); save(store)
+}
+
+// ---- exercise catalog (read-only) — lets the coach API resolve real exIds.
+// Loaded once from CATALOG_DIR (the synced generated catalog); empty if absent.
+let EXERCISES = []
+;(() => {
+  try {
+    const cdir = process.env.CATALOG_DIR || join(__dirname, '..', 'src', 'data', 'generated')
+    const p = join(cdir, 'exercises.json')
+    if (existsSync(p)) { EXERCISES = JSON.parse(readFileSync(p, 'utf8')); console.log(`catalog: ${EXERCISES.length} exercises from ${p}`) }
+    else console.log(`catalog: no exercises.json at ${p} — /api/exercises returns empty`)
+  } catch (e) { console.log('catalog load failed:', e.message) }
+})()
+function searchExercises(q, limit) {
+  const n = String(q || '').trim().toLowerCase()
+  const list = n ? EXERCISES.filter((e) => e.name.toLowerCase().includes(n)) : EXERCISES
+  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, image: e.image, video: e.video }))
+}
+
 // Upsert a planned session by id (idempotent — re-POST to update).
 app.post('/api/plan', apiAuth, async (req, res) => { const r = await upsertPlan(req.user, req.body); res.status(r.status).json(r.body) })
 app.get('/api/plans', apiAuth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
 app.get('/api/plan/:id', apiAuth, (req, res) => { const p = (req.user.plans || []).find((x) => x.id === req.params.id); return p ? res.json(p) : res.status(404).json({ error: 'not found' }) })
 app.delete('/api/plan/:id', apiAuth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
+
+// Calendar items (meal / mind / note) — Platyplus-only, no intervals push.
+app.get('/api/items', apiAuth, (req, res) => res.json(itemsInRange(req.user, req.query.from, req.query.to)))
+app.post('/api/items', apiAuth, (req, res) => { const r = upsertItem(req.user, req.body || {}); res.status(r.status).json(r.body) })
+app.delete('/api/items/:id', apiAuth, (req, res) => { deleteItemById(req.user, req.params.id); res.json({ ok: true }) })
+
+// Exercise catalog search — resolve a name to a real exId (with demo media).
+app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit)))
 
 // ---- OpenAPI spec + Swagger UI (session-gated — not public) ---------------
 // `auth` requires a valid login cookie, so the docs + spec are invisible to

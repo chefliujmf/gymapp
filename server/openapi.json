@@ -2,11 +2,19 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Platyplus Coach API",
-    "version": "1.1.0",
-    "description": "Push planned sessions into a Platyplus account (rich indoor-execution detail). The coach dual-writes: the same `id` goes here AND to the intervals.icu event `external_id`, so Platyplus's Today merges them into one card (no duplicates). Authenticate with the per-user API token from Profile → Account."
+    "version": "1.2.0",
+    "description": "Push planned sessions into a Platyplus account (rich indoor-execution detail). The coach dual-writes: the same `id` goes here AND to the intervals.icu event `external_id`, so Platyplus's Today merges them into one card (no duplicates). Authenticate with the per-user API token from Profile \u2192 Account."
   },
-  "servers": [{ "url": "https://platyplus.duckdns.org" }],
-  "security": [{ "bearerAuth": [] }],
+  "servers": [
+    {
+      "url": "https://platyplus.duckdns.org"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
   "paths": {
     "/api/plan": {
       "post": {
@@ -14,18 +22,118 @@
         "description": "Idempotent: re-POST the same id to update it.",
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" },
-            "examples": {
-              "ride": { "value": { "id": "2026-06-20-vo2", "date": "2026-06-20", "sport": "ride", "title": "VO2 5x4", "ftp": 260, "segments": [ { "duration": 600, "powerStart": 50, "powerEnd": 60, "label": "warmup" }, { "duration": 240, "powerStart": 115, "powerEnd": 115, "label": "VO2" }, { "duration": 180, "powerStart": 50, "powerEnd": 50, "label": "recover" } ] } },
-              "gym": { "value": { "id": "2026-06-21-push", "date": "2026-06-21", "sport": "gym", "title": "Push Day", "rounds": 3, "exercises": [ { "name": "Bench Press", "mode": "reps", "sets": 4, "reps": 8, "weight": 60, "rest": 90 }, { "name": "Plank", "mode": "timed", "seconds": 45, "rest": 15 } ] } },
-              "run": { "value": { "id": "2026-06-22-tempo", "date": "2026-06-22", "sport": "run", "title": "Tempo 3x8", "segments": [ { "duration": 600, "powerStart": 70, "powerEnd": 70 }, { "duration": 480, "powerStart": 95, "powerEnd": 95, "hr": "165" } ] } }
-            } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Plan"
+              },
+              "examples": {
+                "ride": {
+                  "value": {
+                    "id": "2026-06-20-vo2",
+                    "date": "2026-06-20",
+                    "sport": "ride",
+                    "title": "VO2 5x4",
+                    "ftp": 260,
+                    "segments": [
+                      {
+                        "duration": 600,
+                        "powerStart": 50,
+                        "powerEnd": 60,
+                        "label": "warmup"
+                      },
+                      {
+                        "duration": 240,
+                        "powerStart": 115,
+                        "powerEnd": 115,
+                        "label": "VO2"
+                      },
+                      {
+                        "duration": 180,
+                        "powerStart": 50,
+                        "powerEnd": 50,
+                        "label": "recover"
+                      }
+                    ]
+                  }
+                },
+                "gym": {
+                  "value": {
+                    "id": "2026-06-21-push",
+                    "date": "2026-06-21",
+                    "sport": "gym",
+                    "title": "Push Day",
+                    "rounds": 3,
+                    "exercises": [
+                      {
+                        "name": "Bench Press",
+                        "mode": "reps",
+                        "sets": 4,
+                        "reps": 8,
+                        "weight": 60,
+                        "rest": 90
+                      },
+                      {
+                        "name": "Plank",
+                        "mode": "timed",
+                        "seconds": 45,
+                        "rest": 15
+                      }
+                    ]
+                  }
+                },
+                "run": {
+                  "value": {
+                    "id": "2026-06-22-tempo",
+                    "date": "2026-06-22",
+                    "sport": "run",
+                    "title": "Tempo 3x8",
+                    "segments": [
+                      {
+                        "duration": 600,
+                        "powerStart": 70,
+                        "powerEnd": 70
+                      },
+                      {
+                        "duration": 480,
+                        "powerStart": 95,
+                        "powerEnd": 95,
+                        "hr": "165"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" } } } },
-          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" } } } },
-          "400": { "description": "Validation error" },
-          "401": { "description": "Invalid API token" }
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Invalid API token"
+          }
         }
       }
     },
@@ -33,108 +141,667 @@
       "get": {
         "summary": "List planned sessions",
         "parameters": [
-          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" }, "description": "YYYY-MM-DD inclusive" },
-          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" }, "description": "YYYY-MM-DD inclusive" }
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "YYYY-MM-DD inclusive"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "YYYY-MM-DD inclusive"
+          }
         ],
-        "responses": { "200": { "description": "Array of plans", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Plan" } } } } } }
+        "responses": {
+          "200": {
+            "description": "Array of plans",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Plan"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/plan/{id}": {
-      "get": { "summary": "Get one plan", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Plan", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" } } } }, "404": { "description": "Not found" } } },
-      "delete": { "summary": "Delete a plan", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Deleted" } } }
+      "get": {
+        "summary": "Get one plan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a plan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
+      }
     },
     "/auth/items": {
       "get": {
         "summary": "List calendar items (meal/mind/note) for the signed-in user",
-        "description": "Session (cookie) auth — used by the app UI, not the coach API.",
-        "security": [{ "cookieAuth": [] }],
-        "parameters": [
-          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } }
+        "description": "Session (cookie) auth \u2014 used by the app UI, not the coach API.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
         ],
-        "responses": { "200": { "description": "Array of items", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/CalItem" } } } } }, "401": { "description": "Not signed in" } }
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CalItem"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in"
+          }
+        }
       },
       "post": {
         "summary": "Add/update a calendar item (assign a recipe / mind session to a day)",
-        "security": [{ "cookieAuth": [] }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CalItem" }, "examples": {
-          "meal": { "value": { "date": "2026-06-22", "type": "meal", "title": "Protein porridge", "refId": "r-5-ingredient-choc-chip-protein-porridge", "mealType": "breakfast", "kcal": 420 } },
-          "mind": { "value": { "date": "2026-06-22", "type": "mind", "title": "Body scan", "refId": "m-body-scan", "minutes": 10 } }
-        } } } },
-        "responses": { "200": { "description": "Updated" }, "201": { "description": "Created" }, "400": { "description": "Validation error" }, "401": { "description": "Not signed in" } }
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalItem"
+              },
+              "examples": {
+                "meal": {
+                  "value": {
+                    "date": "2026-06-22",
+                    "type": "meal",
+                    "title": "Protein porridge",
+                    "refId": "r-5-ingredient-choc-chip-protein-porridge",
+                    "mealType": "breakfast",
+                    "kcal": 420
+                  }
+                },
+                "mind": {
+                  "value": {
+                    "date": "2026-06-22",
+                    "type": "mind",
+                    "title": "Body scan",
+                    "refId": "m-body-scan",
+                    "minutes": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Not signed in"
+          }
+        }
       }
     },
     "/auth/items/{id}": {
-      "delete": { "summary": "Delete a calendar item", "security": [{ "cookieAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Deleted" } } }
+      "delete": {
+        "summary": "Delete a calendar item",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
+      }
     },
     "/auth/plans": {
-      "get": { "summary": "List the signed-in user's workout plans (session auth)", "security": [{ "cookieAuth": [] }], "parameters": [ { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } }, { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } } ], "responses": { "200": { "description": "Array of plans", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Plan" } } } } } } },
-      "post": { "summary": "Create/update a workout plan from the UI (also pushes to intervals.icu)", "security": [{ "cookieAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" } } } }, "responses": { "200": { "description": "Updated" }, "201": { "description": "Created" } } }
+      "get": {
+        "summary": "List the signed-in user's workout plans (session auth)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of plans",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Plan"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create/update a workout plan from the UI (also pushes to intervals.icu)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Plan"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated"
+          },
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
     },
     "/auth/plans/{id}": {
-      "delete": { "summary": "Delete a workout plan", "security": [{ "cookieAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Deleted" } } }
+      "delete": {
+        "summary": "Delete a workout plan",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/api/items": {
+      "get": {
+        "summary": "List calendar items (meal/mind/note) \u2014 coach API (Bearer)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "YYYY-MM-DD inclusive"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "YYYY-MM-DD inclusive"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CalItem"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid API token"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add/update a calendar item (meal/mind/note) \u2014 coach API (Bearer)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalItem"
+              },
+              "examples": {
+                "meal": {
+                  "value": {
+                    "date": "2026-06-22",
+                    "type": "meal",
+                    "title": "Carb-forward oat bowl",
+                    "mealType": "breakfast",
+                    "kcal": 520
+                  }
+                },
+                "note": {
+                  "value": {
+                    "date": "2026-06-22",
+                    "type": "note",
+                    "notes": "Hydrate well; easy spin only"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad item"
+          },
+          "401": {
+            "description": "Invalid API token"
+          }
+        }
+      }
+    },
+    "/api/items/{id}": {
+      "delete": {
+        "summary": "Delete a calendar item \u2014 coach API (Bearer)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Invalid API token"
+          }
+        }
+      }
+    },
+    "/api/exercises": {
+      "get": {
+        "summary": "Search exercise library \u2014 resolve names to exIds with demo media (Bearer)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "name fragment, e.g. 'goblet squat'"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "max results (default 20, cap 100)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of {id,name,category,image,video}",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Exercise"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid API token"
+          }
+        }
+      }
     }
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth": { "type": "http", "scheme": "bearer", "description": "Per-user API token (Profile → Account → API token)." },
-      "cookieAuth": { "type": "apiKey", "in": "cookie", "name": "gymapp_sess", "description": "Session cookie from /auth/login or passkey login (browser/UI only)." }
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Per-user API token (Profile \u2192 Account \u2192 API token)."
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "gymapp_sess",
+        "description": "Session cookie from /auth/login or passkey login (browser/UI only)."
+      }
     },
     "schemas": {
       "CalItem": {
         "type": "object",
-        "required": ["date", "type"],
+        "required": [
+          "date",
+          "type"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "date": { "type": "string", "format": "date", "description": "YYYY-MM-DD" },
-          "type": { "type": "string", "enum": ["meal", "mind", "note"] },
-          "title": { "type": "string" },
-          "refId": { "type": "string", "description": "catalog id of the recipe / mind session / etc." },
-          "mealType": { "type": "string" },
-          "kcal": { "type": "integer" },
-          "minutes": { "type": "integer" },
-          "notes": { "type": "string" }
+          "id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "YYYY-MM-DD"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "meal",
+              "mind",
+              "note"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "refId": {
+            "type": "string",
+            "description": "catalog id of the recipe / mind session / etc."
+          },
+          "mealType": {
+            "type": "string"
+          },
+          "kcal": {
+            "type": "integer"
+          },
+          "minutes": {
+            "type": "integer"
+          },
+          "notes": {
+            "type": "string"
+          }
         }
       },
       "Segment": {
         "type": "object",
         "description": "One ride/run interval. power is % of FTP (ride) or % of threshold (run).",
-        "required": ["duration", "powerStart", "powerEnd"],
+        "required": [
+          "duration",
+          "powerStart",
+          "powerEnd"
+        ],
         "properties": {
-          "duration": { "type": "integer", "description": "seconds" },
-          "powerStart": { "type": "number", "description": "% FTP/threshold at start (ramp start)" },
-          "powerEnd": { "type": "number", "description": "% at end (= start for steady)" },
-          "label": { "type": "string" },
-          "hr": { "type": "string", "description": "target bpm" }
+          "duration": {
+            "type": "integer",
+            "description": "seconds"
+          },
+          "powerStart": {
+            "type": "number",
+            "description": "% FTP/threshold at start (ramp start)"
+          },
+          "powerEnd": {
+            "type": "number",
+            "description": "% at end (= start for steady)"
+          },
+          "label": {
+            "type": "string"
+          },
+          "hr": {
+            "type": "string",
+            "description": "target bpm"
+          }
         }
       },
       "Exercise": {
         "type": "object",
-        "required": ["name", "mode"],
+        "required": [
+          "name",
+          "mode"
+        ],
         "properties": {
-          "name": { "type": "string" },
-          "exId": { "type": "string", "description": "optional Platyplus library id for the demo video" },
-          "mode": { "type": "string", "enum": ["timed", "reps"] },
-          "seconds": { "type": "integer", "description": "for mode=timed" },
-          "sets": { "type": "integer", "description": "for mode=reps" },
-          "reps": { "type": "integer", "description": "for mode=reps" },
-          "weight": { "type": "number" },
-          "rest": { "type": "integer", "description": "seconds between sets" }
+          "name": {
+            "type": "string"
+          },
+          "exId": {
+            "type": "string",
+            "description": "optional Platyplus library id for the demo video"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "timed",
+              "reps"
+            ]
+          },
+          "seconds": {
+            "type": "integer",
+            "description": "for mode=timed"
+          },
+          "sets": {
+            "type": "integer",
+            "description": "for mode=reps"
+          },
+          "reps": {
+            "type": "integer",
+            "description": "for mode=reps"
+          },
+          "weight": {
+            "type": "number"
+          },
+          "rest": {
+            "type": "integer",
+            "description": "seconds between sets"
+          }
         }
       },
       "Plan": {
         "type": "object",
-        "required": ["id", "date", "sport", "title"],
+        "required": [
+          "id",
+          "date",
+          "sport",
+          "title"
+        ],
         "properties": {
-          "id": { "type": "string", "description": "Shared id — also set as the intervals.icu event external_id." },
-          "date": { "type": "string", "format": "date", "description": "YYYY-MM-DD" },
-          "sport": { "type": "string", "enum": ["gym", "ride", "run"] },
-          "title": { "type": "string" },
-          "notes": { "type": "string" },
-          "ftp": { "type": "number", "description": "ride only; defaults to athlete FTP if omitted" },
-          "segments": { "type": "array", "items": { "$ref": "#/components/schemas/Segment" }, "description": "ride/run" },
-          "rounds": { "type": "integer", "description": "gym only" },
-          "exercises": { "type": "array", "items": { "$ref": "#/components/schemas/Exercise" }, "description": "gym only" }
+          "id": {
+            "type": "string",
+            "description": "Shared id \u2014 also set as the intervals.icu event external_id."
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "YYYY-MM-DD"
+          },
+          "sport": {
+            "type": "string",
+            "enum": [
+              "gym",
+              "ride",
+              "run"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "ftp": {
+            "type": "number",
+            "description": "ride only; defaults to athlete FTP if omitted"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "description": "ride/run"
+          },
+          "rounds": {
+            "type": "integer",
+            "description": "gym only"
+          },
+          "exercises": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Exercise"
+            },
+            "description": "gym only"
+          }
         }
       }
     }

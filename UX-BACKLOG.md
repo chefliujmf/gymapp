@@ -117,6 +117,13 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
     description to intervals for display only. One MCP serves chatbot + coaches + BYO. The
     `encodeGymWorkout`/`parseGymWorkout` text format stays as the intervals *mirror*, not the
     source of truth. (Don't over-invest in hardening the text format — MCP replaces it.)
+  - ✅ **BUILT (on dev, not yet prod): Platyplus MCP** (`mcp/server.js`) — 10 typed tools
+    (search_exercises, create_workout/ride/run, schedule_meal/mind, add_note, list_schedule,
+    remove_*) over the Coach API. Coach API extended: token-authed `/api/items` (meal/mind/note)
+    + `/api/exercises` search (catalog mounted at `/catalog`). openapi → v1.2.0. End-to-end
+    tested (MCP → create_workout → stored plan w/ canonical intervals mirror). Wire into a coach
+    repo via `.mcp.json` with its Coach API token (see `mcp/README.md`). Defensive text parser
+    fix also shipped (inline `[gymapp]` + PlanDetail fallback).
   - **Brain repos already exist**: JM → `chefliujmf/cyclingcoach`; Bert →
     `chefliujmf/bertfitnesscoach` (scaffolded 2026-06-19 from cyclingcoach, see its
     `ADAPT.md` — still needs profile/sport/woman-specific adaptation). The chatbot's
