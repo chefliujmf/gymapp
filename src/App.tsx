@@ -5,7 +5,7 @@ import AccountMenu from './auth/AccountMenu'
 const tabs = [
   { to: '/', label: 'Today', icon: <Home strokeWidth={1.75} />, end: true },
   { to: '/plan', label: 'Plan', icon: <CalendarDays strokeWidth={1.75} />, end: false },
-  { to: '/exercises', label: 'Train', icon: <Dumbbell strokeWidth={1.75} />, end: false },
+  { to: '/workouts', label: 'Train', icon: <Dumbbell strokeWidth={1.75} />, end: false, match: /^\/(workouts|exercises)/ },
   { to: '/cycle', label: 'Ride', icon: <Bike strokeWidth={1.75} />, end: false },
   { to: '/run', label: 'Run', icon: <Footprints strokeWidth={1.75} />, end: false },
   { to: '/eat', label: 'Eat', icon: <Salad strokeWidth={1.75} />, end: false },
@@ -35,7 +35,7 @@ export default function App() {
               key={t.to}
               to={t.to}
               end={t.end}
-              className={({ isActive }) => 'tab' + (isActive ? ' tab--active' : '')}
+              className={({ isActive }) => 'tab' + ((isActive || (t.match && t.match.test(pathname))) ? ' tab--active' : '')}
             >
               <span className="tab__icon">{t.icon}</span>
               <span className="tab__label">{t.label}</span>
