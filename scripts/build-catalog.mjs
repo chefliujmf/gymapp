@@ -14,7 +14,10 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
-const DL = join(ROOT, 'downloaded_pages')
+// Scraped source dir. Override with DOWNLOADED_PAGES_DIR so a build host that
+// keeps the (gitignored) content elsewhere — e.g. the XPS self-hosted runner —
+// can point at it without the content living in the repo checkout.
+const DL = process.env.DOWNLOADED_PAGES_DIR || join(ROOT, 'downloaded_pages')
 const JOIN_DIR = resolve(ROOT, '..', 'cyclingcoach', 'data', 'join', 'workouts')
 const OUT = join(ROOT, 'src', 'data', 'generated')
 mkdirSync(OUT, { recursive: true })

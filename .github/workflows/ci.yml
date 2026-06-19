@@ -1,0 +1,23 @@
+name: CI
+
+# Validate every push to dev/main and every PR into main. This compiles the app
+# (catalog gen + independence gate + tsc + vite build); the scraped catalog isn't
+# in the repo, so the build runs against empty stubs — enough to catch type/build
+# breakage before it reaches main. Content correctness is validated at deploy time.
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build

@@ -1,0 +1,28 @@
+name: Deploy
+
+# Continuous deploy: every push to main builds on the XPS self-hosted runner
+# (which has the scraped catalog at DOWNLOADED_PAGES_DIR) and deploys locally
+# into the docker compose stack, gated by the container healthcheck.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, xps]
+    env:
+      DEPLOY_LOCAL: "1"
+      GYMAPP_DIR: /home/jmf/gymapp
+      DOWNLOADED_PAGES_DIR: /home/jmf/content/downloaded_pages
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: bash scripts/deploy.sh
