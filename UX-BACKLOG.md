@@ -62,10 +62,11 @@ Tackle UX roughly top-down; the calendar is the centerpiece most items hang off.
 - ✅ **CI**: `.github/workflows/ci.yml` — `npm ci && npm run build` on push dev/main + PR→main.
 - ✅ **One-command deploy**: `npm run deploy` (`scripts/deploy.sh`) — build → rsync → compose
   up --build → **healthcheck gate**. Mac mode + on-box `DEPLOY_LOCAL=1` mode.
-- ⬜ **GitHub-triggered CD (optional, NOT built)**: a self-hosted runner that *rebuilds on the
-  XPS* doesn't fit — the build needs the 24 GB gitignored scraped Centr/MuscleWiki content
-  (third-party IP), which lives only on the Mac. Only sound shape if wanted: Mac builds `dist/`
-  → uploads as a release artifact → self-hosted XPS runner downloads + deploys it (no rebuild).
+- ✅ **GitHub-triggered CD (self-hosted runner) — BUILT & validated.** Merge to `main` →
+  `deploy.yml` on the XPS `xps-runner` (systemd) restores the synced 3.6 MB catalog →
+  `build:app` → local deploy → healthcheck. (Earlier "unfit" note was wrong: the build needs
+  only the 3.6 MB catalog, not the 24 GB raw scrape — and the media's already on the XPS.)
+  Re-scrape → `npm run sync:catalog` to refresh the XPS catalog.
 - ✅ **Branch protection on `main`**: requires `build` CI check + PR, enforced for admins.
   Promotion is now PR-based (`gh pr create -B main -H dev` → CI green → merge → `npm run deploy`).
 - ⬜ **Monitoring routine**: scheduled check of `docker ps` health + `docker logs`

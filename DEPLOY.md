@@ -20,29 +20,36 @@ every PR into `main`: `npm ci && npm run build` (catalog gen + independence gate
 `tsc -b` + vite build). The scraped catalog isn't in the repo, so CI builds against
 empty stubs — enough to catch type/build breakage before it reaches `main`.
 
-**CD — one command from the Mac.** Deploy is `npm run deploy` (`scripts/deploy.sh`):
-build `dist/` here → rsync `dist/` + `server/` to the XPS → `docker compose up -d --build`
-→ **wait for the container healthcheck** (fails loudly + dumps logs if unhealthy).
+**CD — automatic on merge to `main`.** `.github/workflows/deploy.yml` runs on the XPS
+**self-hosted runner** (`xps-runner`, systemd service): restore the synced catalog →
+`npm run build:app` (tsc + vite, no scrape) → `scripts/deploy.sh` (DEPLOY_LOCAL) →
+`docker compose up -d --build` → **healthcheck gate**. Merge a PR to `main` and prod
+updates itself.
+
+*Why this works without the 24 GB:* the build only needs the **3.6 MB generated
+catalog** (it's the build output — titles/kcal/paths), not the raw scrape. That catalog
+is synced to `/home/jmf/content/generated` on the XPS (filesystem, **not** git — it's
+derived from scraped content), and the **served media already lives on the XPS**, so the
+`/media/...` paths resolve. The 24 GB raw scrape stays on the Mac and is only needed to
+*re-generate* the catalog.
+
+**Manual deploy (fallback / hotfix) from the Mac:** `npm run deploy` (`scripts/deploy.sh`)
+— build `dist/` here → rsync to the XPS → compose up → healthcheck.
 
 ```bash
 npm run deploy                  # build + deploy + health-gate (Mac → XPS)
 SKIP_BUILD=1 npm run deploy     # reuse an existing ./dist
 ```
 
-**Why no GitHub "merge → auto-deploy" runner:** the build needs the **24 GB of scraped
-Centr/MuscleWiki content** (gitignored — third-party IP), which lives only on the Mac.
-A self-hosted runner that *rebuilt on the XPS* would need that content (or the derived
-catalog) on the box — neither is acceptable — and adds nothing, since the build must
-happen where the content legally lives. So the Mac is the build origin and `deploy.sh`
-is the deploy. **If GitHub-triggered CD is ever wanted**, the only sound shape is: Mac
-builds `dist/` and uploads it as a release artifact, and a self-hosted runner on the XPS
-downloads + deploys that prebuilt artifact (no rebuild). Not built — flagged in the backlog.
+**After re-scraping new content** (Mac regenerates `src/data/generated`): run
+`npm run sync:catalog` to push the fresh catalog to the XPS — it reaches prod on the
+next merge to `main`.
 
 **Promote dev → prod** (main is branch-protected — no direct pushes):
-1. Open a PR `dev` → `main` (`gh pr create -B main -H dev` or the GitHub UI).
+1. Open a PR `dev` → `main` (API/UI; `gh` once authed).
 2. CI (`build`) must go green — required before merge.
 3. Merge the PR (self-merge is fine; 0 approvals required).
-4. `npm run deploy` from the Mac to ship `dist` to the XPS.
+4. The merge **auto-deploys** via the XPS runner (no Mac step needed).
 
 *Escape hatch:* protection (incl. admin enforcement) can be toggled off in
 GitHub → Settings → Branches if you're ever truly stuck.
