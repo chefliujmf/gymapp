@@ -7,7 +7,8 @@ import { calApi, newId, type CalItem } from '../calendar'
 import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
 import { listTemplates, getSetting, setSetting, type WorkoutTemplate } from '../db'
 import { localISO } from '../date'
-import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, Trash2, Repeat, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { EntryMenu } from '../EntryMenu'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -110,10 +111,7 @@ export default function Calendar() {
           <span className="cal-chip" style={{ background: colorFor(kind) + '22', color: colorFor(kind) }}>{iconFor(kind)}</span>
           <span className="card-body"><h3>{titleOf(e)}</h3>{e.k === 'item' && e.item.type === 'note' && e.item.notes ? <div className="meta" style={{ whiteSpace: 'normal' }}>{e.item.notes}</div> : <div className="meta">{subOf(e)}</div>}</span>
         </button>
-        <div className="cal-entry__actions">
-          <button className="entry-act" onClick={() => setSheet({ date: day, replacing: e })} aria-label="Substitute" title="Substitute"><Repeat size={15} /></button>
-          <button className="entry-act entry-act--del" onClick={() => delEntry(e)} aria-label="Remove" title="Remove"><Trash2 size={15} /></button>
-        </div>
+        <EntryMenu title={titleOf(e)} onSubstitute={() => setSheet({ date: day, replacing: e })} onRemove={() => delEntry(e)} />
       </div>
     )
   }

@@ -6,11 +6,12 @@ import { WeekStrip } from '../ui'
 import { fetchEvents, deleteEvent, eventObjective, sportOf, type IcuEvent } from '../intervals'
 import { setPlanEvents, fetchGymPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
-import { calApi } from '../calendar'
+import { calApi, type CalItem } from '../calendar'
 import { recipes, mindSessions } from '../data/catalog'
 import type { Recipe } from '../types'
 import { localISO } from '../date'
-import { Bike, Dumbbell, Footprints, Target, Salad, Brain, Repeat, Trash2 } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus } from 'lucide-react'
+import { EntryMenu } from '../EntryMenu'
 
 // Stable daily pick: same item all day, rotates with the date (+salt for variety).
 function pickByDate<T>(arr: T[], dateStr: string, salt = 0): T | undefined {
@@ -21,16 +22,6 @@ function pickByDate<T>(arr: T[], dateStr: string, salt = 0): T | undefined {
 }
 
 const planIcon = (s: CoachPlan['sport']) => (s === 'ride' ? <Bike strokeWidth={1.75} /> : s === 'run' ? <Footprints strokeWidth={1.75} /> : <Dumbbell strokeWidth={1.75} />)
-
-/** Swap / Remove row shown under each scheduled item so plans are editable here too. */
-function EntryActs({ onSwap, onRemove }: { onSwap: () => void; onRemove: () => void }) {
-  return (
-    <div className="today-entry__acts">
-      <button className="entry-act entry-act--wide" onClick={onSwap}><Repeat size={14} /> Substitute</button>
-      <button className="entry-act entry-act--wide entry-act--del" onClick={onRemove}><Trash2 size={14} /> Remove</button>
-    </div>
-  )
-}
 
 /** A coach-pushed plan that isn't mirrored by an intervals event — runs in-app. */
 function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove }: { p: CoachPlan; onRun: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void }) {
@@ -48,7 +39,7 @@ function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove }: { p: Co
           </div>
         </div>
       </button>
-      {onSwap && onRemove && <EntryActs onSwap={onSwap} onRemove={onRemove} />}
+      {onSwap && onRemove && <EntryMenu title={p.title} onSubstitute={onSwap} onRemove={onRemove} />}
     </div>
   )
 }
@@ -79,7 +70,27 @@ function PlanCard({ e, showDate, onSwap, onRemove }: { e: IcuEvent; showDate?: b
           </div>
         </div>
       </Link>
-      {onSwap && onRemove && <EntryActs onSwap={onSwap} onRemove={onRemove} />}
+      {onSwap && onRemove && <EntryMenu title={e.name} onSubstitute={onSwap} onRemove={onRemove} />}
+    </div>
+  )
+}
+
+/** An assigned meal / mind / note item on the day — editable like everything else. */
+function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; onRemove: () => void }) {
+  const label = it.type === 'meal' ? 'Meal' : it.type === 'mind' ? 'Mind' : 'Note'
+  const sub = it.type === 'meal' ? `${it.mealType || 'meal'}${it.kcal ? ` · ${it.kcal} kcal` : ''}` : it.type === 'mind' ? (it.minutes ? `${it.minutes} min` : 'session') : (it.notes || 'note')
+  const icon = it.type === 'meal' ? <Salad strokeWidth={1.75} /> : it.type === 'mind' ? <Brain strokeWidth={1.75} /> : <StickyNote strokeWidth={1.75} />
+  const to = it.type === 'meal' && it.refId ? `/recipes/${it.refId}` : it.type === 'mind' && it.refId ? `/mind/${it.refId}` : undefined
+  const body = (
+    <div className="card-row">
+      <div className="thumb">{icon}</div>
+      <div className="card-body"><span className="eyebrow">{label}</span><h3>{it.title}</h3><div className="meta" style={{ whiteSpace: 'normal' }}>{sub}</div></div>
+    </div>
+  )
+  return (
+    <div className="today-entry">
+      {to ? <Link to={to} className="card">{body}</Link> : <div className="card">{body}</div>}
+      <EntryMenu title={it.title} onSubstitute={onSwap} onRemove={onRemove} />
     </div>
   )
 }
@@ -90,6 +101,7 @@ export default function Today() {
   const diet = useLiveQuery(() => getSetting('diet'))
   const [events, setEvents] = useState<IcuEvent[] | null>(null)
   const [plans, setPlans] = useState<CoachPlan[]>([])
+  const [items, setItems] = useState<CalItem[]>([])
   const [err, setErr] = useState<string>()
   const navigate = useNavigate()
 
@@ -97,6 +109,7 @@ export default function Today() {
     const [a, b] = weekRange()
     fetchEvents(a, b).then((evs) => { setEvents(evs); setPlanEvents(evs) }).catch((e) => setErr((e as Error).message))
     fetchGymPlans(a, b).then(setPlans)
+    calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -116,6 +129,7 @@ export default function Today() {
     if (!confirm(`Remove “${p.title}”?`)) return
     await calApi.delPlan(p.id); load()
   }
+  async function removeItem(it: CalItem) { await calApi.delItem(it.id); load() }
   const swapOn = (day: string) => navigate(`/plan?d=${day}&v=day`)
 
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' })()
@@ -124,6 +138,7 @@ export default function Today() {
   const linkedIds = new Set((events ?? []).map((e) => e.external_id).filter(Boolean))
   const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay)
   const dayPlans = plans.filter((p) => p.date === selDay && !linkedIds.has(p.id))
+  const dayItems = items.filter((it) => it.date === selDay)
   const upcoming = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) > selDay).sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
   const upcomingPlans = plans.filter((p) => p.date > selDay && !linkedIds.has(p.id)).sort((a, b) => a.date.localeCompare(b.date))
 
@@ -152,28 +167,30 @@ export default function Today() {
         <p style={{ color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — nice.</p>
       )}
 
-      <div className="section-title" style={{ marginTop: 8 }}>{selDay === todayISO() ? "Today's plan" : fmtDay(selDay)}</div>
+      <div className="cal-day-head" style={{ marginTop: 8 }}>
+        <div className="section-title" style={{ margin: 0 }}>{selDay === todayISO() ? "Today's plan" : fmtDay(selDay)}</div>
+        <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => swapOn(selDay)}><Plus size={16} /> Add</button>
+      </div>
       {err === 'NO_KEY' ? (
-        <div className="card" style={{ padding: 18 }}>
-          <p className="meta" style={{ margin: 0 }}>Connect intervals.icu to see your coach's plan here.</p>
-          <Link to="/profile" className="btn btn--ghost" style={{ marginTop: 12 }}>Connect →</Link>
-        </div>
+        <p className="meta">Connect intervals.icu in <Link to="/profile">Profile</Link> for your coach's plan — you can still add your own below.</p>
       ) : err ? (
         <p className="meta">Couldn't load plan: {err}</p>
       ) : events === null ? (
         <p className="meta">Loading your plan…</p>
-      ) : dayEvents.length === 0 && dayPlans.length === 0 ? (
-        <p className="meta">Nothing scheduled — rest day or self-guided.</p>
-      ) : (
+      ) : null}
+      {dayEvents.length > 0 || dayPlans.length > 0 || dayItems.length > 0 ? (
         <div className="stack">
           {dayEvents.map((e) => <PlanCard key={e.id} e={e} onSwap={() => swapOn(selDay)} onRemove={() => removeEvent(e)} />)}
           {dayPlans.map((p) => <CoachPlanCard key={p.id} p={p} onRun={runPlan} fmtDay={fmtDay} onSwap={() => swapOn(selDay)} onRemove={() => removePlan(p)} />)}
+          {dayItems.map((it) => <ItemCard key={it.id} it={it} onSwap={() => swapOn(selDay)} onRemove={() => removeItem(it)} />)}
         </div>
-      )}
+      ) : events !== null && !err ? (
+        <p className="meta">Nothing scheduled — tap Add, or enjoy a rest day.</p>
+      ) : null}
 
       {meals.length > 0 && (
         <>
-          <div className="section-title">Fuel{selDay !== todayISO() ? ` · ${fmtDay(selDay)}` : ''}</div>
+          <div className="section-title">Suggested fuel{selDay !== todayISO() ? ` · ${fmtDay(selDay)}` : ''}</div>
           <div className="stack">
             {meals.map((r) => (
               <Link key={r.id} to={`/recipes/${r.id}`} className="card">
@@ -193,7 +210,7 @@ export default function Today() {
 
       {meditation && (
         <>
-          <div className="section-title">Reset your mind</div>
+          <div className="section-title">Suggested reset</div>
           <div className="stack">
             <Link to={`/mind/${meditation.id}`} className="card">
               <div className="card-row">

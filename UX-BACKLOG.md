@@ -81,6 +81,13 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
 - **System prompt** (polish only, not the boundary): "You help THIS user manage THEIR own
   training & nutrition data via the provided tools. You cannot modify the app, access other
   users, or run code. Decline anything outside that."
+- **Per-user assistant profile (like the `cyclingcoach` project)**: tie a profile to each
+  user so the assistant adapts to *them*. Holds: **objectives**, **primary sport** (cyclist
+  vs runner vs other — not everyone is a cyclist), and **personal adaptation docs/"books"**
+  the user provides (e.g. my wife uploads references so it accounts for her being a woman).
+  These get injected as the assistant's per-user context/system material, mirroring how
+  `cyclingcoach` structures a coached athlete. Store per-account, server-side; the `gymdata`
+  tools + this profile together define that user's assistant.
 - Caveat to honor: subscription = personal use + one shared rate-limit pool (5h windows).
   Fine at 2 users; do NOT open to real users on the subscription — that's the API trigger.
 - **If sold → BYO-AI (multi-tenant)**: let each new user connect **their own** AI in
