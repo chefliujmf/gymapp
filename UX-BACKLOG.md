@@ -17,11 +17,17 @@ Tackle UX roughly top-down; the calendar is the centerpiece most items hang off.
   it any number of times (library of reusable workouts). NOTE: `WorkoutBuilder.tsx`
   exists — review/extend it for the reusable-template flow.
 
-## Ride & Run ⬜
-- A **builder for rides** (structured power/interval) and the **same for runs**,
-  reusable like gym workouts. (Pushes to intervals.icu via `/auth/plans`.)
+## Ride & Run ✅ (built)
+- ✅ **Builder for rides + runs** (`RideBuilder`, shared): segment editor (minutes +
+  %FTP/threshold, ramps, reorder), preset blocks, live profile preview + total.
+- ✅ Reusable like gym workouts: saved to `rideTemplates` (Dexie v5); "My rides/runs"
+  library on the Ride/Run tabs (play/edit/delete); listed in the calendar Add sheet.
+- ✅ "Save & add to a day" → `calApi.savePlan` (lands on calendar/Today, playable).
+- ⬜ FUTURE: true intervals.icu push as a structured `workout_doc` (currently saves as a
+  local coach plan via `/auth/plans`; the player runs it. Intervals mirroring = same work
+  as the Strava-push item — encode segments → provider).
 
-## Eat (meals) ⬜
+## Eat (meals) ✅ (built)
 - Show a **list of meals** (drop Day 1/2/3 — the calendar handles days).
 - **Create / add new meals.**
 - **Meal packs**: pre-packaged breakfast / lunch / snack "packs" (like a day's
@@ -135,8 +141,12 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
   Currently persisted to `localStorage 'calView'`; move the default into profile settings.
 - ⬜ Day-detail above the grid should read as a **distinct section** (heading/separator) —
   "not obvious it's a different section."
-- ⬜ **Dev account mirror**: dev shows initials "DE" + no avatar; copy prod display name +
-  avatar so dev looks like the real account (dev store is intentionally isolated).
+- ✅ **Dev identity "DE" fixed**: the vite-dev AuthContext was short-circuiting real auth with
+  a mock `{dev, dev@local}`. Dev now authenticates against the real backend → shows real
+  **jmfiset** (login `jmfiset` / `devpass`). Mock only on a true no-backend network error.
+- ⬜ **Dev avatar photo**: still empty in dev (shows "JM" initials). The photo lives only in
+  prod; to mirror it either re-upload in dev Profile, or copy the prod store's avatar when we
+  have XPS/prod access. Not fakeable from the Mac.
 - ✅ Substitute/Remove on **every** calendar entry incl intervals events (writes back via
   `/icu` DELETE) **and** on the **Today** page; calendar deep-links via `?d=&v=`.
 - ⬜ Calendar **default view = Profile preference** (user wants **Week**); set in Profile.
