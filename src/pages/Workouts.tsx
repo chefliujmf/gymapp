@@ -1,35 +1,18 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { workouts, allExercisesById } from '../data/catalog'
-import { listTemplates, deleteTemplate, saveTemplate } from '../db'
+import { workouts } from '../data/catalog'
+import { listTemplates, deleteTemplate } from '../db'
 import type { Discipline } from '../types'
 import { WorkoutCard } from '../ui'
 
 const CAP = 80
-
-const SAMPLE = [
-  { id: 'mw-barbell-squat', sets: 4, reps: 5, weight: 60, rest: 120 },
-  { id: 'mw-barbell-bench-press', sets: 4, reps: 5, weight: 50, rest: 120 },
-  { id: 'mw-barbell-deadlift', sets: 3, reps: 5, weight: 80, rest: 150 },
-  { id: 'mw-barbell-bent-over-row', sets: 3, reps: 8, weight: 40, rest: 90 },
-  { id: 'mw-dumbbell-curl', sets: 3, reps: 12, weight: 12, rest: 60 },
-]
 
 export default function Workouts() {
   const navigate = useNavigate()
   const templates = useLiveQuery(listTemplates) ?? []
   const [filter, setFilter] = useState<Discipline | 'all'>('all')
   const [q, setQ] = useState('')
-
-  async function createSample() {
-    const exercises = SAMPLE.map((s) => {
-      const e = allExercisesById[s.id]
-      return { exId: s.id, name: e?.name ?? s.id, image: e?.image, video: e?.video, mode: 'reps' as const, seconds: 0, rest: s.rest, sets: s.sets, reps: s.reps, weight: s.weight }
-    })
-    const id = await saveTemplate({ name: 'Sample Strength Day', rounds: 1, exercises })
-    navigate(`/template/${id}/play`)
-  }
 
   const filters = useMemo<(Discipline | 'all')[]>(
     () => ['all', ...[...new Set(workouts.map((w) => w.discipline))].sort()],
@@ -54,12 +37,12 @@ export default function Workouts() {
       </div>
 
       <div className="seg">
-        <Link to="/exercises" className="seg__btn">Exercises</Link>
         <span className="seg__btn seg__btn--active">Workouts</span>
+        <Link to="/exercises" className="seg__btn">Exercises</Link>
       </div>
 
+      <input className="search" placeholder="Search workouts…" value={q} onChange={(e) => setQ(e.target.value)} />
       <Link to="/build" className="btn" style={{ marginBottom: 8 }}>＋ Build a workout</Link>
-      <button className="btn btn--ghost" style={{ marginBottom: 10 }} onClick={createSample}>🏋️ Try a sample: Strength Day (weight × reps)</button>
 
       {templates.length > 0 && (
         <>
@@ -83,8 +66,6 @@ export default function Workouts() {
       )}
 
       <div className="section-title">Library</div>
-      <input className="search" placeholder="Search workouts & exercises…" value={q} onChange={(e) => setQ(e.target.value)} />
-
       <div className="chips">
         {filters.map((f) => (
           <button key={f} className={'chip' + (filter === f ? ' chip--active' : '')} onClick={() => setFilter(f)}>

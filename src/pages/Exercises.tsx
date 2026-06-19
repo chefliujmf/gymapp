@@ -26,8 +26,8 @@ export default function Exercises() {
       </div>
 
       <div className="seg">
-        <span className="seg__btn seg__btn--active">Exercises</span>
         <Link to="/workouts" className="seg__btn">Workouts</Link>
+        <span className="seg__btn seg__btn--active">Exercises</span>
       </div>
 
       <Link to="/build" className="btn" style={{ marginBottom: 10 }}>＋ Build a workout</Link>
