@@ -61,3 +61,15 @@ Tackle UX roughly top-down; the calendar is the centerpiece most items hang off.
 ## Deferred (non-Platyplus, from earlier in the session)
 - ⬜ Daily **Centris scrape** on the XPS for new houses + **push to Pixel** if found.
 - ⬜ `exp1-checkcheck-review` (Croissant climate review) on the XPS (needs HA on LAN).
+
+## Session-2 feedback (captured live)
+- ✅ Calendar: Day/Week/Month/Schedule (no Year), single-column mobile-first, side-by-side reverted.
+- ✅ Calendar entries: Remove + Substitute (swap) + quick-add-multiple (sheet stays open, Done).
+- ✅ Gym add = catalog workouts + saved templates (not exercises); images optimized (~5MB→~100KB).
+- ⬜ **Admin page**: split "Admin · Users" out of Profile into its own admin-only page.
+  Keep it SIMPLE + admin-focused (no workout features); admins just get access to it.
+  Mobile-first: user cards, role badges, "+Add user" sheet, per-user actions sheet
+  (reset / change role / remove) with confirmations. Coach API token stays in Profile.
+- ⬜ Today page: events should be modifiable (show ASSIGNED items, allow delete/substitute),
+  not just auto-suggestions. Reuse the calendar entry pattern.
+- ⬜ One format for all: mobile-first single column everywhere (no desktop-only layouts).
