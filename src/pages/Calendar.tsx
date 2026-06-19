@@ -11,12 +11,19 @@ import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, Trash2, 
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+type View = 'day' | 'week' | 'month' | 'year' | 'schedule'
 
 function monthGrid(y: number, m: number): string[] {
   const startOffset = (new Date(y, m, 1).getDay() + 6) % 7
   const start = new Date(y, m, 1 - startOffset)
   return Array.from({ length: 42 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return localISO(d) })
 }
+const addDays = (iso: string, n: number) => { const d = new Date(iso + 'T00:00'); d.setDate(d.getDate() + n); return localISO(d) }
+const startOfWeek = (iso: string) => { const d = new Date(iso + 'T00:00'); return addDays(iso, -((d.getDay() + 6) % 7)) }
+const weekDays = (iso: string) => { const s = startOfWeek(iso); return Array.from({ length: 7 }, (_, i) => addDays(s, i)) }
+const fmtFull = (iso: string) => new Date(iso + 'T00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
+const fmtShort = (iso: string) => new Date(iso + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+
 const colorFor = (s: string) => (s === 'cycling' || s === 'ride' ? '#34e07d' : s === 'running' || s === 'run' ? '#ffb13d' : s === 'gym' ? '#7fd1ff' : s === 'meal' ? '#ff8fb1' : s === 'mind' ? '#b98cff' : '#9aa3b2')
 const iconFor = (s: string, sz = 15) => (s === 'cycling' || s === 'ride' ? <Bike size={sz} /> : s === 'running' || s === 'run' ? <Footprints size={sz} /> : s === 'gym' ? <Dumbbell size={sz} /> : s === 'meal' ? <Salad size={sz} /> : s === 'mind' ? <Brain size={sz} /> : <StickyNote size={sz} />)
 const titleOf = (e: Entry) => (e.k === 'plan' ? e.plan.title : e.k === 'event' ? e.ev.name : e.item.title)
@@ -26,6 +33,7 @@ type Entry = { k: 'plan'; plan: CoachPlan } | { k: 'event'; ev: IcuEvent } | { k
 export default function Calendar() {
   const navigate = useNavigate()
   const now = new Date()
+  const [view, setView] = useState<View>(() => (typeof localStorage !== 'undefined' && (localStorage.getItem('calView') as View)) || 'month')
   const [cur, setCur] = useState({ y: now.getFullYear(), m: now.getMonth() })
   const [sel, setSel] = useState(localISO())
   const [events, setEvents] = useState<IcuEvent[]>([])
@@ -34,9 +42,19 @@ export default function Calendar() {
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const [ftp, setFtp] = useState(260)
   const [adding, setAdding] = useState(false)
+  const todayISO = localISO()
 
-  const cells = useMemo(() => monthGrid(cur.y, cur.m), [cur])
-  const range = useMemo(() => [cells[0], cells[41]] as const, [cells])
+  const changeView = (v: View) => { setView(v); try { localStorage.setItem('calView', v) } catch { /* ignore */ } }
+
+  // Load a window wide enough for the active view.
+  const monthCells = useMemo(() => monthGrid(cur.y, cur.m), [cur])
+  const range = useMemo<[string, string]>(() => {
+    if (view === 'schedule') return [todayISO, addDays(todayISO, 120)]
+    if (view === 'year') return [`${cur.y}-01-01`, `${cur.y}-12-31`]
+    if (view === 'day') return [sel, sel]
+    if (view === 'week') { const w = weekDays(sel); return [w[0], w[6]] }
+    return [monthCells[0], monthCells[41]]
+  }, [view, cur.y, monthCells, sel, todayISO])
 
   const reload = useCallback(async () => {
     const [a, b] = range
@@ -44,11 +62,9 @@ export default function Calendar() {
     fetchGymPlans(a, b).then(setPlans).catch(() => setPlans([]))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [range])
-
   useEffect(() => { reload() }, [reload])
   useEffect(() => { listTemplates().then(setTemplates); getSetting('ftp').then((v) => v && setFtp(Number(v))) }, [])
 
-  // Entries per day, merged-by-id (a plan that mirrors an event shows once, as the plan).
   const entriesFor = (day: string): Entry[] => {
     const out: Entry[] = []
     plans.filter((p) => p.date === day).forEach((plan) => out.push({ k: 'plan', plan }))
@@ -67,67 +83,167 @@ export default function Calendar() {
     else if (e.k === 'item') await calApi.delItem(e.item.id)
     reload()
   }
+  function openEntry(e: Entry) {
+    if (e.k === 'plan') runPlan(e.plan)
+    else if (e.k === 'event') navigate(`/plan/${e.ev.id}`)
+    else if (e.k === 'item' && e.item.type === 'meal' && e.item.refId) navigate(`/recipes/${e.item.refId}`)
+    else if (e.k === 'item' && e.item.type === 'mind' && e.item.refId) navigate(`/mind/${e.item.refId}`)
+  }
+  const subOf = (e: Entry) =>
+    e.k === 'plan' ? (e.plan.sport === 'gym' ? `${(e.plan.exercises || []).length} exercises` : `${Math.round((e.plan.segments || []).reduce((s, x) => s + x.duration, 0) / 60)} min`)
+      : e.k === 'event' ? (e.ev.moving_time ? `${Math.round(e.ev.moving_time / 60)} min` : 'planned')
+        : e.item.type === 'meal' ? `${e.item.mealType || 'meal'}${e.item.kcal ? ` · ${e.item.kcal} kcal` : ''}` : e.item.type === 'mind' ? `${e.item.minutes || ''} min` : 'note'
 
-  const selEntries = entriesFor(sel)
-  const todayISO = localISO()
+  // Entry card (used by day/week/schedule list rendering).
+  const EntryCard = ({ e }: { e: Entry }) => {
+    const kind = kindOf(e)
+    return (
+      <div className="card cal-entry">
+        <button className="cal-entry__main" onClick={() => openEntry(e)}>
+          <span className="cal-chip" style={{ background: colorFor(kind) + '22', color: colorFor(kind) }}>{iconFor(kind)}</span>
+          <span className="card-body"><h3>{titleOf(e)}</h3>{e.k === 'item' && e.item.type === 'note' && e.item.notes ? <div className="meta" style={{ whiteSpace: 'normal' }}>{e.item.notes}</div> : <div className="meta">{subOf(e)}</div>}</span>
+        </button>
+        {e.k !== 'event' && <button className="icon-btn" onClick={() => delEntry(e)} aria-label="Remove"><Trash2 size={16} /></button>}
+      </div>
+    )
+  }
+
+  // Small chips (used inside month/week cells).
+  const Chips = ({ day, max }: { day: string; max: number }) => {
+    const es = entriesFor(day)
+    return (
+      <span className="cal-evs">
+        {es.slice(0, max).map((e, i) => { const c = colorFor(kindOf(e)); return <span key={i} className="cal-ev" style={{ background: c + '22', color: c }}>{iconFor(kindOf(e), 10)}<em>{titleOf(e)}</em></span> })}
+        {es.length > max && <span className="cal-more">+{es.length - max}</span>}
+      </span>
+    )
+  }
+
+  // ---- header: view switcher + contextual nav -----------------------------
+  const VIEWS: [View, string][] = [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['year', 'Year'], ['schedule', 'Schedule']]
+  const title = view === 'month' ? `${MONTHS[cur.m]} ${cur.y}` : view === 'year' ? `${cur.y}` : view === 'day' ? fmtFull(sel) : view === 'week' ? `Week of ${new Date(weekDays(sel)[0] + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Schedule'
+  const nav = (dir: -1 | 1) => {
+    if (view === 'day') setSel((s) => addDays(s, dir))
+    else if (view === 'week') setSel((s) => addDays(s, dir * 7))
+    else if (view === 'year') setCur((c) => ({ ...c, y: c.y + dir }))
+    else setCur((c) => ({ y: c.m === (dir === 1 ? 11 : 0) ? c.y + dir : c.y, m: (c.m + 12 + dir) % 12 }))
+  }
+  const goToday = () => { const t = new Date(); setSel(localISO()); setCur({ y: t.getFullYear(), m: t.getMonth() }) }
 
   return (
     <div>
+      <div className="cal-views">
+        {VIEWS.map(([v, label]) => (
+          <button key={v} className={'cal-viewbtn' + (view === v ? ' cal-viewbtn--on' : '')} onClick={() => changeView(v)}>{label}</button>
+        ))}
+      </div>
+
       <div className="cal-head">
-        <button className="icon-btn" onClick={() => setCur((c) => ({ y: c.m === 0 ? c.y - 1 : c.y, m: (c.m + 11) % 12 }))}><ChevronLeft size={20} /></button>
-        <h1 style={{ margin: 0, fontSize: 20 }}>{MONTHS[cur.m]} {cur.y}</h1>
-        <button className="icon-btn" onClick={() => setCur((c) => ({ y: c.m === 11 ? c.y + 1 : c.y, m: (c.m + 1) % 12 }))}><ChevronRight size={20} /></button>
+        {view !== 'schedule' ? <button className="icon-btn" onClick={() => nav(-1)}><ChevronLeft size={20} /></button> : <span style={{ width: 36 }} />}
+        <h1 style={{ margin: 0, fontSize: 19, flex: 1, textAlign: 'center' }}>{title}</h1>
+        {view !== 'schedule' ? <button className="icon-btn" onClick={() => nav(1)}><ChevronRight size={20} /></button> : <span style={{ width: 36 }} />}
+        <button className="cal-today" onClick={goToday}>Today</button>
       </div>
 
-      <div className="cal-grid cal-dow">{DOW.map((d, i) => <div key={i} className="cal-dowcell">{d}</div>)}</div>
-      <div className="cal-grid">
-        {cells.map((day) => {
-          const es = entriesFor(day)
-          const inMonth = Number(day.slice(5, 7)) === cur.m + 1
-          return (
-            <button key={day} className={'cal-cell' + (day === sel ? ' cal-cell--sel' : '') + (inMonth ? '' : ' cal-cell--dim')} onClick={() => setSel(day)}>
-              <span className={'cal-num' + (day === todayISO ? ' cal-num--today' : '')}>{Number(day.slice(8, 10))}</span>
-              <span className="cal-evs">
-                {es.slice(0, 3).map((e, i) => {
-                  const c = colorFor(kindOf(e))
-                  return <span key={i} className="cal-ev" style={{ background: c + '22', color: c }}>{iconFor(kindOf(e), 10)}<em>{titleOf(e)}</em></span>
-                })}
-                {es.length > 3 && <span className="cal-more">+{es.length - 3}</span>}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
-      <div className="cal-day-head">
-        <div className="section-title" style={{ margin: 0 }}>{new Date(sel + 'T00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
-        <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setAdding(true)}><Plus size={16} /> Add</button>
-      </div>
-
-      <div className="stack">
-        {selEntries.length === 0 && <p className="meta">Nothing planned. Tap “Add”.</p>}
-        {selEntries.map((e, i) => {
-          const kind = kindOf(e)
-          const title = e.k === 'plan' ? e.plan.title : e.k === 'event' ? e.ev.name : e.item.title
-          const sub = e.k === 'plan' ? (e.plan.sport === 'gym' ? `${(e.plan.exercises || []).length} exercises` : `${Math.round((e.plan.segments || []).reduce((s, x) => s + x.duration, 0) / 60)} min`)
-            : e.k === 'event' ? (e.ev.moving_time ? `${Math.round(e.ev.moving_time / 60)} min` : 'planned') : e.item.type === 'meal' ? `${e.item.mealType || 'meal'}${e.item.kcal ? ` · ${e.item.kcal} kcal` : ''}` : e.item.type === 'mind' ? `${e.item.minutes || ''} min` : 'note'
-          const onClick = () => {
-            if (e.k === 'plan') runPlan(e.plan)
-            else if (e.k === 'event') navigate(`/plan/${e.ev.id}`)
-            else if (e.item.type === 'meal' && e.item.refId) navigate(`/recipes/${e.item.refId}`)
-            else if (e.item.type === 'mind' && e.item.refId) navigate(`/mind/${e.item.refId}`)
-          }
-          return (
-            <div key={i} className="card cal-entry">
-              <button className="cal-entry__main" onClick={onClick}>
-                <span className="cal-chip" style={{ background: colorFor(kind) + '22', color: colorFor(kind) }}>{iconFor(kind)}</span>
-                <span className="card-body"><h3>{title}</h3>{e.k === 'item' && e.item.type === 'note' && e.item.notes ? <div className="meta" style={{ whiteSpace: 'normal' }}>{e.item.notes}</div> : <div className="meta">{sub}</div>}</span>
-              </button>
-              {e.k !== 'event' && <button className="icon-btn" onClick={() => delEntry(e)} aria-label="Remove"><Trash2 size={16} /></button>}
+      {/* ---- MONTH ---- */}
+      {view === 'month' && (
+        <div className="cal-month-layout">
+          <div className="cal-month-cal">
+            <div className="cal-grid cal-dow">{DOW.map((d, i) => <div key={i} className="cal-dowcell">{d}</div>)}</div>
+            <div className="cal-grid">
+              {monthCells.map((day) => {
+                const inMonth = Number(day.slice(5, 7)) === cur.m + 1
+                return (
+                  <button key={day} className={'cal-cell' + (day === sel ? ' cal-cell--sel' : '') + (inMonth ? '' : ' cal-cell--dim')} onClick={() => setSel(day)}>
+                    <span className={'cal-num' + (day === todayISO ? ' cal-num--today' : '')}>{Number(day.slice(8, 10))}</span>
+                    <Chips day={day} max={3} />
+                  </button>
+                )
+              })}
             </div>
-          )
-        })}
-      </div>
+          </div>
+          <div className="cal-month-detail">
+            <div className="cal-day-head">
+              <div className="section-title" style={{ margin: 0 }}>{fmtFull(sel)}</div>
+              <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setAdding(true)}><Plus size={16} /> Add</button>
+            </div>
+            <div className="stack">
+              {entriesFor(sel).length === 0 && <p className="meta">Nothing planned. Tap “Add”.</p>}
+              {entriesFor(sel).map((e, i) => <EntryCard key={i} e={e} />)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- WEEK ---- (7 day sections, mobile-first) */}
+      {view === 'week' && (
+        <div className="stack" style={{ gap: 10 }}>
+          {weekDays(sel).map((day) => {
+            const es = entriesFor(day)
+            return (
+              <div key={day} className="card" style={{ padding: 12, border: day === todayISO ? '1px solid #2fb968' : undefined }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: es.length ? 8 : 0 }}>
+                  <strong style={{ color: day === todayISO ? '#2fb968' : undefined }}>{fmtShort(day)}</strong>
+                  <button className="icon-btn" onClick={() => { setSel(day); setAdding(true) }} aria-label="Add"><Plus size={16} /></button>
+                </div>
+                <div className="stack" style={{ gap: 6 }}>{es.map((e, i) => <EntryCard key={i} e={e} />)}</div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ---- DAY ---- */}
+      {view === 'day' && (
+        <>
+          <div className="cal-day-head">
+            <div className="section-title" style={{ margin: 0 }}>{entriesFor(sel).length} planned</div>
+            <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setAdding(true)}><Plus size={16} /> Add</button>
+          </div>
+          <div className="stack">
+            {entriesFor(sel).length === 0 && <p className="meta">Nothing planned for {fmtShort(sel)}. Tap “Add”.</p>}
+            {entriesFor(sel).map((e, i) => <EntryCard key={i} e={e} />)}
+          </div>
+        </>
+      )}
+
+      {/* ---- YEAR ---- (12 mini months, tap to open) */}
+      {view === 'year' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {MONTHS.map((mn, m) => {
+            const cells = monthGrid(cur.y, m)
+            return (
+              <button key={m} className="card" style={{ padding: 8, textAlign: 'left' }} onClick={() => { setCur({ y: cur.y, m }); changeView('month') }}>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{mn.slice(0, 3)}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
+                  {cells.map((day) => {
+                    const inM = Number(day.slice(5, 7)) === m + 1
+                    const has = inM && entriesFor(day).length > 0
+                    return <span key={day} style={{ fontSize: 8, textAlign: 'center', color: !inM ? 'transparent' : day === todayISO ? '#2fb968' : has ? '#fff' : '#55555f', fontWeight: has || day === todayISO ? 800 : 400 }}>{Number(day.slice(8, 10))}</span>
+                  })}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ---- SCHEDULE ---- (agenda: each day with entries, today forward) */}
+      {view === 'schedule' && (
+        <div className="stack" style={{ gap: 14 }}>
+          {(() => {
+            const days: string[] = []
+            for (let d = todayISO; d <= range[1]; d = addDays(d, 1)) if (entriesFor(d).length) days.push(d)
+            if (!days.length) return <p className="meta">Nothing scheduled in the next 120 days.</p>
+            return days.map((day) => (
+              <div key={day}>
+                <div className="section-title" style={{ margin: '0 0 6px', color: day === todayISO ? '#2fb968' : undefined }}>{day === todayISO ? 'Today · ' : ''}{fmtFull(day)}</div>
+                <div className="stack" style={{ gap: 6 }}>{entriesFor(day).map((e, i) => <EntryCard key={i} e={e} />)}</div>
+              </div>
+            ))
+          })()}
+        </div>
+      )}
 
       {adding && <AddSheet date={sel} ftp={ftp} templates={templates} onClose={() => setAdding(false)} onAdded={() => { setAdding(false); reload() }} />}
     </div>
