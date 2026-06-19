@@ -62,7 +62,7 @@ export default function PlanDetail() {
       {gym.length > 0 && (
         <>
           <button className="btn" onClick={startGym}>▶ Start workout</button>
-          <div className="section-title">Main set</div>
+          <div className="section-title">Exercises</div>
           <p className="meta" style={{ margin: '-4px 2px 8px' }}>Tap an exercise to preview the demo & cues.</p>
           <div className="stack" style={{ gap: 8 }}>
             {gym.map((r, i) => {
