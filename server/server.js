@@ -375,9 +375,12 @@ app.get('/api/plans', apiAuth, (req, res) => res.json(plansInRange(req.user, req
 app.get('/api/plan/:id', apiAuth, (req, res) => { const p = (req.user.plans || []).find((x) => x.id === req.params.id); return p ? res.json(p) : res.status(404).json({ error: 'not found' }) })
 app.delete('/api/plan/:id', apiAuth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
 
-// ---- OpenAPI spec + Swagger UI (public docs) -----------------------------
-app.get('/api/openapi.json', (req, res) => res.sendFile(join(__dirname, 'openapi.json')))
-app.get('/api/docs', (req, res) => res.type('html').send(`<!doctype html><html><head><meta charset="utf-8"><title>Platyplus Coach API</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css"></head><body><div id="ui"></div><script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script><script>window.onload=()=>SwaggerUIBundle({url:'/api/openapi.json',dom_id:'#ui'})</script></body></html>`))
+// ---- OpenAPI spec + Swagger UI (session-gated — not public) ---------------
+// `auth` requires a valid login cookie, so the docs + spec are invisible to
+// anyone who isn't signed in. Swagger's spec fetch carries the cookie (same-origin
+// + requestInterceptor) so it loads fine for a logged-in user.
+app.get('/api/openapi.json', auth, (req, res) => res.sendFile(join(__dirname, 'openapi.json')))
+app.get('/api/docs', auth, (req, res) => res.type('html').send(`<!doctype html><html><head><meta charset="utf-8"><title>Platyplus Coach API</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css"></head><body><div id="ui"></div><script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script><script>window.onload=()=>SwaggerUIBundle({url:'/api/openapi.json',dom_id:'#ui',withCredentials:true,requestInterceptor:(r)=>{r.credentials='same-origin';return r}})</script></body></html>`))
 
 // ---- intervals.icu proxy (session required) ------------------------------
 app.all('/icu/*', auth, async (req, res) => {
