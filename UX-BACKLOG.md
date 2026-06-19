@@ -59,6 +59,14 @@ Tackle UX roughly top-down; the calendar is the centerpiece most items hang off.
   dev data + `localhost` origin, so dev has its own API/Swagger/passkeys, no prod writes.
 - ⬜ **XPS staging stack**: parallel `*-dev` containers + dev subdomains
   (`platyplus-dev.duckdns.org`, NPM + cert) for full prod parity incl. passkeys.
+- ✅ **CI**: `.github/workflows/ci.yml` — `npm ci && npm run build` on push dev/main + PR→main.
+- ✅ **One-command deploy**: `npm run deploy` (`scripts/deploy.sh`) — build → rsync → compose
+  up --build → **healthcheck gate**. Mac mode + on-box `DEPLOY_LOCAL=1` mode.
+- ⬜ **GitHub-triggered CD (optional, NOT built)**: a self-hosted runner that *rebuilds on the
+  XPS* doesn't fit — the build needs the 24 GB gitignored scraped Centr/MuscleWiki content
+  (third-party IP), which lives only on the Mac. Only sound shape if wanted: Mac builds `dist/`
+  → uploads as a release artifact → self-hosted XPS runner downloads + deploys it (no rebuild).
+- ⬜ **Branch protection on `main`**: require the CI check before merge (PR-based promotion).
 - ⬜ **Monitoring routine**: scheduled check of `docker ps` health + `docker logs`
   to maintain the PWAs and act on issues (logs already set up for this).
 - ⬜ **Unified media manifest**: single inventory of every self-hosted asset

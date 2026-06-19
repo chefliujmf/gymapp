@@ -11,6 +11,35 @@ Pixel. Goal: serve the built `dist/` over HTTPS and reverse-proxy intervals.icu.
 > **Check first** that `gymmingapp.duckdns.org` isn't already used by another vhost
 > (e.g. Home Assistant). If it is, give gymapp its own subdomain instead.
 
+## CI/CD (current)
+
+Prod = `platyplus.duckdns.org` on the XPS (docker compose, port 8088 → NPM/HTTPS).
+
+**CI — automatic.** `.github/workflows/ci.yml` runs on every push to `dev`/`main` and
+every PR into `main`: `npm ci && npm run build` (catalog gen + independence gate +
+`tsc -b` + vite build). The scraped catalog isn't in the repo, so CI builds against
+empty stubs — enough to catch type/build breakage before it reaches `main`.
+
+**CD — one command from the Mac.** Deploy is `npm run deploy` (`scripts/deploy.sh`):
+build `dist/` here → rsync `dist/` + `server/` to the XPS → `docker compose up -d --build`
+→ **wait for the container healthcheck** (fails loudly + dumps logs if unhealthy).
+
+```bash
+npm run deploy                  # build + deploy + health-gate (Mac → XPS)
+SKIP_BUILD=1 npm run deploy     # reuse an existing ./dist
+```
+
+**Why no GitHub "merge → auto-deploy" runner:** the build needs the **24 GB of scraped
+Centr/MuscleWiki content** (gitignored — third-party IP), which lives only on the Mac.
+A self-hosted runner that *rebuilt on the XPS* would need that content (or the derived
+catalog) on the box — neither is acceptable — and adds nothing, since the build must
+happen where the content legally lives. So the Mac is the build origin and `deploy.sh`
+is the deploy. **If GitHub-triggered CD is ever wanted**, the only sound shape is: Mac
+builds `dist/` and uploads it as a release artifact, and a self-hosted runner on the XPS
+downloads + deploys that prebuilt artifact (no rebuild). Not built — flagged in the backlog.
+
+**Promote dev → prod:** merge `dev` → `main` (CI gates it), then `npm run deploy`.
+
 ## ⭐ Your setup: NPM (HA Green) + isolated container on the XPS
 
 The build is already staged on the XPS at `~/gymapp/dist` + `~/gymapp/nginx.conf`.
