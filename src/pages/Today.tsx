@@ -140,16 +140,6 @@ export default function Today() {
         </div>
       )}
 
-      {(upcoming.length > 0 || upcomingPlans.length > 0) && (
-        <>
-          <div className="section-title">Coming up</div>
-          <div className="stack">
-            {upcoming.map((e) => <PlanCard key={e.id} e={e} showDate />)}
-            {upcomingPlans.map((p) => <CoachPlanCard key={p.id} p={p} onRun={runPlan} showDate fmtDay={fmtDay} />)}
-          </div>
-        </>
-      )}
-
       {meals.length > 0 && (
         <>
           <div className="section-title">Fuel{selDay !== todayISO() ? ` · ${fmtDay(selDay)}` : ''}</div>
@@ -184,6 +174,16 @@ export default function Today() {
                 </div>
               </div>
             </Link>
+          </div>
+        </>
+      )}
+
+      {(upcoming.length > 0 || upcomingPlans.length > 0) && (
+        <>
+          <div className="section-title">Coming up</div>
+          <div className="stack">
+            {upcoming.map((e) => <PlanCard key={e.id} e={e} showDate />)}
+            {upcomingPlans.map((p) => <CoachPlanCard key={p.id} p={p} onRun={runPlan} showDate fmtDay={fmtDay} />)}
           </div>
         </>
       )}
