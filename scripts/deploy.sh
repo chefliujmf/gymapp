@@ -20,9 +20,11 @@ cd "$REPO"
 XPS_HOST="${XPS_HOST:-xps}"
 APP_DIR="${GYMAPP_DIR:-/home/jmf/gymapp}"
 
+# BUILD_CMD lets the XPS runner use "npm run build:app" (compiles against a
+# pre-synced generated catalog, skipping the scrape it doesn't have).
 if [ "${SKIP_BUILD:-0}" != "1" ]; then
-  echo ">> building dist..."
-  npm run build
+  echo ">> building dist (${BUILD_CMD:-npm run build})..."
+  ${BUILD_CMD:-npm run build}
 fi
 
 # Poll the container's own healthcheck for up to 60s. $1 = "local" | "remote".
