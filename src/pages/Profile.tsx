@@ -10,6 +10,7 @@ export default function Profile() {
   const ftp = useLiveQuery(() => getSetting('ftp'))
   const calView = useLiveQuery(() => getSetting('calView'))
   const setCalView = (v: string) => { setSetting('calView', v); try { localStorage.setItem('calView', v) } catch { /* ignore */ } }
+  const coachName = useLiveQuery(() => getSetting('coachName'))
 
   const totalMin = (logs ?? []).reduce((s, l) => s + l.duration, 0)
 
@@ -36,6 +37,10 @@ export default function Profile() {
       <Link to="/progress" className="btn btn--ghost" style={{ marginTop: 6 }}>📈 View full progress</Link>
 
       <AccountSection />
+
+      <div className="section-title">Your coach</div>
+      <input className="search" placeholder="e.g. Tadej" value={coachName ?? ''} onChange={(e) => setSetting('coachName', e.target.value)} />
+      <p className="meta" style={{ margin: '6px 2px 4px' }}>What your in-app coach/assistant goes by (used once the assistant ships).</p>
 
       <div className="section-title">Diet</div>
       <div className="chips">
