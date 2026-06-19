@@ -4,7 +4,7 @@ import { fetchEvents, sportOf, type IcuEvent } from '../intervals'
 import { fetchGymPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
 import { setCurrentRide, segmentsFromEndurance } from '../ride'
 import { calApi, newId, type CalItem } from '../calendar'
-import { recipes, mindSessions, endurance } from '../data/catalog'
+import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
 import { listTemplates, getSetting, type WorkoutTemplate } from '../db'
 import { localISO } from '../date'
 import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -256,12 +256,16 @@ function AddSheet({ date, ftp, templates, onClose, onAdded }: { date: string; ft
           <>
             <input className="search" autoFocus placeholder={`Search ${type}…`} value={q} onChange={(e) => setQ(e.target.value)} />
             <div className="stack sheet-list">
-              {type === 'gym' && templates.map((t) => (
+              {type === 'gym' && templates.filter((t) => !q || t.name.toLowerCase().includes(q.toLowerCase())).map((t) => (
                 <button key={t.id} className="card" disabled={busy} onClick={() => add(() => calApi.savePlan({ id: newId(), date, sport: 'gym', title: t.name, rounds: t.rounds, exercises: t.exercises.map((x) => ({ name: x.name, exId: x.exId, mode: x.mode || 'reps', seconds: x.seconds, sets: x.sets, reps: x.reps, weight: x.weight, rest: x.rest })) }))}>
-                  <div className="card-row"><div className="thumb"><Dumbbell size={18} /></div><div className="card-body"><h3>{t.name}</h3><div className="meta">{t.exercises.length} exercises · {t.rounds} rounds</div></div></div>
+                  <div className="card-row"><div className="thumb"><Dumbbell size={18} /></div><div className="card-body"><h3>{t.name}</h3><div className="meta">My workout · {t.exercises.length} exercises{t.rounds > 1 ? ` · ${t.rounds} rounds` : ''}</div></div></div>
                 </button>
               ))}
-              {type === 'gym' && !templates.length && <p className="meta">No saved gym templates yet — build one in Train.</p>}
+              {type === 'gym' && workouts.filter((w) => !q || w.title.toLowerCase().includes(q.toLowerCase())).slice(0, 40).map((w) => (
+                <button key={w.id} className="card" disabled={busy} onClick={() => add(() => calApi.savePlan({ id: newId(), date, sport: 'gym', title: w.title, rounds: 1, exercises: (w.exercises || []).map((e) => ({ name: e.name, mode: e.seconds ? 'timed' : 'reps', seconds: e.seconds || 0, rest: 0 })) }))}>
+                  <div className="card-row"><div className="thumb"><Dumbbell size={18} /></div><div className="card-body"><h3>{w.title}</h3><div className="meta">{w.discipline} · {(w.exercises || []).length} exercises · {w.duration} min</div></div></div>
+                </button>
+              ))}
               {(type === 'ride' || type === 'run') && rideRun(type).map((w) => (
                 <button key={w.id} className="card" disabled={busy} onClick={() => add(() => calApi.savePlan({ id: newId(), date, sport: type, title: w.name, ftp, segments: segmentsFromEndurance(w) }))}>
                   <div className="card-row"><div className="thumb">{iconFor(type)}</div><div className="card-body"><h3>{w.name}</h3><div className="meta">{w.duration} min · {w.category}</div></div></div>

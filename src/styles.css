@@ -580,4 +580,4 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 }
 .sheet-type span { color: var(--text, #e7ebf0); }
 .sheet-list { max-height: 56vh; overflow-y: auto; margin-top: 10px; }
-.sheet-list .card { width: 100%; text-align: left; }
+.sheet-list .card { width: 100%; text-align: left; display: block; }

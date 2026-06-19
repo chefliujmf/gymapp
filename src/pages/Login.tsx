@@ -46,7 +46,7 @@ export default function Login() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div className="auth-logo"><img src="/favicon.svg" alt="" style={{ width: 38, height: 38, borderRadius: 9, verticalAlign: '-8px', marginRight: 9 }} />Platyplus</div>
+        <div className="auth-logo"><img src="/favicon.svg?v=2" alt="" style={{ width: 38, height: 38, borderRadius: 9, verticalAlign: '-8px', marginRight: 9 }} />Platyplus</div>
 
         {mode === 'login' && (
           <form onSubmit={doPassword} className="auth-form">
