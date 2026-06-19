@@ -10,6 +10,6 @@ export RP_ID=localhost
 export PORT=8088
 export STATIC_DIR="$(pwd)/dist"
 export SEED_USER=jmfiset
-export SEED_EMAIL=dev@local
+export [email protected]
 export SEED_PASSWORD=devpass
 exec node server/server.js
