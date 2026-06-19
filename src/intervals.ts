@@ -136,21 +136,29 @@ export function encodeGymWorkout(spec: GymWorkoutSpec): string {
   return [head, ...lines].join('\n')
 }
 
-const HEAD_RE = /^[•\-*]\s*(.+?)\s*(?:\[([^\]]+)\])?\s*[—–-]\s*(.+)$/
+// One exercise segment: "Name [id] — body". Leading bullet optional (it's the
+// split delimiter); the " — " separator must be space-padded so a hyphen inside
+// a name (e.g. "Push-up") isn't mistaken for it.
+const SEG_RE = /^[•·\-*]?\s*(.+?)\s*(?:\[([^\]]+)\])?\s+[—–-]\s+(.+)$/
 const REPS_RE = /^(\d+)\s*[×x]\s*(\d+)(?:\s*@\s*([\d.]+)\s*(?:kg|lb)?)?(?:\s*\/\s*(\d+)\s*s)?/i
 const TIMED_RE = /^(\d+)\s*s(?:\s*\/\s*(\d+)\s*s)?/i
 
 export function parseGymWorkout(description = ''): GymWorkoutSpec | null {
   const head = description.match(/\[gymapp(?::(\d+))?\](?:\s+(\d+)\s+rounds?)?/i)
   if (!head) return null
+  // Exercises may be newline-separated (one "• …" per line) OR all on one line
+  // separated by bullets ("… • … • …"). Drop the header, then split on both.
+  const body = description.slice((head.index ?? 0) + head[0].length)
   const exercises: GymExSpec[] = []
-  for (const raw of description.split('\n')) {
-    const m = raw.match(HEAD_RE)
+  for (const raw of body.split(/[•·\n]+/)) {
+    const seg = raw.trim()
+    if (!seg) continue
+    const m = seg.match(SEG_RE)
     if (!m) continue
-    const name = m[1].trim(); const exId = m[2]?.trim(); const body = m[3].trim()
-    const r = body.match(REPS_RE)
+    const name = m[1].trim(); const exId = m[2]?.trim(); const b = m[3].trim()
+    const r = b.match(REPS_RE)
     if (r) { exercises.push({ mode: 'reps', name, exId, sets: +r[1], reps: +r[2], weight: r[3] ? +r[3] : undefined, rest: +(r[4] || 0) }); continue }
-    const t = body.match(TIMED_RE)
+    const t = b.match(TIMED_RE)
     if (t) exercises.push({ mode: 'timed', name, exId, work: +t[1], rest: +(t[2] || 0) })
   }
   if (!exercises.length) return null
