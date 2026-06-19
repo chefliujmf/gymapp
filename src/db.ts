@@ -61,6 +61,19 @@ export interface WorkoutTemplate {
   createdAt: number
 }
 
+/** One segment of a structured ride/run: duration (sec) ramping powerStart→powerEnd
+ * as a % of FTP (cycling) or threshold pace (running). Matches the player Segment. */
+export interface RideSegment { duration: number; powerStart: number; powerEnd: number; label?: string }
+
+/** A reusable ride or run the user built (library, like WorkoutTemplate for gym). */
+export interface RideTemplate {
+  id?: number
+  name: string
+  sport: 'ride' | 'run'
+  segments: RideSegment[]
+  createdAt: number
+}
+
 /** One logged set: weight + reps + whether it's been completed. */
 export interface SetEntry {
   weight?: number
@@ -91,6 +104,7 @@ const db = new Dexie('gymapp') as Dexie & {
   settings: EntityTable<Setting, 'key'>
   activeSession: EntityTable<ActiveSession, 'key'>
   templates: EntityTable<WorkoutTemplate, 'id'>
+  rideTemplates: EntityTable<RideTemplate, 'id'>
 }
 
 db.version(2).stores({
@@ -117,6 +131,15 @@ db.version(4).stores({
   activeSession: 'key',
   templates: '++id, createdAt',
 })
+// v5: reusable structured ride/run templates (the ride/run builder library).
+db.version(5).stores({
+  logs: '++id, workoutId, date, completedAt',
+  enrollments: '++id, programId',
+  settings: 'key',
+  activeSession: 'key',
+  templates: '++id, createdAt',
+  rideTemplates: '++id, createdAt, sport',
+})
 
 export { db }
 
@@ -137,6 +160,26 @@ export async function getTemplate(id: number) {
 }
 export async function deleteTemplate(id: number) {
   return db.templates.delete(id)
+}
+
+// --- ride/run templates (the endurance builder library) --------------------
+
+export async function saveRideTemplate(t: Omit<RideTemplate, 'id' | 'createdAt'> & { id?: number }) {
+  if (t.id != null) {
+    await db.rideTemplates.update(t.id, { name: t.name, sport: t.sport, segments: t.segments })
+    return t.id
+  }
+  return db.rideTemplates.add({ name: t.name, sport: t.sport, segments: t.segments, createdAt: Date.now() })
+}
+export async function listRideTemplates(sport?: 'ride' | 'run') {
+  const all = await db.rideTemplates.orderBy('createdAt').reverse().toArray()
+  return sport ? all.filter((t) => t.sport === sport) : all
+}
+export async function getRideTemplate(id: number) {
+  return db.rideTemplates.get(id)
+}
+export async function deleteRideTemplate(id: number) {
+  return db.rideTemplates.delete(id)
 }
 
 // --- convenience helpers ---------------------------------------------------

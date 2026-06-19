@@ -5,7 +5,7 @@ import { fetchGymPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from
 import { setCurrentRide, segmentsFromEndurance } from '../ride'
 import { calApi, newId, type CalItem } from '../calendar'
 import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
-import { listTemplates, getSetting, setSetting, type WorkoutTemplate } from '../db'
+import { listTemplates, listRideTemplates, getSetting, setSetting, type WorkoutTemplate, type RideTemplate } from '../db'
 import { localISO } from '../date'
 import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
@@ -44,6 +44,7 @@ export default function Calendar() {
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [items, setItems] = useState<CalItem[]>([])
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
+  const [rideTemplates, setRideTemplates] = useState<RideTemplate[]>([])
   const [ftp, setFtp] = useState(260)
   const [sheet, setSheet] = useState<{ date: string; replacing?: Entry } | null>(null)
   const todayISO = localISO()
@@ -66,7 +67,7 @@ export default function Calendar() {
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [range])
   useEffect(() => { reload() }, [reload])
-  useEffect(() => { listTemplates().then(setTemplates); getSetting('ftp').then((v) => v && setFtp(Number(v))) }, [])
+  useEffect(() => { listTemplates().then(setTemplates); listRideTemplates().then(setRideTemplates); getSetting('ftp').then((v) => v && setFtp(Number(v))) }, [])
 
   const entriesFor = (day: string): Entry[] => {
     const out: Entry[] = []
@@ -231,12 +232,12 @@ export default function Calendar() {
         </div>
       )}
 
-      {sheet && <AddSheet date={sheet.date} replacing={sheet.replacing} ftp={ftp} templates={templates} onClose={() => setSheet(null)} onAdd={reload} onReplaced={() => { if (sheet.replacing) delEntry(sheet.replacing, false); setSheet(null) }} />}
+      {sheet && <AddSheet date={sheet.date} replacing={sheet.replacing} ftp={ftp} templates={templates} rideTemplates={rideTemplates} onClose={() => setSheet(null)} onAdd={reload} onReplaced={() => { if (sheet.replacing) delEntry(sheet.replacing, false); setSheet(null) }} />}
     </div>
   )
 }
 
-function AddSheet({ date, replacing, ftp, templates, onClose, onAdd, onReplaced }: { date: string; replacing?: Entry; ftp: number; templates: WorkoutTemplate[]; onClose: () => void; onAdd: () => void; onReplaced: () => void }) {
+function AddSheet({ date, replacing, ftp, templates, rideTemplates, onClose, onAdd, onReplaced }: { date: string; replacing?: Entry; ftp: number; templates: WorkoutTemplate[]; rideTemplates: RideTemplate[]; onClose: () => void; onAdd: () => void; onReplaced: () => void }) {
   const [type, setType] = useState<'' | 'ride' | 'run' | 'gym' | 'meal' | 'mind' | 'note'>('')
   const [q, setQ] = useState('')
   const [note, setNote] = useState('')
@@ -283,6 +284,11 @@ function AddSheet({ date, replacing, ftp, templates, onClose, onAdd, onReplaced 
               {type === 'gym' && workouts.filter((w) => !q || w.title.toLowerCase().includes(q.toLowerCase())).slice(0, 40).map((w) => (
                 <button key={w.id} className="card" disabled={busy} onClick={() => add(() => calApi.savePlan({ id: newId(), date, sport: 'gym', title: w.title, rounds: 1, exercises: (w.exercises || []).map((e) => ({ name: e.name, mode: e.seconds ? 'timed' : 'reps', seconds: e.seconds || 0, rest: 0 })) }))}>
                   <div className="card-row"><div className="thumb"><Dumbbell size={18} /></div><div className="card-body"><h3>{w.title}</h3><div className="meta">{w.discipline} · {(w.exercises || []).length} exercises · {w.duration} min</div></div></div>
+                </button>
+              ))}
+              {(type === 'ride' || type === 'run') && rideTemplates.filter((t) => t.sport === type && (!q || t.name.toLowerCase().includes(q.toLowerCase()))).map((t) => (
+                <button key={t.id} className="card" disabled={busy} onClick={() => add(() => calApi.savePlan({ id: newId(), date, sport: type, title: t.name, ftp, segments: t.segments }))}>
+                  <div className="card-row"><div className="thumb">{iconFor(type)}</div><div className="card-body"><h3>{t.name}</h3><div className="meta">My {type} · {Math.round(t.segments.reduce((s, x) => s + x.duration, 0) / 60)} min · {t.segments.length} segments</div></div></div>
                 </button>
               ))}
               {(type === 'ride' || type === 'run') && rideRun(type).map((w) => (

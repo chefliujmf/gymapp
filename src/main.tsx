@@ -23,6 +23,7 @@ import Mind from './pages/Mind'
 import MindDetail from './pages/MindDetail'
 import Cycle from './pages/Cycle'
 import Run from './pages/Run'
+import RideBuilder from './pages/RideBuilder'
 import Calendar from './pages/Calendar'
 import CycleDetail from './pages/CycleDetail'
 import RidePlayer from './pages/RidePlayer'
@@ -62,6 +63,8 @@ const router = createBrowserRouter([
       { path: 'mind/:id', element: <MindDetail /> },
       { path: 'cycle', element: <Cycle /> },
       { path: 'run', element: <Run /> },
+      { path: 'ride-builder', element: <RideBuilder sport="ride" /> },
+      { path: 'run-builder', element: <RideBuilder sport="run" /> },
       { path: 'cycle/:id', element: <CycleDetail /> },
       { path: 'ride-player', element: <RidePlayer /> },
       { path: 'run-player', element: <RunPlayer /> },

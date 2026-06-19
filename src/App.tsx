@@ -15,7 +15,7 @@ const tabs = [
 export default function App() {
   const { pathname } = useLocation()
   // Hide chrome on detail/player pages for an immersive view.
-  const isDetail = /\/(workouts|exercises|programs|recipes|trainers|mind|cycle|plan)\/[^/]+$/.test(pathname) || pathname === '/ride-player' || pathname === '/run-player' || pathname === '/build' || pathname === '/admin' || /\/play$/.test(pathname)
+  const isDetail = /\/(workouts|exercises|programs|recipes|trainers|mind|cycle|plan)\/[^/]+$/.test(pathname) || pathname === '/ride-player' || pathname === '/run-player' || pathname === '/build' || pathname === '/ride-builder' || pathname === '/run-builder' || pathname === '/admin' || /\/play$/.test(pathname)
 
   return (
     <div className="app-shell">
