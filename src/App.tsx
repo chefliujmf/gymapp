@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import { Home, CalendarDays, Dumbbell, Bike, Footprints, Salad, Brain } from 'lucide-react'
 import AccountMenu from './auth/AccountMenu'
 
@@ -21,7 +21,7 @@ export default function App() {
     <div className="app-shell">
       {!isDetail && (
         <header className="app-bar">
-          <span className="app-bar__brand"><img src="/favicon.svg?v=2" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</span>
+          <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=2" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</Link>
           <AccountMenu />
         </header>
       )}

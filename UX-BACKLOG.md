@@ -107,6 +107,16 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
   - **Coach persona name** is per-user, editable from the **Profile page**. Defaults:
     JM → **Tadej**, wife → **Bert**. Store as an account setting (`coachName`); the chatbot
     addresses itself by it. (Profile field is inert until the chatbot exists, so deferred.)
+  - **MCP is also the COACH↔app channel (not just the user chatbot).** Today the coaches
+    (cyclingcoach, bertfitnesscoach) push workouts by writing free-text into an intervals.icu
+    event description (`[gymapp] 1 rounds • Name [id] — 4x8 • …`). Parsing free text is fragile
+    — it already broke once (inline vs newline → empty workout; fixed defensively in
+    `parseGymWorkout`). The real fix: the same `gymdata`/`platyplus` MCP exposes typed tools
+    (`create_workout({date,rounds,exercises:[{exId,sets,reps,weight}]})`, `create_ride`, …);
+    coaches CALL them instead of emitting text. App stores canonically + mirrors a pretty
+    description to intervals for display only. One MCP serves chatbot + coaches + BYO. The
+    `encodeGymWorkout`/`parseGymWorkout` text format stays as the intervals *mirror*, not the
+    source of truth. (Don't over-invest in hardening the text format — MCP replaces it.)
   - **Brain repos already exist**: JM → `chefliujmf/cyclingcoach`; Bert →
     `chefliujmf/bertfitnesscoach` (scaffolded 2026-06-19 from cyclingcoach, see its
     `ADAPT.md` — still needs profile/sport/woman-specific adaptation). The chatbot's

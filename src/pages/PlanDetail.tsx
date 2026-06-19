@@ -1,11 +1,24 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getPlanEvent, gymSessionFromEvent, setGymSession, matchExercise } from '../plan'
-import { eventObjective, parseGymTable, sportOf, flattenIcuSteps } from '../intervals'
+import { eventObjective, parseGymTable, parseGymWorkout, sportOf, flattenIcuSteps, type GymTableRow } from '../intervals'
 import { SegmentProfile } from '../ui'
 import { setCurrentRide } from '../ride'
 import { getSetting } from '../db'
 import { gymTSS, rpeIntensity } from '../tss'
+
+/** Render the [gymapp] inline/bullet format as the same rows the table path uses. */
+function rowsFromGymapp(description: string): GymTableRow[] {
+  const spec = parseGymWorkout(description)
+  if (!spec) return []
+  return spec.exercises.map((x): GymTableRow => ({
+    type: x.mode === 'reps' ? 'Strength' : 'Work',
+    exercise: x.name,
+    sets: x.mode === 'reps' ? x.sets : undefined,
+    reps: x.mode === 'reps' ? `${x.reps ?? ''}${x.weight ? ` @ ${x.weight}kg` : ''}` : `${x.work}s`,
+    rest: x.rest ? `${x.rest}s` : undefined,
+  }))
+}
 
 export default function PlanDetail() {
   const { id } = useParams()
@@ -18,7 +31,11 @@ export default function PlanDetail() {
 
   const sport = sportOf(e)
   const obj = eventObjective(e)
-  const gym = parseGymTable(e.description || '')
+  // Coach events come in two flavours: a "## Main Set" markdown table, OR the
+  // [gymapp] inline/bullet format. Use the table if present, else fall back to
+  // the [gymapp] parser so the workout never renders empty.
+  const gymTable = parseGymTable(e.description || '')
+  const gym = gymTable.length > 0 ? gymTable : rowsFromGymapp(e.description || '')
   const isRide = (sport === 'cycling' || e.type === 'Run') && (e.workout_doc?.steps?.length ?? 0) > 0
   const mins = e.moving_time ? Math.round(e.moving_time / 60) : undefined
 
@@ -61,7 +78,7 @@ export default function PlanDetail() {
                       <div className="eyebrow" style={{ fontSize: 11 }}>{r.type}</div>
                       <h4>{r.exercise}</h4>
                       <div className="meta" style={{ marginTop: 2 }}>
-                        <span><b style={{ color: 'var(--ink,#111)' }}>{r.sets}×{r.reps}</b></span>
+                        <span><b style={{ color: 'var(--ink,#111)' }}>{r.sets != null ? `${r.sets}×${r.reps}` : r.reps}</b></span>
                         {r.rest && <span className="dot">rest {r.rest}</span>}
                       </div>
                     </div>
