@@ -491,6 +491,7 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
   padding: 6px; border-radius: 8px; display: inline-flex; align-items: center;
 }
 .icon-btn:hover { color: var(--danger, #ff6b6b); background: rgba(255,255,255,.04); }
+.bell-dot { position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 999px; background: var(--accent, #34e07d); border: 1.5px solid var(--bg, #0d0d0f); }
 
 /* Calendar entry actions — visible, tappable pills (Substitute / Remove). */
 .cal-entry__actions { display: flex; gap: 6px; align-items: center; flex: none; }

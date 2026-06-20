@@ -435,21 +435,24 @@ function build(name, items) {
 }
 
 // --- Run ------------------------------------------------------------------
+// FREE-FIRST: resell-safe sources WIN de-dup; scraped (Centr/MuscleWiki) only fill gaps.
+const cnorm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+// Recipes — TheMealDB (free) first, Centr fallback.
+const tmdbRecipes = theMealDbRecipes([])
+const haveRecipe = new Set(tmdbRecipes.map((r) => cnorm(r.title)))
 const centrRecipes = [
   ...listJson(join(DL, 'recipes')).map((f) => mapRecipe(readJson(join(DL, 'recipes', f)), false)),
   ...listJson(join(DL, 'snacks')).map((f) => mapRecipe(readJson(join(DL, 'snacks', f)), true)),
-].filter(Boolean).map((r) => ({ ...r, source: r.source || 'centr' }))
-// Add TheMealDB recipes we don't already have (free API, attribution required).
-const tmdbRecipes = theMealDbRecipes(centrRecipes)
-const recipes = [...centrRecipes, ...tmdbRecipes]
+].filter(Boolean).map((r) => ({ ...r, source: r.source || 'centr' })).filter((r) => !haveRecipe.has(cnorm(r.title)))
+const recipes = [...tmdbRecipes, ...centrRecipes]
 const workoutFiles = listJson(join(DL, 'workouts'))
 const workouts = workoutFiles.map((f) => mapWorkout(readJson(join(DL, 'workouts', f))))
-const centrExercises = extractExercises(workoutFiles).map((e) => ({ ...e, source: 'centr' }))
-// Add MuscleWiki exercises we don't already have from Centr (men + women videos).
-const mwExtras = muscleWikiExtras(centrExercises)
-// Add public-domain free-exercise-db entries we don't already have (resell-safe).
-const fedbExtras = freeExerciseDbExtras([...centrExercises, ...mwExtras])
-const exercises = [...centrExercises, ...mwExtras, ...fedbExtras].sort((a, b) => a.name.localeCompare(b.name))
+// Exercises — free-exercise-db (resell-safe) FIRST, then MuscleWiki (video), then Centr.
+const fedbExtras = freeExerciseDbExtras([])
+const mwExtras = muscleWikiExtras(fedbExtras)
+const haveEx = new Set([...fedbExtras, ...mwExtras].map((e) => cnorm(e.name)))
+const centrExercises = extractExercises(workoutFiles).map((e) => ({ ...e, source: 'centr' })).filter((e) => !haveEx.has(cnorm(e.name)))
+const exercises = [...fedbExtras, ...mwExtras, ...centrExercises].sort((a, b) => a.name.localeCompare(b.name))
 const mind = listJson(join(DL, 'meditation')).map((f) => mapMind(readJson(join(DL, 'meditation', f))))
 const endurance = listJson(JOIN_DIR).map((f) => mapEndurance(readJson(join(JOIN_DIR, f))))
 
