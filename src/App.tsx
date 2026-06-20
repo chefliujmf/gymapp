@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import { Home, CalendarDays, Dumbbell, Bike, Footprints, Salad, Brain } from 'lucide-react'
 import AccountMenu from './auth/AccountMenu'
+import ReleaseBell from './ReleaseBell'
 
 const tabs = [
   { to: '/', label: 'Today', icon: <Home strokeWidth={1.75} />, end: true },
@@ -22,7 +23,7 @@ export default function App() {
       {!isDetail && (
         <header className="app-bar">
           <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=4" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</Link>
-          <AccountMenu />
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}><ReleaseBell /><AccountMenu /></div>
         </header>
       )}
       <main className="app-main">
