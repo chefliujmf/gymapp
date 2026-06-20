@@ -356,7 +356,10 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .gp2 > * { width:100%; max-width:440px; }
 .gp2-top { display:flex; align-items:center; justify-content:space-between; padding:12px 16px 4px; }
 .gp2-x { width:34px; height:34px; border-radius:999px; border:none; background:rgba(255,255,255,.1); font-size:15px; cursor:pointer; }
-.gp2-title { font-size:14px; font-weight:600; color:var(--text-dim,#888); }
+.gp2-title { font-size:14px; font-weight:600; color:var(--text-dim,#888); text-align:center; line-height:1.25; }
+.gp2-elapsed { display:block; font-size:13px; font-weight:800; color:var(--accent,#34e07d); font-variant-numeric:tabular-nums; margin-top:1px; }
+.gp2-unit { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); color:var(--text,#fff); font-size:13px; font-weight:800; padding:6px 9px; border-radius:9px; cursor:pointer; min-width:34px; }
+.gp2-unit:active { transform:scale(.94); }
 .gp2-stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; background:#0c0c0e; border-radius:18px; margin:6px 16px; overflow:hidden; }
 .gp2-stage--rest { background:#0b1f2e; }
 .gp2-vid { width:100%; height:100%; object-fit:contain; }
@@ -377,6 +380,13 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .gp2-done { flex-basis:100%; background:var(--accent-grad); color:var(--on-accent); border:none; padding:14px; border-radius:14px; font-weight:800; font-size:16px; cursor:pointer; }
 .gp2-loglink { display:block; margin:0 auto; background:none; border:none; color:#0a8050; font-weight:700; font-size:14px; cursor:pointer; padding:4px; }
 .gp2-dots { display:flex; gap:4px; justify-content:center; flex-wrap:wrap; padding:8px 16px 4px; }
+/* Per-exercise set tracker — done (✓), current (▸), tap any to edit it. */
+.gp2-setlist { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; padding:4px 16px 2px; }
+.gp2-setrow { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:10px; cursor:pointer;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); color:var(--text-dim,#9aa3b2); font-size:12.5px; font-weight:600; }
+.gp2-setrow.done { color:var(--accent,#34e07d); border-color:rgba(52,224,125,.35); }
+.gp2-setrow.cur { color:#fff; border-color:#fff; background:rgba(255,255,255,.12); }
+.gp2-setn { font-weight:800; min-width:14px; text-align:center; }
 .gp2-dot { width:8px; height:8px; border-radius:999px; background:rgba(255,255,255,.2); border:none; padding:0; cursor:pointer; transition:width .15s; }
 .gp2-dot.on { background:rgba(255,255,255,.5); }
 .gp2-dot.cur { width:22px; background:var(--accent); }
@@ -385,7 +395,8 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .gp2-next-k { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim,#999); }
 .gp2-next-n { font-size:14px; font-weight:600; }
 .gp2-controls { display:flex; gap:12px; justify-content:center; padding:10px 16px calc(14px + env(safe-area-inset-bottom)); }
-.gp2-ctrl { min-width:66px; height:54px; border-radius:16px; border:none; background:rgba(255,255,255,.1); font-size:18px; cursor:pointer; }
+.gp2-ctrl { min-width:74px; height:56px; border-radius:16px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.14); color:#fff; font-size:22px; font-weight:700; cursor:pointer; }
+.gp2-ctrl:active { transform:scale(.96); background:rgba(255,255,255,.22); }
 .gp2-ctrl--play { min-width:96px; background:var(--accent-grad); color:var(--on-accent); box-shadow:var(--glow); }
 .gp2--done { justify-content:center; }
 .gp2-donecard { text-align:center; padding:24px; max-width:360px; display:flex; flex-direction:column; align-items:center; gap:4px; }
