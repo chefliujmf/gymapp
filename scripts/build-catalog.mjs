@@ -255,7 +255,9 @@ const PULL = /lat|bicep|forearm|trap|rear shoulder|posterior delt|lower back|upp
 const CORE = /abdominal|oblique|\bcore\b/i
 function mwCategory(e) {
   const equip = (e.category?.name || '').toLowerCase()
-  if (/yoga|stretch|recovery|pilates/.test(equip)) return 'Mobility'
+  if (/yoga/.test(equip)) return 'Yoga'
+  if (/pilates/.test(equip)) return 'Pilates'
+  if (/stretch|recovery|mobility/.test(equip)) return 'Mobility'
   if (/cardio/.test(equip)) return 'Cardio'
   const m = (e.muscles_primary || [])[0]?.name || ''
   if (LEGS.test(m)) return 'Legs'
@@ -282,7 +284,9 @@ function mapMuscleWiki(e) {
     videoFemale: selfHostVideo(female.branded_video || undefined),
     category: mwCategory(e),
     muscle: (e.muscles_primary || [])[0]?.name || undefined,
-    equipment: e.category?.name || undefined,
+    // MuscleWiki's "category" mixes equipment with workout-type — drop the type ones
+    // from equipment (they're now the exercise category instead).
+    equipment: /yoga|pilates|stretch|recovery|cardio/i.test(e.category?.name || '') ? undefined : (e.category?.name || undefined),
     difficulty: e.difficulty?.name || undefined,
     source: 'musclewiki',
   }
@@ -454,6 +458,24 @@ const mwExtras = muscleWikiExtras(fedbExtras)
 const haveEx = new Set([...fedbExtras, ...mwExtras].map((e) => cnorm(e.name)))
 const centrExercises = extractExercises(workoutFiles).map((e) => ({ ...e, source: 'centr' })).filter((e) => !haveEx.has(cnorm(e.name)))
 const exercises = [...fedbExtras, ...mwExtras, ...centrExercises].sort((a, b) => a.name.localeCompare(b.name))
+// Consolidate equipment across sources (free-exercise-db lowercase vs MuscleWiki/Centr)
+// so the Train equipment filter isn't fragmented (dumbbell vs Dumbbells vs …).
+const normEquip = (raw) => {
+  const x = String(raw || '').toLowerCase()
+  if (/dumbbell/.test(x)) return 'Dumbbell'
+  if (/barbell|e-?z|curl bar/.test(x)) return 'Barbell'
+  if (/kettlebell/.test(x)) return 'Kettlebell'
+  if (/cable/.test(x)) return 'Cable'
+  if (/machine|smith|leverage|sled|hammer/.test(x)) return 'Machine'
+  if (/band|tube/.test(x)) return 'Bands'
+  if (/medicine|exercise ball|stability ball|\bball\b/.test(x)) return 'Ball'
+  if (/body ?only|body ?weight|none/.test(x)) return 'Bodyweight'
+  if (/foam|roller|mobility/.test(x)) return 'Mobility tool'
+  if (/plate|weighted/.test(x)) return 'Plate'
+  if (!x || x === 'other') return undefined
+  return raw // keep anything unrecognised as-is
+}
+for (const ex of exercises) ex.equipment = normEquip(ex.equipment)
 const mind = listJson(join(DL, 'meditation')).map((f) => mapMind(readJson(join(DL, 'meditation', f))))
 const endurance = listJson(JOIN_DIR).map((f) => mapEndurance(readJson(join(JOIN_DIR, f))))
 
