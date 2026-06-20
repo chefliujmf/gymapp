@@ -53,12 +53,14 @@ if [ "${DEPLOY_LOCAL:-0}" = "1" ]; then
   echo ">> deploying locally on the server ($APP_DIR)"
   rsync -a --delete dist/ "$APP_DIR/dist/"
   rsync -a server/ "$APP_DIR/server/"
+  rsync -a docker-compose.yml "$APP_DIR/docker-compose.yml"   # infra changes (mounts/env)
   ( cd "$APP_DIR" && docker compose up -d --build )
   wait_healthy local
 else
-  echo ">> syncing dist + server to ${XPS_HOST}:${APP_DIR}"
+  echo ">> syncing dist + server + compose to ${XPS_HOST}:${APP_DIR}"
   rsync -az --delete dist/ "${XPS_HOST}:${APP_DIR}/dist/"
   rsync -az server/ "${XPS_HOST}:${APP_DIR}/server/"
+  rsync -az docker-compose.yml "${XPS_HOST}:${APP_DIR}/docker-compose.yml"
   echo ">> rebuild/restart on ${XPS_HOST}"
   ssh "$XPS_HOST" "cd '$APP_DIR' && docker compose up -d --build"
   wait_healthy remote

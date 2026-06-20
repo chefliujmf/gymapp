@@ -11,10 +11,13 @@ services:
     restart: unless-stopped
     env_file:
       - "./auth.env"          # RP_ID, ORIGIN, SEED_* — secrets, not in git
+    environment:
+      CATALOG_DIR: /catalog   # exercise catalog for the coach API /api/exercises search
     volumes:
       - "./dist:/usr/share/nginx/html:ro"
       - "./media:/srv/media:ro"   # self-hosted media — served at /media/* by server.js
       - "./data:/data"        # store.json (accounts/passkeys) — backed up
+      - "/home/jmf/content/generated:/catalog:ro"   # synced generated catalog (read-only)
     ports:
       - "8088:80"
     logging:

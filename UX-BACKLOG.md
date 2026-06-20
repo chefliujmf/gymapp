@@ -3,6 +3,59 @@
 Everything captured from product direction. ✅ done · �doing · ⬜ todo.
 Tackle UX roughly top-down; the calendar is the centerpiece most items hang off.
 
+## ⭐ Session-4: FIRST REAL GYM USE (live feedback — highest priority)
+
+### Gym player (the live workout screen) — actively rough, fix first
+- ⬜ **Set tracking unclear** — hard to see current set, go back & modify, add an extra set,
+  or skip. Redesign to a clear set table (ref: JetFit screenshot — Sets / Weight / Reps / 1RM
+  rows, ✓ done sets, → current set, LOG SET, Scroller/Keyboard input toggle).
+- ⬜ **Weight field bugs**: (a) can't fully clear the field — if it has a value, deleting all
+  of it is buggy/blocked; (b) **last set erases the weight input**; (c) weight sometimes just
+  erased on its own. Likely controlled-input + state issues.
+- ⬜ **Switching exercise loses your set** — bottom arrows reset to set 1; **history impacted**.
+  Per-exercise set state must persist when navigating exercises.
+- ⬜ **Swipe-right to change exercise**: arrows too dark/low-contrast, not always working
+  (hard to repro), and the **video doesn't follow** the exercise change.
+- ⬜ **kg ↔ lbs toggle DURING the workout** (currently can't switch units mid-session).
+- ⬜ **Rest timer between sets** — countdown that runs in the background after LOG SET.
+- ⬜ **Whole-workout timer is wrong** — said 11 min at the end, actual was 52. No live full timer.
+- ⬜ **Pre-workout time estimate** — total, and ideally per-exercise (reps × time-under-tension).
+- ⬜ **Reorder exercises before starting**.
+- ⬜ **History back-nav bug**: open history → back → dumped to exercise 1's video (should return
+  to where you were).
+- ⬜ **Pallof press shows one side only** during the workout (it's both sides). (coach/data)
+
+### Video / media
+- ⬜ **Centr video resolution is poor** — source quality; consider re-encode / better source.
+- ⬜ **No pause on exercise videos** — add play/pause.
+- ⬜ **Image-instead-of-video fallback as a Profile preference** (toggle; data-saving / clarity).
+- ⬜ **Anti-scraping / anti-download**: videos are currently downloadable. Deter download +
+  screenshots of self-hosted content (signed/expiring URLs, range-only, obfuscation — note:
+  true DRM is hard; aim to raise the bar).
+
+### Coach (cyclingcoach / via the new MCP) — generation quality
+- ⬜ **No warm-up / cool-down** in generated workouts.
+- ⬜ **Group similar exercises** by equipment so you don't move around (e.g. all dumbbell+bench
+  together — stay at the bench), when it doesn't compromise the workout goal.
+- ⬜ **Pallof press both sides** should be represented.
+
+### Today / status
+- ⬜ **Once a workout is done, Today's plan should show it as DONE** (completed state).
+
+### Intervals / Strava linking
+- ⬜ **No visible link** between what Platyplus pushes and the intervals/Strava activity. Unsure
+  Platyplus pushed anything. Normally one workout shows multiple **sources** at the bottom
+  (Wahoo, Strava…). Verify the push + the planned↔completed↔source linkage (ties to the
+  unbuilt activity-push / TCX item).
+
+### Infra: QA/staging env + release notes (explicit ask)
+- ⬜ **QA/staging environment** so prod only ever gets validated features. Build the planned
+  XPS staging stack: parallel `*-dev` container + `platyplus-dev.duckdns.org` (NPM + cert) for
+  full prod parity incl. passkeys + phone testing. Flow: dev → **staging** (validate on phone)
+  → prod.
+- ⬜ **Release notes in-app**: a **bell icon top-right** (notification center) listing new
+  features per release — NOT a popup. User manages/reads notifications there.
+
 ## Calendar (the centerpiece) ⬜
 - Big, modern, **close to Google Calendar**: Day / Week / Month / Year / Schedule
   views; clean event blocks; today highlighted.
@@ -117,6 +170,13 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
     description to intervals for display only. One MCP serves chatbot + coaches + BYO. The
     `encodeGymWorkout`/`parseGymWorkout` text format stays as the intervals *mirror*, not the
     source of truth. (Don't over-invest in hardening the text format — MCP replaces it.)
+  - ✅ **BUILT (on dev, not yet prod): Platyplus MCP** (`mcp/server.js`) — 10 typed tools
+    (search_exercises, create_workout/ride/run, schedule_meal/mind, add_note, list_schedule,
+    remove_*) over the Coach API. Coach API extended: token-authed `/api/items` (meal/mind/note)
+    + `/api/exercises` search (catalog mounted at `/catalog`). openapi → v1.2.0. End-to-end
+    tested (MCP → create_workout → stored plan w/ canonical intervals mirror). Wire into a coach
+    repo via `.mcp.json` with its Coach API token (see `mcp/README.md`). Defensive text parser
+    fix also shipped (inline `[gymapp]` + PlanDetail fallback).
   - **Brain repos already exist**: JM → `chefliujmf/cyclingcoach`; Bert →
     `chefliujmf/bertfitnesscoach` (scaffolded 2026-06-19 from cyclingcoach, see its
     `ADAPT.md` — still needs profile/sport/woman-specific adaptation). The chatbot's
