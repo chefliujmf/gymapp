@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getPlanEvent, gymSessionFromEvent, setGymSession, matchExercise } from '../plan'
 import { eventObjective, parseGymTable, parseGymWorkout, sportOf, flattenIcuSteps, type GymTableRow } from '../intervals'
@@ -26,6 +26,8 @@ export default function PlanDetail() {
   const e = id ? getPlanEvent(id) : undefined
   const [open, setOpen] = useState<Set<number>>(new Set())
   const toggle = (i: number) => setOpen((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n })
+  const [ftp, setFtp] = useState<number>()
+  useEffect(() => { getSetting('ftp').then((v) => setFtp(Number(v) || undefined)) }, [])
 
   if (!e) return <div className="page-head"><Link to="/" className="back">← Today</Link><h1>Plan not found</h1><p className="meta">Open it from Today so it can load.</p></div>
 
@@ -108,10 +110,9 @@ export default function PlanDetail() {
       {isRide && (
         <>
           <div className="card" style={{ padding: 16, marginTop: 6 }}>
-            <SegmentProfile segs={flattenIcuSteps(e.workout_doc?.steps)} />
+            <SegmentProfile segs={flattenIcuSteps(e.workout_doc?.steps)} ftp={ftp} />
           </div>
           <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ Ride now</button>
-          <p className="meta" style={{ marginTop: 8, textAlign: 'center' }}>Guided ERG workout on a smart trainer. Riding outdoors instead? It syncs from your bike computer.</p>
         </>
       )}
 
