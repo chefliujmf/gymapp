@@ -347,22 +347,38 @@ function freeExerciseDbExtras(have) {
   return out.sort((a, b) => a.name.localeCompare(b.name))
 }
 
+/** TheMealDB recipes (pre-mapped by import-themealdb.mjs) not already present. */
+function theMealDbRecipes(have) {
+  const p = join(DL, 'themealdb_recipes.json')
+  if (!existsSync(p)) return []
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const seen = new Set(have.map((r) => norm(r.title)))
+  const out = []
+  for (const r of readJson(p)) {
+    if (!r.title || seen.has(norm(r.title))) continue
+    if (!existsSync(join(DL, 'themealdb_images', r.id.replace('tmdb-', '') + '.jpg'))) continue
+    seen.add(norm(r.title)); out.push(r)
+  }
+  return out.sort((a, b) => a.title.localeCompare(b.title))
+}
+
 // Per-source licensing — drives the content manifest's commercial-OK flag.
 const LICENSE = {
   'centr': { license: 'Centr (scraped — personal use)', commercial: 'NO' },
   'musclewiki': { license: 'MuscleWiki (scraped — personal use)', commercial: 'NO' },
   'free-exercise-db': { license: 'Public Domain (Unlicense)', commercial: 'YES' },
+  'themealdb': { license: 'TheMealDB (free API — attribution required)', commercial: 'CHECK' },
 }
-function writeContentManifest(exercises) {
-  const rows = exercises.map((e) => {
-    const lic = LICENSE[e.source] || { license: String(e.source || 'unknown'), commercial: 'CHECK' }
-    return { id: e.id, name: e.name, type: 'exercise', source: e.source || 'centr', license: lic.license, commercial: lic.commercial }
-  })
+const licFor = (src) => LICENSE[src] || { license: String(src || 'unknown'), commercial: 'CHECK' }
+function writeContentManifest(exercises, recipes) {
+  const rows = [
+    ...exercises.map((e) => ({ id: e.id, name: e.name, type: 'exercise', source: e.source || 'centr' })),
+    ...recipes.map((r) => ({ id: r.id, name: r.title, type: 'recipe', source: r.source || 'centr' })),
+  ].map((r) => { const l = licFor(r.source); return { ...r, license: l.license, commercial: l.commercial } })
   const cols = ['id', 'name', 'type', 'source', 'license', 'commercial']
   writeFileSync(join(__dirname, '..', 'content-manifest.json'), JSON.stringify(rows, null, 0))
   writeFileSync(join(__dirname, '..', 'content-manifest.csv'), [cols.join(','), ...rows.map((r) => cols.map((c) => csvCell(r[c])).join(','))].join('\n'))
-  const ok = rows.filter((r) => r.commercial === 'YES').length
-  return { total: rows.length, commercialOk: ok }
+  return { total: rows.length, commercialOk: rows.filter((r) => r.commercial === 'YES').length }
 }
 
 function extractExercises(files) {
@@ -419,10 +435,13 @@ function build(name, items) {
 }
 
 // --- Run ------------------------------------------------------------------
-const recipes = [
+const centrRecipes = [
   ...listJson(join(DL, 'recipes')).map((f) => mapRecipe(readJson(join(DL, 'recipes', f)), false)),
   ...listJson(join(DL, 'snacks')).map((f) => mapRecipe(readJson(join(DL, 'snacks', f)), true)),
-]
+].filter(Boolean).map((r) => ({ ...r, source: r.source || 'centr' }))
+// Add TheMealDB recipes we don't already have (free API, attribution required).
+const tmdbRecipes = theMealDbRecipes(centrRecipes)
+const recipes = [...centrRecipes, ...tmdbRecipes]
 const workoutFiles = listJson(join(DL, 'workouts'))
 const workouts = workoutFiles.map((f) => mapWorkout(readJson(join(DL, 'workouts', f))))
 const centrExercises = extractExercises(workoutFiles).map((e) => ({ ...e, source: 'centr' }))
@@ -434,10 +453,10 @@ const exercises = [...centrExercises, ...mwExtras, ...fedbExtras].sort((a, b) =>
 const mind = listJson(join(DL, 'meditation')).map((f) => mapMind(readJson(join(DL, 'meditation', f))))
 const endurance = listJson(JOIN_DIR).map((f) => mapEndurance(readJson(join(JOIN_DIR, f))))
 
-console.log('recipes:   ', build('recipes', recipes))
+console.log('recipes:   ', build('recipes', recipes), `(centr ${centrRecipes.length} + themealdb ${tmdbRecipes.length})`)
 console.log('workouts:  ', build('workouts', workouts))
 console.log('exercises: ', build('exercises', exercises), `(centr ${centrExercises.length} + musclewiki ${mwExtras.length} + free-db ${fedbExtras.length})`)
-{ const m = writeContentManifest(exercises); console.log(`content manifest: ${m.total} exercises (${m.commercialOk} commercial-OK) -> content-manifest.json + .csv`) }
+{ const m = writeContentManifest(exercises, recipes); console.log(`content manifest: ${m.total} items (${m.commercialOk} commercial-OK) -> content-manifest.json + .csv`) }
 // Committed index so the cyclingcoach can pick exercises by id when building
 // gym workouts to POST to intervals.icu (see GYM_API.md). id + name + facets.
 writeFileSync(
