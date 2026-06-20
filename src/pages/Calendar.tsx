@@ -7,7 +7,7 @@ import { calApi, newId, type CalItem } from '../calendar'
 import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
 import { listTemplates, listRideTemplates, getSetting, setSetting, type WorkoutTemplate, type RideTemplate } from '../db'
 import { localISO } from '../date'
-import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, ChevronLeft, ChevronRight, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -77,6 +77,8 @@ export default function Calendar() {
     return out
   }
   const kindOf = (e: Entry) => (e.k === 'plan' ? e.plan.sport : e.k === 'event' ? sportOf(e.ev) : e.item.type)
+  // intervals.icu Annual-Training-Plan phase markers ("ATP W06 - …") aren't actual workouts.
+  const isAtp = (e: Entry) => e.k === 'event' && (/^ATP\b/i.test(e.ev.name) || e.ev.category === 'NOTE')
 
   function runPlan(p: CoachPlan) {
     if (p.sport === 'gym') { setGymSession(gymSessionFromPlan(p)); navigate('/gym-session/play') }
@@ -106,11 +108,15 @@ export default function Calendar() {
   // Entry card (used by day/week/schedule list rendering).
   const EntryCard = ({ e, day }: { e: Entry; day: string }) => {
     const kind = kindOf(e)
+    const atp = isAtp(e)
+    const k = kind as string
+    const mod = atp ? 'note' : k === 'cycling' || k === 'ride' ? 'ride' : k === 'running' || k === 'run' ? 'run' : k === 'gym' ? 'gym' : k === 'meal' ? 'meal' : k === 'mind' ? 'mind' : 'note'
+    const photo = e.k === 'item' && e.item.type === 'meal' && e.item.refId ? recipes.find((r) => r.id === e.item.refId)?.thumbnail : undefined
     return (
       <div className="card cal-entry">
         <button className="cal-entry__main" onClick={() => openEntry(e)}>
-          <span className="cal-chip" style={{ background: colorFor(kind) + '22', color: colorFor(kind) }}>{iconFor(kind)}</span>
-          <span className="card-body"><h3>{titleOf(e)}</h3>{e.k === 'item' && e.item.type === 'note' && e.item.notes ? <div className="meta" style={{ whiteSpace: 'normal' }}>{e.item.notes}</div> : <div className="meta">{subOf(e)}</div>}</span>
+          <span className={'cal-chip cal-chip--grad cal-chip--' + mod}>{atp ? <Flag size={15} /> : photo ? <img src={photo} alt="" /> : iconFor(kind)}</span>
+          <span className="card-body"><h3>{titleOf(e)}</h3>{e.k === 'item' && e.item.type === 'note' && e.item.notes ? <div className="meta" style={{ whiteSpace: 'normal' }}>{e.item.notes}</div> : <div className="meta">{atp ? 'Training block · plan' : subOf(e)}</div>}</span>
         </button>
         <EntryMenu title={titleOf(e)} onSubstitute={() => setSheet({ date: day, replacing: e })} onRemove={() => delEntry(e)} />
       </div>
@@ -122,7 +128,7 @@ export default function Calendar() {
     const es = entriesFor(day)
     return (
       <span className="cal-evs">
-        {es.slice(0, max).map((e, i) => { const c = colorFor(kindOf(e)); return <span key={i} className="cal-ev" style={{ background: c + '22', color: c }}>{iconFor(kindOf(e), 10)}<em>{titleOf(e)}</em></span> })}
+        {es.slice(0, max).map((e, i) => { const atp = isAtp(e); const c = atp ? '#9aa3b2' : colorFor(kindOf(e)); return <span key={i} className="cal-ev" style={{ background: c + '22', color: c }}>{atp ? <Flag size={10} /> : iconFor(kindOf(e), 10)}<em>{titleOf(e)}</em></span> })}
         {es.length > max && <span className="cal-more">+{es.length - max}</span>}
       </span>
     )

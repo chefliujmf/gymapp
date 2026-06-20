@@ -10,7 +10,7 @@ import { calApi, type CalItem } from '../calendar'
 import { recipes, mindSessions } from '../data/catalog'
 import type { Recipe } from '../types'
 import { localISO } from '../date'
-import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 
 // Stable daily pick: same item all day, rotates with the date (+salt for variety).
@@ -57,13 +57,15 @@ const fmtDay = (s: string) => new Date(s + 'T00:00').toLocaleDateString(undefine
 function PlanCard({ e, showDate, onSwap, onRemove, done }: { e: IcuEvent; showDate?: boolean; onSwap?: () => void; onRemove?: () => void; done?: boolean }) {
   const obj = eventObjective(e)
   const mins = e.moving_time ? Math.round(e.moving_time / 60) : undefined
+  // ATP phase markers from intervals.icu aren't actual workouts — show them as a plan note.
+  const atp = /^ATP\b/i.test(e.name) || e.category === 'NOTE'
   return (
     <div className="today-entry">
       <Link to={`/plan/${e.id}`} className="card">
         <div className="card-row">
-          <div className={'thumb thumb--' + (e.category === 'TARGET' ? 'target' : sportOf(e) === 'gym' ? 'gym' : sportOf(e) === 'cycling' ? 'ride' : 'run')}>{sportIcon(e)}</div>
+          <div className={'thumb thumb--' + (atp ? 'target' : e.category === 'TARGET' ? 'target' : sportOf(e) === 'gym' ? 'gym' : sportOf(e) === 'cycling' ? 'ride' : 'run')}>{atp ? <Flag strokeWidth={1.75} /> : sportIcon(e)}</div>
           <div className="card-body">
-            <span className="eyebrow">{e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
+            <span className="eyebrow">{atp ? 'Training block' : e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
             <h3 style={done ? { opacity: 0.6 } : undefined}>{e.name}</h3>
             {obj && <div className="meta" style={{ display: 'block', whiteSpace: 'normal' }}>{obj.length > 110 ? obj.slice(0, 110) + '…' : obj}</div>}
             {mins && <div className="meta"><span>{mins} min</span>{e.icu_training_load ? <span className="dot">{e.icu_training_load} TSS</span> : null}</div>}
