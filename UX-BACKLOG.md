@@ -127,6 +127,28 @@ Tackle UX roughly top-down; the calendar is the centerpiece most items hang off.
 - ⬜ **Unified media manifest**: single inventory of every self-hosted asset
   (images+audio+video) for integrity (currently only the video manifest exists).
 
+## Productizing the coach (engine vs profile) — for non-technical new users ⬜
+The cyclingcoach repo conflates two things; splitting them is what makes the coach sellable:
+- **ENGINE (shared IP, you maintain in git):** coaching logic, skills, knowledge base, books,
+  periodization/nutrition rules, exercise library. SAME for everyone (or per-sport). A new user
+  NEVER touches this. It's the product's moat.
+- **PROFILE (per-user DATA, app-managed):** sport, goals, experience, FTP/maxes, days/week,
+  equipment, constraints, injuries, preferences. Today this is `codex_coach/athlete_profile.md`
+  (a file). For a new user it must become **structured app data**, not a repo file.
+
+A new user adapts the coach through **two in-app surfaces, zero GitHub/Claude:**
+1. **Guided onboarding / profile** (structured form/wizard, no AI): answers → profile record
+   in the app DB. This replaces editing `athlete_profile.md`. Editable later in Profile.
+2. **Conversational coaching** (the chatbot, via the MCP): "focus on my deadlift", "I travel
+   next week", "knee hurts" → coach updates profile + adjusts plans via MCP tools. Replaces
+   editing instruction files.
+
+At plan-time: **engine (fixed) + this user's profile (injected) → plan.** Knowledge "books"
+stay the product's shared brain; optional power-user uploads later (your wife's case), never required.
+Build path: (a) profile schema + onboarding wizard in-app; (b) MCP **read** tools
+(`get_profile`, `get_history`) to pair with the existing write tools; (c) coach engine reads
+profile from the app instead of a repo file. This is the bridge from "dev-authored coach" → SaaS.
+
 ## User assistant chatbot (subscription-powered, NOT API) ⬜
 Goal: in-app assistant that helps the user — receive feedback, **create workouts/meals,
 adjust the plan** — by natural language. Audience = **me + wife only**. If ever sold,
