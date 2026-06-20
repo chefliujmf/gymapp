@@ -341,6 +341,7 @@ function freeExerciseDbExtras(have) {
       muscle: (ex.primaryMuscles || [])[0] || undefined,
       equipment: ex.equipment || undefined,
       difficulty: ex.level || undefined,
+      instructions: Array.isArray(ex.instructions) && ex.instructions.length ? ex.instructions : undefined,
       source: 'free-exercise-db',
     })
   }

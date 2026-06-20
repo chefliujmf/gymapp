@@ -154,6 +154,7 @@ export interface LibExercise {
   muscle?: string // primary muscle (MuscleWiki)
   equipment?: string // Barbell | Dumbbells | Bodyweight | … (MuscleWiki)
   difficulty?: string
+  instructions?: string[] // step-by-step (free-exercise-db)
   source?: 'centr' | 'musclewiki' | 'free-exercise-db'
 }
 
