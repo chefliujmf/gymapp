@@ -4,11 +4,6 @@
   <ellipse cx="32" cy="28" rx="16.5" ry="14.5" fill="#34e07d"/>
   <!-- sweatband across the forehead -->
   <path d="M17.5 23 Q32 16.5 46.5 23" stroke="#ff6b6b" stroke-width="6" fill="none" stroke-linecap="round"/>
-  <!-- the "plus" (Platyplus) -->
-  <g stroke="#ffffff" stroke-width="1.9" stroke-linecap="round">
-    <path d="M32 17.5 L32 21.5"/>
-    <path d="M30 19.5 L34 19.5"/>
-  </g>
   <!-- game-face brows -->
   <g stroke="#0d0d0f" stroke-width="2.6" stroke-linecap="round">
     <path d="M22.5 27 L29 28.5"/>
