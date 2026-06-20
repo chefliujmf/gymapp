@@ -268,8 +268,10 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
   - ⬜ **Meditation / audio** → **Freesound.org** (CC0 / CC-BY, filter by license),
     **Free Music Archive**, **Pixabay Music**, **Incompetech** (Kevin MacLeod, CC-BY).
     Verify EACH track's license; store attribution. Replace scraped Centr meditation audio.
-  - ⬜ **Rides / runs**: JOIN structured workouts aren't resellable either — the ride/run
-    BUILDER (already built) generates our own; lean on that + any open workout sets.
+  - ⬜ **Rides / runs** (LOW priority — no images/video, and the coach generates its own):
+    **GoldenCheetah** (open-source, shared workout libraries) + free GitHub `.zwo`/workout repos
+    for a starter indoor-ride set. Same for running. The ride/run BUILDER (already built) covers
+    the rest.
   - ⬜ Build an **attribution/credits** surface for CC-BY assets (required by those licenses).
 - ⬜ **Anti-scraping / anti-download** of our own served media (already noted under Video/media).
 
