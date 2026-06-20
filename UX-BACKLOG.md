@@ -1,7 +1,37 @@
 # Platyplus — backlog (UX + ops)
 
-Everything captured from product direction. ✅ done · �doing · ⬜ todo.
+Everything captured from product direction. ✅ done · ⬜ todo.
 Tackle UX roughly top-down; the calendar is the centerpiece most items hang off.
+
+## 🔎 AUDIT (full-chat review) — gaps now captured + status corrections
+
+**Were MISSING from the backlog — now added/done:**
+- ✅ **Tab favicon = old yellow dumbbell** (recurs without hard-refresh). Cause: Firefox's
+  sticky SVG-favicon cache. Fix on dev: added a **PNG** `rel=icon` + bumped `?v=3` (PNG busts
+  reliably). Deploy to prod to fix it there too.
+- ✅ **Back arrow too tiny** → proper **44px** tap target (`.back`/`.back-btn`) — UX best practice.
+- ✅ **Today "Suggested fuel/reset"**: had **no Add** + arbitrary picks → added **Add-to-day**
+  button + **training-aware logic** (higher-protein on workout days). FUTURE ⬜: coach-driven
+  suggestions (by the day's load/goals).
+- ✅ **Loud env badge** (DEV orange frame / QA purple / PROD clean) so envs aren't confused.
+- ⬜ **QA access method is PIVOTING**: tailscale-serve (tailnet) doesn't work for you because
+  **AirVPN + Tailscale MagicDNS conflict** (MagicDNS breaks your internet). Moving QA to a
+  **public DuckDNS subdomain + NPM** (like prod) so phone+Mac work, AirVPN-safe. Container
+  already rebound to `8089`; **blocked on DuckDNS mgmt site being down** (prod domain still resolves).
+  Desktop stopgap: `/etc/hosts` line → the `.ts.net` name on the Mac.
+
+**Status CORRECTIONS (were ⬜, actually DONE this session):** Admin page · Today editable
+items · one-format mobile-first · calendar default-view = Profile pref (Week) · day-detail
+distinct panel · substitute/delete discoverable on all entries · remove "(indoor)" tag ·
+generic device labels · Dev API (`dev:full`) · Calendar centerpiece (built) · Gym
+workouts-first (built). (Inline ⬜ markers below may lag — these are DONE.)
+
+**Confirmed STILL OPEN (correctly ⬜):** Strava/activity push · dev avatar photo · chatbot ·
+BYO-AI/BYO-Strava · profile schema + onboarding (audio STT, fr-CA/fr-FR/en-CA/en-US) ·
+monitoring routine · unified media manifest · release-notes bell · gym refinements
+(time-estimate, reorder, add/skip-set, swipe, anti-download) · coach gen quality
+(warm-up/cool-down, group-by-equipment, Pallof both sides) · Today "done" state ·
+intervals/Strava source linking · profile-gating in cyclingcoach · Centris/checkcheck.
 
 ## ⭐ Session-4: FIRST REAL GYM USE (live feedback — highest priority)
 
