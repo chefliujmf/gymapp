@@ -304,6 +304,67 @@ function muscleWikiExtras(have) {
   return out.sort((a, b) => a.name.localeCompare(b.name))
 }
 
+// free-exercise-db (public domain) — bucket by primary muscle / category.
+function fedbCategory(ex) {
+  const cat = (ex.category || '').toLowerCase()
+  if (/stretch|mobility|yoga|warmup/.test(cat)) return 'Mobility'
+  if (/cardio|plyo/.test(cat)) return 'Cardio'
+  const m = (ex.primaryMuscles || [])[0] || ''
+  if (LEGS.test(m)) return 'Legs'
+  if (CORE.test(m)) return 'Core'
+  if (PULL.test(m)) return 'Pull'
+  if (PUSH.test(m)) return 'Push'
+  const f = (ex.force || '').toLowerCase()
+  if (f === 'pull') return 'Pull'
+  if (f === 'push') return 'Push'
+  return 'Full body'
+}
+/** free-exercise-db exercises not already present (by normalized name) in `have`.
+ * Image is self-hosted (downloaded by scripts/import-free-exercise-db.mjs). */
+function freeExerciseDbExtras(have) {
+  const p = join(DL, 'free_exercise_db.json')
+  if (!existsSync(p)) return []
+  const slug = (id) => String(id).replace(/[^A-Za-z0-9_-]/g, '_')
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const seen = new Set(have.map((e) => norm(e.name)))
+  const out = []
+  for (const ex of readJson(p)) {
+    if (!ex.name || seen.has(norm(ex.name))) continue
+    const file = slug(ex.id) + '.jpg'
+    if (!existsSync(join(DL, 'free_exercise_db_images', file))) continue // need a hosted demo
+    seen.add(norm(ex.name))
+    out.push({
+      id: 'fedb-' + slug(ex.id),
+      name: ex.name,
+      image: `/media/images/free_exercise_db_images/${file}`,
+      category: fedbCategory(ex),
+      muscle: (ex.primaryMuscles || [])[0] || undefined,
+      equipment: ex.equipment || undefined,
+      difficulty: ex.level || undefined,
+      source: 'free-exercise-db',
+    })
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+// Per-source licensing — drives the content manifest's commercial-OK flag.
+const LICENSE = {
+  'centr': { license: 'Centr (scraped — personal use)', commercial: 'NO' },
+  'musclewiki': { license: 'MuscleWiki (scraped — personal use)', commercial: 'NO' },
+  'free-exercise-db': { license: 'Public Domain (Unlicense)', commercial: 'YES' },
+}
+function writeContentManifest(exercises) {
+  const rows = exercises.map((e) => {
+    const lic = LICENSE[e.source] || { license: String(e.source || 'unknown'), commercial: 'CHECK' }
+    return { id: e.id, name: e.name, type: 'exercise', source: e.source || 'centr', license: lic.license, commercial: lic.commercial }
+  })
+  const cols = ['id', 'name', 'type', 'source', 'license', 'commercial']
+  writeFileSync(join(__dirname, '..', 'content-manifest.json'), JSON.stringify(rows, null, 0))
+  writeFileSync(join(__dirname, '..', 'content-manifest.csv'), [cols.join(','), ...rows.map((r) => cols.map((c) => csvCell(r[c])).join(','))].join('\n'))
+  const ok = rows.filter((r) => r.commercial === 'YES').length
+  return { total: rows.length, commercialOk: ok }
+}
+
 function extractExercises(files) {
   const byId = new Map()
   for (const f of files) {
@@ -367,13 +428,16 @@ const workouts = workoutFiles.map((f) => mapWorkout(readJson(join(DL, 'workouts'
 const centrExercises = extractExercises(workoutFiles).map((e) => ({ ...e, source: 'centr' }))
 // Add MuscleWiki exercises we don't already have from Centr (men + women videos).
 const mwExtras = muscleWikiExtras(centrExercises)
-const exercises = [...centrExercises, ...mwExtras].sort((a, b) => a.name.localeCompare(b.name))
+// Add public-domain free-exercise-db entries we don't already have (resell-safe).
+const fedbExtras = freeExerciseDbExtras([...centrExercises, ...mwExtras])
+const exercises = [...centrExercises, ...mwExtras, ...fedbExtras].sort((a, b) => a.name.localeCompare(b.name))
 const mind = listJson(join(DL, 'meditation')).map((f) => mapMind(readJson(join(DL, 'meditation', f))))
 const endurance = listJson(JOIN_DIR).map((f) => mapEndurance(readJson(join(JOIN_DIR, f))))
 
 console.log('recipes:   ', build('recipes', recipes))
 console.log('workouts:  ', build('workouts', workouts))
-console.log('exercises: ', build('exercises', exercises), `(centr ${centrExercises.length} + musclewiki ${mwExtras.length})`)
+console.log('exercises: ', build('exercises', exercises), `(centr ${centrExercises.length} + musclewiki ${mwExtras.length} + free-db ${fedbExtras.length})`)
+{ const m = writeContentManifest(exercises); console.log(`content manifest: ${m.total} exercises (${m.commercialOk} commercial-OK) -> content-manifest.json + .csv`) }
 // Committed index so the cyclingcoach can pick exercises by id when building
 // gym workouts to POST to intervals.icu (see GYM_API.md). id + name + facets.
 writeFileSync(

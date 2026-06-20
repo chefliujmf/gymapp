@@ -266,7 +266,7 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
   - ⬜ **Recipes** → **TheMealDB** (free recipe API + images; verify commercial terms /
     attribution). Replace scraped Centr recipes for the resell set.
   - ⬜ **Meditation / audio** → **Freesound.org** (CC0 / CC-BY, filter by license),
-    **Free Music Archive**, **Pixabay Music**, **Incompetech** (Kevin MacLeod, CC-BY).
+    **Free Music Archive**, **Pixabay Music**, **Incompetech** (Kevin MacLeod, CC-BY), **mindfulnessexercises.com/audio-library** (free guided meditations).
     Verify EACH track's license; store attribution. Replace scraped Centr meditation audio.
   - ⬜ **Rides / runs** (LOW priority — no images/video, and the coach generates its own):
     **GoldenCheetah** (open-source, shared workout libraries) + free GitHub `.zwo`/workout repos
