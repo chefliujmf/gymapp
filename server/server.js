@@ -16,7 +16,6 @@ import {
   generateAuthenticationOptions, verifyAuthenticationResponse,
 } from '@simplewebauthn/server'
 import { load, save, newId } from './store.js'
-import { normalizeGymExercises } from './coachgen.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -335,19 +334,15 @@ async function deleteIcuEvent(user, plan) {
   try { await icuFetch(user, `/athlete/${user.icuAthlete || 'i28814'}/events/${plan.icuEventId}`, { method: 'DELETE' }) } catch { /* best effort */ }
 }
 // Shared upsert/delete for workout plans (used by both the coach API and the UI).
-async function upsertPlan(user, body, opts = {}) {
+async function upsertPlan(user, body) {
   const err = validatePlan(body); if (err) return { status: 400, body: { error: err } }
   const i = user.plans.findIndex((p) => p.id === body.id)
-  // Coach-API gym workouts get the gen-quality pass (warm-up/cool-down, group by
-  // equipment, unilateral L/R). UI edits are left exactly as the user arranged them.
-  let exercises = Array.isArray(body.exercises) ? body.exercises : []
-  if (opts.normalize && body.sport === 'gym' && exercises.length) exercises = normalizeGymExercises(exercises, equipOf)
   const plan = {
     id: body.id, date: body.date, sport: body.sport, title: body.title,
     notes: body.notes || '', updatedAt: Date.now(),
     icuEventId: i >= 0 ? user.plans[i].icuEventId : undefined,
     ...(body.sport === 'gym'
-      ? { rounds: Number(body.rounds) || 1, exercises }
+      ? { rounds: Number(body.rounds) || 1, exercises: Array.isArray(body.exercises) ? body.exercises : [] }
       : { ftp: Number(body.ftp) || undefined, segments: Array.isArray(body.segments) ? body.segments : [] }),
   }
   if (i >= 0) user.plans[i] = plan; else user.plans.push(plan)
@@ -403,17 +398,9 @@ function searchExercises(q, limit) {
   const list = n ? EXERCISES.filter((e) => e.name.toLowerCase().includes(n)) : EXERCISES
   return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, image: e.image, video: e.video }))
 }
-// Equipment for a coach-provided exercise (by catalog id, else by name) — feeds the
-// group-by-equipment pass in the coach-gen normaliser.
-function equipOf(ex) {
-  let hit
-  if (ex.exId) hit = EXERCISES.find((e) => e.id === ex.exId)
-  if (!hit && ex.name) { const n = ex.name.toLowerCase().replace(/\s*\((left|right)\)\s*$/, '').trim(); hit = EXERCISES.find((e) => e.name.toLowerCase() === n) }
-  return hit?.equipment
-}
 
 // Upsert a planned session by id (idempotent — re-POST to update).
-app.post('/api/plan', apiAuth, async (req, res) => { const r = await upsertPlan(req.user, req.body, { normalize: true }); res.status(r.status).json(r.body) })
+app.post('/api/plan', apiAuth, async (req, res) => { const r = await upsertPlan(req.user, req.body); res.status(r.status).json(r.body) })
 app.get('/api/plans', apiAuth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
 app.get('/api/plan/:id', apiAuth, (req, res) => { const p = (req.user.plans || []).find((x) => x.id === req.params.id); return p ? res.json(p) : res.status(404).json({ error: 'not found' }) })
 app.delete('/api/plan/:id', apiAuth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })

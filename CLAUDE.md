@@ -28,6 +28,7 @@ Read this before changing anything here. It lists the invariants and the
 | Change | Also update |
 |--------|-------------|
 | Add/modify any `/api/*` or `/auth/*` endpoint in `server/server.js` | **`server/openapi.json`** (the Swagger spec at `/api/docs`) — keep it in sync |
+| **Add a file/module under `server/`** | nothing to hand-list — `server/Dockerfile` does `COPY *.js` so it's baked in; CI builds + **smoke-tests the server image** (module-graph check). Any `server/` change **rebuilds the image** (not just `dist/`) — make sure that CI step is green before merge. (A missing-COPY once crash-looped prod.) |
 | Add a new media source/type | `scripts/build-catalog.mjs` self-host fn + gate; download via `scripts/fetch-missing-media.mjs`; upload to the XPS `media/` and redeploy |
 | **Add/replace content** (exercises, recipes, audio) | **`CONTENT.md`** — the runbook: importer → build-catalog (free-first de-dup) → host images + `npm run sync:catalog` → `content-manifest` (license/commercial) → deploy |
 | **Ship a user-facing batch to prod** | add a block to **`src/data/releases.ts`** (the in-app "What's new" bell) |
@@ -47,7 +48,12 @@ Read this before changing anything here. It lists the invariants and the
 - Check: `ssh xps 'docker logs --since 1h gymapp'` and
   `ssh xps 'docker ps --format "{{.Names}} {{.Status}}"'` (Status shows healthy/unhealthy).
 - Healthcheck hits `/auth/config`. A routine should alert on `unhealthy` or
-  error spikes in logs.
+  error spikes in logs. `monitor.sh` also alarms if the daily `backup-secrets`
+  job goes stale (>36h) or fails.
+- **PROD (and QA/staging) DOWN = top priority — drop everything, triage now.**
+  Read logs, find root cause, fix via the CI/CD pipeline (manual `docker compose
+  up --build` on prod is blocked), redeploy, and verify `healthy` + HTTP 200
+  before calling it fixed.
 
 ## Data that matters (backed up)
 - `data/store.json` — accounts/passkeys (nightly **encrypted** backup to Drive).
