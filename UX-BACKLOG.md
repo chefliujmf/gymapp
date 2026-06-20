@@ -366,3 +366,8 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
 - ✅ render-time: RecipeDetail strips HTML/entities (<p>, &deg;, &nbsp;) + drops junk tags
   (HCO, "AU/UK/US COMPLETE!"). ⬜ also clean at SOURCE in build-catalog so stored data is clean
   (and the calendar/Today meal titles too). Likely moot once recipes move to TheMealDB.
+
+## Substitute should be type-locked ⬜
+- ⬜ **Substitute must keep the same type/slot**: workout↔workout, meal↔meal, meditation↔meditation
+  (and ideally same time). Today the swap opens the full Add sheet (any type). Fix: in replacing
+  mode, lock the AddSheet to the replaced entry's type (hide the type picker).
