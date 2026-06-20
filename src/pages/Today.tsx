@@ -149,10 +149,20 @@ export default function Today() {
     if (p === 'vegan') return !!r.diet?.includes('vegan')
     return !!(r.diet?.includes('vegetarian') || r.diet?.includes('vegan'))
   }
-  const meals = (['breakfast', 'lunch', 'dinner'] as const)
-    .map((cat, i) => pickByDate(recipes.filter((r) => r.category === cat && dietOk(r)), selDay, i + 1))
-    .filter(Boolean) as Recipe[]
+  // Suggestion logic: diet-filtered, and TRAINING-AWARE — on a day with a workout we
+  // bias toward higher-protein recovery fuel (variety kept by date-rotating among the
+  // top picks); on rest days it's the normal daily rotation. (Coach-driven suggestions
+  // based on the day's load + goals are the next step — see backlog.)
+  const trainingDay = dayEvents.length > 0 || dayPlans.length > 0
+  const suggestMeal = (cat: Recipe['category'], salt: number) => {
+    let pool = recipes.filter((r) => r.category === cat && dietOk(r))
+    if (trainingDay && pool.length > 6) pool = [...pool].sort((a, b) => (b.protein ?? 0) - (a.protein ?? 0)).slice(0, Math.max(6, Math.ceil(pool.length / 3)))
+    return pickByDate(pool, selDay, salt)
+  }
+  const meals = (['breakfast', 'lunch', 'dinner'] as const).map((cat, i) => suggestMeal(cat, i + 1)).filter(Boolean) as Recipe[]
   const meditation = pickByDate(mindSessions, selDay, 7)
+  async function addMealSuggestion(r: Recipe) { await calApi.saveItem({ date: selDay, type: 'meal', title: r.title, refId: r.id, mealType: r.category, kcal: r.kcal }); load() }
+  async function addMindSuggestion() { if (!meditation) return; await calApi.saveItem({ date: selDay, type: 'mind', title: meditation.title, refId: meditation.id, minutes: meditation.duration }); load() }
 
   return (
     <div>
@@ -191,18 +201,22 @@ export default function Today() {
       {meals.length > 0 && (
         <>
           <div className="section-title">Suggested fuel{selDay !== todayISO() ? ` · ${fmtDay(selDay)}` : ''}</div>
+          <p className="meta" style={{ margin: '-4px 2px 8px' }}>{trainingDay ? 'Higher-protein picks for a training day.' : 'A balanced day — tap ＋ to add one to your plan.'}</p>
           <div className="stack">
             {meals.map((r) => (
-              <Link key={r.id} to={`/recipes/${r.id}`} className="card">
-                <div className="card-row">
-                  <div className="thumb">{r.thumbnail ? <img src={r.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : <Salad strokeWidth={1.75} />}</div>
-                  <div className="card-body">
-                    <span className="eyebrow">{r.category}</span>
-                    <h3>{r.title}</h3>
-                    <div className="meta"><span>{r.minutes} min</span><span className="dot">{r.kcal} kcal</span><span className="dot">{r.protein}g protein</span></div>
+              <div key={r.id} className="today-entry">
+                <Link to={`/recipes/${r.id}`} className="card">
+                  <div className="card-row">
+                    <div className="thumb">{r.thumbnail ? <img src={r.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : <Salad strokeWidth={1.75} />}</div>
+                    <div className="card-body">
+                      <span className="eyebrow">{r.category}</span>
+                      <h3>{r.title}</h3>
+                      <div className="meta"><span>{r.minutes} min</span><span className="dot">{r.kcal} kcal</span><span className="dot">{r.protein}g protein</span></div>
+                    </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+                <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12 }} aria-label="Add to this day" title="Add to this day" onClick={(e) => { e.preventDefault(); addMealSuggestion(r) }}><Plus size={18} /></button>
+              </div>
             ))}
           </div>
         </>
@@ -212,16 +226,19 @@ export default function Today() {
         <>
           <div className="section-title">Suggested reset</div>
           <div className="stack">
-            <Link to={`/mind/${meditation.id}`} className="card">
-              <div className="card-row">
-                <div className="thumb"><Brain strokeWidth={1.75} /></div>
-                <div className="card-body">
-                  <span className="eyebrow">{meditation.kind}</span>
-                  <h3>{meditation.title}</h3>
-                  <div className="meta"><span>{meditation.duration} min</span>{meditation.coach ? <span className="dot">{meditation.coach}</span> : null}</div>
+            <div className="today-entry">
+              <Link to={`/mind/${meditation.id}`} className="card">
+                <div className="card-row">
+                  <div className="thumb"><Brain strokeWidth={1.75} /></div>
+                  <div className="card-body">
+                    <span className="eyebrow">{meditation.kind}</span>
+                    <h3>{meditation.title}</h3>
+                    <div className="meta"><span>{meditation.duration} min</span>{meditation.coach ? <span className="dot">{meditation.coach}</span> : null}</div>
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+              <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12 }} aria-label="Add to this day" title="Add to this day" onClick={(e) => { e.preventDefault(); addMindSuggestion() }}><Plus size={18} /></button>
+            </div>
           </div>
         </>
       )}

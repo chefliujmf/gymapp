@@ -4,8 +4,13 @@ import { deflateSync } from 'node:zlib'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { Buffer } from 'node:buffer'
 
+// Platyplus mascot palette (matches public/favicon.svg — sweatband, NO cross).
 const BG = [0x0d, 0x0d, 0x0f]
-const LIME = [0xe8, 0xff, 0x3a]
+const GREEN = [0x34, 0xe0, 0x7d]
+const RED = [0xff, 0x6b, 0x6b]
+const DARK = [0x0d, 0x0d, 0x0f]
+const BILL1 = [0x17, 0x5c, 0x3a]
+const BILL2 = [0x24, 0x94, 0x57]
 
 function crc32(buf) {
   let c = ~0
@@ -46,24 +51,36 @@ function png(size, draw) {
   ])
 }
 
+// Render the same mascot as favicon.svg (64x64 space, scaled to S). NO cross.
 function draw(set, S) {
-  const fillRect = (x0, y0, w, h, col) => {
-    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) set(x, y, col)
+  const f = S / 64
+  const ellipse = (cx, cy, rx, ry, col) => {
+    for (let y = Math.floor((cy - ry) * f); y <= Math.ceil((cy + ry) * f); y++)
+      for (let x = Math.floor((cx - rx) * f); x <= Math.ceil((cx + rx) * f); x++) {
+        const dx = (x / f - cx) / rx, dy = (y / f - cy) / ry
+        if (dx * dx + dy * dy <= 1) set(x, y, col)
+      }
   }
-  // background (rounded look approximated by full fill — maskable safe zone covered)
-  fillRect(0, 0, S, S, BG)
-  const u = S / 16 // unit grid
-  const cy = S / 2
-  const bar = (k) => Math.round(k * u)
-  // barbell bar
-  fillRect(bar(3), Math.round(cy - u * 0.4), bar(10), Math.round(u * 0.8), LIME)
-  // inner plates
-  const plate = (cx, w, h) => fillRect(Math.round(cx - w / 2), Math.round(cy - h / 2), Math.round(w), Math.round(h), LIME)
-  plate(bar(4.2), u * 1.1, u * 4.5)
-  plate(bar(11.8), u * 1.1, u * 4.5)
-  // outer plates
-  plate(bar(2.7), u * 1.0, u * 3.0)
-  plate(bar(13.3), u * 1.0, u * 3.0)
+  const disk = (cx, cy, r, col) => ellipse(cx, cy, r, r, col)
+  const line = (x1, y1, x2, y2, r, col) => { for (let t = 0; t <= 1; t += 0.03) disk(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, r, col) }
+  // rounded-rect dark background (radius 14 in 64-space)
+  const rad = 14
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const sx = x / f, sy = y / f
+    const inX = sx >= rad && sx <= 64 - rad, inY = sy >= rad && sy <= 64 - rad
+    let inside = inX || inY
+    if (!inside) { const cxr = sx < rad ? rad : 64 - rad, cyr = sy < rad ? rad : 64 - rad; inside = (sx - cxr) ** 2 + (sy - cyr) ** 2 <= rad * rad }
+    if (inside) set(x, y, BG)
+  }
+  ellipse(32, 28, 16.5, 14.5, GREEN)                                  // head
+  for (let t = 0; t <= 1; t += 0.008) {                               // red sweatband (quadratic arc, width ~6)
+    const mt = 1 - t
+    disk(mt * mt * 17.5 + 2 * mt * t * 32 + t * t * 46.5, mt * mt * 23 + 2 * mt * t * 16.5 + t * t * 23, 3, RED)
+  }
+  line(22.5, 27, 29, 28.5, 1.3, DARK); line(41.5, 27, 35, 28.5, 1.3, DARK)  // game-face brows
+  disk(27, 30.5, 2.2, DARK); disk(37, 30.5, 2.2, DARK)                // eyes
+  ellipse(32, 44, 15, 7, BILL1); ellipse(32, 42.5, 15, 5.8, BILL2)    // flat bill
+  disk(28, 41, 1.2, DARK); disk(36, 41, 1.2, DARK)                    // nostrils
 }
 
 mkdirSync(new URL('../public/', import.meta.url), { recursive: true })

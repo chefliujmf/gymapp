@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { useBeeper, useNow, useWakeLock } from '../hooks'
-import { getSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
+import { getSetting, setSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
 import { getGymSession } from '../plan'
 import { localISO } from '../date'
 import { gymTSS, type GymIntensity } from '../tss'
@@ -31,6 +31,8 @@ function enrich(name: string, exId: string | undefined, img?: string, vid?: stri
   return { name, exId, image: lib?.image ?? img, video: lib?.video ?? vid, imageFemale: lib?.imageFemale, videoFemale: lib?.videoFemale }
 }
 
+const DEFAULT_REST = 75   // seconds of rest between sets when the coach didn't specify one
+
 function buildSteps(exs: PlayerEx[]): Step[] {
   const steps: Step[] = [] // no "get ready" — start on the first exercise
   exs.forEach((ex, i) => {
@@ -39,7 +41,8 @@ function buildSteps(exs: PlayerEx[]): Step[] {
       for (let s = 1; s <= sets; s++) {
         steps.push({ kind: 'set', ex, exNo: i + 1, exIndex: i, setNo: s, sets, reps: ex.reps, weight: ex.weight })
         const last = i === exs.length - 1 && s === sets
-        if (ex.rest > 0 && !last) steps.push({ kind: 'rest', duration: ex.rest, next: s < sets ? ex : exs[i + 1], nextNo: s < sets ? i + 1 : i + 2 })
+        // Always give a rest countdown between sets (background timer), default if unset.
+        if (!last) steps.push({ kind: 'rest', duration: ex.rest > 0 ? ex.rest : DEFAULT_REST, next: s < sets ? ex : exs[i + 1], nextNo: s < sets ? i + 1 : i + 2 })
       }
     } else {
       steps.push({ kind: 'timed', duration: ex.seconds, ex, exNo: i + 1, exIndex: i })
@@ -49,14 +52,20 @@ function buildSteps(exs: PlayerEx[]): Step[] {
   return steps
 }
 
-function StageVideo({ ex, female }: { ex: PlayerEx; female: boolean }) {
+function StageVideo({ ex, female, stills }: { ex: PlayerEx; female: boolean; stills: boolean }) {
   const ref = useRef<HTMLVideoElement>(null)
+  const [paused, setPaused] = useState(false)
   const video = female && ex.videoFemale ? ex.videoFemale : ex.video
   const image = female && ex.imageFemale ? ex.imageFemale : ex.image
-  useEffect(() => { ref.current?.play().catch(() => {}) }, [video])
-  if (video) return <video ref={ref} key={video} className="gp2-vid" src={video} poster={image} muted loop playsInline autoPlay />
-  if (image) return <img className="gp2-vid" src={image} alt={ex.name} />
-  return <div className="gp2-vid" />
+  useEffect(() => { if (!stills) { setPaused(false); ref.current?.play().catch(() => {}) } }, [video, stills])
+  if (stills || !video) return image ? <img className="gp2-vid" src={image} alt={ex.name} /> : <div className="gp2-vid" />
+  const toggle = () => { const v = ref.current; if (!v) return; if (v.paused) { v.play().catch(() => {}); setPaused(false) } else { v.pause(); setPaused(true) } }
+  return (
+    <div className="gp2-vidwrap" onClick={toggle} title="Tap to pause/play">
+      <video ref={ref} key={video} className="gp2-vid" src={video} poster={image} muted loop playsInline autoPlay />
+      {paused && <div className="gp2-vidpause">▶</div>}
+    </div>
+  )
 }
 
 export default function GymPlayer() {
@@ -105,22 +114,28 @@ export default function GymPlayer() {
   const [pausedAt, setPausedAt] = useState(0)
   const [done, setDone] = useState(false)
   const [log, setLog] = useState<Record<number, SetEntry[]>>({})
+  const [startedAt, setStartedAt] = useState(() => Date.now())   // wall-clock start (real duration)
 
-  // Build steps and resume in-progress position/log across a refresh.
+  // kg/lbs from the saved units preference; toggleable live during the workout.
+  const units = (useLiveQuery(() => getSetting('units')) as string | undefined) ?? 'metric'
+  const unit = units === 'imperial' ? 'lb' : 'kg'
+  const stills = (useLiveQuery(() => getSetting('exerciseStills')) as string | undefined) === '1'
+
+  // Build steps and resume in-progress position/log/start-time across a refresh.
   useEffect(() => {
     if (!w) return
     setSteps(buildSteps(w.exercises))
     const saved = sessionStorage.getItem('gp:' + w.workoutId)
     if (saved) {
-      try { const s = JSON.parse(saved); setIdx(s.idx ?? 0); setLog(s.log ?? {}); setSegStart(Date.now()); return } catch { /* fall through */ }
+      try { const s = JSON.parse(saved); setIdx(s.idx ?? 0); setLog(s.log ?? {}); setStartedAt(s.startedAt ?? Date.now()); setSegStart(Date.now()); return } catch { /* fall through */ }
     }
-    setIdx(0); setSegStart(Date.now())
+    setIdx(0); setSegStart(Date.now()); setStartedAt(Date.now())
     lastLogForWorkout(w.workoutId).then((prev) => { if (prev?.sets) setLog(prev.sets) })
   }, [w])
 
   useEffect(() => {
-    if (w && !done) sessionStorage.setItem('gp:' + w.workoutId, JSON.stringify({ idx, log }))
-  }, [idx, log, w, done])
+    if (w && !done) sessionStorage.setItem('gp:' + w.workoutId, JSON.stringify({ idx, log, startedAt }))
+  }, [idx, log, startedAt, w, done])
 
   const now = useNow(250)
   useWakeLock(true)
@@ -174,15 +189,17 @@ export default function GymPlayer() {
     })
   }
 
+  const [finalMin, setFinalMin] = useState(0)
   async function finish() {
-    setDone(true)
-    if (!w) return
+    if (!w) { setDone(true); return }
+    const actualMin = Math.max(1, Math.round((Date.now() - startedAt) / 60000))   // REAL elapsed, not the estimate
+    setFinalMin(actualMin); setDone(true)
     sessionStorage.removeItem('gp:' + w.workoutId)
     const flat = Object.values(log).flat()
     const setsCompleted = flat.filter((s) => s?.done).length
     const volume = flat.reduce((v, s) => v + (s?.done ? (s.weight || 0) * (s.reps || 0) : 0), 0)
-    const tss = gymTSS(w.duration, w.intensity)
-    await logWorkout({ workoutId: w.workoutId, title: w.title, discipline: w.discipline, duration: w.duration, date: localISO(), sets: log, setsCompleted, volume, tss })
+    const tss = gymTSS(actualMin, w.intensity)
+    await logWorkout({ workoutId: w.workoutId, title: w.title, discipline: w.discipline, duration: actualMin, date: localISO(), sets: log, setsCompleted, volume, tss })
   }
 
   if (!w || !cur) return <div className="page-head"><h1>No workout loaded</h1><button className="btn" onClick={() => navigate(-1)}>Back</button></div>
@@ -195,8 +212,8 @@ export default function GymPlayer() {
         <p style={{ color: 'var(--text-dim,#888)' }}>{w.title}</p>
         <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', width: '100%', marginTop: 16 }}>
           <div className="stat"><div className="v">{totalEx}</div><div className="k">exercises</div></div>
-          <div className="stat"><div className="v">{w.duration}</div><div className="k">minutes</div></div>
-          <div className="stat"><div className="v">{gymTSS(w.duration, w.intensity)}</div><div className="k">TSS</div></div>
+          <div className="stat"><div className="v">{finalMin}</div><div className="k">minutes</div></div>
+          <div className="stat"><div className="v">{gymTSS(finalMin, w.intensity)}</div><div className="k">TSS</div></div>
         </div>
         <button className="btn" style={{ marginTop: 20 }} onClick={() => navigate('/progress')}>View progress</button>
         <button className="btn btn--ghost" onClick={() => navigate('/exercises')}>Done</button>
@@ -212,22 +229,26 @@ export default function GymPlayer() {
     : cur.kind === 'set' ? `Set ${cur.setNo} / ${cur.sets} · target ${cur.reps} reps`
     : cur.kind === 'rest' ? `Up next · ${cur.nextNo} / ${totalEx}` : `Starting · ${totalEx} exercises`
   const setEntry = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 1]) : undefined
-  const prevSet = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 2]) : undefined // carry weight/reps forward
-  const setWeight = setEntry?.weight ?? prevSet?.weight ?? (cur.kind === 'set' ? cur.weight : undefined) ?? ''
-  const setReps = setEntry?.reps ?? prevSet?.reps ?? (cur.kind === 'set' ? cur.reps : undefined) ?? ''
+  const prevSet = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 2]) : undefined
+  // Carry-forward is a PLACEHOLDER suggestion only — it never overrides what you type
+  // or clear (that was the "can't delete the weight" bug). Done-set falls back to it.
+  const suggestWeight = prevSet?.weight ?? (cur.kind === 'set' ? cur.weight : undefined)
+  const suggestReps = prevSet?.reps ?? (cur.kind === 'set' ? cur.reps : undefined)
   const curExNo = cur.kind === 'set' ? cur.exNo : cur.kind === 'timed' ? cur.exNo : cur.kind === 'rest' ? cur.nextNo : 0
+  const workoutElapsed = Math.max(0, Math.floor((now - startedAt) / 1000))
+  const toggleUnit = () => setSetting('units', units === 'imperial' ? 'metric' : 'imperial')
 
   return (
     <div className="gp2">
       <div className="gp2-top">
         <button className="gp2-x" onClick={() => { if (confirm('Quit without logging?')) navigate(-1) }}>✕</button>
-        <div className="gp2-title">{w.title}</div>
+        <div className="gp2-title">{w.title}<span className="gp2-elapsed">⏱ {clock(workoutElapsed)}</span></div>
         <button className="gp2-finish" onClick={() => { if (confirm('Finish & log this workout now?')) finish() }}>Finish</button>
       </div>
 
       <div className={'gp2-stage' + (cur.kind === 'rest' ? ' gp2-stage--rest' : '')}>
         {showVid
-          ? <StageVideo ex={cur.ex} female={female} />
+          ? <StageVideo ex={cur.ex} female={female} stills={stills} />
           : <div className="gp2-restbig">{cur.kind === 'rest' ? 'REST' : 'GET READY'}</div>}
       </div>
 
@@ -239,19 +260,38 @@ export default function GymPlayer() {
 
       {cur.kind === 'set' ? (
         <div className="gp2-logbar">
-          <label className="gp2-f">weight<input type="number" inputMode="decimal" value={setWeight} onChange={(e) => logSet(cur.exIndex, cur.setNo, { weight: e.target.value === '' ? undefined : Number(e.target.value) })} />kg</label>
+          <label className="gp2-f">weight<input type="number" inputMode="decimal" value={setEntry?.weight ?? ''} placeholder={suggestWeight != null ? String(suggestWeight) : ''} onChange={(e) => logSet(cur.exIndex, cur.setNo, { weight: e.target.value === '' ? undefined : Number(e.target.value) })} /><button type="button" className="gp2-unit" onClick={toggleUnit} title="kg / lb">{unit}</button></label>
           <span className="gp2-x2">×</span>
-          <label className="gp2-f"><input type="number" inputMode="numeric" value={setReps} onChange={(e) => logSet(cur.exIndex, cur.setNo, { reps: e.target.value === '' ? undefined : Number(e.target.value) })} />reps</label>
-          <button className="gp2-done" onClick={() => { logSet(cur.exIndex, cur.setNo, { done: true }); advance() }}>Done set →</button>
+          <label className="gp2-f"><input type="number" inputMode="numeric" value={setEntry?.reps ?? ''} placeholder={suggestReps != null ? String(suggestReps) : ''} onChange={(e) => logSet(cur.exIndex, cur.setNo, { reps: e.target.value === '' ? undefined : Number(e.target.value) })} />reps</label>
+          <button className="gp2-done" onClick={() => { logSet(cur.exIndex, cur.setNo, { done: true, weight: setEntry?.weight ?? suggestWeight, reps: setEntry?.reps ?? suggestReps }); advance() }}>Done set →</button>
         </div>
       ) : (
         <div className={'gp2-timer' + (sec <= 3 && showVid ? ' gp2-timer--pulse' : '') + (cur.kind === 'rest' ? ' gp2-timer--rest' : '')}>{clock(remaining)}</div>
       )}
 
+      {cur.kind === 'set' && (
+        <div className="gp2-setlist">
+          {Array.from({ length: cur.sets }, (_, k) => {
+            const sn = k + 1
+            const e = log[cur.exIndex]?.[sn - 1]
+            const isCur = sn === cur.setNo
+            const stepI = steps.findIndex((s) => s.kind === 'set' && s.exIndex === cur.exIndex && s.setNo === sn)
+            return (
+              <button key={sn} className={'gp2-setrow' + (isCur ? ' cur' : '') + (e?.done ? ' done' : '')} onClick={() => stepI >= 0 && jump(stepI)}>
+                <span className="gp2-setn">{e?.done ? '✓' : isCur ? '▸' : sn}</span>
+                <span className="gp2-setv">{e?.weight != null ? `${e.weight}${unit}` : '—'} × {e?.reps != null ? e.reps : cur.reps}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       <div className="gp2-dots">
         {w.exercises.map((ex, i) => {
-          const firstStep = steps.findIndex((s) => (s.kind === 'timed' || s.kind === 'set') && s.exNo === i + 1)
-          return <button key={i} className={'gp2-dot' + (i + 1 < curExNo ? ' on' : '') + (i + 1 === curExNo ? ' cur' : '')} title={ex.name} onClick={() => firstStep >= 0 && jump(firstStep)} />
+          // Resume at the first NOT-done set of that exercise, not always set 1.
+          const undone = steps.findIndex((s) => s.kind === 'set' && s.exNo === i + 1 && !log[i]?.[s.setNo - 1]?.done)
+          const target = undone >= 0 ? undone : steps.findIndex((s) => (s.kind === 'timed' || s.kind === 'set') && s.exNo === i + 1)
+          return <button key={i} className={'gp2-dot' + (i + 1 < curExNo ? ' on' : '') + (i + 1 === curExNo ? ' cur' : '')} title={ex.name} onClick={() => target >= 0 && jump(target)} />
         })}
       </div>
 
