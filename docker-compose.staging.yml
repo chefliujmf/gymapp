@@ -22,7 +22,7 @@ services:
       - "./data:/data"                                 # ISOLATED staging accounts/passkeys
       - "/home/jmf/content/generated:/catalog:ro"      # shared exercise catalog (ro)
     ports:
-      - "127.0.0.1:8089:80"                            # localhost-only; tailscale serve fronts it
+      - "8089:80"                                      # LAN+tailnet reachable so NPM (HA Green) can front it with HTTPS
     logging:
       driver: json-file
       options:
