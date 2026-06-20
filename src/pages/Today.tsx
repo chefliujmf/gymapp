@@ -30,7 +30,7 @@ function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove, done }: {
     <div className="today-entry">
       <button className="card" style={{ textAlign: 'left', width: '100%' }} onClick={() => onRun(p)}>
         <div className="card-row">
-          <div className="thumb">{planIcon(p.sport)}</div>
+          <div className={'thumb thumb--' + (p.sport === 'ride' ? 'ride' : p.sport === 'run' ? 'run' : 'gym')}>{planIcon(p.sport)}</div>
           <div className="card-body">
             <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
             <h3 style={done ? { opacity: 0.6 } : undefined}>{p.title}</h3>
@@ -61,7 +61,7 @@ function PlanCard({ e, showDate, onSwap, onRemove, done }: { e: IcuEvent; showDa
     <div className="today-entry">
       <Link to={`/plan/${e.id}`} className="card">
         <div className="card-row">
-          <div className="thumb">{sportIcon(e)}</div>
+          <div className={'thumb thumb--' + (e.category === 'TARGET' ? 'target' : sportOf(e) === 'gym' ? 'gym' : sportOf(e) === 'cycling' ? 'ride' : 'run')}>{sportIcon(e)}</div>
           <div className="card-body">
             <span className="eyebrow">{e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
             <h3 style={done ? { opacity: 0.6 } : undefined}>{e.name}</h3>
@@ -81,9 +81,11 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
   const sub = it.type === 'meal' ? `${it.mealType || 'meal'}${it.kcal ? ` · ${it.kcal} kcal` : ''}` : it.type === 'mind' ? (it.minutes ? `${it.minutes} min` : 'session') : (it.notes || 'note')
   const icon = it.type === 'meal' ? <Salad strokeWidth={1.75} /> : it.type === 'mind' ? <Brain strokeWidth={1.75} /> : <StickyNote strokeWidth={1.75} />
   const to = it.type === 'meal' && it.refId ? `/recipes/${it.refId}` : it.type === 'mind' && it.refId ? `/mind/${it.refId}` : undefined
+  // Carry the visual through: a saved meal only stores refId, so look the recipe's photo back up.
+  const thumb = it.type === 'meal' && it.refId ? recipes.find((r) => r.id === it.refId)?.thumbnail : undefined
   const body = (
     <div className="card-row">
-      <div className="thumb">{icon}</div>
+      <div className="thumb">{thumb ? <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : icon}</div>
       <div className="card-body"><span className="eyebrow">{label}</span><h3>{it.title}</h3><div className="meta" style={{ whiteSpace: 'normal' }}>{sub}</div></div>
     </div>
   )
