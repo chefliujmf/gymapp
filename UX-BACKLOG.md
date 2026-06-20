@@ -263,6 +263,11 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
     **add exercises not already present**, self-host its images through the media pipeline
     (build-catalog gate). Prefer free-db entries as the resell-safe set; keep scraped ones only
     for personal/me+wife builds.
+  - ⬜ **ExerciseDB** (`github.com/exercisedb/exercisedb-api`) — 11k+ exercises with
+    **videos/GIFs**. ⚠️ AGPL is the API *code*; the GIF/video MEDIA is the paid ExerciseDB
+    dataset → **commercial: NO/CHECK** (resale unclear). Data not in the repo (need to
+    self-host the API / source the dataset). Good for PERSONAL use only — but we already
+    have MuscleWiki+Centr videos. Resell-safe demo set stays free-exercise-db (stills).
   - ⬜ **Recipes** → **TheMealDB** (free recipe API + images; verify commercial terms /
     attribution). Replace scraped Centr recipes for the resell set.
   - ⬜ **Meditation / audio** → **Freesound.org** (CC0 / CC-BY, filter by license),
