@@ -347,3 +347,8 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
   - Trainer **brand is unknown** (Wahoo/Tacx/Saris/…) — keep it generic.
   → Use neutral labels ("Heart rate", "Trainer / power") + a generic device icon; show the
   actual advertised device name from the Web Bluetooth/ANT pairing rather than a hardcoded brand.
+
+## Recipe data cleanup (build-time) ⬜
+- ✅ render-time: RecipeDetail strips HTML/entities (<p>, &deg;, &nbsp;) + drops junk tags
+  (HCO, "AU/UK/US COMPLETE!"). ⬜ also clean at SOURCE in build-catalog so stored data is clean
+  (and the calendar/Today meal titles too). Likely moot once recipes move to TheMealDB.
