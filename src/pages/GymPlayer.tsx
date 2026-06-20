@@ -62,7 +62,7 @@ function StageVideo({ ex, female, stills }: { ex: PlayerEx; female: boolean; sti
   const toggle = () => { const v = ref.current; if (!v) return; if (v.paused) { v.play().catch(() => {}); setPaused(false) } else { v.pause(); setPaused(true) } }
   return (
     <div className="gp2-vidwrap" onClick={toggle} title="Tap to pause/play">
-      <video ref={ref} key={video} className="gp2-vid" src={video} poster={image} muted loop playsInline autoPlay />
+      <video ref={ref} key={video} className="gp2-vid" src={video} poster={image} muted loop playsInline autoPlay controlsList="nodownload" disablePictureInPicture onContextMenu={(e) => e.preventDefault()} />
       {paused && <div className="gp2-vidpause">▶</div>}
     </div>
   )

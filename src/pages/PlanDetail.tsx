@@ -89,7 +89,7 @@ export default function PlanDetail() {
                   {isOpen && (
                     <div style={{ padding: '0 12px 12px' }}>
                       {demo?.video
-                        ? <video className="ex-video-inline" src={demo.video} poster={demo.image} controls autoPlay loop muted playsInline />
+                        ? <video className="ex-video-inline" src={demo.video} poster={demo.image} controls autoPlay loop muted playsInline controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={(e) => e.preventDefault()} />
                         : demo?.image && <img className="ex-video-inline" src={demo.image} alt={r.exercise} />}
                       {r.cue && <p className="meta" style={{ whiteSpace: 'normal', marginTop: 8 }}><b>Coach:</b> {r.cue}</p>}
                       {(demo?.equipment || demo?.muscle) && (

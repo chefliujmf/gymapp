@@ -55,7 +55,7 @@ export default function WorkoutDetail() {
                 </div>
               </div>
               {open === i && ex.video && (
-                <video className="ex-video-inline" src={ex.video} poster={ex.image} controls autoPlay loop playsInline muted />
+                <video className="ex-video-inline" src={ex.video} poster={ex.image} controls autoPlay loop playsInline muted controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={(e) => e.preventDefault()} />
               )}
             </li>
           ))}
