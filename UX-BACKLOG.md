@@ -272,6 +272,10 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
     **GoldenCheetah** (open-source, shared workout libraries) + free GitHub `.zwo`/workout repos
     for a starter indoor-ride set. Same for running. The ride/run BUILDER (already built) covers
     the rest.
+  - ⬜ **BYO streaming for meditation/workout audio**: let a user link **Spotify** / **Tidal**
+    (OAuth) in settings and play from their own account (no licensing burden on us). The **MCP /
+    coach** picks suitable tracks/playlists (calm/ambient for meditation, tempo for workouts).
+    Same BYO pattern as BYO-AI/BYO-Strava.
   - ⬜ Build an **attribution/credits** surface for CC-BY assets (required by those licenses).
 - ⬜ **Anti-scraping / anti-download** of our own served media (already noted under Video/media).
 
