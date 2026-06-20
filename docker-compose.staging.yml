@@ -1,0 +1,36 @@
+# Staging / QA stack — an isolated mirror of the DEV branch, served over HTTPS on
+# the tailnet ONLY (tailscale serve -> 127.0.0.1:8089). Never public. Its own data
+# (separate accounts/passkeys) and its own RP_ID, so it can't touch prod.
+# Deployed by scripts/deploy-staging.sh (build dev -> push here -> up -> serve).
+services:
+  gymapp-staging:
+    build:
+      context: ./server
+    image: gymapp-staging
+    container_name: gymapp-staging
+    restart: unless-stopped
+    environment:
+      RP_ID: jmf-xps-13-9343.tail8ece92.ts.net
+      ORIGIN: https://jmf-xps-13-9343.tail8ece92.ts.net
+      CATALOG_DIR: /catalog
+      SEED_USER: jmfiset
+      SEED_EMAIL: jmfiset@gmail.com
+      SEED_PASSWORD: stagingpass
+    volumes:
+      - "./dist:/usr/share/nginx/html:ro"
+      - "/home/jmf/gymapp/media:/srv/media:ro"        # share prod's self-hosted media (ro)
+      - "./data:/data"                                 # ISOLATED staging accounts/passkeys
+      - "/home/jmf/content/generated:/catalog:ro"      # shared exercise catalog (ro)
+    ports:
+      - "127.0.0.1:8089:80"                            # localhost-only; tailscale serve fronts it
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/auth/config >/dev/null 2>&1 || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

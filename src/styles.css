@@ -121,7 +121,17 @@ a { color: inherit; text-decoration: none; }
 /* ---------- Detail page ---------- */
 .detail-top { margin: 0 -16px; }
 .detail-hero { height: 240px; background: linear-gradient(150deg, #1b2a22, #232733); color: #fff; display: flex; align-items: flex-end; padding: 18px; font-size: 64px; position: relative; }
-.back-btn { position: absolute; top: calc(env(safe-area-inset-top) + 10px); left: 14px; width: 40px; height: 40px; border-radius: 999px; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; font-size: 22px; border: none; color: #111; }
+.back-btn { position: absolute; top: calc(env(safe-area-inset-top) + 10px); left: 14px; width: 44px; height: 44px; border-radius: 999px; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; font-size: 22px; border: none; color: #111; }
+/* Standard back affordance — comfortable 44px tap target (Apple HIG / Material). */
+.back {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+  color: var(--text, #fff); font-size: 15px; font-weight: 600; line-height: 1;
+  min-height: 44px; padding: 10px 16px; border-radius: 999px;
+  margin: 2px 0 12px; cursor: pointer; text-decoration: none;
+}
+.back:hover { background: rgba(255,255,255,.11); }
+.back:active { transform: scale(.97); }
 .detail-body { padding: 18px 0 0; }
 .detail-body h1 { font-size: 27px; font-weight: 800; margin: 8px 0 6px; letter-spacing: -0.5px; }
 
