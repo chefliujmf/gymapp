@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { allRecipesById } from '../data/catalog'
 import AddToCalendar from '../AddToCalendar'
+import { attributionFor } from '../attribution'
 
 // Imported recipes carry HTML tags + entities in their text — strip/decode to clean prose.
 const clean = (s: string) => (s || '')
@@ -70,11 +71,14 @@ export default function RecipeDetail() {
           {r.steps.map(clean).filter(Boolean).map((s, i) => <li key={i}>{s}</li>)}
         </ol>
 
-        {r.source && (
-          <p className="meta" style={{ marginTop: 18 }}>
-            Source: <a className="demo-link" href={r.source} target="_blank" rel="noreferrer">{new URL(r.source).hostname} ↗</a>
-          </p>
-        )}
+        {(() => {
+          // r.source is a source name ('themealdb'/'centr') or, for older data, a URL.
+          const a = attributionFor(r.source)
+          if (a) return <p className="meta" style={{ marginTop: 18, opacity: 0.7 }}>Source: {a.url ? <a className="demo-link" href={a.url} target="_blank" rel="noreferrer">{a.label} ↗</a> : a.label} · {a.license}</p>
+          let host = ''
+          try { host = r.source ? new URL(r.source).hostname : '' } catch { host = '' }
+          return host ? <p className="meta" style={{ marginTop: 18 }}>Source: <a className="demo-link" href={r.source} target="_blank" rel="noreferrer">{host} ↗</a></p> : null
+        })()}
       </div>
     </div>
   )
