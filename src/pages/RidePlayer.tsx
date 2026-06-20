@@ -6,6 +6,7 @@ import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { logWorkout } from '../db'
 import { localISO } from '../date'
 import { useBle, BleDevices } from '../BleContext'
+import { Bluetooth } from 'lucide-react'
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, Math.floor(s % 60))).padStart(2, '0')}`
 
@@ -17,6 +18,7 @@ export default function RidePlayer() {
   const beep = useBeeper()
 
   const [phase, setPhase] = useState<'setup' | 'countdown' | 'ride'>('setup')
+  const [showDevices, setShowDevices] = useState(false)
   const [cdStart, setCdStart] = useState(0)
   const [idx, setIdx] = useState(0)
   const [segStart, setSegStart] = useState(() => Date.now())
@@ -97,6 +99,21 @@ export default function RidePlayer() {
       {hrState === 'on' && <div className="rp-stat"><b style={{ color: '#ff6b6b' }}>{hr ?? '–'}</b><small>bpm</small></div>}
     </div>
   )
+  // Devices reachable from ANY phase (like JOIN's in-workout devices page) — pair a
+  // trainer or HR (Garmin/Coros watch, strap, …) without leaving the ride.
+  const deviceConnected = trState !== 'idle' || hrState === 'on'
+  const deviceBtn = (
+    <button className="rp-x" onClick={() => setShowDevices(true)} title="Devices" style={deviceConnected ? { color: 'var(--accent)' } : undefined}><Bluetooth size={18} /></button>
+  )
+  const deviceSheet = showDevices && (
+    <div className="sheet-overlay" onClick={() => setShowDevices(false)}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head"><strong>Devices</strong><button className="btn" style={{ width: 'auto', padding: '6px 14px' }} onClick={() => setShowDevices(false)}>Done</button></div>
+        <BleDevices />
+        {liveRow}
+      </div>
+    </div>
+  )
 
   // ---- SETUP: pair devices, then Start ----
   if (phase === 'setup') {
@@ -126,8 +143,9 @@ export default function RidePlayer() {
         <div className="rp-top">
           <button className="rp-x" onClick={() => navigate(-1)}>✕</button>
           <div className="rp-title">{ride.title}</div>
-          <div style={{ width: 32 }} />
+          {deviceBtn}
         </div>
+        {deviceSheet}
         <div className="rp-main">
           <div className="rp-sub">GET READY</div>
           <div className="rp-target" style={{ color: 'var(--accent)' }}>{Math.max(0, cd)}</div>
@@ -149,8 +167,9 @@ export default function RidePlayer() {
       <div className="rp-top">
         <button className="rp-x" onClick={() => { if (confirm('Stop the ride?')) navigate(-1) }}>✕</button>
         <div className="rp-title">{sportIcon[ride.sport]} {ride.title}</div>
-        <button className="rp-fin" onClick={finish}>Finish</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{deviceBtn}<button className="rp-fin" onClick={finish}>Finish</button></div>
       </div>
+      {deviceSheet}
 
       <div className="rp-main">
         <div className="rp-target" style={{ color: zoneColor(pctNow) }}>{watts}<span>W</span></div>
