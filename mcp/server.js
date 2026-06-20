@@ -56,7 +56,7 @@ server.tool('list_schedule',
 
 // --- training -------------------------------------------------------------
 server.tool('create_workout',
-  'Schedule a strength/gym workout on a date. Mirrors to intervals.icu in the canonical [gymapp] format the app parses. Re-call with the same id to UPDATE. The server auto-improves the session: it adds a warm-up + cool-down if you omit them, groups the main set by equipment to cut equipment swaps, and expands unilateral moves (Pallof press, single-arm/leg, split squat…) into explicit left + right — so just list the main exercises once.',
+  'Schedule a strength/gym workout on a date. Mirrors to intervals.icu in the canonical [gymapp] format the app parses. Re-call with the same id to UPDATE. Send the session the coach generated as-is (warm-up + cool-down, main set ordered by equipment, unilateral moves listed for both sides) — Platyplus stores exactly what you send.',
   {
     date: DATE,
     title: z.string(),
