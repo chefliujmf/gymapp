@@ -138,7 +138,11 @@ The cyclingcoach repo conflates two things; splitting them is what makes the coa
 
 A new user adapts the coach through **two in-app surfaces, zero GitHub/Claude:**
 1. **Guided onboarding / profile** (structured form/wizard, no AI): answers → profile record
-   in the app DB. This replaces editing `athlete_profile.md`. Editable later in Profile.
+   in the app DB. This replaces editing `athlete_profile.md`. (Profile SCHEMA = later.)
+   - Surfaced **both** at **first sign-in** (onboarding) AND under **Profile** (editable anytime).
+   - **Audio answers** option (not just typing): speech-to-text, **quality matters**. Must
+     support **fr-CA, fr-FR, en-CA, en-US**. (Whisper-class STT for quality; Web Speech API is
+     the cheap fallback. STT engine TBD — fits the BYO-AI/subscription decision.)
 2. **Conversational coaching** (the chatbot, via the MCP): "focus on my deadlift", "I travel
    next week", "knee hurts" → coach updates profile + adjusts plans via MCP tools. Replaces
    editing instruction files.
