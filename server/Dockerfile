@@ -5,7 +5,9 @@ FROM node:24-alpine
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
-COPY server.js store.js coachgen.js openapi.json ./
+# Copy ALL server JS (not a hand-listed subset) so adding a new module never
+# crash-loops the image with ERR_MODULE_NOT_FOUND. CI smoke-tests this image.
+COPY *.js openapi.json ./
 ENV STATIC_DIR=/usr/share/nginx/html
 ENV DATA_FILE=/data/store.json
 ENV PORT=80

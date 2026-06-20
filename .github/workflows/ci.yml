@@ -21,3 +21,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # Build the server image and prove its module graph resolves inside the
+      # container — catches a Dockerfile that forgets to COPY an imported file
+      # (which previously only surfaced as a prod crash-loop at deploy time).
+      - name: Build + smoke-test server image
+        run: |
+          docker build -t gymapp-server-ci server/
+          docker run --rm --entrypoint node gymapp-server-ci -e "import('./server.js').then(()=>{console.log('server module graph OK');process.exit(0)}).catch(e=>{console.error('IMPORT FAIL:',e.message);process.exit(e.code==='ERR_MODULE_NOT_FOUND'?1:0)})"
