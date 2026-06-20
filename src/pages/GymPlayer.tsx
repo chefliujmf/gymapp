@@ -117,6 +117,7 @@ export default function GymPlayer() {
   const [startedAt, setStartedAt] = useState(() => Date.now())   // wall-clock start (real duration)
   const [started, setStarted] = useState(false)                  // false = pre-workout preview (estimate + reorder)
   const [order, setOrder] = useState<PlayerEx[]>([])             // exercise order (reorderable in preview)
+  const touchX = useRef(0)                                       // swipe-to-change-exercise
 
   // kg/lbs from the saved units preference; toggleable live during the workout.
   const units = (useLiveQuery(() => getSetting('units')) as string | undefined) ?? 'metric'
@@ -287,6 +288,14 @@ export default function GymPlayer() {
   const curExNo = cur.kind === 'set' ? cur.exNo : cur.kind === 'timed' ? cur.exNo : cur.kind === 'rest' ? cur.nextNo : 0
   const workoutElapsed = Math.max(0, Math.floor((now - startedAt) / 1000))
   const toggleUnit = () => setSetting('units', units === 'imperial' ? 'metric' : 'imperial')
+  // Swipe the stage left/right to jump to the next/previous exercise (first un-done set).
+  const swipeEx = (dir: -1 | 1) => {
+    const t = (curExNo - 1) + dir
+    if (t < 0 || t >= w.exercises.length) return
+    const undone = steps.findIndex((s) => s.kind === 'set' && s.exNo === t + 1 && !log[t]?.[s.setNo - 1]?.done)
+    const i = undone >= 0 ? undone : steps.findIndex((s) => (s.kind === 'timed' || s.kind === 'set') && s.exNo === t + 1)
+    if (i >= 0) jump(i)
+  }
 
   return (
     <div className="gp2">
@@ -296,7 +305,9 @@ export default function GymPlayer() {
         <button className="gp2-finish" onClick={() => { if (confirm('Finish & log this workout now?')) finish() }}>Finish</button>
       </div>
 
-      <div className={'gp2-stage' + (cur.kind === 'rest' ? ' gp2-stage--rest' : '')}>
+      <div className={'gp2-stage' + (cur.kind === 'rest' ? ' gp2-stage--rest' : '')}
+        onTouchStart={(e) => { touchX.current = e.touches[0].clientX }}
+        onTouchEnd={(e) => { const dx = e.changedTouches[0].clientX - touchX.current; if (Math.abs(dx) > 60) swipeEx(dx < 0 ? 1 : -1) }}>
         {showVid
           ? <StageVideo ex={cur.ex} female={female} stills={stills} />
           : <div className="gp2-restbig">{cur.kind === 'rest' ? 'REST' : 'GET READY'}</div>}
