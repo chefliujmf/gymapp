@@ -33,6 +33,7 @@ import Progress from './pages/Progress'
 import PlanDetail from './pages/PlanDetail'
 import { BleProvider } from './BleContext'
 import { AuthProvider, Gate } from './auth/AuthContext'
+import EnvBadge from './EnvBadge'
 
 const router = createBrowserRouter([
   {
@@ -86,6 +87,7 @@ async function boot() {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <AuthProvider>
+        <EnvBadge />
         <Gate>
           <BleProvider>
             <RouterProvider router={router} />
