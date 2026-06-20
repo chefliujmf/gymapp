@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { allEnduranceById } from '../data/catalog'
 import { IntervalProfile, zoneColor, sportIcon, computeTSS } from '../ui'
 import { setCurrentRide, segmentsFromEndurance } from '../ride'
@@ -15,8 +15,7 @@ export default function CycleDetail() {
   const navigate = useNavigate()
   const w = id ? allEnduranceById[id] : undefined
   const isRun = w?.sport === 'running'
-  const backTo = isRun ? '/run' : '/cycle'
-  if (!w) return <div className="page-head"><Link to={backTo} className="back">← Back</Link><h1>Not found</h1></div>
+  if (!w) return <div className="page-head"><button className="back" onClick={() => navigate(-1)}>← Back</button><h1>Not found</h1></div>
 
   async function start() {
     const ftp = Number(await getSetting('ftp')) || 260
@@ -26,7 +25,7 @@ export default function CycleDetail() {
 
   return (
     <div>
-      <Link to={backTo} className="back">← {isRun ? 'Run' : 'Ride'}</Link>
+      <button className="back" onClick={() => navigate(-1)}>← Back</button>
       <div className="page-head">
         <span className="eyebrow">{sportIcon[w.sport]} {w.sport} · {w.category}</span>
         <h1>{w.name}</h1>
