@@ -383,3 +383,13 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
 - ❌ **Yoga with Adriene / DoYogaWithMe**: free to WATCH but **copyrighted by the creators** —
   NOT resell-safe (commercial redistribution = infringement). Personal-use only (and YouTube embeds
   conflict with our self-hosted independence). Resell-safe yoga = CC/public-domain only (still TBD).
+
+## More content sources triaged (session-5)
+- ⬜ **Wger** (`wger.de`, CC-BY-SA 4.0) — 855 exercises + 357 images. **Resell-safe WITH
+  attribution + share-alike.** Incremental (overlaps free-exercise-db/MuscleWiki; few demos).
+  Integrate via API like free-exercise-db IF we want more breadth; record license_author for SA.
+- ❌ **Pilates.com / video.pilates.com free workouts** — Balanced Body copyrighted video → NOT
+  resell-safe (personal only).
+- ❌ **exerciselibrary.com** — commercial/copyrighted → NOT resell-safe.
+- ⚠️ **Resell-safe PILATES + YOGA content is still UNSOLVED** — none of the above fill it.
+  Need true CC0/CC-BY: Wikimedia Commons, Pexels/Pixabay video (free license), open pose datasets.
