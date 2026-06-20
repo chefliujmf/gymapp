@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { exercises, exerciseCategories, exerciseEquipment } from '../data/catalog'
+import { exercises, exerciseCategories, exerciseEquipment, exerciseMuscles } from '../data/catalog'
 
 const CAP = 120
 
 export default function Exercises() {
   const [cat, setCat] = useState<string>('all')
   const [equip, setEquip] = useState<string>('all')
+  const [muscle, setMuscle] = useState<string>('all')
   const [q, setQ] = useState('')
 
   const list = useMemo(() => {
@@ -14,9 +15,10 @@ export default function Exercises() {
     return exercises.filter(
       (e) => (cat === 'all' || e.category === cat)
         && (equip === 'all' || e.equipment === equip)
+        && (muscle === 'all' || e.muscle === muscle)
         && (!needle || e.name.toLowerCase().includes(needle) || (e.muscle || '').toLowerCase().includes(needle)),
     )
-  }, [cat, equip, q])
+  }, [cat, equip, muscle, q])
 
   return (
     <div>
@@ -45,6 +47,13 @@ export default function Exercises() {
         <button className={'chip' + (equip === 'all' ? ' chip--active' : '')} onClick={() => setEquip('all')}>Any kit</button>
         {exerciseEquipment.map((c) => (
           <button key={c} className={'chip' + (equip === c ? ' chip--active' : '')} onClick={() => setEquip(c)}>{c}</button>
+        ))}
+      </div>
+
+      <div className="chips chips--scroll">
+        <button className={'chip' + (muscle === 'all' ? ' chip--active' : '')} onClick={() => setMuscle('all')}>Any muscle</button>
+        {exerciseMuscles.map((m) => (
+          <button key={m} className={'chip' + (muscle === m ? ' chip--active' : '')} onClick={() => setMuscle(m)}>{m}</button>
         ))}
       </div>
 

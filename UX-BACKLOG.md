@@ -395,3 +395,5 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
   Need true CC0/CC-BY: Wikimedia Commons, Pexels/Pixabay video (free license), open pose datasets.
 
 - [ ] Real per-workout/ride imagery as card background (currently sport-themed gradient + logo overlay stopgap)
+
+- [ ] Free CC meditation audio: Tibetan singing-bowl / chant / "world peace" tracks (Freesound CC0, Free Music Archive, Pixabay Music). Self-host + manifest. (user request)

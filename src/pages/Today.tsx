@@ -244,7 +244,7 @@ export default function Today() {
                   <div className="card-body">
                     <span className="eyebrow">{meditation.kind}</span>
                     <h3>{meditation.title}</h3>
-                    <div className="meta"><span>{meditation.duration} min</span>{meditation.coach ? <span className="dot">{meditation.coach}</span> : null}</div>
+                    <div className="meta"><span>{meditation.duration ? `${meditation.duration} min` : 'audio'}</span>{meditation.coach ? <span className="dot">{meditation.coach}</span> : null}</div>
                   </div>
                 </div>
               </Link>

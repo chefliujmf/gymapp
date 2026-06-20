@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from 'node:fs'
 import { dirname, resolve, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { execFileSync } from 'node:child_process'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
@@ -56,6 +57,15 @@ const selfHostExImg = (url) => {
   return undefined
 }
 const selfHostAudio = (slug) => (slug && AUDIO_FILES.has(slug + '.mp3') ? `/media/audio/${slug}.mp3` : undefined)
+// Read the real length (minutes) from the self-hosted mp3 via ffprobe. Falls back to 0
+// if ffprobe is missing or the file isn't local — the player still reads it at runtime.
+const audioMinutes = (slug) => {
+  if (!slug || !AUDIO_FILES.has(slug + '.mp3')) return 0
+  try {
+    const out = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', join(DL, 'meditation_audio', slug + '.mp3')], { encoding: 'utf8' })
+    return Math.max(1, Math.round(parseFloat(out.trim()) / 60))
+  } catch { return 0 }
+}
 const localImg = (subdir, slug) => (slug && existsSync(join(DL, subdir, slug + '.jpg')) ? `/media/images/${subdir}/${slug}.jpg` : undefined)
 
 function pickImg(imageList) {
@@ -194,7 +204,7 @@ function mapMind(d) {
     id: 'm-' + (a.urlPartial || a.contentId),
     title: stripBrand(a.title),
     kind,
-    duration: 0, // not provided by source; player reads it from the audio
+    duration: audioMinutes(slug), // probed from the mp3 at build time; 0 if file not local
     summary: stripBrand(a.summary || a.introText || ''),
     coach: (a.authors || []).map((x) => x.name).filter(Boolean).join(', ') || undefined,
     // Self-hosted from our server; if we don't hold the file, the UI handles it.
@@ -476,6 +486,33 @@ const normEquip = (raw) => {
   return raw // keep anything unrecognised as-is
 }
 for (const ex of exercises) ex.equipment = normEquip(ex.equipment)
+
+// Canonicalise primary muscle into a tidy set of groups (sources disagree on case/synonyms),
+// so the library can offer a clean muscle filter.
+const normMuscle = (raw) => {
+  const x = String(raw || '').toLowerCase().trim()
+  if (!x) return undefined
+  if (/glute/.test(x)) return 'Glutes'
+  if (/delt|shoulder/.test(x)) return 'Shoulders'
+  if (/chest|pec/.test(x)) return 'Chest'
+  if (/quad|rectus femoris/.test(x)) return 'Quads'
+  if (/hamstring/.test(x)) return 'Hamstrings'
+  if (/bicep/.test(x)) return 'Biceps'
+  if (/tricep/.test(x)) return 'Triceps'
+  if (/ab(dominal)?s?\b|core/.test(x)) return 'Abs'
+  if (/oblique/.test(x)) return 'Obliques'
+  if (/lat\b|lats/.test(x)) return 'Lats'
+  if (/trap|middle back|upper back/.test(x)) return 'Traps'
+  if (/lower back|erector|spinal/.test(x)) return 'Lower back'
+  if (/calf|calves|tibialis/.test(x)) return 'Calves'
+  if (/forearm/.test(x)) return 'Forearms'
+  if (/adductor|inner thigh|groin/.test(x)) return 'Adductors'
+  if (/abductor/.test(x)) return 'Abductors'
+  if (/neck/.test(x)) return 'Neck'
+  if (/feet|foot/.test(x)) return 'Feet'
+  return raw.charAt(0).toUpperCase() + raw.slice(1) // keep unknowns, title-cased
+}
+for (const ex of exercises) ex.muscle = normMuscle(ex.muscle)
 const mind = listJson(join(DL, 'meditation')).map((f) => mapMind(readJson(join(DL, 'meditation', f))))
 const endurance = listJson(JOIN_DIR).map((f) => mapEndurance(readJson(join(JOIN_DIR, f))))
 
