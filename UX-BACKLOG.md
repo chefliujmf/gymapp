@@ -379,3 +379,7 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
   Commons (CC), free-exercise-db stretching subset, open yoga-pose datasets, Pexels/Pixabay video
   (free license). Verify each + record in content-manifest with commercial flag. (free-exercise-db
   has no yoga/pilates set, so this needs a new source.)
+
+- ❌ **Yoga with Adriene / DoYogaWithMe**: free to WATCH but **copyrighted by the creators** —
+  NOT resell-safe (commercial redistribution = infringement). Personal-use only (and YouTube embeds
+  conflict with our self-hosted independence). Resell-safe yoga = CC/public-domain only (still TBD).
