@@ -168,6 +168,15 @@ export function zoneColor(pct: number): string {
   return '#e63946'                 // anaerobic
 }
 
+export function zoneName(pct: number): string {
+  if (pct < 60) return 'Recovery'
+  if (pct < 76) return 'Endurance'
+  if (pct < 91) return 'Tempo'
+  if (pct < 106) return 'Threshold'
+  if (pct < 121) return 'VO₂max'
+  return 'Anaerobic'
+}
+
 /** Flatten blocks (expanding numRepeats) into a single list of intervals. */
 export function flattenIntervals(w: EnduranceWorkout) {
   const out: { duration: number; rawPower: number; power?: string; heartRate?: string }[] = []
@@ -193,24 +202,52 @@ export function computeTSS(w: EnduranceWorkout): number {
 
 /** join.cc-style interval profile rendered from the structured data. */
 /** Profile from flat segments (intervals.icu workout_doc / ride player). */
-export function SegmentProfile({ segs, height = 110 }: { segs: { duration: number; powerStart: number; powerEnd: number }[]; height?: number }) {
+export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: number; powerStart: number; powerEnd: number }[]; height?: number; ftp?: number }) {
+  const [sel, setSel] = useState<number | null>(null)
+  if (!segs.length) return null
   const total = segs.reduce((s, i) => s + i.duration, 0) || 1
   const maxP = Math.max(120, ...segs.map((s) => Math.max(s.powerStart, s.powerEnd)))
   const ftpY = (100 / maxP) * 100
-  if (!segs.length) return null
+  const totalMin = total / 60
+  // When FTP is known, label the actual target watts; otherwise fall back to % of FTP.
+  const val = (pct: number) => (ftp ? `${Math.round((pct / 100) * ftp)} W` : `${pct}%`)
+  const fmt = (sec: number) => { const m = Math.floor(sec / 60); const s = Math.round(sec % 60); return s ? `${m}:${String(s).padStart(2, '0')}` : `${m} min` }
+  // Time axis ticks at a tidy interval for the workout length.
+  const step = totalMin <= 20 ? 5 : totalMin <= 75 ? 15 : 30
+  const ticks: number[] = []
+  for (let m = 0; m <= totalMin + 0.01; m += step) ticks.push(m)
+  let acc = 0
+  const starts = segs.map((s) => { const st = acc; acc += s.duration; return st })
+  const selSeg = sel != null ? segs[sel] : null
+  const selP = selSeg ? Math.max(selSeg.powerStart, selSeg.powerEnd) : 0
   return (
-    <div className="profile" style={{ height, position: 'relative', display: 'flex', alignItems: 'flex-end', gap: 1, width: '100%' }}>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: `${ftpY}%`, borderTop: '1px dashed rgba(255,255,255,.22)', pointerEvents: 'none' }} />
-      <span style={{ position: 'absolute', right: 2, bottom: `calc(${ftpY}% + 2px)`, fontSize: 9, color: 'rgba(255,255,255,.45)' }}>FTP</span>
-      {segs.map((s, idx) => {
-        const p = Math.max(s.powerStart, s.powerEnd)
-        const showVal = idx === 0 || Math.max(segs[idx - 1].powerStart, segs[idx - 1].powerEnd) !== p
-        return (
-          <div key={idx} style={{ position: 'relative', flexGrow: s.duration / total, flexBasis: 0, height: `${Math.max(6, (p / maxP) * 100)}%`, background: zoneColor(p), borderRadius: '2px 2px 0 0' }}>
-            {showVal && <span className="profile-lbl">{p}%</span>}
-          </div>
-        )
-      })}
+    <div>
+      <div className="profile" style={{ height, position: 'relative', display: 'flex', alignItems: 'flex-end', gap: 1, width: '100%' }}>
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: `${ftpY}%`, borderTop: '1px dashed rgba(255,255,255,.22)', pointerEvents: 'none' }} />
+        <span style={{ position: 'absolute', right: 2, bottom: `calc(${ftpY}% + 2px)`, fontSize: 9, color: 'rgba(255,255,255,.45)' }}>FTP{ftp ? ` ${ftp}W` : ''}</span>
+        {segs.map((s, idx) => {
+          const p = Math.max(s.powerStart, s.powerEnd)
+          const showVal = idx === 0 || Math.max(segs[idx - 1].powerStart, segs[idx - 1].powerEnd) !== p
+          return (
+            <div key={idx} onClick={() => setSel(sel === idx ? null : idx)} title={`${fmt(s.duration)} · ${val(p)}`}
+              style={{ position: 'relative', flexGrow: s.duration / total, flexBasis: 0, height: `${Math.max(6, (p / maxP) * 100)}%`, background: zoneColor(p), borderRadius: '2px 2px 0 0', cursor: 'pointer', outline: sel === idx ? '2px solid rgba(255,255,255,.85)' : undefined, outlineOffset: -1 }}>
+              {showVal && <span className="profile-lbl">{val(p)}</span>}
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ position: 'relative', height: 13, marginTop: 3 }}>
+        {ticks.map((m) => (
+          <span key={m} style={{ position: 'absolute', left: `${Math.min(100, (m / totalMin) * 100)}%`, transform: m === 0 ? 'none' : 'translateX(-50%)', fontSize: 9, color: 'rgba(255,255,255,.4)' }}>{m}m</span>
+        ))}
+      </div>
+      {selSeg ? (
+        <p className="meta" style={{ whiteSpace: 'normal', marginTop: 6 }}>
+          <b>{fmt(starts[sel!])}–{fmt(starts[sel!] + selSeg.duration)}</b> · {fmt(selSeg.duration)} · target {val(selP)}{ftp ? ` · ${selP}% FTP` : ''} · {zoneName(selP)}
+        </p>
+      ) : (
+        <p className="meta" style={{ marginTop: 6 }}>Tap a block for its target & timing.</p>
+      )}
     </div>
   )
 }
