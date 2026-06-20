@@ -29,7 +29,7 @@ export default function PlanDetail() {
   const [ftp, setFtp] = useState<number>()
   useEffect(() => { getSetting('ftp').then((v) => setFtp(Number(v) || undefined)) }, [])
 
-  if (!e) return <div className="page-head"><Link to="/" className="back">← Today</Link><h1>Plan not found</h1><p className="meta">Open it from Today so it can load.</p></div>
+  if (!e) return <div className="page-head"><button className="back" onClick={() => navigate(-1)}>← Back</button><h1>Plan not found</h1><p className="meta">Open it from Today so it can load.</p></div>
 
   const sport = sportOf(e)
   const obj = eventObjective(e)
@@ -53,7 +53,7 @@ export default function PlanDetail() {
 
   return (
     <div>
-      <Link to="/" className="back">← Today</Link>
+      <button className="back" onClick={() => navigate(-1)}>← Back</button>
       <div className="page-head">
         <span className="eyebrow">{kind} · {dateLabel}{mins ? ` · ${mins} min` : ''}{e.icu_training_load ? ` · ${e.icu_training_load} TSS` : (sport === 'gym' && mins ? ` · ~${gymTSS(mins, rpeIntensity(e.description || ''))} TSS` : '')}</span>
         <h1>{e.name}</h1>
