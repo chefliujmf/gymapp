@@ -5,6 +5,17 @@ export interface Release { date: string; title: string; items: string[] }
 export const releases: Release[] = [
   {
     date: '2026-06-20',
+    title: 'Richer library + reliability',
+    items: [
+      'Step-by-step "How to" instructions on 868 exercises',
+      'New Yoga and Pilates categories',
+      'Cleaner equipment filters (Dumbbell, Barbell, Bodyweight, Cable…)',
+      'Swipe left/right in a workout to change exercise',
+      'Behind the scenes: automatic health monitoring keeps the app up',
+    ],
+  },
+  {
+    date: '2026-06-20',
     title: 'Bigger library + a much better gym session',
     items: [
       '806 new exercises and 664 new recipes added to the library',
