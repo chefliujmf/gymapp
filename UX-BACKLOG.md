@@ -140,6 +140,15 @@ The cyclingcoach repo conflates two things; splitting them is what makes the coa
   equipment, constraints, injuries, preferences. Today this is `codex_coach/athlete_profile.md`
   (a file). For a new user it must become **structured app data**, not a repo file.
 
+**Don't fork the engine for the wife.** One polyvalent engine, made safe two ways:
+(1) **profile-gating** — new capabilities (female-physiology, strength focus) only ACTIVATE for
+matching profiles, so JM's profile (cyclist/male/FTP) never triggers them → his plans can't
+change by adding her modules (additive + gated = no regression by construction);
+(2) **golden-plan regression tests** — snapshot JM's current plan outputs; on every engine
+change, regenerate + diff against the snapshot, fail on unexpected change. (cyclingcoach already
+has `tests/`.) Two engines = double maintenance + divergence; the `bertfitnesscoach` full-clone
+should slim toward shared-engine + her PROFILE/books, not a second engine.
+
 A new user adapts the coach through **two in-app surfaces, zero GitHub/Claude:**
 1. **Guided onboarding / profile** (structured form/wizard, no AI): answers → profile record
    in the app DB. This replaces editing `athlete_profile.md`. (Profile SCHEMA = later.)
