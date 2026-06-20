@@ -11,6 +11,7 @@ export default function Profile() {
   const calView = useLiveQuery(() => getSetting('calView'))
   const setCalView = (v: string) => { setSetting('calView', v); try { localStorage.setItem('calView', v) } catch { /* ignore */ } }
   const coachName = useLiveQuery(() => getSetting('coachName'))
+  const stills = useLiveQuery(() => getSetting('exerciseStills'))
 
   const totalMin = (logs ?? []).reduce((s, l) => s + l.duration, 0)
 
@@ -59,6 +60,14 @@ export default function Profile() {
           </button>
         ))}
       </div>
+
+      <div className="section-title">Exercise demos</div>
+      <div className="chips">
+        {[['0', 'Video'], ['1', 'Stills only']].map(([v, label]) => (
+          <button key={v} className={'chip' + ((stills ?? '0') === v ? ' chip--active' : '')} onClick={() => setSetting('exerciseStills', v)}>{label}</button>
+        ))}
+      </div>
+      <p className="meta" style={{ margin: '6px 2px 4px' }}>Stills save data and load instantly; tap a video in a workout to pause it.</p>
 
       <div className="section-title">Units</div>
       <div className="chips">

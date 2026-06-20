@@ -52,14 +52,20 @@ function buildSteps(exs: PlayerEx[]): Step[] {
   return steps
 }
 
-function StageVideo({ ex, female }: { ex: PlayerEx; female: boolean }) {
+function StageVideo({ ex, female, stills }: { ex: PlayerEx; female: boolean; stills: boolean }) {
   const ref = useRef<HTMLVideoElement>(null)
+  const [paused, setPaused] = useState(false)
   const video = female && ex.videoFemale ? ex.videoFemale : ex.video
   const image = female && ex.imageFemale ? ex.imageFemale : ex.image
-  useEffect(() => { ref.current?.play().catch(() => {}) }, [video])
-  if (video) return <video ref={ref} key={video} className="gp2-vid" src={video} poster={image} muted loop playsInline autoPlay />
-  if (image) return <img className="gp2-vid" src={image} alt={ex.name} />
-  return <div className="gp2-vid" />
+  useEffect(() => { if (!stills) { setPaused(false); ref.current?.play().catch(() => {}) } }, [video, stills])
+  if (stills || !video) return image ? <img className="gp2-vid" src={image} alt={ex.name} /> : <div className="gp2-vid" />
+  const toggle = () => { const v = ref.current; if (!v) return; if (v.paused) { v.play().catch(() => {}); setPaused(false) } else { v.pause(); setPaused(true) } }
+  return (
+    <div className="gp2-vidwrap" onClick={toggle} title="Tap to pause/play">
+      <video ref={ref} key={video} className="gp2-vid" src={video} poster={image} muted loop playsInline autoPlay />
+      {paused && <div className="gp2-vidpause">▶</div>}
+    </div>
+  )
 }
 
 export default function GymPlayer() {
@@ -113,6 +119,7 @@ export default function GymPlayer() {
   // kg/lbs from the saved units preference; toggleable live during the workout.
   const units = (useLiveQuery(() => getSetting('units')) as string | undefined) ?? 'metric'
   const unit = units === 'imperial' ? 'lb' : 'kg'
+  const stills = (useLiveQuery(() => getSetting('exerciseStills')) as string | undefined) === '1'
 
   // Build steps and resume in-progress position/log/start-time across a refresh.
   useEffect(() => {
@@ -241,7 +248,7 @@ export default function GymPlayer() {
 
       <div className={'gp2-stage' + (cur.kind === 'rest' ? ' gp2-stage--rest' : '')}>
         {showVid
-          ? <StageVideo ex={cur.ex} female={female} />
+          ? <StageVideo ex={cur.ex} female={female} stills={stills} />
           : <div className="gp2-restbig">{cur.kind === 'rest' ? 'REST' : 'GET READY'}</div>}
       </div>
 
