@@ -2,6 +2,24 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { allRecipesById } from '../data/catalog'
 import AddToCalendar from '../AddToCalendar'
 
+// Imported recipes carry HTML tags + entities in their text — strip/decode to clean prose.
+const clean = (s: string) => (s || '')
+  .replace(/<[^>]+>/g, ' ')
+  .replace(/&nbsp;/gi, ' ').replace(/&deg;/gi, '°').replace(/&amp;/gi, '&')
+  .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&rsquo;|&#39;|&apos;/gi, '’').replace(/&quot;/gi, '"')
+  .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&[a-z]+;/gi, ' ')
+  .replace(/\s+/g, ' ').trim()
+
+// Keep only human-facing tags: drop cryptic codes (HCO), region/marketing junk
+// ("AU/UK/US COMPLETE!"), anything with slashes or a bang.
+const niceTag = (t: string) => {
+  const x = clean(t)
+  if (!x || x.length < 2) return false
+  if (/[/!]/.test(x) || /complete/i.test(x)) return false
+  if (/^[A-Z0-9]{2,5}$/.test(x)) return false
+  return true
+}
+
 export default function RecipeDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -40,16 +58,16 @@ export default function RecipeDetail() {
           <p className="meta" style={{ marginTop: 10 }}>{r.minutes} min · macros not available for imported recipes</p>
         )}
 
-        <div>{r.tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>
+        <div>{[...new Set(r.tags.filter(niceTag).map(clean))].map((t) => <span key={t} className="tag">{t}</span>)}</div>
 
         <div className="section-title">Ingredients</div>
         <ul className="bullets">
-          {r.ingredients.map((ing, i) => <li key={i}>{ing}</li>)}
+          {r.ingredients.map((ing, i) => <li key={i}>{clean(ing)}</li>)}
         </ul>
 
         <div className="section-title">Method</div>
         <ol className="steps">
-          {r.steps.map((s, i) => <li key={i}>{s}</li>)}
+          {r.steps.map(clean).filter(Boolean).map((s, i) => <li key={i}>{s}</li>)}
         </ol>
 
         {r.source && (
