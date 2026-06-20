@@ -390,6 +390,10 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .gp2-setrow.done { color:var(--accent,#34e07d); border-color:rgba(52,224,125,.35); }
 .gp2-setrow.cur { color:#fff; border-color:#fff; background:rgba(255,255,255,.12); }
 .gp2-setn { font-weight:800; min-width:14px; text-align:center; }
+.gp2-addset { color:var(--text-dim,#9aa3b2); border-style:dashed; }
+.gp2-addset:active { transform:scale(.96); }
+.gp2-skip { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:var(--text-dim,#9aa3b2); font-size:13px; font-weight:700; padding:0 14px; border-radius:12px; cursor:pointer; }
+.gp2-skip:active { transform:scale(.96); }
 .gp2-dot { width:8px; height:8px; border-radius:999px; background:rgba(255,255,255,.2); border:none; padding:0; cursor:pointer; transition:width .15s; }
 .gp2-dot.on { background:rgba(255,255,255,.5); }
 .gp2-dot.cur { width:22px; background:var(--accent); }

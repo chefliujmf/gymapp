@@ -148,6 +148,21 @@ export default function GymPlayer() {
 
   function jump(to: number) { setIdx(to); setSegStart(Date.now()); setPaused(false); setPausedAt(0) }
   function advance() { if (idx + 1 < steps.length) jump(idx + 1); else finish() }
+  // Add an extra set to the CURRENT exercise (insert a rest + new set after its last set).
+  function addSet() {
+    if (cur?.kind !== 'set') return
+    const { exIndex, ex, exNo } = cur
+    setSteps((prev) => {
+      const newSets = prev.filter((s) => s.kind === 'set' && s.exIndex === exIndex).length + 1
+      let lastSetI = -1
+      prev.forEach((s, i) => { if (s.kind === 'set' && s.exIndex === exIndex) lastSetI = i })
+      if (lastSetI < 0) return prev
+      const updated = prev.map((s) => (s.kind === 'set' && s.exIndex === exIndex ? { ...s, sets: newSets } : s))
+      const restBetween: Step = { kind: 'rest', duration: ex.rest > 0 ? ex.rest : DEFAULT_REST, next: ex, nextNo: exNo }
+      const newSet: Step = { kind: 'set', ex, exNo, exIndex, setNo: newSets, sets: newSets, reps: ex.reps, weight: ex.weight }
+      const out = [...updated]; out.splice(lastSetI + 1, 0, restBetween, newSet); return out
+    })
+  }
 
   // Time-based auto-advance from ABSOLUTE time, so the timer keeps running while
   // the screen is off and simply catches up on wake (no pause, no drift). useNow
@@ -263,6 +278,7 @@ export default function GymPlayer() {
           <label className="gp2-f">weight<input type="number" inputMode="decimal" value={setEntry?.weight ?? ''} placeholder={suggestWeight != null ? String(suggestWeight) : ''} onChange={(e) => logSet(cur.exIndex, cur.setNo, { weight: e.target.value === '' ? undefined : Number(e.target.value) })} /><button type="button" className="gp2-unit" onClick={toggleUnit} title="kg / lb">{unit}</button></label>
           <span className="gp2-x2">×</span>
           <label className="gp2-f"><input type="number" inputMode="numeric" value={setEntry?.reps ?? ''} placeholder={suggestReps != null ? String(suggestReps) : ''} onChange={(e) => logSet(cur.exIndex, cur.setNo, { reps: e.target.value === '' ? undefined : Number(e.target.value) })} />reps</label>
+          <button className="gp2-skip" onClick={advance} title="Skip this set">Skip</button>
           <button className="gp2-done" onClick={() => { logSet(cur.exIndex, cur.setNo, { done: true, weight: setEntry?.weight ?? suggestWeight, reps: setEntry?.reps ?? suggestReps }); advance() }}>Done set →</button>
         </div>
       ) : (
@@ -283,6 +299,7 @@ export default function GymPlayer() {
               </button>
             )
           })}
+          <button className="gp2-setrow gp2-addset" onClick={addSet} title="Add a set">＋ set</button>
         </div>
       )}
 
