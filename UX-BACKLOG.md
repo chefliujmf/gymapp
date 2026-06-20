@@ -268,6 +268,11 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
     dataset → **commercial: NO/CHECK** (resale unclear). Data not in the repo (need to
     self-host the API / source the dataset). Good for PERSONAL use only — but we already
     have MuscleWiki+Centr videos. Resell-safe demo set stays free-exercise-db (stills).
+
+  - ❌ **NOT resell-safe (assessed):** Centr, MuscleWiki, ExerciseDB *media*,
+    **muscleandstrength.com** (proprietary commercial content, no open license).
+    Personal use only — never in the sold product. Resell-safe = free-exercise-db (exercises),
+    TheMealDB (recipes, attribution+verify), CC audio sources.
   - ⬜ **Recipes** → **TheMealDB** (free recipe API + images; verify commercial terms /
     attribution). Replace scraped Centr recipes for the resell set.
   - ⬜ **Meditation / audio** → **Freesound.org** (CC0 / CC-BY, filter by license),
