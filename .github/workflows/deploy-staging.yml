@@ -1,0 +1,33 @@
+name: Deploy Staging
+
+# Continuous deploy to the QA/staging env: every push to `dev` builds on the XPS
+# self-hosted runner (with the synced catalog) and deploys the isolated staging
+# stack, served HTTPS on the tailnet only. Flow: dev -> STAGING -> (PR) main -> PROD.
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging:
+    runs-on: [self-hosted, xps]
+    env:
+      DEPLOY_LOCAL: "1"
+      STAGE_DIR: /home/jmf/gymapp-staging
+      BUILD_CMD: npm run build:app
+      CATALOG_DIR: /home/jmf/content/generated
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restore generated catalog (synced, not in git)
+        run: |
+          mkdir -p src/data/generated
+          cp -a "$CATALOG_DIR/." src/data/generated/
+      - run: npm ci
+      - run: bash scripts/deploy-staging.sh

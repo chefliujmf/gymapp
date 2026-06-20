@@ -14,7 +14,8 @@
     "build:catalog": "node scripts/build-catalog.mjs",
     "deploy": "bash scripts/deploy.sh",
     "build:app": "tsc -b && vite build",
-    "sync:catalog": "bash scripts/sync-catalog.sh"
+    "sync:catalog": "bash scripts/sync-catalog.sh",
+    "deploy:staging": "bash scripts/deploy-staging.sh"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.3.0",

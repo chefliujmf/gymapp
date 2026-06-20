@@ -49,10 +49,14 @@ Tackle UX roughly top-down; the calendar is the centerpiece most items hang off.
   unbuilt activity-push / TCX item).
 
 ### Infra: QA/staging env + release notes (explicit ask)
-- ⬜ **QA/staging environment** so prod only ever gets validated features. Build the planned
-  XPS staging stack: parallel `*-dev` container + `platyplus-dev.duckdns.org` (NPM + cert) for
-  full prod parity incl. passkeys + phone testing. Flow: dev → **staging** (validate on phone)
-  → prod.
+- ✅ **QA/staging environment** — `gymapp-staging` container on the XPS, served HTTPS on the
+  **tailnet only** via `tailscale serve` → `https://jmf-xps-13-9343.tail8ece92.ts.net` (no public
+  exposure, passkeys work, isolated data/accounts, seed `jmfiset`/`stagingpass`).
+  `npm run deploy:staging` (Mac) + **auto-deploy on every `dev` push** (`deploy-staging.yml` on
+  the runner). **3-env CI/CD: CI on all pushes/PRs · dev push → STAGING · main merge → PROD.**
+  Loud **env badge** (DEV/QA frame; PROD clean) so you never confuse them. Flow: dev → QA
+  (validate on phone) → PR → prod.
+- ⬜ Future: a public staging subdomain (DuckDNS+NPM) only if non-tailnet testers ever need it.
 - ⬜ **Release notes in-app**: a **bell icon top-right** (notification center) listing new
   features per release — NOT a popup. User manages/reads notifications there.
 
