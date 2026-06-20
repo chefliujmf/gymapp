@@ -24,7 +24,7 @@ function pickByDate<T>(arr: T[], dateStr: string, salt = 0): T | undefined {
 const planIcon = (s: CoachPlan['sport']) => (s === 'ride' ? <Bike strokeWidth={1.75} /> : s === 'run' ? <Footprints strokeWidth={1.75} /> : <Dumbbell strokeWidth={1.75} />)
 
 /** A coach-pushed plan that isn't mirrored by an intervals event — runs in-app. */
-function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove }: { p: CoachPlan; onRun: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void }) {
+function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove, done }: { p: CoachPlan; onRun: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean }) {
   const mins = p.sport === 'gym' ? undefined : Math.round((p.segments || []).reduce((s, x) => s + x.duration, 0) / 60)
   return (
     <div className="today-entry">
@@ -32,8 +32,8 @@ function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove }: { p: Co
         <div className="card-row">
           <div className="thumb">{planIcon(p.sport)}</div>
           <div className="card-body">
-            <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}</span>
-            <h3>{p.title}</h3>
+            <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
+            <h3 style={done ? { opacity: 0.6 } : undefined}>{p.title}</h3>
             {p.notes && <div className="meta" style={{ display: 'block', whiteSpace: 'normal' }}>{p.notes.length > 110 ? p.notes.slice(0, 110) + '…' : p.notes}</div>}
             <div className="meta">{mins ? <span>{mins} min</span> : <span>{(p.exercises || []).length} exercises{p.rounds && p.rounds > 1 ? ` · ${p.rounds} rounds` : ''}</span>}<span className="dot">▶ start</span></div>
           </div>
@@ -54,7 +54,7 @@ function weekRange(): [string, string] {
 const sportIcon = (e: IcuEvent) => { const s = sportOf(e); return s === 'cycling' ? <Bike strokeWidth={1.75} /> : s === 'gym' ? <Dumbbell strokeWidth={1.75} /> : e.type === 'Run' ? <Footprints strokeWidth={1.75} /> : <Target strokeWidth={1.75} /> }
 const fmtDay = (s: string) => new Date(s + 'T00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
 
-function PlanCard({ e, showDate, onSwap, onRemove }: { e: IcuEvent; showDate?: boolean; onSwap?: () => void; onRemove?: () => void }) {
+function PlanCard({ e, showDate, onSwap, onRemove, done }: { e: IcuEvent; showDate?: boolean; onSwap?: () => void; onRemove?: () => void; done?: boolean }) {
   const obj = eventObjective(e)
   const mins = e.moving_time ? Math.round(e.moving_time / 60) : undefined
   return (
@@ -63,8 +63,8 @@ function PlanCard({ e, showDate, onSwap, onRemove }: { e: IcuEvent; showDate?: b
         <div className="card-row">
           <div className="thumb">{sportIcon(e)}</div>
           <div className="card-body">
-            <span className="eyebrow">{e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}</span>
-            <h3>{e.name}</h3>
+            <span className="eyebrow">{e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
+            <h3 style={done ? { opacity: 0.6 } : undefined}>{e.name}</h3>
             {obj && <div className="meta" style={{ display: 'block', whiteSpace: 'normal' }}>{obj.length > 110 ? obj.slice(0, 110) + '…' : obj}</div>}
             {mins && <div className="meta"><span>{mins} min</span>{e.icu_training_load ? <span className="dot">{e.icu_training_load} TSS</span> : null}</div>}
           </div>
@@ -98,6 +98,8 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
 export default function Today() {
   const [selDay, setSelDay] = useState(todayISO())
   const todaysLogs = useLiveQuery(() => db.logs.where('date').equals(todayISO()).toArray())
+  const dayLogs = useLiveQuery(() => db.logs.where('date').equals(selDay).toArray(), [selDay]) ?? []
+  const doneTitles = new Set(dayLogs.map((l) => (l.title || '').toLowerCase().trim()))
   const diet = useLiveQuery(() => getSetting('diet'))
   const [events, setEvents] = useState<IcuEvent[] | null>(null)
   const [plans, setPlans] = useState<CoachPlan[]>([])
@@ -195,8 +197,8 @@ export default function Today() {
       ) : null}
       {dayEvents.length > 0 || dayPlans.length > 0 || dayItems.length > 0 ? (
         <div className="stack">
-          {dayEvents.map((e) => <PlanCard key={e.id} e={e} onSwap={() => swapOn(selDay)} onRemove={() => removeEvent(e)} />)}
-          {dayPlans.map((p) => <CoachPlanCard key={p.id} p={p} onRun={runPlan} fmtDay={fmtDay} onSwap={() => swapOn(selDay)} onRemove={() => removePlan(p)} />)}
+          {dayEvents.map((e) => <PlanCard key={e.id} e={e} done={doneTitles.has(e.name.toLowerCase().trim())} onSwap={() => swapOn(selDay)} onRemove={() => removeEvent(e)} />)}
+          {dayPlans.map((p) => <CoachPlanCard key={p.id} p={p} done={doneTitles.has(p.title.toLowerCase().trim())} onRun={runPlan} fmtDay={fmtDay} onSwap={() => swapOn(selDay)} onRemove={() => removePlan(p)} />)}
           {dayItems.map((it) => <ItemCard key={it.id} it={it} onSwap={() => swapOn(selDay)} onRemove={() => removeItem(it)} />)}
         </div>
       ) : events !== null && !err ? (
