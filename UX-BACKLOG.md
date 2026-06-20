@@ -371,3 +371,11 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
 - ⬜ **Substitute must keep the same type/slot**: workout↔workout, meal↔meal, meditation↔meditation
   (and ideally same time). Today the swap opens the full Add sheet (any type). Fix: in replacing
   mode, lock the AddSheet to the replaced entry's type (hide the type picker).
+
+## New categories: Yoga + Pilates ⬜
+- ⬜ Add **Yoga** and **Pilates** as categories (exercise buckets + Train filters + build-catalog
+  category mapping; today stretching→Mobility).
+- ⬜ **Free yoga/pilates content** (videos/images) — RESEARCH commercial-safe sources: Wikimedia
+  Commons (CC), free-exercise-db stretching subset, open yoga-pose datasets, Pexels/Pixabay video
+  (free license). Verify each + record in content-manifest with commercial flag. (free-exercise-db
+  has no yoga/pilates set, so this needs a new source.)
