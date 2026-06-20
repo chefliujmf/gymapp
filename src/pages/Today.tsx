@@ -10,7 +10,7 @@ import { calApi, type CalItem } from '../calendar'
 import { recipes, mindSessions } from '../data/catalog'
 import type { Recipe } from '../types'
 import { localISO } from '../date'
-import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 
 // Stable daily pick: same item all day, rotates with the date (+salt for variety).
@@ -102,6 +102,7 @@ export default function Today() {
   const [events, setEvents] = useState<IcuEvent[] | null>(null)
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [items, setItems] = useState<CalItem[]>([])
+  const [added, setAdded] = useState<Record<string, boolean>>({})
   const [err, setErr] = useState<string>()
   const navigate = useNavigate()
 
@@ -161,8 +162,12 @@ export default function Today() {
   }
   const meals = (['breakfast', 'lunch', 'dinner'] as const).map((cat, i) => suggestMeal(cat, i + 1)).filter(Boolean) as Recipe[]
   const meditation = pickByDate(mindSessions, selDay, 7)
-  async function addMealSuggestion(r: Recipe) { await calApi.saveItem({ date: selDay, type: 'meal', title: r.title, refId: r.id, mealType: r.category, kcal: r.kcal }); load() }
-  async function addMindSuggestion() { if (!meditation) return; await calApi.saveItem({ date: selDay, type: 'mind', title: meditation.title, refId: meditation.id, minutes: meditation.duration }); load() }
+  async function add(key: string, item: Parameters<typeof calApi.saveItem>[0]) {
+    try { await calApi.saveItem(item); load(); setAdded((a) => ({ ...a, [key]: true })); setTimeout(() => setAdded((a) => { const n = { ...a }; delete n[key]; return n }), 1600) }
+    catch { alert('Could not add — are you signed in?') }
+  }
+  const addMealSuggestion = (r: Recipe) => add(r.id, { date: selDay, type: 'meal', title: r.title, refId: r.id, mealType: r.category, kcal: r.kcal })
+  const addMindSuggestion = () => { if (meditation) add('mind:' + meditation.id, { date: selDay, type: 'mind', title: meditation.title, refId: meditation.id, minutes: meditation.duration }) }
 
   return (
     <div>
@@ -215,7 +220,7 @@ export default function Today() {
                     </div>
                   </div>
                 </Link>
-                <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12 }} aria-label="Add to this day" title="Add to this day" onClick={(e) => { e.preventDefault(); addMealSuggestion(r) }}><Plus size={18} /></button>
+                <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12, color: added[r.id] ? 'var(--accent,#34e07d)' : undefined, borderColor: added[r.id] ? 'var(--accent,#34e07d)' : undefined }} aria-label="Add to this day" title="Add to this day" onClick={(e) => { e.preventDefault(); addMealSuggestion(r) }}>{added[r.id] ? <Check size={18} /> : <Plus size={18} />}</button>
               </div>
             ))}
           </div>
@@ -237,7 +242,7 @@ export default function Today() {
                   </div>
                 </div>
               </Link>
-              <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12 }} aria-label="Add to this day" title="Add to this day" onClick={(e) => { e.preventDefault(); addMindSuggestion() }}><Plus size={18} /></button>
+              <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12, color: added['mind:' + meditation.id] ? 'var(--accent,#34e07d)' : undefined, borderColor: added['mind:' + meditation.id] ? 'var(--accent,#34e07d)' : undefined }} aria-label="Add to this day" title="Add to this day" onClick={(e) => { e.preventDefault(); addMindSuggestion() }}>{added['mind:' + meditation.id] ? <Check size={18} /> : <Plus size={18} />}</button>
             </div>
           </div>
         </>
