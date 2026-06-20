@@ -263,9 +263,14 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
     **add exercises not already present**, self-host its images through the media pipeline
     (build-catalog gate). Prefer free-db entries as the resell-safe set; keep scraped ones only
     for personal/me+wife builds.
-  - ⬜ Same licensing question for **recipes, rides, runs, meditations** (msg 44) — find
-    free/licensed sources before selling (Centr recipes + JOIN rides + Centr meditations are
-    also not resellable).
+  - ⬜ **Recipes** → **TheMealDB** (free recipe API + images; verify commercial terms /
+    attribution). Replace scraped Centr recipes for the resell set.
+  - ⬜ **Meditation / audio** → **Freesound.org** (CC0 / CC-BY, filter by license),
+    **Free Music Archive**, **Pixabay Music**, **Incompetech** (Kevin MacLeod, CC-BY).
+    Verify EACH track's license; store attribution. Replace scraped Centr meditation audio.
+  - ⬜ **Rides / runs**: JOIN structured workouts aren't resellable either — the ride/run
+    BUILDER (already built) generates our own; lean on that + any open workout sets.
+  - ⬜ Build an **attribution/credits** surface for CC-BY assets (required by those licenses).
 - ⬜ **Anti-scraping / anti-download** of our own served media (already noted under Video/media).
 
 ## Deferred (non-Platyplus, from earlier in the session)

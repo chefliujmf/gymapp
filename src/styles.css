@@ -500,7 +500,10 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .entry-act--del:hover { color: #fff; background: var(--danger, #ff6b6b); border-color: var(--danger, #ff6b6b); }
 
 /* Today scheduled item wrapper (kebab sits in the card's top-right corner). */
-.today-entry { position: relative; }
+/* Stretch the card to full width (it's an <a>/<button> — inline by default, and no
+ * longer a direct .stack flex child once wrapped here). */
+.today-entry { position: relative; display: flex; flex-direction: column; }
+.today-entry > .card { width: 100%; }
 
 /* Compact ⋯ trigger — small footprint, hard to mis-tap; opens the action sheet. */
 .entry-kebab {
