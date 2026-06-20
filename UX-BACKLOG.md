@@ -254,6 +254,20 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
   `gymdata` tool layer drives whichever model the user linked; the owner's personal
   subscription stays the default only for me + wife. Each user runs on their own quota/billing.
 
+## Content & licensing (for the SELL path) ⬜
+- ⬜ **Sellable exercise content** (from msg 44 "free to use and sell"). The current library is
+  **scraped Centr / MuscleWiki** — great for personal use, **NOT licensed to resell**. For the
+  SaaS path the library must be **public-domain / licensed**.
+  - ✅ source chosen by user: **`github.com/yuhonas/free-exercise-db`** (public-domain, ~800+
+    exercises with images + instructions). **Integrate it**: map its schema → our catalog,
+    **add exercises not already present**, self-host its images through the media pipeline
+    (build-catalog gate). Prefer free-db entries as the resell-safe set; keep scraped ones only
+    for personal/me+wife builds.
+  - ⬜ Same licensing question for **recipes, rides, runs, meditations** (msg 44) — find
+    free/licensed sources before selling (Centr recipes + JOIN rides + Centr meditations are
+    also not resellable).
+- ⬜ **Anti-scraping / anti-download** of our own served media (already noted under Video/media).
+
 ## Deferred (non-Platyplus, from earlier in the session)
 - ⬜ Daily **Centris scrape** on the XPS for new houses + **push to Pixel** if found.
 - ⬜ `exp1-checkcheck-review` (Croissant climate review) on the XPS (needs HA on LAN).
@@ -310,6 +324,17 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
 - ⬜ **BYO Strava (multi-provider activity source)**: a user may not use intervals.icu at all
   — let them **link their own Strava** (OAuth) in account settings as an alternative source/
   sink for activities. Same provider-abstraction idea as BYO-AI: `intervals | strava | …`.
+- ⬜ **"Can't see / use Bluetooth HR during a bike workout"** (session-5). Code is correct:
+  `pairDevice` filters the `heart_rate` service, the provider tracks HR + bpm, and the
+  RidePlayer **setup** phase renders the device panel. Likely causes to confirm + fix:
+  1. **Web Bluetooth is Chrome/Edge-only** (NOT Firefox or Safari) + needs HTTPS. If the
+     user opens a ride in **Firefox**, the panel shows "use Chrome or Edge" and there's no
+     pairing. → confirm the browser; make the unsupported message LOUD; recommend the
+     installed Android PWA / Chrome.
+  2. **Pairing only exists in the ride SETUP phase** — no way to add/see devices **during**
+     the ride. → add a device affordance in the ride phase too.
+  3. **No HR in the GYM player at all** — strength workouts can't show HR. → decide whether
+     to add BLE HR to GymPlayer.
 - ⬜ **Ride device pairing labels are too specific**: we added "HR" + "Trainer".
   - HR can be a **chest strap OR a watch** (Garmin, Coros, Apple Watch, …) — don't assume a strap.
   - Trainer **brand is unknown** (Wahoo/Tacx/Saris/…) — keep it generic.
