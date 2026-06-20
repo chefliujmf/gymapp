@@ -393,3 +393,5 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
 - ❌ **exerciselibrary.com** — commercial/copyrighted → NOT resell-safe.
 - ⚠️ **Resell-safe PILATES + YOGA content is still UNSOLVED** — none of the above fill it.
   Need true CC0/CC-BY: Wikimedia Commons, Pexels/Pixabay video (free license), open pose datasets.
+
+- [ ] Real per-workout/ride imagery as card background (currently sport-themed gradient + logo overlay stopgap)
