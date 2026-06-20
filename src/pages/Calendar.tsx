@@ -238,7 +238,15 @@ export default function Calendar() {
 }
 
 function AddSheet({ date, replacing, ftp, templates, rideTemplates, onClose, onAdd, onReplaced }: { date: string; replacing?: Entry; ftp: number; templates: WorkoutTemplate[]; rideTemplates: RideTemplate[]; onClose: () => void; onAdd: () => void; onReplaced: () => void }) {
-  const [type, setType] = useState<'' | 'ride' | 'run' | 'gym' | 'meal' | 'mind' | 'note'>('')
+  // Substitute is type-LOCKED to the replaced entry (workout↔workout, meal↔meal,
+  // mind↔mind, note↔note) — pre-select its type and hide the type picker.
+  const [type, setType] = useState<'' | 'ride' | 'run' | 'gym' | 'meal' | 'mind' | 'note'>(() => {
+    const e = replacing
+    if (!e) return ''
+    if (e.k === 'plan') return e.plan.sport
+    if (e.k === 'item') return e.item.type
+    return e.ev.type === 'Run' ? 'run' : e.ev.type === 'WeightTraining' ? 'gym' : 'ride'
+  })
   const [q, setQ] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -307,7 +315,7 @@ function AddSheet({ date, replacing, ftp, templates, rideTemplates, onClose, onA
                 </button>
               ))}
             </div>
-            <button className="auth-link" onClick={() => { setType(''); setQ('') }}>‹ Back</button>
+            {!replacing && <button className="auth-link" onClick={() => { setType(''); setQ('') }}>‹ Back</button>}
           </>
         )}
 
@@ -315,7 +323,7 @@ function AddSheet({ date, replacing, ftp, templates, rideTemplates, onClose, onA
           <>
             <textarea className="search" style={{ minHeight: 90, resize: 'vertical' }} autoFocus placeholder="Write a note…" value={note} onChange={(e) => setNote(e.target.value)} />
             <button className="btn" disabled={busy || !note.trim()} onClick={() => add(() => calApi.saveItem({ date, type: 'note', title: note.trim().slice(0, 40), notes: note.trim() }))}>Add note</button>
-            <button className="auth-link" onClick={() => setType('')}>‹ Back</button>
+            {!replacing && <button className="auth-link" onClick={() => setType('')}>‹ Back</button>}
           </>
         )}
       </div>
