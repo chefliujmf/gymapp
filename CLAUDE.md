@@ -10,8 +10,9 @@ Read this before changing anything here. It lists the invariants and the
 - Runs on the always-on XPS via `docker compose` (`docker-compose.yml`).
 - Public at `https://platyplus.duckdns.org` via NPM (HA Green). Passkeys bind to
   that exact domain (RP_ID) — the TLS cert MUST match it.
-- Deploy = build `dist/` on the Mac → `rsync dist/` to the XPS →
-  `docker compose restart` (or `up -d --build` if `server/` changed).
+- Deploy = **3-env CI/CD** (see DEPLOY.md): CI on every push/PR; `dev` push → **QA/staging**
+  auto-deploy; PR `dev`→`main` (CI green) → **prod** auto-deploy via the XPS self-hosted
+  runner (`build:app` + synced catalog). `npm run deploy` from the Mac is the hotfix path.
 
 ## INVARIANT: 100% media independence (do not break)
 - The catalog must contain **zero** third-party media URLs (Centr, MuscleWiki,
@@ -28,6 +29,8 @@ Read this before changing anything here. It lists the invariants and the
 |--------|-------------|
 | Add/modify any `/api/*` or `/auth/*` endpoint in `server/server.js` | **`server/openapi.json`** (the Swagger spec at `/api/docs`) — keep it in sync |
 | Add a new media source/type | `scripts/build-catalog.mjs` self-host fn + gate; download via `scripts/fetch-missing-media.mjs`; upload to the XPS `media/` and redeploy |
+| **Add/replace content** (exercises, recipes, audio) | **`CONTENT.md`** — the runbook: importer → build-catalog (free-first de-dup) → host images + `npm run sync:catalog` → `content-manifest` (license/commercial) → deploy |
+| **Ship a user-facing batch to prod** | add a block to **`src/data/releases.ts`** (the in-app "What's new" bell) |
 | Change how media is referenced | re-run the build; confirm the **gate is green** |
 | Change deploy/infra/containers | **`RESTORE.md`** and this file |
 | Change the build pipeline | `scripts/*` stay consistent (`build-catalog`, `fetch-missing-media`) |

@@ -62,6 +62,15 @@ export default function ExerciseDetail() {
           {added > 0 && <Link to="/build" className="btn btn--ghost" style={{ whiteSpace: 'nowrap', padding: '0 14px' }}>Build ({added}) →</Link>}
         </div>
 
+        {ex.instructions && ex.instructions.length > 0 && (
+          <>
+            <div className="section-title">How to</div>
+            <ol className="steps">
+              {ex.instructions.map((s, i) => <li key={i}>{s}</li>)}
+            </ol>
+          </>
+        )}
+
         {usedIn.length > 0 && (
           <>
             <div className="section-title">Featured in</div>
