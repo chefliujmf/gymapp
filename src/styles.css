@@ -639,7 +639,17 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .cal-month-detail .cal-day-head { margin-top: 8px; }
 .cal-entry { display: flex; align-items: center; padding: 10px 12px; }
 .cal-entry__main { display: flex; align-items: center; gap: 12px; flex: 1; background: none; border: none; text-align: left; cursor: pointer; color: inherit; padding: 0; }
-.cal-chip { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.cal-chip { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex: none; overflow: hidden; }
+/* Sport-flavoured chip: visual gradient background with the logo kept on top — matches Today. */
+.cal-chip--grad { color: #fff; }
+.cal-chip--grad svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
+.cal-chip--ride { background: radial-gradient(120% 120% at 30% 20%, #1f6f5c 0%, #134a4a 55%, #0e2f36 100%); }
+.cal-chip--run { background: radial-gradient(120% 120% at 30% 20%, #b9612a 0%, #7a3a23 55%, #3f2018 100%); }
+.cal-chip--gym { background: radial-gradient(120% 120% at 30% 20%, #4a4f9e 0%, #343a6e 55%, #1f2240 100%); }
+.cal-chip--meal { background: radial-gradient(120% 120% at 30% 20%, #b9466a 0%, #7a2e47 55%, #3f1827 100%); }
+.cal-chip--mind { background: radial-gradient(120% 120% at 30% 20%, #6a4aa0 0%, #463070 55%, #261c3c 100%); }
+.cal-chip--note { background: radial-gradient(120% 120% at 30% 20%, #4a5260 0%, #343a44 55%, #1f2228 100%); }
+.cal-chip img { width: 100%; height: 100%; object-fit: cover; }
 
 /* add sheet */
 .sheet-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; }
