@@ -268,6 +268,11 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
     dataset → **commercial: NO/CHECK** (resale unclear). Data not in the repo (need to
     self-host the API / source the dataset). Good for PERSONAL use only — but we already
     have MuscleWiki+Centr videos. Resell-safe demo set stays free-exercise-db (stills).
+
+  - ❌ **NOT resell-safe (assessed):** Centr, MuscleWiki, ExerciseDB *media*,
+    **muscleandstrength.com** (proprietary commercial content, no open license).
+    Personal use only — never in the sold product. Resell-safe = free-exercise-db (exercises),
+    TheMealDB (recipes, attribution+verify), CC audio sources.
   - ⬜ **Recipes** → **TheMealDB** (free recipe API + images; verify commercial terms /
     attribution). Replace scraped Centr recipes for the resell set.
   - ⬜ **Meditation / audio** → **Freesound.org** (CC0 / CC-BY, filter by license),
@@ -361,3 +366,20 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
 - ✅ render-time: RecipeDetail strips HTML/entities (<p>, &deg;, &nbsp;) + drops junk tags
   (HCO, "AU/UK/US COMPLETE!"). ⬜ also clean at SOURCE in build-catalog so stored data is clean
   (and the calendar/Today meal titles too). Likely moot once recipes move to TheMealDB.
+
+## Substitute should be type-locked ⬜
+- ⬜ **Substitute must keep the same type/slot**: workout↔workout, meal↔meal, meditation↔meditation
+  (and ideally same time). Today the swap opens the full Add sheet (any type). Fix: in replacing
+  mode, lock the AddSheet to the replaced entry's type (hide the type picker).
+
+## New categories: Yoga + Pilates ⬜
+- ⬜ Add **Yoga** and **Pilates** as categories (exercise buckets + Train filters + build-catalog
+  category mapping; today stretching→Mobility).
+- ⬜ **Free yoga/pilates content** (videos/images) — RESEARCH commercial-safe sources: Wikimedia
+  Commons (CC), free-exercise-db stretching subset, open yoga-pose datasets, Pexels/Pixabay video
+  (free license). Verify each + record in content-manifest with commercial flag. (free-exercise-db
+  has no yoga/pilates set, so this needs a new source.)
+
+- ❌ **Yoga with Adriene / DoYogaWithMe**: free to WATCH but **copyrighted by the creators** —
+  NOT resell-safe (commercial redistribution = infringement). Personal-use only (and YouTube embeds
+  conflict with our self-hosted independence). Resell-safe yoga = CC/public-domain only (still TBD).
