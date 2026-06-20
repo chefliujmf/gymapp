@@ -14,9 +14,15 @@ import exercisesData from './generated/exercises.json'
 export const workouts = workoutsData as unknown as Workout[]
 /** The exercise library — the gym building blocks. */
 export const exercises = exercisesData as unknown as LibExercise[]
-export const exerciseCategories = ['Legs', 'Push', 'Pull', 'Core', 'Cardio', 'Mobility', 'Full body'] as const
+export const exerciseCategories = ['Legs', 'Push', 'Pull', 'Core', 'Cardio', 'Mobility', 'Full body', 'Yoga', 'Pilates'] as const
 /** Equipment types present in the library (mostly from MuscleWiki). */
 export const exerciseEquipment = [...new Set(exercises.map((e) => e.equipment).filter(Boolean) as string[])].sort()
+/** Muscle groups present in the library, ordered by how many exercises hit them. */
+export const exerciseMuscles = (() => {
+  const count = new Map<string, number>()
+  for (const e of exercises) if (e.muscle) count.set(e.muscle, (count.get(e.muscle) || 0) + 1)
+  return [...count.entries()].sort((a, b) => b[1] - a[1]).map(([m]) => m)
+})()
 export const recipes = recipesData as unknown as Recipe[]
 export const mindSessions = mindData as unknown as MindSession[]
 /** JOIN cycling + running interval workouts. */

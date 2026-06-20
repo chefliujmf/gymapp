@@ -115,7 +115,7 @@ export function MindCard({ m }: { m: MindSession }) {
         <div className="card-body">
           <h3>{m.title}</h3>
           <div className="meta">
-            <span>{m.duration} min</span>
+            <span>{m.duration ? `${m.duration} min` : 'audio'}</span>
             <span className="dot">{m.kind}</span>
           </div>
         </div>

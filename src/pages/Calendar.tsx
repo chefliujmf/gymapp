@@ -317,7 +317,7 @@ function AddSheet({ date, replacing, ftp, templates, rideTemplates, onClose, onA
               ))}
               {type === 'mind' && minds.map((m) => (
                 <button key={m.id} className="card" disabled={busy} onClick={() => add(() => calApi.saveItem({ date, type: 'mind', title: m.title, refId: m.id, minutes: m.duration }))}>
-                  <div className="card-row"><div className="thumb"><Brain size={18} /></div><div className="card-body"><h3>{m.title}</h3><div className="meta">{m.kind} · {m.duration} min</div></div></div>
+                  <div className="card-row"><div className="thumb"><Brain size={18} /></div><div className="card-body"><h3>{m.title}</h3><div className="meta">{m.kind}{m.duration ? ` · ${m.duration} min` : ''}</div></div></div>
                 </button>
               ))}
             </div>
