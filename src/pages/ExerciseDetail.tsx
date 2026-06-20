@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { allExercisesById, workouts } from '../data/catalog'
 import { addToDraft } from '../builderDraft'
 import { getSetting, setSetting } from '../db'
+import { attributionFor } from '../attribution'
 
 export default function ExerciseDetail() {
   const { id } = useParams()
@@ -70,6 +71,12 @@ export default function ExerciseDetail() {
             </ol>
           </>
         )}
+
+        {(() => { const a = attributionFor(ex.source); return a ? (
+          <p className="meta" style={{ marginTop: 14, opacity: 0.65 }}>
+            Source: {a.url ? <a href={a.url} target="_blank" rel="noreferrer">{a.label}</a> : a.label} · {a.license}
+          </p>
+        ) : null })()}
 
         {usedIn.length > 0 && (
           <>
