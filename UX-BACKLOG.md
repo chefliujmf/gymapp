@@ -5,30 +5,25 @@ Tackle UX roughly top-down; the calendar is the centerpiece most items hang off.
 
 ## ⭐ Session-4: FIRST REAL GYM USE (live feedback — highest priority)
 
-### Gym player (the live workout screen) — actively rough, fix first
-- ⬜ **Set tracking unclear** — hard to see current set, go back & modify, add an extra set,
-  or skip. Redesign to a clear set table (ref: JetFit screenshot — Sets / Weight / Reps / 1RM
-  rows, ✓ done sets, → current set, LOG SET, Scroller/Keyboard input toggle).
-- ⬜ **Weight field bugs**: (a) can't fully clear the field — if it has a value, deleting all
-  of it is buggy/blocked; (b) **last set erases the weight input**; (c) weight sometimes just
-  erased on its own. Likely controlled-input + state issues.
-- ⬜ **Switching exercise loses your set** — bottom arrows reset to set 1; **history impacted**.
-  Per-exercise set state must persist when navigating exercises.
-- ⬜ **Swipe-right to change exercise**: arrows too dark/low-contrast, not always working
-  (hard to repro), and the **video doesn't follow** the exercise change.
-- ⬜ **kg ↔ lbs toggle DURING the workout** (currently can't switch units mid-session).
-- ⬜ **Rest timer between sets** — countdown that runs in the background after LOG SET.
-- ⬜ **Whole-workout timer is wrong** — said 11 min at the end, actual was 52. No live full timer.
-- ⬜ **Pre-workout time estimate** — total, and ideally per-exercise (reps × time-under-tension).
-- ⬜ **Reorder exercises before starting**.
-- ⬜ **History back-nav bug**: open history → back → dumped to exercise 1's video (should return
-  to where you were).
-- ⬜ **Pallof press shows one side only** during the workout (it's both sides). (coach/data)
+### Gym player (the live workout screen) — fixes SHIPPED to dev/QA
+- ✅ **Set tracking**: per-set tracker row (✓ done / ▸ current / tap to edit). (Add-set / skip /
+  reorder + a full JetFit-style table = ⬜ refinement below.)
+- ✅ **Weight field bug** fixed: carry-forward is now a PLACEHOLDER, not a value fallback that
+  refilled on clear; Done-set falls back to it if left blank.
+- ✅ **Switching exercise** now resumes at the first un-done set (was always set 1).
+- ✅ **kg ↔ lbs toggle** in the log bar (live, units preference).
+- ✅ **Rest timer between sets** — always a countdown (default 75s when coach didn't set one).
+- ✅ **Whole-workout timer** now uses REAL elapsed time (done screen + log); live ⏱ in header.
+- ✅ **Bigger/brighter ‹‹ ›› controls**. (Video follows the exercise — StageVideo keys on src.)
+- ✅ **Video pause** (tap) + **'Stills only' Profile preference**.
+- ⬜ **Pre-workout time estimate** — total + per-exercise (reps × time-under-tension).
+- ⬜ **Reorder exercises before starting**; **add-set / skip-set** in player; full set TABLE.
+- ⬜ **History back-nav**: open history → back → dumped to exercise 1 (should return to position).
+- ⬜ **Pallof press both sides** during the workout (coach/data — fix via coach/MCP).
+- ⬜ **Dedicated swipe gesture** to change exercise (currently arrows + dots).
 
 ### Video / media
 - ⬜ **Centr video resolution is poor** — source quality; consider re-encode / better source.
-- ⬜ **No pause on exercise videos** — add play/pause.
-- ⬜ **Image-instead-of-video fallback as a Profile preference** (toggle; data-saving / clarity).
 - ⬜ **Anti-scraping / anti-download**: videos are currently downloadable. Deter download +
   screenshots of self-hosted content (signed/expiring URLs, range-only, obfuscation — note:
   true DRM is hard; aim to raise the bar).
