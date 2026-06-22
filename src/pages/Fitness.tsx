@@ -20,10 +20,13 @@ function formZone(v: number | null) {
 }
 
 function MiniCard({ title, value, unit, hint, series, bars, color }: { title: string; value: number | null; unit?: string; hint?: string; series?: Series; bars?: (number | null)[]; color?: string }) {
+  const [hv, setHv] = useState<number | null>(null)
+  const data = bars || series?.data || []
+  const shown = hv != null && data[hv] != null ? (data[hv] as number) : value
   return (
     <div className="fit-mini">
-      <div className="fit-mini__head"><span>{title}{hint && <InfoDot text={hint} />}</span><b>{fmt(value, unit)}</b></div>
-      {bars ? <BarChart data={bars} color={color} height={56} /> : series ? <TrendChart series={[series]} height={56} pad={6} /> : null}
+      <div className="fit-mini__head"><span>{title}{hint && <InfoDot text={hint} />}</span><b style={hv != null ? { color: 'var(--accent, #34e07d)' } : undefined}>{fmt(shown, unit)}</b></div>
+      {bars ? <BarChart data={bars} color={color} height={56} onHover={setHv} /> : series ? <TrendChart series={[series]} height={56} pad={6} onHover={setHv} /> : null}
     </div>
   )
 }

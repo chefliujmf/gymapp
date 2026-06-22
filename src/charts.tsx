@@ -29,6 +29,19 @@ function smoothPath(pts: [number, number][]): string {
 }
 
 const VW = 320
+/** Round axis bounds + ticks (1/2/5/10 ×10ⁿ steps) — clean numbers like 0,25,50. */
+function niceTicks(min: number, max: number, count = 5): { min: number; max: number; ticks: number[] } {
+  if (!isFinite(min) || !isFinite(max) || min === max) { const m = isFinite(min) ? min : 0; return { min: m - 1, max: m + 1, ticks: [m - 1, m, m + 1] } }
+  const rawStep = (max - min) / (count - 1)
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)))
+  const norm = rawStep / mag
+  const step = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag
+  const nMin = Math.floor(min / step) * step
+  const nMax = Math.ceil(max / step) * step
+  const ticks: number[] = []
+  for (let v = nMin; v <= nMax + step * 0.001; v += step) ticks.push(Math.round(v * 1000) / 1000)
+  return { min: nMin, max: nMax, ticks }
+}
 const range = (series: Series[]) => {
   const all = series.flatMap((s) => s.data.filter((v): v is number => v != null))
   if (!all.length) return null
@@ -39,25 +52,28 @@ const range = (series: Series[]) => {
 
 /** Smooth multi-series line chart: gradient area, draw-in animation, and tap/hover
  * scrubbing with a tooltip. Responsive (stretches to width). */
-export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean }) {
+export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void }) {
   const uid = useId()
   const [hi, setHi] = useState<number | null>(null)
   const r = range(series)
   if (!r) return <div className="chart-empty">No data yet</div>
   const H = height
   const n = Math.max(...series.map((s) => s.data.length), 1)
+  const nice = axes ? niceTicks(r.min, r.max) : null
+  const dMin = nice ? nice.min : r.min, dMax = nice ? nice.max : r.max
   const P = axes ? 1 : pad
   const x = (i: number) => P + (i / Math.max(1, n - 1)) * (VW - 2 * P)
-  const y = (v: number) => P + (1 - (v - r.min) / (r.max - r.min)) * (H - 2 * P)
+  const y = (v: number) => P + (1 - (v - dMin) / ((dMax - dMin) || 1)) * (H - 2 * P)
   const fv = (v: number) => (fmt ? fmt(v) : `${Math.round(v * 10) / 10}${unit}`)
-  const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - rect.left) / rect.width; setHi(Math.max(0, Math.min(n - 1, Math.round(fx * (n - 1))))) }
+  const setH = (i: number | null) => { setHi(i); onHover?.(i) }
+  const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - rect.left) / rect.width; setH(Math.max(0, Math.min(n - 1, Math.round(fx * (n - 1))))) }
   const hx = hi != null ? (hi / Math.max(1, n - 1)) * 100 : 0
-  const grid = axes ? [0, 0.25, 0.5, 0.75, 1] : [0, 0.5, 1]
+  const gridYs = nice ? nice.ticks.map((v) => y(v)) : [0, 0.5, 1].map((g) => P + g * (H - 2 * P))
 
   const plot = (
-    <div className="trend-wrap chart2__plot" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHi(null)}>
+    <div className="trend-wrap chart2__plot" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setH(null)}>
       <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
-        {grid.map((g) => { const yy = P + g * (H - 2 * P); return <line key={g} x1={0} x2={VW} y1={yy} y2={yy} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" /> })}
+        {gridYs.map((yy, gi) => <line key={gi} x1={0} x2={VW} y1={yy} y2={yy} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
         {series.map((s, si) => {
           const pts = s.data.map((v, i) => (v == null ? null : [x(i), y(v)] as [number, number])).filter(Boolean) as [number, number][]
           if (!pts.length) return null
@@ -77,9 +93,9 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
             </g>
           )
         })}
-        {hi != null && <line x1={x(hi)} x2={x(hi)} y1={0} y2={H} stroke="var(--text-dim)" strokeWidth="0.75" opacity="0.6" vectorEffect="non-scaling-stroke" />}
+        {axes && hi != null && <line x1={x(hi)} x2={x(hi)} y1={0} y2={H} stroke="var(--text-dim)" strokeWidth="0.75" opacity="0.6" vectorEffect="non-scaling-stroke" />}
       </svg>
-      {hi != null && (
+      {axes && hi != null && (
         <div className="chart-tip" style={{ left: `${Math.max(13, Math.min(87, hx))}%` }}>
           {labels?.[hi] && <span className="chart-tip__d">{labels[hi]}</span>}
           {series.map((s, si) => s.data[hi] == null ? null : (
@@ -90,7 +106,7 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
     </div>
   )
   if (!axes) return plot
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({ f, v: r.max - f * (r.max - r.min) }))
+  const yTicks = nice ? nice.ticks.map((v) => ({ f: (dMax - v) / ((dMax - dMin) || 1), v })) : []
   const xTicks = labels ? [0, 0.25, 0.5, 0.75, 1].map((f) => labels[Math.round(f * (n - 1))] || '') : []
   return (
     <div className="chart2">
@@ -146,18 +162,23 @@ export function bestAt(secs: number[], watts: number[], target: number): number 
 }
 
 /** Simple bar trend (sleep, load). */
-export function BarChart({ data, color = 'var(--accent, #34e07d)', height = 110, pad = 10 }: { data: (number | null)[]; color?: string; height?: number; pad?: number }) {
+export function BarChart({ data, color = 'var(--accent, #34e07d)', height = 110, pad = 10, onHover }: { data: (number | null)[]; color?: string; height?: number; pad?: number; onHover?: (i: number | null) => void }) {
+  const [hi, setHi] = useState<number | null>(null)
   const r = range([{ label: '', color, data }])
   if (!r) return <div className="chart-empty">No data yet</div>
   const lo = Math.min(0, r.min), H = height
   const n = data.length
   const bw = (VW - 2 * pad) / Math.max(1, n)
   const y = (v: number) => pad + (1 - (v - lo) / (r.max - lo)) * (H - 2 * pad)
+  const setH = (i: number | null) => { setHi(i); onHover?.(i) }
+  const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const i = Math.max(0, Math.min(n - 1, Math.floor(((e.clientX - rect.left) / rect.width) * n))); setH(i) }
   return (
-    <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
-      {data.map((v, i) => v == null ? null : (
-        <rect key={i} x={pad + i * bw + bw * 0.15} width={bw * 0.7} y={y(v)} height={Math.max(0, y(lo) - y(v))} rx="1.2" fill={color} opacity="0.85" />
-      ))}
-    </svg>
+    <div className="trend-wrap" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setH(null)}>
+      <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
+        {data.map((v, i) => v == null ? null : (
+          <rect key={i} x={pad + i * bw + bw * 0.15} width={bw * 0.7} y={y(v)} height={Math.max(0, y(lo) - y(v))} rx="1.2" fill={color} opacity={hi == null || hi === i ? 0.9 : 0.38} />
+        ))}
+      </svg>
+    </div>
   )
 }
