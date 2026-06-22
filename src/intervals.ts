@@ -61,6 +61,27 @@ export async function fetchAthleteFtp(): Promise<number | undefined> {
   return ss?.ftp ?? a.icu_ftp ?? undefined
 }
 
+/** A mean-max power curve (best watts sustainable for each duration). */
+export interface PowerCurve { secs: number[]; watts: number[] }
+/** Athlete mean-max POWER curve from intervals.icu over the last N days (cycling).
+ * Read-only; null on no key/error/unexpected shape (graceful). */
+export async function fetchPowerCurve(days: number): Promise<PowerCurve | null> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return null
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}/power-curves?curves=${days}d&type=Ride`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return null
+    const data = await res.json()
+    // Tolerate a couple of shapes: { secs, list:[{ values|watts }] } or { secs, watts }.
+    const list = data?.list || (Array.isArray(data) ? data : null)
+    const curve = list ? list[0] : data
+    const secs: number[] = curve?.secs || data?.secs || []
+    const watts: number[] = curve?.values || curve?.watts || []
+    if (!secs.length || !watts.length) return null
+    return { secs, watts }
+  } catch { return null }
+}
+
 /** A day of intervals.icu wellness/fitness (for the Fitness/trends page). */
 export interface IcuWellness {
   date: string // YYYY-MM-DD

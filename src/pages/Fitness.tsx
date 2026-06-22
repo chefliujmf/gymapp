@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { localISO } from '../date'
-import { fetchWellness, type IcuWellness } from '../intervals'
+import { fetchWellness, fetchPowerCurve, type IcuWellness, type PowerCurve } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
-import { TrendChart, BarChart, type Series } from '../charts'
+import { TrendChart, BarChart, PowerCurveChart, bestAt, type Series } from '../charts'
 
 const ENDURANCE = ['cycling', 'running', 'triathlon']
 const RANGES: [string, number][] = [['6 weeks', 42], ['3 months', 90], ['1 year', 365]]
@@ -33,12 +33,16 @@ export default function Fitness() {
   const { user } = useAuth()
   const [days, setDays] = useState(90)
   const [rows, setRows] = useState<IcuWellness[] | null>(null)
+  const [pc, setPc] = useState<PowerCurve | null>(null)
   const isEndurance = !user?.sport || ENDURANCE.includes(user.sport)
+  const isCycling = !user?.sport || ['cycling', 'triathlon'].includes(user.sport)
 
   useEffect(() => {
-    setRows(null)
+    setRows(null); setPc(null)
     const to = localISO(), from = localISO(new Date(Date.now() - days * 86400000))
     fetchWellness(from, to).then(setRows).catch(() => setRows([]))
+    if (isCycling) fetchPowerCurve(days).then(setPc).catch(() => setPc(null))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days])
 
   const s = useMemo(() => {
@@ -100,6 +104,18 @@ export default function Fitness() {
                 <MiniCard title="Sleep" value={last(s.sleep)} unit=" h" bars={s.sleep} color="#7a8cff" />
                 <MiniCard title="Daily load" value={last(s.load)} bars={s.load} color="#9b6bff" />
               </div>
+              {isCycling && pc && (
+                <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
+                  <div className="fit-legend"><span style={{ color: '#34e07d' }}>● Power curve (best W by duration)</span></div>
+                  <PowerCurveChart secs={pc.secs} watts={pc.watts} />
+                  <div className="be-row">
+                    {([[5, '5s'], [60, '1m'], [300, '5m'], [1200, '20m']] as [number, string][]).map(([d, label]) => {
+                      const w = bestAt(pc.secs, pc.watts, d), wt = last(s.weight)
+                      return <div key={label} className="be"><span>{label}</span><b>{w ? Math.round(w) : '—'} W</b>{w && wt ? <em>{(w / wt).toFixed(2)} W/kg</em> : null}</div>
+                    })}
+                  </div>
+                </div>
+              )}
               <p className="meta" style={{ marginTop: 10 }}>VO₂max is estimated from eFTP ÷ weight (Coggan). Data is read live from intervals.icu.</p>
             </>
           )}

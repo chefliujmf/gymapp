@@ -57,6 +57,38 @@ export function TrendChart({ series, height = 150, pad = 10 }: { series: Series[
   )
 }
 
+const DUR_TICKS: [number, string][] = [[1, '1s'], [5, '5s'], [15, '15s'], [60, '1m'], [300, '5m'], [1200, '20m'], [3600, '1h'], [10800, '3h']]
+/** Mean-max curve on a LOG duration axis (power-duration curve). Tick labels render as
+ * HTML below (avoids text distortion from the stretch-to-width SVG). */
+export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)', height = 200 }: { secs: number[]; watts: number[]; color?: string; height?: number }) {
+  const pts0 = secs.map((s, i) => [s, watts[i]] as [number, number]).filter(([s, w]) => s > 0 && w != null)
+  if (pts0.length < 2) return <div className="chart-empty">No power curve yet</div>
+  const sMin = Math.min(...pts0.map((p) => p[0])), sMax = Math.max(...pts0.map((p) => p[0]))
+  const vMax = Math.max(...pts0.map((p) => p[1]))
+  const H = height, padT = 8, padB = 6, pad = 6
+  const lx = (s: number) => pad + ((Math.log(s) - Math.log(sMin)) / (Math.log(sMax) - Math.log(sMin))) * (VW - 2 * pad)
+  const y = (v: number) => padT + (1 - v / vMax) * (H - padT - padB)
+  const ticks = DUR_TICKS.filter(([s]) => s >= sMin && s <= sMax)
+  const d = 'M' + pts0.map((p) => `${lx(p[0])},${y(p[1])}`).join(' L')
+  return (
+    <div>
+      <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
+        {ticks.map(([s]) => <line key={s} x1={lx(s)} x2={lx(s)} y1={padT} y2={H - padB} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
+        <defs><linearGradient id="pc-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.25" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
+        <path d={`${d} L${lx(pts0[pts0.length - 1][0])},${H - padB} L${lx(pts0[0][0])},${H - padB} Z`} fill="url(#pc-fill)" />
+        <path d={d} fill="none" stroke={color} strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      </svg>
+      <div className="curve-axis">{ticks.map(([s, label]) => <span key={s} style={{ left: `${(lx(s) / VW) * 100}%` }}>{label}</span>)}</div>
+    </div>
+  )
+}
+/** Best watts at a target duration (nearest available sec) from a mean-max curve. */
+export function bestAt(secs: number[], watts: number[], target: number): number | null {
+  let bi = -1, bd = Infinity
+  for (let i = 0; i < secs.length; i++) { const dd = Math.abs(secs[i] - target); if (dd < bd) { bd = dd; bi = i } }
+  return bi >= 0 ? watts[bi] ?? null : null
+}
+
 /** Simple bar trend (sleep, load). */
 export function BarChart({ data, color = 'var(--accent, #34e07d)', height = 110, pad = 10 }: { data: (number | null)[]; color?: string; height?: number; pad?: number }) {
   const r = range([{ label: '', color, data }])

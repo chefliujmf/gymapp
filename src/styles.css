@@ -477,6 +477,13 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .fit-mini__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
 .fit-mini__head span { font-size: 12px; color: var(--text-dim); }
 .fit-mini__head b { font-size: 16px; font-weight: 800; }
+.curve-axis { position: relative; height: 14px; margin-top: 2px; }
+.curve-axis span { position: absolute; transform: translateX(-50%); font-size: 9px; color: var(--text-dim); }
+.be-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+.be { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 7px 4px; text-align: center; }
+.be span { display: block; font-size: 11px; color: var(--text-dim); }
+.be b { font-size: 14px; font-weight: 800; }
+.be em { display: block; font-size: 10px; font-style: normal; color: var(--text-dim); }
 .tab__icon svg { width: 22px; height: 22px; }
 .tab__icon { filter: none; opacity: .6; }
 .tab--active .tab__icon { opacity: 1; }
