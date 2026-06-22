@@ -462,6 +462,21 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .done-stat { font-size: 12px; color: var(--text-dim); }
 .done-link { font-size: 12px; font-weight: 700; color: var(--accent, #34e07d); cursor: pointer; }
 .done-link:hover { text-decoration: underline; }
+
+/* Fitness / trends page */
+.trend { display: block; overflow: visible; }
+.chart-empty { color: var(--text-dim); font-size: 13px; padding: 18px 0; text-align: center; }
+.fit-head { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.fit-head__stat { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.fit-head__stat span { font-size: 12px; color: var(--text-dim); }
+.fit-head__stat b { font-size: 26px; font-weight: 800; line-height: 1.05; }
+.fit-head__stat em { font-size: 11px; font-style: normal; font-weight: 700; }
+.fit-legend { display: flex; gap: 14px; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.fit-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
+.fit-mini { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.fit-mini__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.fit-mini__head span { font-size: 12px; color: var(--text-dim); }
+.fit-mini__head b { font-size: 16px; font-weight: 800; }
 .tab__icon svg { width: 22px; height: 22px; }
 .tab__icon { filter: none; opacity: .6; }
 .tab--active .tab__icon { opacity: 1; }

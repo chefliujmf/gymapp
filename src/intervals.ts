@@ -61,6 +61,38 @@ export async function fetchAthleteFtp(): Promise<number | undefined> {
   return ss?.ftp ?? a.icu_ftp ?? undefined
 }
 
+/** A day of intervals.icu wellness/fitness (for the Fitness/trends page). */
+export interface IcuWellness {
+  date: string // YYYY-MM-DD
+  fitness: number | null // CTL
+  fatigue: number | null // ATL
+  form: number | null // CTL - ATL
+  load: number | null // daily training load (TSS)
+  eftp: number | null
+  weight: number | null
+  restingHR: number | null
+  hrv: number | null
+  sleepHours: number | null
+}
+/** Recent wellness/fitness series from intervals.icu (read-only). Empty on no key/error. */
+export async function fetchWellness(oldest: string, newest: string): Promise<IcuWellness[]> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return []
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}/wellness?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return []
+    const rows = await res.json()
+    return (Array.isArray(rows) ? rows : []).map((d: Record<string, number>) => ({
+      date: String(d.id),
+      fitness: d.ctl ?? null, fatigue: d.atl ?? null,
+      form: d.ctl != null && d.atl != null ? Math.round((d.ctl - d.atl) * 10) / 10 : null,
+      load: d.ctlLoad ?? d.atlLoad ?? null, eftp: d.eftp ?? (d as Record<string, number>).icu_eftp ?? null,
+      weight: d.weight ?? null, restingHR: d.restingHR ?? null,
+      hrv: d.hrv ?? d.hrvSDNN ?? null, sleepHours: d.sleepSecs ? Math.round((d.sleepSecs / 3600) * 10) / 10 : null,
+    }))
+  } catch { return [] }
+}
+
 /** Athlete sex from intervals.icu ('male' | 'female' | undefined) — Platyplus doesn't
  * ask for it; the coaching engine gates the female module on this. */
 export async function fetchAthleteSex(): Promise<string | undefined> {

@@ -48,6 +48,9 @@ export default function Profile() {
         <div className="stat"><div className="v">{ftp ?? 260}</div><div className="k">FTP (W)</div></div>
       </div>
       <Link to="/progress" className="btn btn--ghost" style={{ marginTop: 6 }}>📈 View full progress</Link>
+      {(!user?.sport || ['cycling', 'running', 'triathlon'].includes(user.sport)) && (
+        <Link to="/fitness" className="btn btn--ghost" style={{ marginTop: 6 }}>📊 Fitness & form — your intervals.icu trends ›</Link>
+      )}
 
       <div className="section-title">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <input
