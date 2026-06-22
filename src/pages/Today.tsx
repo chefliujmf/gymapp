@@ -172,17 +172,29 @@ export default function Today() {
     if (p === 'vegan') return !!r.diet?.includes('vegan')
     return !!(r.diet?.includes('vegetarian') || r.diet?.includes('vegan'))
   }
-  // Suggestion logic: diet-filtered, and TRAINING-AWARE — on a day with a workout we
-  // bias toward higher-protein recovery fuel (variety kept by date-rotating among the
-  // top picks); on rest days it's the normal daily rotation. (Coach-driven suggestions
-  // based on the day's load + goals are the next step — see backlog.)
-  const trainingDay = dayEvents.length > 0 || dayPlans.length > 0
+  // Suggestion logic: diet-filtered + WORKOUT-AWARE. Match fuel to the day's training —
+  // endurance burns glycogen → carb-forward; a strength day → protein-forward; rest →
+  // balanced & lighter. Includes a snack. (Aligns with the coach's nutrition method.)
+  const endEvents = dayEvents.filter((e) => ['cycling', 'run'].includes(sportOf(e)) || e.type === 'Run')
+  const endPlans = dayPlans.filter((p) => p.sport === 'ride' || p.sport === 'run')
+  const endMins = endEvents.reduce((s, e) => s + (e.moving_time ? e.moving_time / 60 : 0), 0) + endPlans.reduce((s, p) => s + (p.segments || []).reduce((a, x) => a + x.duration, 0) / 60, 0)
+  const endTSS = Math.max(0, ...endEvents.map((e) => e.icu_training_load || 0))
+  const hasEndurance = endEvents.length > 0 || endPlans.length > 0
+  const hasStrength = dayEvents.some((e) => sportOf(e) === 'gym') || dayPlans.some((p) => p.sport === 'gym')
+  const bigEndurance = endTSS >= 60 || endMins >= 90
+  const fuelMode: 'carb' | 'protein' | 'balanced' = hasEndurance ? 'carb' : hasStrength ? 'protein' : 'balanced'
+  const fuelMsg = fuelMode === 'carb' ? `Carb-forward to fuel & refill${bigEndurance ? ' a big endurance day' : ' for endurance'}.` : fuelMode === 'protein' ? 'Protein-forward for strength & recovery.' : 'Balanced, lighter picks for a rest day.'
   const suggestMeal = (cat: Recipe['category'], salt: number) => {
     let pool = recipes.filter((r) => r.category === cat && dietOk(r))
-    if (trainingDay && pool.length > 6) pool = [...pool].sort((a, b) => (b.protein ?? 0) - (a.protein ?? 0)).slice(0, Math.max(6, Math.ceil(pool.length / 3)))
+    if (pool.length > 6) {
+      const third = Math.max(6, Math.ceil(pool.length / 3))
+      if (fuelMode === 'carb') pool = [...pool].sort((a, b) => (b.carbs ?? 0) - (a.carbs ?? 0)).slice(0, third)
+      else if (fuelMode === 'protein') pool = [...pool].sort((a, b) => (b.protein ?? 0) - (a.protein ?? 0)).slice(0, third)
+      else pool = [...pool].sort((a, b) => (a.kcal ?? 0) - (b.kcal ?? 0)).slice(0, Math.max(6, Math.ceil(pool.length / 2)))
+    }
     return pickByDate(pool, selDay, salt)
   }
-  const meals = (['breakfast', 'lunch', 'dinner'] as const).map((cat, i) => suggestMeal(cat, i + 1)).filter(Boolean) as Recipe[]
+  const meals = (['breakfast', 'lunch', 'snack', 'dinner'] as const).map((cat, i) => suggestMeal(cat, i + 1)).filter(Boolean) as Recipe[]
   const meditation = pickByDate(mindSessions, selDay, 7)
   async function add(key: string, item: Parameters<typeof calApi.saveItem>[0]) {
     try { await calApi.saveItem(item); load(); setAdded((a) => ({ ...a, [key]: true })); setTimeout(() => setAdded((a) => { const n = { ...a }; delete n[key]; return n }), 1600) }
@@ -231,7 +243,7 @@ export default function Today() {
       {meals.length > 0 && (
         <>
           <div className="section-title">Suggested fuel{selDay !== todayISO() ? ` · ${fmtDay(selDay)}` : ''}</div>
-          <p className="meta" style={{ margin: '-4px 2px 8px' }}>{trainingDay ? 'Higher-protein picks for a training day.' : 'A balanced day — tap ＋ to add one to your plan.'}</p>
+          <p className="meta" style={{ margin: '-4px 2px 8px' }}>{fuelMsg}</p>
           <div className="stack">
             {meals.map((r) => (
               <div key={r.id} className="today-entry">
