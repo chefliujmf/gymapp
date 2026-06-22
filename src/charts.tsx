@@ -46,17 +46,18 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
   if (!r) return <div className="chart-empty">No data yet</div>
   const H = height
   const n = Math.max(...series.map((s) => s.data.length), 1)
-  const x = (i: number) => pad + (i / Math.max(1, n - 1)) * (VW - 2 * pad)
-  const y = (v: number) => pad + (1 - (v - r.min) / (r.max - r.min)) * (H - 2 * pad)
+  const P = axes ? 1 : pad
+  const x = (i: number) => P + (i / Math.max(1, n - 1)) * (VW - 2 * P)
+  const y = (v: number) => P + (1 - (v - r.min) / (r.max - r.min)) * (H - 2 * P)
   const fv = (v: number) => (fmt ? fmt(v) : `${Math.round(v * 10) / 10}${unit}`)
   const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - rect.left) / rect.width; setHi(Math.max(0, Math.min(n - 1, Math.round(fx * (n - 1))))) }
   const hx = hi != null ? (hi / Math.max(1, n - 1)) * 100 : 0
-  return (
-    <div className="trend-box">
-    <div className="trend-wrap" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHi(null)}>
-      {axes && <><span className="trend-y trend-y--max">{fv(r.max)}</span><span className="trend-y trend-y--mid">{fv((r.min + r.max) / 2)}</span><span className="trend-y trend-y--min">{fv(r.min)}</span></>}
+  const grid = axes ? [0, 0.25, 0.5, 0.75, 1] : [0, 0.5, 1]
+
+  const plot = (
+    <div className="trend-wrap chart2__plot" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHi(null)}>
       <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
-        {[0, 0.5, 1].map((g) => { const yy = pad + g * (H - 2 * pad); return <line key={g} x1={pad} x2={VW - pad} y1={yy} y2={yy} stroke="var(--line)" strokeWidth="0.5" opacity="0.45" /> })}
+        {grid.map((g) => { const yy = P + g * (H - 2 * P); return <line key={g} x1={0} x2={VW} y1={yy} y2={yy} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" /> })}
         {series.map((s, si) => {
           const pts = s.data.map((v, i) => (v == null ? null : [x(i), y(v)] as [number, number])).filter(Boolean) as [number, number][]
           if (!pts.length) return null
@@ -67,7 +68,7 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
               {s.area && (
                 <>
                   <defs><linearGradient id={`${uid}-${si}`} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={s.color} stopOpacity="0.3" /><stop offset="1" stopColor={s.color} stopOpacity="0" /></linearGradient></defs>
-                  <path d={`${path} L${last[0]},${H - pad} L${pts[0][0]},${H - pad} Z`} fill={`url(#${uid}-${si})`} />
+                  <path d={`${path} L${last[0]},${H - P} L${pts[0][0]},${H - P} Z`} fill={`url(#${uid}-${si})`} />
                 </>
               )}
               <path className="trend-line" pathLength={1} d={path} fill="none" stroke={s.color} strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
@@ -76,7 +77,7 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
             </g>
           )
         })}
-        {hi != null && <line x1={x(hi)} x2={x(hi)} y1={pad} y2={H - pad} stroke="var(--text-dim)" strokeWidth="0.75" opacity="0.6" vectorEffect="non-scaling-stroke" />}
+        {hi != null && <line x1={x(hi)} x2={x(hi)} y1={0} y2={H} stroke="var(--text-dim)" strokeWidth="0.75" opacity="0.6" vectorEffect="non-scaling-stroke" />}
       </svg>
       {hi != null && (
         <div className="chart-tip" style={{ left: `${Math.max(13, Math.min(87, hx))}%` }}>
@@ -87,7 +88,27 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
         </div>
       )}
     </div>
-    {axes && labels && labels.length > 1 && <div className="trend-x"><span>{labels[0]}</span><span>{labels[Math.floor((labels.length - 1) / 2)]}</span><span>{labels[labels.length - 1]}</span></div>}
+  )
+  if (!axes) return plot
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({ f, v: r.max - f * (r.max - r.min) }))
+  const xTicks = labels ? [0, 0.25, 0.5, 0.75, 1].map((f) => labels[Math.round(f * (n - 1))] || '') : []
+  return (
+    <div className="chart2">
+      <div className="chart2__y">{yTicks.map((t, i) => <span key={i} style={{ top: `${t.f * 100}%` }}>{fv(t.v)}</span>)}</div>
+      {plot}
+      {xTicks.length > 0 && <div className="chart2__x">{xTicks.map((d, i) => <span key={i}>{d}</span>)}</div>}
+    </div>
+  )
+}
+
+/** Fullscreen overlay to view a chart in detail. */
+export function ChartModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="chart-modal" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="chart-modal__panel" onClick={(e) => e.stopPropagation()}>
+        <div className="chart-modal__head"><h3>{title}</h3><button className="icon-btn" onClick={onClose} aria-label="Close">✕</button></div>
+        {children}
+      </div>
     </div>
   )
 }

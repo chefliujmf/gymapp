@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { localISO } from '../date'
 import { fetchWellness, fetchPowerCurve, type IcuWellness, type PowerCurve } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
-import { TrendChart, BarChart, PowerCurveChart, InfoDot, bestAt, type Series } from '../charts'
+import { TrendChart, BarChart, PowerCurveChart, InfoDot, ChartModal, bestAt, type Series } from '../charts'
 
 const ENDURANCE = ['cycling', 'running', 'triathlon']
 const RANGES: [string, number][] = [['6 wk', 42], ['3 mo', 90], ['6 mo', 180], ['1 yr', 365]]
@@ -34,6 +34,7 @@ export default function Fitness() {
   const [days, setDays] = useState(90)
   const [rows, setRows] = useState<IcuWellness[] | null>(null)
   const [pc, setPc] = useState<PowerCurve | null>(null)
+  const [modal, setModal] = useState<{ title: string; node: ReactNode } | null>(null)
   const sports = user?.sports || []
   const isEndurance = !sports.length || sports.some((sp) => ENDURANCE.includes(sp))
   const isCycling = !sports.length || sports.some((sp) => ['cycling', 'triathlon'].includes(sp))
@@ -85,7 +86,8 @@ export default function Fitness() {
                 <div className="fit-head__stat"><span>Form<InfoDot text="Freshness = Fitness − Fatigue. Positive = fresh/tapered (race-ready). Negative = fatigued, which is normal while building. Very negative = back off." /></span><b style={{ color: fz.color }}>{fmt(last(s.form))}</b><em style={{ color: fz.color }}>{fz.label}</em></div>
               </div>
 
-              <div className="card" style={{ padding: '12px 14px' }}>
+              <div className="card chart-card" style={{ padding: '12px 14px' }}>
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Fitness & Fatigue', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} series={[{ label: 'Fitness', color: '#4aa3ff', data: s.fitness, area: true }, { label: 'Fatigue', color: '#c061ff', data: s.fatigue }]} /> })}>⤢</button>
                 <div className="fit-legend"><span style={{ color: '#4aa3ff' }}>● Fitness</span><span style={{ color: '#c061ff' }}>● Fatigue</span></div>
                 <TrendChart height={170} axes labels={dates} series={[
                   { label: 'Fitness', color: '#4aa3ff', data: s.fitness, area: true },
@@ -93,7 +95,8 @@ export default function Fitness() {
                 ]} />
               </div>
 
-              <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
+              <div className="card chart-card" style={{ padding: '12px 14px', marginTop: 12 }}>
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Form', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} series={[{ label: 'Form', color: fz.color, data: s.form, area: true }]} /> })}>⤢</button>
                 <div className="fit-legend"><span style={{ color: fz.color }}>● Form (Fitness − Fatigue)</span></div>
                 <TrendChart height={120} axes labels={dates} series={[{ label: 'Form', color: fz.color, data: s.form, area: true }]} />
               </div>
@@ -124,6 +127,7 @@ export default function Fitness() {
           )}
         </>
       )}
+      {modal && <ChartModal title={modal.title} onClose={() => setModal(null)}>{modal.node}</ChartModal>}
     </div>
   )
 }
