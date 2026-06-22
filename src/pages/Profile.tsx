@@ -6,7 +6,7 @@ import { authApi } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import { fetchAthleteSex } from '../intervals'
 
-const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['strength', 'Strength'], ['yoga', 'Yoga'], ['pilates', 'Pilates'], ['meditation', 'Meditation'], ['general', 'General']]
+const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['strength', 'Strength'], ['yoga', 'Yoga'], ['pilates', 'Pilates'], ['meditation', 'Meditation']]
 
 export default function Profile() {
   const { user, refresh } = useAuth()

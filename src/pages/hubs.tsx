@@ -43,7 +43,7 @@ export function StatsHub() {
   const has = (arr: string[]) => !sports.length || sports.some((s) => arr.includes(s))
   const items: Item[] = [
     ...(has(ENDUR) ? [{ label: 'Fitness & Form', sub: 'CTL/ATL/Form, VO₂max, power curve', to: '/fitness', icon: <Activity strokeWidth={1.75} /> }] : []),
-    ...(has(['strength', 'general']) ? [{ label: 'Strength', sub: 'Estimated 1RM per exercise', to: '/strength', icon: <Dumbbell strokeWidth={1.75} /> }] : []),
+    ...(has(['strength']) ? [{ label: 'Strength', sub: 'Estimated 1RM per exercise', to: '/strength', icon: <Dumbbell strokeWidth={1.75} /> }] : []),
     { label: 'Progress', sub: 'History, totals & streaks', to: '/progress', icon: <TrendingUp strokeWidth={1.75} /> },
   ]
   return (
