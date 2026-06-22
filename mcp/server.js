@@ -54,6 +54,32 @@ server.tool('list_schedule',
     return { plans, items }
   }))
 
+// --- intervals.icu read-through (analytics live there, not in Platyplus) ----
+server.tool('get_wellness',
+  "Read the athlete's recent intervals.icu wellness: Fitness (CTL), Fatigue (ATL), Form (CTL-ATL), resting HR, HRV, sleep hours/score, body weight. READ-ONLY and live from intervals.icu — returns { connected:false } if they haven't connected it, in which case adapt with what you have. Check this before changing load when recovery state matters.",
+  { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },
+  wrap((a) => api('GET', `/api/intervals/wellness?days=${a.days || 14}`)))
+
+server.tool('get_recent_activities',
+  "Read the athlete's recently COMPLETED activities from intervals.icu: date, type, indoor/outdoor, duration, distance, avg HR, avg power, Load (TSS), intensity (IF), RPE, feel. READ-ONLY; returns { connected:false } if intervals.icu isn't connected.",
+  { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },
+  wrap((a) => api('GET', `/api/intervals/activities?days=${a.days || 14}`)))
+
+server.tool('get_checkins',
+  "Read the athlete's recent daily check-ins (how they FELT): energy 1–4 (4=great), sleep (poor|ok|great), soreness (none|some|lots), optional note. This is the signal to adapt to when intervals.icu isn't connected — heavy legs / poor sleep / high soreness ⇒ ease off.",
+  { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },
+  wrap((a) => { const to = new Date().toISOString().slice(0, 10); const from = new Date(Date.now() - (a.days || 14) * 86400000).toISOString().slice(0, 10); return api('GET', `/api/checkins?from=${from}&to=${to}`) }))
+
+server.tool('set_athlete_profile',
+  "Save/replace the athlete's coaching profile (markdown: goals, sport(s), weekly hours, FTP/maxes, equipment, constraints, injuries, preferences). Use this to PERSIST what you learn when onboarding a new athlete or when they tell you something durable — this is the profile you read every session. Write the FULL updated profile, not a fragment.",
+  { profile: z.string().describe('the full athlete profile as markdown') },
+  wrap((a) => api('PUT', '/api/profile/athlete', { profile: a.profile })))
+
+server.tool('set_sports',
+  'Set the athlete\'s sports (drives the app navigation + which coaching modules apply). Allowed: cycling, running, strength, yoga, pilates, meditation.',
+  { sports: z.array(z.string()).describe('e.g. ["cycling","strength"]') },
+  wrap((a) => api('PUT', '/api/profile', { sports: a.sports })))
+
 // --- training -------------------------------------------------------------
 server.tool('create_workout',
   'Schedule a strength/gym workout on a date. Mirrors to intervals.icu in the canonical [gymapp] format the app parses. Re-call with the same id to UPDATE. Send the session the coach generated as-is (warm-up + cool-down, main set ordered by equipment, unilateral moves listed for both sides) — Platyplus stores exactly what you send.',

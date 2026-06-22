@@ -31,7 +31,11 @@ export default function Login() {
     // Usernameless: the device offers its passkeys for this site — no username.
     setErr(''); setBusy(true)
     try { await apply(await authApi.passkeyLoginDiscoverable()) }
-    catch (e) { setErr((e as Error).message || 'Passkey sign-in failed') } finally { setBusy(false) }
+    catch (e) {
+      // No passkey on this device/account (or cancelled) → drop to the password form.
+      setErr((e as Error).message || 'No passkey here yet — use your password.')
+      setUsePassword(true)
+    } finally { setBusy(false) }
   }
   async function doForgot(e: React.FormEvent) {
     e.preventDefault(); setErr(''); setBusy(true)

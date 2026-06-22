@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import nodemailer from 'nodemailer'
 import { randomBytes, createHash } from 'node:crypto'
+import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { readFileSync, existsSync } from 'node:fs'
@@ -79,7 +80,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').toLowerCase(); return store.users.find((u) => u.username.toLowerCase() === l || u.email === l) }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -242,8 +243,41 @@ app.put('/auth/avatar', auth, (req, res) => {
 app.put('/auth/profile', auth, (req, res) => {
   req.user.info = { ...(req.user.info || {}), ...(req.body || {}) }
   if (typeof req.body.email === 'string' && req.body.email.includes('@')) req.user.email = req.body.email.toLowerCase()
+  if (typeof req.body.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
+  if (Array.isArray(req.body.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)
+  else if (typeof req.body.sport === 'string') req.user.sports = req.body.sport ? [req.body.sport.toLowerCase().trim().slice(0, 20)] : []
+  if (typeof req.body.sex === 'string') req.user.sex = req.body.sex.trim().toLowerCase().slice(0, 10)
   save(store); res.json(pub(req.user))
 })
+
+// Athlete profile — the per-user coaching profile (engine-native markdown) the
+// coach reads to personalize every answer. Reviewable/editable in Profile → Athlete.
+app.get('/auth/profile/athlete', auth, (req, res) => res.json({ profile: req.user.coachProfile || '', updatedAt: req.user.coachProfileAt || 0 }))
+app.put('/auth/profile/athlete', auth, (req, res) => {
+  const p = String(req.body?.profile ?? '')
+  if (p.length > 60000) return res.status(413).json({ error: 'profile too long (max 60k chars)' })
+  req.user.coachProfile = p; req.user.coachProfileAt = Date.now(); save(store)
+  res.json({ profile: req.user.coachProfile, updatedAt: req.user.coachProfileAt })
+})
+
+// Daily check-in (how the athlete feels) — Platyplus-collected signal the coach reads,
+// so it has something to adapt to even without intervals.icu. Light: a few taps.
+const oneOf = (v, list) => (list.includes(v) ? v : undefined)
+function upsertCheckin(user, body) {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(body?.date || '') ? body.date : new Date().toISOString().slice(0, 10)
+  user.checkins = user.checkins || []
+  const ci = { date,
+    energy: Number(body.energy) >= 1 && Number(body.energy) <= 4 ? Number(body.energy) : undefined,
+    sleep: oneOf(body.sleep, ['poor', 'ok', 'great']),
+    soreness: oneOf(body.soreness, ['none', 'some', 'lots']),
+    note: typeof body.note === 'string' ? body.note.slice(0, 200) : undefined }
+  const i = user.checkins.findIndex((x) => x.date === date)
+  if (i >= 0) user.checkins[i] = { ...user.checkins[i], ...ci }; else user.checkins.push(ci)
+  return ci
+}
+const checkinsInRange = (user, from, to) => (user.checkins || []).filter((c) => (!from || c.date >= from) && (!to || c.date <= to)).sort((a, b) => (a.date < b.date ? -1 : 1))
+app.post('/auth/checkin', auth, (req, res) => { const ci = upsertCheckin(req.user, req.body || {}); save(store); res.json(ci) })
+app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
 
 // admin: user management
 app.get('/auth/users', auth, admin, (req, res) => res.json(store.users.map(pub)))
@@ -278,6 +312,12 @@ app.get('/auth/plans', auth, (req, res) => res.json(plansInRange(req.user, req.q
 // Calendar authoring (session): create/update/delete workout plans from the UI
 // — same path as the coach API, so it auto-pushes to intervals.
 app.post('/auth/plans', auth, async (req, res) => { const r = await upsertPlan(req.user, req.body); res.status(r.status).json(r.body) })
+// Import intervals.icu-origin planned workouts into Platyplus (Platyplus then owns them).
+app.post('/auth/plans/sync', auth, async (req, res) => {
+  const from = req.body?.from || req.query.from, to = req.body?.to || req.query.to
+  if (!from || !to) return res.status(400).json({ error: 'from + to (YYYY-MM-DD) required' })
+  res.json(await reconcileFromIcu(req.user, from, to))
+})
 app.delete('/auth/plans/:id', auth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
 
 // Non-workout calendar items (meal / mind / note) — Platyplus only, no intervals push.
@@ -322,6 +362,141 @@ app.get('/auth/strava/activities', auth, async (req, res) => {
   try { res.json(await stravaActivities(req.user, Number(req.query.limit) || 15, () => save(store))) }
   catch (e) { res.status(502).json({ error: String(e.message || e) }) }
 })
+
+// --- Coach chatbot ---------------------------------------------------------
+// A locked-down headless `claude -p` (owner's Claude subscription) that can ONLY
+// use the per-user Platyplus MCP — no shell, files, or other tools, and scoped to
+// the signed-in account's Coach API token so it can never touch another user or
+// the app itself. The boundary is the TOOLSET, not the prompt.
+const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude'
+const MCP_PATH = process.env.PLATYPLUS_MCP_PATH || fileURLToPath(new URL('../mcp/server.js', import.meta.url))
+const CHAT_BASE = process.env.CHAT_SELF_URL || `http://127.0.0.1:${PORT}`
+const CHAT_DENY = 'Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit,TodoWrite'
+// When the container can't run the glibc claude binary (Alpine), proxy to a host
+// chat-helper instead of spawning locally. Set on QA/prod; unset in dev.
+const CHAT_HELPER_URL = process.env.CHAT_HELPER_URL || ''
+const CHAT_HELPER_SECRET = process.env.CHAT_HELPER_SECRET || ''
+const coachIdentity = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app, helping ONE user (the signed-in account) with THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When you schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). Be concise, practical and encouraging.`
+
+// The coach also helps users configure & use Platyplus itself. These steps require
+// taps in the user's browser (the coach guides, it can't do them).
+const APP_HELP = `# Helping with Platyplus (configuration & usage)
+You can also help the user set up and use the app — guide them in plain steps:
+- intervals.icu: Profile → Athlete/Connections → intervals.icu. They paste their Athlete ID and an API key (from intervals.icu → Settings → "Developer settings" → API key). Once connected, planned and completed rides sync into their calendar.
+- Strava: Profile → "Connect Strava" (one tap, OAuth). After connecting, recent activities show up and they can opt in to share sessions to Strava.
+- Athlete profile: Profile → Athlete. This is the profile YOU read — goals, sport, weekly hours, FTP/maxes, equipment, constraints, injuries, preferences. Encourage them to keep it current; the more accurate it is, the better you plan.
+- Features: Today/Calendar (the plan), Train (gym, ride, run), Eat (recipes & meals), Mind (meditation/yoga/pilates), Stats (Fitness/Strength/Progress), and this Coach chat.
+- Strength prescription: when you schedule a gym workout, prescribe each lift as sets × TARGET REPS (e.g. 4×4 for power, 3×8 for hypertrophy). The app auto-fills the suggested WEIGHT from the athlete's estimated 1RM (logged history) — you do NOT need to specify kg unless they ask. After they log, their e1RM updates and you adjust next time.
+Keep these answers short and concrete.`
+
+// The coaching ENGINE (method/philosophy) — synced from the cyclingcoach repo by
+// scripts/sync-coach-engine.mjs. ONE polyvalent engine shared by all users; the
+// per-user profile supplies the specifics. Optional (dev before first sync).
+function loadEngine(f) { try { return readFileSync(join(__dirname, f), 'utf8').trim() } catch { return '' } }
+const COACH_ENGINE = loadEngine('coach-engine.md')             // generic, all athletes
+const COACH_ENGINE_CYCLING = loadEngine('coach-engine-cycling.md') // gated by discipline
+const COACH_ENGINE_FEMALE = loadEngine('coach-engine-female.md')   // gated by sex
+
+function buildSystemPrompt(user) {
+  const name = user.coachName || 'Coach'
+  const prof = user.coachProfile || ''
+  let p = coachIdentity(name)
+  if (COACH_ENGINE) p += `\n\n# Your coaching method (the Platyplus engine — apply it to THIS athlete per their profile)\n` + COACH_ENGINE
+  // Gated modules — only the athletes they apply to get them (the engine is ONE coach,
+  // not cycling-for-everyone). Prefer the STRUCTURED fields (sport from onboarding, sex
+  // from intervals.icu); fall back to a profile-text heuristic only when unset.
+  const sports = user.sports && user.sports.length ? user.sports : (user.sport ? [user.sport] : [])
+  const isCyclist = sports.length ? sports.some((sp) => ['cycling', 'triathlon'].includes(sp)) : /\b(cycl|bike|biking|\bride\b|\brides\b|ftp|w\/kg|wattage|triathlon|gran fondo)\b/i.test(prof)
+  if (isCyclist && COACH_ENGINE_CYCLING) p += '\n\n' + COACH_ENGINE_CYCLING
+  const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
+  if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
+  p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN (energy 1-4, sleep, soreness) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
+  p += '\n\n' + APP_HELP
+  if (user.coachProfile && user.coachProfile.trim()) {
+    p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
+  } else {
+    p += `\n\n# ONBOARDING — this athlete has no profile yet\nWarmly interview them to build their profile: which sport(s) they do, their goal, days/week + time available, equipment/gym access, any constraints or injuries, food preferences, and how they like to be coached. Ask a couple of questions at a time, conversationally — not a long form. As soon as you know their sport(s), call set_sports; once you have enough, call set_athlete_profile with a clean markdown profile so you remember it every session. Keep building it as you learn more. Confirm what you saved in one short line.`
+  }
+  return p
+}
+
+app.post('/auth/chat', auth, async (req, res) => {
+  const message = String(req.body?.message || '').trim().slice(0, 4000)
+  if (!message) return res.status(400).json({ error: 'empty message' })
+  // Stream tokens to the client over SSE.
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no') // stop nginx/NPM from buffering the SSE (else it arrives all at once)
+  res.flushHeaders?.()
+  const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`)
+  send({ coach: req.user.coachName || 'Coach' })
+
+  // QA/prod: the container can't run the glibc claude → proxy to the host helper.
+  if (CHAT_HELPER_URL) {
+    let pdone = false
+    const pend = () => { if (pdone) return; pdone = true; send({ done: true }); res.end() }
+    try {
+      const hr = await fetch(CHAT_HELPER_URL + '/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-chat-secret': CHAT_HELPER_SECRET },
+        body: JSON.stringify({ message, token: req.user.apiToken, coach: req.user.coachName || 'Coach', systemPrompt: buildSystemPrompt(req.user), sessionId: req.user.chatSession }),
+      })
+      if (!hr.ok || !hr.body) { send({ error: 'coach unavailable (' + hr.status + ')' }); return pend() }
+      const reader = hr.body.getReader(); const dec = new TextDecoder(); let hbuf = ''
+      res.on('close', () => { try { reader.cancel() } catch { /* */ } })
+      for (;;) {
+        const { done: rdone, value } = await reader.read(); if (rdone) break
+        hbuf += dec.decode(value, { stream: true })
+        let i
+        while ((i = hbuf.indexOf('\n\n')) >= 0) {
+          const data = hbuf.slice(0, i).split('\n').find((l) => l.startsWith('data:')); hbuf = hbuf.slice(i + 2)
+          if (!data) continue
+          let ev; try { ev = JSON.parse(data.slice(5).trim()) } catch { continue }
+          if (ev.sessionId) { req.user.chatSession = ev.sessionId; save(store) } // persist, don't forward
+          else if (!ev.done) send(ev) // forward delta / error (our own done at the end)
+        }
+      }
+    } catch (e) { send({ error: 'coach unavailable: ' + (e.message || e) }) }
+    return pend()
+  }
+
+  // Dev: spawn claude locally.
+  const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: req.user.apiToken } } } })
+  const args = [
+    '-p', message,
+    '--output-format', 'stream-json', '--include-partial-messages', '--verbose',
+    '--mcp-config', mcpConfig,
+    '--allowedTools', 'mcp__platyplus',
+    '--disallowedTools', CHAT_DENY,
+    '--append-system-prompt', buildSystemPrompt(req.user),
+  ]
+  if (req.user.chatSession) args.push('--resume', req.user.chatSession)
+  const proc = spawn(CLAUDE_BIN, args, { env: process.env })
+  proc.stdin?.end() // close stdin (EOF) so claude doesn't wait for piped input
+  const killer = setTimeout(() => proc.kill('SIGKILL'), 180000)
+  let buf = '', err = '', done = false
+  const end = () => { if (done) return; done = true; clearTimeout(killer); send({ done: true }); res.end() }
+  proc.stdout.on('data', (d) => {
+    buf += d
+    let nl
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1)
+      if (!line) continue
+      let ev; try { ev = JSON.parse(line) } catch { continue }
+      if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') send({ delta: ev.event.delta.text })
+      else if (ev.type === 'result' && ev.session_id) { req.user.chatSession = ev.session_id; save(store) }
+    }
+  })
+  proc.stderr.on('data', (d) => (err += d))
+  proc.on('error', (e) => { if (!done) { done = true; clearTimeout(killer); send({ error: 'coach unavailable: ' + e.message }); res.end() } })
+  proc.on('close', () => { if (err && !buf) send({ error: err.slice(0, 200) }); end() })
+  // Kill claude only if the CLIENT actually disconnects (res close) — NOT req
+  // close, which fires the moment the request body is read and would kill it early.
+  res.on('close', () => { if (!done) { clearTimeout(killer); proc.kill('SIGKILL') } })
+})
+// Reset the per-user conversation thread.
+app.post('/auth/chat/reset', auth, (req, res) => { delete req.user.chatSession; save(store); res.json({ ok: true }) })
 
 // ---- coach REST API (Bearer token) ---------------------------------------
 // The cyclingcoach dual-writes each session here (rich execution detail) and to
@@ -396,6 +571,7 @@ async function upsertPlan(user, body) {
   const plan = {
     id: body.id, date: body.date, sport: body.sport, title: body.title,
     notes: body.notes || '', updatedAt: Date.now(),
+    origin: i >= 0 ? (user.plans[i].origin || 'platyplus') : 'platyplus',
     icuEventId: i >= 0 ? user.plans[i].icuEventId : undefined,
     ...(body.sport === 'gym'
       ? { rounds: Number(body.rounds) || 1, exercises: Array.isArray(body.exercises) ? body.exercises : [] }
@@ -410,6 +586,57 @@ async function deletePlanById(user, id) {
   const plan = (user.plans || []).find((x) => x.id === id)
   await deleteIcuEvent(user, plan)
   user.plans = (user.plans || []).filter((x) => x.id !== id); save(store)
+}
+
+// --- intervals.icu -> Platyplus import (reconcile) -------------------------
+// The mirror is Platyplus-first + PLATYPLUS-WINS: plans created here push OUT to
+// intervals (above). Workouts that originate IN intervals.icu are imported ONCE
+// into user.plans and thereafter OWNED by Platyplus (its later edits push back
+// over intervals). This function only READS intervals and writes to our own store
+// — it never mutates the intervals calendar, so it is safe to run repeatedly.
+function icuEventToPlan(ev) {
+  const date = String(ev.start_date_local || '').slice(0, 10)
+  const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
+  const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: ev.description || '', origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
+  if (sport === 'ride' || sport === 'run') {
+    plan.segments = (ev.workout_doc?.steps || []).map((s) => ({ duration: Number(s.duration) || 0, powerStart: Number(s.power?.start) || 0, powerEnd: Number(s.power?.end) || 0, ...(s.text ? { label: s.text } : {}) }))
+  } else {
+    plan.rounds = 1; plan.exercises = [] // gym structure stays in notes; the client parses it
+  }
+  return plan
+}
+async function reconcileFromIcu(user, from, to) {
+  if (!user.icuKey) return { skipped: 'no intervals key' }
+  const ath = user.icuAthlete || 'i28814'
+  let events
+  try {
+    const r = await icuFetch(user, `/athlete/${ath}/events?oldest=${from}&newest=${to}`)
+    if (!r.ok) return { error: `fetch ${r.status}` }
+    events = await r.json()
+  } catch (e) { return { error: String(e.message || e) } }
+  user.plans = user.plans || []
+  const liveIcuIds = new Set((events || []).map((e) => e.id))
+  const ownedIcuIds = new Set(user.plans.map((p) => p.icuEventId).filter(Boolean))
+  let imported = 0
+  for (const ev of events || []) {
+    if (ev.category && ev.category !== 'WORKOUT') continue
+    if (!['Ride', 'Run', 'WeightTraining'].includes(ev.type)) continue
+    // Already mirrored (we own its event id) or shares our plan id → skip (Platyplus wins).
+    if (ownedIcuIds.has(ev.id) || (ev.external_id && user.plans.some((p) => p.id === ev.external_id))) continue
+    user.plans.push(icuEventToPlan(ev)); imported++
+  }
+  // Deletion mirror: an intervals-ORIGIN plan whose event is gone from intervals (in
+  // this window) is dropped here too — stay mirrored. Platyplus-origin plans are NOT
+  // dropped (Platyplus owns them; deleting must happen in Platyplus).
+  const before = user.plans.length
+  user.plans = user.plans.filter((p) => {
+    if (p.origin !== 'icu' || !p.icuEventId) return true
+    if (p.date < from || p.date > to) return true // only judge within the synced window
+    return liveIcuIds.has(p.icuEventId)
+  })
+  const dropped = before - user.plans.length
+  if (imported || dropped) save(store)
+  return { imported, dropped, scanned: (events || []).length }
 }
 
 // ---- calendar items (meal/mind/note) — shared by the UI (/auth) and API (/api).
@@ -464,6 +691,56 @@ app.get('/api/strava/activities', apiAuth, async (req, res) => {
   if (!userStravaConnected(req.user)) return res.json([])
   try { res.json(await stravaActivities(req.user, Number(req.query.limit) || 15, () => save(store))) }
   catch (e) { res.status(502).json({ error: String(e.message || e) }) }
+})
+
+// --- intervals.icu READ-THROUGH (for the coach) ---------------------------
+// The coach reads analytics LIVE from intervals (we don't store/clone any of it).
+// Scoped to the user's stored key; returns { connected:false } gracefully if they
+// haven't connected intervals.icu, so the coach adapts with what it has.
+async function icuGet(user, path) {
+  if (!user.icuKey) return null
+  try { const r = await icuFetch(user, path); return r.ok ? await r.json() : null } catch { return null }
+}
+const icuDay = (n = 0) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
+
+app.get('/api/intervals/wellness', apiAuth, async (req, res) => {
+  const days = Math.min(60, Math.max(1, Number(req.query.days) || 14))
+  const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete || 'i28814'}/wellness?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
+  if (!data) return res.json({ connected: false, wellness: [] })
+  const wellness = (Array.isArray(data) ? data : []).map((d) => ({
+    date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
+    restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null, weight: d.weight ?? null,
+  }))
+  res.json({ connected: true, wellness })
+})
+
+app.get('/api/intervals/activities', apiAuth, async (req, res) => {
+  const days = Math.min(60, Math.max(1, Number(req.query.days) || 14))
+  const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete || 'i28814'}/activities?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
+  if (!data) return res.json({ connected: false, activities: [] })
+  const activities = (Array.isArray(data) ? data : []).map((a) => ({
+    date: (a.start_date_local || '').slice(0, 10), type: a.type, indoor: a.trainer === true || /virtual/i.test(a.type || ''),
+    minutes: a.moving_time ? Math.round(a.moving_time / 60) : null, km: a.distance ? +(a.distance / 1000).toFixed(1) : null,
+    avgHR: a.average_heartrate ? Math.round(a.average_heartrate) : null, avgW: a.icu_average_watts ? Math.round(a.icu_average_watts) : null,
+    load: a.icu_training_load ?? null, intensity: a.icu_intensity ?? null, rpe: a.icu_rpe ?? null, feel: a.feel ?? null, name: a.name,
+  }))
+  res.json({ connected: true, activities })
+})
+
+// Daily check-ins (how the athlete reported feeling) — coach reads these.
+app.get('/api/checkins', apiAuth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
+
+// Coach WRITES the athlete profile/sports (onboarding: interview → persist).
+app.put('/api/profile/athlete', apiAuth, (req, res) => {
+  const p = String(req.body?.profile ?? '')
+  if (p.length > 60000) return res.status(413).json({ error: 'profile too long' })
+  req.user.coachProfile = p; req.user.coachProfileAt = Date.now(); save(store)
+  res.json({ ok: true, length: p.length })
+})
+app.put('/api/profile', apiAuth, (req, res) => {
+  if (Array.isArray(req.body?.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)
+  if (typeof req.body?.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
+  save(store); res.json({ ok: true, sports: req.user.sports || [], coachName: req.user.coachName || '' })
 })
 
 // Calendar items (meal / mind / note) — Platyplus-only, no intervals push.

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Fingerprint, Trash2, Camera, Copy, RefreshCw } from 'lucide-react'
+import { Fingerprint, Trash2, Camera, Copy, RefreshCw, Eye, EyeOff } from 'lucide-react'
 import { authApi } from './api'
 import { useAuth } from './AuthContext'
 
@@ -21,7 +21,7 @@ function resizeImage(file: File, size: number): Promise<string> {
   })
 }
 
-export default function AccountSection() {
+export default function AccountSection({ only }: { only?: 'account' | 'connections' } = {}) {
   const { user, apply } = useAuth()
   const fileRef = useRef<HTMLInputElement>(null)
   if (!user) return null
@@ -63,7 +63,7 @@ export default function AccountSection() {
   }
 
   // coach API token
-  const [token, setToken] = useState(''); const [tkMsg, setTkMsg] = useState('')
+  const [token, setToken] = useState(''); const [tkMsg, setTkMsg] = useState(''); const [showToken, setShowToken] = useState(false)
   useEffect(() => { authApi.getToken().then((r) => setToken(r.token)).catch(() => {}) }, [])
   async function rotate() { if (!confirm('Rotate the token? Your coach must update it.')) return; try { const r = await authApi.rotateToken(); setToken(r.token); setTkMsg('✓ Rotated') } catch (e) { setTkMsg('✗ ' + (e as Error).message) } }
   function copyToken() { navigator.clipboard?.writeText(token); setTkMsg('Copied to clipboard') }
@@ -88,6 +88,7 @@ export default function AccountSection() {
 
   return (
     <>
+      {(!only || only === 'account') && <>
       <div className="section-title">Account</div>
       <div className="card" style={{ padding: '12px 14px' }}>
         <div className="card-row" style={{ gap: 12, alignItems: 'center' }}>
@@ -127,7 +128,9 @@ export default function AccountSection() {
         ? <button className="btn btn--ghost" onClick={addPasskey}><Fingerprint size={18} /> Add a passkey on this device</button>
         : <p className="meta">This browser doesn't support passkeys (use Chrome/Edge).</p>}
       {pkMsg && <p className="meta" style={{ marginTop: 8 }}>{pkMsg}</p>}
+      </>}
 
+      {(!only || only === 'connections') && <>
       <div className="section-title">intervals.icu (your account)</div>
       {user.hasIcuKey ? (
         <p className="meta" style={{ marginTop: -4 }}>✓ Key stored on your account — syncs on every device.</p>
@@ -159,12 +162,25 @@ export default function AccountSection() {
 
       <div className="section-title">Coach API</div>
       <p className="meta" style={{ marginTop: -4 }}>For your cyclingcoach to push plans. <a href="/api/docs" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>Open API docs ↗</a></p>
-      <input className="search" readOnly value={token} onFocus={(e) => e.currentTarget.select()} style={{ fontFamily: 'monospace', fontSize: 13 }} />
+      <div style={{ position: 'relative' }}>
+        <input
+          className="search" readOnly type={showToken ? 'text' : 'password'} value={token}
+          onFocus={(e) => showToken && e.currentTarget.select()}
+          style={{ fontFamily: 'monospace', fontSize: 13, paddingRight: 44 }}
+        />
+        <button
+          type="button" onClick={() => setShowToken((v) => !v)} aria-label={showToken ? 'Hide token' : 'Show token'}
+          style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 0, color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 6 }}
+        >
+          {showToken ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </div>
       <div style={{ display: 'flex', gap: 6 }}>
         <button className="btn btn--ghost" onClick={copyToken} style={{ width: 'auto', padding: '8px 14px' }}><Copy size={16} /> Copy token</button>
         <button className="btn btn--ghost" onClick={rotate} style={{ width: 'auto', padding: '8px 14px' }}><RefreshCw size={16} /> Rotate</button>
       </div>
       {tkMsg && <p className="meta" style={{ marginTop: 8 }}>{tkMsg}</p>}
+      </>}
     </>
   )
 }

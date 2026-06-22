@@ -61,12 +61,136 @@ export async function fetchAthleteFtp(): Promise<number | undefined> {
   return ss?.ftp ?? a.icu_ftp ?? undefined
 }
 
+/** A mean-max power curve (best watts sustainable for each duration). */
+export interface PowerCurve { secs: number[]; watts: number[] }
+/** Athlete mean-max POWER curve from intervals.icu over the last N days (cycling).
+ * Read-only; null on no key/error/unexpected shape (graceful). */
+export async function fetchPowerCurve(days: number): Promise<PowerCurve | null> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return null
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}/power-curves?curves=${days}d&type=Ride`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return null
+    const data = await res.json()
+    // Tolerate a couple of shapes: { secs, list:[{ values|watts }] } or { secs, watts }.
+    const list = data?.list || (Array.isArray(data) ? data : null)
+    const curve = list ? list[0] : data
+    const secs: number[] = curve?.secs || data?.secs || []
+    const watts: number[] = curve?.values || curve?.watts || []
+    if (!secs.length || !watts.length) return null
+    return { secs, watts }
+  } catch { return null }
+}
+
+/** A day of intervals.icu wellness/fitness (for the Fitness/trends page). */
+export interface IcuWellness {
+  date: string // YYYY-MM-DD
+  fitness: number | null // CTL
+  fatigue: number | null // ATL
+  form: number | null // CTL - ATL
+  load: number | null // daily training load (TSS)
+  eftp: number | null
+  weight: number | null
+  restingHR: number | null
+  hrv: number | null
+  sleepHours: number | null
+}
+/** Recent wellness/fitness series from intervals.icu (read-only). Empty on no key/error. */
+export async function fetchWellness(oldest: string, newest: string): Promise<IcuWellness[]> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return []
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}/wellness?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return []
+    const rows = await res.json()
+    return (Array.isArray(rows) ? rows : []).map((d: Record<string, number>) => ({
+      date: String(d.id),
+      fitness: d.ctl ?? null, fatigue: d.atl ?? null,
+      form: d.ctl != null && d.atl != null ? Math.round((d.ctl - d.atl) * 10) / 10 : null,
+      load: d.ctlLoad ?? d.atlLoad ?? null, eftp: d.eftp ?? (d as Record<string, number>).icu_eftp ?? null,
+      weight: d.weight ?? null, restingHR: d.restingHR ?? null,
+      hrv: d.hrv ?? d.hrvSDNN ?? null, sleepHours: d.sleepSecs ? Math.round((d.sleepSecs / 3600) * 10) / 10 : null,
+    }))
+  } catch { return [] }
+}
+
+/** Athlete sex from intervals.icu ('male' | 'female' | undefined) — Platyplus doesn't
+ * ask for it; the coaching engine gates the female module on this. */
+export async function fetchAthleteSex(): Promise<string | undefined> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return undefined
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return undefined
+    const a = await res.json()
+    const s = String(a.sex || '').toLowerCase()
+    return s === 'm' ? 'male' : s === 'f' ? 'female' : (s || undefined)
+  } catch { return undefined }
+}
+
 export async function fetchEvents(oldest: string, newest: string): Promise<IcuEvent[]> {
   const { apiKey, athleteId, serverKey } = await getIcuConfig()
   if (!apiKey && !serverKey) throw new Error('NO_KEY')
   const res = await fetch(`${ICU}/athlete/${athleteId}/events?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey) })
   if (!res.ok) throw new Error(`ICU_${res.status}`)
-  return res.json()
+  return cleanEvents(await res.json())
+}
+
+/** A COMPLETED activity (what you actually did) from intervals.icu. */
+export interface IcuActivity {
+  id: string
+  start_date_local: string
+  type: string // Ride | VirtualRide | Run | VirtualRun | WeightTraining | ...
+  name?: string
+  moving_time?: number
+  distance?: number // metres
+  icu_average_watts?: number
+  average_heartrate?: number
+  icu_training_load?: number // TSS
+  icu_intensity?: number // IF
+  trainer?: boolean
+  icu_rpe?: number // 1-10
+  feel?: number // 1-5
+  strava_id?: number | string // set when the activity is linked to Strava
+}
+/** Completed activities in a window (read-only). Empty on no key / error. */
+export async function fetchActivities(oldest: string, newest: string): Promise<IcuActivity[]> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return []
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}/activities?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey) })
+    return res.ok ? await res.json() : []
+  } catch { return [] }
+}
+export const sportOfActivity = (a: IcuActivity) => (/run/i.test(a.type) ? 'run' : /ride|cycl/i.test(a.type) ? 'ride' : 'gym')
+/** Indoor = trainer/virtual; otherwise outdoor (only meaningful for ride/run). */
+export const isIndoorActivity = (a: IcuActivity) => a.trainer === true || /virtual/i.test(a.type || '')
+
+// intervals.icu writes more than executable sessions — the ATP/annual plan, load
+// targets, notes, fitness-days, etc. are REPRESENTATIONS, not things to do, so
+// they should never show as a workout. Also collapse duplicate same-day rides
+// (the sync surfaces several where the coach meant one) to a single canonical one.
+const NON_EXECUTABLE = new Set(['NOTE', 'TARGET', 'SEASON_START', 'FITNESS_DAYS', 'SET_EFTP', 'HOLIDAY', 'SICK', 'INJURED', 'ATP', 'GOAL'])
+export function isExecutableEvent(e: IcuEvent): boolean {
+  if (/^ATP\b/i.test(e.name || '')) return false           // "ATP ..." annual-plan rows
+  return !NON_EXECUTABLE.has(String(e.category || '').toUpperCase())
+}
+/** Higher = more canonical: prefer the coach's linked/structured ride when collapsing dupes. */
+function rideRank(e: IcuEvent): number {
+  return (e.external_id ? 4 : 0) + ((e.workout_doc?.steps?.length ?? 0) ? 2 : 0) + (/\[gymapp\]/i.test(e.description || '') ? 1 : 0) + Math.min(0.9, (e.moving_time || 0) / 1e6)
+}
+export function cleanEvents(events: IcuEvent[]): IcuEvent[] {
+  const out: IcuEvent[] = []
+  const bestRidePerDay = new Map<string, IcuEvent>()
+  for (const e of events) {
+    if (!isExecutableEvent(e)) continue
+    if (sportOf(e) === 'cycling') {
+      const day = e.start_date_local.slice(0, 10)
+      const cur = bestRidePerDay.get(day)
+      if (!cur || rideRank(e) > rideRank(cur)) bestRidePerDay.set(day, e)
+    } else out.push(e)
+  }
+  return [...out, ...bestRidePerDay.values()]
 }
 
 // --- writing the plan (mirror) -------------------------------------------

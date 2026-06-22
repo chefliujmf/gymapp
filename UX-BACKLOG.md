@@ -3,6 +3,41 @@
 Everything captured from product direction. ✅ done · ⬜ todo.
 Tackle UX roughly top-down; the calendar is the centerpiece most items hang off.
 
+## 📌 Latest decisions & feedback (capture — keep current)
+
+**Design rule (overriding):** built for **non-technical end users**. Owner does one-time
+setup (OAuth app, callback domain, creds); **users only ever tap "Connect"** — never
+register apps, paste keys, or set domains.
+
+- ⬜ **Strava activities view** — surface the user's recent rides/runs in the app
+  (read; only for users who've connected). Pull is capped to `STRAVA_LOOKBACK_DAYS`
+  (default 14 = testing; final window TBD). **APPROVED — build.**
+- ⬜ **Strava workout push (OPT-IN)** — a "Share to Strava" button on the finish
+  screen, **only shown if the user connected Strava, only fires when they tap it**.
+  Never automatic. **APPROVED — build.**
+- ✅ **Strava Connect** — per-user OAuth, one app (QA+prod), read_all+write, logo, done.
+- ⬜ **Chatbot / AI** — Owner: **Claude CLI on the XPS** (app proxies to `claude`, no API
+  key in app). Other users: **BYO-AI** — punch in their own **Claude / OpenAI-Codex /
+  Gemini** creds, per-user on their account. (NOT the build-a-shared-API-bot approach.)
+- ⬜ **Anti-scrape / anti-download of MY content** (re-stressed, important) — users must
+  not be able to scrape or download the self-hosted media. Deter download + screenshots
+  (signed/expiring URLs, range-only, obfuscation, no-download attrs already added). True
+  DRM is hard; raise the bar meaningfully.
+- ⬜ **intervals.icu "Connect" button** — needs OAuth creds **requested from the intervals
+  dev** (not self-serve). Until then, key-paste (friendlier UX shipped). For public launch.
+- ⬜ **Profile vs Settings split** + section nav (see below).
+- ✅ **Coach chatbot** built + working on DEV (locked-down `claude -p` + per-user MCP + chat UI).
+  ⬜ **Stream the reply** (token-by-token, requested) · ⬜ take live on QA/prod (bridge container→host `claude`, bake in `mcp/`) · ⬜ per-user coach name (Tadej/Bert).
+
+**✅ Shipped THIS session (dev→QA→prod where noted):** QA on its own public domain
+(`platyplus-qa.duckdns.org`) + EnvBadge DEV/QA/PROD · **CI-gated deploys** (reusable
+workflow) · dev API fix (SEED_EMAIL) · **History shows real exercise names + edit + Today
+access** (was "Exercise 1,2") · **Strava per-user Connect** (read_all+write, one app QA+prod,
+logo, 2-wk configurable cap) · friendlier intervals key UX · **usernameless passkey login**
++ password fallback · **typed notification center** (Release/Reminder/Coach/System labels) ·
+**intervals ATP-filter + ride-dedupe** (`cleanEvents`, ⬜ verify on QA) · **QA secured to the
+prod password** + staging secrets moved to gitignored `auth.env` (no weak pw in public repo).
+
 ## 🔎 AUDIT (full-chat review) — gaps now captured + status corrections
 
 **Were MISSING from the backlog — now added/done:**
@@ -32,6 +67,14 @@ monitoring routine · unified media manifest · release-notes bell · gym refine
 (time-estimate, reorder, add/skip-set, swipe, anti-download) · coach gen quality
 (warm-up/cool-down, group-by-equipment, Pallof both sides) · Today "done" state ·
 intervals/Strava source linking · profile-gating in cyclingcoach · Centris/checkcheck.
+
+## 🧭 Profile vs Settings (UX)
+
+- ⬜ **Split Profile and Settings.** Profile = the person (avatar, name, account, passkeys,
+  connections like Strava/intervals). A separate **Settings** page for small config (API
+  tokens, units, diet, video stills, etc.). Add a little **table-of-contents / section nav**
+  to the right of Profile so it's not one long scroll. Decide the split (what lives in
+  Profile vs Settings) — judgement call.
 
 ## 🔗 intervals.icu sync — clean up what shows as a "workout"
 

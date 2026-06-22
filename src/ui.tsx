@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
-import type { ReactNode } from 'react'
-import { Dumbbell, Flame, Activity, Flower2, StretchHorizontal, Swords, Brain, Moon, Wind, Target, Bike, Footprints, Coffee, Sandwich, UtensilsCrossed, Apple } from 'lucide-react'
+import type { ReactNode, MouseEvent as ReactMouseEvent } from 'react'
+import { Dumbbell, Flame, Activity, Flower2, StretchHorizontal, Swords, Brain, Moon, Wind, Target, Bike, Footprints, Coffee, Sandwich, UtensilsCrossed, Apple, Home, Mountain, Check } from 'lucide-react'
 import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind, EnduranceWorkout } from './types'
+import { isIndoorActivity, type IcuActivity } from './intervals'
 import { localISO } from './date'
 
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -248,6 +249,48 @@ export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: 
       ) : (
         <p className="meta" style={{ marginTop: 6 }}>Tap a block for its target & timing.</p>
       )}
+    </div>
+  )
+}
+
+/** Completed-activity summary (clones intervals.icu's minimum info): indoor/outdoor
+ * badge + duration · distance · avg HR · avg power · Load (TSS) · RPE. */
+export function DoneStats({ a }: { a: IcuActivity }) {
+  const isRideRun = /ride|run/i.test(a.type) && !/weight/i.test(a.type)
+  const parts = [
+    a.moving_time ? `${Math.round(a.moving_time / 60)} min` : null,
+    a.distance ? `${(a.distance / 1000).toFixed(1)} km` : null,
+    a.average_heartrate ? `${Math.round(a.average_heartrate)} bpm` : null,
+    a.icu_average_watts ? `${Math.round(a.icu_average_watts)} W` : null,
+    a.icu_training_load ? `${a.icu_training_load} TSS` : null,
+    a.icu_rpe ? `RPE ${a.icu_rpe}` : null,
+  ].filter(Boolean)
+  return (
+    <div className="done-stats">
+      <span className="done-badge">
+        <Check size={11} />
+        {isRideRun ? (isIndoorActivity(a) ? <><Home size={11} /> Indoor</> : <><Mountain size={11} /> Outdoor</>) : 'Done'}
+      </span>
+      {parts.map((p, i) => <span key={i} className="done-stat">{p}</span>)}
+      {a.id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://intervals.icu/activities/${a.id}`)}>intervals ↗</span>}
+      {a.strava_id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://www.strava.com/activities/${a.strava_id}`)}>Strava ↗</span>}
+    </div>
+  )
+}
+// Open an external link from inside a clickable card without triggering the card.
+function openExt(e: ReactMouseEvent, url: string) { e.preventDefault(); e.stopPropagation(); window.open(url, '_blank', 'noopener,noreferrer') }
+
+/** Tiny non-interactive workout profile for card thumbnails — zone-coloured bars only. */
+export function MiniProfile({ segs }: { segs: { duration: number; powerStart: number; powerEnd: number }[] }) {
+  if (!segs?.length) return null
+  const total = segs.reduce((s, x) => s + x.duration, 0) || 1
+  const maxP = Math.max(100, ...segs.map((s) => Math.max(s.powerStart, s.powerEnd)))
+  return (
+    <div className="thumb-profile">
+      {segs.map((s, i) => {
+        const p = (s.powerStart + s.powerEnd) / 2
+        return <span key={i} style={{ flexGrow: s.duration / total, flexBasis: 0, height: `${Math.max(14, (p / maxP) * 100)}%`, background: zoneColor(p), borderRadius: '1.5px 1.5px 0 0' }} />
+      })}
     </div>
   )
 }

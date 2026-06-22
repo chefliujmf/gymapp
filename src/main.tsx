@@ -29,6 +29,13 @@ import CycleDetail from './pages/CycleDetail'
 import RidePlayer from './pages/RidePlayer'
 import RunPlayer from './pages/RunPlayer'
 import Profile from './pages/Profile'
+import AthleteProfile from './pages/AthleteProfile'
+import Settings from './pages/Settings'
+import Fitness from './pages/Fitness'
+import Strength from './pages/Strength'
+import Logs from './pages/Logs'
+import { TrainHub, StatsHub, MoreHub } from './pages/hubs'
+import Chat from './pages/Chat'
 import Progress from './pages/Progress'
 import PlanDetail from './pages/PlanDetail'
 import { BleProvider } from './BleContext'
@@ -42,7 +49,10 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Today /> },
       { path: 'plan', element: <Calendar /> },
-      { path: 'train', element: <Train /> },
+      { path: 'train', element: <TrainHub /> },
+      { path: 'gym', element: <Train /> },
+      { path: 'stats', element: <StatsHub /> },
+      { path: 'more', element: <MoreHub /> },
       { path: 'exercises', element: <Exercises /> },
       { path: 'exercises/:id', element: <ExerciseDetail /> },
       { path: 'workouts', element: <Workouts /> },
@@ -50,6 +60,7 @@ const router = createBrowserRouter([
       { path: 'workouts/:id/play', element: <GymPlayer /> },
       { path: 'build', element: <WorkoutBuilder /> },
       { path: 'admin', element: <Admin /> },
+      { path: 'chat', element: <Chat /> },
       { path: 'template/:id/play', element: <GymPlayer /> },
       { path: 'gym-session/play', element: <GymPlayer /> },
       { path: 'plan/:id', element: <PlanDetail /> },
@@ -70,6 +81,11 @@ const router = createBrowserRouter([
       { path: 'ride-player', element: <RidePlayer /> },
       { path: 'run-player', element: <RunPlayer /> },
       { path: 'profile', element: <Profile /> },
+      { path: 'profile/athlete', element: <AthleteProfile /> },
+      { path: 'settings', element: <Settings /> },
+      { path: 'fitness', element: <Fitness /> },
+      { path: 'strength', element: <Strength /> },
+      { path: 'logs', element: <Logs /> },
       { path: 'progress', element: <Progress /> },
     ],
   },

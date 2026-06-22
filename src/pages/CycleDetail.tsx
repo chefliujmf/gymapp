@@ -15,7 +15,7 @@ export default function CycleDetail() {
   const navigate = useNavigate()
   const w = id ? allEnduranceById[id] : undefined
   const isRun = w?.sport === 'running'
-  if (!w) return <div className="page-head"><button className="back" onClick={() => navigate(-1)}>← Back</button><h1>Not found</h1></div>
+  if (!w) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button><h1>Not found</h1></div>
 
   async function start() {
     const ftp = Number(await getSetting('ftp')) || 260
@@ -25,7 +25,7 @@ export default function CycleDetail() {
 
   return (
     <div>
-      <button className="back" onClick={() => navigate(-1)}>← Back</button>
+      <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head">
         <span className="eyebrow">{sportIcon[w.sport]} {w.sport} · {w.category}</span>
         <h1>{w.name}</h1>

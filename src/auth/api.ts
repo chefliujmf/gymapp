@@ -1,6 +1,8 @@
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 
 export interface Passkey { id: string; label: string; createdAt: number }
+export interface Checkin { date: string; energy?: number; sleep?: 'poor' | 'ok' | 'great'; soreness?: 'none' | 'some' | 'lots'; note?: string }
+
 export interface User {
   id: string
   username: string
@@ -11,6 +13,10 @@ export interface User {
   passkeys: Passkey[]
   hasIcuKey: boolean
   icuAthlete: string
+  coachName?: string
+  hasCoachProfile?: boolean
+  sports?: string[] // the sports you do (multi-select) — drives nav hubs + engine gating
+  sex?: string // from intervals.icu athlete record — gates female-athlete module
 }
 
 async function req<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
@@ -21,7 +27,11 @@ async function req<T>(path: string, opts: { method?: string; body?: unknown } = 
     credentials: 'same-origin',
   })
   const data = res.status === 204 ? null : await res.json().catch(() => null)
-  if (!res.ok) throw new Error((data && (data as { error?: string }).error) || `HTTP ${res.status}`)
+  if (!res.ok) {
+    const err = new Error((data && (data as { error?: string }).error) || `HTTP ${res.status}`) as Error & { status?: number }
+    err.status = res.status // so callers can tell a server error (e.g. 401) from a network failure
+    throw err
+  }
   return data as T
 }
 
@@ -48,10 +58,18 @@ export const authApi = {
   },
   passkeyDelete: (id: string) => req<User>(`/passkeys/${id}`, { method: 'DELETE' }),
 
+  // Coach chatbot (locked-down claude -p + per-user Platyplus MCP, server-side).
+  chat: (message: string) => req<{ reply: string; coach: string }>('/chat', { body: { message } }),
+  chatReset: () => req<{ ok: boolean }>('/chat/reset', { method: 'POST' }),
+
   changePassword: (current: string, newPassword: string) => req<{ ok: boolean }>('/password/change', { body: { current, newPassword } }),
   forgot: (email: string) => req<{ ok: boolean; emailSent: boolean }>('/password/forgot', { body: { email } }),
   reset: (email: string, code: string, newPassword: string) => req<{ ok: boolean }>('/password/reset', { body: { email, code, newPassword } }),
   saveProfile: (info: Record<string, unknown>) => req<User>('/profile', { method: 'PUT', body: info }),
+  getAthlete: () => req<{ profile: string; updatedAt: number }>('/profile/athlete'),
+  saveAthlete: (profile: string) => req<{ profile: string; updatedAt: number }>('/profile/athlete', { method: 'PUT', body: { profile } }),
+  checkin: (data: Checkin) => req<Checkin>('/checkin', { method: 'POST', body: data }),
+  checkins: (from: string, to: string) => req<Checkin[]>(`/checkins?from=${from}&to=${to}`),
   saveIcu: (icuKey: string, icuAthlete: string) => req<User>('/icu', { method: 'PUT', body: { icuKey, icuAthlete } }),
   saveAvatar: (avatar: string) => req<User>('/avatar', { method: 'PUT', body: { avatar } }),
   getToken: () => req<{ token: string }>('/token'),

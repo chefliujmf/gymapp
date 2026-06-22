@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting } from '../db'
-import { WeekStrip } from '../ui'
-import { fetchEvents, deleteEvent, eventObjective, sportOf, type IcuEvent } from '../intervals'
-import { setPlanEvents, fetchGymPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
+import { WeekStrip, MiniProfile, DoneStats } from '../ui'
+import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
+import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
 import { calApi, type CalItem } from '../calendar'
 import { recipes, mindSessions } from '../data/catalog'
@@ -12,6 +12,26 @@ import type { Recipe } from '../types'
 import { localISO } from '../date'
 import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
+import { authApi, type Checkin } from '../auth/api'
+
+/** Quick "how do you feel" check-in (energy/sleep/soreness) — a few taps, feeds the coach. */
+function CheckInCard() {
+  const today = localISO()
+  const [ci, setCi] = useState<Checkin | null>(null)
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => { authApi.checkins(today, today).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [today])
+  const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: today }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
+  if (!loaded) return null
+  const energy: [number, string][] = [[1, '😣'], [2, '😐'], [3, '🙂'], [4, '💪']]
+  return (
+    <div className="card checkin">
+      <div className="checkin__t">How do you feel today?</div>
+      <div className="checkin__row"><span>Energy</span><div className="checkin__opts">{energy.map(([v, e]) => <button key={v} className={'checkin__b' + (ci?.energy === v ? ' on' : '')} onClick={() => set({ energy: v })}>{e}</button>)}</div></div>
+      <div className="checkin__row"><span>Sleep</span><div className="checkin__opts">{(['poor', 'ok', 'great'] as const).map((o) => <button key={o} className={'checkin__b' + (ci?.sleep === o ? ' on' : '')} onClick={() => set({ sleep: o })}>{o}</button>)}</div></div>
+      <div className="checkin__row"><span>Soreness</span><div className="checkin__opts">{(['none', 'some', 'lots'] as const).map((o) => <button key={o} className={'checkin__b' + (ci?.soreness === o ? ' on' : '')} onClick={() => set({ soreness: o })}>{o}</button>)}</div></div>
+    </div>
+  )
+}
 
 // Stable daily pick: same item all day, rotates with the date (+salt for variety).
 function pickByDate<T>(arr: T[], dateStr: string, salt = 0): T | undefined {
@@ -24,18 +44,22 @@ function pickByDate<T>(arr: T[], dateStr: string, salt = 0): T | undefined {
 const planIcon = (s: CoachPlan['sport']) => (s === 'ride' ? <Bike strokeWidth={1.75} /> : s === 'run' ? <Footprints strokeWidth={1.75} /> : <Dumbbell strokeWidth={1.75} />)
 
 /** A coach-pushed plan that isn't mirrored by an intervals event — runs in-app. */
-function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove, done }: { p: CoachPlan; onRun: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean }) {
+function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove, done, act }: { p: CoachPlan; onRun: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean; act?: IcuActivity }) {
   const mins = p.sport === 'gym' ? undefined : Math.round((p.segments || []).reduce((s, x) => s + x.duration, 0) / 60)
+  const segs = (p.sport === 'ride' || p.sport === 'run') ? (p.segments || []) : []
+  const isDone = done || !!act
   return (
     <div className="today-entry">
       <button className="card" style={{ textAlign: 'left', width: '100%' }} onClick={() => onRun(p)}>
         <div className="card-row">
-          <div className={'thumb thumb--' + (p.sport === 'ride' ? 'ride' : p.sport === 'run' ? 'run' : 'gym')}>{planIcon(p.sport)}</div>
+          {segs.length
+            ? <div className="thumb"><MiniProfile segs={segs} /></div>
+            : <div className={'thumb thumb--' + (p.sport === 'ride' ? 'ride' : p.sport === 'run' ? 'run' : 'gym')}>{planIcon(p.sport)}</div>}
           <div className="card-body">
-            <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
-            <h3 style={done ? { opacity: 0.6 } : undefined}>{p.title}</h3>
+            <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}</span>
+            <h3 style={isDone ? { opacity: 0.6 } : undefined}>{p.title}</h3>
             {p.notes && <div className="meta" style={{ display: 'block', whiteSpace: 'normal' }}>{p.notes.length > 110 ? p.notes.slice(0, 110) + '…' : p.notes}</div>}
-            <div className="meta">{mins ? <span>{mins} min</span> : <span>{(p.exercises || []).length} exercises{p.rounds && p.rounds > 1 ? ` · ${p.rounds} rounds` : ''}</span>}<span className="dot">▶ start</span></div>
+            {act ? <DoneStats a={act} /> : <div className="meta">{mins ? <span>{mins} min</span> : <span>{(p.exercises || []).length} exercises{p.rounds && p.rounds > 1 ? ` · ${p.rounds} rounds` : ''}</span>}{done ? <span className="dot" style={{ color: 'var(--accent,#34e07d)' }}>✓ done</span> : <span className="dot">▶ start</span>}</div>}
           </div>
         </div>
       </button>
@@ -54,21 +78,26 @@ function weekRange(): [string, string] {
 const sportIcon = (e: IcuEvent) => { const s = sportOf(e); return s === 'cycling' ? <Bike strokeWidth={1.75} /> : s === 'gym' ? <Dumbbell strokeWidth={1.75} /> : e.type === 'Run' ? <Footprints strokeWidth={1.75} /> : <Target strokeWidth={1.75} /> }
 const fmtDay = (s: string) => new Date(s + 'T00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
 
-function PlanCard({ e, showDate, onSwap, onRemove, done }: { e: IcuEvent; showDate?: boolean; onSwap?: () => void; onRemove?: () => void; done?: boolean }) {
+function PlanCard({ e, showDate, onSwap, onRemove, done, act }: { e: IcuEvent; showDate?: boolean; onSwap?: () => void; onRemove?: () => void; done?: boolean; act?: IcuActivity }) {
   const obj = eventObjective(e)
   const mins = e.moving_time ? Math.round(e.moving_time / 60) : undefined
+  const isDone = done || !!act
   // ATP phase markers from intervals.icu aren't actual workouts — show them as a plan note.
   const atp = /^ATP\b/i.test(e.name) || e.category === 'NOTE'
+  // For structured rides/runs, the thumb shows the workout's power profile, not a generic icon.
+  const rideSegs = !atp && (sportOf(e) === 'cycling' || e.type === 'Run') ? flattenIcuSteps(e.workout_doc?.steps) : []
   return (
     <div className="today-entry">
       <Link to={`/plan/${e.id}`} className="card">
         <div className="card-row">
-          <div className={'thumb thumb--' + (atp ? 'target' : e.category === 'TARGET' ? 'target' : sportOf(e) === 'gym' ? 'gym' : sportOf(e) === 'cycling' ? 'ride' : 'run')}>{atp ? <Flag strokeWidth={1.75} /> : sportIcon(e)}</div>
+          {rideSegs.length
+            ? <div className="thumb"><MiniProfile segs={rideSegs} /></div>
+            : <div className={'thumb thumb--' + (atp ? 'target' : e.category === 'TARGET' ? 'target' : sportOf(e) === 'gym' ? 'gym' : sportOf(e) === 'cycling' ? 'ride' : 'run')}>{atp ? <Flag strokeWidth={1.75} /> : sportIcon(e)}</div>}
           <div className="card-body">
-            <span className="eyebrow">{atp ? 'Training block' : e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
-            <h3 style={done ? { opacity: 0.6 } : undefined}>{e.name}</h3>
+            <span className="eyebrow">{atp ? 'Training block' : e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}</span>
+            <h3 style={isDone ? { opacity: 0.6 } : undefined}>{e.name}</h3>
             {obj && <div className="meta" style={{ display: 'block', whiteSpace: 'normal' }}>{obj.length > 110 ? obj.slice(0, 110) + '…' : obj}</div>}
-            {mins && <div className="meta"><span>{mins} min</span>{e.icu_training_load ? <span className="dot">{e.icu_training_load} TSS</span> : null}</div>}
+            {act ? <DoneStats a={act} /> : mins ? <div className="meta"><span>{mins} min</span>{e.icu_training_load ? <span className="dot">{e.icu_training_load} TSS</span> : null}{done ? <span className="dot" style={{ color: 'var(--accent,#34e07d)' }}>✓ done</span> : null}</div> : (done ? <div className="meta"><span style={{ color: 'var(--accent,#34e07d)' }}>✓ done</span></div> : null)}
           </div>
         </div>
       </Link>
@@ -106,6 +135,7 @@ export default function Today() {
   const doneTitles = new Set(dayLogs.map((l) => (l.title || '').toLowerCase().trim()))
   const diet = useLiveQuery(() => getSetting('diet'))
   const [events, setEvents] = useState<IcuEvent[] | null>(null)
+  const [activities, setActivities] = useState<IcuActivity[]>([])
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [items, setItems] = useState<CalItem[]>([])
   const [added, setAdded] = useState<Record<string, boolean>>({})
@@ -115,7 +145,9 @@ export default function Today() {
   const load = useCallback(() => {
     const [a, b] = weekRange()
     fetchEvents(a, b).then((evs) => { setEvents(evs); setPlanEvents(evs) }).catch((e) => setErr((e as Error).message))
-    fetchGymPlans(a, b).then(setPlans)
+    // Mirror intervals-origin workouts into Platyplus first, THEN read the owned plans.
+    syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then(setPlans))
+    fetchActivities(a, b).then(setActivities).catch(() => setActivities([]))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [])
   useEffect(() => { load() }, [load])
@@ -140,14 +172,18 @@ export default function Today() {
   const swapOn = (day: string) => navigate(`/plan?d=${day}&v=day`)
 
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' })()
-  // Merge-by-id: a coach plan whose id matches an intervals event's external_id is
-  // already shown as that event's card — only show un-mirrored plans, so no dupes.
+  // Merge-by-id: a coach/owned plan that's already shown as an intervals event card
+  // (matched by external_id OR by the mirror icuEventId) is hidden so there's no dupe.
   const linkedIds = new Set((events ?? []).map((e) => e.external_id).filter(Boolean))
+  const shownEventIds = new Set((events ?? []).map((e) => String(e.id)))
+  const planShown = (p: CoachPlan) => linkedIds.has(p.id) || (p.icuEventId != null && shownEventIds.has(String(p.icuEventId)))
   const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay)
-  const dayPlans = plans.filter((p) => p.date === selDay && !linkedIds.has(p.id))
+  const dayPlans = plans.filter((p) => p.date === selDay && !planShown(p))
   const dayItems = items.filter((it) => it.date === selDay)
   const upcoming = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) > selDay).sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
-  const upcomingPlans = plans.filter((p) => p.date > selDay && !linkedIds.has(p.id)).sort((a, b) => a.date.localeCompare(b.date))
+  const upcomingPlans = plans.filter((p) => p.date > selDay && !planShown(p)).sort((a, b) => a.date.localeCompare(b.date))
+  // Match a completed intervals.icu activity to a planned workout by day + sport.
+  const actFor = (day: string, sport: string) => activities.find((a) => a.start_date_local.slice(0, 10) === day && sportOfActivity(a) === (sport === 'cycling' ? 'ride' : sport))
 
   // Daily fuel (diet-aware) + a mind reset for the selected day.
   const dietOk = (r: Recipe) => {
@@ -156,17 +192,29 @@ export default function Today() {
     if (p === 'vegan') return !!r.diet?.includes('vegan')
     return !!(r.diet?.includes('vegetarian') || r.diet?.includes('vegan'))
   }
-  // Suggestion logic: diet-filtered, and TRAINING-AWARE — on a day with a workout we
-  // bias toward higher-protein recovery fuel (variety kept by date-rotating among the
-  // top picks); on rest days it's the normal daily rotation. (Coach-driven suggestions
-  // based on the day's load + goals are the next step — see backlog.)
-  const trainingDay = dayEvents.length > 0 || dayPlans.length > 0
+  // Suggestion logic: diet-filtered + WORKOUT-AWARE. Match fuel to the day's training —
+  // endurance burns glycogen → carb-forward; a strength day → protein-forward; rest →
+  // balanced & lighter. Includes a snack. (Aligns with the coach's nutrition method.)
+  const endEvents = dayEvents.filter((e) => ['cycling', 'run'].includes(sportOf(e)) || e.type === 'Run')
+  const endPlans = dayPlans.filter((p) => p.sport === 'ride' || p.sport === 'run')
+  const endMins = endEvents.reduce((s, e) => s + (e.moving_time ? e.moving_time / 60 : 0), 0) + endPlans.reduce((s, p) => s + (p.segments || []).reduce((a, x) => a + x.duration, 0) / 60, 0)
+  const endTSS = Math.max(0, ...endEvents.map((e) => e.icu_training_load || 0))
+  const hasEndurance = endEvents.length > 0 || endPlans.length > 0
+  const hasStrength = dayEvents.some((e) => sportOf(e) === 'gym') || dayPlans.some((p) => p.sport === 'gym')
+  const bigEndurance = endTSS >= 60 || endMins >= 90
+  const fuelMode: 'carb' | 'protein' | 'balanced' = hasEndurance ? 'carb' : hasStrength ? 'protein' : 'balanced'
+  const fuelMsg = fuelMode === 'carb' ? `Carb-forward to fuel & refill${bigEndurance ? ' a big endurance day' : ' for endurance'}.` : fuelMode === 'protein' ? 'Protein-forward for strength & recovery.' : 'Balanced, lighter picks for a rest day.'
   const suggestMeal = (cat: Recipe['category'], salt: number) => {
     let pool = recipes.filter((r) => r.category === cat && dietOk(r))
-    if (trainingDay && pool.length > 6) pool = [...pool].sort((a, b) => (b.protein ?? 0) - (a.protein ?? 0)).slice(0, Math.max(6, Math.ceil(pool.length / 3)))
+    if (pool.length > 6) {
+      const third = Math.max(6, Math.ceil(pool.length / 3))
+      if (fuelMode === 'carb') pool = [...pool].sort((a, b) => (b.carbs ?? 0) - (a.carbs ?? 0)).slice(0, third)
+      else if (fuelMode === 'protein') pool = [...pool].sort((a, b) => (b.protein ?? 0) - (a.protein ?? 0)).slice(0, third)
+      else pool = [...pool].sort((a, b) => (a.kcal ?? 0) - (b.kcal ?? 0)).slice(0, Math.max(6, Math.ceil(pool.length / 2)))
+    }
     return pickByDate(pool, selDay, salt)
   }
-  const meals = (['breakfast', 'lunch', 'dinner'] as const).map((cat, i) => suggestMeal(cat, i + 1)).filter(Boolean) as Recipe[]
+  const meals = (['breakfast', 'lunch', 'snack', 'dinner'] as const).map((cat, i) => suggestMeal(cat, i + 1)).filter(Boolean) as Recipe[]
   const meditation = pickByDate(mindSessions, selDay, 7)
   async function add(key: string, item: Parameters<typeof calApi.saveItem>[0]) {
     try { await calApi.saveItem(item); load(); setAdded((a) => ({ ...a, [key]: true })); setTimeout(() => setAdded((a) => { const n = { ...a }; delete n[key]; return n }), 1600) }
@@ -187,6 +235,8 @@ export default function Today() {
 
       <WeekStrip selected={selDay} onSelect={setSelDay} />
 
+      {selDay === todayISO() && <CheckInCard />}
+
       {todaysLogs && todaysLogs.length > 0 && (
         <Link to="/progress" style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — see history →</Link>
       )}
@@ -204,8 +254,8 @@ export default function Today() {
       ) : null}
       {dayEvents.length > 0 || dayPlans.length > 0 || dayItems.length > 0 ? (
         <div className="stack">
-          {dayEvents.map((e) => <PlanCard key={e.id} e={e} done={doneTitles.has(e.name.toLowerCase().trim())} onSwap={() => swapOn(selDay)} onRemove={() => removeEvent(e)} />)}
-          {dayPlans.map((p) => <CoachPlanCard key={p.id} p={p} done={doneTitles.has(p.title.toLowerCase().trim())} onRun={runPlan} fmtDay={fmtDay} onSwap={() => swapOn(selDay)} onRemove={() => removePlan(p)} />)}
+          {dayEvents.map((e) => <PlanCard key={e.id} e={e} act={actFor(selDay, sportOf(e))} done={doneTitles.has(e.name.toLowerCase().trim())} onSwap={() => swapOn(selDay)} onRemove={() => removeEvent(e)} />)}
+          {dayPlans.map((p) => <CoachPlanCard key={p.id} p={p} act={actFor(selDay, p.sport)} done={doneTitles.has(p.title.toLowerCase().trim())} onRun={runPlan} fmtDay={fmtDay} onSwap={() => swapOn(selDay)} onRemove={() => removePlan(p)} />)}
           {dayItems.map((it) => <ItemCard key={it.id} it={it} onSwap={() => swapOn(selDay)} onRemove={() => removeItem(it)} />)}
         </div>
       ) : events !== null && !err ? (
@@ -215,7 +265,7 @@ export default function Today() {
       {meals.length > 0 && (
         <>
           <div className="section-title">Suggested fuel{selDay !== todayISO() ? ` · ${fmtDay(selDay)}` : ''}</div>
-          <p className="meta" style={{ margin: '-4px 2px 8px' }}>{trainingDay ? 'Higher-protein picks for a training day.' : 'A balanced day — tap ＋ to add one to your plan.'}</p>
+          <p className="meta" style={{ margin: '-4px 2px 8px' }}>{fuelMsg}</p>
           <div className="stack">
             {meals.map((r) => (
               <div key={r.id} className="today-entry">

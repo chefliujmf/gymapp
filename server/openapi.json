@@ -350,6 +350,37 @@
         }
       }
     },
+    "/auth/plans/sync": {
+      "post": {
+        "summary": "Import intervals.icu-origin planned workouts into Platyplus (Platyplus then owns them)",
+        "tags": [
+          "plans"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "string", "format": "date" },
+                  "to": { "type": "string", "format": "date" }
+                },
+                "required": ["from", "to"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "{ imported, scanned } or { skipped }" },
+          "400": { "description": "from + to required" }
+        }
+      }
+    },
     "/auth/plans": {
       "get": {
         "summary": "List the signed-in user's workout plans (session auth)",
@@ -634,6 +665,82 @@
         }
       }
     },
+    "/auth/profile/athlete": {
+      "get": {
+        "summary": "Get the signed-in user's athlete coaching profile (engine-native markdown)",
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ profile, updatedAt }"
+          }
+        }
+      },
+      "put": {
+        "summary": "Replace the signed-in user's athlete coaching profile (markdown, max 60k chars)",
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profile": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ profile, updatedAt }"
+          },
+          "413": {
+            "description": "profile too long"
+          }
+        }
+      }
+    },
+    "/auth/checkin": {
+      "post": {
+        "summary": "Upsert today's daily check-in (energy 1-4, sleep poor|ok|great, soreness none|some|lots)",
+        "tags": ["checkin"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "the saved check-in" } }
+      }
+    },
+    "/auth/checkins": {
+      "get": {
+        "summary": "List the user's daily check-ins in a date range",
+        "tags": ["checkin"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } }, { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } }],
+        "responses": { "200": { "description": "check-ins" } }
+      }
+    },
+    "/api/checkins": {
+      "get": {
+        "summary": "Coach reads the athlete's daily check-ins (energy/sleep/soreness) — recovery signal",
+        "tags": ["checkin"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "check-ins" } }
+      }
+    },
     "/auth/strava/activities": {
       "get": {
         "summary": "Recent Strava activities (read; needs activity:read_all scope)",
@@ -672,6 +779,24 @@
             "description": "Strava error (e.g. token scope)"
           }
         }
+      }
+    },
+    "/api/intervals/wellness": {
+      "get": {
+        "summary": "Read-through the user's recent intervals.icu wellness (Fitness/CTL, Fatigue/ATL, Form, resting HR, HRV, sleep, weight). Live, not stored. { connected:false } if unconnected.",
+        "tags": ["intervals"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "days", "in": "query", "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "{ connected, wellness[] }" } }
+      }
+    },
+    "/api/intervals/activities": {
+      "get": {
+        "summary": "Read-through the user's recently completed intervals.icu activities (duration/distance/HR/power/Load/RPE, indoor vs outdoor). Live, not stored.",
+        "tags": ["intervals"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "days", "in": "query", "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "{ connected, activities[] }" } }
       }
     },
     "/api/strava/activities": {
