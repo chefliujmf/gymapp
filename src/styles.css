@@ -454,6 +454,8 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 /* ---- Lucide icon sizing per context ---- */
 .thumb svg { width: 30px; height: 30px; }
 .thumb--wide svg { width: 54px; height: 54px; }
+/* mini workout/power profile inside a card thumb (uses the neutral .thumb bg) */
+.thumb-profile { width: 100%; height: 100%; box-sizing: border-box; padding: 11px 8px; display: flex; align-items: flex-end; gap: 1.5px; }
 .tab__icon svg { width: 22px; height: 22px; }
 .tab__icon { filter: none; opacity: .6; }
 .tab--active .tab__icon { opacity: 1; }

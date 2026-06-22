@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting } from '../db'
-import { WeekStrip } from '../ui'
-import { fetchEvents, deleteEvent, eventObjective, sportOf, type IcuEvent } from '../intervals'
+import { WeekStrip, MiniProfile } from '../ui'
+import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, type IcuEvent } from '../intervals'
 import { setPlanEvents, fetchGymPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
 import { calApi, type CalItem } from '../calendar'
@@ -26,11 +26,14 @@ const planIcon = (s: CoachPlan['sport']) => (s === 'ride' ? <Bike strokeWidth={1
 /** A coach-pushed plan that isn't mirrored by an intervals event — runs in-app. */
 function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove, done }: { p: CoachPlan; onRun: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean }) {
   const mins = p.sport === 'gym' ? undefined : Math.round((p.segments || []).reduce((s, x) => s + x.duration, 0) / 60)
+  const segs = (p.sport === 'ride' || p.sport === 'run') ? (p.segments || []) : []
   return (
     <div className="today-entry">
       <button className="card" style={{ textAlign: 'left', width: '100%' }} onClick={() => onRun(p)}>
         <div className="card-row">
-          <div className={'thumb thumb--' + (p.sport === 'ride' ? 'ride' : p.sport === 'run' ? 'run' : 'gym')}>{planIcon(p.sport)}</div>
+          {segs.length
+            ? <div className="thumb"><MiniProfile segs={segs} /></div>
+            : <div className={'thumb thumb--' + (p.sport === 'ride' ? 'ride' : p.sport === 'run' ? 'run' : 'gym')}>{planIcon(p.sport)}</div>}
           <div className="card-body">
             <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
             <h3 style={done ? { opacity: 0.6 } : undefined}>{p.title}</h3>
@@ -59,11 +62,15 @@ function PlanCard({ e, showDate, onSwap, onRemove, done }: { e: IcuEvent; showDa
   const mins = e.moving_time ? Math.round(e.moving_time / 60) : undefined
   // ATP phase markers from intervals.icu aren't actual workouts — show them as a plan note.
   const atp = /^ATP\b/i.test(e.name) || e.category === 'NOTE'
+  // For structured rides/runs, the thumb shows the workout's power profile, not a generic icon.
+  const rideSegs = !atp && (sportOf(e) === 'cycling' || e.type === 'Run') ? flattenIcuSteps(e.workout_doc?.steps) : []
   return (
     <div className="today-entry">
       <Link to={`/plan/${e.id}`} className="card">
         <div className="card-row">
-          <div className={'thumb thumb--' + (atp ? 'target' : e.category === 'TARGET' ? 'target' : sportOf(e) === 'gym' ? 'gym' : sportOf(e) === 'cycling' ? 'ride' : 'run')}>{atp ? <Flag strokeWidth={1.75} /> : sportIcon(e)}</div>
+          {rideSegs.length
+            ? <div className="thumb"><MiniProfile segs={rideSegs} /></div>
+            : <div className={'thumb thumb--' + (atp ? 'target' : e.category === 'TARGET' ? 'target' : sportOf(e) === 'gym' ? 'gym' : sportOf(e) === 'cycling' ? 'ride' : 'run')}>{atp ? <Flag strokeWidth={1.75} /> : sportIcon(e)}</div>}
           <div className="card-body">
             <span className="eyebrow">{atp ? 'Training block' : e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
             <h3 style={done ? { opacity: 0.6 } : undefined}>{e.name}</h3>

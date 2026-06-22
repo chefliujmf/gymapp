@@ -252,6 +252,21 @@ export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: 
   )
 }
 
+/** Tiny non-interactive workout profile for card thumbnails — zone-coloured bars only. */
+export function MiniProfile({ segs }: { segs: { duration: number; powerStart: number; powerEnd: number }[] }) {
+  if (!segs?.length) return null
+  const total = segs.reduce((s, x) => s + x.duration, 0) || 1
+  const maxP = Math.max(100, ...segs.map((s) => Math.max(s.powerStart, s.powerEnd)))
+  return (
+    <div className="thumb-profile">
+      {segs.map((s, i) => {
+        const p = (s.powerStart + s.powerEnd) / 2
+        return <span key={i} style={{ flexGrow: s.duration / total, flexBasis: 0, height: `${Math.max(14, (p / maxP) * 100)}%`, background: zoneColor(p), borderRadius: '1.5px 1.5px 0 0' }} />
+      })}
+    </div>
+  )
+}
+
 export function IntervalProfile({ w, height = 110 }: { w: EnduranceWorkout; height?: number }) {
   const ivs = flattenIntervals(w)
   const total = ivs.reduce((s, i) => s + (i.duration || 0), 0) || 1
