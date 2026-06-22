@@ -13,6 +13,8 @@ export interface User {
   icuAthlete: string
   coachName?: string
   hasCoachProfile?: boolean
+  sport?: string // main sport (from onboarding, user-editable) — gates the coaching engine
+  sex?: string // from intervals.icu athlete record — gates female-athlete module
 }
 
 async function req<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {

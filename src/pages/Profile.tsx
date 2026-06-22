@@ -1,16 +1,31 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting, setSetting } from '../db'
 import { authApi } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
+import { fetchAthleteSex } from '../intervals'
+
+const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['triathlon', 'Triathlon'], ['strength', 'Strength'], ['general', 'General']]
 
 export default function Profile() {
-  const { user } = useAuth()
+  const { user, refresh } = useAuth()
   const logs = useLiveQuery(() => db.logs.toArray())
   const ftp = useLiveQuery(() => getSetting('ftp'))
   const coachName = useLiveQuery(() => getSetting('coachName'))
   const [coachSaved, setCoachSaved] = useState(false)
+  const [sportSaved, setSportSaved] = useState(false)
+
+  // Sex isn't asked here — read it from intervals.icu (if connected) to gate the
+  // female-athlete coaching module. Optional: gating falls back without it.
+  useEffect(() => {
+    if (user && !user.sex && user.hasIcuKey) {
+      fetchAthleteSex().then((s) => { if (s) authApi.saveProfile({ sex: s }).then(() => refresh()).catch(() => {}) })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.sex, user?.hasIcuKey])
+
+  const pickSport = (v: string) => authApi.saveProfile({ sport: v }).then(() => { refresh(); setSportSaved(true); setTimeout(() => setSportSaved(false), 1500) }).catch(() => {})
   const totalMin = (logs ?? []).reduce((s, l) => s + l.duration, 0)
   const avatar = user?.avatar
     ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
@@ -42,6 +57,14 @@ export default function Profile() {
       />
       <p className="meta" style={{ margin: '6px 2px 4px' }}>What your coach goes by in chat — saved when you tap away.</p>
       <Link to="/profile/athlete" className="btn btn--ghost" style={{ marginTop: 8 }}>🏷️ Athlete profile — what your coach knows about you ›</Link>
+
+      <div className="section-title">Main sport {sportSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
+      <div className="chips">
+        {SPORTS.map(([v, label]) => (
+          <button key={v} className={'chip' + ((user?.sport || '') === v ? ' chip--active' : '')} onClick={() => pickSport(v)}>{label}</button>
+        ))}
+      </div>
+      <p className="meta" style={{ margin: '6px 2px 4px' }}>Tunes your coach. Cycling/Triathlon unlock the endurance method (FTP, volume ramp).</p>
 
       <div className="section-title">App</div>
       <Link to="/settings" className="btn btn--ghost">⚙️ Settings — account, connections & preferences ›</Link>

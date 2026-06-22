@@ -80,7 +80,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sport: u.sport || '', sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').toLowerCase(); return store.users.find((u) => u.username.toLowerCase() === l || u.email === l) }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -244,6 +244,8 @@ app.put('/auth/profile', auth, (req, res) => {
   req.user.info = { ...(req.user.info || {}), ...(req.body || {}) }
   if (typeof req.body.email === 'string' && req.body.email.includes('@')) req.user.email = req.body.email.toLowerCase()
   if (typeof req.body.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
+  if (typeof req.body.sport === 'string') req.user.sport = req.body.sport.trim().toLowerCase().slice(0, 20)
+  if (typeof req.body.sex === 'string') req.user.sex = req.body.sex.trim().toLowerCase().slice(0, 10)
   save(store); res.json(pub(req.user))
 })
 
@@ -380,11 +382,13 @@ function buildSystemPrompt(user) {
   let p = coachIdentity(name)
   if (COACH_ENGINE) p += `\n\n# Your coaching method (the Platyplus engine — apply it to THIS athlete per their profile)\n` + COACH_ENGINE
   // Gated modules — only the athletes they apply to get them (the engine is ONE coach,
-  // not cycling-for-everyone). Heuristics on the profile until we store structured fields.
-  const isCyclist = user.sport === 'cycling' || /\b(cycl|bike|biking|\bride\b|\brides\b|ftp|w\/kg|wattage|triathlon|gran fondo)\b/i.test(prof)
+  // not cycling-for-everyone). Prefer the STRUCTURED fields (sport from onboarding, sex
+  // from intervals.icu); fall back to a profile-text heuristic only when unset.
+  const isCyclist = user.sport ? ['cycling', 'triathlon'].includes(user.sport) : /\b(cycl|bike|biking|\bride\b|\brides\b|ftp|w\/kg|wattage|triathlon|gran fondo)\b/i.test(prof)
   if (isCyclist && COACH_ENGINE_CYCLING) p += '\n\n' + COACH_ENGINE_CYCLING
-  const isFemale = user.sex === 'female' || /\b(female|woman|she\/her)\b/i.test(prof)
+  const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
+  p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu. When your method calls for that data and you don't have it, say what you'd want to check (and that it's on intervals.icu), then ADAPT your call to what you DO have — their profile, plan, and what they tell you — rather than inventing numbers. Make plan changes with the platyplus tools.`
   p += '\n\n' + APP_HELP
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()

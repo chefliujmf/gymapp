@@ -61,6 +61,20 @@ export async function fetchAthleteFtp(): Promise<number | undefined> {
   return ss?.ftp ?? a.icu_ftp ?? undefined
 }
 
+/** Athlete sex from intervals.icu ('male' | 'female' | undefined) — Platyplus doesn't
+ * ask for it; the coaching engine gates the female module on this. */
+export async function fetchAthleteSex(): Promise<string | undefined> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return undefined
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return undefined
+    const a = await res.json()
+    const s = String(a.sex || '').toLowerCase()
+    return s === 'm' ? 'male' : s === 'f' ? 'female' : (s || undefined)
+  } catch { return undefined }
+}
+
 export async function fetchEvents(oldest: string, newest: string): Promise<IcuEvent[]> {
   const { apiKey, athleteId, serverKey } = await getIcuConfig()
   if (!apiKey && !serverKey) throw new Error('NO_KEY')
