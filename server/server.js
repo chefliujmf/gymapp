@@ -369,13 +369,22 @@ Keep these answers short and concrete.`
 // The coaching ENGINE (method/philosophy) — synced from the cyclingcoach repo by
 // scripts/sync-coach-engine.mjs. ONE polyvalent engine shared by all users; the
 // per-user profile supplies the specifics. Optional (dev before first sync).
-let COACH_ENGINE = ''
-try { COACH_ENGINE = readFileSync(join(__dirname, 'coach-engine.md'), 'utf8').trim() } catch { /* no engine file yet */ }
+function loadEngine(f) { try { return readFileSync(join(__dirname, f), 'utf8').trim() } catch { return '' } }
+const COACH_ENGINE = loadEngine('coach-engine.md')             // generic, all athletes
+const COACH_ENGINE_CYCLING = loadEngine('coach-engine-cycling.md') // gated by discipline
+const COACH_ENGINE_FEMALE = loadEngine('coach-engine-female.md')   // gated by sex
 
 function buildSystemPrompt(user) {
   const name = user.coachName || 'Coach'
+  const prof = user.coachProfile || ''
   let p = coachIdentity(name)
   if (COACH_ENGINE) p += `\n\n# Your coaching method (the Platyplus engine — apply it to THIS athlete per their profile)\n` + COACH_ENGINE
+  // Gated modules — only the athletes they apply to get them (the engine is ONE coach,
+  // not cycling-for-everyone). Heuristics on the profile until we store structured fields.
+  const isCyclist = user.sport === 'cycling' || /\b(cycl|bike|biking|\bride\b|\brides\b|ftp|w\/kg|wattage|triathlon|gran fondo)\b/i.test(prof)
+  if (isCyclist && COACH_ENGINE_CYCLING) p += '\n\n' + COACH_ENGINE_CYCLING
+  const isFemale = user.sex === 'female' || /\b(female|woman|she\/her)\b/i.test(prof)
+  if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
   p += '\n\n' + APP_HELP
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
