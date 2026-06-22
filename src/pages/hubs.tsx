@@ -36,20 +36,21 @@ export function TrainHub() {
   )
 }
 
-/** Stats hub — shows only what's relevant to your sports. */
+/** Stats hub — shows only what's relevant to the user's sports. */
 export function StatsHub() {
   const { user } = useAuth()
   const sports = user?.sports || []
-  const anyEndurance = !sports.length || sports.some((s) => ENDUR.includes(s))
+  const has = (arr: string[]) => !sports.length || sports.some((s) => arr.includes(s))
   const items: Item[] = [
-    ...(anyEndurance ? [{ label: 'Fitness & Form', sub: 'CTL/ATL/Form, VO₂max, power curve', to: '/fitness', icon: <Activity strokeWidth={1.75} /> }] : []),
-    { label: 'Strength', sub: 'Estimated 1RM per exercise', to: '/strength', icon: <Dumbbell strokeWidth={1.75} /> },
+    ...(has(ENDUR) ? [{ label: 'Fitness & Form', sub: 'CTL/ATL/Form, VO₂max, power curve', to: '/fitness', icon: <Activity strokeWidth={1.75} /> }] : []),
+    ...(has(['strength', 'general']) ? [{ label: 'Strength', sub: 'Estimated 1RM per exercise', to: '/strength', icon: <Dumbbell strokeWidth={1.75} /> }] : []),
     { label: 'Progress', sub: 'History, totals & streaks', to: '/progress', icon: <TrendingUp strokeWidth={1.75} /> },
   ]
   return (
     <div>
-      <div className="page-head"><h1>Stats</h1><p>Your trends & progress</p></div>
+      <div className="page-head"><h1>Stats</h1><p>{sports.length ? `For your sports: ${sports.join(', ')}` : 'Your trends & progress'}</p></div>
       <div className="stack">{items.map((it) => <HubLink key={it.label} it={it} />)}</div>
+      {sports.length > 0 && <p className="meta" style={{ marginTop: 10 }}>Only what's relevant to your sports — <Link to="/profile" style={{ color: 'var(--accent)' }}>edit sports</Link>.</p>}
     </div>
   )
 }
