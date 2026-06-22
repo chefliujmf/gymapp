@@ -64,8 +64,35 @@ Add to **Gate 2 (QA→Prod)** — these touch real calendar data:
 | 44 | Delete a Platyplus-origin plan in Platyplus | gone from both; intervals event removed |
 | 45 | A coach (cyclingcoach) dual-written session | shows once as an owned plan, no dupe |
 
+## Feature: navigation hubs + multi-sport (Gate 1, [M])
+| # | Check | Expected |
+|---|-------|----------|
+| 50 | Bottom nav | 5 tabs: Today · Plan · Train · Stats · More |
+| 51 | Profile → Sports = only Cycling (save) | Stats shows Fitness + Progress (no Strength); Train leads with Ride |
+| 52 | Sports = only Strength | Stats shows Strength + Progress (no Fitness); Train leads with Gym |
+| 53 | Sports = Cycling + Strength | Stats shows Fitness + Strength + Progress |
+| 54 | Account dropdown | Profile · Settings · (Admin) · Coach API · Log out |
+
+## Feature: analytics / charts (Gate 1 [M], needs intervals for Fitness)
+| # | Check | Expected |
+|---|-------|----------|
+| 60 | Fitness page: scrub a line/bar chart | headline/value tracks the finger; mini-cards update their number (no tooltip box) |
+| 61 | Axes | y shows 5 round-number ticks; x shows dates; date filter presets + Custom from/to |
+| 62 | Form chart | green "optimal" zone band (−10…−30) + coach insight line |
+| 63 | ⓘ on a metric | tap reveals a short explanation; tap away dismisses |
+| 64 | Expand (⤢) a chart | opens larger in a modal; tap outside closes |
+
+## Feature: Strength loop (Gate 1 [A]+[M]) — `npm run test:smoke` will cover e1RM math
+| # | Check | Expected |
+|---|-------|----------|
+| 70 | Log a gym set (e.g. 80kg×10) → Strength page | exercise shows an e1RM trend |
+| 71 | Start a workout prescribing N reps for that exercise | gym player pre-fills a suggested WEIGHT from your e1RM |
+| 72 | Set list while logging | each logged set shows its live 1RM |
+| 73 | /logs (History) | past sessions list with sets + Best 1RM; edit a weight/rep → it saves (device + account) |
+
 ## Backlog of cases to add as features land
 - New-user onboarding Q&A (text + audio STT) → profile created
-- intervals-plan MCP tool → coach cites real upcoming sessions
+- Daily check-in (sleep/soreness/energy) → coach reads it
+- PR celebration when you beat your 3-month 1RM
 - Chat on prod (host helper → 8088)
 - Anti-scrape signed/expiring media URLs

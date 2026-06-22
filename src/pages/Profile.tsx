@@ -13,6 +13,7 @@ export default function Profile() {
   const logs = useLiveQuery(() => db.logs.toArray())
   const ftp = useLiveQuery(() => getSetting('ftp'))
   const coachName = useLiveQuery(() => getSetting('coachName'))
+  const diet = useLiveQuery(() => getSetting('diet'))
   const [coachSaved, setCoachSaved] = useState(false)
   const [sportSaved, setSportSaved] = useState(false)
 
@@ -51,8 +52,6 @@ export default function Profile() {
         <div className="stat"><div className="v">{Math.round(totalMin / 60)}h</div><div className="k">trained</div></div>
         <div className="stat"><div className="v">{ftp ?? 260}</div><div className="k">FTP (W)</div></div>
       </div>
-      <Link to="/progress" className="btn btn--ghost" style={{ marginTop: 6 }}>📈 View full progress</Link>
-      <Link to="/stats" className="btn btn--ghost" style={{ marginTop: 6 }}>📊 Stats — fitness, strength & progress ›</Link>
 
       <div className="section-title">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <input
@@ -69,10 +68,15 @@ export default function Profile() {
           <button key={v} className={'chip' + ((user?.sports || []).includes(v) ? ' chip--active' : '')} onClick={() => toggleSport(v)}>{label}</button>
         ))}
       </div>
-      <p className="meta" style={{ margin: '6px 2px 4px' }}>Pick all that apply — tunes your nav & coach. Cycling/Triathlon/Running unlock the endurance method & Fitness page.</p>
+      <p className="meta" style={{ margin: '6px 2px 4px' }}>Pick all that apply — tunes your nav & coach. Cycling/Running unlock the endurance method & Fitness page.</p>
 
-      <div className="section-title">App</div>
-      <Link to="/settings" className="btn btn--ghost">⚙️ Settings — account, connections & preferences ›</Link>
+      <div className="section-title">Diet</div>
+      <div className="chips">
+        {['vegetarian', 'vegan', 'no preference'].map((d) => (
+          <button key={d} className={'chip' + ((diet ?? 'vegetarian') === d ? ' chip--active' : '')} onClick={() => setSetting('diet', d)}>{d}</button>
+        ))}
+      </div>
+      <p className="meta" style={{ margin: '6px 2px 4px' }}>Your coach & meal suggestions use this (also in Settings).</p>
     </div>
   )
 }
