@@ -17,7 +17,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gate: full CI must pass before we touch PROD.
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   deploy:
+    needs: ci
     runs-on: [self-hosted, xps]
     env:
       DEPLOY_LOCAL: "1"

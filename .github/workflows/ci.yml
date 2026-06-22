@@ -1,14 +1,16 @@
 name: CI
 
-# Validate every push to dev/main and every PR into main. This compiles the app
-# (catalog gen + independence gate + tsc + vite build); the scraped catalog isn't
-# in the repo, so the build runs against empty stubs — enough to catch type/build
-# breakage before it reaches main. Content correctness is validated at deploy time.
+# Validate the app: compile (catalog gen + independence gate + tsc + vite build);
+# the scraped catalog isn't in the repo, so the build runs against empty stubs —
+# enough to catch type/build/Dockerfile-COPY breakage. Content correctness is
+# validated at deploy time.
+#
+# Runs on PRs into main, AND is called as the pre-deploy GATE by deploy.yml and
+# deploy-staging.yml (workflow_call) — so a deploy never runs on a red build.
 on:
-  push:
-    branches: [dev, main]
   pull_request:
     branches: [main]
+  workflow_call: {}
 
 jobs:
   build:
