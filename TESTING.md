@@ -52,6 +52,18 @@ Everything in Gate 1 **on QA**, plus:
 
 ---
 
+## Feature: intervals.icu two-way mirror (needs a live intervals account)
+Add to **Gate 2 (QA→Prod)** — these touch real calendar data:
+
+| # | Check | Expected |
+|---|-------|----------|
+| 40 | Create a planned ride in Platyplus | appears in intervals.icu (mirror), linked |
+| 41 | Edit it in Platyplus | intervals updates (Platyplus wins) |
+| 42 | Create a workout directly in intervals.icu, reload Today | it imports + shows ONCE (no duplicate card) |
+| 43 | Delete that intervals-origin workout in intervals, reload | it disappears from Platyplus (drop-to-mirror) |
+| 44 | Delete a Platyplus-origin plan in Platyplus | gone from both; intervals event removed |
+| 45 | A coach (cyclingcoach) dual-written session | shows once as an owned plan, no dupe |
+
 ## Backlog of cases to add as features land
 - New-user onboarding Q&A (text + audio STT) → profile created
 - intervals-plan MCP tool → coach cites real upcoming sessions
