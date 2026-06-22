@@ -29,6 +29,7 @@ import CycleDetail from './pages/CycleDetail'
 import RidePlayer from './pages/RidePlayer'
 import RunPlayer from './pages/RunPlayer'
 import Profile from './pages/Profile'
+import AthleteProfile from './pages/AthleteProfile'
 import Chat from './pages/Chat'
 import Progress from './pages/Progress'
 import PlanDetail from './pages/PlanDetail'
@@ -72,6 +73,7 @@ const router = createBrowserRouter([
       { path: 'ride-player', element: <RidePlayer /> },
       { path: 'run-player', element: <RunPlayer /> },
       { path: 'profile', element: <Profile /> },
+      { path: 'profile/athlete', element: <AthleteProfile /> },
       { path: 'progress', element: <Progress /> },
     ],
   },

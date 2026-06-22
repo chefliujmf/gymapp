@@ -11,6 +11,8 @@ export interface User {
   passkeys: Passkey[]
   hasIcuKey: boolean
   icuAthlete: string
+  coachName?: string
+  hasCoachProfile?: boolean
 }
 
 async function req<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
@@ -60,6 +62,8 @@ export const authApi = {
   forgot: (email: string) => req<{ ok: boolean; emailSent: boolean }>('/password/forgot', { body: { email } }),
   reset: (email: string, code: string, newPassword: string) => req<{ ok: boolean }>('/password/reset', { body: { email, code, newPassword } }),
   saveProfile: (info: Record<string, unknown>) => req<User>('/profile', { method: 'PUT', body: info }),
+  getAthlete: () => req<{ profile: string; updatedAt: number }>('/profile/athlete'),
+  saveAthlete: (profile: string) => req<{ profile: string; updatedAt: number }>('/profile/athlete', { method: 'PUT', body: { profile } }),
   saveIcu: (icuKey: string, icuAthlete: string) => req<User>('/icu', { method: 'PUT', body: { icuKey, icuAthlete } }),
   saveAvatar: (avatar: string) => req<User>('/avatar', { method: 'PUT', body: { avatar } }),
   getToken: () => req<{ token: string }>('/token'),

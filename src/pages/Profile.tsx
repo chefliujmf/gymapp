@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting, setSetting, clearLogs } from '../db'
 import AccountSection from '../auth/AccountSection'
+import { authApi } from '../auth/api'
 
 export default function Profile() {
   const logs = useLiveQuery(() => db.logs.toArray())
@@ -40,8 +41,13 @@ export default function Profile() {
       <AccountSection />
 
       <div className="section-title">Your coach</div>
-      <input className="search" placeholder="e.g. Tadej" value={coachName ?? ''} onChange={(e) => setSetting('coachName', e.target.value)} />
-      <p className="meta" style={{ margin: '6px 2px 4px' }}>What your in-app coach/assistant goes by (used once the assistant ships).</p>
+      <input
+        className="search" placeholder="e.g. Tadej" value={coachName ?? ''}
+        onChange={(e) => setSetting('coachName', e.target.value)}
+        onBlur={(e) => { authApi.saveProfile({ coachName: e.target.value.trim() }).catch(() => {}) }}
+      />
+      <p className="meta" style={{ margin: '6px 2px 4px' }}>What your coach goes by in chat.</p>
+      <Link to="/profile/athlete" className="btn btn--ghost" style={{ marginTop: 8 }}>🏷️ Athlete profile — what your coach knows about you ›</Link>
 
       <div className="section-title">Diet</div>
       <div className="chips">
