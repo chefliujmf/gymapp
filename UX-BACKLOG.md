@@ -33,6 +33,17 @@ monitoring routine · unified media manifest · release-notes bell · gym refine
 (warm-up/cool-down, group-by-equipment, Pallof both sides) · Today "done" state ·
 intervals/Strava source linking · profile-gating in cyclingcoach · Centris/checkcheck.
 
+## 🔗 intervals.icu sync — clean up what shows as a "workout"
+
+- ⬜ **Filter the ATP / Annual Training Plan entries** out of the day/today view. The coach
+  writes these to intervals as a *representation/target*, not an executable session — they
+  should never appear as something to "do" in Platyplus. Detect by category/type (ATP is not
+  a `WORKOUT`) and exclude from the gym/ride execution list.
+- ⬜ **De-dupe multiple bike rides on one day** — the sync is surfacing several rides where
+  there should be one. Pick the canonical event (e.g. the coach's `[gymapp]`/structured one,
+  or latest by `external_id`) and hide the rest. Reference: `fetchGymPlans` / `parseGymWorkout`
+  in `src/plan.ts` + `src/intervals.ts`.
+
 ## ⭐ Session-4: FIRST REAL GYM USE (live feedback — highest priority)
 
 ### Gym player (the live workout screen) — fixes SHIPPED to dev/QA
