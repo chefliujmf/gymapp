@@ -69,6 +69,35 @@ export async function fetchEvents(oldest: string, newest: string): Promise<IcuEv
   return cleanEvents(await res.json())
 }
 
+/** A COMPLETED activity (what you actually did) from intervals.icu. */
+export interface IcuActivity {
+  id: string
+  start_date_local: string
+  type: string // Ride | VirtualRide | Run | VirtualRun | WeightTraining | ...
+  name?: string
+  moving_time?: number
+  distance?: number // metres
+  icu_average_watts?: number
+  average_heartrate?: number
+  icu_training_load?: number // TSS
+  icu_intensity?: number // IF
+  trainer?: boolean
+  icu_rpe?: number // 1-10
+  feel?: number // 1-5
+}
+/** Completed activities in a window (read-only). Empty on no key / error. */
+export async function fetchActivities(oldest: string, newest: string): Promise<IcuActivity[]> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return []
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}/activities?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey) })
+    return res.ok ? await res.json() : []
+  } catch { return [] }
+}
+export const sportOfActivity = (a: IcuActivity) => (/run/i.test(a.type) ? 'run' : /ride|cycl/i.test(a.type) ? 'ride' : 'gym')
+/** Indoor = trainer/virtual; otherwise outdoor (only meaningful for ride/run). */
+export const isIndoorActivity = (a: IcuActivity) => a.trainer === true || /virtual/i.test(a.type || '')
+
 // intervals.icu writes more than executable sessions — the ATP/annual plan, load
 // targets, notes, fitness-days, etc. are REPRESENTATIONS, not things to do, so
 // they should never show as a workout. Also collapse duplicate same-day rides

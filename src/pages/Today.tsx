@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting } from '../db'
-import { WeekStrip, MiniProfile } from '../ui'
-import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, type IcuEvent } from '../intervals'
+import { WeekStrip, MiniProfile, DoneStats } from '../ui'
+import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
 import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
 import { calApi, type CalItem } from '../calendar'
@@ -24,9 +24,10 @@ function pickByDate<T>(arr: T[], dateStr: string, salt = 0): T | undefined {
 const planIcon = (s: CoachPlan['sport']) => (s === 'ride' ? <Bike strokeWidth={1.75} /> : s === 'run' ? <Footprints strokeWidth={1.75} /> : <Dumbbell strokeWidth={1.75} />)
 
 /** A coach-pushed plan that isn't mirrored by an intervals event — runs in-app. */
-function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove, done }: { p: CoachPlan; onRun: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean }) {
+function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove, done, act }: { p: CoachPlan; onRun: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean; act?: IcuActivity }) {
   const mins = p.sport === 'gym' ? undefined : Math.round((p.segments || []).reduce((s, x) => s + x.duration, 0) / 60)
   const segs = (p.sport === 'ride' || p.sport === 'run') ? (p.segments || []) : []
+  const isDone = done || !!act
   return (
     <div className="today-entry">
       <button className="card" style={{ textAlign: 'left', width: '100%' }} onClick={() => onRun(p)}>
@@ -35,10 +36,10 @@ function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove, done }: {
             ? <div className="thumb"><MiniProfile segs={segs} /></div>
             : <div className={'thumb thumb--' + (p.sport === 'ride' ? 'ride' : p.sport === 'run' ? 'run' : 'gym')}>{planIcon(p.sport)}</div>}
           <div className="card-body">
-            <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
-            <h3 style={done ? { opacity: 0.6 } : undefined}>{p.title}</h3>
+            <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}</span>
+            <h3 style={isDone ? { opacity: 0.6 } : undefined}>{p.title}</h3>
             {p.notes && <div className="meta" style={{ display: 'block', whiteSpace: 'normal' }}>{p.notes.length > 110 ? p.notes.slice(0, 110) + '…' : p.notes}</div>}
-            <div className="meta">{mins ? <span>{mins} min</span> : <span>{(p.exercises || []).length} exercises{p.rounds && p.rounds > 1 ? ` · ${p.rounds} rounds` : ''}</span>}<span className="dot">▶ start</span></div>
+            {act ? <DoneStats a={act} /> : <div className="meta">{mins ? <span>{mins} min</span> : <span>{(p.exercises || []).length} exercises{p.rounds && p.rounds > 1 ? ` · ${p.rounds} rounds` : ''}</span>}{done ? <span className="dot" style={{ color: 'var(--accent,#34e07d)' }}>✓ done</span> : <span className="dot">▶ start</span>}</div>}
           </div>
         </div>
       </button>
@@ -57,9 +58,10 @@ function weekRange(): [string, string] {
 const sportIcon = (e: IcuEvent) => { const s = sportOf(e); return s === 'cycling' ? <Bike strokeWidth={1.75} /> : s === 'gym' ? <Dumbbell strokeWidth={1.75} /> : e.type === 'Run' ? <Footprints strokeWidth={1.75} /> : <Target strokeWidth={1.75} /> }
 const fmtDay = (s: string) => new Date(s + 'T00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
 
-function PlanCard({ e, showDate, onSwap, onRemove, done }: { e: IcuEvent; showDate?: boolean; onSwap?: () => void; onRemove?: () => void; done?: boolean }) {
+function PlanCard({ e, showDate, onSwap, onRemove, done, act }: { e: IcuEvent; showDate?: boolean; onSwap?: () => void; onRemove?: () => void; done?: boolean; act?: IcuActivity }) {
   const obj = eventObjective(e)
   const mins = e.moving_time ? Math.round(e.moving_time / 60) : undefined
+  const isDone = done || !!act
   // ATP phase markers from intervals.icu aren't actual workouts — show them as a plan note.
   const atp = /^ATP\b/i.test(e.name) || e.category === 'NOTE'
   // For structured rides/runs, the thumb shows the workout's power profile, not a generic icon.
@@ -72,10 +74,10 @@ function PlanCard({ e, showDate, onSwap, onRemove, done }: { e: IcuEvent; showDa
             ? <div className="thumb"><MiniProfile segs={rideSegs} /></div>
             : <div className={'thumb thumb--' + (atp ? 'target' : e.category === 'TARGET' ? 'target' : sportOf(e) === 'gym' ? 'gym' : sportOf(e) === 'cycling' ? 'ride' : 'run')}>{atp ? <Flag strokeWidth={1.75} /> : sportIcon(e)}</div>}
           <div className="card-body">
-            <span className="eyebrow">{atp ? 'Training block' : e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}{done ? <span style={{ color: 'var(--accent,#34e07d)' }}> · ✓ DONE</span> : ''}</span>
-            <h3 style={done ? { opacity: 0.6 } : undefined}>{e.name}</h3>
+            <span className="eyebrow">{atp ? 'Training block' : e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}</span>
+            <h3 style={isDone ? { opacity: 0.6 } : undefined}>{e.name}</h3>
             {obj && <div className="meta" style={{ display: 'block', whiteSpace: 'normal' }}>{obj.length > 110 ? obj.slice(0, 110) + '…' : obj}</div>}
-            {mins && <div className="meta"><span>{mins} min</span>{e.icu_training_load ? <span className="dot">{e.icu_training_load} TSS</span> : null}</div>}
+            {act ? <DoneStats a={act} /> : mins ? <div className="meta"><span>{mins} min</span>{e.icu_training_load ? <span className="dot">{e.icu_training_load} TSS</span> : null}{done ? <span className="dot" style={{ color: 'var(--accent,#34e07d)' }}>✓ done</span> : null}</div> : (done ? <div className="meta"><span style={{ color: 'var(--accent,#34e07d)' }}>✓ done</span></div> : null)}
           </div>
         </div>
       </Link>
@@ -113,6 +115,7 @@ export default function Today() {
   const doneTitles = new Set(dayLogs.map((l) => (l.title || '').toLowerCase().trim()))
   const diet = useLiveQuery(() => getSetting('diet'))
   const [events, setEvents] = useState<IcuEvent[] | null>(null)
+  const [activities, setActivities] = useState<IcuActivity[]>([])
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [items, setItems] = useState<CalItem[]>([])
   const [added, setAdded] = useState<Record<string, boolean>>({})
@@ -124,6 +127,7 @@ export default function Today() {
     fetchEvents(a, b).then((evs) => { setEvents(evs); setPlanEvents(evs) }).catch((e) => setErr((e as Error).message))
     // Mirror intervals-origin workouts into Platyplus first, THEN read the owned plans.
     syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then(setPlans))
+    fetchActivities(a, b).then(setActivities).catch(() => setActivities([]))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [])
   useEffect(() => { load() }, [load])
@@ -158,6 +162,8 @@ export default function Today() {
   const dayItems = items.filter((it) => it.date === selDay)
   const upcoming = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) > selDay).sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
   const upcomingPlans = plans.filter((p) => p.date > selDay && !planShown(p)).sort((a, b) => a.date.localeCompare(b.date))
+  // Match a completed intervals.icu activity to a planned workout by day + sport.
+  const actFor = (day: string, sport: string) => activities.find((a) => a.start_date_local.slice(0, 10) === day && sportOfActivity(a) === (sport === 'cycling' ? 'ride' : sport))
 
   // Daily fuel (diet-aware) + a mind reset for the selected day.
   const dietOk = (r: Recipe) => {
@@ -214,8 +220,8 @@ export default function Today() {
       ) : null}
       {dayEvents.length > 0 || dayPlans.length > 0 || dayItems.length > 0 ? (
         <div className="stack">
-          {dayEvents.map((e) => <PlanCard key={e.id} e={e} done={doneTitles.has(e.name.toLowerCase().trim())} onSwap={() => swapOn(selDay)} onRemove={() => removeEvent(e)} />)}
-          {dayPlans.map((p) => <CoachPlanCard key={p.id} p={p} done={doneTitles.has(p.title.toLowerCase().trim())} onRun={runPlan} fmtDay={fmtDay} onSwap={() => swapOn(selDay)} onRemove={() => removePlan(p)} />)}
+          {dayEvents.map((e) => <PlanCard key={e.id} e={e} act={actFor(selDay, sportOf(e))} done={doneTitles.has(e.name.toLowerCase().trim())} onSwap={() => swapOn(selDay)} onRemove={() => removeEvent(e)} />)}
+          {dayPlans.map((p) => <CoachPlanCard key={p.id} p={p} act={actFor(selDay, p.sport)} done={doneTitles.has(p.title.toLowerCase().trim())} onRun={runPlan} fmtDay={fmtDay} onSwap={() => swapOn(selDay)} onRemove={() => removePlan(p)} />)}
           {dayItems.map((it) => <ItemCard key={it.id} it={it} onSwap={() => swapOn(selDay)} onRemove={() => removeItem(it)} />)}
         </div>
       ) : events !== null && !err ? (

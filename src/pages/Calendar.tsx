@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { fetchEvents, deleteEvent, sportOf, flattenIcuSteps, type IcuEvent } from '../intervals'
-import { MiniProfile } from '../ui'
+import { fetchEvents, deleteEvent, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
+import { MiniProfile, DoneStats } from '../ui'
 import { fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
 import { setCurrentRide, segmentsFromEndurance } from '../ride'
 import { calApi, newId, type CalItem } from '../calendar'
@@ -42,6 +42,7 @@ export default function Calendar() {
   const [cur, setCur] = useState(() => { const d = qDay ? new Date(qDay + 'T00:00') : now; return { y: d.getFullYear(), m: d.getMonth() } })
   const [sel, setSel] = useState(qDay || localISO())
   const [events, setEvents] = useState<IcuEvent[]>([])
+  const [activities, setActivities] = useState<IcuActivity[]>([])
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [items, setItems] = useState<CalItem[]>([])
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
@@ -64,6 +65,7 @@ export default function Calendar() {
   const reload = useCallback(async () => {
     const [a, b] = range
     fetchEvents(a, b).then(setEvents).catch(() => setEvents([]))
+    fetchActivities(a, b).then(setActivities).catch(() => setActivities([]))
     syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then(setPlans).catch(() => setPlans([])))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [range])
@@ -117,11 +119,15 @@ export default function Calendar() {
     const segs = !atp && (mod === 'ride' || mod === 'run')
       ? (e.k === 'plan' ? (e.plan.segments || []) : e.k === 'event' ? flattenIcuSteps(e.ev.workout_doc?.steps) : [])
       : []
+    // Completed activity for this workout (by day + sport) → show the executed stats.
+    const act = (mod === 'ride' || mod === 'run' || mod === 'gym') && e.k !== 'item'
+      ? activities.find((x) => x.start_date_local.slice(0, 10) === day && sportOfActivity(x) === mod)
+      : undefined
     return (
       <div className="card cal-entry">
         <button className="cal-entry__main" onClick={() => openEntry(e)}>
           <span className={'cal-chip cal-chip--grad cal-chip--' + (segs.length ? 'chart' : mod)}>{atp ? <Flag size={15} /> : photo ? <img src={photo} alt="" /> : segs.length ? <MiniProfile segs={segs} /> : iconFor(kind)}</span>
-          <span className="card-body"><h3>{titleOf(e)}</h3>{e.k === 'item' && e.item.type === 'note' && e.item.notes ? <div className="meta" style={{ whiteSpace: 'normal' }}>{e.item.notes}</div> : <div className="meta">{atp ? 'Training block · plan' : subOf(e)}</div>}</span>
+          <span className="card-body"><h3>{titleOf(e)}</h3>{act ? <DoneStats a={act} /> : e.k === 'item' && e.item.type === 'note' && e.item.notes ? <div className="meta" style={{ whiteSpace: 'normal' }}>{e.item.notes}</div> : <div className="meta">{atp ? 'Training block · plan' : subOf(e)}</div>}</span>
         </button>
         <EntryMenu title={titleOf(e)} onSubstitute={() => setSheet({ date: day, replacing: e })} onRemove={() => delEntry(e)} />
       </div>
