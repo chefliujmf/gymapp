@@ -346,6 +346,7 @@ app.post('/auth/chat', auth, async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no') // stop nginx/NPM from buffering the SSE (else it arrives all at once)
   res.flushHeaders?.()
   const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`)
   send({ coach: req.user.coachName || 'Coach' })
