@@ -333,11 +333,53 @@ const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude'
 const MCP_PATH = process.env.PLATYPLUS_MCP_PATH || fileURLToPath(new URL('../mcp/server.js', import.meta.url))
 const CHAT_BASE = process.env.CHAT_SELF_URL || `http://127.0.0.1:${PORT}`
 const CHAT_DENY = 'Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit,TodoWrite'
+// When the container can't run the glibc claude binary (Alpine), proxy to a host
+// chat-helper instead of spawning locally. Set on QA/prod; unset in dev.
+const CHAT_HELPER_URL = process.env.CHAT_HELPER_URL || ''
+const CHAT_HELPER_SECRET = process.env.CHAT_HELPER_SECRET || ''
 const coachPrompt = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app helping ONE user (the signed-in account) manage THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When asked to schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). Be concise, practical and encouraging. Decline anything outside this user's training/nutrition planning.`
 
-app.post('/auth/chat', auth, (req, res) => {
+app.post('/auth/chat', auth, async (req, res) => {
   const message = String(req.body?.message || '').trim().slice(0, 4000)
   if (!message) return res.status(400).json({ error: 'empty message' })
+  // Stream tokens to the client over SSE.
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.flushHeaders?.()
+  const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`)
+  send({ coach: req.user.coachName || 'Coach' })
+
+  // QA/prod: the container can't run the glibc claude → proxy to the host helper.
+  if (CHAT_HELPER_URL) {
+    let pdone = false
+    const pend = () => { if (pdone) return; pdone = true; send({ done: true }); res.end() }
+    try {
+      const hr = await fetch(CHAT_HELPER_URL + '/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-chat-secret': CHAT_HELPER_SECRET },
+        body: JSON.stringify({ message, token: req.user.apiToken, coach: req.user.coachName || 'Coach', sessionId: req.user.chatSession }),
+      })
+      if (!hr.ok || !hr.body) { send({ error: 'coach unavailable (' + hr.status + ')' }); return pend() }
+      const reader = hr.body.getReader(); const dec = new TextDecoder(); let hbuf = ''
+      res.on('close', () => { try { reader.cancel() } catch { /* */ } })
+      for (;;) {
+        const { done: rdone, value } = await reader.read(); if (rdone) break
+        hbuf += dec.decode(value, { stream: true })
+        let i
+        while ((i = hbuf.indexOf('\n\n')) >= 0) {
+          const data = hbuf.slice(0, i).split('\n').find((l) => l.startsWith('data:')); hbuf = hbuf.slice(i + 2)
+          if (!data) continue
+          let ev; try { ev = JSON.parse(data.slice(5).trim()) } catch { continue }
+          if (ev.sessionId) { req.user.chatSession = ev.sessionId; save(store) } // persist, don't forward
+          else if (!ev.done) send(ev) // forward delta / error (our own done at the end)
+        }
+      }
+    } catch (e) { send({ error: 'coach unavailable: ' + (e.message || e) }) }
+    return pend()
+  }
+
+  // Dev: spawn claude locally.
   const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: req.user.apiToken } } } })
   const args = [
     '-p', message,
@@ -348,13 +390,6 @@ app.post('/auth/chat', auth, (req, res) => {
     '--append-system-prompt', coachPrompt(req.user.coachName || 'Coach'),
   ]
   if (req.user.chatSession) args.push('--resume', req.user.chatSession)
-  // Stream tokens to the client over SSE as claude produces them.
-  res.setHeader('Content-Type', 'text/event-stream')
-  res.setHeader('Cache-Control', 'no-cache')
-  res.setHeader('Connection', 'keep-alive')
-  res.flushHeaders?.()
-  const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`)
-  send({ coach: req.user.coachName || 'Coach' })
   const proc = spawn(CLAUDE_BIN, args, { env: process.env })
   proc.stdin?.end() // close stdin (EOF) so claude doesn't wait for piped input
   const killer = setTimeout(() => proc.kill('SIGKILL'), 180000)

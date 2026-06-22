@@ -11,8 +11,13 @@ services:
     restart: unless-stopped
     environment:
       CATALOG_DIR: /catalog
+      # Coach chat: proxy to the host chat-helper (claude can't run in this Alpine
+      # container). CHAT_HELPER_SECRET comes from auth.env.
+      CHAT_HELPER_URL: http://host.docker.internal:8790
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
-      # RP_ID, ORIGIN, SEED_*, STRAVA_* — secrets live on the box, NOT in the public repo.
+      # RP_ID, ORIGIN, SEED_*, STRAVA_*, CHAT_HELPER_SECRET — on the box, NOT in the public repo.
       - "./auth.env"
     volumes:
       - "./dist:/usr/share/nginx/html:ro"
