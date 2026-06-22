@@ -6,7 +6,7 @@ import { authApi } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import { fetchAthleteSex } from '../intervals'
 
-const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['triathlon', 'Triathlon'], ['strength', 'Strength'], ['general', 'General']]
+const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['triathlon', 'Triathlon'], ['strength', 'Strength'], ['swimming', 'Swimming'], ['yoga', 'Yoga'], ['general', 'General']]
 
 export default function Profile() {
   const { user, refresh } = useAuth()
@@ -25,7 +25,11 @@ export default function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.sex, user?.hasIcuKey])
 
-  const pickSport = (v: string) => authApi.saveProfile({ sport: v }).then(() => { refresh(); setSportSaved(true); setTimeout(() => setSportSaved(false), 1500) }).catch(() => {})
+  const toggleSport = (v: string) => {
+    const cur = user?.sports || []
+    const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
+    authApi.saveProfile({ sports: next }).then(() => { refresh(); setSportSaved(true); setTimeout(() => setSportSaved(false), 1500) }).catch(() => {})
+  }
   const totalMin = (logs ?? []).reduce((s, l) => s + l.duration, 0)
   const avatar = user?.avatar
     ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
@@ -48,10 +52,7 @@ export default function Profile() {
         <div className="stat"><div className="v">{ftp ?? 260}</div><div className="k">FTP (W)</div></div>
       </div>
       <Link to="/progress" className="btn btn--ghost" style={{ marginTop: 6 }}>📈 View full progress</Link>
-      {(!user?.sport || ['cycling', 'running', 'triathlon'].includes(user.sport)) && (
-        <Link to="/fitness" className="btn btn--ghost" style={{ marginTop: 6 }}>📊 Fitness & form — your intervals.icu trends ›</Link>
-      )}
-      <Link to="/strength" className="btn btn--ghost" style={{ marginTop: 6 }}>🏋️ Strength — estimated 1RM per exercise ›</Link>
+      <Link to="/stats" className="btn btn--ghost" style={{ marginTop: 6 }}>📊 Stats — fitness, strength & progress ›</Link>
 
       <div className="section-title">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <input
@@ -62,13 +63,13 @@ export default function Profile() {
       <p className="meta" style={{ margin: '6px 2px 4px' }}>What your coach goes by in chat — saved when you tap away.</p>
       <Link to="/profile/athlete" className="btn btn--ghost" style={{ marginTop: 8 }}>🏷️ Athlete profile — what your coach knows about you ›</Link>
 
-      <div className="section-title">Main sport {sportSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
+      <div className="section-title">Sports you do {sportSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <div className="chips">
         {SPORTS.map(([v, label]) => (
-          <button key={v} className={'chip' + ((user?.sport || '') === v ? ' chip--active' : '')} onClick={() => pickSport(v)}>{label}</button>
+          <button key={v} className={'chip' + ((user?.sports || []).includes(v) ? ' chip--active' : '')} onClick={() => toggleSport(v)}>{label}</button>
         ))}
       </div>
-      <p className="meta" style={{ margin: '6px 2px 4px' }}>Tunes your coach. Cycling/Triathlon unlock the endurance method (FTP, volume ramp).</p>
+      <p className="meta" style={{ margin: '6px 2px 4px' }}>Pick all that apply — tunes your nav & coach. Cycling/Triathlon/Running unlock the endurance method & Fitness page.</p>
 
       <div className="section-title">App</div>
       <Link to="/settings" className="btn btn--ghost">⚙️ Settings — account, connections & preferences ›</Link>

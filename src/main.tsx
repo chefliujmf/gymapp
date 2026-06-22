@@ -33,6 +33,7 @@ import AthleteProfile from './pages/AthleteProfile'
 import Settings from './pages/Settings'
 import Fitness from './pages/Fitness'
 import Strength from './pages/Strength'
+import { TrainHub, StatsHub, MoreHub } from './pages/hubs'
 import Chat from './pages/Chat'
 import Progress from './pages/Progress'
 import PlanDetail from './pages/PlanDetail'
@@ -47,7 +48,10 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Today /> },
       { path: 'plan', element: <Calendar /> },
-      { path: 'train', element: <Train /> },
+      { path: 'train', element: <TrainHub /> },
+      { path: 'gym', element: <Train /> },
+      { path: 'stats', element: <StatsHub /> },
+      { path: 'more', element: <MoreHub /> },
       { path: 'exercises', element: <Exercises /> },
       { path: 'exercises/:id', element: <ExerciseDetail /> },
       { path: 'workouts', element: <Workouts /> },

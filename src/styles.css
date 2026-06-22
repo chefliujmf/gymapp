@@ -493,6 +493,15 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .str-nums { text-align: right; flex: none; }
 .str-nums span { display: block; font-size: 13px; }
 .str-nums b { font-size: 18px; font-weight: 800; }
+
+/* hub link rows (Train / Stats / More) */
+.hub-link { display: flex; align-items: center; gap: 14px; padding: 16px; text-decoration: none; color: inherit; }
+.hub-link__ic { width: 46px; height: 46px; flex: none; border-radius: 13px; background: var(--bg-soft); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+.hub-link__ic svg { width: 22px; height: 22px; }
+.hub-link__t { flex: 1; min-width: 0; }
+.hub-link__t h3 { margin: 0; font-size: 16px; }
+.hub-link__t em { font-style: normal; font-weight: 700; font-size: 12px; color: var(--accent, #34e07d); }
+.hub-link__ch { font-size: 22px; color: var(--text-dim); }
 .tab__icon svg { width: 22px; height: 22px; }
 .tab__icon { filter: none; opacity: .6; }
 .tab--active .tab__icon { opacity: 1; }

@@ -13,7 +13,7 @@ export interface User {
   icuAthlete: string
   coachName?: string
   hasCoachProfile?: boolean
-  sport?: string // main sport (from onboarding, user-editable) — gates the coaching engine
+  sports?: string[] // the sports you do (multi-select) — drives nav hubs + engine gating
   sex?: string // from intervals.icu athlete record — gates female-athlete module
 }
 

@@ -34,8 +34,9 @@ export default function Fitness() {
   const [days, setDays] = useState(90)
   const [rows, setRows] = useState<IcuWellness[] | null>(null)
   const [pc, setPc] = useState<PowerCurve | null>(null)
-  const isEndurance = !user?.sport || ENDURANCE.includes(user.sport)
-  const isCycling = !user?.sport || ['cycling', 'triathlon'].includes(user.sport)
+  const sports = user?.sports || []
+  const isEndurance = !sports.length || sports.some((sp) => ENDURANCE.includes(sp))
+  const isCycling = !sports.length || sports.some((sp) => ['cycling', 'triathlon'].includes(sp))
 
   useEffect(() => {
     setRows(null); setPc(null)

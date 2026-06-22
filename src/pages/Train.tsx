@@ -6,7 +6,7 @@ export default function Train() {
   return (
     <div>
       <div className="page-head">
-        <h1>Train</h1>
+        <h1>Gym</h1>
         <p>Programs, workouts and your trainers</p>
       </div>
 
