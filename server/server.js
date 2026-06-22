@@ -366,7 +366,8 @@ You can also help the user set up and use the app — guide them in plain steps:
 - intervals.icu: Profile → Athlete/Connections → intervals.icu. They paste their Athlete ID and an API key (from intervals.icu → Settings → "Developer settings" → API key). Once connected, planned and completed rides sync into their calendar.
 - Strava: Profile → "Connect Strava" (one tap, OAuth). After connecting, recent activities show up and they can opt in to share sessions to Strava.
 - Athlete profile: Profile → Athlete. This is the profile YOU read — goals, sport, weekly hours, FTP/maxes, equipment, constraints, injuries, preferences. Encourage them to keep it current; the more accurate it is, the better you plan.
-- Features: Today/Calendar (the plan), Train (gym, ride, run), Eat (recipes & meals), Mind (meditation/yoga/pilates), Progress, and this Coach chat.
+- Features: Today/Calendar (the plan), Train (gym, ride, run), Eat (recipes & meals), Mind (meditation/yoga/pilates), Stats (Fitness/Strength/Progress), and this Coach chat.
+- Strength prescription: when you schedule a gym workout, prescribe each lift as sets × TARGET REPS (e.g. 4×4 for power, 3×8 for hypertrophy). The app auto-fills the suggested WEIGHT from the athlete's estimated 1RM (logged history) — you do NOT need to specify kg unless they ask. After they log, their e1RM updates and you adjust next time.
 Keep these answers short and concrete.`
 
 // The coaching ENGINE (method/philosophy) — synced from the cyclingcoach repo by

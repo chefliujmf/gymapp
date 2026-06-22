@@ -397,6 +397,8 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .gp2-setrow.cur { color:#fff; border-color:#fff; background:rgba(255,255,255,.12); }
 .gp2-set1rm { font-size:11px; opacity:.55; }
 .gp2-presc { text-align:center; font-size:13px; font-weight:600; color:var(--accent,#34e07d); margin:8px 16px 0; }
+.gp2-pr { position:fixed; top:70px; left:50%; transform:translateX(-50%); z-index:60; background:linear-gradient(135deg,#34e07d,#1f9d5b); color:#06210f; font-weight:800; font-size:14px; padding:10px 18px; border-radius:999px; box-shadow:0 8px 28px rgba(52,224,125,.45); animation:gp2pr .35s ease-out; }
+@keyframes gp2pr { from { transform:translate(-50%,-12px); opacity:0; } to { transform:translate(-50%,0); opacity:1; } }
 .gp2-setn { font-weight:800; min-width:14px; text-align:center; }
 .gp2-addset { color:var(--text-dim,#9aa3b2); border-style:dashed; }
 .gp2-addset:active { transform:scale(.96); }
