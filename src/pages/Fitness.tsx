@@ -56,6 +56,7 @@ export default function Fitness() {
   }, [rows])
 
   const fz = formZone(last(s.form))
+  const dates = (rows || []).map((d) => new Date(d.date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))
 
   return (
     <div>
@@ -84,7 +85,7 @@ export default function Fitness() {
 
               <div className="card" style={{ padding: '12px 14px' }}>
                 <div className="fit-legend"><span style={{ color: '#4aa3ff' }}>● Fitness</span><span style={{ color: '#c061ff' }}>● Fatigue</span></div>
-                <TrendChart height={170} series={[
+                <TrendChart height={170} labels={dates} series={[
                   { label: 'Fitness', color: '#4aa3ff', data: s.fitness, area: true },
                   { label: 'Fatigue', color: '#c061ff', data: s.fatigue },
                 ]} />
@@ -92,7 +93,7 @@ export default function Fitness() {
 
               <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
                 <div className="fit-legend"><span style={{ color: fz.color }}>● Form (Fitness − Fatigue)</span></div>
-                <TrendChart height={120} series={[{ label: 'Form', color: fz.color, data: s.form, area: true }]} />
+                <TrendChart height={120} labels={dates} series={[{ label: 'Form', color: fz.color, data: s.form, area: true }]} />
               </div>
 
               <div className="fit-grid">

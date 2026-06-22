@@ -66,7 +66,7 @@ export default function Strength() {
                     <span className="meta">PR {pr}{ex.points.length > 1 ? ` · ${delta >= 0 ? '+' : ''}${delta} since start` : ''}</span>
                   </div>
                 </div>
-                {ex.points.length > 1 && <TrendChart height={84} series={[{ label: '', color: 'var(--accent, #34e07d)', data: ex.points.map((p) => p.e1rm), area: true }]} />}
+                {ex.points.length > 1 && <TrendChart height={84} unit=" kg" labels={ex.points.map((p) => new Date(p.date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} series={[{ label: '', color: 'var(--accent, #34e07d)', data: ex.points.map((p) => p.e1rm), area: true }]} />}
               </div>
             )
           })}

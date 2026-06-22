@@ -465,6 +465,11 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 
 /* Fitness / trends page */
 .trend { display: block; overflow: visible; }
+.trend-wrap { position: relative; touch-action: pan-y; cursor: crosshair; }
+.trend-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: trend-draw 0.55s ease-out forwards; }
+@keyframes trend-draw { to { stroke-dashoffset: 0; } }
+.chart-tip { position: absolute; top: 2px; transform: translateX(-50%); background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 5px 9px; font-size: 11px; font-weight: 700; display: flex; flex-direction: column; gap: 1px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.4); z-index: 3; }
+.chart-tip__d { color: var(--text-dim); font-weight: 600; }
 .chart-empty { color: var(--text-dim); font-size: 13px; padding: 18px 0; text-align: center; }
 .fit-head { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
 .fit-head__stat { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }

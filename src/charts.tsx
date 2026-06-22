@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
 
 export type Series = { label: string; color: string; data: (number | null)[]; area?: boolean }
 
@@ -23,37 +23,54 @@ const range = (series: Series[]) => {
   return { min, max }
 }
 
-/** Smooth multi-series line chart with optional gradient area fill. Responsive (stretches to width). */
-export function TrendChart({ series, height = 150, pad = 10 }: { series: Series[]; height?: number; pad?: number }) {
+/** Smooth multi-series line chart: gradient area, draw-in animation, and tap/hover
+ * scrubbing with a tooltip. Responsive (stretches to width). */
+export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string }) {
   const uid = useId()
+  const [hi, setHi] = useState<number | null>(null)
   const r = range(series)
   if (!r) return <div className="chart-empty">No data yet</div>
   const H = height
   const n = Math.max(...series.map((s) => s.data.length), 1)
   const x = (i: number) => pad + (i / Math.max(1, n - 1)) * (VW - 2 * pad)
   const y = (v: number) => pad + (1 - (v - r.min) / (r.max - r.min)) * (H - 2 * pad)
+  const fv = (v: number) => (fmt ? fmt(v) : `${Math.round(v * 10) / 10}${unit}`)
+  const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - rect.left) / rect.width; setHi(Math.max(0, Math.min(n - 1, Math.round(fx * (n - 1))))) }
+  const hx = hi != null ? (hi / Math.max(1, n - 1)) * 100 : 0
   return (
-    <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
-      {[0, 0.5, 1].map((g) => { const yy = pad + g * (H - 2 * pad); return <line key={g} x1={pad} x2={VW - pad} y1={yy} y2={yy} stroke="var(--line)" strokeWidth="0.5" opacity="0.45" /> })}
-      {series.map((s, si) => {
-        const pts = s.data.map((v, i) => (v == null ? null : [x(i), y(v)] as [number, number])).filter(Boolean) as [number, number][]
-        if (!pts.length) return null
-        const path = smoothPath(pts)
-        const last = pts[pts.length - 1]
-        return (
-          <g key={si}>
-            {s.area && (
-              <>
-                <defs><linearGradient id={`${uid}-${si}`} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={s.color} stopOpacity="0.3" /><stop offset="1" stopColor={s.color} stopOpacity="0" /></linearGradient></defs>
-                <path d={`${path} L${last[0]},${H - pad} L${pts[0][0]},${H - pad} Z`} fill={`url(#${uid}-${si})`} />
-              </>
-            )}
-            <path d={path} fill="none" stroke={s.color} strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-            <circle cx={last[0]} cy={last[1]} r="3" fill={s.color} vectorEffect="non-scaling-stroke" />
-          </g>
-        )
-      })}
-    </svg>
+    <div className="trend-wrap" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHi(null)}>
+      <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
+        {[0, 0.5, 1].map((g) => { const yy = pad + g * (H - 2 * pad); return <line key={g} x1={pad} x2={VW - pad} y1={yy} y2={yy} stroke="var(--line)" strokeWidth="0.5" opacity="0.45" /> })}
+        {series.map((s, si) => {
+          const pts = s.data.map((v, i) => (v == null ? null : [x(i), y(v)] as [number, number])).filter(Boolean) as [number, number][]
+          if (!pts.length) return null
+          const path = smoothPath(pts)
+          const last = pts[pts.length - 1]
+          return (
+            <g key={si}>
+              {s.area && (
+                <>
+                  <defs><linearGradient id={`${uid}-${si}`} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={s.color} stopOpacity="0.3" /><stop offset="1" stopColor={s.color} stopOpacity="0" /></linearGradient></defs>
+                  <path d={`${path} L${last[0]},${H - pad} L${pts[0][0]},${H - pad} Z`} fill={`url(#${uid}-${si})`} />
+                </>
+              )}
+              <path className="trend-line" pathLength={1} d={path} fill="none" stroke={s.color} strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+              <circle cx={last[0]} cy={last[1]} r="3" fill={s.color} vectorEffect="non-scaling-stroke" />
+              {hi != null && s.data[hi] != null && <circle cx={x(hi)} cy={y(s.data[hi] as number)} r="3.5" fill={s.color} stroke="var(--bg)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
+            </g>
+          )
+        })}
+        {hi != null && <line x1={x(hi)} x2={x(hi)} y1={pad} y2={H - pad} stroke="var(--text-dim)" strokeWidth="0.75" opacity="0.6" vectorEffect="non-scaling-stroke" />}
+      </svg>
+      {hi != null && (
+        <div className="chart-tip" style={{ left: `${Math.max(13, Math.min(87, hx))}%` }}>
+          {labels?.[hi] && <span className="chart-tip__d">{labels[hi]}</span>}
+          {series.map((s, si) => s.data[hi] == null ? null : (
+            <span key={si} style={{ color: s.color }}>{s.label ? s.label + ' ' : ''}{fv(s.data[hi] as number)}</span>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -76,7 +93,7 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
         {ticks.map(([s]) => <line key={s} x1={lx(s)} x2={lx(s)} y1={padT} y2={H - padB} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
         <defs><linearGradient id="pc-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.25" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
         <path d={`${d} L${lx(pts0[pts0.length - 1][0])},${H - padB} L${lx(pts0[0][0])},${H - padB} Z`} fill="url(#pc-fill)" />
-        <path d={d} fill="none" stroke={color} strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <path className="trend-line" pathLength={1} d={d} fill="none" stroke={color} strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       </svg>
       <div className="curve-axis">{ticks.map(([s, label]) => <span key={s} style={{ left: `${(lx(s) / VW) * 100}%` }}>{label}</span>)}</div>
     </div>
