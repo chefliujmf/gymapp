@@ -533,6 +533,15 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .log-set input { width: 56px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px; color: var(--text); font-size: 13px; text-align: center; }
 .log-best { color: var(--accent, #34e07d); font-weight: 700; font-size: 13px; margin-top: 4px; }
 
+/* daily check-in card */
+.checkin { padding: 12px 14px; margin-top: 10px; }
+.checkin__t { font-weight: 800; font-size: 15px; margin-bottom: 8px; }
+.checkin__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0; }
+.checkin__row > span { font-size: 13px; color: var(--text-dim); }
+.checkin__opts { display: flex; gap: 6px; }
+.checkin__b { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 10px; padding: 6px 12px; font-size: 14px; cursor: pointer; text-transform: capitalize; }
+.checkin__b.on { border-color: var(--accent, #34e07d); background: rgba(52, 224, 125, 0.16); color: var(--text); }
+
 /* hub link rows (Train / Stats / More) */
 .hub-link { display: flex; align-items: center; gap: 14px; padding: 16px; text-decoration: none; color: inherit; }
 .hub-link__ic { width: 46px; height: 46px; flex: none; border-radius: 13px; background: var(--bg-soft); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }

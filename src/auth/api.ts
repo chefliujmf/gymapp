@@ -1,6 +1,8 @@
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 
 export interface Passkey { id: string; label: string; createdAt: number }
+export interface Checkin { date: string; energy?: number; sleep?: 'poor' | 'ok' | 'great'; soreness?: 'none' | 'some' | 'lots'; note?: string }
+
 export interface User {
   id: string
   username: string
@@ -66,6 +68,8 @@ export const authApi = {
   saveProfile: (info: Record<string, unknown>) => req<User>('/profile', { method: 'PUT', body: info }),
   getAthlete: () => req<{ profile: string; updatedAt: number }>('/profile/athlete'),
   saveAthlete: (profile: string) => req<{ profile: string; updatedAt: number }>('/profile/athlete', { method: 'PUT', body: { profile } }),
+  checkin: (data: Checkin) => req<Checkin>('/checkin', { method: 'POST', body: data }),
+  checkins: (from: string, to: string) => req<Checkin[]>(`/checkins?from=${from}&to=${to}`),
   saveIcu: (icuKey: string, icuAthlete: string) => req<User>('/icu', { method: 'PUT', body: { icuKey, icuAthlete } }),
   saveAvatar: (avatar: string) => req<User>('/avatar', { method: 'PUT', body: { avatar } }),
   getToken: () => req<{ token: string }>('/token'),

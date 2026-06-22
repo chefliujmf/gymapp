@@ -260,6 +260,25 @@ app.put('/auth/profile/athlete', auth, (req, res) => {
   res.json({ profile: req.user.coachProfile, updatedAt: req.user.coachProfileAt })
 })
 
+// Daily check-in (how the athlete feels) — Platyplus-collected signal the coach reads,
+// so it has something to adapt to even without intervals.icu. Light: a few taps.
+const oneOf = (v, list) => (list.includes(v) ? v : undefined)
+function upsertCheckin(user, body) {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(body?.date || '') ? body.date : new Date().toISOString().slice(0, 10)
+  user.checkins = user.checkins || []
+  const ci = { date,
+    energy: Number(body.energy) >= 1 && Number(body.energy) <= 4 ? Number(body.energy) : undefined,
+    sleep: oneOf(body.sleep, ['poor', 'ok', 'great']),
+    soreness: oneOf(body.soreness, ['none', 'some', 'lots']),
+    note: typeof body.note === 'string' ? body.note.slice(0, 200) : undefined }
+  const i = user.checkins.findIndex((x) => x.date === date)
+  if (i >= 0) user.checkins[i] = { ...user.checkins[i], ...ci }; else user.checkins.push(ci)
+  return ci
+}
+const checkinsInRange = (user, from, to) => (user.checkins || []).filter((c) => (!from || c.date >= from) && (!to || c.date <= to)).sort((a, b) => (a.date < b.date ? -1 : 1))
+app.post('/auth/checkin', auth, (req, res) => { const ci = upsertCheckin(req.user, req.body || {}); save(store); res.json(ci) })
+app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
+
 // admin: user management
 app.get('/auth/users', auth, admin, (req, res) => res.json(store.users.map(pub)))
 app.post('/auth/users', auth, admin, async (req, res) => {
@@ -391,7 +410,7 @@ function buildSystemPrompt(user) {
   if (isCyclist && COACH_ENGINE_CYCLING) p += '\n\n' + COACH_ENGINE_CYCLING
   const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
-  p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu. When your method calls for that data and you don't have it, say what you'd want to check (and that it's on intervals.icu), then ADAPT your call to what you DO have — their profile, plan, and what they tell you — rather than inventing numbers. Make plan changes with the platyplus tools.`
+  p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN (energy 1-4, sleep, soreness) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
   p += '\n\n' + APP_HELP
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
@@ -707,6 +726,9 @@ app.get('/api/intervals/activities', apiAuth, async (req, res) => {
   }))
   res.json({ connected: true, activities })
 })
+
+// Daily check-ins (how the athlete reported feeling) — coach reads these.
+app.get('/api/checkins', apiAuth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
 
 // Calendar items (meal / mind / note) — Platyplus-only, no intervals push.
 app.get('/api/items', apiAuth, (req, res) => res.json(itemsInRange(req.user, req.query.from, req.query.to)))

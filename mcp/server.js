@@ -65,6 +65,11 @@ server.tool('get_recent_activities',
   { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },
   wrap((a) => api('GET', `/api/intervals/activities?days=${a.days || 14}`)))
 
+server.tool('get_checkins',
+  "Read the athlete's recent daily check-ins (how they FELT): energy 1–4 (4=great), sleep (poor|ok|great), soreness (none|some|lots), optional note. This is the signal to adapt to when intervals.icu isn't connected — heavy legs / poor sleep / high soreness ⇒ ease off.",
+  { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },
+  wrap((a) => { const to = new Date().toISOString().slice(0, 10); const from = new Date(Date.now() - (a.days || 14) * 86400000).toISOString().slice(0, 10); return api('GET', `/api/checkins?from=${from}&to=${to}`) }))
+
 // --- training -------------------------------------------------------------
 server.tool('create_workout',
   'Schedule a strength/gym workout on a date. Mirrors to intervals.icu in the canonical [gymapp] format the app parses. Re-call with the same id to UPDATE. Send the session the coach generated as-is (warm-up + cool-down, main set ordered by equipment, unilateral moves listed for both sides) — Platyplus stores exactly what you send.',

@@ -716,6 +716,31 @@
         }
       }
     },
+    "/auth/checkin": {
+      "post": {
+        "summary": "Upsert today's daily check-in (energy 1-4, sleep poor|ok|great, soreness none|some|lots)",
+        "tags": ["checkin"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "the saved check-in" } }
+      }
+    },
+    "/auth/checkins": {
+      "get": {
+        "summary": "List the user's daily check-ins in a date range",
+        "tags": ["checkin"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } }, { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } }],
+        "responses": { "200": { "description": "check-ins" } }
+      }
+    },
+    "/api/checkins": {
+      "get": {
+        "summary": "Coach reads the athlete's daily check-ins (energy/sleep/soreness) — recovery signal",
+        "tags": ["checkin"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "check-ins" } }
+      }
+    },
     "/auth/strava/activities": {
       "get": {
         "summary": "Recent Strava activities (read; needs activity:read_all scope)",
