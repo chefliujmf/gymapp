@@ -47,7 +47,7 @@ const server = http.createServer((req, res) => {
       '--mcp-config', mcpConfig,
       '--allowedTools', 'mcp__platyplus',
       '--disallowedTools', DENY,
-      '--append-system-prompt', coachPrompt(p.coach || 'Coach'),
+      '--append-system-prompt', (typeof p.systemPrompt === 'string' && p.systemPrompt.trim()) ? p.systemPrompt : coachPrompt(p.coach || 'Coach'),
     ]
     if (p.sessionId) args.push('--resume', p.sessionId)
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' })

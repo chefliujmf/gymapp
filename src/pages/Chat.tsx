@@ -51,9 +51,9 @@ export default function Chat() {
   return (
     <div className="chat">
       <div className="chat-top">
-        <button className="back-btn" onClick={() => navigate(-1)}>‹</button>
+        <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
         <div className="chat-title">{coach}<span>your coach</span></div>
-        <button className="chat-reset" onClick={reset} title="New conversation">↻</button>
+        <button className="icon-btn" onClick={reset} aria-label="New conversation" title="New conversation">↻</button>
       </div>
 
       <div className="chat-body">

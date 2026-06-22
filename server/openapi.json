@@ -634,6 +634,57 @@
         }
       }
     },
+    "/auth/profile/athlete": {
+      "get": {
+        "summary": "Get the signed-in user's athlete coaching profile (engine-native markdown)",
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ profile, updatedAt }"
+          }
+        }
+      },
+      "put": {
+        "summary": "Replace the signed-in user's athlete coaching profile (markdown, max 60k chars)",
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profile": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ profile, updatedAt }"
+          },
+          "413": {
+            "description": "profile too long"
+          }
+        }
+      }
+    },
     "/auth/strava/activities": {
       "get": {
         "summary": "Recent Strava activities (read; needs activity:read_all scope)",

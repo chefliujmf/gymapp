@@ -80,7 +80,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').toLowerCase(); return store.users.find((u) => u.username.toLowerCase() === l || u.email === l) }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -243,7 +243,18 @@ app.put('/auth/avatar', auth, (req, res) => {
 app.put('/auth/profile', auth, (req, res) => {
   req.user.info = { ...(req.user.info || {}), ...(req.body || {}) }
   if (typeof req.body.email === 'string' && req.body.email.includes('@')) req.user.email = req.body.email.toLowerCase()
+  if (typeof req.body.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
   save(store); res.json(pub(req.user))
+})
+
+// Athlete profile — the per-user coaching profile (engine-native markdown) the
+// coach reads to personalize every answer. Reviewable/editable in Profile → Athlete.
+app.get('/auth/profile/athlete', auth, (req, res) => res.json({ profile: req.user.coachProfile || '', updatedAt: req.user.coachProfileAt || 0 }))
+app.put('/auth/profile/athlete', auth, (req, res) => {
+  const p = String(req.body?.profile ?? '')
+  if (p.length > 60000) return res.status(413).json({ error: 'profile too long (max 60k chars)' })
+  req.user.coachProfile = p; req.user.coachProfileAt = Date.now(); save(store)
+  res.json({ profile: req.user.coachProfile, updatedAt: req.user.coachProfileAt })
 })
 
 // admin: user management
@@ -337,7 +348,28 @@ const CHAT_DENY = 'Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,Task,Notebo
 // chat-helper instead of spawning locally. Set on QA/prod; unset in dev.
 const CHAT_HELPER_URL = process.env.CHAT_HELPER_URL || ''
 const CHAT_HELPER_SECRET = process.env.CHAT_HELPER_SECRET || ''
-const coachPrompt = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app helping ONE user (the signed-in account) manage THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When asked to schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). Be concise, practical and encouraging. Decline anything outside this user's training/nutrition planning.`
+const coachIdentity = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app, helping ONE user (the signed-in account) with THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When you schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). Be concise, practical and encouraging.`
+
+// The coach also helps users configure & use Platyplus itself. These steps require
+// taps in the user's browser (the coach guides, it can't do them).
+const APP_HELP = `# Helping with Platyplus (configuration & usage)
+You can also help the user set up and use the app — guide them in plain steps:
+- intervals.icu: Profile → Athlete/Connections → intervals.icu. They paste their Athlete ID and an API key (from intervals.icu → Settings → "Developer settings" → API key). Once connected, planned and completed rides sync into their calendar.
+- Strava: Profile → "Connect Strava" (one tap, OAuth). After connecting, recent activities show up and they can opt in to share sessions to Strava.
+- Athlete profile: Profile → Athlete. This is the profile YOU read — goals, sport, weekly hours, FTP/maxes, equipment, constraints, injuries, preferences. Encourage them to keep it current; the more accurate it is, the better you plan.
+- Features: Today/Calendar (the plan), Train (gym, ride, run), Eat (recipes & meals), Mind (meditation/yoga/pilates), Progress, and this Coach chat.
+Keep these answers short and concrete.`
+
+function buildSystemPrompt(user) {
+  const name = user.coachName || 'Coach'
+  let p = coachIdentity(name) + '\n\n' + APP_HELP
+  if (user.coachProfile && user.coachProfile.trim()) {
+    p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
+  } else {
+    p += `\n\n# This athlete has no profile yet\nThey haven't filled in their Athlete profile. When relevant, ask a few key questions (sport/goal, days per week, equipment, constraints, injuries) and suggest they save the answers under Profile → Athlete so you remember next time.`
+  }
+  return p
+}
 
 app.post('/auth/chat', auth, async (req, res) => {
   const message = String(req.body?.message || '').trim().slice(0, 4000)
@@ -359,7 +391,7 @@ app.post('/auth/chat', auth, async (req, res) => {
       const hr = await fetch(CHAT_HELPER_URL + '/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-chat-secret': CHAT_HELPER_SECRET },
-        body: JSON.stringify({ message, token: req.user.apiToken, coach: req.user.coachName || 'Coach', sessionId: req.user.chatSession }),
+        body: JSON.stringify({ message, token: req.user.apiToken, coach: req.user.coachName || 'Coach', systemPrompt: buildSystemPrompt(req.user), sessionId: req.user.chatSession }),
       })
       if (!hr.ok || !hr.body) { send({ error: 'coach unavailable (' + hr.status + ')' }); return pend() }
       const reader = hr.body.getReader(); const dec = new TextDecoder(); let hbuf = ''
@@ -388,7 +420,7 @@ app.post('/auth/chat', auth, async (req, res) => {
     '--mcp-config', mcpConfig,
     '--allowedTools', 'mcp__platyplus',
     '--disallowedTools', CHAT_DENY,
-    '--append-system-prompt', coachPrompt(req.user.coachName || 'Coach'),
+    '--append-system-prompt', buildSystemPrompt(req.user),
   ]
   if (req.user.chatSession) args.push('--resume', req.user.chatSession)
   const proc = spawn(CLAUDE_BIN, args, { env: process.env })
