@@ -4,7 +4,14 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, editLog, deleteLog, type WorkoutLog, type SetEntry } from '../db'
 import { localISO } from '../date'
 import { disciplineIcon } from '../ui'
+import { allWorkoutsById } from '../data/catalog'
 import type { Discipline } from '../types'
+
+// Resolve an exercise's name for a logged workout: stored name first, then the
+// catalog (older logs), else a numbered fallback.
+function exName(l: WorkoutLog, exi: number) {
+  return l.exNames?.[exi] || allWorkoutsById[l.workoutId]?.exercises?.[exi]?.name || `Exercise ${exi + 1}`
+}
 
 function startOfWeek() {
   const d = new Date()
@@ -99,8 +106,8 @@ export default function Progress() {
                   {l.sets && Object.keys(l.sets).length > 0 && (
                     <div style={{ marginTop: 8 }}>
                       {Object.entries(l.sets).map(([exi, sets]) => (
-                        <div key={exi} style={{ marginBottom: 8 }}>
-                          <div className="meta" style={{ marginBottom: 4 }}>Exercise {Number(exi) + 1}</div>
+                        <div key={exi} style={{ marginBottom: 10 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{exName(l, Number(exi))}</div>
                           {sets.map((s, si) => (
                             <div key={si} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
                               <span className="meta" style={{ width: 36 }}>set {si + 1}</span>

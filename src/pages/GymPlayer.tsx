@@ -225,7 +225,10 @@ export default function GymPlayer() {
     const setsCompleted = flat.filter((s) => s?.done).length
     const volume = flat.reduce((v, s) => v + (s?.done ? (s.weight || 0) * (s.reps || 0) : 0), 0)
     const tss = gymTSS(actualMin, w.intensity)
-    await logWorkout({ workoutId: w.workoutId, title: w.title, discipline: w.discipline, duration: actualMin, date: localISO(), sets: log, setsCompleted, volume, tss })
+    // names in executed order (index-aligned with `log`) so history is readable.
+    const exNames = order.map((e) => e.name)
+    const exIds = order.map((e) => e.exId)
+    await logWorkout({ workoutId: w.workoutId, title: w.title, discipline: w.discipline, duration: actualMin, date: localISO(), sets: log, setsCompleted, volume, tss, exNames, exIds })
   }
 
   if (!w || !cur) return <div className="page-head"><h1>No workout loaded</h1><button className="btn" onClick={() => navigate(-1)}>Back</button></div>

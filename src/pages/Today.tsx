@@ -177,15 +177,18 @@ export default function Today() {
 
   return (
     <div>
-      <div className="page-head">
-        <span className="eyebrow">{greeting}</span>
-        <h1>Ready to train?</h1>
+      <div className="page-head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <span className="eyebrow">{greeting}</span>
+          <h1>Ready to train?</h1>
+        </div>
+        <Link to="/progress" className="chip" style={{ marginTop: 6 }}>📈 History</Link>
       </div>
 
       <WeekStrip selected={selDay} onSelect={setSelDay} />
 
       {todaysLogs && todaysLogs.length > 0 && (
-        <p style={{ color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — nice.</p>
+        <Link to="/progress" style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — see history →</Link>
       )}
 
       <div className="cal-day-head" style={{ marginTop: 8 }}>
