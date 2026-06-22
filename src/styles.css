@@ -470,6 +470,12 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 @keyframes trend-draw { to { stroke-dashoffset: 0; } }
 .chart-tip { position: absolute; top: 2px; transform: translateX(-50%); background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 5px 9px; font-size: 11px; font-weight: 700; display: flex; flex-direction: column; gap: 1px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.4); z-index: 3; }
 .chart-tip__d { color: var(--text-dim); font-weight: 600; }
+.trend-y { position: absolute; left: 4px; font-size: 9px; color: var(--text-dim); pointer-events: none; }
+.trend-y--max { top: 1px; }
+.trend-y--min { bottom: 1px; }
+.trend-x { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-dim); padding: 3px 4px 0; }
+.fit-hint { font-size: 11px; color: var(--text-dim); margin: 6px 0 0; line-height: 1.35; }
+.fit-cap { font-size: 11.5px; color: var(--text-dim); margin: 1px 0 7px; line-height: 1.4; }
 .chart-empty { color: var(--text-dim); font-size: 13px; padding: 18px 0; text-align: center; }
 .fit-head { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
 .fit-head__stat { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }

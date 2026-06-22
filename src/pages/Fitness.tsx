@@ -19,11 +19,12 @@ function formZone(v: number | null) {
   return { label: 'High risk', color: '#ff5d5d' }
 }
 
-function MiniCard({ title, value, unit, series, bars, color }: { title: string; value: number | null; unit?: string; series?: Series; bars?: (number | null)[]; color?: string }) {
+function MiniCard({ title, value, unit, hint, series, bars, color }: { title: string; value: number | null; unit?: string; hint?: string; series?: Series; bars?: (number | null)[]; color?: string }) {
   return (
     <div className="fit-mini">
       <div className="fit-mini__head"><span>{title}</span><b>{fmt(value, unit)}</b></div>
       {bars ? <BarChart data={bars} color={color} height={56} /> : series ? <TrendChart series={[series]} height={56} pad={6} /> : null}
+      {hint && <p className="fit-hint">{hint}</p>}
     </div>
   )
 }
@@ -78,15 +79,17 @@ export default function Fitness() {
 
           {rows === null ? <p className="meta">Loading…</p> : !rows.length ? <p className="meta">No fitness data in this range.</p> : (
             <>
+              <p className="meta" style={{ margin: '0 2px 10px' }}>Showing your <b>latest</b> value on each card — tap any chart to scrub past days.</p>
               <div className="fit-head">
                 <div className="fit-head__stat"><span>Fitness</span><b style={{ color: '#4aa3ff' }}>{fmt(last(s.fitness))}</b></div>
                 <div className="fit-head__stat"><span>Fatigue</span><b style={{ color: '#c061ff' }}>{fmt(last(s.fatigue))}</b></div>
                 <div className="fit-head__stat"><span>Form</span><b style={{ color: fz.color }}>{fmt(last(s.form))}</b><em style={{ color: fz.color }}>{fz.label}</em></div>
               </div>
+              <p className="fit-cap"><b>Fitness</b> = your built-up fitness (rolling 6-week load). <b>Fatigue</b> = recent tiredness (last week). <b>Form</b> = Fitness − Fatigue: <b style={{ color: '#34e07d' }}>positive</b> = fresh/tapered, <b style={{ color: '#ff5d5d' }}>negative</b> = fatigued (building hard).</p>
 
               <div className="card" style={{ padding: '12px 14px' }}>
                 <div className="fit-legend"><span style={{ color: '#4aa3ff' }}>● Fitness</span><span style={{ color: '#c061ff' }}>● Fatigue</span></div>
-                <TrendChart height={170} labels={dates} series={[
+                <TrendChart height={170} axes labels={dates} series={[
                   { label: 'Fitness', color: '#4aa3ff', data: s.fitness, area: true },
                   { label: 'Fatigue', color: '#c061ff', data: s.fatigue },
                 ]} />
@@ -94,21 +97,22 @@ export default function Fitness() {
 
               <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
                 <div className="fit-legend"><span style={{ color: fz.color }}>● Form (Fitness − Fatigue)</span></div>
-                <TrendChart height={120} labels={dates} series={[{ label: 'Form', color: fz.color, data: s.form, area: true }]} />
+                <TrendChart height={120} axes labels={dates} series={[{ label: 'Form', color: fz.color, data: s.form, area: true }]} />
               </div>
 
               <div className="fit-grid">
-                <MiniCard title="VO₂max (est.)" value={last(s.vo2)} series={{ label: '', color: '#34e07d', data: s.vo2, area: true }} />
-                <MiniCard title="eFTP" value={last(s.eftp)} unit=" W" series={{ label: '', color: '#ffb020', data: s.eftp }} />
-                <MiniCard title="Weight" value={last(s.weight)} unit=" kg" series={{ label: '', color: '#e8e8ee', data: s.weight }} />
-                <MiniCard title="HRV" value={last(s.hrv)} series={{ label: '', color: '#ff6b9d', data: s.hrv, area: true }} />
-                <MiniCard title="Resting HR" value={last(s.rhr)} unit=" bpm" series={{ label: '', color: '#ff5d5d', data: s.rhr }} />
-                <MiniCard title="Sleep" value={last(s.sleep)} unit=" h" bars={s.sleep} color="#7a8cff" />
-                <MiniCard title="Daily load" value={last(s.load)} bars={s.load} color="#9b6bff" />
+                <MiniCard title="VO₂max (est.)" value={last(s.vo2)} hint="Aerobic engine size (ml/kg/min). Higher = fitter. Estimated from eFTP ÷ weight." series={{ label: '', color: '#34e07d', data: s.vo2, area: true }} />
+                <MiniCard title="eFTP" value={last(s.eftp)} unit=" W" hint="Estimated threshold power — watts you can hold ~1 hour. Higher = stronger." series={{ label: '', color: '#ffb020', data: s.eftp }} />
+                <MiniCard title="Weight" value={last(s.weight)} unit=" kg" hint="Body weight." series={{ label: '', color: '#e8e8ee', data: s.weight }} />
+                <MiniCard title="HRV" value={last(s.hrv)} hint="Heart-rate variability (ms). Above your usual = recovered; a drop = fatigue/stress." series={{ label: '', color: '#ff6b9d', data: s.hrv, area: true }} />
+                <MiniCard title="Resting HR" value={last(s.rhr)} unit=" bpm" hint="Resting heart rate. Lower than usual = recovered; a spike = tired/unwell." series={{ label: '', color: '#ff5d5d', data: s.rhr }} />
+                <MiniCard title="Sleep" value={last(s.sleep)} unit=" h" hint="Hours slept per night." bars={s.sleep} color="#7a8cff" />
+                <MiniCard title="Training load / day" value={last(s.load)} hint="How hard each day was (TSS — duration × intensity). Taller bar = harder day." bars={s.load} color="#9b6bff" />
               </div>
               {isCycling && pc && (
                 <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
-                  <div className="fit-legend"><span style={{ color: '#34e07d' }}>● Power curve (best W by duration)</span></div>
+                  <div className="fit-legend"><span style={{ color: '#34e07d' }}>● Power curve</span></div>
+                  <p className="fit-cap">The most power you can hold for each duration — sprints on the left (seconds), endurance on the right (hours). Higher = stronger.</p>
                   <PowerCurveChart secs={pc.secs} watts={pc.watts} />
                   <div className="be-row">
                     {([[5, '5s'], [60, '1m'], [300, '5m'], [1200, '20m']] as [number, string][]).map(([d, label]) => {
@@ -118,7 +122,7 @@ export default function Fitness() {
                   </div>
                 </div>
               )}
-              <p className="meta" style={{ marginTop: 10 }}>VO₂max is estimated from eFTP ÷ weight (Coggan). Data is read live from intervals.icu.</p>
+              <p className="meta" style={{ marginTop: 10 }}>All read live from intervals.icu — Platyplus doesn't store these. The number on each card is your most recent day.</p>
             </>
           )}
         </>

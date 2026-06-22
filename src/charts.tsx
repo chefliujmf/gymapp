@@ -25,7 +25,7 @@ const range = (series: Series[]) => {
 
 /** Smooth multi-series line chart: gradient area, draw-in animation, and tap/hover
  * scrubbing with a tooltip. Responsive (stretches to width). */
-export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string }) {
+export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean }) {
   const uid = useId()
   const [hi, setHi] = useState<number | null>(null)
   const r = range(series)
@@ -38,7 +38,9 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
   const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - rect.left) / rect.width; setHi(Math.max(0, Math.min(n - 1, Math.round(fx * (n - 1))))) }
   const hx = hi != null ? (hi / Math.max(1, n - 1)) * 100 : 0
   return (
+    <div className="trend-box">
     <div className="trend-wrap" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHi(null)}>
+      {axes && <><span className="trend-y trend-y--max">{fv(r.max)}</span><span className="trend-y trend-y--min">{fv(r.min)}</span></>}
       <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
         {[0, 0.5, 1].map((g) => { const yy = pad + g * (H - 2 * pad); return <line key={g} x1={pad} x2={VW - pad} y1={yy} y2={yy} stroke="var(--line)" strokeWidth="0.5" opacity="0.45" /> })}
         {series.map((s, si) => {
@@ -70,6 +72,8 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
           ))}
         </div>
       )}
+    </div>
+    {axes && labels && labels.length > 1 && <div className="trend-x"><span>{labels[0]}</span><span>{labels[labels.length - 1]}</span></div>}
     </div>
   )
 }
