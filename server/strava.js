@@ -64,10 +64,12 @@ async function accessToken(user, persist) {
   return s.accessToken
 }
 
-/** Recent activities for a connected user, trimmed to what the app shows. */
+/** Recent activities for a connected user, trimmed to what the app shows.
+ *  Hard-capped to the last 2 weeks — never pulls older history. */
 export async function stravaActivities(user, perPage = 15, persist) {
   const token = await accessToken(user, persist)
-  const r = await fetch(`${API}/athlete/activities?per_page=${Math.min(50, perPage)}`, {
+  const after = Math.floor(Date.now() / 1000) - 14 * 24 * 3600 // last 2 weeks only
+  const r = await fetch(`${API}/athlete/activities?after=${after}&per_page=${Math.min(50, perPage)}`, {
     headers: { authorization: 'Bearer ' + token },
   })
   if (!r.ok) throw new Error(`strava activities ${r.status}: ${await r.text()}`)
