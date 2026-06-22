@@ -350,6 +350,37 @@
         }
       }
     },
+    "/auth/plans/sync": {
+      "post": {
+        "summary": "Import intervals.icu-origin planned workouts into Platyplus (Platyplus then owns them)",
+        "tags": [
+          "plans"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "string", "format": "date" },
+                  "to": { "type": "string", "format": "date" }
+                },
+                "required": ["from", "to"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "{ imported, scanned } or { skipped }" },
+          "400": { "description": "from + to required" }
+        }
+      }
+    },
     "/auth/plans": {
       "get": {
         "summary": "List the signed-in user's workout plans (session auth)",

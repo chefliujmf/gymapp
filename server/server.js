@@ -290,6 +290,12 @@ app.get('/auth/plans', auth, (req, res) => res.json(plansInRange(req.user, req.q
 // Calendar authoring (session): create/update/delete workout plans from the UI
 // — same path as the coach API, so it auto-pushes to intervals.
 app.post('/auth/plans', auth, async (req, res) => { const r = await upsertPlan(req.user, req.body); res.status(r.status).json(r.body) })
+// Import intervals.icu-origin planned workouts into Platyplus (Platyplus then owns them).
+app.post('/auth/plans/sync', auth, async (req, res) => {
+  const from = req.body?.from || req.query.from, to = req.body?.to || req.query.to
+  if (!from || !to) return res.status(400).json({ error: 'from + to (YYYY-MM-DD) required' })
+  res.json(await reconcileFromIcu(req.user, from, to))
+})
 app.delete('/auth/plans/:id', auth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
 
 // Non-workout calendar items (meal / mind / note) — Platyplus only, no intervals push.
@@ -530,6 +536,7 @@ async function upsertPlan(user, body) {
   const plan = {
     id: body.id, date: body.date, sport: body.sport, title: body.title,
     notes: body.notes || '', updatedAt: Date.now(),
+    origin: i >= 0 ? (user.plans[i].origin || 'platyplus') : 'platyplus',
     icuEventId: i >= 0 ? user.plans[i].icuEventId : undefined,
     ...(body.sport === 'gym'
       ? { rounds: Number(body.rounds) || 1, exercises: Array.isArray(body.exercises) ? body.exercises : [] }
@@ -544,6 +551,46 @@ async function deletePlanById(user, id) {
   const plan = (user.plans || []).find((x) => x.id === id)
   await deleteIcuEvent(user, plan)
   user.plans = (user.plans || []).filter((x) => x.id !== id); save(store)
+}
+
+// --- intervals.icu -> Platyplus import (reconcile) -------------------------
+// The mirror is Platyplus-first + PLATYPLUS-WINS: plans created here push OUT to
+// intervals (above). Workouts that originate IN intervals.icu are imported ONCE
+// into user.plans and thereafter OWNED by Platyplus (its later edits push back
+// over intervals). This function only READS intervals and writes to our own store
+// — it never mutates the intervals calendar, so it is safe to run repeatedly.
+function icuEventToPlan(ev) {
+  const date = String(ev.start_date_local || '').slice(0, 10)
+  const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
+  const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: ev.description || '', origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
+  if (sport === 'ride' || sport === 'run') {
+    plan.segments = (ev.workout_doc?.steps || []).map((s) => ({ duration: Number(s.duration) || 0, powerStart: Number(s.power?.start) || 0, powerEnd: Number(s.power?.end) || 0, ...(s.text ? { label: s.text } : {}) }))
+  } else {
+    plan.rounds = 1; plan.exercises = [] // gym structure stays in notes; the client parses it
+  }
+  return plan
+}
+async function reconcileFromIcu(user, from, to) {
+  if (!user.icuKey) return { skipped: 'no intervals key' }
+  const ath = user.icuAthlete || 'i28814'
+  let events
+  try {
+    const r = await icuFetch(user, `/athlete/${ath}/events?oldest=${from}&newest=${to}`)
+    if (!r.ok) return { error: `fetch ${r.status}` }
+    events = await r.json()
+  } catch (e) { return { error: String(e.message || e) } }
+  user.plans = user.plans || []
+  const ownedIcuIds = new Set(user.plans.map((p) => p.icuEventId).filter(Boolean))
+  let imported = 0
+  for (const ev of events || []) {
+    if (ev.category && ev.category !== 'WORKOUT') continue
+    if (!['Ride', 'Run', 'WeightTraining'].includes(ev.type)) continue
+    // Already mirrored (we own its event id) or shares our plan id → skip (Platyplus wins).
+    if (ownedIcuIds.has(ev.id) || (ev.external_id && user.plans.some((p) => p.id === ev.external_id))) continue
+    user.plans.push(icuEventToPlan(ev)); imported++
+  }
+  if (imported) save(store)
+  return { imported, scanned: (events || []).length }
 }
 
 // ---- calendar items (meal/mind/note) — shared by the UI (/auth) and API (/api).
