@@ -146,6 +146,34 @@ app.post('/auth/passkey/login/verify', async (req, res) => {
   finally { challenges.delete('login:' + req.body.uid) }
 })
 
+// Usernameless (discoverable) passkey login — no username needed. The device
+// offers the passkeys it holds for this site; the credential id identifies the
+// user. The username-first endpoints above stay as a fallback.
+app.post('/auth/passkey/login/begin', async (req, res) => {
+  const options = await generateAuthenticationOptions({ rpID: RP_ID, userVerification: 'preferred' })
+  challenges.set('anon:' + options.challenge, Date.now())
+  res.json(options)
+})
+app.post('/auth/passkey/login/finish', async (req, res) => {
+  const resp = req.body.response
+  let challenge
+  try { challenge = JSON.parse(Buffer.from(resp.response.clientDataJSON, 'base64url').toString()).challenge } catch { return res.status(400).json({ error: 'Bad response' }) }
+  if (!challenges.has('anon:' + challenge)) return res.status(400).json({ error: 'Unknown or expired challenge' })
+  const u = store.users.find((x) => x.passkeys?.some((p) => p.id === resp.id))
+  const pk = u?.passkeys?.find((p) => p.id === resp.id)
+  if (!u || !pk) { challenges.delete('anon:' + challenge); return res.status(404).json({ error: 'Passkey not recognised — sign in with your password, then add a passkey on this device.' }) }
+  try {
+    const { verified, authenticationInfo } = await verifyAuthenticationResponse({
+      response: resp, expectedChallenge: challenge, expectedOrigin: ORIGIN, expectedRPID: RP_ID,
+      credential: { id: pk.id, publicKey: Buffer.from(pk.publicKey, 'base64url'), counter: pk.counter || 0, transports: pk.transports },
+    })
+    if (!verified) return res.status(401).json({ error: 'Passkey verification failed' })
+    pk.counter = authenticationInfo.newCounter; save(store)
+    setSession(res, u); res.json(pub(u))
+  } catch (e) { res.status(400).json({ error: String(e.message || e) }) }
+  finally { challenges.delete('anon:' + challenge) }
+})
+
 // change own password
 app.post('/auth/password/change', auth, (req, res) => {
   if (!bcrypt.compareSync(String(req.body.current || ''), req.user.passwordHash)) return res.status(400).json({ error: 'Current password is wrong' })
@@ -176,7 +204,7 @@ app.post('/auth/passkey/register/options', auth, async (req, res) => {
   const options = await generateRegistrationOptions({
     rpName: RP_NAME, rpID: RP_ID, userName: req.user.username, userID: new TextEncoder().encode(req.user.id),
     attestationType: 'none', excludeCredentials: req.user.passkeys.map((p) => ({ id: p.id })),
-    authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+    authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
   })
   challenges.set('reg:' + req.user.id, options.challenge); res.json(options)
 })
