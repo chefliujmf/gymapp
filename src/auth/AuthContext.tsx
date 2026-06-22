@@ -37,15 +37,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Use the real backend (dev runs server.js on :8088 via the vite proxy).
         await apply(await authApi.me())
       } catch (e) {
-        const httpErr = e instanceof Error && /^HTTP \d/.test(e.message)
-        if (DEV && httpErr) {
-          // dev + signed out but the backend IS up → auto-login for REAL with the
-          // seed creds, so server-auth features (chat, Strava OAuth) actually work
-          // without a manual login. Falls back to the login screen if that fails.
+        // A server RESPONSE (e.g. 401) carries a numeric status → backend is up,
+        // we're just signed out. A network failure (no backend) has no status.
+        const status = (e as { status?: number })?.status
+        if (DEV && typeof status === 'number') {
+          // dev + signed out but backend up → auto-login for REAL with the seed
+          // creds, so server-auth features (chat, Strava OAuth) work without a
+          // manual login. Falls back to the login screen if that fails.
           try { await apply(await authApi.login('jmfiset', 'devpass')) } catch { setUser(null) }
-        } else if (DEV && !httpErr) {
-          // No backend at all (plain `npm run dev`) → client-only mock so the shell
-          // stays usable; server routes will 401 (run `npm run dev:full` for those).
+        } else if (DEV) {
+          // No backend reachable (plain `npm run dev`) → client-only mock so the
+          // shell stays usable; server routes will 401 (use `npm run dev:full`).
           await apply({ id: 'dev', username: 'dev', email: 'dev@local', role: 'admin', info: {}, avatar: '', passkeys: [], hasIcuKey: true, icuAthlete: 'i28814' })
         } else {
           setUser(null)

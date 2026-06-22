@@ -21,7 +21,11 @@ async function req<T>(path: string, opts: { method?: string; body?: unknown } = 
     credentials: 'same-origin',
   })
   const data = res.status === 204 ? null : await res.json().catch(() => null)
-  if (!res.ok) throw new Error((data && (data as { error?: string }).error) || `HTTP ${res.status}`)
+  if (!res.ok) {
+    const err = new Error((data && (data as { error?: string }).error) || `HTTP ${res.status}`) as Error & { status?: number }
+    err.status = res.status // so callers can tell a server error (e.g. 401) from a network failure
+    throw err
+  }
   return data as T
 }
 
