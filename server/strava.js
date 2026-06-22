@@ -64,11 +64,15 @@ async function accessToken(user, persist) {
   return s.accessToken
 }
 
+// How far back to pull Strava activities. 14 days for now (testing) — change
+// later via STRAVA_LOOKBACK_DAYS in the env, no code deploy needed.
+const LOOKBACK_DAYS = Number(process.env.STRAVA_LOOKBACK_DAYS) || 14
+
 /** Recent activities for a connected user, trimmed to what the app shows.
- *  Hard-capped to the last 2 weeks — never pulls older history. */
+ *  Capped to the last LOOKBACK_DAYS — never pulls older history. */
 export async function stravaActivities(user, perPage = 15, persist) {
   const token = await accessToken(user, persist)
-  const after = Math.floor(Date.now() / 1000) - 14 * 24 * 3600 // last 2 weeks only
+  const after = Math.floor(Date.now() / 1000) - LOOKBACK_DAYS * 24 * 3600
   const r = await fetch(`${API}/athlete/activities?after=${after}&per_page=${Math.min(50, perPage)}`, {
     headers: { authorization: 'Bearer ' + token },
   })
