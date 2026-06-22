@@ -51,6 +51,7 @@ export default function Profile() {
       {(!user?.sport || ['cycling', 'running', 'triathlon'].includes(user.sport)) && (
         <Link to="/fitness" className="btn btn--ghost" style={{ marginTop: 6 }}>📊 Fitness & form — your intervals.icu trends ›</Link>
       )}
+      <Link to="/strength" className="btn btn--ghost" style={{ marginTop: 6 }}>🏋️ Strength — estimated 1RM per exercise ›</Link>
 
       <div className="section-title">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <input
