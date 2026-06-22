@@ -26,7 +26,7 @@ export function TrainHub() {
     { label: 'Ride', sub: 'Cycling workouts & builder', to: '/cycle', icon: <Bike strokeWidth={1.75} />, mine: mine(['cycling', 'triathlon']) },
     { label: 'Run', sub: 'Runs & pace work', to: '/run', icon: <Footprints strokeWidth={1.75} />, mine: mine(['running', 'triathlon']) },
     { label: 'Gym', sub: 'Strength programs & workouts', to: '/gym', icon: <Dumbbell strokeWidth={1.75} />, mine: mine(['strength']) },
-    { label: 'Mind', sub: 'Yoga, mobility, meditation', to: '/mind', icon: <Brain strokeWidth={1.75} />, mine: mine(['yoga']) },
+    { label: 'Mind', sub: 'Yoga, pilates, meditation', to: '/mind', icon: <Brain strokeWidth={1.75} />, mine: mine(['yoga', 'pilates', 'meditation']) },
   ].sort((a, b) => Number(b.mine) - Number(a.mine))
   return (
     <div>
