@@ -13,6 +13,12 @@ services:
       - "./auth.env"          # RP_ID, ORIGIN, SEED_* — secrets, not in git
     environment:
       CATALOG_DIR: /catalog   # exercise catalog for the coach API /api/exercises search
+      # Coach chat: proxy to the host chat-helper (claude can't run in this Alpine
+      # container). Prod has its own helper instance on 8791 -> Coach API on 8088.
+      # CHAT_HELPER_SECRET comes from auth.env.
+      CHAT_HELPER_URL: http://host.docker.internal:8791
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - "./dist:/usr/share/nginx/html:ro"
       - "./media:/srv/media:ro"   # self-hosted media — served at /media/* by server.js
