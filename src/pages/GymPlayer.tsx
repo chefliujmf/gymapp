@@ -3,7 +3,8 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { useBeeper, useNow, useWakeLock } from '../hooks'
-import { getSetting, setSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
+import { db, getSetting, setSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
+import { e1rm, weightForReps, roundLoad, bestE1rmByExercise } from '../strength'
 import { getGymSession } from '../plan'
 import { localISO } from '../date'
 import { gymTSS, type GymIntensity } from '../tss'
@@ -114,6 +115,7 @@ export default function GymPlayer() {
   const [pausedAt, setPausedAt] = useState(0)
   const [done, setDone] = useState(false)
   const [log, setLog] = useState<Record<number, SetEntry[]>>({})
+  const [e1rmMap, setE1rmMap] = useState<Map<string, { e1rm: number; date: string }>>(new Map())
   const [startedAt, setStartedAt] = useState(() => Date.now())   // wall-clock start (real duration)
   const [started, setStarted] = useState(false)                  // false = pre-workout preview (estimate + reorder)
   const [order, setOrder] = useState<PlayerEx[]>([])             // exercise order (reorderable in preview)
@@ -136,6 +138,7 @@ export default function GymPlayer() {
     }
     setIdx(0); setSegStart(Date.now()); setStartedAt(Date.now()); setStarted(false)   // fresh -> show preview
     lastLogForWorkout(w.workoutId).then((prev) => { if (prev?.sets) setLog(prev.sets) })
+    db.logs.toArray().then((logs) => setE1rmMap(bestE1rmByExercise(logs)))   // for the e1RM → weight prescription
   }, [w])
 
   // Rough per-exercise time estimate: reps ~3s TUT each + rest; timed = work + rest.
@@ -286,7 +289,10 @@ export default function GymPlayer() {
   const prevSet = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 2]) : undefined
   // Carry-forward is a PLACEHOLDER suggestion only — it never overrides what you type
   // or clear (that was the "can't delete the weight" bug). Done-set falls back to it.
-  const suggestWeight = prevSet?.weight ?? (cur.kind === 'set' ? cur.weight : undefined)
+  // Coach prescribes reps → the app fills the weight from your estimated 1RM (best ~4mo).
+  const curE1rm = cur.kind === 'set' ? e1rmMap.get(cur.ex.name)?.e1rm : undefined
+  const presc = cur.kind === 'set' && curE1rm && cur.reps ? roundLoad(weightForReps(curE1rm, cur.reps)) : undefined
+  const suggestWeight = prevSet?.weight ?? presc ?? (cur.kind === 'set' ? cur.weight : undefined)
   const suggestReps = prevSet?.reps ?? (cur.kind === 'set' ? cur.reps : undefined)
   const curExNo = cur.kind === 'set' ? cur.exNo : cur.kind === 'timed' ? cur.exNo : cur.kind === 'rest' ? cur.nextNo : 0
   const workoutElapsed = Math.max(0, Math.floor((now - startedAt) / 1000))
@@ -334,6 +340,8 @@ export default function GymPlayer() {
         <div className={'gp2-timer' + (sec <= 3 && showVid ? ' gp2-timer--pulse' : '') + (cur.kind === 'rest' ? ' gp2-timer--rest' : '')}>{clock(remaining)}</div>
       )}
 
+      {cur.kind === 'set' && presc != null && <div className="gp2-presc">💡 ≈ {presc}{unit} for {cur.reps} reps — from your est. 1RM {Math.round(curE1rm || 0)}{unit}</div>}
+
       {cur.kind === 'set' && (
         <div className="gp2-setlist">
           {Array.from({ length: cur.sets }, (_, k) => {
@@ -345,6 +353,7 @@ export default function GymPlayer() {
               <button key={sn} className={'gp2-setrow' + (isCur ? ' cur' : '') + (e?.done ? ' done' : '')} onClick={() => stepI >= 0 && jump(stepI)}>
                 <span className="gp2-setn">{e?.done ? '✓' : isCur ? '▸' : sn}</span>
                 <span className="gp2-setv">{e?.weight != null ? `${e.weight}${unit}` : '—'} × {e?.reps != null ? e.reps : cur.reps}</span>
+                <span className="gp2-set1rm">{e?.weight && e?.reps ? `1RM ${Math.round(e1rm(e.weight, e.reps))}${unit}` : ''}</span>
               </button>
             )
           })}

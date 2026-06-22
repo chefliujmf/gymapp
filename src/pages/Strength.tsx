@@ -3,15 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { TrendChart } from '../charts'
-
-// Estimated 1-rep max — average of Epley and Brzycki (most accurate in the 2-10 rep
-// range; Epley leans 6-10, Brzycki 1-6). reps=1 → the lifted weight.
-function e1rm(weight: number, reps: number): number {
-  if (reps <= 1) return weight
-  const epley = weight * (1 + reps / 30)
-  const brzycki = reps < 37 ? (weight * 36) / (37 - reps) : epley
-  return (epley + brzycki) / 2
-}
+import { e1rm } from '../strength'
 
 interface ExSeries { name: string; points: { date: string; e1rm: number }[] }
 
