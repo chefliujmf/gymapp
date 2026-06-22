@@ -415,7 +415,7 @@ function buildSystemPrompt(user) {
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
   } else {
-    p += `\n\n# This athlete has no profile yet\nThey haven't filled in their Athlete profile. When relevant, ask a few key questions (sport/goal, days per week, equipment, constraints, injuries) and suggest they save the answers under Profile → Athlete so you remember next time.`
+    p += `\n\n# ONBOARDING — this athlete has no profile yet\nWarmly interview them to build their profile: which sport(s) they do, their goal, days/week + time available, equipment/gym access, any constraints or injuries, food preferences, and how they like to be coached. Ask a couple of questions at a time, conversationally — not a long form. As soon as you know their sport(s), call set_sports; once you have enough, call set_athlete_profile with a clean markdown profile so you remember it every session. Keep building it as you learn more. Confirm what you saved in one short line.`
   }
   return p
 }
@@ -729,6 +729,19 @@ app.get('/api/intervals/activities', apiAuth, async (req, res) => {
 
 // Daily check-ins (how the athlete reported feeling) — coach reads these.
 app.get('/api/checkins', apiAuth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
+
+// Coach WRITES the athlete profile/sports (onboarding: interview → persist).
+app.put('/api/profile/athlete', apiAuth, (req, res) => {
+  const p = String(req.body?.profile ?? '')
+  if (p.length > 60000) return res.status(413).json({ error: 'profile too long' })
+  req.user.coachProfile = p; req.user.coachProfileAt = Date.now(); save(store)
+  res.json({ ok: true, length: p.length })
+})
+app.put('/api/profile', apiAuth, (req, res) => {
+  if (Array.isArray(req.body?.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)
+  if (typeof req.body?.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
+  save(store); res.json({ ok: true, sports: req.user.sports || [], coachName: req.user.coachName || '' })
+})
 
 // Calendar items (meal / mind / note) — Platyplus-only, no intervals push.
 app.get('/api/items', apiAuth, (req, res) => res.json(itemsInRange(req.user, req.query.from, req.query.to)))

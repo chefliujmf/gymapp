@@ -10,7 +10,26 @@ export default function Chat() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [coach, setCoach] = useState('Coach')
+  const [listening, setListening] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recRef = useRef<any>(null)
   const endRef = useRef<HTMLDivElement>(null)
+
+  // Voice input — speak instead of type (great for non-technical users + onboarding).
+  function toggleMic() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SR) { alert('Voice input isn’t supported in this browser — try Chrome.'); return }
+    if (listening) { recRef.current?.stop(); return }
+    const rec = new SR()
+    rec.lang = navigator.language || 'en-US'
+    rec.interimResults = false
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => { const t = e.results[e.results.length - 1][0].transcript; setInput((p) => (p ? p + ' ' : '') + t) }
+    rec.onerror = () => setListening(false)
+    rec.onend = () => setListening(false)
+    recRef.current = rec; setListening(true); rec.start()
+  }
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, busy])
 
@@ -85,6 +104,7 @@ export default function Chat() {
           placeholder={`Message ${coach}…`}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
         />
+        <button className={'chat-mic' + (listening ? ' chat-mic--on' : '')} onClick={toggleMic} aria-label="Voice input" title="Speak">{listening ? '⏹' : '🎤'}</button>
         <button className="chat-send" onClick={send} disabled={busy || !input.trim()}>↑</button>
       </div>
     </div>
