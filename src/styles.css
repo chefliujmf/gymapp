@@ -539,6 +539,14 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .hub-link__t h3 { margin: 0; font-size: 16px; }
 .hub-link__t em { font-style: normal; font-weight: 700; font-size: 12px; color: var(--accent, #34e07d); }
 .hub-link__ch { font-size: 22px; color: var(--text-dim); }
+
+/* collapsible settings categories */
+.settings-group { border: 1px solid var(--line); border-radius: 14px; margin-bottom: 10px; overflow: hidden; background: var(--bg-soft); }
+.settings-group__head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; background: none; border: 0; color: var(--text); cursor: pointer; text-align: left; }
+.settings-group__t strong { font-size: 15px; }
+.settings-group__t .meta { display: block; font-size: 12px; margin-top: 2px; }
+.settings-group__body { padding: 0 16px 14px; }
+.settings-group__body .section-title:first-child { margin-top: 4px; }
 .tab__icon svg { width: 22px; height: 22px; }
 .tab__icon { filter: none; opacity: .6; }
 .tab--active .tab__icon { opacity: 1; }

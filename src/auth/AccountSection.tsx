@@ -21,7 +21,7 @@ function resizeImage(file: File, size: number): Promise<string> {
   })
 }
 
-export default function AccountSection() {
+export default function AccountSection({ only }: { only?: 'account' | 'connections' } = {}) {
   const { user, apply } = useAuth()
   const fileRef = useRef<HTMLInputElement>(null)
   if (!user) return null
@@ -88,6 +88,7 @@ export default function AccountSection() {
 
   return (
     <>
+      {(!only || only === 'account') && <>
       <div className="section-title">Account</div>
       <div className="card" style={{ padding: '12px 14px' }}>
         <div className="card-row" style={{ gap: 12, alignItems: 'center' }}>
@@ -127,7 +128,9 @@ export default function AccountSection() {
         ? <button className="btn btn--ghost" onClick={addPasskey}><Fingerprint size={18} /> Add a passkey on this device</button>
         : <p className="meta">This browser doesn't support passkeys (use Chrome/Edge).</p>}
       {pkMsg && <p className="meta" style={{ marginTop: 8 }}>{pkMsg}</p>}
+      </>}
 
+      {(!only || only === 'connections') && <>
       <div className="section-title">intervals.icu (your account)</div>
       {user.hasIcuKey ? (
         <p className="meta" style={{ marginTop: -4 }}>✓ Key stored on your account — syncs on every device.</p>
@@ -177,6 +180,7 @@ export default function AccountSection() {
         <button className="btn btn--ghost" onClick={rotate} style={{ width: 'auto', padding: '8px 14px' }}><RefreshCw size={16} /> Rotate</button>
       </div>
       {tkMsg && <p className="meta" style={{ marginTop: 8 }}>{tkMsg}</p>}
+      </>}
     </>
   )
 }
