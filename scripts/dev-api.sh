@@ -17,4 +17,6 @@ export SEED_PASSWORD=devpass
 # Coach chatbot uses the owner's Claude CLI (subscription). Full path so node's
 # spawn finds it regardless of PATH.
 export CLAUDE_BIN="${CLAUDE_BIN:-$HOME/.local/bin/claude}"
-exec node server/server.js
+# --watch: auto-restart on any server/*.js change so dev never serves stale code
+# (a long-lived plain `node` kept loading the old routes/engine/profile in memory).
+exec node --watch server/server.js

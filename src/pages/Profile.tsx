@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting, setSetting, clearLogs } from '../db'
@@ -14,6 +15,7 @@ export default function Profile() {
   const coachName = useLiveQuery(() => getSetting('coachName'))
   const stills = useLiveQuery(() => getSetting('exerciseStills'))
 
+  const [coachSaved, setCoachSaved] = useState(false)
   const totalMin = (logs ?? []).reduce((s, l) => s + l.duration, 0)
 
   async function clearData() {
@@ -40,13 +42,13 @@ export default function Profile() {
 
       <AccountSection />
 
-      <div className="section-title">Your coach</div>
+      <div className="section-title">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <input
         className="search" placeholder="e.g. Tadej" value={coachName ?? ''}
-        onChange={(e) => setSetting('coachName', e.target.value)}
-        onBlur={(e) => { authApi.saveProfile({ coachName: e.target.value.trim() }).catch(() => {}) }}
+        onChange={(e) => { setSetting('coachName', e.target.value); setCoachSaved(false) }}
+        onBlur={(e) => { authApi.saveProfile({ coachName: e.target.value.trim() }).then(() => { setCoachSaved(true); setTimeout(() => setCoachSaved(false), 2500) }).catch(() => {}) }}
       />
-      <p className="meta" style={{ margin: '6px 2px 4px' }}>What your coach goes by in chat.</p>
+      <p className="meta" style={{ margin: '6px 2px 4px' }}>What your coach goes by in chat — saved when you tap away.</p>
       <Link to="/profile/athlete" className="btn btn--ghost" style={{ marginTop: 8 }}>🏷️ Athlete profile — what your coach knows about you ›</Link>
 
       <div className="section-title">Diet</div>
