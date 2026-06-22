@@ -16,6 +16,8 @@ export interface CoachPlan {
   segments?: Segment[]
   rounds?: number
   exercises?: Array<{ name: string; exId?: string; mode?: 'timed' | 'reps'; seconds?: number; sets?: number; reps?: number; weight?: number; rest?: number }>
+  icuEventId?: string // set when this plan mirrors an intervals.icu event
+  origin?: 'platyplus' | 'icu'
 }
 
 /** Fetch the account's coach-pushed plans for a date range (session-authed). */
@@ -24,6 +26,14 @@ export async function fetchGymPlans(from: string, to: string): Promise<CoachPlan
     const res = await fetch(`/auth/plans?from=${from}&to=${to}`, { credentials: 'same-origin' })
     return res.ok ? await res.json() : []
   } catch { return [] }
+}
+
+/** Mirror intervals.icu-origin planned workouts INTO Platyplus (Platyplus then owns
+ * them). Platyplus-first + Platyplus-wins; intervals deletions drop the import. */
+export async function syncIcuPlans(from: string, to: string): Promise<void> {
+  try {
+    await fetch('/auth/plans/sync', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ from, to }) })
+  } catch { /* best effort; UI still shows live intervals events */ }
 }
 
 /** Convert a coach gym plan into a playable session (media resolved from library). */

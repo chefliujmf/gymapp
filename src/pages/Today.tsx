@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting } from '../db'
 import { WeekStrip, MiniProfile } from '../ui'
 import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, type IcuEvent } from '../intervals'
-import { setPlanEvents, fetchGymPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
+import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
 import { calApi, type CalItem } from '../calendar'
 import { recipes, mindSessions } from '../data/catalog'
@@ -122,7 +122,8 @@ export default function Today() {
   const load = useCallback(() => {
     const [a, b] = weekRange()
     fetchEvents(a, b).then((evs) => { setEvents(evs); setPlanEvents(evs) }).catch((e) => setErr((e as Error).message))
-    fetchGymPlans(a, b).then(setPlans)
+    // Mirror intervals-origin workouts into Platyplus first, THEN read the owned plans.
+    syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then(setPlans))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [])
   useEffect(() => { load() }, [load])
@@ -147,14 +148,16 @@ export default function Today() {
   const swapOn = (day: string) => navigate(`/plan?d=${day}&v=day`)
 
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' })()
-  // Merge-by-id: a coach plan whose id matches an intervals event's external_id is
-  // already shown as that event's card — only show un-mirrored plans, so no dupes.
+  // Merge-by-id: a coach/owned plan that's already shown as an intervals event card
+  // (matched by external_id OR by the mirror icuEventId) is hidden so there's no dupe.
   const linkedIds = new Set((events ?? []).map((e) => e.external_id).filter(Boolean))
+  const shownEventIds = new Set((events ?? []).map((e) => String(e.id)))
+  const planShown = (p: CoachPlan) => linkedIds.has(p.id) || (p.icuEventId != null && shownEventIds.has(String(p.icuEventId)))
   const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay)
-  const dayPlans = plans.filter((p) => p.date === selDay && !linkedIds.has(p.id))
+  const dayPlans = plans.filter((p) => p.date === selDay && !planShown(p))
   const dayItems = items.filter((it) => it.date === selDay)
   const upcoming = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) > selDay).sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
-  const upcomingPlans = plans.filter((p) => p.date > selDay && !linkedIds.has(p.id)).sort((a, b) => a.date.localeCompare(b.date))
+  const upcomingPlans = plans.filter((p) => p.date > selDay && !planShown(p)).sort((a, b) => a.date.localeCompare(b.date))
 
   // Daily fuel (diet-aware) + a mind reset for the selected day.
   const dietOk = (r: Recipe) => {

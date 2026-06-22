@@ -580,6 +580,7 @@ async function reconcileFromIcu(user, from, to) {
     events = await r.json()
   } catch (e) { return { error: String(e.message || e) } }
   user.plans = user.plans || []
+  const liveIcuIds = new Set((events || []).map((e) => e.id))
   const ownedIcuIds = new Set(user.plans.map((p) => p.icuEventId).filter(Boolean))
   let imported = 0
   for (const ev of events || []) {
@@ -589,8 +590,18 @@ async function reconcileFromIcu(user, from, to) {
     if (ownedIcuIds.has(ev.id) || (ev.external_id && user.plans.some((p) => p.id === ev.external_id))) continue
     user.plans.push(icuEventToPlan(ev)); imported++
   }
-  if (imported) save(store)
-  return { imported, scanned: (events || []).length }
+  // Deletion mirror: an intervals-ORIGIN plan whose event is gone from intervals (in
+  // this window) is dropped here too — stay mirrored. Platyplus-origin plans are NOT
+  // dropped (Platyplus owns them; deleting must happen in Platyplus).
+  const before = user.plans.length
+  user.plans = user.plans.filter((p) => {
+    if (p.origin !== 'icu' || !p.icuEventId) return true
+    if (p.date < from || p.date > to) return true // only judge within the synced window
+    return liveIcuIds.has(p.icuEventId)
+  })
+  const dropped = before - user.plans.length
+  if (imported || dropped) save(store)
+  return { imported, dropped, scanned: (events || []).length }
 }
 
 // ---- calendar items (meal/mind/note) — shared by the UI (/auth) and API (/api).

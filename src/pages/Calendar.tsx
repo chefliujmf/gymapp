@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchEvents, deleteEvent, sportOf, type IcuEvent } from '../intervals'
-import { fetchGymPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
+import { fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
 import { setCurrentRide, segmentsFromEndurance } from '../ride'
 import { calApi, newId, type CalItem } from '../calendar'
 import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
@@ -63,7 +63,7 @@ export default function Calendar() {
   const reload = useCallback(async () => {
     const [a, b] = range
     fetchEvents(a, b).then(setEvents).catch(() => setEvents([]))
-    fetchGymPlans(a, b).then(setPlans).catch(() => setPlans([]))
+    syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then(setPlans).catch(() => setPlans([])))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [range])
   useEffect(() => { reload() }, [reload])
@@ -72,7 +72,7 @@ export default function Calendar() {
   const entriesFor = (day: string): Entry[] => {
     const out: Entry[] = []
     plans.filter((p) => p.date === day).forEach((plan) => out.push({ k: 'plan', plan }))
-    events.filter((e) => e.start_date_local.slice(0, 10) === day && !(e.external_id && plans.some((p) => p.id === e.external_id))).forEach((ev) => out.push({ k: 'event', ev }))
+    events.filter((e) => e.start_date_local.slice(0, 10) === day && !plans.some((p) => (e.external_id && p.id === e.external_id) || (p.icuEventId != null && String(p.icuEventId) === String(e.id)))).forEach((ev) => out.push({ k: 'event', ev }))
     items.filter((it) => it.date === day).forEach((item) => out.push({ k: 'item', item }))
     return out
   }
