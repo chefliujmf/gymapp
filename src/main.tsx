@@ -29,6 +29,7 @@ import CycleDetail from './pages/CycleDetail'
 import RidePlayer from './pages/RidePlayer'
 import RunPlayer from './pages/RunPlayer'
 import Profile from './pages/Profile'
+import Chat from './pages/Chat'
 import Progress from './pages/Progress'
 import PlanDetail from './pages/PlanDetail'
 import { BleProvider } from './BleContext'
@@ -50,6 +51,7 @@ const router = createBrowserRouter([
       { path: 'workouts/:id/play', element: <GymPlayer /> },
       { path: 'build', element: <WorkoutBuilder /> },
       { path: 'admin', element: <Admin /> },
+      { path: 'chat', element: <Chat /> },
       { path: 'template/:id/play', element: <GymPlayer /> },
       { path: 'gym-session/play', element: <GymPlayer /> },
       { path: 'plan/:id', element: <PlanDetail /> },

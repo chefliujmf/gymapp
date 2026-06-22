@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
-import { Home, CalendarDays, Dumbbell, Bike, Footprints, Salad, Brain } from 'lucide-react'
+import { Home, CalendarDays, Dumbbell, Bike, Footprints, Salad, Brain, MessageCircle } from 'lucide-react'
 import AccountMenu from './auth/AccountMenu'
 import ReleaseBell from './ReleaseBell'
 
@@ -16,14 +16,17 @@ const tabs = [
 export default function App() {
   const { pathname } = useLocation()
   // Hide chrome on detail/player pages for an immersive view.
-  const isDetail = /\/(workouts|exercises|programs|recipes|trainers|mind|cycle|plan)\/[^/]+$/.test(pathname) || pathname === '/ride-player' || pathname === '/run-player' || pathname === '/build' || pathname === '/ride-builder' || pathname === '/run-builder' || pathname === '/admin' || /\/play$/.test(pathname)
+  const isDetail = /\/(workouts|exercises|programs|recipes|trainers|mind|cycle|plan)\/[^/]+$/.test(pathname) || pathname === '/ride-player' || pathname === '/run-player' || pathname === '/build' || pathname === '/ride-builder' || pathname === '/run-builder' || pathname === '/admin' || pathname === '/chat' || /\/play$/.test(pathname)
 
   return (
     <div className="app-shell">
       {!isDetail && (
         <header className="app-bar">
           <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=4" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</Link>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}><ReleaseBell /><AccountMenu /></div>
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <Link to="/chat" className="acct__trigger" aria-label="Coach chat" style={{ display: 'inline-flex' }}><MessageCircle size={18} /></Link>
+            <ReleaseBell /><AccountMenu />
+          </div>
         </header>
       )}
       <main className="app-main">

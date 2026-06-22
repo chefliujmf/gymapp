@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import nodemailer from 'nodemailer'
 import { randomBytes, createHash } from 'node:crypto'
+import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { readFileSync, existsSync } from 'node:fs'
@@ -322,6 +323,48 @@ app.get('/auth/strava/activities', auth, async (req, res) => {
   try { res.json(await stravaActivities(req.user, Number(req.query.limit) || 15, () => save(store))) }
   catch (e) { res.status(502).json({ error: String(e.message || e) }) }
 })
+
+// --- Coach chatbot ---------------------------------------------------------
+// A locked-down headless `claude -p` (owner's Claude subscription) that can ONLY
+// use the per-user Platyplus MCP — no shell, files, or other tools, and scoped to
+// the signed-in account's Coach API token so it can never touch another user or
+// the app itself. The boundary is the TOOLSET, not the prompt.
+const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude'
+const MCP_PATH = process.env.PLATYPLUS_MCP_PATH || fileURLToPath(new URL('../mcp/server.js', import.meta.url))
+const CHAT_BASE = process.env.CHAT_SELF_URL || `http://127.0.0.1:${PORT}`
+const CHAT_DENY = 'Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit,TodoWrite'
+const coachPrompt = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app helping ONE user (the signed-in account) manage THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When asked to schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). Be concise, practical and encouraging. Decline anything outside this user's training/nutrition planning.`
+
+app.post('/auth/chat', auth, async (req, res) => {
+  const message = String(req.body?.message || '').trim().slice(0, 4000)
+  if (!message) return res.status(400).json({ error: 'empty message' })
+  const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: req.user.apiToken } } } })
+  const args = [
+    '-p', message,
+    '--output-format', 'json',
+    '--mcp-config', mcpConfig,
+    '--allowedTools', 'mcp__platyplus',
+    '--disallowedTools', CHAT_DENY,
+    '--append-system-prompt', coachPrompt(req.user.coachName || 'Coach'),
+  ]
+  if (req.user.chatSession) args.push('--resume', req.user.chatSession)
+  let out = '', err = '', done = false
+  const finish = (fn) => { if (done) return; done = true; clearTimeout(killer); fn() }
+  const proc = spawn(CLAUDE_BIN, args, { env: process.env })
+  const killer = setTimeout(() => proc.kill('SIGKILL'), 120000)
+  proc.stdout.on('data', (d) => (out += d))
+  proc.stderr.on('data', (d) => (err += d))
+  proc.on('error', (e) => finish(() => res.status(500).json({ error: 'coach unavailable: ' + e.message })))
+  proc.on('close', () => finish(() => {
+    try {
+      const j = JSON.parse(out)
+      if (j.session_id) { req.user.chatSession = j.session_id; save(store) }
+      res.json({ reply: j.result || '', coach: req.user.coachName || 'Coach' })
+    } catch { res.status(502).json({ error: 'chat failed', detail: (err || out).slice(0, 400) }) }
+  }))
+})
+// Reset the per-user conversation thread.
+app.post('/auth/chat/reset', auth, (req, res) => { delete req.user.chatSession; save(store); res.json({ ok: true }) })
 
 // ---- coach REST API (Bearer token) ---------------------------------------
 // The cyclingcoach dual-writes each session here (rich execution detail) and to
