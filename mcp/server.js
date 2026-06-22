@@ -54,6 +54,17 @@ server.tool('list_schedule',
     return { plans, items }
   }))
 
+// --- intervals.icu read-through (analytics live there, not in Platyplus) ----
+server.tool('get_wellness',
+  "Read the athlete's recent intervals.icu wellness: Fitness (CTL), Fatigue (ATL), Form (CTL-ATL), resting HR, HRV, sleep hours/score, body weight. READ-ONLY and live from intervals.icu — returns { connected:false } if they haven't connected it, in which case adapt with what you have. Check this before changing load when recovery state matters.",
+  { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },
+  wrap((a) => api('GET', `/api/intervals/wellness?days=${a.days || 14}`)))
+
+server.tool('get_recent_activities',
+  "Read the athlete's recently COMPLETED activities from intervals.icu: date, type, indoor/outdoor, duration, distance, avg HR, avg power, Load (TSS), intensity (IF), RPE, feel. READ-ONLY; returns { connected:false } if intervals.icu isn't connected.",
+  { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },
+  wrap((a) => api('GET', `/api/intervals/activities?days=${a.days || 14}`)))
+
 // --- training -------------------------------------------------------------
 server.tool('create_workout',
   'Schedule a strength/gym workout on a date. Mirrors to intervals.icu in the canonical [gymapp] format the app parses. Re-call with the same id to UPDATE. Send the session the coach generated as-is (warm-up + cool-down, main set ordered by equipment, unilateral moves listed for both sides) — Platyplus stores exactly what you send.',

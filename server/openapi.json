@@ -756,6 +756,24 @@
         }
       }
     },
+    "/api/intervals/wellness": {
+      "get": {
+        "summary": "Read-through the user's recent intervals.icu wellness (Fitness/CTL, Fatigue/ATL, Form, resting HR, HRV, sleep, weight). Live, not stored. { connected:false } if unconnected.",
+        "tags": ["intervals"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "days", "in": "query", "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "{ connected, wellness[] }" } }
+      }
+    },
+    "/api/intervals/activities": {
+      "get": {
+        "summary": "Read-through the user's recently completed intervals.icu activities (duration/distance/HR/power/Load/RPE, indoor vs outdoor). Live, not stored.",
+        "tags": ["intervals"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "days", "in": "query", "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "{ connected, activities[] }" } }
+      }
+    },
     "/api/strava/activities": {
       "get": {
         "summary": "Recent Strava activities (Bearer; needs activity:read_all scope)",

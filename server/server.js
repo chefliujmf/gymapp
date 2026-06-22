@@ -671,6 +671,40 @@ app.get('/api/strava/activities', apiAuth, async (req, res) => {
   catch (e) { res.status(502).json({ error: String(e.message || e) }) }
 })
 
+// --- intervals.icu READ-THROUGH (for the coach) ---------------------------
+// The coach reads analytics LIVE from intervals (we don't store/clone any of it).
+// Scoped to the user's stored key; returns { connected:false } gracefully if they
+// haven't connected intervals.icu, so the coach adapts with what it has.
+async function icuGet(user, path) {
+  if (!user.icuKey) return null
+  try { const r = await icuFetch(user, path); return r.ok ? await r.json() : null } catch { return null }
+}
+const icuDay = (n = 0) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
+
+app.get('/api/intervals/wellness', apiAuth, async (req, res) => {
+  const days = Math.min(60, Math.max(1, Number(req.query.days) || 14))
+  const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete || 'i28814'}/wellness?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
+  if (!data) return res.json({ connected: false, wellness: [] })
+  const wellness = (Array.isArray(data) ? data : []).map((d) => ({
+    date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
+    restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null, weight: d.weight ?? null,
+  }))
+  res.json({ connected: true, wellness })
+})
+
+app.get('/api/intervals/activities', apiAuth, async (req, res) => {
+  const days = Math.min(60, Math.max(1, Number(req.query.days) || 14))
+  const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete || 'i28814'}/activities?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
+  if (!data) return res.json({ connected: false, activities: [] })
+  const activities = (Array.isArray(data) ? data : []).map((a) => ({
+    date: (a.start_date_local || '').slice(0, 10), type: a.type, indoor: a.trainer === true || /virtual/i.test(a.type || ''),
+    minutes: a.moving_time ? Math.round(a.moving_time / 60) : null, km: a.distance ? +(a.distance / 1000).toFixed(1) : null,
+    avgHR: a.average_heartrate ? Math.round(a.average_heartrate) : null, avgW: a.icu_average_watts ? Math.round(a.icu_average_watts) : null,
+    load: a.icu_training_load ?? null, intensity: a.icu_intensity ?? null, rpe: a.icu_rpe ?? null, feel: a.feel ?? null, name: a.name,
+  }))
+  res.json({ connected: true, activities })
+})
+
 // Calendar items (meal / mind / note) — Platyplus-only, no intervals push.
 app.get('/api/items', apiAuth, (req, res) => res.json(itemsInRange(req.user, req.query.from, req.query.to)))
 app.post('/api/items', apiAuth, (req, res) => { const r = upsertItem(req.user, req.body || {}); res.status(r.status).json(r.body) })
