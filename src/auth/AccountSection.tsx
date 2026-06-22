@@ -129,7 +129,13 @@ export default function AccountSection() {
       {pkMsg && <p className="meta" style={{ marginTop: 8 }}>{pkMsg}</p>}
 
       <div className="section-title">intervals.icu (your account)</div>
-      <p className="meta" style={{ marginTop: -4 }}>{user.hasIcuKey ? '✓ Key stored on your account — syncs on every device.' : 'Paste your API key once; it follows your account.'}</p>
+      {user.hasIcuKey ? (
+        <p className="meta" style={{ marginTop: -4 }}>✓ Key stored on your account — syncs on every device.</p>
+      ) : (
+        <p className="meta" style={{ marginTop: -4 }}>
+          Get your key: <a href="https://intervals.icu/settings" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>intervals.icu → Settings ↗</a> → <b>Developer Settings</b> → API Key → <b>(view)</b>, then paste it below. Your Athlete ID is shown right there too.
+        </p>
+      )}
       <input className="search" type="password" placeholder={user.hasIcuKey ? '•••••• (saved) — paste to replace' : 'API key'} value={icuKey} onChange={(e) => setIcuKey(e.target.value)} />
       <input className="search" placeholder="Athlete id" value={icuAth} onChange={(e) => setIcuAth(e.target.value)} />
       <button className="btn" onClick={saveIcu} disabled={!icuKey && icuAth === user.icuAthlete}>Save to account</button>
