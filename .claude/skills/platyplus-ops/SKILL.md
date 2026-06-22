@@ -41,5 +41,18 @@ Personal/family fitness PWA (you + wife). Repo `chefliujmf/gymapp`. **Design rul
 - `scripts/sync-coach-engine.mjs` pulls `~/dev/cyclingcoach/instructions.md` → `server/coach-engine.md` (vendored artifact, committed + COPYed into the image). `server.js buildSystemPrompt` injects it. Re-run after editing the engine in cyclingcoach. (Only the transferable method — not the 131M knowledge_base.)
 - Import a profile into an env store: `node scripts/import-athlete-profile.mjs <store.json> <user> <profile.md>` then restart that server/container so it loads.
 
+## UX/UI changes — ALWAYS research best practice first (JM directive)
+Before any UX/UI change, **look up current best practice + how leading apps do it** (WebSearch:
+NN/g, Android/iOS HIG, fitness apps like Strava/Whoop/intervals.icu) and apply it — don't guess.
+Cite the sources in the reply. Established patterns so far:
+- **Nav:** ≤5 fixed bottom tabs; overflow → hubs/"More"; adapt CONTENT not structure (multi-sport).
+- **Charts:** one-takeaway-per-chart; round-number axes (1/2/5/10); interactive (scrub → value;
+  mini-cards update the headline number, not a box); subtle draw-in motion; legible contrast.
+- **Explanations:** a tappable **ⓘ** popover (`InfoDot`), tap-to-reveal, <150 chars, dismiss on blur.
+- **Date range:** preset chips + a **Custom** option with start/end native date inputs; auto-swap if
+  reversed; ≤6 taps.
+- **Field save:** autosave + "Saved ✓" (no Save buttons); **Profile vs Settings vs Admin** split.
+Charts live in `src/charts.tsx` (TrendChart/BarChart/PowerCurveChart/InfoDot/ChartModal, dependency-free SVG).
+
 ## "When you change X" (from CLAUDE.md)
 Any `server/*` change rebuilds the image (CI smoke-tests the module graph). New `/api`|`/auth` route → update `server/openapi.json`. User-facing batch → add to `src/notifications.ts`/releases. Keep `UX-BACKLOG.md` + memory current (the user stresses this).

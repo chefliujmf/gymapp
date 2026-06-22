@@ -34,21 +34,25 @@ function MiniCard({ title, value, unit, hint, series, bars, color }: { title: st
 export default function Fitness() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [days, setDays] = useState(90)
+  const [preset, setPreset] = useState<number | 'custom'>(90)
+  const [from, setFrom] = useState(localISO(new Date(Date.now() - 90 * 86400000)))
+  const [to, setTo] = useState(localISO())
   const [rows, setRows] = useState<IcuWellness[] | null>(null)
   const [pc, setPc] = useState<PowerCurve | null>(null)
   const [modal, setModal] = useState<{ title: string; node: ReactNode } | null>(null)
   const sports = user?.sports || []
   const isEndurance = !sports.length || sports.some((sp) => ENDURANCE.includes(sp))
   const isCycling = !sports.length || sports.some((sp) => ['cycling', 'triathlon'].includes(sp))
+  const applyPreset = (d: number) => { setPreset(d); setFrom(localISO(new Date(Date.now() - d * 86400000))); setTo(localISO()) }
 
   useEffect(() => {
+    if (!from || !to) return
+    const [f, t] = from <= to ? [from, to] : [to, from] // forgiving: auto-swap reversed range
     setRows(null); setPc(null)
-    const to = localISO(), from = localISO(new Date(Date.now() - days * 86400000))
-    fetchWellness(from, to).then(setRows).catch(() => setRows([]))
-    if (isCycling) fetchPowerCurve(days).then(setPc).catch(() => setPc(null))
+    fetchWellness(f, t).then(setRows).catch(() => setRows([]))
+    if (isCycling) fetchPowerCurve(Math.max(1, Math.round((Date.parse(t) - Date.parse(f)) / 86400000))).then(setPc).catch(() => setPc(null))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [days])
+  }, [from, to])
 
   const s = useMemo(() => {
     const r = rows || []
@@ -76,9 +80,16 @@ export default function Fitness() {
         <p className="meta">Connect intervals.icu in <span style={{ color: 'var(--accent)' }}>Settings → Connections</span> to see your fitness trends.</p>
       ) : (
         <>
-          <div className="chips" style={{ marginBottom: 12 }}>
-            {RANGES.map(([label, d]) => <button key={d} className={'chip' + (days === d ? ' chip--active' : '')} onClick={() => setDays(d)}>{label}</button>)}
+          <div className="chips" style={{ marginBottom: preset === 'custom' ? 8 : 12 }}>
+            {RANGES.map(([label, d]) => <button key={d} className={'chip' + (preset === d ? ' chip--active' : '')} onClick={() => applyPreset(d)}>{label}</button>)}
+            <button className={'chip' + (preset === 'custom' ? ' chip--active' : '')} onClick={() => setPreset('custom')}>Custom</button>
           </div>
+          {preset === 'custom' && (
+            <div className="date-range">
+              <label>From<input type="date" value={from} max={localISO()} onChange={(e) => setFrom(e.target.value)} /></label>
+              <label>To<input type="date" value={to} max={localISO()} onChange={(e) => setTo(e.target.value)} /></label>
+            </div>
+          )}
 
           {rows === null ? <p className="meta">Loading…</p> : !rows.length ? <p className="meta">No fitness data in this range.</p> : (
             <>
