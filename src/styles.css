@@ -460,6 +460,8 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .done-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 7px; }
 .done-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: var(--accent, #34e07d); background: rgba(52, 224, 125, 0.16); padding: 2px 7px; border-radius: 999px; }
 .done-stat { font-size: 12px; color: var(--text-dim); }
+.done-link { font-size: 12px; font-weight: 700; color: var(--accent, #34e07d); cursor: pointer; }
+.done-link:hover { text-decoration: underline; }
 .tab__icon svg { width: 22px; height: 22px; }
 .tab__icon { filter: none; opacity: .6; }
 .tab--active .tab__icon { opacity: 1; }

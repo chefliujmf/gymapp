@@ -98,6 +98,7 @@ export interface IcuActivity {
   trainer?: boolean
   icu_rpe?: number // 1-10
   feel?: number // 1-5
+  strava_id?: number | string // set when the activity is linked to Strava
 }
 /** Completed activities in a window (read-only). Empty on no key / error. */
 export async function fetchActivities(oldest: string, newest: string): Promise<IcuActivity[]> {

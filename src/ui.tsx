@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ReactNode, MouseEvent as ReactMouseEvent } from 'react'
 import { Dumbbell, Flame, Activity, Flower2, StretchHorizontal, Swords, Brain, Moon, Wind, Target, Bike, Footprints, Coffee, Sandwich, UtensilsCrossed, Apple, Home, Mountain, Check } from 'lucide-react'
 import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind, EnduranceWorkout } from './types'
 import { isIndoorActivity, type IcuActivity } from './intervals'
@@ -272,9 +272,13 @@ export function DoneStats({ a }: { a: IcuActivity }) {
         {isRideRun ? (isIndoorActivity(a) ? <><Home size={11} /> Indoor</> : <><Mountain size={11} /> Outdoor</>) : 'Done'}
       </span>
       {parts.map((p, i) => <span key={i} className="done-stat">{p}</span>)}
+      {a.id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://intervals.icu/activities/${a.id}`)}>intervals ↗</span>}
+      {a.strava_id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://www.strava.com/activities/${a.strava_id}`)}>Strava ↗</span>}
     </div>
   )
 }
+// Open an external link from inside a clickable card without triggering the card.
+function openExt(e: ReactMouseEvent, url: string) { e.preventDefault(); e.stopPropagation(); window.open(url, '_blank', 'noopener,noreferrer') }
 
 /** Tiny non-interactive workout profile for card thumbnails — zone-coloured bars only. */
 export function MiniProfile({ segs }: { segs: { duration: number; powerStart: number; powerEnd: number }[] }) {
