@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { localISO } from '../date'
 import { fetchWellness, fetchPowerCurve, type IcuWellness, type PowerCurve } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
-import { TrendChart, BarChart, PowerCurveChart, bestAt, type Series } from '../charts'
+import { TrendChart, BarChart, PowerCurveChart, InfoDot, bestAt, type Series } from '../charts'
 
 const ENDURANCE = ['cycling', 'running', 'triathlon']
-const RANGES: [string, number][] = [['6 weeks', 42], ['3 months', 90], ['1 year', 365]]
+const RANGES: [string, number][] = [['6 wk', 42], ['3 mo', 90], ['6 mo', 180], ['1 yr', 365]]
 const last = (a: (number | null)[]) => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i] as number; return null }
 const fmt = (v: number | null, unit = '') => (v == null ? '—' : `${Math.round(v * 10) / 10}${unit}`)
 
@@ -22,9 +22,8 @@ function formZone(v: number | null) {
 function MiniCard({ title, value, unit, hint, series, bars, color }: { title: string; value: number | null; unit?: string; hint?: string; series?: Series; bars?: (number | null)[]; color?: string }) {
   return (
     <div className="fit-mini">
-      <div className="fit-mini__head"><span>{title}</span><b>{fmt(value, unit)}</b></div>
+      <div className="fit-mini__head"><span>{title}{hint && <InfoDot text={hint} />}</span><b>{fmt(value, unit)}</b></div>
       {bars ? <BarChart data={bars} color={color} height={56} /> : series ? <TrendChart series={[series]} height={56} pad={6} /> : null}
-      {hint && <p className="fit-hint">{hint}</p>}
     </div>
   )
 }
@@ -81,11 +80,10 @@ export default function Fitness() {
             <>
               <p className="meta" style={{ margin: '0 2px 10px' }}>Showing your <b>latest</b> value on each card — tap any chart to scrub past days.</p>
               <div className="fit-head">
-                <div className="fit-head__stat"><span>Fitness</span><b style={{ color: '#4aa3ff' }}>{fmt(last(s.fitness))}</b></div>
-                <div className="fit-head__stat"><span>Fatigue</span><b style={{ color: '#c061ff' }}>{fmt(last(s.fatigue))}</b></div>
-                <div className="fit-head__stat"><span>Form</span><b style={{ color: fz.color }}>{fmt(last(s.form))}</b><em style={{ color: fz.color }}>{fz.label}</em></div>
+                <div className="fit-head__stat"><span>Fitness<InfoDot text="Your built-up fitness — a 6-week rolling average of training load (CTL). Climbs slowly as you train consistently; higher = fitter." /></span><b style={{ color: '#4aa3ff' }}>{fmt(last(s.fitness))}</b></div>
+                <div className="fit-head__stat"><span>Fatigue<InfoDot text="Recent tiredness — your last-7-days training load (ATL). Rises fast after hard days, falls when you rest." /></span><b style={{ color: '#c061ff' }}>{fmt(last(s.fatigue))}</b></div>
+                <div className="fit-head__stat"><span>Form<InfoDot text="Freshness = Fitness − Fatigue. Positive = fresh/tapered (race-ready). Negative = fatigued, which is normal while building. Very negative = back off." /></span><b style={{ color: fz.color }}>{fmt(last(s.form))}</b><em style={{ color: fz.color }}>{fz.label}</em></div>
               </div>
-              <p className="fit-cap"><b>Fitness</b> = your built-up fitness (rolling 6-week load). <b>Fatigue</b> = recent tiredness (last week). <b>Form</b> = Fitness − Fatigue: <b style={{ color: '#34e07d' }}>positive</b> = fresh/tapered, <b style={{ color: '#ff5d5d' }}>negative</b> = fatigued (building hard).</p>
 
               <div className="card" style={{ padding: '12px 14px' }}>
                 <div className="fit-legend"><span style={{ color: '#4aa3ff' }}>● Fitness</span><span style={{ color: '#c061ff' }}>● Fatigue</span></div>
@@ -111,8 +109,7 @@ export default function Fitness() {
               </div>
               {isCycling && pc && (
                 <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
-                  <div className="fit-legend"><span style={{ color: '#34e07d' }}>● Power curve</span></div>
-                  <p className="fit-cap">The most power you can hold for each duration — sprints on the left (seconds), endurance on the right (hours). Higher = stronger.</p>
+                  <div className="fit-legend"><span style={{ color: '#34e07d' }}>● Power curve<InfoDot text="The most power (watts) you can hold for each duration — sprints on the left (seconds), endurance on the right (hours). Push a line up = you got stronger at that effort." /></span></div>
                   <PowerCurveChart secs={pc.secs} watts={pc.watts} />
                   <div className="be-row">
                     {([[5, '5s'], [60, '1m'], [300, '5m'], [1200, '20m']] as [number, string][]).map(([d, label]) => {

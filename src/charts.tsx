@@ -2,6 +2,20 @@ import { useId, useState } from 'react'
 
 export type Series = { label: string; color: string; data: (number | null)[]; area?: boolean }
 
+/** A tappable ⓘ that reveals a short plain-language explanation (popover).
+ * Tap to open, tap away / blur to dismiss (mobile-friendly, keyboard-focusable). */
+export function InfoDot({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <span className="infodot-wrap">
+      <button type="button" className="infodot" aria-label="What is this?" aria-expanded={open}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o) }}
+        onBlur={() => setTimeout(() => setOpen(false), 120)}>i</button>
+      {open && <span className="infodot-pop" role="tooltip">{text}</span>}
+    </span>
+  )
+}
+
 // Catmull-Rom → cubic bezier, for smooth (not jagged) trend lines.
 function smoothPath(pts: [number, number][]): string {
   if (!pts.length) return ''
@@ -40,7 +54,7 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
   return (
     <div className="trend-box">
     <div className="trend-wrap" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHi(null)}>
-      {axes && <><span className="trend-y trend-y--max">{fv(r.max)}</span><span className="trend-y trend-y--min">{fv(r.min)}</span></>}
+      {axes && <><span className="trend-y trend-y--max">{fv(r.max)}</span><span className="trend-y trend-y--mid">{fv((r.min + r.max) / 2)}</span><span className="trend-y trend-y--min">{fv(r.min)}</span></>}
       <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
         {[0, 0.5, 1].map((g) => { const yy = pad + g * (H - 2 * pad); return <line key={g} x1={pad} x2={VW - pad} y1={yy} y2={yy} stroke="var(--line)" strokeWidth="0.5" opacity="0.45" /> })}
         {series.map((s, si) => {
@@ -73,7 +87,7 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
         </div>
       )}
     </div>
-    {axes && labels && labels.length > 1 && <div className="trend-x"><span>{labels[0]}</span><span>{labels[labels.length - 1]}</span></div>}
+    {axes && labels && labels.length > 1 && <div className="trend-x"><span>{labels[0]}</span><span>{labels[Math.floor((labels.length - 1) / 2)]}</span><span>{labels[labels.length - 1]}</span></div>}
     </div>
   )
 }
