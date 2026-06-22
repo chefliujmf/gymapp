@@ -44,7 +44,9 @@ export default defineConfig({
           },
         ],
       },
-      devOptions: { enabled: true },
+      // Dev SW OFF — it cached stale JS and made code fixes look like they didn't
+      // apply (e.g. auth/chat 401 from an old bundle). PWA/SW still ships in builds.
+      devOptions: { enabled: false },
     }),
   ],
   server: {
