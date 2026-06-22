@@ -26,7 +26,7 @@ export default function Recipes() {
 
   return (
     <div>
-      <button className="back" onClick={() => navigate(-1)} aria-label="Back">‹ Back</button>
+      <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head">
         <h1>Recipes</h1>
         <p>{recipes.length} recipes — fuel that matches your training</p>

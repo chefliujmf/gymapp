@@ -35,7 +35,7 @@ export default function Admin() {
 
   return (
     <div>
-      <button onClick={() => navigate(-1)} aria-label="Back" style={{ background: 'none', border: 0, color: 'var(--text-dim, #8a8a99)', fontSize: 15, padding: '10px 0', cursor: 'pointer' }}>‹ Back</button>
+      <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head">
         <h1>Admin</h1>
         <p>Manage who can access Platyplus</p>

@@ -55,7 +55,7 @@ export default function Progress() {
 
   return (
     <div>
-      <button className="back" onClick={() => navigate(-1)}>← Back</button>
+      <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head">
         <h1>Progress</h1>
         <p>Everything you've logged, on this device</p>
