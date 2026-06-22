@@ -360,9 +360,17 @@ You can also help the user set up and use the app — guide them in plain steps:
 - Features: Today/Calendar (the plan), Train (gym, ride, run), Eat (recipes & meals), Mind (meditation/yoga/pilates), Progress, and this Coach chat.
 Keep these answers short and concrete.`
 
+// The coaching ENGINE (method/philosophy) — synced from the cyclingcoach repo by
+// scripts/sync-coach-engine.mjs. ONE polyvalent engine shared by all users; the
+// per-user profile supplies the specifics. Optional (dev before first sync).
+let COACH_ENGINE = ''
+try { COACH_ENGINE = readFileSync(join(__dirname, 'coach-engine.md'), 'utf8').trim() } catch { /* no engine file yet */ }
+
 function buildSystemPrompt(user) {
   const name = user.coachName || 'Coach'
-  let p = coachIdentity(name) + '\n\n' + APP_HELP
+  let p = coachIdentity(name)
+  if (COACH_ENGINE) p += `\n\n# Your coaching method (the Platyplus engine — apply it to THIS athlete per their profile)\n` + COACH_ENGINE
+  p += '\n\n' + APP_HELP
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
   } else {
