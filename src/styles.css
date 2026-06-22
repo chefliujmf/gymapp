@@ -683,7 +683,8 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .chat-msg--coach { align-self: flex-start; background: var(--bg-soft); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
 .chat-msg--typing { color: var(--text-dim); font-style: italic; }
 .chat-input { display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px calc(env(safe-area-inset-bottom) + 12px); border-top: 1px solid var(--line); }
-.chat-input textarea { flex: 1; resize: none; max-height: 120px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 18px; padding: 11px 14px; font-size: 16px; font-family: inherit; outline: none; }
+.chat-input textarea { flex: 1; resize: none; max-height: 120px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 18px; padding: 11px 14px; font-size: 16px; font-family: inherit; outline: none; color: var(--text); }
+.chat-input textarea::placeholder { color: var(--text-dim); }
 .chat-input textarea:focus { border-color: var(--ink); }
 .chat-send { width: 44px; height: 44px; flex: none; border-radius: 999px; border: none; background: var(--accent); color: var(--on-accent); font-size: 20px; font-weight: 800; }
 .chat-send:disabled { opacity: 0.4; }

@@ -24,7 +24,7 @@ export default function App() {
         <header className="app-bar">
           <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=4" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</Link>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <Link to="/chat" className="acct__trigger" aria-label="Coach chat" style={{ display: 'inline-flex' }}><MessageCircle size={18} /></Link>
+            <Link to="/chat" aria-label="Coach chat" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--accent-grad)', color: 'var(--on-accent)', fontWeight: 800, fontSize: 13, padding: '7px 12px', borderRadius: 999, textDecoration: 'none' }}><MessageCircle size={16} /> Coach</Link>
             <ReleaseBell /><AccountMenu />
           </div>
         </header>
