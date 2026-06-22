@@ -30,6 +30,7 @@ import RidePlayer from './pages/RidePlayer'
 import RunPlayer from './pages/RunPlayer'
 import Profile from './pages/Profile'
 import AthleteProfile from './pages/AthleteProfile'
+import Settings from './pages/Settings'
 import Chat from './pages/Chat'
 import Progress from './pages/Progress'
 import PlanDetail from './pages/PlanDetail'
@@ -74,6 +75,7 @@ const router = createBrowserRouter([
       { path: 'run-player', element: <RunPlayer /> },
       { path: 'profile', element: <Profile /> },
       { path: 'profile/athlete', element: <AthleteProfile /> },
+      { path: 'settings', element: <Settings /> },
       { path: 'progress', element: <Progress /> },
     ],
   },
