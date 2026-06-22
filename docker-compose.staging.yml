@@ -10,12 +10,10 @@ services:
     container_name: gymapp-staging
     restart: unless-stopped
     environment:
-      RP_ID: platyplus-qa.duckdns.org
-      ORIGIN: https://platyplus-qa.duckdns.org
       CATALOG_DIR: /catalog
-      SEED_USER: jmfiset
-      SEED_EMAIL: jmfiset@gmail.com
-      SEED_PASSWORD: stagingpass
+    env_file:
+      # RP_ID, ORIGIN, SEED_*, STRAVA_* — secrets live on the box, NOT in the public repo.
+      - "./auth.env"
     volumes:
       - "./dist:/usr/share/nginx/html:ro"
       - "/home/jmf/gymapp/media:/srv/media:ro"        # share prod's self-hosted media (ro)
