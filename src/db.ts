@@ -21,6 +21,10 @@ export interface WorkoutLog {
   sid?: string
   /** full per-exercise set snapshot, for progressive-overload prefill */
   sets?: Record<number, SetEntry[]>
+  /** exercise names in executed order (index-aligned with `sets`), so history
+   *  shows "Goblet Squat" not "Exercise 1". Optional exId for demo links. */
+  exNames?: string[]
+  exIds?: (string | undefined)[]
 }
 
 export interface ProgramEnrollment {

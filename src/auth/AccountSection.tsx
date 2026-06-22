@@ -68,6 +68,22 @@ export default function AccountSection() {
   async function rotate() { if (!confirm('Rotate the token? Your coach must update it.')) return; try { const r = await authApi.rotateToken(); setToken(r.token); setTkMsg('✓ Rotated') } catch (e) { setTkMsg('✗ ' + (e as Error).message) } }
   function copyToken() { navigator.clipboard?.writeText(token); setTkMsg('Copied to clipboard') }
 
+  // Strava — per-user OAuth "Connect with Strava" (no API key for the user).
+  const [strava, setStrava] = useState<{ available?: boolean; connected?: boolean; scope?: string } | null>(null)
+  const [stravaMsg, setStravaMsg] = useState('')
+  useEffect(() => {
+    fetch('/auth/strava/status', { credentials: 'same-origin' }).then((r) => r.json()).then(setStrava).catch(() => {})
+    const p = new URLSearchParams(location.search).get('strava')
+    if (p === 'connected') setStravaMsg('✓ Strava connected')
+    else if (p === 'denied') setStravaMsg('Connection cancelled')
+    else if (p === 'error') setStravaMsg('✗ Connection failed — try again')
+  }, [])
+  async function disconnectStrava() {
+    if (!confirm('Disconnect Strava?')) return
+    await fetch('/auth/strava/disconnect', { method: 'POST', credentials: 'same-origin' })
+    setStrava((s) => ({ ...s, connected: false })); setStravaMsg('Disconnected')
+  }
+
   const avatarNode = user.avatar ? <img src={user.avatar} alt="" /> : user.username.slice(0, 2).toUpperCase()
 
   return (
@@ -113,11 +129,33 @@ export default function AccountSection() {
       {pkMsg && <p className="meta" style={{ marginTop: 8 }}>{pkMsg}</p>}
 
       <div className="section-title">intervals.icu (your account)</div>
-      <p className="meta" style={{ marginTop: -4 }}>{user.hasIcuKey ? '✓ Key stored on your account — syncs on every device.' : 'Paste your API key once; it follows your account.'}</p>
+      {user.hasIcuKey ? (
+        <p className="meta" style={{ marginTop: -4 }}>✓ Key stored on your account — syncs on every device.</p>
+      ) : (
+        <p className="meta" style={{ marginTop: -4 }}>
+          Get your key: <a href="https://intervals.icu/settings" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>intervals.icu → Settings ↗</a> → <b>Developer Settings</b> → API Key → <b>(view)</b>, then paste it below. Your Athlete ID is shown right there too.
+        </p>
+      )}
       <input className="search" type="password" placeholder={user.hasIcuKey ? '•••••• (saved) — paste to replace' : 'API key'} value={icuKey} onChange={(e) => setIcuKey(e.target.value)} />
       <input className="search" placeholder="Athlete id" value={icuAth} onChange={(e) => setIcuAth(e.target.value)} />
       <button className="btn" onClick={saveIcu} disabled={!icuKey && icuAth === user.icuAthlete}>Save to account</button>
       {icuMsg && <p className="meta" style={{ marginTop: 8 }}>{icuMsg}</p>}
+
+      <div className="section-title">Strava</div>
+      {strava?.available === false ? (
+        <p className="meta" style={{ marginTop: -4 }}>Strava isn't set up on this server yet.</p>
+      ) : strava?.connected ? (
+        <>
+          <p className="meta" style={{ marginTop: -4 }}>✓ Connected{strava.scope ? ` · ${strava.scope}` : ''}</p>
+          <button className="btn btn--ghost" onClick={disconnectStrava}>Disconnect Strava</button>
+        </>
+      ) : (
+        <>
+          <p className="meta" style={{ marginTop: -4 }}>One tap — no API key needed.</p>
+          <a className="btn" href="/auth/strava/connect" style={{ background: '#fc4c02', color: '#fff' }}>Connect with Strava</a>
+        </>
+      )}
+      {stravaMsg && <p className="meta" style={{ marginTop: 8 }}>{stravaMsg}</p>}
 
       <div className="section-title">Coach API</div>
       <p className="meta" style={{ marginTop: -4 }}>For your cyclingcoach to push plans. <a href="/api/docs" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>Open API docs ↗</a></p>

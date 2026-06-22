@@ -10,8 +10,8 @@ services:
     container_name: gymapp-staging
     restart: unless-stopped
     environment:
-      RP_ID: jmf-xps-13-9343.tail8ece92.ts.net
-      ORIGIN: https://jmf-xps-13-9343.tail8ece92.ts.net
+      RP_ID: platyplus-qa.duckdns.org
+      ORIGIN: https://platyplus-qa.duckdns.org
       CATALOG_DIR: /catalog
       SEED_USER: jmfiset
       SEED_EMAIL: jmfiset@gmail.com

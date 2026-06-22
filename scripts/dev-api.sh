@@ -10,6 +10,8 @@ export RP_ID=localhost
 export PORT=8088
 export STATIC_DIR="$(pwd)/dist"
 export SEED_USER=jmfiset
-export [email protected]
+export SEED_EMAIL="jmfiset@gmail.com"
 export SEED_PASSWORD=devpass
+# Optional integration secrets (gitignored). Strava: client id/secret + refresh token.
+[ -f .secrets/strava.env ] && source .secrets/strava.env
 exec node server/server.js

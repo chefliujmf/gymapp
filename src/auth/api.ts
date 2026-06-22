@@ -35,6 +35,12 @@ export const authApi = {
     const response = await startAuthentication({ optionsJSON: options as Parameters<typeof startAuthentication>[0]['optionsJSON'] })
     return req<User>('/passkey/login/verify', { body: { uid, response } })
   },
+  // Usernameless: the device offers its passkeys for this site — no username.
+  async passkeyLoginDiscoverable(): Promise<User> {
+    const options = await req<unknown>('/passkey/login/begin', { method: 'POST' })
+    const response = await startAuthentication({ optionsJSON: options as Parameters<typeof startAuthentication>[0]['optionsJSON'] })
+    return req<User>('/passkey/login/finish', { body: { response } })
+  },
   async passkeyRegister(label: string): Promise<User> {
     const options = await req<unknown>('/passkey/register/options', { method: 'POST' })
     const response = await startRegistration({ optionsJSON: options as Parameters<typeof startRegistration>[0]['optionsJSON'] })

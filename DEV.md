@@ -27,5 +27,5 @@ ssh xps 'cd /home/jmf/gymapp && docker compose restart'   # up -d --build if ser
 
 ## Planned: XPS staging (pre-prod gate)
 A parallel `*-dev` compose stack on the XPS with its own data + dev subdomains
-(`platyplus-dev.duckdns.org`, NPM + cert) for full prod parity incl. **passkeys**.
+(`platyplus-qa.duckdns.org`, NPM + cert) for full prod parity incl. **passkeys**.
 Deploy-to-dev → validate → promote-to-prod. Not built yet (chosen: local dev first).

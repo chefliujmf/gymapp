@@ -16,6 +16,7 @@ import {
   generateAuthenticationOptions, verifyAuthenticationResponse,
 } from '@simplewebauthn/server'
 import { load, save, newId } from './store.js'
+import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -145,6 +146,34 @@ app.post('/auth/passkey/login/verify', async (req, res) => {
   finally { challenges.delete('login:' + req.body.uid) }
 })
 
+// Usernameless (discoverable) passkey login — no username needed. The device
+// offers the passkeys it holds for this site; the credential id identifies the
+// user. The username-first endpoints above stay as a fallback.
+app.post('/auth/passkey/login/begin', async (req, res) => {
+  const options = await generateAuthenticationOptions({ rpID: RP_ID, userVerification: 'preferred' })
+  challenges.set('anon:' + options.challenge, Date.now())
+  res.json(options)
+})
+app.post('/auth/passkey/login/finish', async (req, res) => {
+  const resp = req.body.response
+  let challenge
+  try { challenge = JSON.parse(Buffer.from(resp.response.clientDataJSON, 'base64url').toString()).challenge } catch { return res.status(400).json({ error: 'Bad response' }) }
+  if (!challenges.has('anon:' + challenge)) return res.status(400).json({ error: 'Unknown or expired challenge' })
+  const u = store.users.find((x) => x.passkeys?.some((p) => p.id === resp.id))
+  const pk = u?.passkeys?.find((p) => p.id === resp.id)
+  if (!u || !pk) { challenges.delete('anon:' + challenge); return res.status(404).json({ error: 'Passkey not recognised — sign in with your password, then add a passkey on this device.' }) }
+  try {
+    const { verified, authenticationInfo } = await verifyAuthenticationResponse({
+      response: resp, expectedChallenge: challenge, expectedOrigin: ORIGIN, expectedRPID: RP_ID,
+      credential: { id: pk.id, publicKey: Buffer.from(pk.publicKey, 'base64url'), counter: pk.counter || 0, transports: pk.transports },
+    })
+    if (!verified) return res.status(401).json({ error: 'Passkey verification failed' })
+    pk.counter = authenticationInfo.newCounter; save(store)
+    setSession(res, u); res.json(pub(u))
+  } catch (e) { res.status(400).json({ error: String(e.message || e) }) }
+  finally { challenges.delete('anon:' + challenge) }
+})
+
 // change own password
 app.post('/auth/password/change', auth, (req, res) => {
   if (!bcrypt.compareSync(String(req.body.current || ''), req.user.passwordHash)) return res.status(400).json({ error: 'Current password is wrong' })
@@ -175,7 +204,7 @@ app.post('/auth/passkey/register/options', auth, async (req, res) => {
   const options = await generateRegistrationOptions({
     rpName: RP_NAME, rpID: RP_ID, userName: req.user.username, userID: new TextEncoder().encode(req.user.id),
     attestationType: 'none', excludeCredentials: req.user.passkeys.map((p) => ({ id: p.id })),
-    authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+    authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
   })
   challenges.set('reg:' + req.user.id, options.challenge); res.json(options)
 })
@@ -266,6 +295,33 @@ app.post('/auth/logs', auth, (req, res) => {
 app.put('/auth/logs/:sid', auth, (req, res) => { const l = (req.user.logs || []).find((x) => x.sid === req.params.sid); if (!l) return res.status(404).json({ error: 'not found' }); Object.assign(l, req.body || {}, { sid: l.sid }); save(store); res.json(l) })
 app.delete('/auth/logs/:sid', auth, (req, res) => { req.user.logs = (req.user.logs || []).filter((x) => x.sid !== req.params.sid); save(store); res.json({ ok: true }) })
 app.delete('/auth/logs', auth, (req, res) => { req.user.logs = []; save(store); res.json({ ok: true }) })
+
+// Strava — per-user OAuth "Connect with Strava" (users never touch an API key).
+// One app-level client (env); each user authorizes their own account.
+app.get('/auth/strava/status', auth, (req, res) => res.json({ available: stravaConfigured(), connected: userStravaConnected(req.user), scope: req.user.strava?.scope || null, athleteId: req.user.strava?.athleteId || null }))
+app.get('/auth/strava/connect', auth, (req, res) => {
+  if (!stravaConfigured()) return res.status(503).send('Strava not configured on the server')
+  const state = randomBytes(16).toString('hex')
+  req.user.stravaState = state; save(store)
+  res.redirect(stravaAuthorizeUrl(ORIGIN + '/auth/strava/callback', state))
+})
+app.get('/auth/strava/callback', auth, async (req, res) => {
+  if (req.query.error) return res.redirect('/profile?strava=denied')
+  const { code, state } = req.query
+  if (!code || !state || state !== req.user.stravaState) return res.redirect('/profile?strava=error')
+  try {
+    const tok = await stravaExchangeCode(String(code))
+    req.user.strava = { ...tok, scope: String(req.query.scope || '') }
+    delete req.user.stravaState; save(store)
+    res.redirect('/profile?strava=connected')
+  } catch (e) { console.error('strava callback', e); res.redirect('/profile?strava=error') }
+})
+app.post('/auth/strava/disconnect', auth, (req, res) => { delete req.user.strava; save(store); res.json({ ok: true }) })
+app.get('/auth/strava/activities', auth, async (req, res) => {
+  if (!userStravaConnected(req.user)) return res.json([])
+  try { res.json(await stravaActivities(req.user, Number(req.query.limit) || 15, () => save(store))) }
+  catch (e) { res.status(502).json({ error: String(e.message || e) }) }
+})
 
 // ---- coach REST API (Bearer token) ---------------------------------------
 // The cyclingcoach dual-writes each session here (rich execution detail) and to
@@ -404,6 +460,11 @@ app.post('/api/plan', apiAuth, async (req, res) => { const r = await upsertPlan(
 app.get('/api/plans', apiAuth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
 app.get('/api/plan/:id', apiAuth, (req, res) => { const p = (req.user.plans || []).find((x) => x.id === req.params.id); return p ? res.json(p) : res.status(404).json({ error: 'not found' }) })
 app.delete('/api/plan/:id', apiAuth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
+app.get('/api/strava/activities', apiAuth, async (req, res) => {
+  if (!userStravaConnected(req.user)) return res.json([])
+  try { res.json(await stravaActivities(req.user, Number(req.query.limit) || 15, () => save(store))) }
+  catch (e) { res.status(502).json({ error: String(e.message || e) }) }
+})
 
 // Calendar items (meal / mind / note) — Platyplus-only, no intervals push.
 app.get('/api/items', apiAuth, (req, res) => res.json(itemsInRange(req.user, req.query.from, req.query.to)))

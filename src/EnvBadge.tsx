@@ -1,12 +1,12 @@
 // Loud environment indicator so you never act on the wrong env. Detected from the
 // hostname — same build, correct label everywhere:
-//   *.ts.net               -> QA   (tailnet staging URL)
-//   platyplus.duckdns.org  -> PROD (no frame — clean, this is the real thing)
-//   anything else          -> DEV  (localhost / tailscale-IP vite server)
+//   platyplus.duckdns.org     -> PROD (no frame — clean, this is the real thing)
+//   platyplus-qa.duckdns.org  -> QA   (staging, full prod parity)
+//   anything else             -> DEV  (localhost / tailnet / .ts.net vite server)
 const host = typeof location !== 'undefined' ? location.hostname : ''
 const ENV =
-  host.endsWith('.ts.net') ? { label: 'QA · STAGING', color: '#a855f7' }
-    : host === 'platyplus.duckdns.org' ? null
+  host === 'platyplus.duckdns.org' ? null
+    : host === 'platyplus-qa.duckdns.org' ? { label: 'QA', color: '#a855f7' }
       : { label: 'DEV', color: '#ff8c1a' }
 
 export default function EnvBadge() {
