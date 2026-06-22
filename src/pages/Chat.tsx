@@ -17,13 +17,29 @@ export default function Chat() {
   async function send() {
     const text = input.trim()
     if (!text || busy) return
-    setInput(''); setMsgs((m) => [...m, { role: 'user', text }]); setBusy(true)
+    setInput(''); setMsgs((m) => [...m, { role: 'user', text }, { role: 'coach', text: '' }]); setBusy(true)
+    const appendDelta = (d: string) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { role: 'coach', text: c[c.length - 1].text + d }; return c })
     try {
-      const r = await authApi.chat(text)
-      setCoach(r.coach || 'Coach')
-      setMsgs((m) => [...m, { role: 'coach', text: r.reply || '…' }])
+      const res = await fetch('/auth/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: text }) })
+      if (!res.ok || !res.body) throw new Error('HTTP ' + res.status)
+      const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = ''
+      for (;;) {
+        const { done, value } = await reader.read(); if (done) break
+        buf += dec.decode(value, { stream: true })
+        let i: number
+        while ((i = buf.indexOf('\n\n')) >= 0) {
+          const frame = buf.slice(0, i); buf = buf.slice(i + 2)
+          const data = frame.split('\n').find((l) => l.startsWith('data:'))
+          if (!data) continue
+          let ev: { coach?: string; delta?: string; error?: string }
+          try { ev = JSON.parse(data.slice(5).trim()) } catch { continue }
+          if (ev.coach) setCoach(ev.coach)
+          if (ev.delta) appendDelta(ev.delta)
+          if (ev.error) appendDelta('⚠️ ' + ev.error)
+        }
+      }
     } catch (e) {
-      setMsgs((m) => [...m, { role: 'coach', text: '⚠️ ' + ((e as Error).message || 'Coach unavailable') }])
+      setMsgs((m) => { const c = [...m]; const last = c[c.length - 1]; if (last?.role === 'coach' && !last.text) c[c.length - 1] = { role: 'coach', text: '⚠️ ' + ((e as Error).message || 'Coach unavailable') }; return c })
     } finally { setBusy(false) }
   }
   async function reset() {
@@ -52,10 +68,14 @@ export default function Chat() {
             </div>
           </div>
         )}
-        {msgs.map((m, i) => (
-          <div key={i} className={'chat-msg chat-msg--' + m.role}>{m.text}</div>
-        ))}
-        {busy && <div className="chat-msg chat-msg--coach chat-msg--typing">{coach} is thinking…</div>}
+        {msgs.map((m, i) => {
+          const thinking = m.role === 'coach' && !m.text && i === msgs.length - 1 && busy
+          return (
+            <div key={i} className={'chat-msg chat-msg--' + m.role + (thinking ? ' chat-msg--typing' : '')}>
+              {m.text || (thinking ? `${coach} is thinking…` : '')}
+            </div>
+          )
+        })}
         <div ref={endRef} />
       </div>
 

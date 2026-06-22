@@ -335,33 +335,48 @@ const CHAT_BASE = process.env.CHAT_SELF_URL || `http://127.0.0.1:${PORT}`
 const CHAT_DENY = 'Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit,TodoWrite'
 const coachPrompt = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app helping ONE user (the signed-in account) manage THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When asked to schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). Be concise, practical and encouraging. Decline anything outside this user's training/nutrition planning.`
 
-app.post('/auth/chat', auth, async (req, res) => {
+app.post('/auth/chat', auth, (req, res) => {
   const message = String(req.body?.message || '').trim().slice(0, 4000)
   if (!message) return res.status(400).json({ error: 'empty message' })
   const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: req.user.apiToken } } } })
   const args = [
     '-p', message,
-    '--output-format', 'json',
+    '--output-format', 'stream-json', '--include-partial-messages', '--verbose',
     '--mcp-config', mcpConfig,
     '--allowedTools', 'mcp__platyplus',
     '--disallowedTools', CHAT_DENY,
     '--append-system-prompt', coachPrompt(req.user.coachName || 'Coach'),
   ]
   if (req.user.chatSession) args.push('--resume', req.user.chatSession)
-  let out = '', err = '', done = false
-  const finish = (fn) => { if (done) return; done = true; clearTimeout(killer); fn() }
+  // Stream tokens to the client over SSE as claude produces them.
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.flushHeaders?.()
+  const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`)
+  send({ coach: req.user.coachName || 'Coach' })
   const proc = spawn(CLAUDE_BIN, args, { env: process.env })
-  const killer = setTimeout(() => proc.kill('SIGKILL'), 120000)
-  proc.stdout.on('data', (d) => (out += d))
+  proc.stdin?.end() // close stdin (EOF) so claude doesn't wait for piped input
+  const killer = setTimeout(() => proc.kill('SIGKILL'), 180000)
+  let buf = '', err = '', done = false
+  const end = () => { if (done) return; done = true; clearTimeout(killer); send({ done: true }); res.end() }
+  proc.stdout.on('data', (d) => {
+    buf += d
+    let nl
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1)
+      if (!line) continue
+      let ev; try { ev = JSON.parse(line) } catch { continue }
+      if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') send({ delta: ev.event.delta.text })
+      else if (ev.type === 'result' && ev.session_id) { req.user.chatSession = ev.session_id; save(store) }
+    }
+  })
   proc.stderr.on('data', (d) => (err += d))
-  proc.on('error', (e) => finish(() => res.status(500).json({ error: 'coach unavailable: ' + e.message })))
-  proc.on('close', () => finish(() => {
-    try {
-      const j = JSON.parse(out)
-      if (j.session_id) { req.user.chatSession = j.session_id; save(store) }
-      res.json({ reply: j.result || '', coach: req.user.coachName || 'Coach' })
-    } catch { res.status(502).json({ error: 'chat failed', detail: (err || out).slice(0, 400) }) }
-  }))
+  proc.on('error', (e) => { if (!done) { done = true; clearTimeout(killer); send({ error: 'coach unavailable: ' + e.message }); res.end() } })
+  proc.on('close', () => { if (err && !buf) send({ error: err.slice(0, 200) }); end() })
+  // Kill claude only if the CLIENT actually disconnects (res close) — NOT req
+  // close, which fires the moment the request body is read and would kill it early.
+  res.on('close', () => { if (!done) { clearTimeout(killer); proc.kill('SIGKILL') } })
 })
 // Reset the per-user conversation thread.
 app.post('/auth/chat/reset', auth, (req, res) => { delete req.user.chatSession; save(store); res.json({ ok: true }) })
