@@ -33,6 +33,7 @@ import AthleteProfile from './pages/AthleteProfile'
 import Settings from './pages/Settings'
 import Fitness from './pages/Fitness'
 import Strength from './pages/Strength'
+import Logs from './pages/Logs'
 import { TrainHub, StatsHub, MoreHub } from './pages/hubs'
 import Chat from './pages/Chat'
 import Progress from './pages/Progress'
@@ -84,6 +85,7 @@ const router = createBrowserRouter([
       { path: 'settings', element: <Settings /> },
       { path: 'fitness', element: <Fitness /> },
       { path: 'strength', element: <Strength /> },
+      { path: 'logs', element: <Logs /> },
       { path: 'progress', element: <Progress /> },
     ],
   },

@@ -35,6 +35,7 @@ export default function Strength() {
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
         <div className="sub-head-t"><h1>Strength</h1><p>Estimated 1-rep max per exercise, from your logs</p></div>
       </div>
+      <Link to="/logs" className="btn btn--ghost" style={{ marginBottom: 12 }}>📒 Session history — view & edit your logs ›</Link>
 
       {logs === undefined ? <p className="meta">Loading…</p> : !exercises.length ? (
         <div className="athlete-view" style={{ textAlign: 'center', padding: 24 }}>
