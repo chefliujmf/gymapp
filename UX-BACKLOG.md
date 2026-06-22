@@ -33,6 +33,14 @@ monitoring routine · unified media manifest · release-notes bell · gym refine
 (warm-up/cool-down, group-by-equipment, Pallof both sides) · Today "done" state ·
 intervals/Strava source linking · profile-gating in cyclingcoach · Centris/checkcheck.
 
+## 🧭 Profile vs Settings (UX)
+
+- ⬜ **Split Profile and Settings.** Profile = the person (avatar, name, account, passkeys,
+  connections like Strava/intervals). A separate **Settings** page for small config (API
+  tokens, units, diet, video stills, etc.). Add a little **table-of-contents / section nav**
+  to the right of Profile so it's not one long scroll. Decide the split (what lives in
+  Profile vs Settings) — judgement call.
+
 ## 🔗 intervals.icu sync — clean up what shows as a "workout"
 
 - ⬜ **Filter the ATP / Annual Training Plan entries** out of the day/today view. The coach

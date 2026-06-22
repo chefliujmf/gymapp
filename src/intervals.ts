@@ -66,7 +66,34 @@ export async function fetchEvents(oldest: string, newest: string): Promise<IcuEv
   if (!apiKey && !serverKey) throw new Error('NO_KEY')
   const res = await fetch(`${ICU}/athlete/${athleteId}/events?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey) })
   if (!res.ok) throw new Error(`ICU_${res.status}`)
-  return res.json()
+  return cleanEvents(await res.json())
+}
+
+// intervals.icu writes more than executable sessions — the ATP/annual plan, load
+// targets, notes, fitness-days, etc. are REPRESENTATIONS, not things to do, so
+// they should never show as a workout. Also collapse duplicate same-day rides
+// (the sync surfaces several where the coach meant one) to a single canonical one.
+const NON_EXECUTABLE = new Set(['NOTE', 'TARGET', 'SEASON_START', 'FITNESS_DAYS', 'SET_EFTP', 'HOLIDAY', 'SICK', 'INJURED', 'ATP', 'GOAL'])
+export function isExecutableEvent(e: IcuEvent): boolean {
+  if (/^ATP\b/i.test(e.name || '')) return false           // "ATP ..." annual-plan rows
+  return !NON_EXECUTABLE.has(String(e.category || '').toUpperCase())
+}
+/** Higher = more canonical: prefer the coach's linked/structured ride when collapsing dupes. */
+function rideRank(e: IcuEvent): number {
+  return (e.external_id ? 4 : 0) + ((e.workout_doc?.steps?.length ?? 0) ? 2 : 0) + (/\[gymapp\]/i.test(e.description || '') ? 1 : 0) + Math.min(0.9, (e.moving_time || 0) / 1e6)
+}
+export function cleanEvents(events: IcuEvent[]): IcuEvent[] {
+  const out: IcuEvent[] = []
+  const bestRidePerDay = new Map<string, IcuEvent>()
+  for (const e of events) {
+    if (!isExecutableEvent(e)) continue
+    if (sportOf(e) === 'cycling') {
+      const day = e.start_date_local.slice(0, 10)
+      const cur = bestRidePerDay.get(day)
+      if (!cur || rideRank(e) > rideRank(cur)) bestRidePerDay.set(day, e)
+    } else out.push(e)
+  }
+  return [...out, ...bestRidePerDay.values()]
 }
 
 // --- writing the plan (mirror) -------------------------------------------
