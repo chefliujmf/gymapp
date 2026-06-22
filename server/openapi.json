@@ -615,6 +615,104 @@
           }
         }
       }
+    },
+    "/auth/strava/status": {
+      "get": {
+        "summary": "Strava connection status (configured + scope)",
+        "tags": [
+          "strava"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "status"
+          }
+        }
+      }
+    },
+    "/auth/strava/activities": {
+      "get": {
+        "summary": "Recent Strava activities (read; needs activity:read_all scope)",
+        "tags": [
+          "strava"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent Strava activities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Strava error (e.g. token scope)"
+          }
+        }
+      }
+    },
+    "/api/strava/activities": {
+      "get": {
+        "summary": "Recent Strava activities (Bearer; needs activity:read_all scope)",
+        "tags": [
+          "strava"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent Strava activities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Strava error (e.g. token scope)"
+          }
+        }
+      }
     }
   },
   "components": {

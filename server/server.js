@@ -16,6 +16,7 @@ import {
   generateAuthenticationOptions, verifyAuthenticationResponse,
 } from '@simplewebauthn/server'
 import { load, save, newId } from './store.js'
+import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -267,6 +268,33 @@ app.put('/auth/logs/:sid', auth, (req, res) => { const l = (req.user.logs || [])
 app.delete('/auth/logs/:sid', auth, (req, res) => { req.user.logs = (req.user.logs || []).filter((x) => x.sid !== req.params.sid); save(store); res.json({ ok: true }) })
 app.delete('/auth/logs', auth, (req, res) => { req.user.logs = []; save(store); res.json({ ok: true }) })
 
+// Strava — per-user OAuth "Connect with Strava" (users never touch an API key).
+// One app-level client (env); each user authorizes their own account.
+app.get('/auth/strava/status', auth, (req, res) => res.json({ available: stravaConfigured(), connected: userStravaConnected(req.user), scope: req.user.strava?.scope || null, athleteId: req.user.strava?.athleteId || null }))
+app.get('/auth/strava/connect', auth, (req, res) => {
+  if (!stravaConfigured()) return res.status(503).send('Strava not configured on the server')
+  const state = randomBytes(16).toString('hex')
+  req.user.stravaState = state; save(store)
+  res.redirect(stravaAuthorizeUrl(ORIGIN + '/auth/strava/callback', state))
+})
+app.get('/auth/strava/callback', auth, async (req, res) => {
+  if (req.query.error) return res.redirect('/profile?strava=denied')
+  const { code, state } = req.query
+  if (!code || !state || state !== req.user.stravaState) return res.redirect('/profile?strava=error')
+  try {
+    const tok = await stravaExchangeCode(String(code))
+    req.user.strava = { ...tok, scope: String(req.query.scope || '') }
+    delete req.user.stravaState; save(store)
+    res.redirect('/profile?strava=connected')
+  } catch (e) { console.error('strava callback', e); res.redirect('/profile?strava=error') }
+})
+app.post('/auth/strava/disconnect', auth, (req, res) => { delete req.user.strava; save(store); res.json({ ok: true }) })
+app.get('/auth/strava/activities', auth, async (req, res) => {
+  if (!userStravaConnected(req.user)) return res.json([])
+  try { res.json(await stravaActivities(req.user, Number(req.query.limit) || 15, () => save(store))) }
+  catch (e) { res.status(502).json({ error: String(e.message || e) }) }
+})
+
 // ---- coach REST API (Bearer token) ---------------------------------------
 // The cyclingcoach dual-writes each session here (rich execution detail) and to
 // intervals.icu (calendar/load), linked by the shared `id` it provides. See /api/docs.
@@ -404,6 +432,11 @@ app.post('/api/plan', apiAuth, async (req, res) => { const r = await upsertPlan(
 app.get('/api/plans', apiAuth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
 app.get('/api/plan/:id', apiAuth, (req, res) => { const p = (req.user.plans || []).find((x) => x.id === req.params.id); return p ? res.json(p) : res.status(404).json({ error: 'not found' }) })
 app.delete('/api/plan/:id', apiAuth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
+app.get('/api/strava/activities', apiAuth, async (req, res) => {
+  if (!userStravaConnected(req.user)) return res.json([])
+  try { res.json(await stravaActivities(req.user, Number(req.query.limit) || 15, () => save(store))) }
+  catch (e) { res.status(502).json({ error: String(e.message || e) }) }
+})
 
 // Calendar items (meal / mind / note) — Platyplus-only, no intervals push.
 app.get('/api/items', apiAuth, (req, res) => res.json(itemsInRange(req.user, req.query.from, req.query.to)))
