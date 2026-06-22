@@ -490,6 +490,7 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .date-range input[type="date"] { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; color: var(--text); font-size: 14px; color-scheme: dark; }
 .fit-hint { font-size: 11px; color: var(--text-dim); margin: 6px 0 0; line-height: 1.35; }
 .fit-cap { font-size: 11.5px; color: var(--text-dim); margin: 1px 0 7px; line-height: 1.4; }
+.fit-insight { font-size: 12.5px; color: var(--text); margin: 9px 2px 0; line-height: 1.4; }
 
 /* tappable ⓘ info popover */
 .infodot-wrap { position: relative; display: inline-flex; }

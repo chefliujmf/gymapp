@@ -52,7 +52,7 @@ const range = (series: Series[]) => {
 
 /** Smooth multi-series line chart: gradient area, draw-in animation, and tap/hover
  * scrubbing with a tooltip. Responsive (stretches to width). */
-export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void }) {
+export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover, bands }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void; bands?: { from: number; to: number; color: string }[] }) {
   const uid = useId()
   const [hi, setHi] = useState<number | null>(null)
   const r = range(series)
@@ -73,6 +73,11 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
   const plot = (
     <div className="trend-wrap chart2__plot" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setH(null)}>
       <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
+        {bands?.map((b, bi) => {
+          const top = y(Math.min(dMax, b.to)), bot = y(Math.max(dMin, b.from))
+          const yy = Math.min(top, bot), hh = Math.abs(bot - top)
+          return hh > 0 ? <rect key={bi} x={0} width={VW} y={yy} height={hh} fill={b.color} opacity={0.14} /> : null
+        })}
         {gridYs.map((yy, gi) => <line key={gi} x1={0} x2={VW} y1={yy} y2={yy} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
         {series.map((s, si) => {
           const pts = s.data.map((v, i) => (v == null ? null : [x(i), y(v)] as [number, number])).filter(Boolean) as [number, number][]

@@ -18,6 +18,32 @@ function formZone(v: number | null) {
   if (v > -30) return { label: 'Optimal', color: '#34e07d' }
   return { label: 'High risk', color: '#ff5d5d' }
 }
+// Form zone bands (intervals.icu): green Optimal (−10..−30) = productive training.
+const FORM_BANDS = [
+  { from: 25, to: 999, color: '#caa45a' },
+  { from: 5, to: 25, color: '#4aa3ff' },
+  { from: -10, to: 5, color: '#9aa3b2' },
+  { from: -30, to: -10, color: '#34e07d' },
+  { from: -999, to: -30, color: '#ff5d5d' },
+]
+const firstLast = (a: (number | null)[]): [number | null, number | null] => { let f: number | null = null, l: number | null = null; for (const v of a) if (v != null) { if (f == null) f = v; l = v } return [f, l] }
+// Short coach-voice takeaways.
+function fitnessInsight(fitness: (number | null)[]): string {
+  const [f0, f1] = firstLast(fitness)
+  if (f0 == null || f1 == null) return ''
+  const d = Math.round(f1 - f0)
+  if (d > 1) return `📈 Fitness is climbing (+${d} this range) — your consistency is paying off.`
+  if (d < -1) return `📉 Fitness is sliding (${d}) — add some load to rebuild.`
+  return `➡️ Fitness is steady — a maintenance block.`
+}
+function formInsight(form: number | null): string {
+  const z = formZone(form).label
+  if (z === 'Optimal') return `💪 Optimal zone — you're training productively and gaining fitness.`
+  if (z === 'Fresh') return `✅ Fresh & race-ready — great for a key event, less so for building.`
+  if (z === 'High risk') return `🛑 Deep fatigue — prioritise recovery before the next hard session.`
+  if (z === 'Transition') return `😴 Very rested — you may be losing fitness; time to add training.`
+  return `➡️ Maintenance — add stress to keep progressing.`
+}
 
 function MiniCard({ title, value, unit, hint, series, bars, color }: { title: string; value: number | null; unit?: string; hint?: string; series?: Series; bars?: (number | null)[]; color?: string }) {
   const [hv, setHv] = useState<number | null>(null)
@@ -107,12 +133,14 @@ export default function Fitness() {
                   { label: 'Fitness', color: '#4aa3ff', data: s.fitness, area: true },
                   { label: 'Fatigue', color: '#c061ff', data: s.fatigue },
                 ]} />
+                <p className="fit-insight">{fitnessInsight(s.fitness)}</p>
               </div>
 
               <div className="card chart-card" style={{ padding: '12px 14px', marginTop: 12 }}>
-                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Form', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} series={[{ label: 'Form', color: fz.color, data: s.form, area: true }]} /> })}>⤢</button>
-                <div className="fit-legend"><span style={{ color: fz.color }}>● Form (Fitness − Fatigue)</span></div>
-                <TrendChart height={120} axes labels={dates} series={[{ label: 'Form', color: fz.color, data: s.form, area: true }]} />
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Form', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: s.form }]} /> })}>⤢</button>
+                <div className="fit-legend"><span style={{ color: fz.color }}>● Form</span><span style={{ color: '#34e07d' }}>● optimal zone (−10…−30)</span></div>
+                <TrendChart height={130} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: s.form }]} />
+                <p className="fit-insight">{formInsight(last(s.form))}</p>
               </div>
 
               <div className="fit-grid">
