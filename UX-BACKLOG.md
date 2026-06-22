@@ -140,7 +140,7 @@ intervals/Strava source linking · profile-gating in cyclingcoach · Centris/che
 - ⬜ **Dev API**: run `server.js` locally (`npm install` in `server/`) with isolated
   dev data + `localhost` origin, so dev has its own API/Swagger/passkeys, no prod writes.
 - ⬜ **XPS staging stack**: parallel `*-dev` containers + dev subdomains
-  (`platyplus-dev.duckdns.org`, NPM + cert) for full prod parity incl. passkeys.
+  (`platyplus-qa.duckdns.org`, NPM + cert) for full prod parity incl. passkeys.
 - ✅ **CI**: `.github/workflows/ci.yml` — `npm ci && npm run build` on push dev/main + PR→main.
 - ✅ **One-command deploy**: `npm run deploy` (`scripts/deploy.sh`) — build → rsync → compose
   up --build → **healthcheck gate**. Mac mode + on-box `DEPLOY_LOCAL=1` mode.
