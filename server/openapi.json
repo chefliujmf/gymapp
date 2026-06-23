@@ -761,6 +761,14 @@
         }
       }
     },
+    "/auth/promote-prod": {
+      "post": {
+        "summary": "Admin: trigger the prod-promotion GitHub workflow (workflow_dispatch). Needs GH_PROMOTE_TOKEN in the server env.",
+        "tags": ["admin"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "promotion started" }, "503": { "description": "GH_PROMOTE_TOKEN not configured" }, "502": { "description": "GitHub API error" } }
+      }
+    },
     "/auth/checkin": {
       "post": {
         "summary": "Upsert today's daily check-in (energy/sleep/soreness, each 1-5; soreness 5=very sore)",

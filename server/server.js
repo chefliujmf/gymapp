@@ -250,6 +250,23 @@ app.put('/auth/profile', auth, (req, res) => {
   save(store); res.json(pub(req.user))
 })
 
+// Admin: trigger the prod-promotion GitHub workflow (workflow_dispatch) from the app
+// instead of the Actions tab (#47). Needs a GH token with actions:write in the server
+// env (GH_PROMOTE_TOKEN, injected via AUTH_ENV at deploy). Promotes dev → prod.
+app.post('/auth/promote-prod', auth, admin, async (req, res) => {
+  const token = process.env.GH_PROMOTE_TOKEN
+  if (!token) return res.status(503).json({ error: 'GH_PROMOTE_TOKEN not set on the server — add it to the deploy secrets to enable in-app promotion.' })
+  try {
+    const r = await fetch('https://api.github.com/repos/chefliujmf/gymapp/actions/workflows/promote-prod.yml/dispatches', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'platyplus-server' },
+      body: JSON.stringify({ ref: 'main' }),
+    })
+    if (r.status === 204) return res.json({ ok: true })
+    return res.status(502).json({ error: `GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` })
+  } catch (e) { return res.status(502).json({ error: String(e).slice(0, 200) }) }
+})
+
 // Coach-activity notifications — the user reads (bell) + marks read.
 app.get('/auth/notifications', auth, (req, res) => res.json(req.user.notifications || []))
 app.post('/auth/notifications/read', auth, (req, res) => {
