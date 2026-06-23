@@ -1,55 +1,49 @@
-# Platyplus ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Feedback & Ideas Log (numbered, ordered)
+# Platyplus — Feedback & Ideas Log (numbered, ordered)
 
-**This is the master queue.** Every piece of feedback/idea JM gives gets a **number** and is
-**appended at the END** when received. Claude **builds in sequence, top-to-bottom of the OPEN
-queue, following it to the T unless JM says otherwise.** Status: ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ done ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· ÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¨ building ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ¬ÃÂÃÂÃÂÃÂ todo.
-Design detail for big items lives in `UX-BACKLOG.md`; this file is the ordered index.
+**This is the master queue.** Every feedback/idea JM gives gets a **number**, appended at the END
+when received (its OWN entry — never merged). Build the OPEN queue **top-to-bottom, to the T**,
+unless JM explicitly reprioritizes. Status: ✅ done · 🔨 building · ⬜ todo. Design detail for big
+items → `UX-BACKLOG.md`. (Edit this file with Write/sed — NOT `perl -0pi`, which mangles the UTF-8.)
 
-> Rule (JM 2026-06-23): keep this log current; **append each new feedback/idea here (numbered)
-> the moment it's given**, then work the OPEN queue in order. See skill `options-first` +
-> memory `feedback-log-discipline`.
+> **👉 YOU ARE HERE:** the coach feature (P1 + plan view), the whole equipment chain, and the
+> post-workout flow are BUILT + on QA. OPEN: #18 P1-verify (pairs w/ live coach) · #23 (pairs w/
+> coach) · #28 (week arrows) · #26 follow-ons (activity stats + intervals mirror). Next build: **#28**.
 
 ---
 
-## ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Done (this session, 2026-06-23) ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ record
+## ✅ Done — record
 
-1. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Pending prod ops ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ deleted jmfiset duplicate `origin=icu` plans + imported coach profile.
-2. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ One-click prod promotion ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ `promote-prod.yml` (Actions ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Run after QA) + `PROMOTE_TOKEN` (non-expiry PAT). Tested green.
-3. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Secrets = GitHub Secrets master, injected into the box at deploy (`AUTH_ENV_*`) + `--force-recreate`. Proven QA+prod.
-4. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Remove all local secrets ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ `.secrets/` deleted.
-5. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Check-in redesign ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ compact **1ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ5**, ALWAYS visible (no collapse), **SorenessÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂFreshness** (all rows higher=better), **emoji faces ÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ©ÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¤ÃÂÃÂÃÂÃÂ©** (obvious+funny), green pop on pick.
-6. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Fix ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ popover clipped by `.card` overflow (check-in info now shows).
-7. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Fix black plan-card title (`.card-body h3` had no color ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ inherited button black).
-8. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ "Always research best practice first" ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ hardened as a skill rule (cite sources).
-9. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ "Options + mockups BEFORE building" ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ skill `options-first` + memory `show-options-and-mockups-first`.
-10. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ intervals planned-workouts investigation ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ root cause: my dupe cleanup deleted the SHARED events. Re-pushed, then reverted on request (cyclingcoach owns the intervals planning directly **for now**).
-11. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Coach plan-authoring ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ design LOCKED + **P1a built** (server: plan structured fields + item `why`).
-12. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ cyclingcoach `AGENTS.md` + memory `platyplus-coach-engine` updated (author INTO Platyplus = master).
-13. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Logged the full coach plan-authoring design in `UX-BACKLOG.md`.
-
-## ÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¨/ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ¬ÃÂÃÂÃÂÃÂ OPEN QUEUE ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ build in this order
-
-> **ÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ PHASE 1 (P1aÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂP1f) BUILT + on QA. Open P1 verify items under #18 (native-text mirror parity ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· host-MCP re-sync ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· CLI mapping ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· QA verify). Next NEW work: #19.
-> schema), #14 P1b (intervals mirror + step-split #25) ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ both on QA. Resume at #15.
-
-14. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ **Coach P1b** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ `planToIcuEvent` renders structured text + meal/mind refs + both why-levels into the intervals description; splits long steps. (`time_target` = step `duration`; verify Wahoo parity vs cyclingcoach before fully closing.)
-15. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ **Coach P1c** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ PlanDetail UI: universal shell (ObjectiveÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ·FuelÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ·MindÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ·RecoveryÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ·SuccessÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ·Cues) + sport body (ride/run profile ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· gym list ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· yoga/pilates class); **meal chips = 2-col grid (not scroll)**, variable count; **bottom-sheet "why"** (no inline slab).
-16. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ **Coach P1d** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ recipe/session page "Coach's pick: ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¦" banner (per-pick `why`).
-17. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ **Coach P1e** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ MCP: add `search_recipes` + `search_sessions` (mirror `search_exercises`); add structured fields + `why` to `create_*`/`schedule_*`; update BYO-AI tool descriptions. *(First check the server can search the recipe/mind catalog.)*
-18. ÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¨ **Coach P1f** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ instructions DONE (cyclingcoach SKILL + AGENTS ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ author into Platyplus, discovery tools, variable meals, per-sport). REMAINING: (a) PlatyplusÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂintervals NATIVE workout text for full chart parity; (b) re-sync host MCP /home/jmf/platyplus-chat/mcp/ from repo; (c) publish_platyplus_plan.py CLI structured-field mapping; (d) end-to-end QA verify with the coach.
-19. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ **Check-in history** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ once all 3 logged, collapse the Today card to a one-line summary; full history list in **Logs**.
-20. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ¬ÃÂÃÂÃÂÃÂ **Train filters + sorting** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Workouts AND Exercises, by **equipment ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· time/duration ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· intensity**.
-21. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ¬ÃÂÃÂÃÂÃÂ **Settings ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ equipment list** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ define what you own; powers the equipment filter (#20).
-22. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ¬ÃÂÃÂÃÂÃÂ **Train back-arrow** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ confirm (it's a root tab; back absent by design) ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ add only if JM wants.
-23. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ¬ÃÂÃÂÃÂÃÂ **intervals indoor-completion** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ confirm an indoor-done Platyplus workout reaches intervals labeled clearly (FITÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂStravaÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂintervals).
-24. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ **Skill: mockups in HTML, not ASCII** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ `options-first` should say render mockups as HTML (open in browser), since JM reads those far better than ASCII. (done in skill below.)
-25. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ **Mirror must split long workout steps** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ a single >MAX-sec step makes the intervals workout render EMPTY (hit on the 60-min steady push). P1b workout_doc must split long steps like cyclingcoach (`split_long_doc_step`). [folded into P1b]
-26. Ã¢ÂÂ **Post-workout flow** BUILT Ã¢ÂÂ /feedback/:id: coach notes + sport-dependent feedback + Save (stored on plan; coach reads it). Follow-ons: completed-activity STATS display + intervals MIRROR (backend).
-27. â **Post-workout SPORT-DEPENDENT** BUILT â ride/run: legs/fuel/niggles; gym: how-heavy/soreness/form/niggles (FIELDS per sport in PostWorkout.tsx).
-28. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ¬ÃÂÃÂÃÂÃÂ **Week strip needs prev/next arrows** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ the day strip is stuck on the current week (e.g. 22ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ28); add ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¹ ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂº to page to past/future weeks (Today + wherever the WeekStrip is used).
-29. ✓ **Post-workout tweaks** BUILT — Save-only button (no intervals UI); intervals "Feel" faces Strong/Good/Normal/Poor/Weak added.
-30. ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ **Process: proactively update skills when logic changes/improves** ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ don't wait to be asked. Captured: memory `keep-skills-current` + options-first skill.
-31. ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ¨ [PROMOTED before #22 by JM 2026-06-23 ÃÂ¢ÃÂÃÂ tag ALL exercises] **Tag exercises with equipment (name-inference)** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ only 46% tagged; infer from the name in build-catalog.mjs ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ ~67%. The ~33% with NO equipment cue stay "unknown" (do NOT guess bodyweight). Needs catalog rebuild + re-sync (content pipeline).
-32. ÃÂÃÂ¢ÃÂÃÂ¬ÃÂÃÂ **Coach equipment-aware (#3 a+b, approved)** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ (a) add `equipment` filter param + return tag on `search_exercises` (+ /api/exercises); (b) store owned-equipment on the user profile (the #21 setting writes it) so the coach filters picks to owned (or bodyweight); treat "unknown"-equipment exercises cautiously so it never prescribes gear you don't have.
-33. ÃÂÃÂ¢ÃÂÃÂ¬ÃÂÃÂ **Source-lookup equipment for the still-unknown ~33%** (extends #31) ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ don't leave them unknown; pull the equipment from the original source (e.g. MuscleWiki) per exercise. PREFER re-extracting from the already-downloaded source pages in `downloaded_pages/` (no new scraping, respects the media-independence gate ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ METADATA only, not media); fall back to a source fetch only if needed.
-34. ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ **Check-in collapse fixes (defects in #19)** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ (a) after tapping Edit there's no way to SAVE/re-collapse ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ add a "Done" button; (b) "History" appears BOTH on the check-in line and at the top of Today ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ remove it from the check-in line (keep one); JM: History belongs next to Stats, not on this line.
+1. ✅ Pending prod ops — deleted duplicate icu plans + imported coach profile.
+2. ✅ One-click prod promotion (`promote-prod.yml` + `PROMOTE_TOKEN`, tested).
+3. ✅ Secrets = GitHub Secrets master, injected at deploy (`AUTH_ENV_*` + force-recreate). QA+prod.
+4. ✅ Remove all local secrets (`.secrets/` deleted).
+5. ✅ Check-in → compact 1–5, always-visible, Soreness→Freshness, emoji faces.
+6. ✅ Fix ⓘ popover clipped by `.card` overflow.
+7. ✅ Fix black plan-card title (`.card-body h3` color).
+8. ✅ "Always research best practice first" — skill rule.
+9. ✅ "Options + mockups before building" — `options-first` skill + memory.
+10. ✅ intervals planned-workouts investigation (re-push then reverted — cyclingcoach owns intervals for now).
+11. ✅ Coach P1a — plan structured fields + item `why`.
+12. ✅ cyclingcoach `AGENTS.md` + `platyplus-coach-engine` memory updated.
+13. ✅ Coach plan-authoring design logged in `UX-BACKLOG.md`.
+14. ✅ Coach P1b — intervals mirror (brief + meal/mind refs) + split long steps + `time_target`.
+15. ✅ Coach P1c — CoachPlanDetail UI (shell + sport body + grid meal chips + bottom-sheet why).
+16. ✅ Coach P1d — recipe/session "Coach's pick" banner.
+17. ✅ Coach P1e — MCP `search_recipes`/`search_sessions` + structured fields on create_*/schedule_*.
+18. 🔨 Coach P1f — instructions DONE (cyclingcoach). REMAINING: native-text mirror parity · host-MCP re-sync · `publish_platyplus_plan.py` CLI mapping · QA verify WITH the live coach.
+19. ✅ Check-in history (collapse-when-done on Today + list in Logs).
+20. ✅ Train filters + sort — Workouts AND Exercises, by equipment (owned) · time · **level** · sort.
+21. ✅ Settings → equipment list (owned, on profile).
+22. ✅ Train back-arrow — resolved: root tab, no back by design (add only if JM wants).
+23. ⬜ intervals indoor-completion labeling — confirm indoor-done reaches intervals labeled (pairs w/ coach + a real completion).
+24. ✅ Skill: mockups in HTML, not ASCII.
+25. ✅ Mirror must split long workout steps (folded into P1b).
+26. ✅ Post-workout flow BUILT — `/feedback/:id`: coach notes + sport-dependent feedback + Save (stored on plan; coach reads it). FOLLOW-ONS: completed-activity STATS display + intervals private-feedback MIRROR (backend).
+27. ✅ Post-workout SPORT-DEPENDENT BUILT — ride/run legs/fuel/niggles · gym how-heavy/soreness/form.
+28. ⬜ **Week-strip prev/next arrows** — strip stuck on current week; add ‹ › to page past/future weeks. ← NEXT BUILD
+29. ✅ Post-workout tweaks BUILT — Save-only button (intervals push is backend); intervals "Feel" faces (Strong/Good/Normal/Poor/Weak).
+30. ✅ Process: proactively update skills when logic changes (`keep-skills-current` memory).
+31. ✅ Tag exercises with equipment — name + no-kit-category inference, 46%→91% (build-catalog).
+32. ✅ Coach equipment-aware — `search_exercises` equipment filter + owned gear in the coach prompt.
+33. ✅ Equipment 100% — reasoned classification for the residual (JM approved; marked not-source-truth).
+34. ✅ Check-in collapse fixes — "Done" button to re-collapse + removed duplicate History.
