@@ -25,6 +25,7 @@ jobs:
       STAGE_DIR: /home/jmf/gymapp-staging
       BUILD_CMD: npm run build:app
       CATALOG_DIR: /home/jmf/content/generated
+      AUTH_ENV: ${{ secrets.AUTH_ENV_STAGING }}   # GitHub Secrets = master; deploy-staging.sh writes auth.env from it
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

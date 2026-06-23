@@ -27,6 +27,19 @@ if [ "${SKIP_BUILD:-0}" != "1" ]; then
   ${BUILD_CMD:-npm run build}
 fi
 
+# Secrets master = GitHub Secrets: when the deploy job injects $AUTH_ENV (the
+# AUTH_ENV_PROD secret), regenerate auth.env from it before compose reads it.
+# No-op when AUTH_ENV is unset (e.g. the Mac hotfix path), leaving the on-box file
+# untouched. Atomic write + 600 perms.
+write_auth_env() {
+  local dir="$1"
+  [ -n "${AUTH_ENV:-}" ] || { echo ">> AUTH_ENV not injected — keeping existing $dir/auth.env"; return 0; }
+  printf '%s\n' "$AUTH_ENV" > "$dir/auth.env.tmp"
+  chmod 600 "$dir/auth.env.tmp"
+  mv "$dir/auth.env.tmp" "$dir/auth.env"
+  echo ">> wrote $dir/auth.env from injected GitHub Secret ($(grep -c '=' "$dir/auth.env") vars)"
+}
+
 # Poll the container's own healthcheck for up to 60s. $1 = "local" | "remote".
 wait_healthy() {
   local runner="$1" i status
@@ -54,6 +67,7 @@ if [ "${DEPLOY_LOCAL:-0}" = "1" ]; then
   rsync -a --delete dist/ "$APP_DIR/dist/"
   rsync -a server/ "$APP_DIR/server/"
   rsync -a docker-compose.yml "$APP_DIR/docker-compose.yml"   # infra changes (mounts/env)
+  write_auth_env "$APP_DIR"
   ( cd "$APP_DIR" && docker compose up -d --build )
   wait_healthy local
 else

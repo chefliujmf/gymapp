@@ -59,6 +59,16 @@ Read this before changing anything here. It lists the invariants and the
   up --build` on prod is blocked), redeploy, and verify `healthy` + HTTP 200
   before calling it fixed.
 
+## Secrets — GitHub Secrets are the master (since 2026-06-23)
+- All app secrets live in **GitHub Actions secrets**, one blob per env: `AUTH_ENV_PROD`
+  and `AUTH_ENV_STAGING` (the full `auth.env` contents). The deploy jobs inject them
+  (`env: AUTH_ENV: ${{ secrets.AUTH_ENV_* }}`) and `scripts/deploy.sh` / `deploy-staging.sh`
+  **regenerate `auth.env` on the box** from that before `docker compose up`. Rotate a token =
+  edit the secret, redeploy. The on-box `auth.env` is now a derived runtime copy (the app
+  can't read GitHub Secrets directly). The Mac hotfix path leaves it untouched (no `AUTH_ENV`).
+- `PROMOTE_TOKEN` (Actions secret) is the prod-promotion PAT — used by `promote-prod.yml` only.
+- When you change `auth.env` keys, update **both** the GitHub Secret blob and this list.
+
 ## Data that matters (backed up)
 - `data/store.json` — accounts/passkeys (nightly **encrypted** backup to Drive).
-- `auth.env` — secrets (same backup). Media + dist sync separately (weekly/Drive).
+- `auth.env` — derived from GitHub Secrets at deploy (still backed up). Media + dist sync separately (weekly/Drive).

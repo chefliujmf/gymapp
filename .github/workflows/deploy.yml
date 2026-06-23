@@ -29,6 +29,7 @@ jobs:
       GYMAPP_DIR: /home/jmf/gymapp
       BUILD_CMD: npm run build:app
       CATALOG_DIR: /home/jmf/content/generated
+      AUTH_ENV: ${{ secrets.AUTH_ENV_PROD }}   # GitHub Secrets = master; deploy.sh writes auth.env from it
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

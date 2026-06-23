@@ -10,6 +10,15 @@ STAGE_DIR="${STAGE_DIR:-/home/jmf/gymapp-staging}"
 # BUILD_CMD lets the XPS runner use "npm run build:app" (synced catalog, no scrape).
 if [ "${SKIP_BUILD:-0}" != "1" ]; then echo ">> building (${BUILD_CMD:-npm run build})"; ${BUILD_CMD:-npm run build}; fi
 
+# Regenerate auth.env from the injected AUTH_ENV_STAGING secret (GitHub Secrets =
+# master). No-op when not injected (Mac path keeps the on-box file).
+write_auth_env() {
+  local dir="$1"
+  [ -n "${AUTH_ENV:-}" ] || { echo ">> AUTH_ENV not injected — keeping existing $dir/auth.env"; return 0; }
+  printf '%s\n' "$AUTH_ENV" > "$dir/auth.env.tmp"; chmod 600 "$dir/auth.env.tmp"; mv "$dir/auth.env.tmp" "$dir/auth.env"
+  echo ">> wrote $dir/auth.env from injected GitHub Secret ($(grep -c '=' "$dir/auth.env") vars)"
+}
+
 wait_staging() {
   local run="$1" i s
   for i in $(seq 1 30); do
@@ -27,6 +36,7 @@ if [ "${DEPLOY_LOCAL:-0}" = "1" ]; then
   rsync -a --delete dist/ "$STAGE_DIR/dist/"
   rsync -a server/ "$STAGE_DIR/server/"
   rsync -a docker-compose.staging.yml "$STAGE_DIR/docker-compose.yml"
+  write_auth_env "$STAGE_DIR"
   ( cd "$STAGE_DIR" && docker compose up -d --build )
   wait_staging local
 else
