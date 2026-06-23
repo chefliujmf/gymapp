@@ -1,7 +1,7 @@
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 
 export interface Passkey { id: string; label: string; createdAt: number }
-export interface Checkin { date: string; energy?: number; sleep?: 'poor' | 'ok' | 'great'; soreness?: 'none' | 'some' | 'lots'; note?: string }
+export interface Checkin { date: string; energy?: number; sleep?: number; soreness?: 'none' | 'some' | 'lots'; note?: string }
 
 export interface User {
   id: string

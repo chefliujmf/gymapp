@@ -66,7 +66,7 @@ server.tool('get_recent_activities',
   wrap((a) => api('GET', `/api/intervals/activities?days=${a.days || 14}`)))
 
 server.tool('get_checkins',
-  "Read the athlete's recent daily check-ins (how they FELT): energy 1–4 (4=great), sleep (poor|ok|great), soreness (none|some|lots), optional note. This is the signal to adapt to when intervals.icu isn't connected — heavy legs / poor sleep / high soreness ⇒ ease off.",
+  "Read the athlete's recent daily check-ins (how they FELT): energy 1–4 (4=great), sleep 1–10 (10=fully rested; matches an intervals.icu-style sleep score), soreness (none|some|lots), optional note. This is the signal to adapt to when intervals.icu isn't connected — heavy legs / poor sleep / high soreness ⇒ ease off.",
   { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },
   wrap((a) => { const to = new Date().toISOString().slice(0, 10); const from = new Date(Date.now() - (a.days || 14) * 86400000).toISOString().slice(0, 10); return api('GET', `/api/checkins?from=${from}&to=${to}`) }))
 

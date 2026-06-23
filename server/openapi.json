@@ -718,7 +718,7 @@
     },
     "/auth/checkin": {
       "post": {
-        "summary": "Upsert today's daily check-in (energy 1-4, sleep poor|ok|great, soreness none|some|lots)",
+        "summary": "Upsert today's daily check-in (energy 1-4, sleep 1-10, soreness none|some|lots)",
         "tags": ["checkin"],
         "security": [{ "cookieAuth": [] }],
         "responses": { "200": { "description": "the saved check-in" } }

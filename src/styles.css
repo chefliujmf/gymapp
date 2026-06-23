@@ -539,6 +539,9 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .checkin__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0; }
 .checkin__row > span { font-size: 13px; color: var(--text-dim); }
 .checkin__opts { display: flex; gap: 6px; }
+.checkin__row--stack { flex-direction: column; align-items: stretch; gap: 6px; }
+.checkin__opts--num { flex-wrap: wrap; gap: 5px; }
+.checkin__opts--num .checkin__b--n { flex: 1 1 0; min-width: 28px; padding: 6px 0; text-align: center; }
 .checkin__b { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 10px; padding: 6px 12px; font-size: 14px; cursor: pointer; text-transform: capitalize; }
 .checkin__b.on { border-color: var(--accent, #34e07d); background: rgba(52, 224, 125, 0.16); color: var(--text); }
 

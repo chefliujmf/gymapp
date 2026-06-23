@@ -13,6 +13,7 @@ import { localISO } from '../date'
 import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { authApi, type Checkin } from '../auth/api'
+import { InfoDot } from '../charts'
 
 /** Quick "how do you feel" check-in (energy/sleep/soreness) — a few taps, feeds the coach. */
 function CheckInCard() {
@@ -27,7 +28,10 @@ function CheckInCard() {
     <div className="card checkin">
       <div className="checkin__t">How do you feel today?</div>
       <div className="checkin__row"><span>Energy</span><div className="checkin__opts">{energy.map(([v, e]) => <button key={v} className={'checkin__b' + (ci?.energy === v ? ' on' : '')} onClick={() => set({ energy: v })}>{e}</button>)}</div></div>
-      <div className="checkin__row"><span>Sleep</span><div className="checkin__opts">{(['poor', 'ok', 'great'] as const).map((o) => <button key={o} className={'checkin__b' + (ci?.sleep === o ? ' on' : '')} onClick={() => set({ sleep: o })}>{o}</button>)}</div></div>
+      <div className="checkin__row checkin__row--stack">
+        <span>Sleep <InfoDot text="Rate last night 1–10 (1 = terrible, 10 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also flows to the coach automatically — this is the manual signal otherwise." /></span>
+        <div className="checkin__opts checkin__opts--num">{Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <button key={n} className={'checkin__b checkin__b--n' + (ci?.sleep === n ? ' on' : '')} onClick={() => set({ sleep: n })}>{n}</button>)}</div>
+      </div>
       <div className="checkin__row"><span>Soreness</span><div className="checkin__opts">{(['none', 'some', 'lots'] as const).map((o) => <button key={o} className={'checkin__b' + (ci?.soreness === o ? ' on' : '')} onClick={() => set({ soreness: o })}>{o}</button>)}</div></div>
     </div>
   )
