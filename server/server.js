@@ -576,7 +576,11 @@ function planToIcuEvent(plan, items = []) {
     const segs = plan.segments || []
     ev.type = plan.sport === 'ride' ? 'Ride' : 'Run'
     ev.moving_time = segs.reduce((s, x) => s + (Number(x.duration) || 0), 0)
-    // duration (seconds) on each step IS the time target; power is the intensity target → Wahoo-ready.
+    // CRITICAL: intervals only MODELS a ride/run (chart, planned load, Wahoo steps) when the
+    // event carries a top-level `time_target` (total seconds) alongside moving_time + workout_doc.
+    // Without it the event stores UNMODELED → empty chart. (TODO P1f: also emit native workout
+    // text for the chart, per cyclingcoach instructions_intervals_icu — verify parity before closing #14.)
+    ev.time_target = ev.moving_time
     // Split any step > MAX (3600s) into interpolated chunks — a single over-long step makes the
     // intervals workout render EMPTY (matches cyclingcoach split_long_doc_step).
     if (segs.length) ev.workout_doc = { steps: segs.flatMap((s) => splitWorkoutStep(s)) }
