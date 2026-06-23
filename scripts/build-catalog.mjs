@@ -492,12 +492,17 @@ for (const ex of exercises) ex.equipment = normEquip(ex.equipment)
 // Bodyweight. Genuinely-ambiguous items stay undefined (for source lookup), never guessed.
 const EQ_BY_NAME = [['Dumbbell', /dumbbell|\bdb\b/i], ['Barbell', /barbell|\bbb\b|\bez[- ]?bar/i], ['Kettlebell', /kettlebell|\bkb\b/i], ['Cable', /cable/i], ['Machine', /machine|smith|leg press|pulldown|pec deck|hack squat|hammer strength|leg extension|leg curl/i], ['Bands', /\bband/i], ['Ball', /swiss ball|medicine ball|stability ball|\bmed ball|\bbosu/i], ['Plate', /\bplate|weighted/i], ['TRX', /\btrx|suspension/i], ['Bodyweight', /push-?up|pull-?up|chin-?up|\bplank|\bdip\b|\bsquat\b|\blunge|\bcrunch|sit-?up|burpee|mountain climber|glute bridge|bird dog|superman|hollow|\braise\b/i]]
 const EQ_CAT_BODYWEIGHT = /yoga|pilates|stretch|mobilit|recovery|cardio|warm|cool|core/i
+// REASONED cues (exercise-type → implied gear) for items with no source data + no name
+// match. NOT source-truth — an educated call (JM approved 2026-06-23) so 100% are filterable;
+// Bodyweight is the default (the residual is Centr, which skews bodyweight).
+const EQ_REASONED = [['Barbell', /deadlift|romanian|\brdl\b|clean|snatch|back squat|front squat|overhead press|bench press|landmine/i], ['Kettlebell', /\bswing\b|turkish|windmill|goblet/i], ['Dumbbell', /curl|\brow\b|fly|flye|lateral raise|front raise|shoulder press|chest press|thruster|renegade|arnold|hammer|kickback|pullover|devil press|\bpress\b|reverse fly|upright row/i], ['Bands', /band|pull-?apart|pull-?through/i], ['Cable', /cable|pulldown|pushdown|face pull/i], ['Plate', /\bplate|weighted/i]]
 for (const ex of exercises) {
   if (ex.equipment) continue
   let tag = null
   for (const [k, re] of EQ_BY_NAME) if (re.test(ex.name)) { tag = k; break }
   if (!tag && EQ_CAT_BODYWEIGHT.test(ex.category || '')) tag = 'Bodyweight'
-  if (tag) ex.equipment = tag
+  if (!tag) for (const [k, re] of EQ_REASONED) if (re.test(ex.name)) { tag = k; break }
+  ex.equipment = tag || 'Bodyweight' // reasoned default → 100% coverage
 }
 
 // Canonicalise primary muscle into a tidy set of groups (sources disagree on case/synonyms),
