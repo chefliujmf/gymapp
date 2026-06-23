@@ -68,7 +68,11 @@ if [ "${DEPLOY_LOCAL:-0}" = "1" ]; then
   rsync -a server/ "$APP_DIR/server/"
   rsync -a docker-compose.yml "$APP_DIR/docker-compose.yml"   # infra changes (mounts/env)
   write_auth_env "$APP_DIR"
-  ( cd "$APP_DIR" && docker compose up -d --build )
+  # env_file is read at container CREATE, and compose won't recreate on an
+  # auth.env-only change — so force-recreate when we injected secrets, else a
+  # token rotation wouldn't take effect.
+  RECREATE=""; [ -n "${AUTH_ENV:-}" ] && RECREATE="--force-recreate"
+  ( cd "$APP_DIR" && docker compose up -d --build $RECREATE )
   wait_healthy local
 else
   echo ">> syncing dist + server + compose to ${XPS_HOST}:${APP_DIR}"

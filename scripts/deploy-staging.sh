@@ -37,7 +37,9 @@ if [ "${DEPLOY_LOCAL:-0}" = "1" ]; then
   rsync -a server/ "$STAGE_DIR/server/"
   rsync -a docker-compose.staging.yml "$STAGE_DIR/docker-compose.yml"
   write_auth_env "$STAGE_DIR"
-  ( cd "$STAGE_DIR" && docker compose up -d --build )
+  # force-recreate on secret injection so an auth.env-only change actually loads.
+  RECREATE=""; [ -n "${AUTH_ENV:-}" ] && RECREATE="--force-recreate"
+  ( cd "$STAGE_DIR" && docker compose up -d --build $RECREATE )
   wait_staging local
 else
   echo ">> syncing dist + server + compose to ${XPS_HOST}:${STAGE_DIR}"
