@@ -1,24 +1,31 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { exercises, exerciseCategories, exerciseEquipment, exerciseMuscles } from '../data/catalog'
+import { useAuth } from '../auth/AuthContext'
 
 const CAP = 120
 
 export default function Exercises() {
+  const { user } = useAuth()
   const [cat, setCat] = useState<string>('all')
   const [equip, setEquip] = useState<string>('all')
   const [muscle, setMuscle] = useState<string>('all')
+  const [ownedOnly, setOwnedOnly] = useState(false)
+  const [sortAz, setSortAz] = useState(false)
   const [q, setQ] = useState('')
 
+  const owned = useMemo(() => new Set<string>([...(((user?.info as { equipment?: string[] } | undefined)?.equipment) || ['Bodyweight'])]), [user])
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase()
-    return exercises.filter(
+    const out = exercises.filter(
       (e) => (cat === 'all' || e.category === cat)
         && (equip === 'all' || e.equipment === equip)
         && (muscle === 'all' || e.muscle === muscle)
+        && (!ownedOnly || !e.equipment || owned.has(e.equipment))
         && (!needle || e.name.toLowerCase().includes(needle) || (e.muscle || '').toLowerCase().includes(needle)),
     )
-  }, [cat, equip, muscle, q])
+    return sortAz ? [...out].sort((a, b) => a.name.localeCompare(b.name)) : out
+  }, [cat, equip, muscle, ownedOnly, sortAz, q, owned])
 
   return (
     <div>
@@ -44,6 +51,8 @@ export default function Exercises() {
       </div>
 
       <div className="chips chips--scroll">
+        <button className={'chip' + (ownedOnly ? ' chip--active' : '')} onClick={() => setOwnedOnly((v) => !v)}>{ownedOnly ? '✓ ' : ''}My gear</button>
+        <button className={'chip' + (sortAz ? ' chip--active' : '')} onClick={() => setSortAz((v) => !v)}>↕ A–Z</button>
         <button className={'chip' + (equip === 'all' ? ' chip--active' : '')} onClick={() => setEquip('all')}>Any kit</button>
         {exerciseEquipment.map((c) => (
           <button key={c} className={'chip' + (equip === c ? ' chip--active' : '')} onClick={() => setEquip(c)}>{c}</button>
