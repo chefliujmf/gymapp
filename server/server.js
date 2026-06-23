@@ -262,14 +262,13 @@ app.put('/auth/profile/athlete', auth, (req, res) => {
 
 // Daily check-in (how the athlete feels) — Platyplus-collected signal the coach reads,
 // so it has something to adapt to even without intervals.icu. Light: a few taps.
-const oneOf = (v, list) => (list.includes(v) ? v : undefined)
 function upsertCheckin(user, body) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(body?.date || '') ? body.date : new Date().toISOString().slice(0, 10)
   user.checkins = user.checkins || []
   const ci = { date,
-    energy: Number(body.energy) >= 1 && Number(body.energy) <= 4 ? Number(body.energy) : undefined,
-    sleep: oneOf(body.sleep, ['poor', 'ok', 'great']),
-    soreness: oneOf(body.soreness, ['none', 'some', 'lots']),
+    energy: Number(body.energy) >= 1 && Number(body.energy) <= 5 ? Number(body.energy) : undefined,
+    sleep: Number(body.sleep) >= 1 && Number(body.sleep) <= 5 ? Number(body.sleep) : undefined,
+    soreness: Number(body.soreness) >= 1 && Number(body.soreness) <= 5 ? Number(body.soreness) : undefined,
     note: typeof body.note === 'string' ? body.note.slice(0, 200) : undefined }
   const i = user.checkins.findIndex((x) => x.date === date)
   if (i >= 0) user.checkins[i] = { ...user.checkins[i], ...ci }; else user.checkins.push(ci)
@@ -410,7 +409,7 @@ function buildSystemPrompt(user) {
   if (isCyclist && COACH_ENGINE_CYCLING) p += '\n\n' + COACH_ENGINE_CYCLING
   const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
-  p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN (energy 1-4, sleep, soreness) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
+  p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-5 (energy: 5=energized, sleep: 5=fully rested, soreness: 5=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
   p += '\n\n' + APP_HELP
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()

@@ -11,8 +11,12 @@ Read this before changing anything here. It lists the invariants and the
 - Public at `https://platyplus.duckdns.org` via NPM (HA Green). Passkeys bind to
   that exact domain (RP_ID) — the TLS cert MUST match it.
 - Deploy = **3-env CI/CD** (see DEPLOY.md): CI on every push/PR; `dev` push → **QA/staging**
-  auto-deploy; PR `dev`→`main` (CI green) → **prod** auto-deploy via the XPS self-hosted
-  runner (`build:app` + synced catalog). `npm run deploy` from the Mac is the hotfix path.
+  auto-deploy. **Prod promotion = one click** (repo → Actions → "Promote to prod" → Run workflow,
+  AFTER testing QA): `promote-prod.yml` opens/reuses a `dev`→`main` PR and enables **auto-merge**, so
+  it ships once the protected-branch `build` check passes → `deploy.yml` (push:`main`, CI-gated)
+  deploys **prod** via the XPS self-hosted runner (`build:app` + synced catalog). So: push `dev` →
+  test on QA → Run workflow → prod. Needs Actions secret `PROMOTE_TOKEN` (fine-grained PAT,
+  Contents+PRs write) + repo "Allow auto-merge" on. `npm run deploy` from the Mac is the hotfix path.
 
 ## INVARIANT: 100% media independence (do not break)
 - The catalog must contain **zero** third-party media URLs (Centr, MuscleWiki,
@@ -55,6 +59,16 @@ Read this before changing anything here. It lists the invariants and the
   up --build` on prod is blocked), redeploy, and verify `healthy` + HTTP 200
   before calling it fixed.
 
+## Secrets — GitHub Secrets are the master (since 2026-06-23)
+- All app secrets live in **GitHub Actions secrets**, one blob per env: `AUTH_ENV_PROD`
+  and `AUTH_ENV_STAGING` (the full `auth.env` contents). The deploy jobs inject them
+  (`env: AUTH_ENV: ${{ secrets.AUTH_ENV_* }}`) and `scripts/deploy.sh` / `deploy-staging.sh`
+  **regenerate `auth.env` on the box** from that before `docker compose up`. Rotate a token =
+  edit the secret, redeploy. The on-box `auth.env` is now a derived runtime copy (the app
+  can't read GitHub Secrets directly). The Mac hotfix path leaves it untouched (no `AUTH_ENV`).
+- `PROMOTE_TOKEN` (Actions secret) is the prod-promotion PAT — used by `promote-prod.yml` only.
+- When you change `auth.env` keys, update **both** the GitHub Secret blob and this list.
+
 ## Data that matters (backed up)
 - `data/store.json` — accounts/passkeys (nightly **encrypted** backup to Drive).
-- `auth.env` — secrets (same backup). Media + dist sync separately (weekly/Drive).
+- `auth.env` — derived from GitHub Secrets at deploy (still backed up). Media + dist sync separately (weekly/Drive).

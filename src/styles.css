@@ -539,8 +539,21 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .checkin__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0; }
 .checkin__row > span { font-size: 13px; color: var(--text-dim); }
 .checkin__opts { display: flex; gap: 6px; }
+.checkin__row--stack { flex-direction: column; align-items: stretch; gap: 6px; }
+.checkin__opts--num { flex-wrap: wrap; gap: 5px; }
+.checkin__opts--num .checkin__b--n { flex: 1 1 0; min-width: 28px; padding: 6px 0; text-align: center; }
 .checkin__b { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 10px; padding: 6px 12px; font-size: 14px; cursor: pointer; text-transform: capitalize; }
 .checkin__b.on { border-color: var(--accent, #34e07d); background: rgba(52, 224, 125, 0.16); color: var(--text); }
+/* Compact 1–5 check-in — one tap, big targets, empty = clearly "not logged". */
+.checkin__row2 { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; }
+.checkin__lbl { font-size: 13px; color: var(--text-dim); white-space: nowrap; }
+.checkin__seg { display: flex; gap: 6px; flex: 1 1 auto; max-width: 62%; }
+.checkin__s { flex: 1 1 0; min-height: 44px; border: 1px solid var(--line); background: var(--bg); color: var(--text-dim); border-radius: 10px; font-size: 14px; cursor: pointer; }
+.checkin__s.on { border-color: var(--accent, #34e07d); background: rgba(52, 224, 125, 0.16); color: var(--text); font-weight: 700; }
+/* collapsed summary once everything's logged */
+.checkin--done { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.checkin__sum { font-size: 14px; }
+.checkin__edit { background: none; border: none; color: var(--accent, #34e07d); font-weight: 700; cursor: pointer; padding: 4px 6px; }
 
 /* hub link rows (Train / Stats / More) */
 .hub-link { display: flex; align-items: center; gap: 14px; padding: 16px; text-decoration: none; color: inherit; }

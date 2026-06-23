@@ -13,6 +13,7 @@ import { localISO } from '../date'
 import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { authApi, type Checkin } from '../auth/api'
+import { InfoDot } from '../charts'
 
 /** Quick "how do you feel" check-in (energy/sleep/soreness) — a few taps, feeds the coach. */
 function CheckInCard() {
@@ -21,14 +22,38 @@ function CheckInCard() {
   const [loaded, setLoaded] = useState(false)
   useEffect(() => { authApi.checkins(today, today).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [today])
   const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: today }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
+  const [editing, setEditing] = useState(false)
   if (!loaded) return null
-  const energy: [number, string][] = [[1, '😣'], [2, '😐'], [3, '🙂'], [4, '💪']]
+  // 1–5 (mobile default; granularity vs 1–10 is measurement-trivial). One tap, big
+  // targets, and an EMPTY row clearly reads as "not logged" (unlike a slider thumb).
+  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; emoji: string; info: string }[] = [
+    { key: 'energy', label: 'Energy', emoji: '⚡', info: 'How energized you feel right now, 1–5 (1 = wiped out, 5 = full of energy).' },
+    { key: 'sleep', label: 'Sleep', emoji: '😴', info: 'Last night’s sleep, 1–5 (1 = terrible, 5 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also reaches the coach automatically — this is the manual signal otherwise.' },
+    { key: 'soreness', label: 'Soreness', emoji: '💪', info: 'Muscle soreness, 1–5 (1 = none, 5 = very sore). Higher tells the coach to ease off.' },
+  ]
+  const allSet = rows.every((r) => ci?.[r.key] != null)
+  // Progressive disclosure (Whoop/Oura): once logged, collapse to a one-line summary.
+  if (allSet && !editing) {
+    return (
+      <div className="card checkin checkin--done">
+        <span className="checkin__sum">Today {rows.map((r) => `${r.emoji}${ci?.[r.key]}`).join('  ·  ')}</span>
+        <button className="checkin__edit" onClick={() => setEditing(true)}>Edit</button>
+      </div>
+    )
+  }
   return (
     <div className="card checkin">
       <div className="checkin__t">How do you feel today?</div>
-      <div className="checkin__row"><span>Energy</span><div className="checkin__opts">{energy.map(([v, e]) => <button key={v} className={'checkin__b' + (ci?.energy === v ? ' on' : '')} onClick={() => set({ energy: v })}>{e}</button>)}</div></div>
-      <div className="checkin__row"><span>Sleep</span><div className="checkin__opts">{(['poor', 'ok', 'great'] as const).map((o) => <button key={o} className={'checkin__b' + (ci?.sleep === o ? ' on' : '')} onClick={() => set({ sleep: o })}>{o}</button>)}</div></div>
-      <div className="checkin__row"><span>Soreness</span><div className="checkin__opts">{(['none', 'some', 'lots'] as const).map((o) => <button key={o} className={'checkin__b' + (ci?.soreness === o ? ' on' : '')} onClick={() => set({ soreness: o })}>{o}</button>)}</div></div>
+      {rows.map((r) => (
+        <div key={r.key} className="checkin__row2">
+          <span className="checkin__lbl">{r.label} <InfoDot text={r.info} /></span>
+          <div className="checkin__seg">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} className={'checkin__s' + (ci?.[r.key] === n ? ' on' : '')} aria-label={`${r.label} ${n} of 5`} aria-pressed={ci?.[r.key] === n} onClick={() => set({ [r.key]: n })}>{n}</button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

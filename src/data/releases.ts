@@ -4,6 +4,14 @@ export interface Release { date: string; title: string; items: string[] }
 
 export const releases: Release[] = [
   {
+    date: '2026-06-23',
+    title: 'Simpler daily check-in',
+    items: [
+      'Energy, Sleep and Soreness are now a quick 1–5 tap (with a tap-able ⓘ explaining each)',
+      'Once you’ve logged, it collapses to a tidy one-line summary you can edit',
+    ],
+  },
+  {
     date: '2026-06-20',
     title: 'Richer library + reliability',
     items: [
