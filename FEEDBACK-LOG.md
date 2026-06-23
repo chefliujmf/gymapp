@@ -47,3 +47,5 @@ items → `UX-BACKLOG.md`. (Edit this file with Write/sed — NOT `perl -0pi`, w
 32. ✅ Coach equipment-aware — `search_exercises` equipment filter + owned gear in the coach prompt.
 33. ✅ Equipment 100% — reasoned classification for the residual (JM approved; marked not-source-truth).
 34. ✅ Check-in collapse fixes — "Done" button to re-collapse + removed duplicate History.
+35. 🔨 **Host-MCP re-sync** (P1f solo part) — push repo `mcp/server.js` to the box `/home/jmf/platyplus-chat/mcp/server.js` + restart helpers so the LIVE coach gets search_recipes/search_sessions + equipment filter + structured fields.
+36. 🔨 **Native-text mirror parity** (P1f solo part) — Platyplus→intervals push: also emit readable native workout text (## Warmup / 4x / - 60m 58-66%) alongside workout_doc so rides render a full chart in intervals (not thin).
