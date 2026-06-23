@@ -22,23 +22,32 @@ function CheckInCard() {
   const [loaded, setLoaded] = useState(false)
   useEffect(() => { authApi.checkins(today, today).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [today])
   const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: today }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
-  const [editing, setEditing] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   if (!loaded) return null
-  // 1–5 (mobile default; granularity vs 1–10 is measurement-trivial). One tap, big
-  // targets, and an EMPTY row clearly reads as "not logged" (unlike a slider thumb).
   const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; emoji: string; info: string }[] = [
     { key: 'energy', label: 'Energy', emoji: '⚡', info: 'How energized you feel right now, 1–5 (1 = wiped out, 5 = full of energy).' },
     { key: 'sleep', label: 'Sleep', emoji: '😴', info: 'Last night’s sleep, 1–5 (1 = terrible, 5 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also reaches the coach automatically — this is the manual signal otherwise.' },
     { key: 'soreness', label: 'Soreness', emoji: '💪', info: 'Muscle soreness, 1–5 (1 = none, 5 = very sore). Higher tells the coach to ease off.' },
   ]
+  const anySet = rows.some((r) => ci?.[r.key] != null)
   const allSet = rows.every((r) => ci?.[r.key] != null)
-  // Progressive disclosure (Whoop/Oura): once logged, collapse to a one-line summary.
-  if (allSet && !editing) {
+  // Progressive disclosure (Whoop/Oura keep the home screen for the plan, not a
+  // form): logged → one-line summary; not logged → a slim prompt that expands on
+  // tap. Either way it's a single line by default, never eating the screen.
+  if (allSet && !expanded) {
     return (
-      <div className="card checkin checkin--done">
-        <span className="checkin__sum">Today {rows.map((r) => `${r.emoji}${ci?.[r.key]}`).join('  ·  ')}</span>
-        <button className="checkin__edit" onClick={() => setEditing(true)}>Edit</button>
+      <div className="card checkin checkin--mini">
+        <span className="checkin__sum">How you feel&nbsp; {rows.map((r) => `${r.emoji}${ci?.[r.key]}`).join('  ')}</span>
+        <button className="checkin__edit" onClick={() => setExpanded(true)}>Edit</button>
       </div>
+    )
+  }
+  if (!anySet && !expanded) {
+    return (
+      <button type="button" className="card checkin checkin--mini checkin__prompt" onClick={() => setExpanded(true)}>
+        <span>How do you feel today?</span>
+        <span className="checkin__hint">{rows.map((r) => r.emoji).join(' ')}&nbsp; Log ›</span>
+      </button>
     )
   }
   return (

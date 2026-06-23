@@ -78,7 +78,7 @@ a { color: inherit; text-decoration: none; }
 .thumb--target { background: radial-gradient(120% 120% at 30% 20%, #8a4a8f 0%, #5a3068 55%, #2f1c3c 100%); }
 .thumb--ride svg, .thumb--run svg, .thumb--gym svg, .thumb--target svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
 .card-body { flex: 1; min-width: 0; }
-.card-body h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+.card-body h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: var(--text); }
 .meta { color: var(--text-dim); font-size: 13px; display: flex; gap: 8px; flex-wrap: wrap; }
 .meta .dot::before { content: '•'; margin-right: 8px; }
 .stack { display: flex; flex-direction: column; gap: 12px; }
@@ -545,14 +545,16 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .checkin__b { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 10px; padding: 6px 12px; font-size: 14px; cursor: pointer; text-transform: capitalize; }
 .checkin__b.on { border-color: var(--accent, #34e07d); background: rgba(52, 224, 125, 0.16); color: var(--text); }
 /* Compact 1–5 check-in — one tap, big targets, empty = clearly "not logged". */
-.checkin__row2 { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; }
+.checkin__row2 { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0; }
 .checkin__lbl { font-size: 13px; color: var(--text-dim); white-space: nowrap; }
 .checkin__seg { display: flex; gap: 6px; flex: 1 1 auto; max-width: 62%; }
-.checkin__s { flex: 1 1 0; min-height: 44px; border: 1px solid var(--line); background: var(--bg); color: var(--text-dim); border-radius: 10px; font-size: 14px; cursor: pointer; }
+.checkin__s { flex: 1 1 0; min-height: 38px; border: 1px solid var(--line); background: var(--bg); color: var(--text-dim); border-radius: 9px; font-size: 13px; cursor: pointer; }
 .checkin__s.on { border-color: var(--accent, #34e07d); background: rgba(52, 224, 125, 0.16); color: var(--text); font-weight: 700; }
-/* collapsed summary once everything's logged */
-.checkin--done { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.checkin__sum { font-size: 14px; }
+/* compact single-line states: slim prompt (default) + logged summary — never eats the screen */
+.checkin--mini { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; }
+.checkin__prompt { width: 100%; -webkit-appearance: none; appearance: none; font: inherit; color: var(--text); cursor: pointer; }
+.checkin__hint { color: var(--text-dim); font-size: 13px; white-space: nowrap; }
+.checkin__sum { font-size: 14px; color: var(--text); }
 .checkin__edit { background: none; border: none; color: var(--accent, #34e07d); font-weight: 700; cursor: pointer; padding: 4px 6px; }
 
 /* hub link rows (Train / Stats / More) */
