@@ -23,16 +23,20 @@ function CheckInCard() {
   useEffect(() => { authApi.checkins(today, today).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [today])
   const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: today }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
   if (!loaded) return null
-  const energy: [number, string][] = [[1, '😣'], [2, '😐'], [3, '🙂'], [4, '💪']]
+  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; info: string }[] = [
+    { key: 'energy', label: 'Energy', info: 'How energized you feel right now, 1–10 (1 = wiped out, 10 = full of energy).' },
+    { key: 'sleep', label: 'Sleep', info: 'Last night’s sleep, 1–10 (1 = terrible, 10 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also reaches the coach automatically — this is the manual signal otherwise.' },
+    { key: 'soreness', label: 'Soreness', info: 'Muscle soreness, 1–10 (1 = none, 10 = very sore). Higher tells the coach to ease off.' },
+  ]
   return (
     <div className="card checkin">
       <div className="checkin__t">How do you feel today?</div>
-      <div className="checkin__row"><span>Energy</span><div className="checkin__opts">{energy.map(([v, e]) => <button key={v} className={'checkin__b' + (ci?.energy === v ? ' on' : '')} onClick={() => set({ energy: v })}>{e}</button>)}</div></div>
-      <div className="checkin__row checkin__row--stack">
-        <span>Sleep <InfoDot text="Rate last night 1–10 (1 = terrible, 10 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also flows to the coach automatically — this is the manual signal otherwise." /></span>
-        <div className="checkin__opts checkin__opts--num">{Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <button key={n} className={'checkin__b checkin__b--n' + (ci?.sleep === n ? ' on' : '')} onClick={() => set({ sleep: n })}>{n}</button>)}</div>
-      </div>
-      <div className="checkin__row"><span>Soreness</span><div className="checkin__opts">{(['none', 'some', 'lots'] as const).map((o) => <button key={o} className={'checkin__b' + (ci?.soreness === o ? ' on' : '')} onClick={() => set({ soreness: o })}>{o}</button>)}</div></div>
+      {rows.map((r) => (
+        <div key={r.key} className="checkin__row checkin__row--stack">
+          <span>{r.label} <InfoDot text={r.info} /></span>
+          <div className="checkin__opts checkin__opts--num">{Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <button key={n} className={'checkin__b checkin__b--n' + (ci?.[r.key] === n ? ' on' : '')} onClick={() => set({ [r.key]: n })}>{n}</button>)}</div>
+        </div>
+      ))}
     </div>
   )
 }
