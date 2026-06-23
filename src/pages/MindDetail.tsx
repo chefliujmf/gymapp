@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useState } from 'react'
 import { allMindById } from '../data/catalog'
 import { mindIcon } from '../ui'
@@ -13,6 +13,7 @@ function fmt(s: number) {
 export default function MindDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const coachPick = (useLocation().state as { coachPick?: string } | null)?.coachPick
   const m = id ? allMindById[id] : undefined
   const now = useNow()
   // Absolute end-time, so the timer stays correct if the screen locks.
@@ -33,6 +34,7 @@ export default function MindDetail() {
       </div>
 
       <div className="detail-body" style={{ textAlign: 'center' }}>
+        {coachPick && <div className="coachpick" style={{ textAlign: 'left' }}><b>Coach’s pick</b> — {coachPick}</div>}
         <span className="eyebrow">{m.kind}</span>
         <h1>{m.title}</h1>
         <p style={{ color: 'var(--text-dim)', marginTop: 0 }}>{m.summary}</p>

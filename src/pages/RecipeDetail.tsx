@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { allRecipesById } from '../data/catalog'
 import AddToCalendar from '../AddToCalendar'
 import { attributionFor } from '../attribution'
@@ -24,6 +24,7 @@ const niceTag = (t: string) => {
 export default function RecipeDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const coachPick = (useLocation().state as { coachPick?: string } | null)?.coachPick
   const r = id ? allRecipesById[id] : undefined
 
   if (!r) return <div className="empty"><div className="big">🤷</div>Recipe not found.</div>
@@ -43,6 +44,7 @@ export default function RecipeDetail() {
       </div>
 
       <div className="detail-body">
+        {coachPick && <div className="coachpick"><b>Coach’s pick</b> — {coachPick}</div>}
         <span className="eyebrow">{r.category}</span>
         <h1>{r.title}</h1>
 

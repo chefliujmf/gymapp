@@ -29,12 +29,12 @@ Design detail for big items lives in `UX-BACKLOG.md`; this file is the ordered i
 
 ## 🔨/⬜ OPEN QUEUE — build in this order
 
-> **👉 YOU ARE HERE: #16 (P1d). #15 P1c done (CoachPlanDetail page + route + Today wiring).** Done so far this build: #11 P1a (plan/item
+> **👉 YOU ARE HERE: #17 (P1e, MCP). #11 P1a · #14 P1b · #15 P1c · #16 P1d done, on QA.** Done so far this build: #11 P1a (plan/item
 > schema), #14 P1b (intervals mirror + step-split #25) — both on QA. Resume at #15.
 
 14. ✅ **Coach P1b** — `planToIcuEvent` renders structured text + meal/mind refs + both why-levels into the intervals description; splits long steps. (`time_target` = step `duration`; verify Wahoo parity vs cyclingcoach before fully closing.)
 15. ✅ **Coach P1c** — PlanDetail UI: universal shell (Objective·Fuel·Mind·Recovery·Success·Cues) + sport body (ride/run profile · gym list · yoga/pilates class); **meal chips = 2-col grid (not scroll)**, variable count; **bottom-sheet "why"** (no inline slab).
-16. 🔨 **Coach P1d** — recipe/session page "Coach's pick: …" banner (per-pick `why`).
+16. ✅ **Coach P1d** — recipe/session page "Coach's pick: …" banner (per-pick `why`).
 17. 🔨 **Coach P1e** — MCP: add `search_recipes` + `search_sessions` (mirror `search_exercises`); add structured fields + `why` to `create_*`/`schedule_*`; update BYO-AI tool descriptions. *(First check the server can search the recipe/mind catalog.)*
 18. 🔨 **Coach P1f** — cyclingcoach `publish_platyplus_plan.py` sends structured fields + uses the discovery tools; instructions teach: variable meal count from the nutrition KB, select content from the catalog, per-sport (author ride/gym; SELECT a class for yoga/pilates).
 19. ⬜ **Check-in history** — once all 3 logged, collapse the Today card to a one-line summary; full history list in **Logs**.

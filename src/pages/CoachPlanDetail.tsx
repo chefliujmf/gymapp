@@ -88,7 +88,7 @@ export default function CoachPlanDetail() {
           {meals.length > 0 && (
             <div className="mealgrid">
               {meals.map((m) => (
-                <Link key={m.id} to={m.refId ? `/recipes/${m.refId}` : '#'} className="mealchip">
+                <Link key={m.id} to={m.refId ? `/recipes/${m.refId}` : '#'} state={m.why ? { coachPick: m.why } : undefined} className="mealchip">
                   <div className="mealchip__th">🍽️</div>
                   <div style={{ minWidth: 0 }}>{m.mealType && <div className="mealchip__slot">{m.mealType}</div>}<div className="mealchip__nm">{m.title}</div>{m.kcal ? <div className="mealchip__kcal">{m.kcal} kcal</div> : null}</div>
                 </Link>
@@ -103,7 +103,7 @@ export default function CoachPlanDetail() {
         <div className="plansec">
           <div className="plansec__h"><span className="plansec__k">🧠 Mind</span>{p.mind?.why && <button className="why-chip" onClick={() => setSheet({ title: 'Mental focus', body: p.mind!.why! })}>why ⓘ</button>}</div>
           {minds.map((s) => (
-            <Link key={s.id} to={s.refId ? `/mind/${s.refId}` : '#'} className="mindrow">
+            <Link key={s.id} to={s.refId ? `/mind/${s.refId}` : '#'} state={s.why ? { coachPick: s.why } : undefined} className="mindrow">
               <span className="mindrow__play">▶</span>
               <span><span className="mindrow__nm">{s.title}</span>{s.minutes ? <span className="mindrow__sub"> · {s.minutes} min</span> : null}</span>
             </Link>
