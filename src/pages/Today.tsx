@@ -23,20 +23,35 @@ function CheckInCard() {
   useEffect(() => { authApi.checkins(today, today).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [today])
   const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: today }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
   if (!loaded) return null
-  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; info: string }[] = [
-    { key: 'energy', label: 'Energy', info: 'How energized you feel right now, 1–10 (1 = wiped out, 10 = full of energy).' },
-    { key: 'sleep', label: 'Sleep', info: 'Last night’s sleep, 1–10 (1 = terrible, 10 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also reaches the coach automatically — this is the manual signal otherwise.' },
-    { key: 'soreness', label: 'Soreness', info: 'Muscle soreness, 1–10 (1 = none, 10 = very sore). Higher tells the coach to ease off.' },
+  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; info: string; lo: string; hi: string }[] = [
+    { key: 'energy', label: 'Energy', info: 'How energized you feel right now, 1–10 (1 = wiped out, 10 = full of energy).', lo: 'wiped', hi: 'energized' },
+    { key: 'sleep', label: 'Sleep', info: 'Last night’s sleep, 1–10 (1 = terrible, 10 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also reaches the coach automatically — this is the manual signal otherwise.', lo: 'terrible', hi: 'perfect' },
+    { key: 'soreness', label: 'Soreness', info: 'Muscle soreness, 1–10 (1 = none, 10 = very sore). Higher tells the coach to ease off.', lo: 'none', hi: 'very sore' },
   ]
   return (
     <div className="card checkin">
       <div className="checkin__t">How do you feel today?</div>
-      {rows.map((r) => (
-        <div key={r.key} className="checkin__row checkin__row--stack">
-          <span>{r.label} <InfoDot text={r.info} /></span>
-          <div className="checkin__opts checkin__opts--num">{Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <button key={n} className={'checkin__b checkin__b--n' + (ci?.[r.key] === n ? ' on' : '')} onClick={() => set({ [r.key]: n })}>{n}</button>)}</div>
-        </div>
-      ))}
+      {rows.map((r) => {
+        const v = ci?.[r.key]
+        // Slider (not a 10-button row): bigger touch target + 1–10 granularity that
+        // mirrors the intervals.icu sleep score. onPointerUp commits even when the
+        // value equals the default midpoint (so a tap-on-5 from "unset" still saves).
+        return (
+          <div key={r.key} className="checkin__row checkin__row--stack">
+            <span>{r.label} <InfoDot text={r.info} /> {v != null && <b className="checkin__val">{v}</b>}</span>
+            <input
+              type="range" min={1} max={10} step={1}
+              value={v ?? 5}
+              className={'checkin__slider' + (v != null ? ' set' : '')}
+              aria-label={r.label}
+              aria-valuetext={v != null ? String(v) : 'not set'}
+              onChange={(e) => set({ [r.key]: Number(e.currentTarget.value) })}
+              onPointerUp={(e) => set({ [r.key]: Number((e.currentTarget as HTMLInputElement).value) })}
+            />
+            <div className="checkin__ends"><span>{r.lo}</span><span>{r.hi}</span></div>
+          </div>
+        )
+      })}
     </div>
   )
 }

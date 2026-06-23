@@ -13,10 +13,12 @@ Personal/family fitness PWA (you + wife). Repo `chefliujmf/gymapp`. **Design rul
 - **prod** = `main` → `https://platyplus.duckdns.org` (`deploy.yml`).
 - EnvBadge labels DEV/QA/PROD by hostname. Deploys are **CI-gated** (reusable `ci.yml` via `workflow_call`; `deploy needs: ci`).
 
-## Deploy / promote — ZERO-CLICK (JM directive 2026-06-23: "don't want to click anything for PR whatever")
-- To QA: just `git push origin dev` (auto-deploys).
-- **To prod: nothing.** `promote.yml` (`workflow_run` on **Deploy Staging** success) fast-forwards `main` to the just-passed `dev` commit → `deploy.yml` (push:main, CI-gated) deploys prod. So a healthy QA deploy auto-promotes to prod, **no PR, no clicks**. **Kill switch:** repo Actions variable `AUTO_PROMOTE=off` pauses it; re-run manually via the promote workflow's `workflow_dispatch`.
-- The old PR path is retired. `gh` is NOT authenticated on the Mac and the classifier **hard-blocks** repurposing the keychain git token for `gh` (don't re-attempt) — but you no longer need `gh` for promotion. `git` reads/pushes fine via keychain; a **direct `git push origin <sha>:refs/heads/main`** is the manual hotfix-promote (and was used once to bootstrap `promote.yml` onto `main`).
+## Deploy / promote — IN-APP BUTTON (JM directives 2026-06-23: "don't want to click anything for PR" + "I need to test too")
+- To QA: just `git push origin dev` (auto-deploys to https://platyplus-qa.duckdns.org, prod password).
+- **To prod: admin tests on QA, then taps Admin → "Ship to production" → "Promote dev → prod".** That hits `POST /auth/promote` (admin-gated) which **opens/reuses a `dev`→`main` PR and enables auto-merge** server-side, so GitHub merges it once the protected-branch `build` check passes → `deploy.yml` (push:`main`, CI-gated) ships prod. No GitHub UI, no PR clicks; the human test on QA is the gate. `GET /auth/promote/status` backs the button's state.
+- **`main` is a PROTECTED branch** requiring the `build` check — a direct push (even a merge) is rejected (`protected branch hook declined`), which is why promotion MUST go through a PR. (Also: `main` carries PR **merge commits**, so it never fast-forwards from `dev`.)
+- **One-time setup** for the button: (1) fine-grained PAT (Contents + Pull requests: write) in the box `auth.env` as `GITHUB_PROMOTE_TOKEN` (prod `/home/jmf/gymapp/auth.env` AND QA `/home/jmf/gymapp-staging/auth.env`); (2) repo Settings → General → "Allow auto-merge" ON. The built-in `GITHUB_TOKEN` can't be used (a PR it opens doesn't trigger the `build` check), hence a PAT.
+- `gh` is NOT authenticated on the Mac and the classifier **hard-blocks** repurposing the keychain git token for `gh` (don't re-attempt). `git` reads/pushes fine via keychain, but **can't push to `main`** (protected). The **first** PR (to ship the promote button itself to prod) is bootstrapped via the compare link `https://github.com/chefliujmf/gymapp/compare/main...dev?expand=1` — after that the in-app button handles every promotion.
 - Watch runs: `curl -s "https://api.github.com/repos/chefliujmf/gymapp/actions/runs?per_page=5"`.
 
 ## XPS (the box)
@@ -41,10 +43,11 @@ Personal/family fitness PWA (you + wife). Repo `chefliujmf/gymapp`. **Design rul
 - `scripts/sync-coach-engine.mjs` pulls `~/dev/cyclingcoach/instructions.md` → `server/coach-engine.md` (vendored artifact, committed + COPYed into the image). `server.js buildSystemPrompt` injects it. Re-run after editing the engine in cyclingcoach. (Only the transferable method — not the 131M knowledge_base.)
 - Import a profile into an env store: `node scripts/import-athlete-profile.mjs <store.json> <user> <profile.md>` then restart that server/container so it loads.
 
-## UX/UI changes — ALWAYS research best practice first (JM directive)
-Before any UX/UI change, **look up current best practice + how leading apps do it** (WebSearch:
-NN/g, Android/iOS HIG, fitness apps like Strava/Whoop/intervals.icu) and apply it — don't guess.
-Cite the sources in the reply. Established patterns so far:
+## UX/UI changes — ALWAYS research best practice first (HARD RULE, JM directive, reaffirmed 2026-06-23)
+**Non-negotiable, every time, no exceptions** (even "tiny" tweaks): BEFORE touching any UX/UI,
+**WebSearch current best practice + how leading apps do it** (NN/g, Android/iOS HIG, fitness apps
+like Strava/Whoop/Oura/intervals.icu), apply it, and **cite the sources in the reply**. Never guess
+or ship from memory. If you skip this, you're doing it wrong. Established patterns so far:
 - **Nav:** ≤5 fixed bottom tabs; overflow → hubs/"More"; adapt CONTENT not structure (multi-sport).
 - **Charts:** one-takeaway-per-chart; round-number axes (1/2/5/10); interactive (scrub → value;
   mini-cards update the headline number, not a box); subtle draw-in motion; legible contrast.
@@ -52,6 +55,11 @@ Cite the sources in the reply. Established patterns so far:
 - **Date range:** preset chips + a **Custom** option with start/end native date inputs; auto-swap if
   reversed; ≤6 taps.
 - **Field save:** autosave + "Saved ✓" (no Save buttons); **Profile vs Settings vs Admin** split.
+- **Rating / check-in scales:** touch targets **≥44px (iOS) / 48dp (Android)** — a 10-button row
+  spanning a phone width busts this (~30px). For 1–10 granularity prefer a **slider** (Whoop-style)
+  or a segmented control with adequate targets; 1–5 is the mobile default (lower cognitive load,
+  data-quality diff vs 1–10 is trivial). Keep 1–10 only when mirroring an external score (e.g.
+  intervals.icu sleep score) — and then fix the touch ergonomics.
 Charts live in `src/charts.tsx` (TrendChart/BarChart/PowerCurveChart/InfoDot/ChartModal, dependency-free SVG).
 
 ## "When you change X" (from CLAUDE.md)

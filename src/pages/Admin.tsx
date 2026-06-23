@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Rocket } from 'lucide-react'
 import { authApi, type User } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 
@@ -13,11 +13,26 @@ export default function Admin() {
   const [em, setEm] = useState('')
   const [role, setRole] = useState<'user' | 'admin'>('user')
   const [msg, setMsg] = useState('')
+  const [promo, setPromo] = useState<{ configured: boolean; open?: boolean; number?: number; url?: string } | null>(null)
+  const [promoBusy, setPromoBusy] = useState(false)
+  const [promoMsg, setPromoMsg] = useState('')
 
   const list = async () => { try { setUsers(await authApi.listUsers()) } catch { setUsers([]) } }
   useEffect(() => { list() }, [])
+  useEffect(() => { authApi.promoteStatus().then(setPromo).catch(() => setPromo(null)) }, [])
 
   if (user && user.role !== 'admin') return <div className="empty"><div className="big">🔒</div>Admins only.</div>
+
+  async function promote() {
+    if (!confirm('Ship the current dev build to PRODUCTION?\n\nDo this only after you’ve tested it on QA (platyplus-qa.duckdns.org). It ships automatically once CI passes.')) return
+    setPromoBusy(true); setPromoMsg('')
+    try {
+      const r = await authApi.promote()
+      setPromoMsg(r.message || (r.upToDate ? 'Prod is already up to date.' : 'Promotion started.'))
+      authApi.promoteStatus().then(setPromo).catch(() => {})
+    } catch (e) { setPromoMsg('✗ ' + (e as Error).message) }
+    finally { setPromoBusy(false) }
+  }
 
   async function add() {
     setMsg('')
@@ -39,6 +54,17 @@ export default function Admin() {
       <div className="page-head">
         <h1>Admin</h1>
         <p>Manage who can access Platyplus</p>
+      </div>
+
+      <div className="section-title">Ship to production</div>
+      <div className="card" style={{ padding: '12px 14px' }}>
+        <p className="meta" style={{ marginTop: 0 }}>Test on <strong>QA</strong> first, then promote the current <code>dev</code> build to prod. It ships automatically once CI passes — no GitHub needed.</p>
+        <button className="btn" onClick={promote} disabled={promoBusy || (promo ? !promo.configured : false)}>
+          <Rocket size={16} style={{ marginRight: 6, verticalAlign: '-2px' }} />{promoBusy ? 'Promoting…' : 'Promote dev → prod'}
+        </button>
+        {promo && !promo.configured && <p className="meta" style={{ marginTop: 8 }}>⚠ Promotion isn’t configured yet (server is missing <code>GITHUB_PROMOTE_TOKEN</code>).</p>}
+        {promo?.open && <p className="meta" style={{ marginTop: 8 }}>A promotion PR (<a href={promo.url} target="_blank" rel="noreferrer">#{promo.number}</a>) is open and will merge when CI passes.</p>}
+        {promoMsg && <p className="meta" style={{ marginTop: 8, wordBreak: 'break-word' }}>{promoMsg}</p>}
       </div>
 
       <div className="section-title">Users · {users.length}</div>

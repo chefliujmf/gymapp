@@ -11,11 +11,12 @@ Read this before changing anything here. It lists the invariants and the
 - Public at `https://platyplus.duckdns.org` via NPM (HA Green). Passkeys bind to
   that exact domain (RP_ID) — the TLS cert MUST match it.
 - Deploy = **3-env CI/CD** (see DEPLOY.md): CI on every push/PR; `dev` push → **QA/staging**
-  auto-deploy. **Prod promotion is zero-click** (`promote.yml`): a *successful* QA/staging
-  deploy fast-forwards `main` to that commit, which triggers **prod** auto-deploy via the XPS
-  self-hosted runner (`build:app` + synced catalog), CI-gated again before the box is touched.
-  So `git push origin dev` → QA → (if healthy) → prod, no PR. **Kill switch:** repo Actions
-  variable `AUTO_PROMOTE=off` pauses it; `npm run deploy` from the Mac is the hotfix path.
+  auto-deploy. **Prod promotion = one in-app tap** (admin → Admin page → "Promote dev → prod"):
+  the server opens/reuses a `dev`→`main` PR and enables **auto-merge**, so it ships once the
+  protected-branch `build` check passes → `deploy.yml` (push:`main`, CI-gated) deploys **prod**
+  via the XPS self-hosted runner (`build:app` + synced catalog). So: push `dev` → test on QA →
+  tap Promote → prod. Needs `GITHUB_PROMOTE_TOKEN` (fine-grained PAT, Contents+PRs write) in the
+  box `auth.env` + repo "Allow auto-merge" on. `npm run deploy` from the Mac is the hotfix path.
 
 ## INVARIANT: 100% media independence (do not break)
 - The catalog must contain **zero** third-party media URLs (Centr, MuscleWiki,

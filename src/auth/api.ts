@@ -75,6 +75,10 @@ export const authApi = {
   getToken: () => req<{ token: string }>('/token'),
   rotateToken: () => req<{ token: string }>('/token/rotate', { method: 'POST' }),
 
+  // Admin: one-tap prod promotion (opens/auto-merges a dev→main PR server-side).
+  promoteStatus: () => req<{ configured: boolean; open?: boolean; number?: number; url?: string }>('/promote/status'),
+  promote: () => req<{ ok?: boolean; upToDate?: boolean; number?: number; url?: string; message?: string }>('/promote', { method: 'POST' }),
+
   listUsers: () => req<User[]>('/users'),
   addUser: (username: string, email: string, role: 'admin' | 'user') => req<{ user: User; tempPassword: string; emailed: boolean }>('/users', { body: { username, email, role } }),
   resetUser: (id: string) => req<{ tempPassword: string; emailed: boolean }>(`/users/${id}/reset`, { method: 'POST' }),
