@@ -236,8 +236,6 @@ export default function Today() {
     ...items.map((it) => it.date),
     ...activities.map((a) => (a.start_date_local || '').slice(0, 10)).filter(Boolean),
   ])
-  const upcoming = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) > selDay).sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
-  const upcomingPlans = plans.filter((p) => p.date > selDay && !planShown(p)).sort((a, b) => a.date.localeCompare(b.date))
   // Match a completed intervals.icu activity to a planned workout by day + sport.
   const actFor = (day: string, sport: string) => activities.find((a) => a.start_date_local.slice(0, 10) === day && sportOfActivity(a) === (sport === 'cycling' ? 'ride' : sport))
 
@@ -320,7 +318,7 @@ export default function Today() {
 
       {meals.length > 0 && (
         <>
-          <div className="section-title">Suggested fuel{selDay !== todayISO() ? ` · ${fmtDay(selDay)}` : ''}</div>
+          <div className="section-title">Suggested fuel</div>
           <p className="meta" style={{ margin: '-4px 2px 8px' }}>{fuelMsg}</p>
           <div className="stack">
             {meals.map((r) => (
@@ -359,16 +357,6 @@ export default function Today() {
               </Link>
               <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12, color: added['mind:' + meditation.id] ? 'var(--accent,#34e07d)' : undefined, borderColor: added['mind:' + meditation.id] ? 'var(--accent,#34e07d)' : undefined }} aria-label="Add to this day" title="Add to this day" onClick={(e) => { e.preventDefault(); addMindSuggestion() }}>{added['mind:' + meditation.id] ? <Check size={18} /> : <Plus size={18} />}</button>
             </div>
-          </div>
-        </>
-      )}
-
-      {(upcoming.length > 0 || upcomingPlans.length > 0) && (
-        <>
-          <div className="section-title">Coming up</div>
-          <div className="stack">
-            {upcoming.map((e) => <PlanCard key={e.id} e={e} showDate onSwap={() => swapOn(e.start_date_local.slice(0, 10))} onRemove={() => removeEvent(e)} />)}
-            {upcomingPlans.map((p) => <CoachPlanCard key={p.id} p={p} onRun={runPlan} showDate fmtDay={fmtDay} onSwap={() => swapOn(p.date)} onRemove={() => removePlan(p)} />)}
           </div>
         </>
       )}
