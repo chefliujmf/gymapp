@@ -487,6 +487,19 @@ const normEquip = (raw) => {
 }
 for (const ex of exercises) ex.equipment = normEquip(ex.equipment)
 
+// Infer equipment where the source left it blank (Centr ships none; MuscleWiki drops
+// yoga/pilates/stretch/cardio). ACCURATE-only: a name cue, else a no-kit category →
+// Bodyweight. Genuinely-ambiguous items stay undefined (for source lookup), never guessed.
+const EQ_BY_NAME = [['Dumbbell', /dumbbell|\bdb\b/i], ['Barbell', /barbell|\bbb\b|\bez[- ]?bar/i], ['Kettlebell', /kettlebell|\bkb\b/i], ['Cable', /cable/i], ['Machine', /machine|smith|leg press|pulldown|pec deck|hack squat|hammer strength|leg extension|leg curl/i], ['Bands', /\bband/i], ['Ball', /swiss ball|medicine ball|stability ball|\bmed ball|\bbosu/i], ['Plate', /\bplate|weighted/i], ['TRX', /\btrx|suspension/i], ['Bodyweight', /push-?up|pull-?up|chin-?up|\bplank|\bdip\b|\bsquat\b|\blunge|\bcrunch|sit-?up|burpee|mountain climber|glute bridge|bird dog|superman|hollow|\braise\b/i]]
+const EQ_CAT_BODYWEIGHT = /yoga|pilates|stretch|mobilit|recovery|cardio|warm|cool|core/i
+for (const ex of exercises) {
+  if (ex.equipment) continue
+  let tag = null
+  for (const [k, re] of EQ_BY_NAME) if (re.test(ex.name)) { tag = k; break }
+  if (!tag && EQ_CAT_BODYWEIGHT.test(ex.category || '')) tag = 'Bodyweight'
+  if (tag) ex.equipment = tag
+}
+
 // Canonicalise primary muscle into a tidy set of groups (sources disagree on case/synonyms),
 // so the library can offer a clean muscle filter.
 const normMuscle = (raw) => {
