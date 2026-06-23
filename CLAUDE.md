@@ -15,8 +15,9 @@ Read this before changing anything here. It lists the invariants and the
   AFTER testing QA): `promote-prod.yml` opens/reuses a `dev`→`main` PR and enables **auto-merge**, so
   it ships once the protected-branch `build` check passes → `deploy.yml` (push:`main`, CI-gated)
   deploys **prod** via the XPS self-hosted runner (`build:app` + synced catalog). So: push `dev` →
-  test on QA → Run workflow → prod. Needs Actions secret `PROMOTE_TOKEN` (fine-grained PAT,
-  Contents+PRs write) + repo "Allow auto-merge" on. `npm run deploy` from the Mac is the hotfix path.
+  test on QA → Run workflow → prod. Auth is a **GitHub App** (zero-maintenance — `create-github-app-token`
+  mints a fresh 1h token each run; App key never expires): secrets `APP_ID` + `APP_PRIVATE_KEY`, App has
+  Contents+PRs write, installed on the repo. Repo "Allow auto-merge" on. `npm run deploy` = Mac hotfix path.
 
 ## INVARIANT: 100% media independence (do not break)
 - The catalog must contain **zero** third-party media URLs (Centr, MuscleWiki,

@@ -4,13 +4,17 @@ name: Promote to prod
 #   repo → Actions → "Promote to prod" → Run workflow.
 # It opens (or reuses) a dev→main PR and enables auto-merge, so GitHub merges it
 # the moment the protected-branch `build` check passes → deploy.yml ships prod.
-#
 # The human QA test is the gate; this just removes the GitHub PR busywork.
 #
-# REQUIRES (one-time): repo Actions secret PROMOTE_TOKEN = a fine-grained PAT
-# (Contents + Pull requests: write). The built-in GITHUB_TOKEN can't be used: a PR
-# it opens does NOT trigger the `build` check, so auto-merge would wait forever.
-# Also: repo Settings → General → "Allow auto-merge" must be ON.
+# CREDENTIAL = a GitHub App (zero maintenance — nothing to rotate):
+#   create-github-app-token mints a fresh, short-lived (1h), repo-scoped token each
+#   run from the App's APP_ID + APP_PRIVATE_KEY secrets. An App token (unlike the
+#   built-in GITHUB_TOKEN) DOES trigger the `build` check on the PR it opens, so
+#   auto-merge can complete. The App's private key never expires.
+#
+# ONE-TIME SETUP: create a GitHub App (Contents + Pull requests: write), install it
+# on this repo, then set Actions secrets APP_ID + APP_PRIVATE_KEY. Also enable repo
+# Settings → General → "Allow auto-merge" (already on).
 on:
   workflow_dispatch: {}
 
@@ -22,14 +26,17 @@ jobs:
   promote:
     runs-on: ubuntu-latest
     steps:
+      - name: Mint a short-lived token from the GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: Open/reuse dev → main PR and enable auto-merge
         env:
-          GH_TOKEN: ${{ secrets.PROMOTE_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO: ${{ github.repository }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::PROMOTE_TOKEN secret missing — add a fine-grained PAT (Contents + Pull requests: write)."; exit 1
-          fi
           gh pr create --repo "$REPO" -B main -H dev \
             --title "Promote dev → main" \
             --body "Promotion triggered from the Actions tab after a QA test. Auto-merges once \`build\` passes." \
