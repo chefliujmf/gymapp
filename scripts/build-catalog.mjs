@@ -484,6 +484,33 @@ const mwExtras = muscleWikiExtras(fedbExtras)
 const haveEx = new Set([...fedbExtras, ...mwExtras].map((e) => cnorm(e.name)))
 const centrExercises = extractExercises(workoutFiles).map((e) => ({ ...e, source: 'centr' })).filter((e) => !haveEx.has(cnorm(e.name)))
 const exercises = [...fedbExtras, ...mwExtras, ...centrExercises].sort((a, b) => a.name.localeCompare(b.name))
+
+// VIDEO UPLIFT (#43): free-exercise-db wins dedup (resell-safe) but is image-only, so
+// any MuscleWiki twin's VIDEO was dropped. Re-attach it by exact normalized-name match.
+// selfHostVideo() only returns a path when the file already exists in our set, so this
+// adds zero 404 risk and needs no new hosting — it just stops discarding videos we have.
+{
+  const mwPath = join(DL, 'musclewiki.json')
+  if (existsSync(mwPath)) {
+    const mwVid = new Map()
+    for (const e of readJson(mwPath)) {
+      const m = mapMuscleWiki(e)
+      if (m && m.video) mwVid.set(cnorm(m.name), m)
+    }
+    let lifted = 0
+    for (const ex of exercises) {
+      if (ex.video || ex.videoFemale) continue
+      const tw = mwVid.get(cnorm(ex.name))
+      if (!tw) continue
+      ex.video = tw.video
+      if (tw.videoFemale) ex.videoFemale = tw.videoFemale
+      if (!ex.image && tw.image) ex.image = tw.image
+      if (!ex.imageFemale && tw.imageFemale) ex.imageFemale = tw.imageFemale
+      lifted++
+    }
+    console.log(`video uplift: +${lifted} exercises got a MuscleWiki video (name-matched)`) // eslint-disable-line no-console
+  }
+}
 // Consolidate equipment across sources (free-exercise-db lowercase vs MuscleWiki/Centr)
 // so the Train equipment filter isn't fragmented (dumbbell vs Dumbbells vs …).
 const normEquip = (raw) => {

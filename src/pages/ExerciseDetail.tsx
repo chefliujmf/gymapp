@@ -37,7 +37,9 @@ export default function ExerciseDetail() {
           <button className="back-btn" onClick={() => navigate(-1)}>‹</button>
           {video
             ? <video key={video} className="ex-hero-video" src={video} poster={poster} controls autoPlay loop muted playsInline controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={(e) => e.preventDefault()} />
-            : poster && <img className="ex-hero-video" src={poster} alt={ex.name} />}
+            : poster
+              ? <img className="ex-hero-video" src={poster} alt={ex.name} />
+              : <div className="ex-hero-video ex-hero-video--empty" aria-label="No demo available">🏋️</div>}
         </div>
       </div>
 
