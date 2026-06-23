@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Platyplus · plan view — multi-sport (v4)</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--line:#2b303b;--bg:#0f1216;--card-grad:linear-gradient(180deg,#21252f,#191c24);--radius:16px;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;justify-content:center;padding:18px 12px 60px}
+  .phone{width:100%;max-width:430px}
+  .muted{color:var(--text-dim)}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;background:#161a21;border:1px solid var(--line);border-radius:999px;padding:4px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--text-dim);font-weight:700;font-size:13px;padding:8px;border-radius:999px;cursor:pointer}
+  .tabs button.on{background:var(--accent);color:#06281a}
+  .card{background:var(--card-grad);border:1px solid var(--line);border-radius:var(--radius)}
+  .head{padding:15px 16px 13px;border-radius:var(--radius) var(--radius) 0 0;background:linear-gradient(180deg,#173a2a,#13201a);border:1px solid var(--line);border-bottom:0}
+  .head h1{margin:0 0 6px;font-size:20px;font-weight:800}
+  .stats{display:flex;gap:18px;font-size:13px}.stats b{display:block;font-size:16px}
+  .start{margin-top:12px;width:100%;border:0;border-radius:999px;padding:12px;font-weight:800;font-size:15px;color:#06281a;background:linear-gradient(90deg,#46e08a,#34c873);box-shadow:0 8px 22px -8px rgba(52,224,125,.6);cursor:pointer}
+  .body{padding:6px 16px 16px;border:1px solid var(--line);border-top:0;border-radius:0 0 var(--radius) var(--radius)}
+  /* bodies */
+  .profile{height:62px;margin-top:12px;border-radius:12px;overflow:hidden;display:flex;align-items:flex-end;gap:2px;background:#11151a;border:1px solid var(--line);padding:4px}
+  .profile i{display:block;border-radius:3px 3px 0 0}.z2{background:#2f9e57}.z3{background:#caa53a}
+  .ex{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--line)}
+  .ex:first-child{border-top:0;margin-top:6px}
+  .ex .th{width:42px;height:42px;border-radius:9px;flex:none;background:linear-gradient(135deg,#2a3340,#1b212a);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .ex .nm{font-size:13.5px;font-weight:700}.ex .sub{font-size:11.5px;color:var(--text-dim)}
+  .tag{font-size:10px;color:var(--accent);border:1px solid rgba(52,224,125,.4);border-radius:999px;padding:2px 7px;margin-left:auto;flex:none}
+  .flow{margin-top:10px;padding:11px;border:1px solid var(--line);border-radius:12px;background:#11151a}
+  .flow .big{display:flex;align-items:center;gap:12px}
+  .flow .play{width:42px;height:42px;border-radius:999px;flex:none;background:rgba(52,224,125,.16);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:18px}
+  .flow ol{margin:10px 0 0;padding-left:20px;font-size:12.5px;color:var(--text-dim)}.flow li{margin:3px 0}
+  /* common rows */
+  .line{display:flex;align-items:flex-start;gap:9px;padding:11px 0;border-top:1px solid var(--line)}
+  .ic{width:20px;flex:none;text-align:center;font-size:15px;line-height:1.4}
+  .main{flex:1;min-width:0}.k{font-weight:700;font-size:13.5px}.v{font-size:13px;color:var(--text-dim);margin-top:1px}
+  .why{font:600 11px/1 inherit;color:var(--accent);background:rgba(52,224,125,.10);border:1px solid rgba(52,224,125,.35);border-radius:999px;padding:4px 8px;cursor:pointer;white-space:nowrap;align-self:center}
+  .chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+  .chip{border:1px solid var(--line);border-radius:12px;background:#161a21;padding:8px;cursor:pointer;display:flex;gap:9px;align-items:center}
+  .chip .th{width:38px;height:38px;flex:none;border-radius:8px;background:linear-gradient(135deg,#2a3340,#1b212a);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .chip .slot{font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim)}.chip .nm{font-size:11px;font-weight:700;line-height:1.15}
+  .mind{display:flex;gap:11px;align-items:center;margin-top:9px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#161a21}
+  .mind .play{width:32px;height:32px;border-radius:999px;flex:none;background:rgba(52,224,125,.16);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;color:var(--accent)}
+  .note{margin:16px 4px 0;font-size:12px;color:var(--text-dim);text-align:center}
+  .hidden{display:none}
+</style></head>
+<body>
+<div class="phone">
+  <div class="tabs">
+    <button class="on" data-s="ride" onclick="sel('ride')">🚴 Ride</button>
+    <button data-s="run" onclick="sel('run')">🏃 Run</button>
+    <button data-s="gym" onclick="sel('gym')">🏋️ Gym</button>
+    <button data-s="yoga" onclick="sel('yoga')">🧘 Yoga</button>
+  </div>
+
+  <div class="head">
+    <h1 id="title">Tuesday Endurance Rebuild</h1>
+    <div class="stats" id="stats"></div>
+    <button class="start" id="startbtn">▸ Ride now</button>
+  </div>
+
+  <div class="body">
+    <!-- sport-specific body -->
+    <div id="bodyzone"></div>
+
+    <!-- universal coaching shell -->
+    <div class="line"><span class="ic">🎯</span><div class="main"><div class="k">Objective</div><div class="v" id="obj"></div></div></div>
+
+    <div class="line"><span class="ic">🍽️</span><div class="main"><div class="k">Fuel</div><div class="v" id="fuel"></div></div><span class="why">why ⓘ</span></div>
+    <div style="padding-left:29px"><div class="chips">
+      <div class="chip"><div class="th">🥣</div><div class="slot">Breakfast</div><div class="nm">Oats + berries</div></div>
+      <div class="chip"><div class="th">🥗</div><div class="slot">Lunch</div><div class="nm">Lentil braise</div></div>
+      <div class="chip"><div class="th">🐟</div><div class="slot">Dinner</div><div class="nm">Salmon + rice</div></div>
+      <div class="chip"><div class="th">🥛</div><div class="slot">Snack</div><div class="nm">Greek yogurt</div></div>
+    </div></div>
+
+    <div class="line"><span class="ic">🧠</span><div class="main"><div class="k">Mind</div><div class="v" id="mindv"></div></div><span class="why">why ⓘ</span></div>
+    <div style="padding-left:29px"><div class="mind"><div class="play">▶</div><div><div style="font-size:13px;font-weight:700" id="mindname"></div><div style="font-size:11px;color:var(--text-dim)">tap to play · ⓘ coach's pick</div></div></div></div>
+
+    <div class="line"><span class="ic">✓</span><div class="main"><div class="k">Success</div><div class="v" id="succ"></div></div></div>
+    <div class="line"><span class="ic">💬</span><div class="main"><div class="k">Cues</div><div class="v" id="cues"></div></div></div>
+  </div>
+  <p class="note" id="note"></p>
+</div>
+<script>
+const SP={
+  ride:{title:"Tuesday Endurance Rebuild",start:"▸ Ride now",
+    stats:[["Duration","2h00m"],["Load","105"],["Intensity","72%"]],
+    obj:"Steady aerobic re-entry — conversational, no tempo. Check the back early.",
+    fuel:"During ride 40–70 g/h · electrolytes if hot",
+    mindv:"Mental focus: durable Friday, quiet Sunday", mindname:"“Durable Friday” · 8 min",
+    succ:"both tempo blocks steady, no late fade", cues:"no threshold creep · eat early · cap climbs",
+    body:`<div class="profile" id="prof"></div>`,
+    note:"Ride/Run → power profile + Ride now"},
+  gym:{title:"Upper-Body & Trunk Strength",start:"▸ Start workout",
+    stats:[["Duration","~55 min"],["Exercises","6"],["Focus","Upper · trunk"]],
+    obj:"Re-entry strength dose. Back-sparing: no loaded hinge. Upper RPE 6–7.",
+    fuel:"Protein within 1–2 h after · ~40 g · no during-fuel needed",
+    mindv:"Mental focus: controlled tempo, leave 1–2 reps in reserve", mindname:"“Box breathing” reset · 4 min",
+    succ:"all sets at RPE ≤7, trunk controlled, legs untouched", cues:"brace the trunk · slow eccentrics · stop 1–2 in reserve",
+    body:`
+      <div class="ex"><div class="th">🏋️</div><div><div class="nm">DB bench press</div><div class="sub">3 × 6–10 · RPE 7</div></div><span class="tag">Dumbbells</span></div>
+      <div class="ex"><div class="th">🦾</div><div><div class="nm">Lat pulldown</div><div class="sub">3 × 8–10</div></div><span class="tag">Cable</span></div>
+      <div class="ex"><div class="th">💪</div><div><div class="nm">Half-kneel press</div><div class="sub">3 × 8 / side</div></div><span class="tag">Dumbbells</span></div>
+      <div class="ex"><div class="th">🧱</div><div><div class="nm">Pallof press</div><div class="sub">3 × 12 / side</div></div><span class="tag">Cable</span></div>`,
+    note:"Gym → exercise list (sets×reps · equipment · demo) + Start"},
+  yoga:{title:"Evening Mobility & Reset",start:"▸ Start session",
+    stats:[["Duration","22 min"],["Type","Pilates flow"],["Intensity","Easy"]],
+    obj:"Open hips and T-spine, decompress the back after the dig weekend. Breath-led, no strain.",
+    fuel:"Light · normal dinner; nothing workout-specific",
+    mindv:"Mental focus: down-regulate, parasympathetic before sleep", mindname:"Same session leads the breath",
+    succ:"feel looser, calmer; no sharp back sensations", cues:"breathe into the stretch · never force range · stop at sharp",
+    body:`<div class="flow"><div class="big"><div class="play">▶</div><div><div style="font-weight:800">Guided Pilates flow · 22 min</div><div style="font-size:12px;color:var(--text-dim)">video class · Coach Mel</div></div></div>
+      <ol><li>Cat–cow + segmental rolls (3 min)</li><li>90/90 hip switches (4 min)</li><li>T-spine openers (5 min)</li><li>Dead-bug + glute bridge (6 min)</li><li>Supine breath down-regulation (4 min)</li></ol></div>`,
+    note:"Yoga/Pilates → guided class (duration/flow) + Start · Fuel light · Mind leads"}
+};
+function sel(s){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
+  const d=SP[s];
+  title.textContent=d.title; startbtn.textContent=d.start;
+  stats.innerHTML=d.stats.map(([k,v])=>`<span class="muted">${k}<b>${v}</b></span>`).join('');
+  bodyzone.innerHTML=d.body; obj.textContent=d.obj; fuel.textContent=d.fuel;
+  mindv.textContent=d.mindv; mindname.textContent=d.mindname; succ.textContent=d.succ; cues.textContent=d.cues; note.textContent=d.note;
+  if(s==='ride'){const steps=[['z2',6],['z3',10],['z2',4],['z3',10],['z2',12],['z2',8]];const p=document.getElementById('prof');
+    steps.forEach(([z,w])=>{const el=document.createElement('i');el.className=z;el.style.height=(z==='z3'?92:60)+'%';el.style.flex=w+' 0 0';p.appendChild(el);});}
+}
+sel('ride');
+</script>
+</body></html>

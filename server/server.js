@@ -570,6 +570,15 @@ async function upsertPlan(user, body) {
   const plan = {
     id: body.id, date: body.date, sport: body.sport, title: body.title,
     notes: body.notes || '', updatedAt: Date.now(),
+    // Structured coaching (all optional, additive). Meals/mind are separate
+    // calendar items (with their own per-pick `why`); these are the plan-level
+    // strategy + cues. The plan view joins the day's items by date.
+    objective: typeof body.objective === 'string' ? body.objective : '',
+    cues: Array.isArray(body.cues) ? body.cues.filter((c) => typeof c === 'string') : [],
+    success: typeof body.success === 'string' ? body.success : '',
+    recovery: typeof body.recovery === 'string' ? body.recovery : '',
+    fuel: body.fuel && typeof body.fuel === 'object' ? { why: String(body.fuel.why || ''), supplements: String(body.fuel.supplements || '') } : undefined,
+    mind: body.mind && typeof body.mind === 'object' ? { why: String(body.mind.why || '') } : undefined,
     origin: i >= 0 ? (user.plans[i].origin || 'platyplus') : 'platyplus',
     icuEventId: i >= 0 ? user.plans[i].icuEventId : undefined,
     ...(body.sport === 'gym'
@@ -669,7 +678,7 @@ function validateItem(b) {
 function upsertItem(user, b) {
   const err = validateItem(b); if (err) return { status: 400, body: { error: err } }
   user.items = user.items || []
-  const item = { id: b.id || newId(), date: b.date, type: b.type, title: b.title || '', refId: b.refId || '', mealType: b.mealType || '', kcal: b.kcal, minutes: b.minutes, notes: b.notes || '', updatedAt: Date.now() }
+  const item = { id: b.id || newId(), date: b.date, type: b.type, title: b.title || '', refId: b.refId || '', mealType: b.mealType || '', kcal: b.kcal, minutes: b.minutes, notes: b.notes || '', why: typeof b.why === 'string' ? b.why : '', updatedAt: Date.now() }
   const i = user.items.findIndex((x) => x.id === item.id)
   if (i >= 0) user.items[i] = item; else user.items.push(item)
   save(store)
