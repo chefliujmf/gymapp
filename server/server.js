@@ -617,13 +617,28 @@ async function reconcileFromIcu(user, from, to) {
   user.plans = user.plans || []
   const liveIcuIds = new Set((events || []).map((e) => e.id))
   const ownedIcuIds = new Set(user.plans.map((p) => p.icuEventId).filter(Boolean))
+  // intervals appends a ":YYYY-MM-DD" instance suffix to external_id on recurring /
+  // re-pushed events; strip it so an event still matches the plan it came from.
+  const stripInstance = (s) => String(s || '').replace(/:\d{4}-\d{2}-\d{2}$/, '')
+  const planIds = new Set(user.plans.map((p) => p.id))
+  // PLATYPLUS-WINS dedup key: same day + sport + title ⇒ it's the same session.
+  const planKey = (date, sport, title) => `${date}|${sport}|${String(title || '').trim().toLowerCase()}`
+  const planKeys = new Set(user.plans.map((p) => planKey(p.date, p.sport, p.title)))
   let imported = 0
   for (const ev of events || []) {
     if (ev.category && ev.category !== 'WORKOUT') continue
     if (!['Ride', 'Run', 'WeightTraining'].includes(ev.type)) continue
-    // Already mirrored (we own its event id) or shares our plan id → skip (Platyplus wins).
-    if (ownedIcuIds.has(ev.id) || (ev.external_id && user.plans.some((p) => p.id === ev.external_id))) continue
-    user.plans.push(icuEventToPlan(ev)); imported++
+    if (ownedIcuIds.has(ev.id)) continue // we already own this exact event
+    // Shares our plan id (with or without the ":date" instance suffix) → skip.
+    const extId = stripInstance(ev.external_id)
+    if (ev.external_id && (planIds.has(ev.external_id) || planIds.has(extId))) continue
+    // A plan already exists for this day+sport+title → Platyplus wins, don't re-import a copy.
+    const date = String(ev.start_date_local || '').slice(0, 10)
+    const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
+    if (planKeys.has(planKey(date, sport, ev.name))) continue
+    const plan = icuEventToPlan(ev)
+    user.plans.push(plan); imported++
+    planIds.add(plan.id); planKeys.add(planKey(plan.date, plan.sport, plan.title)) // guard against dups within this batch too
   }
   // Deletion mirror: an intervals-ORIGIN plan whose event is gone from intervals (in
   // this window) is dropped here too — stay mirrored. Platyplus-origin plans are NOT

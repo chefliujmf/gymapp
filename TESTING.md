@@ -63,6 +63,7 @@ Add to **Gate 2 (QA→Prod)** — these touch real calendar data:
 | 43 | Delete that intervals-origin workout in intervals, reload | it disappears from Platyplus (drop-to-mirror) |
 | 44 | Delete a Platyplus-origin plan in Platyplus | gone from both; intervals event removed |
 | 45 | A coach (cyclingcoach) dual-written session | shows once as an owned plan, no dupe |
+| 46 | A Platyplus-pushed ride that intervals re-emits with a `:YYYY-MM-DD` external_id suffix, reload | imports ONCE — reconcile dedups by stripped external_id AND by day+sport+title (Platyplus wins), no second `origin=icu` copy |
 
 ## Feature: navigation hubs + multi-sport (Gate 1, [M])
 | # | Check | Expected |
