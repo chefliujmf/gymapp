@@ -44,7 +44,7 @@ server.tool('search_exercises',
   wrap((a) => api('GET', `/api/exercises?q=${encodeURIComponent(a.query)}&equipment=${encodeURIComponent(a.equipment || '')}&limit=${a.limit || 20}`)))
 
 server.tool('search_recipes',
-  'Search the Platyplus recipe library to PICK a real meal for fueling; returns ids + macros (kcal, protein). Use the id as recipeId in schedule_meal so the meal links to the recipe. Filter by category and/or a name/tag query. (Pick however many meals/snacks the day warrants per your nutrition knowledge — variable, not fixed.)',
+  "Search the Platyplus recipe library to PICK a real meal for fueling; returns ids + macros (kcal, protein) + each recipe's `diet`. Results are ALREADY filtered to the athlete's dietary preference (vegetarian → veg+vegan only, vegan → vegan only), so every result is safe to suggest — never recommend a meal outside what's returned. Use the id as recipeId in schedule_meal. Filter by category and/or a name/tag query. (Pick however many meals/snacks the day warrants — variable, not fixed.)",
   { query: z.string().optional().describe('name or tag fragment'), category: z.string().optional().describe('breakfast | lunch | dinner | snack'), limit: z.number().int().min(1).max(100).optional() },
   wrap((a) => api('GET', `/api/recipes?q=${encodeURIComponent(a.query || '')}&category=${encodeURIComponent(a.category || '')}&limit=${a.limit || 20}`)))
 

@@ -61,7 +61,10 @@ function Collapsible({ title, subtitle, defaultOpen = false, children }: { title
 
 export default function Settings() {
   const navigate = useNavigate()
-  const diet = useLiveQuery(() => getSetting('diet'))
+  const { user, refresh } = useAuth()
+  // Diet is server-side (info.diet) so the coach honors it (#40); mirror locally for offline reads.
+  const diet = (user?.info as { diet?: string } | undefined)?.diet
+  const setDiet = (v: string) => { setSetting('diet', v); authApi.saveProfile({ diet: v }).then(() => refresh()).catch(() => {}) }
   const units = useLiveQuery(() => getSetting('units'))
   const calView = useLiveQuery(() => getSetting('calView'))
   const stills = useLiveQuery(() => getSetting('exerciseStills'))
@@ -92,7 +95,8 @@ export default function Settings() {
       </Collapsible>
 
       <Collapsible title="Preferences" subtitle="Diet, units, calendar, demos" defaultOpen>
-        <ChipSetting title="Diet" value={diet ?? 'vegetarian'} onPick={(v) => setSetting('diet', v)}
+        <ChipSetting title="Diet" value={diet ?? 'no preference'} onPick={setDiet}
+          hint="Your coach picks ONLY meals that match — vegetarian shows veg + vegan; vegan shows vegan only."
           options={[['vegetarian', 'vegetarian'], ['vegan', 'vegan'], ['no preference', 'no preference']]} />
         <ChipSetting title="Units" value={units ?? 'metric'} onPick={(v) => setSetting('units', v)}
           options={[['metric', 'metric'], ['imperial', 'imperial']]} />

@@ -437,6 +437,8 @@ function buildSystemPrompt(user) {
   p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-5 (energy: 5=energized, sleep: 5=fully rested, soreness: 5=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
   const ownedEq = Array.isArray(user.info?.equipment) ? user.info.equipment.filter((e) => typeof e === 'string') : []
   if (ownedEq.length) p += `\n\n# Equipment the athlete OWNS: ${ownedEq.join(', ')}.\nWhen building gym/strength sessions, prescribe ONLY exercises that use this gear or Bodyweight — pass \`equipment="${ownedEq.join(',')}"\` to search_exercises so you never pick something they can't do. (They set this in Settings → Equipment.)`
+  const diet = String(user.info?.diet || '').toLowerCase()
+  if (diet === 'vegetarian' || diet === 'vegan') p += `\n\n# DIET: the athlete is ${diet.toUpperCase()}.\nEVERY meal you pick or suggest MUST be ${diet}. search_recipes already returns ONLY ${diet}-compatible recipes for this athlete, so pick from those — never recommend a meal outside their diet, and don't suggest meat${diet === 'vegan' ? ', fish, dairy, eggs, or honey' : ' or fish'}. (They set this in Settings → Preferences.)`
   p += '\n\n' + APP_HELP
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
@@ -801,12 +803,22 @@ let RECIPES = [], MIND = []
     const mp = join(cdir, 'mind.json'); if (existsSync(mp)) { MIND = JSON.parse(readFileSync(mp, 'utf8')); console.log(`catalog: ${MIND.length} mind/movement sessions`) }
   } catch (e) { console.log('recipe/mind catalog load failed:', e.message) }
 })()
-function searchRecipes(q, limit, category) {
+// Diet gate (#40): a vegetarian athlete may only get vegetarian+vegan recipes; a
+// vegan only vegan; anything else = no restriction. Enforced HERE so the coach
+// physically cannot pick a non-conforming meal, not just asked to.
+function dietAllows(pref, recipeDiet) {
+  const p = String(pref || '').toLowerCase()
+  const d = String(recipeDiet || 'omnivore').toLowerCase()
+  if (p === 'vegan') return d === 'vegan'
+  if (p === 'vegetarian') return d === 'vegetarian' || d === 'vegan'
+  return true // 'no preference' / unset
+}
+function searchRecipes(q, limit, category, diet) {
   const n = String(q || '').trim().toLowerCase()
-  let list = RECIPES
+  let list = RECIPES.filter((r) => dietAllows(diet, r.diet))
   if (category) list = list.filter((r) => String(r.category || '').toLowerCase() === String(category).toLowerCase())
   if (n) list = list.filter((r) => r.title.toLowerCase().includes(n) || (r.tags || []).some((t) => String(t).toLowerCase().includes(n)))
-  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((r) => ({ id: r.id, title: r.title, category: r.category, kcal: r.kcal, protein: r.protein, minutes: r.minutes }))
+  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((r) => ({ id: r.id, title: r.title, category: r.category, kcal: r.kcal, protein: r.protein, minutes: r.minutes, diet: r.diet }))
 }
 function searchSessions(q, limit, kind) {
   const n = String(q || '').trim().toLowerCase()
@@ -910,7 +922,7 @@ app.post('/api/notify', apiAuth, (req, res) => {
 })
 app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit, req.query.equipment)))
 // Recipe + session catalog search — the coach picks a real id for fuel meals / mind sessions.
-app.get('/api/recipes', apiAuth, (req, res) => res.json(searchRecipes(req.query.q, req.query.limit, req.query.category)))
+app.get('/api/recipes', apiAuth, (req, res) => res.json(searchRecipes(req.query.q, req.query.limit, req.query.category, req.query.diet || req.user.info?.diet)))
 app.get('/api/sessions', apiAuth, (req, res) => res.json(searchSessions(req.query.q, req.query.limit, req.query.kind)))
 
 // ---- OpenAPI spec + Swagger UI (session-gated — not public) ---------------

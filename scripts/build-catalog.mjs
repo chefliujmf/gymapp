@@ -128,8 +128,23 @@ function mapRecipe(d, isSnack) {
     thumbnail: localImg(isSnack ? 'snacks_images' : 'recipes_images', r.urlPartial),
     tags: [...new Set((r.tags || []).map((t) => t.name).filter(Boolean))].slice(0, 8),
     servings: r.serves || undefined,
-    diet: ['vegetarian'],
   }
+}
+
+// Classify a recipe's diet from its ingredients (+ title) so the coach/UI can
+// honor the athlete's dietary preference (#40). Conservative: any meat/fish ⇒
+// 'omnivore'; else any dairy/egg/honey ⇒ 'vegetarian'; else 'vegan'.
+const MEAT = ['beef', 'steak', 'veal', 'lamb', 'mutton', 'pork', 'bacon', 'ham', 'gammon', 'prosciutto', 'pancetta', 'guanciale', 'salami', 'pepperoni', 'chorizo', 'sausage', 'sausages', 'mince', 'meatball', 'meatballs', 'meat', 'chicken', 'turkey', 'duck', 'goose', 'quail', 'poultry', 'venison', 'rabbit', 'goat', 'bison', 'oxtail', 'liver', 'kidney', 'kidneys', 'tripe', 'lard', 'suet', 'gelatin', 'gelatine', 'mortadella', 'bresaola', 'speck', 'hotdog', 'frankfurter', 'fish', 'salmon', 'tuna', 'cod', 'haddock', 'pollock', 'halibut', 'tilapia', 'trout', 'mackerel', 'sardine', 'sardines', 'anchovy', 'anchovies', 'herring', 'kipper', 'snapper', 'bass', 'bream', 'sole', 'plaice', 'eel', 'prawn', 'prawns', 'shrimp', 'crab', 'lobster', 'crayfish', 'crawfish', 'mussel', 'mussels', 'oyster', 'oysters', 'clam', 'clams', 'scallop', 'scallops', 'squid', 'calamari', 'octopus', 'caviar', 'roe', 'surimi', 'shellfish', 'seafood']
+const DAIRY_EGG = ['egg', 'eggs', 'milk', 'butter', 'cheese', 'parmesan', 'parmigiano', 'mozzarella', 'cheddar', 'feta', 'halloumi', 'ricotta', 'mascarpone', 'gruyere', 'gouda', 'brie', 'camembert', 'paneer', 'cream', 'yogurt', 'yoghurt', 'ghee', 'custard', 'buttermilk', 'kefir', 'whey', 'casein', 'honey', 'mayonnaise', 'mayo']
+// Plant-based phrases that contain a dairy/meat substring — neutralize before matching.
+const NEUTRALIZE = ['coconut milk', 'almond milk', 'soy milk', 'soya milk', 'oat milk', 'rice milk', 'cashew milk', 'hemp milk', 'plant milk', 'peanut butter', 'almond butter', 'cashew butter', 'nut butter', 'seed butter', 'cocoa butter', 'apple butter', 'butter bean', 'butterbean', 'butternut', 'butterhead', 'cocoa', 'eggplant', 'egg plant', 'beancurd', 'nutritional yeast', 'vegan ', 'meatless', 'meat-free', 'meat free', 'mock meat', 'plant-based', 'plant based']
+function dietOf(ings, title) {
+  let t = ' ' + ([title, ...(ings || [])].join(' ')).toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ') + ' '
+  for (const p of NEUTRALIZE) t = t.split(p).join(' ')
+  const has = (words) => words.some((w) => t.includes(' ' + w + ' '))
+  if (has(MEAT)) return 'omnivore'
+  if (has(DAIRY_EGG)) return 'vegetarian'
+  return 'vegan'
 }
 
 // --- Gym workouts ---------------------------------------------------------
@@ -460,6 +475,7 @@ const centrRecipes = [
   ...listJson(join(DL, 'snacks')).map((f) => mapRecipe(readJson(join(DL, 'snacks', f)), true)),
 ].filter(Boolean).map((r) => ({ ...r, source: r.source || 'centr' })).filter((r) => !haveRecipe.has(cnorm(r.title)))
 const recipes = [...tmdbRecipes, ...centrRecipes]
+for (const r of recipes) r.diet = dietOf(r.ingredients, r.title) // #40 — tag omnivore/vegetarian/vegan
 const workoutFiles = listJson(join(DL, 'workouts'))
 const workouts = workoutFiles.map((f) => mapWorkout(readJson(join(DL, 'workouts', f))))
 // Exercises — free-exercise-db (resell-safe) FIRST, then MuscleWiki (video), then Centr.
