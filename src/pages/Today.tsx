@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting } from '../db'
 import { WeekStrip, MiniProfile, DoneStats } from '../ui'
 import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
-import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
+import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, setCoachPlans, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
 import { calApi, type CalItem } from '../calendar'
 import { recipes, mindSessions } from '../data/catalog'
@@ -65,13 +65,14 @@ function pickByDate<T>(arr: T[], dateStr: string, salt = 0): T | undefined {
 const planIcon = (s: CoachPlan['sport']) => (s === 'ride' ? <Bike strokeWidth={1.75} /> : s === 'run' ? <Footprints strokeWidth={1.75} /> : <Dumbbell strokeWidth={1.75} />)
 
 /** A coach-pushed plan that isn't mirrored by an intervals event — runs in-app. */
-function CoachPlanCard({ p, onRun, showDate, fmtDay, onSwap, onRemove, done, act }: { p: CoachPlan; onRun: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean; act?: IcuActivity }) {
+function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p: CoachPlan; onRun?: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean; act?: IcuActivity }) {
+  const nav = useNavigate()
   const mins = p.sport === 'gym' ? undefined : Math.round((p.segments || []).reduce((s, x) => s + x.duration, 0) / 60)
   const segs = (p.sport === 'ride' || p.sport === 'run') ? (p.segments || []) : []
   const isDone = done || !!act
   return (
     <div className="today-entry">
-      <button className="card" style={{ textAlign: 'left', width: '100%' }} onClick={() => onRun(p)}>
+      <button className="card" style={{ textAlign: 'left', width: '100%' }} onClick={() => nav('/coach/' + p.id)}>
         <div className="card-row">
           {segs.length
             ? <div className="thumb"><MiniProfile segs={segs} /></div>
@@ -167,7 +168,7 @@ export default function Today() {
     const [a, b] = weekRange()
     fetchEvents(a, b).then((evs) => { setEvents(evs); setPlanEvents(evs) }).catch((e) => setErr((e as Error).message))
     // Mirror intervals-origin workouts into Platyplus first, THEN read the owned plans.
-    syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then(setPlans))
+    syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then((pl) => { setPlans(pl); setCoachPlans(pl) }))
     fetchActivities(a, b).then(setActivities).catch(() => setActivities([]))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [])
