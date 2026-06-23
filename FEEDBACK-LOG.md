@@ -37,10 +37,11 @@ Design detail for big items lives in `UX-BACKLOG.md`; this file is the ordered i
 16. ✅ **Coach P1d** — recipe/session page "Coach's pick: …" banner (per-pick `why`).
 17. ✅ **Coach P1e** — MCP: add `search_recipes` + `search_sessions` (mirror `search_exercises`); add structured fields + `why` to `create_*`/`schedule_*`; update BYO-AI tool descriptions. *(First check the server can search the recipe/mind catalog.)*
 18. 🔨 **Coach P1f** — instructions DONE (cyclingcoach SKILL + AGENTS → author into Platyplus, discovery tools, variable meals, per-sport). REMAINING: (a) Platyplus→intervals NATIVE workout text for full chart parity; (b) re-sync host MCP /home/jmf/platyplus-chat/mcp/ from repo; (c) publish_platyplus_plan.py CLI structured-field mapping; (d) end-to-end QA verify with the coach.
-19. ⬜ **Check-in history** — once all 3 logged, collapse the Today card to a one-line summary; full history list in **Logs**.
+19. ✅ **Check-in history** — once all 3 logged, collapse the Today card to a one-line summary; full history list in **Logs**.
 20. ⬜ **Train filters + sorting** — Workouts AND Exercises, by **equipment · time/duration · intensity**.
 21. ⬜ **Settings → equipment list** — define what you own; powers the equipment filter (#20).
 22. ⬜ **Train back-arrow** — confirm (it's a root tab; back absent by design) — add only if JM wants.
 23. ⬜ **intervals indoor-completion** — confirm an indoor-done Platyplus workout reaches intervals labeled clearly (FIT→Strava→intervals).
 24. ✅ **Skill: mockups in HTML, not ASCII** — `options-first` should say render mockups as HTML (open in browser), since JM reads those far better than ASCII. (done in skill below.)
 25. ✅ **Mirror must split long workout steps** — a single >MAX-sec step makes the intervals workout render EMPTY (hit on the 60-min steady push). P1b workout_doc must split long steps like cyclingcoach (`split_long_doc_step`). [folded into P1b]
+26. ⬜ **Post-ride / post-workout flow** — after a completed planned workout, show: (a) STATS linked to the plan (power/HR/load/IF/RPE…), (b) the COACH NOTES (the brief/objective/recovery), (c) a FEEDBACK input form (Legs before/after, Fuel/GI, Pain/Niggles, Life constraint, Mental state + RPE/Feel + free text). Mirror the feedback INTO intervals.icu (private feedback fields + comment). **Flow to be MOCKED UP first** (HTML, per options-first).

@@ -1,7 +1,35 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type WorkoutLog, type SetEntry } from '../db'
+import { authApi, type Checkin } from '../auth/api'
 import { e1rm } from '../strength'
+
+const CHK_FACES = ['💀', '😩', '😐', '😀', '🤩']
+/** Daily check-in history (energy/sleep + freshness = 6 − stored soreness). */
+function CheckinHistory() {
+  const [rows, setRows] = useState<Checkin[] | null>(null)
+  useEffect(() => {
+    const to = new Date().toISOString().slice(0, 10)
+    const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+    authApi.checkins(from, to).then((a) => setRows([...a].reverse())).catch(() => setRows([]))
+  }, [])
+  if (!rows || !rows.length) return null
+  const face = (v?: number) => (v == null ? '–' : CHK_FACES[v - 1])
+  return (
+    <>
+      <div className="section-title" style={{ marginTop: 18 }}>Daily check-in</div>
+      <div className="stack" style={{ gap: 6 }}>
+        {rows.map((c) => (
+          <div key={c.date} className="card card-row" style={{ padding: '10px 14px', justifyContent: 'space-between' }}>
+            <span className="meta">{new Date(c.date + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+            <span style={{ fontSize: 15 }}>⚡{face(c.energy)}  😴{face(c.sleep)}  💪{face(c.soreness == null ? undefined : 6 - c.soreness)}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
 
 const fmtDate = (d: string) => new Date(d + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 function vol(sets: Record<number, SetEntry[]>) { let v = 0; for (const arr of Object.values(sets || {})) for (const s of arr || []) v += (s.weight || 0) * (s.reps || 0); return Math.round(v) }
@@ -64,6 +92,7 @@ export default function Logs() {
       {logs === undefined ? <p className="meta">Loading…</p> : !gym.length ? <p className="meta">No gym sessions logged yet — log a workout and it'll show here.</p> : (
         <div className="stack">{gym.map((l) => <SessionCard key={l.id} log={l} />)}</div>
       )}
+      <CheckinHistory />
     </div>
   )
 }

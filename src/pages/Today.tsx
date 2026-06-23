@@ -26,6 +26,7 @@ function CheckInCard() {
   const [loaded, setLoaded] = useState(false)
   useEffect(() => { authApi.checkins(today, today).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [today])
   const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: today }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
+  const [editing, setEditing] = useState(false)
   if (!loaded) return null
   // Emoji faces, 1–5, ALWAYS visible (JM: must not be hidden or it gets skipped).
   // Consistent direction: best feeling is always the RIGHT face. Soreness is shown
@@ -36,6 +37,20 @@ function CheckInCard() {
     { key: 'sleep', label: 'Sleep', info: 'Last night’s sleep, 1–5 (1 = terrible, 5 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also reaches the coach automatically — this is the manual signal otherwise.' },
     { key: 'soreness', label: 'Freshness', info: 'How fresh your legs/body feel, 1–5 (1 = wrecked / very sore, 5 = fresh & recovered). Lower tells the coach to ease off.', invert: true },
   ]
+  const disp = (r: typeof rows[number]) => { const v = ci?.[r.key]; return v == null ? null : (r.invert ? 6 - v : v) }
+  // Collapse to a one-line summary ONCE all 3 are logged (collapse-after-done is fine —
+  // it's collapse-before-filling that gets skipped). Tap Edit to change; History → Logs.
+  if (rows.every((r) => ci?.[r.key] != null) && !editing) {
+    return (
+      <div className="card checkin checkin--mini">
+        <span className="checkin__sum">{rows.map((r) => `${r.label} ${CHECKIN_FACES[(disp(r) as number) - 1]}`).join('   ')}</span>
+        <span style={{ display: 'flex', gap: 4, flex: 'none' }}>
+          <button className="checkin__edit" onClick={() => setEditing(true)}>Edit</button>
+          <Link to="/logs" className="checkin__edit" style={{ textDecoration: 'none' }}>History</Link>
+        </span>
+      </div>
+    )
+  }
   return (
     <div className="card checkin checkin--tight">
       <div className="checkin__t">How do you feel today?</div>

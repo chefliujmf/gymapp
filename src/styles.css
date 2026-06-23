@@ -855,3 +855,7 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .sheet__bar { width: 40px; height: 4px; border-radius: 999px; background: var(--line); margin: 0 auto 12px; }
 .coachpick { background: rgba(52, 224, 125, 0.10); border: 1px solid rgba(52, 224, 125, 0.35); border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--text); margin-bottom: 12px; }
 .coachpick b { color: var(--accent, #34e07d); }
+/* check-in collapsed summary (once all 3 logged) */
+.checkin--mini { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 13px; }
+.checkin__sum { font-size: 12.5px; color: var(--text); }
+.checkin__edit { background: none; border: none; color: var(--accent, #34e07d); font-weight: 700; font-size: 13px; cursor: pointer; padding: 4px 6px; }
