@@ -49,3 +49,4 @@ items → `UX-BACKLOG.md`. (Edit this file with Write/sed — NOT `perl -0pi`, w
 34. ✅ Check-in collapse fixes — "Done" button to re-collapse + removed duplicate History.
 35. ✅ **Host-MCP re-sync** (P1f solo part) — push repo `mcp/server.js` to the box `/home/jmf/platyplus-chat/mcp/server.js` + restart helpers so the LIVE coach gets search_recipes/search_sessions + equipment filter + structured fields.
 36. ✅ **Native-text mirror parity** — Platyplus→intervals push now emits "## Workout" native text (- 10m 50-62%) alongside workout_doc. (Render parity verifies live under #18 — Platyplus push not active yet; coach pushes directly for now.)
+37. ⬜ **Dedup intervals ↔ Platyplus activities** — when a COMPLETED activity exists in BOTH intervals.icu and Platyplus (same session), DETECT it and show as ONE, not two. (Investigate where activities list/duplicate; match by date+sport+duration/distance.)
