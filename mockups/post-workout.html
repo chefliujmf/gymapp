@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Platyplus · post-workout flow (sport-dependent)</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--line:#2b303b;--bg:#0f1216;--card-grad:linear-gradient(180deg,#21252f,#191c24);--radius:16px;--amber:#caa53a;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center;padding:18px 12px 70px}
+  .phone{width:100%;max-width:430px}
+  .muted{color:var(--text-dim)}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;background:#161a21;border:1px solid var(--line);border-radius:999px;padding:4px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--text-dim);font-weight:700;font-size:13px;padding:8px;border-radius:999px;cursor:pointer}
+  .tabs button.on{background:var(--accent);color:#06281a}
+  .card{background:var(--card-grad);border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px}
+  .done{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .done .chk{width:26px;height:26px;border-radius:999px;background:var(--accent);color:#06281a;display:flex;align-items:center;justify-content:center;font-weight:900;flex:none}
+  h1{font-size:20px;margin:2px 0 2px}
+  .sectitle{font-weight:800;font-size:13px;letter-spacing:.3px;text-transform:uppercase;color:var(--text-dim);margin:18px 2px 8px}
+  /* stats */
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .stat{background:#161a21;border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+  .stat .v{font-size:17px;font-weight:800}.stat .k{font-size:10.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.3px}
+  /* coach notes */
+  .coachnotes{font-size:13px;color:var(--text-dim);white-space:pre-wrap}
+  .coachnotes b{color:var(--text)}
+  /* feedback form */
+  .fld{margin:12px 0}
+  .fld .lab{font-size:13px;font-weight:700;margin-bottom:6px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{border:1px solid var(--line);background:#161a21;color:var(--text-dim);border-radius:999px;padding:7px 12px;font-size:12.5px;cursor:pointer}
+  .chip.on{border-color:var(--accent);background:rgba(52,224,125,.16);color:var(--text);font-weight:700}
+  .rpe{display:flex;gap:6px}
+  .rpe button{flex:1;min-height:38px;border:1px solid var(--line);background:#161a21;color:var(--text-dim);border-radius:10px;font-size:13px;cursor:pointer}
+  .rpe button.on{border-color:var(--accent);background:rgba(52,224,125,.16);color:var(--text);font-weight:800}
+  textarea{width:100%;background:#11151a;border:1px solid var(--line);border-radius:12px;color:var(--text);padding:10px;font:inherit;min-height:64px;resize:vertical}
+  .save{margin-top:16px;width:100%;border:0;border-radius:999px;padding:13px;font-weight:800;font-size:15px;color:#06281a;background:linear-gradient(90deg,#46e08a,#34c873);cursor:pointer}
+  .sync{text-align:center;font-size:11.5px;color:var(--text-dim);margin-top:8px}
+  .note{margin:16px 4px 0;font-size:12px;color:var(--text-dim);text-align:center}
+</style></head>
+<body>
+<div class="phone">
+  <div class="tabs">
+    <button class="on" data-s="ride" onclick="sel('ride')">🚴 Ride</button>
+    <button data-s="run" onclick="sel('run')">🏃 Run</button>
+    <button data-s="gym" onclick="sel('gym')">🏋️ Gym</button>
+    <button data-s="yoga" onclick="sel('yoga')">🧘 Yoga</button>
+  </div>
+
+  <div class="card">
+    <div class="done"><span class="chk">✓</span><span class="muted" id="when">Completed · Fri 5 Jun · 2:24 PM</span></div>
+    <h1 id="title">Friday Durability Ride</h1>
+    <div class="sectitle" style="margin-top:12px">Your stats</div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="sectitle">Coach notes</div>
+  <div class="card"><div class="coachnotes" id="coach"></div></div>
+
+  <div class="sectitle" id="fbtitle">How did it go?</div>
+  <div class="card">
+    <div class="fld"><div class="lab">Overall effort (RPE)</div>
+      <div class="rpe">${''}</div>
+      <div class="rpe" id="rpe">
+        <button onclick="pick(this)">2</button><button onclick="pick(this)">3</button><button onclick="pick(this)">4</button><button class="on" onclick="pick(this)">5</button><button onclick="pick(this)">6</button><button onclick="pick(this)">7</button><button onclick="pick(this)">8</button>
+      </div>
+    </div>
+    <div id="fields"></div>
+    <div class="fld"><div class="lab">Anything else? (free text → coach + intervals comment)</div>
+      <textarea id="freetext" placeholder="How the legs/body felt, life context, niggles…"></textarea>
+    </div>
+    <button class="save">Save & sync to intervals.icu</button>
+    <div class="sync">↳ writes RPE/Feel + the fields below into the intervals activity (private feedback) + a comment</div>
+  </div>
+  <p class="note" id="note"></p>
+</div>
+<script>
+const chipRow = (label, opts, onIdx) => `<div class="fld"><div class="lab">${label}</div><div class="chips">${opts.map((o,i)=>`<span class="chip${i===onIdx?' on':''}" onclick="pickChip(this)">${o}</span>`).join('')}</div></div>`;
+const SP = {
+  ride: { title:'Friday Durability Ride', when:'Completed · Fri 5 Jun · 2:24 PM',
+    stats:[['2h05','Time'],['61 km','Dist'],['180 w','NP'],['152','Avg HR'],['105','Load'],['0.72','IF']],
+    coach:'<b>Objective</b> — two hours steady tempo on rolling roads; controlled, smooth, long aerobic finish.\n<b>Recovery</b> — protect the left knee tonight: light stretch only, no lower-body gym.',
+    fields:[ ['Legs before',['fresh','normal','heavy'],1], ['Legs after',['fresh','tired OK','cooked'],1], ['Fuel / GI',['great','ok','not needed','issues'],2], ['Pain / niggles',['none','knee','back','other'],1] ],
+    note:'Ride/Run → power/HR/load · legs before/after · fuel/GI · niggles' },
+  run: { title:'Sunday Long Run', when:'Completed · Sun 7 Jun · 8:10 AM',
+    stats:[['45:00','Time'],['8.2 km','Dist'],['5:30','Pace'],['148','Avg HR'],['60','Load'],['Z2','Zone']],
+    coach:'<b>Objective</b> — easy aerobic base, nasal-breathing pace. Keep it conversational.',
+    fields:[ ['Legs before',['fresh','normal','heavy'],0], ['Legs after',['fresh','tired OK','cooked'],1], ['Fuel / GI',['great','ok','not needed','issues'],2], ['Pain / niggles',['none','shin','knee','other'],0] ],
+    note:'Run → same shape as Ride (pace instead of power)' },
+  gym: { title:'Upper-Body & Trunk Strength', when:'Completed · Mon 2 Jun · 6:30 PM',
+    stats:[['55 min','Time'],['6','Exercises'],['4,200 kg','Volume'],['18','Sets'],['7','RPE'],['—','Top set']],
+    coach:'<b>Objective</b> — re-entry strength dose, back-sparing, RPE 6–7. Legs untouched for Tue/Wed.',
+    fields:[ ['How heavy',['easy','right','too hard'],1], ['Soreness / pump',['none','good pump','already sore'],1], ['Form quality',['clean','ok','broke down'],0], ['Pain / niggles',['none','shoulder','low back','other'],0] ],
+    note:'Gym → volume/sets/RPE · how heavy · soreness/pump · form' },
+  yoga: { title:'Evening Mobility & Reset', when:'Completed · Tue 3 Jun · 9:00 PM',
+    stats:[['22 min','Time'],['Pilates','Type'],['Easy','Intensity']],
+    coach:'<b>Objective</b> — open hips & T-spine, decompress the back, down-regulate before sleep.',
+    fields:[ ['Calm / down-regulated',['much calmer','a bit','not really'],0], ['Flexibility',['looser','same','tight'],0], ['Any strain?',['none','mild','sharp — stop'],0] ],
+    note:'Yoga/Pilates → calm/down-regulation · flexibility · strain (no power/load)' },
+};
+function sel(s){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
+  const d=SP[s];
+  title.textContent=d.title; when.textContent=d.when;
+  stats.innerHTML=d.stats.map(([v,k])=>`<div class="stat"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
+  document.getElementById('coach').innerHTML=d.coach;
+  document.getElementById('fields').innerHTML=d.fields.map(([l,o,i])=>chipRow(l,o,i)).join('');
+  document.getElementById('note').textContent=d.note;
+}
+function pick(b){b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+function pickChip(c){c.parentElement.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');}
+sel('ride');
+</script>
+</body></html>
