@@ -752,6 +752,30 @@ function searchExercises(q, limit) {
   const list = n ? EXERCISES.filter((e) => e.name.toLowerCase().includes(n)) : EXERCISES
   return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, image: e.image, video: e.video }))
 }
+// Recipe + mind/movement catalogs — let the coach PICK real Platyplus content by id
+// (for fuel meals + meditation/yoga/pilates sessions), mirroring the exercise catalog.
+let RECIPES = [], MIND = []
+;(() => {
+  try {
+    const cdir = process.env.CATALOG_DIR || join(__dirname, '..', 'src', 'data', 'generated')
+    const rp = join(cdir, 'recipes.json'); if (existsSync(rp)) { RECIPES = JSON.parse(readFileSync(rp, 'utf8')); console.log(`catalog: ${RECIPES.length} recipes`) }
+    const mp = join(cdir, 'mind.json'); if (existsSync(mp)) { MIND = JSON.parse(readFileSync(mp, 'utf8')); console.log(`catalog: ${MIND.length} mind/movement sessions`) }
+  } catch (e) { console.log('recipe/mind catalog load failed:', e.message) }
+})()
+function searchRecipes(q, limit, category) {
+  const n = String(q || '').trim().toLowerCase()
+  let list = RECIPES
+  if (category) list = list.filter((r) => String(r.category || '').toLowerCase() === String(category).toLowerCase())
+  if (n) list = list.filter((r) => r.title.toLowerCase().includes(n) || (r.tags || []).some((t) => String(t).toLowerCase().includes(n)))
+  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((r) => ({ id: r.id, title: r.title, category: r.category, kcal: r.kcal, protein: r.protein, minutes: r.minutes }))
+}
+function searchSessions(q, limit, kind) {
+  const n = String(q || '').trim().toLowerCase()
+  let list = MIND
+  if (kind) list = list.filter((m) => String(m.kind || '').toLowerCase() === String(kind).toLowerCase())
+  if (n) list = list.filter((m) => m.title.toLowerCase().includes(n) || String(m.summary || '').toLowerCase().includes(n))
+  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((m) => ({ id: m.id, title: m.title, kind: m.kind, duration: m.duration }))
+}
 
 // Upsert a planned session by id (idempotent — re-POST to update).
 app.post('/api/plan', apiAuth, async (req, res) => { const r = await upsertPlan(req.user, req.body); res.status(r.status).json(r.body) })
@@ -821,6 +845,9 @@ app.delete('/api/items/:id', apiAuth, (req, res) => { deleteItemById(req.user, r
 
 // Exercise catalog search — resolve a name to a real exId (with demo media).
 app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit)))
+// Recipe + session catalog search — the coach picks a real id for fuel meals / mind sessions.
+app.get('/api/recipes', apiAuth, (req, res) => res.json(searchRecipes(req.query.q, req.query.limit, req.query.category)))
+app.get('/api/sessions', apiAuth, (req, res) => res.json(searchSessions(req.query.q, req.query.limit, req.query.kind)))
 
 // ---- OpenAPI spec + Swagger UI (session-gated — not public) ---------------
 // `auth` requires a valid login cookie, so the docs + spec are invisible to

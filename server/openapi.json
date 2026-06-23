@@ -601,6 +601,24 @@
         }
       }
     },
+    "/api/recipes": {
+      "get": {
+        "summary": "Search recipe library \u2014 coach picks a real meal id for fueling (Bearer)",
+        "tags": ["catalog"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "q", "in": "query", "schema": { "type": "string" } }, { "name": "category", "in": "query", "schema": { "type": "string" }, "description": "breakfast|lunch|dinner|snack" }, { "name": "limit", "in": "query", "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "[{ id, title, category, kcal, protein, minutes }]" } }
+      }
+    },
+    "/api/sessions": {
+      "get": {
+        "summary": "Search mind/movement library (meditation/yoga/pilates) \u2014 coach picks a session id (Bearer)",
+        "tags": ["catalog"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "q", "in": "query", "schema": { "type": "string" } }, { "name": "kind", "in": "query", "schema": { "type": "string" }, "description": "meditation|yoga|pilates|breathing" }, { "name": "limit", "in": "query", "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "[{ id, title, kind, duration }]" } }
+      }
+    },
     "/api/exercises": {
       "get": {
         "summary": "Search exercise library \u2014 resolve names to exIds with demo media (Bearer)",
