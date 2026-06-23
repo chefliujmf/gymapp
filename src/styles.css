@@ -121,6 +121,10 @@ a { color: inherit; text-decoration: none; }
 .week::-webkit-scrollbar { display: none; }
 .week button { flex: 1; min-width: 0; padding: 8px 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-soft); color: var(--text-dim); font-weight: 700; font-size: 12px; text-align: center; line-height: 1.3; }
 .week button b { display: block; font-size: 15px; color: var(--text); }
+/* tiny "has something" dot under the day number (#66) */
+.week__dot { display: block; width: 4px; height: 4px; border-radius: 50%; margin: 3px auto 0; background: transparent; }
+.week__dot--on { background: var(--accent, #34e07d); }
+.week button.on .week__dot--on { background: var(--on-accent, #082015); }
 .week button.on { background: var(--accent-grad); border-color: transparent; box-shadow: 0 6px 16px -6px rgba(52,224,125,0.6); }
 .week button.on, .week button.on b { color: var(--on-accent); }
 

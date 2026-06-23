@@ -9,7 +9,7 @@ import { localISO } from './date'
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
 /** Mon–Sun strip for the current week, today highlighted. week header. */
-export function WeekStrip({ selected, onSelect }: { selected?: string; onSelect?: (iso: string) => void } = {}) {
+export function WeekStrip({ selected, onSelect, marked }: { selected?: string; onSelect?: (iso: string) => void; marked?: Set<string> } = {}) {
   const now = new Date()
   const [offset, setOffset] = useState(0) // weeks from the current week (‹ ›)
   const monday = new Date(now)
@@ -34,10 +34,12 @@ export function WeekStrip({ selected, onSelect }: { selected?: string; onSelect?
         {days.map((d) => {
           const iso = localISO(d)
           const on = selected ? iso === selected : d.toDateString() === todayKey
+          const hasContent = !!marked?.has(iso)
           return (
             <button key={iso} className={on ? 'on' : ''} onClick={() => onSelect?.(iso)}>
               {DOW[d.getDay()]}
               <b>{d.getDate()}</b>
+              <span className={'week__dot' + (hasContent ? ' week__dot--on' : '')} />
             </button>
           )
         })}

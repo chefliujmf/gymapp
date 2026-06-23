@@ -18,6 +18,7 @@ description: Before implementing any UX / visual / layout / interaction change, 
 4. **Build only the chosen option.** If the user says "other"/tweaks, fold it in and re-confirm if it's a big shift.
 
 ## Mobile hard rules (non-negotiable — JM directives)
+- **Contrast: never super-dark-grey text/elements on black (JM 2026-06-23).** Body/secondary text uses `--text` / `--text-dim`, not a near-black grey. Cards on the black bg need a visible border or lighter fill + real padding (don't let a card melt into the background). When in doubt, lift contrast.
 - **NO horizontal scroll, EVER.** Platyplus is mobile-first; off-screen content on a sideways-scrolling row is undiscoverable. Chip rows, filters, tabs, tag lists — they **WRAP** (`flex-wrap: wrap`), never `overflow-x: auto`/`nowrap`. (JM 2026-06-23: the Settings equipment chips scrolled sideways — chips off-screen. Fixed `.chips` to wrap globally.) If something genuinely can't wrap, that's a design-options conversation, not a horizontal-scroll default.
 
 ## When this applies

@@ -229,6 +229,13 @@ export default function Today() {
   const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay)
   const dayPlans = plans.filter((p) => p.date === selDay && !planShown(p))
   const dayItems = items.filter((it) => it.date === selDay)
+  // Days that have anything on them → a tiny dot under the WeekStrip day (#66).
+  const markedDays = new Set<string>([
+    ...(events ?? []).map((e) => e.start_date_local.slice(0, 10)),
+    ...plans.map((p) => p.date),
+    ...items.map((it) => it.date),
+    ...activities.map((a) => (a.start_date_local || '').slice(0, 10)).filter(Boolean),
+  ])
   const upcoming = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) > selDay).sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
   const upcomingPlans = plans.filter((p) => p.date > selDay && !planShown(p)).sort((a, b) => a.date.localeCompare(b.date))
   // Match a completed intervals.icu activity to a planned workout by day + sport.
@@ -282,7 +289,7 @@ export default function Today() {
         <Link to="/progress" className="chip" style={{ marginTop: 6 }}>📈 History</Link>
       </div>
 
-      <WeekStrip selected={selDay} onSelect={setSelDay} />
+      <WeekStrip selected={selDay} onSelect={setSelDay} marked={markedDays} />
 
       {selDay === todayISO() && <CheckInCard />}
 
