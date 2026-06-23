@@ -1,0 +1,52 @@
+name: Auto-promote to prod
+
+# Zero-click promotion: when "Deploy Staging" finishes SUCCESSFULLY on `dev`
+# (CI green + QA stack built and healthchecked), fast-forward `main` to that
+# same commit. The push to `main` then triggers deploy.yml, which re-runs the
+# full CI gate and deploys PROD. Net effect: a healthy QA deploy auto-promotes
+# to prod with no PR and no manual step.
+#
+# Safety:
+#  - Only fires on a *successful* staging deploy (the `if` below), so a red CI
+#    or a failed QA deploy never reaches prod.
+#  - deploy.yml runs CI again as the prod gate before touching the box.
+#  - Kill switch: set repo variable AUTO_PROMOTE=off (Settings → Secrets and
+#    variables → Actions → Variables) to pause auto-promotion without code changes.
+#  - workflow_dispatch lets you force a promote manually.
+on:
+  workflow_run:
+    workflows: ["Deploy Staging"]
+    types: [completed]
+    branches: [dev]
+  workflow_dispatch: {}
+
+concurrency:
+  group: promote-prod
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    # Manual runs always proceed; automatic runs only on a successful staging deploy.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Promote the exact commit that passed staging (head_sha); fall back to
+          # dev's tip for manual dispatch.
+          ref: ${{ github.event.workflow_run.head_sha || 'dev' }}
+      - name: Fast-forward main to this commit
+        run: |
+          if [ "${{ vars.AUTO_PROMOTE }}" = "off" ]; then
+            echo "AUTO_PROMOTE=off — auto-promotion paused, skipping."
+            exit 0
+          fi
+          SHA="$(git rev-parse HEAD)"
+          echo "Promoting $SHA -> main"
+          # Fast-forward only: main always trails dev (all changes flow dev->main).
+          # If someone hotfixed main directly and it diverged, this fails loudly
+          # rather than silently overwriting — promote via a manual merge then.
+          git push origin "$SHA:refs/heads/main"
