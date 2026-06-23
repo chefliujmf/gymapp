@@ -11,27 +11,38 @@ const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 /** Mon–Sun strip for the current week, today highlighted. week header. */
 export function WeekStrip({ selected, onSelect }: { selected?: string; onSelect?: (iso: string) => void } = {}) {
   const now = new Date()
+  const [offset, setOffset] = useState(0) // weeks from the current week (‹ ›)
   const monday = new Date(now)
-  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + offset * 7)
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
     return d
   })
+  const sunday = days[6]
   const todayKey = now.toDateString()
+  const label = `${monday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${sunday.toLocaleDateString(undefined, monday.getMonth() === sunday.getMonth() ? { day: 'numeric' } : { month: 'short', day: 'numeric' })}`
   return (
-    <div className="week">
-      {days.map((d) => {
-        const iso = localISO(d)
-        const on = selected ? iso === selected : d.toDateString() === todayKey
-        return (
-          <button key={iso} className={on ? 'on' : ''} onClick={() => onSelect?.(iso)}>
-            {DOW[d.getDay()]}
-            <b>{d.getDate()}</b>
-          </button>
-        )
-      })}
-    </div>
+    <>
+      <div className="weeknav">
+        <button className="weeknav__a" onClick={() => setOffset((o) => o - 1)} aria-label="Previous week">‹</button>
+        <span className="weeknav__l">{offset === 0 ? 'This week' : label}</span>
+        {offset !== 0 && <button className="weeknav__today" onClick={() => setOffset(0)}>Today</button>}
+        <button className="weeknav__a" onClick={() => setOffset((o) => o + 1)} aria-label="Next week">›</button>
+      </div>
+      <div className="week">
+        {days.map((d) => {
+          const iso = localISO(d)
+          const on = selected ? iso === selected : d.toDateString() === todayKey
+          return (
+            <button key={iso} className={on ? 'on' : ''} onClick={() => onSelect?.(iso)}>
+              {DOW[d.getDay()]}
+              <b>{d.getDate()}</b>
+            </button>
+          )
+        })}
+      </div>
+    </>
   )
 }
 

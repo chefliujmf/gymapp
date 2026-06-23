@@ -7,7 +7,7 @@ items → `UX-BACKLOG.md`. (Edit this file with Write/sed — NOT `perl -0pi`, w
 
 > **👉 YOU ARE HERE:** the coach feature (P1 + plan view), the whole equipment chain, and the
 > post-workout flow are BUILT + on QA. OPEN: #18 P1-verify (pairs w/ live coach) · #23 (pairs w/
-> coach) · #28 (week arrows) · #26 follow-ons (activity stats + intervals mirror). Next build: **#28**.
+> coach) · #28 (week arrows) · #26 follow-ons (activity stats + intervals mirror). Next: #28 done. Open builds: #26 follow-ons (stats+mirror). Else pairs-with-coach (#18 verify, #23).
 
 ---
 
@@ -40,7 +40,7 @@ items → `UX-BACKLOG.md`. (Edit this file with Write/sed — NOT `perl -0pi`, w
 25. ✅ Mirror must split long workout steps (folded into P1b).
 26. ✅ Post-workout flow BUILT — `/feedback/:id`: coach notes + sport-dependent feedback + Save (stored on plan; coach reads it). FOLLOW-ONS: completed-activity STATS display + intervals private-feedback MIRROR (backend).
 27. ✅ Post-workout SPORT-DEPENDENT BUILT — ride/run legs/fuel/niggles · gym how-heavy/soreness/form.
-28. ⬜ **Week-strip prev/next arrows** — strip stuck on current week; add ‹ › to page past/future weeks. ← NEXT BUILD
+28. ✅ **Week-strip prev/next arrows** — WeekStrip has ‹ This week › nav (offset state) + Today reset; Today fetch window widened to ~10 weeks so navigated weeks have data.
 29. ✅ Post-workout tweaks BUILT — Save-only button (intervals push is backend); intervals "Feel" faces (Strong/Good/Normal/Poor/Weak).
 30. ✅ Process: proactively update skills when logic changes (`keep-skills-current` memory).
 31. ✅ Tag exercises with equipment — name + no-kit-category inference, 46%→91% (build-catalog).

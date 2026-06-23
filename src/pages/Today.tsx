@@ -105,8 +105,9 @@ function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p
 const iso = localISO
 const todayISO = () => localISO()
 function weekRange(): [string, string] {
-  const now = new Date(); const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7))
-  const end = new Date(mon); end.setDate(mon.getDate() + 13)
+  // Wide window so the WeekStrip ‹ › navigation (past/future weeks) has data loaded.
+  const now = new Date(); const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7) - 21)
+  const end = new Date(mon); end.setDate(mon.getDate() + 70)
   return [iso(mon), iso(end)]
 }
 const sportIcon = (e: IcuEvent) => { const s = sportOf(e); return s === 'cycling' ? <Bike strokeWidth={1.75} /> : s === 'gym' ? <Dumbbell strokeWidth={1.75} /> : e.type === 'Run' ? <Footprints strokeWidth={1.75} /> : <Target strokeWidth={1.75} /> }
