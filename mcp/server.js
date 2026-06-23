@@ -174,5 +174,10 @@ server.tool('add_note',
 server.tool('remove_item', 'Delete a meal/mind/note item by id.',
   { id: z.string() }, wrap((a) => api('DELETE', `/api/items/${encodeURIComponent(a.id)}`)))
 
+server.tool('notify',
+  'Tell the athlete what you JUST did, in their voice-of-coach. Call this AFTER you create/adjust their plan or review a workout, so a short note appears in their notification bell (e.g. title "Updated your week", items ["Reviewed Monday\'s ride", "Added a rest day Thu", "Bumped Sat to 3h endurance"]). Keep it human and brief.',
+  { title: z.string().describe('one-line summary, e.g. "Updated your training plan"'), body: z.string().optional().describe('optional one-line context'), items: z.array(z.string()).optional().describe('bullet list of what changed/was reviewed') },
+  wrap((a) => api('POST', '/api/notify', { title: a.title, body: a.body, items: a.items })))
+
 await server.connect(new StdioServerTransport())
 console.error(`platyplus-mcp ready -> ${BASE}`)

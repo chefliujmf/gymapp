@@ -17,6 +17,9 @@ description: Before implementing any UX / visual / layout / interaction change, 
 3. **Render an HTML mockup + open it** — write a self-contained HTML file (Platyplus dark theme: `--text:#eef1f4 --text-dim:#9298a6 --accent:#34e07d --bg:#0f1216`, card gradient `#21252f→#191c24`) to `gymapp/mockups/<thing>.html` and `open` it. Put the 2-3 options (or sport variants) behind a toggle in the ONE file so JM compares live. Use `AskUserQuestion` for the actual pick (a one-line ASCII sketch in the `preview` is fine as a label, but the real visual is the opened HTML). Recommendation first.
 4. **Build only the chosen option.** If the user says "other"/tweaks, fold it in and re-confirm if it's a big shift.
 
+## Mobile hard rules (non-negotiable — JM directives)
+- **NO horizontal scroll, EVER.** Platyplus is mobile-first; off-screen content on a sideways-scrolling row is undiscoverable. Chip rows, filters, tabs, tag lists — they **WRAP** (`flex-wrap: wrap`), never `overflow-x: auto`/`nowrap`. (JM 2026-06-23: the Settings equipment chips scrolled sideways — chips off-screen. Fixed `.chips` to wrap globally.) If something genuinely can't wrap, that's a design-options conversation, not a horizontal-scroll default.
+
 ## When this applies
 Any change to layout, components, controls, copy hierarchy, spacing, color/contrast, flows, or "where does X live". NOT needed for pure logic/backend/infra with no visible change.
 

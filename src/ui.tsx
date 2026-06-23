@@ -27,7 +27,7 @@ export function WeekStrip({ selected, onSelect }: { selected?: string; onSelect?
       <div className="weeknav">
         <button className="weeknav__a" onClick={() => setOffset((o) => o - 1)} aria-label="Previous week">‹</button>
         <span className="weeknav__l">{offset === 0 ? 'This week' : label}</span>
-        {offset !== 0 && <button className="weeknav__today" onClick={() => setOffset(0)}>Today</button>}
+        {offset !== 0 && <button className="weeknav__today" onClick={() => { setOffset(0); onSelect?.(localISO(now)) }}>Today</button>}
         <button className="weeknav__a" onClick={() => setOffset((o) => o + 1)} aria-label="Next week">›</button>
       </div>
       <div className="week">

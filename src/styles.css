@@ -84,8 +84,8 @@ a { color: inherit; text-decoration: none; }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 
 /* ---------- Chips / filters ---------- */
-.chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 12px; scrollbar-width: none; }
-.chips::-webkit-scrollbar { display: none; }
+/* Chips WRAP — never horizontal-scroll (off-screen chips aren't discoverable on mobile). */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 12px; }
 .chip { flex: none; padding: 9px 15px; border-radius: 999px; background: var(--bg-soft); border: 1px solid var(--line); color: var(--text-dim); font-size: 13px; font-weight: 700; }
 .chip--active { background: var(--accent-grad); color: var(--on-accent); border-color: transparent; box-shadow: 0 4px 14px -4px rgba(52,224,125,0.55); }
 

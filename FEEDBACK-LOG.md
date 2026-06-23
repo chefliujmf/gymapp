@@ -5,6 +5,12 @@ when received (its OWN entry — never merged). Build the OPEN queue **top-to-bo
 unless JM explicitly reprioritizes. Status: ✅ done · 🔨 building · ⬜ todo. Design detail for big
 items → `UX-BACKLOG.md`. (Edit this file with Write/sed — NOT `perl -0pi`, which mangles the UTF-8.)
 
+> **INTAKE PROTOCOL (agreed 2026-06-23) — fire-and-log.** JM dumps feedback freely, anytime, even
+> mid-build. On EACH item: (1) immediately append it here with a number + a one-line ack, (2) do
+> **NOT** stop the current build — keep working the queue in numbered order; implement the new item
+> when it comes up — UNLESS JM tags it URGENT/now. The log is the durable store, so nothing is lost
+> across context/sessions. Never make JM ask "are you logging this?" — logging is automatic & visible.
+
 > **👉 YOU ARE HERE:** the coach feature (P1 + plan view), the whole equipment chain, and the
 > post-workout flow are BUILT + on QA. OPEN: #18 P1-verify (pairs w/ live coach) · #23 (pairs w/
 > coach) · #28 (week arrows) · #26 follow-ons (activity stats + intervals mirror). Next: #28 done. Open builds: #26 follow-ons (stats+mirror). Else pairs-with-coach (#18 verify, #23).
@@ -51,4 +57,14 @@ items → `UX-BACKLOG.md`. (Edit this file with Write/sed — NOT `perl -0pi`, w
 36. ✅ **Native-text mirror parity** — Platyplus→intervals push now emits "## Workout" native text (- 10m 50-62%) alongside workout_doc. (Render parity verifies live under #18 — Platyplus push not active yet; coach pushes directly for now.)
 37. ✅ **Dedup planned workout shown twice** — Today + Calendar now hide a Platyplus plan/event duplicate matched by day+sport+title (not just id-link), so an unlinked same workout (e.g. coach pushed straight to intervals + a Platyplus plan) shows ONCE.
 38. ✅ **Make a DONE workout more obvious** — done cards get a green left bar + tinted border (.card--done) on Today (CoachPlanCard + PlanCard).
-39. ⬜ **Coach-activity notifications** — when the coach does something (creates/adjusts the plan, reviews a workout), post a NOTIFICATION with a short note of what it did (e.g. "Tadej updated your plan: reviewed Monday, added a rest day…"). Needs: an MCP tool for the coach to post + storage + a bell/feed UI for the user.
+39. 🔨 **Coach-activity notifications** — when the coach does something (creates/adjusts the plan, reviews a workout), post a NOTIFICATION with a short note of what it did (e.g. "Tadej updated your plan: reviewed Monday, added a rest day…"). Needs: an MCP tool for the coach to post + storage + a bell/feed UI for the user.
+40. ⬜ **Dietary preference governs ALL meals** — if the athlete is vegetarian, every coach-picked/suggested meal must be vegetarian; if vegan, all vegan; otherwise no restriction ("all"). Needs: a diet setting on the profile + coach prompt constraint + recipe search/filter honoring it. (Diet UI already exists in Settings → Preferences — see #42.)
+41. ⬜ **No horizontal scroll, ever (mobile)** — the Settings equipment chips scroll sideways (chips off-screen). NEVER ship horizontal scroll; chips/rows must WRAP. Skill rule added. Fix the equipment chips (and audit other chip rows).
+42. ⬜ **Diet setting appears twice** — find the duplicate Diet UI and keep ONE (Preferences).
+43. ⬜ **Some exercise demos have no video** — investigate which exercises lack a demo video and what the UI shows (emoji fallback?); decide fix.
+44. ⬜ **"More" tab vs top-right menu — redundant?** — bottom nav has a ••• More tab; top-right has the account menu + bell. Evaluate best practice; remove the redundancy.
+45. ⬜ **Top-bar order: Coach · 🔔 · JM is a weird sequence** — reconsider where the notification bell sits (best practice: notifications usually left of the account avatar, or grouped). Decide + adjust.
+46. ⬜ **Done-state still not obvious enough** — on the activity-linked Today plan card (the outdoor ride), "done" is only inferred from the intervals/Strava links + a small ✓; not obvious. Make it unmistakable (badge/banner). Also explain/handle the ⚠ icon shown next to "Outdoor".
+47. ⬜ **In-app "Promote to prod" button (QA, admin)** — JM expected a promote button "at the top" in QA. Today promotion is a GitHub workflow_dispatch (#2). Consider an admin-only in-app button that triggers it (needs a GitHub token server-side) — or document where the GitHub button is. Decide.
+48. 🔨 **Week-strip "Today" doesn't re-highlight today** — after browsing a past/future week then tapping "Today", the strip returns to this week but the selected day stays stale (e.g. body showed "Wed Jun 17" while strip showed 22–28, today 23 unhighlighted). FIX: "Today" now also resets the selection to today (`onSelect(today)`). Regression on #28.
+49. ⬜ **"History" lives at top-right, should sit next to Stats** — move the History entry point out of the top-right area to live with Stats (best-practice grouping). Decide placement + adjust.

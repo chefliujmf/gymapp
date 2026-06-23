@@ -619,6 +619,33 @@
         "responses": { "200": { "description": "[{ id, title, kind, duration }]" } }
       }
     },
+    "/api/notify": {
+      "post": {
+        "summary": "Post a coach-activity notification to the athlete's bell (Bearer)",
+        "description": "Call after creating/adjusting the plan or reviewing a workout, so a short note appears in the athlete's notification center.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "description": "one-line summary, e.g. 'Updated your training plan'" },
+                  "body": { "type": "string", "description": "optional one-line context" },
+                  "items": { "type": "array", "items": { "type": "string" }, "description": "bullets of what changed/was reviewed" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Notification created" },
+          "400": { "description": "title is required" }
+        }
+      }
+    },
     "/api/exercises": {
       "get": {
         "summary": "Search exercise library \u2014 resolve names to exIds with demo media (Bearer)",

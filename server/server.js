@@ -50,7 +50,7 @@ if (!store.users.length) {
   console.log('Seeded admin user.')
 }
 // Backfill api tokens / plan arrays for any user created before these existed.
-for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = []; if (!u.items) u.items = [] }
+for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = []; if (!u.items) u.items = []; if (!u.notifications) u.notifications = [] }
 save(store)
 // Late-seed the admin's intervals.icu key if it wasn't stored yet (idempotent).
 const seedKey = process.env.SEED_ICU_KEY
@@ -248,6 +248,14 @@ app.put('/auth/profile', auth, (req, res) => {
   else if (typeof req.body.sport === 'string') req.user.sports = req.body.sport ? [req.body.sport.toLowerCase().trim().slice(0, 20)] : []
   if (typeof req.body.sex === 'string') req.user.sex = req.body.sex.trim().toLowerCase().slice(0, 10)
   save(store); res.json(pub(req.user))
+})
+
+// Coach-activity notifications — the user reads (bell) + marks read.
+app.get('/auth/notifications', auth, (req, res) => res.json(req.user.notifications || []))
+app.post('/auth/notifications/read', auth, (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids : null
+  for (const n of req.user.notifications || []) { if (!ids || ids.includes(n.id)) n.read = true }
+  save(store); res.json({ ok: true })
 })
 
 // Athlete profile — the per-user coaching profile (engine-native markdown) the
@@ -875,6 +883,31 @@ app.post('/api/items', apiAuth, (req, res) => { const r = upsertItem(req.user, r
 app.delete('/api/items/:id', apiAuth, (req, res) => { deleteItemById(req.user, req.params.id); res.json({ ok: true }) })
 
 // Exercise catalog search — resolve a name to a real exId (with demo media).
+// Coach-activity notification: the coach posts a short note of what it just did
+// (created/adjusted the plan, reviewed a workout). Surfaces in the user's bell.
+function pushNotification(u, { title, body, items }) {
+  if (!u.notifications) u.notifications = []
+  const t = String(title || '').trim().slice(0, 120)
+  if (!t) return null
+  const n = {
+    id: 'coach-' + randomBytes(6).toString('base64url'),
+    kind: 'coach',
+    date: new Date().toISOString().slice(0, 10),
+    at: new Date().toISOString(),
+    title: t,
+    body: typeof body === 'string' ? body.trim().slice(0, 600) : undefined,
+    items: Array.isArray(items) ? items.filter((x) => typeof x === 'string').map((x) => x.trim().slice(0, 200)).slice(0, 12) : undefined,
+    read: false,
+  }
+  u.notifications.unshift(n)
+  u.notifications = u.notifications.slice(0, 50) // cap
+  return n
+}
+app.post('/api/notify', apiAuth, (req, res) => {
+  const n = pushNotification(req.user, req.body || {})
+  if (!n) return res.status(400).json({ error: 'title is required' })
+  save(store); res.status(201).json(n)
+})
 app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit, req.query.equipment)))
 // Recipe + session catalog search — the coach picks a real id for fuel meals / mind sessions.
 app.get('/api/recipes', apiAuth, (req, res) => res.json(searchRecipes(req.query.q, req.query.limit, req.query.category)))
