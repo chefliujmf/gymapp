@@ -93,10 +93,11 @@ function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p
             <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}</span>
             <h3 style={isDone ? { opacity: 0.6 } : undefined}>{p.title}</h3>
             {p.notes && <div className="meta" style={{ display: 'block', whiteSpace: 'normal' }}>{p.notes.length > 110 ? p.notes.slice(0, 110) + '…' : p.notes}</div>}
-            {act ? <DoneStats a={act} /> : <div className="meta">{mins ? <span>{mins} min</span> : <span>{(p.exercises || []).length} exercises{p.rounds && p.rounds > 1 ? ` · ${p.rounds} rounds` : ''}</span>}{done ? <span className="dot" style={{ color: 'var(--accent,#34e07d)' }}>✓ done</span> : <span className="dot">▶ start</span>}</div>}
+            {act ? <DoneStats a={act} /> : <div className="meta">{mins ? <span>{mins} min</span> : <span>{(p.exercises || []).length} exercises{p.rounds && p.rounds > 1 ? ` · ${p.rounds} rounds` : ''}</span>}{!done && <span className="dot">▶ start</span>}</div>}
           </div>
         </div>
       </button>
+      {isDone && <span className="done-badge">✓ Completed</span>}
       {onSwap && onRemove && <EntryMenu title={p.title} onSubstitute={onSwap} onRemove={onRemove} />}
     </div>
   )
@@ -132,10 +133,11 @@ function PlanCard({ e, showDate, onSwap, onRemove, done, act }: { e: IcuEvent; s
             <span className="eyebrow">{atp ? 'Training block' : e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}</span>
             <h3 style={isDone ? { opacity: 0.6 } : undefined}>{e.name}</h3>
             {obj && <div className="meta" style={{ display: 'block', whiteSpace: 'normal' }}>{obj.length > 110 ? obj.slice(0, 110) + '…' : obj}</div>}
-            {act ? <DoneStats a={act} /> : mins ? <div className="meta"><span>{mins} min</span>{e.icu_training_load ? <span className="dot">{e.icu_training_load} TSS</span> : null}{done ? <span className="dot" style={{ color: 'var(--accent,#34e07d)' }}>✓ done</span> : null}</div> : (done ? <div className="meta"><span style={{ color: 'var(--accent,#34e07d)' }}>✓ done</span></div> : null)}
+            {act ? <DoneStats a={act} /> : mins ? <div className="meta"><span>{mins} min</span>{e.icu_training_load ? <span className="dot">{e.icu_training_load} TSS</span> : null}</div> : null}
           </div>
         </div>
       </Link>
+      {isDone && <span className="done-badge">✓ Completed</span>}
       {onSwap && onRemove && <EntryMenu title={e.name} onSubstitute={onSwap} onRemove={onRemove} />}
     </div>
   )

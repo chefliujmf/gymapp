@@ -366,7 +366,10 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .gp2-elapsed { display:block; font-size:13px; font-weight:800; color:var(--accent,#34e07d); font-variant-numeric:tabular-nums; margin-top:1px; }
 .gp2-unit { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); color:var(--text,#fff); font-size:13px; font-weight:800; padding:6px 9px; border-radius:9px; cursor:pointer; min-width:34px; }
 .gp2-unit:active { transform:scale(.94); }
-.gp2-stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; background:#0c0c0e; border-radius:18px; margin:6px 16px; overflow:hidden; }
+.gp2-stage { flex:1; min-height:0; position:relative; display:flex; align-items:center; justify-content:center; background:#0c0c0e; border-radius:18px; margin:6px 16px; overflow:hidden; }
+/* In-workout demo image/video toggle (#53). */
+.gp2-demotoggle { position:absolute; bottom:10px; right:10px; z-index:3; background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:5px 12px; font-size:12px; font-weight:700; backdrop-filter:blur(4px); }
+.gp2-demotoggle:active { transform:scale(.94); }
 .gp2-stage--rest { background:#0b1f2e; }
 .gp2-vid { width:100%; height:100%; object-fit:contain; }
 .gp2-vidwrap { width:100%; height:100%; position:relative; display:flex; align-items:center; justify-content:center; cursor:pointer; }
@@ -647,6 +650,16 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .entry-kebab:hover { color: #fff; background: rgba(255,255,255,.12); }
 /* On Today, float it over the top-right of the card. */
 .today-entry > .entry-kebab { position: absolute; top: 12px; right: 12px; z-index: 2; }
+
+/* Unmistakable "done" badge — top-right, just left of the ⋯ kebab (#46/#52). */
+.today-entry > .done-badge {
+  position: absolute; top: 12px; right: 54px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--accent, #34e07d); color: #06281a;
+  font-size: 11px; font-weight: 800; letter-spacing: .2px;
+  padding: 4px 10px; border-radius: 999px; pointer-events: none;
+  box-shadow: 0 1px 5px rgba(0,0,0,.35);
+}
 
 /* Bottom action sheet rows — large, finger-friendly, Remove clearly separated. */
 .sheet--actions { padding-bottom: max(18px, env(safe-area-inset-bottom)); }

@@ -125,7 +125,10 @@ export default function GymPlayer() {
   // kg/lbs from the saved units preference; toggleable live during the workout.
   const units = (useLiveQuery(() => getSetting('units')) as string | undefined) ?? 'metric'
   const unit = units === 'imperial' ? 'lb' : 'kg'
-  const stills = (useLiveQuery(() => getSetting('exerciseStills')) as string | undefined) === '1'
+  const stillsPref = (useLiveQuery(() => getSetting('exerciseStills')) as string | undefined) === '1'
+  // In-workout override (#53): flip image/video on the fly without leaving the player.
+  const [stillsOverride, setStillsOverride] = useState<boolean | null>(null)
+  const stills = stillsOverride ?? stillsPref
 
   // Build steps and resume in-progress position/log/start-time across a refresh.
   useEffect(() => {
@@ -321,6 +324,11 @@ export default function GymPlayer() {
         {showVid
           ? <StageVideo ex={cur.ex} female={female} stills={stills} />
           : <div className="gp2-restbig">{cur.kind === 'rest' ? 'REST' : 'GET READY'}</div>}
+        {showVid && (cur.ex.video || cur.ex.image) && (
+          <button className="gp2-demotoggle" onClick={(e) => { e.stopPropagation(); setStillsOverride(!stills) }} title="Switch demo image/video">
+            {stills ? '▶ Video' : '🖼 Still'}
+          </button>
+        )}
       </div>
 
       <div className="gp2-info">
