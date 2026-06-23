@@ -9,6 +9,8 @@ description: Before implementing any UX / visual / layout / interaction change, 
 
 **Companion rule — log every feedback, build in ORDER (JM directive 2026-06-23):** the moment JM gives ANY feedback/idea, **append it as its OWN numbered entry at the END of `gymapp/FEEDBACK-LOG.md`** (never merge onto a prior item). **Then LOGGING IS NOT WORKING IT — resume the current in-order item; do NOT jump to the fresh feedback.** Build the OPEN queue strictly top-to-bottom, **to the T**, unless JM EXPLICITLY reprioritizes or asks a one-off. The newest idea is the LAST to build, not the first. Keep statuses current (⬜→🔨→✅). See memory `feedback-log-discipline`. (JM caught me twice jumping ahead — hold the line.)
 
+**Companion rule — keep skills current, proactively (JM 2026-06-23):** whenever you change/improve an approach or get corrected, **edit the relevant skill/memory in the SAME turn** — don't wait to be asked. If you'd do it differently next time, the skill should already say so. See memory `keep-skills-current`.
+
 ## How
 1. **Research first** — current best practice + how leading apps solve it (see the platyplus-ops skill's UX rule). Research shapes the options; cite sources.
 2. **Surface constraints** — the user holds constraints you can't infer (e.g. "the check-in can't be collapsed — I'll forget to fill it in"). Options-first flushes these out before code.
