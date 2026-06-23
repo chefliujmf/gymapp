@@ -268,21 +268,22 @@ export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: 
  * badge + duration · distance · avg HR · avg power · Load (TSS) · RPE. */
 export function DoneStats({ a }: { a: IcuActivity }) {
   const isRideRun = /ride|run/i.test(a.type) && !/weight/i.test(a.type)
-  const parts = [
-    a.moving_time ? `${Math.round(a.moving_time / 60)} min` : null,
-    a.distance ? `${(a.distance / 1000).toFixed(1)} km` : null,
-    a.average_heartrate ? `${Math.round(a.average_heartrate)} bpm` : null,
-    a.icu_average_watts ? `${Math.round(a.icu_average_watts)} W` : null,
-    a.icu_training_load ? `${a.icu_training_load} TSS` : null,
-    a.icu_rpe ? `RPE ${a.icu_rpe}` : null,
-  ].filter(Boolean)
+  // each chip carries a metric color (intervals-style) so it reads at a glance (#58)
+  const parts: [string, string][] = [
+    a.moving_time ? [`⏱ ${Math.round(a.moving_time / 60)} min`, 'time'] : null,
+    a.distance ? [`📍 ${(a.distance / 1000).toFixed(1)} km`, 'dist'] : null,
+    a.average_heartrate ? [`❤️ ${Math.round(a.average_heartrate)} bpm`, 'hr'] : null,
+    a.icu_average_watts ? [`⚡ ${Math.round(a.icu_average_watts)} W`, 'pwr'] : null,
+    a.icu_training_load ? [`🔥 ${a.icu_training_load} TSS`, 'load'] : null,
+    a.icu_rpe ? [`😊 RPE ${a.icu_rpe}`, 'rpe'] : null,
+  ].filter(Boolean) as [string, string][]
   return (
     <div className="done-stats">
       <span className="done-badge">
         <Check size={11} />
         {isRideRun ? (isIndoorActivity(a) ? <><Home size={11} /> Indoor</> : <><Mountain size={11} /> Outdoor</>) : 'Done'}
       </span>
-      {parts.map((p, i) => <span key={i} className="done-stat">{p}</span>)}
+      {parts.map(([txt, kind], i) => <span key={i} className={`done-stat done-stat--${kind}`}>{txt}</span>)}
       {a.id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://intervals.icu/activities/${a.id}`)}>intervals ↗</span>}
       {a.strava_id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://www.strava.com/activities/${a.strava_id}`)}>Strava ↗</span>}
     </div>
