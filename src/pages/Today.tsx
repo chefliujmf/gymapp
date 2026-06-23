@@ -211,7 +211,12 @@ export default function Today() {
   // (matched by external_id OR by the mirror icuEventId) is hidden so there's no dupe.
   const linkedIds = new Set((events ?? []).map((e) => e.external_id).filter(Boolean))
   const shownEventIds = new Set((events ?? []).map((e) => String(e.id)))
-  const planShown = (p: CoachPlan) => linkedIds.has(p.id) || (p.icuEventId != null && shownEventIds.has(String(p.icuEventId)))
+  // Also dedup an UNLINKED Platyplus plan against an intervals event that's the SAME
+  // planned workout (same day + sport + title) — e.g. the coach published straight to
+  // intervals and a separate Platyplus plan exists. Show one (the intervals event), hide the plan.
+  const shownEventKeys = new Set((events ?? []).map((e) => `${e.start_date_local.slice(0, 10)}|${sportOf(e)}|${String(e.name || '').trim().toLowerCase()}`))
+  const planKey = (p: CoachPlan) => `${p.date}|${p.sport === 'ride' ? 'cycling' : p.sport}|${String(p.title || '').trim().toLowerCase()}`
+  const planShown = (p: CoachPlan) => linkedIds.has(p.id) || (p.icuEventId != null && shownEventIds.has(String(p.icuEventId))) || shownEventKeys.has(planKey(p))
   const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay)
   const dayPlans = plans.filter((p) => p.date === selDay && !planShown(p))
   const dayItems = items.filter((it) => it.date === selDay)
