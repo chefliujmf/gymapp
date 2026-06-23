@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { Dumbbell, Bike, Footprints, Brain, Salad, User, Settings as SettingsIcon, Activity, TrendingUp } from 'lucide-react'
+import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, TrendingUp } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
 type Item = { label: string; sub: string; to: string; icon: ReactNode; mine?: boolean }
@@ -55,17 +55,16 @@ export function StatsHub() {
   )
 }
 
-/** More — everything else. */
+/** More — content extras. Account stuff (Profile/Settings) lives in the top-right
+ *  avatar menu, not here, to avoid the duplication (#44). */
 export function MoreHub() {
   const items: Item[] = [
     { label: 'Eat', sub: 'Recipes & meal plans', to: '/eat', icon: <Salad strokeWidth={1.75} /> },
     { label: 'Mind', sub: 'Yoga, mobility, meditation', to: '/mind', icon: <Brain strokeWidth={1.75} /> },
-    { label: 'Profile', sub: 'You & your coaching', to: '/profile', icon: <User strokeWidth={1.75} /> },
-    { label: 'Settings', sub: 'Account, connections & preferences', to: '/settings', icon: <SettingsIcon strokeWidth={1.75} /> },
   ]
   return (
     <div>
-      <div className="page-head"><h1>More</h1><p>Eat, mind & your account</p></div>
+      <div className="page-head"><h1>More</h1><p>Eat & mind. Your account is under the avatar, top-right.</p></div>
       <div className="stack">{items.map((it) => <HubLink key={it.label} it={it} />)}</div>
     </div>
   )

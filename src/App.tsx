@@ -10,7 +10,7 @@ const tabs = [
   { to: '/plan', label: 'Plan', icon: <CalendarDays strokeWidth={1.75} />, end: false },
   { to: '/train', label: 'Train', icon: <Dumbbell strokeWidth={1.75} />, end: false, match: /^\/(train|gym|workouts|exercises|programs|trainers|cycle|run|ride-builder|run-builder)/ },
   { to: '/stats', label: 'Stats', icon: <BarChart3 strokeWidth={1.75} />, end: false, match: /^\/(stats|fitness|strength|progress)/ },
-  { to: '/more', label: 'More', icon: <MoreHorizontal strokeWidth={1.75} />, end: false, match: /^\/(more|eat|mind|recipes|profile|settings)/ },
+  { to: '/more', label: 'More', icon: <MoreHorizontal strokeWidth={1.75} />, end: false, match: /^\/(more|eat|mind|recipes)/ },
 ]
 
 export default function App() {
@@ -23,8 +23,8 @@ export default function App() {
       {!isDetail && (
         <header className="app-bar">
           <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=4" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</Link>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <Link to="/chat" aria-label="Coach chat" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--accent-grad)', color: 'var(--on-accent)', fontWeight: 800, fontSize: 13, padding: '7px 12px', borderRadius: 999, textDecoration: 'none' }}><MessageCircle size={16} /> Coach</Link>
+          {/* Top-right is the status cluster only: notifications + account (Coach moved to the FAB). */}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <ReleaseBell /><AccountMenu />
           </div>
         </header>
@@ -32,6 +32,10 @@ export default function App() {
       <main className="app-main">
         <Outlet />
       </main>
+      {/* Coach FAB — primary assistant action, thumb-reachable bottom-right, above the tab bar (#50). */}
+      {!isDetail && (
+        <Link to="/chat" className="coach-fab" aria-label="Coach chat"><MessageCircle size={20} /> <span className="coach-fab__l">Coach</span></Link>
+      )}
       {!isDetail && (
         <nav className="tab-bar">
           {tabs.map((t) => (
