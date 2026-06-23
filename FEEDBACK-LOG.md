@@ -39,3 +39,5 @@ Design detail for big items lives in `UX-BACKLOG.md`; this file is the ordered i
 21. ⬜ **Settings → equipment list** — define what you own; powers the equipment filter (#20).
 22. ⬜ **Train back-arrow** — confirm (it's a root tab; back absent by design) — add only if JM wants.
 23. ⬜ **intervals indoor-completion** — confirm an indoor-done Platyplus workout reaches intervals labeled clearly (FIT→Strava→intervals).
+24. ✅ **Skill: mockups in HTML, not ASCII** — `options-first` should say render mockups as HTML (open in browser), since JM reads those far better than ASCII. (done in skill below.)
+25. 🐛 **Mirror must split long workout steps** — a single >MAX-sec step makes the intervals workout render EMPTY (hit on the 60-min steady push). P1b workout_doc must split long steps like cyclingcoach (`split_long_doc_step`). [folded into P1b]

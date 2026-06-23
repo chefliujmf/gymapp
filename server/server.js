@@ -526,18 +526,65 @@ const ICU_API = 'https://intervals.icu/api/v1'
 function icuFetch(user, path, opts = {}) {
   return fetch(ICU_API + path, { ...opts, headers: { authorization: 'Basic ' + Buffer.from('API_KEY:' + user.icuKey).toString('base64'), 'content-type': 'application/json', accept: 'application/json', ...(opts.headers || {}) } })
 }
+// Render the coach's structured brief (objective, fueling + the day's meals, mind +
+// the day's session, recovery, success, cues) into the intervals event description,
+// so intervals.icu MIRRORS the full plan even though Platyplus is the master. Meals/
+// mind are separate calendar items (passed in for plan.date); each carries its own
+// per-pick `why`, the plan carries the strategy `why`. Returns '' when there's nothing.
+function renderCoachBrief(plan, items = []) {
+  const L = []
+  if (plan.objective) L.push(`Objective: ${plan.objective}`)
+  const meals = items.filter((it) => it.type === 'meal')
+  if (plan.fuel?.why || plan.fuel?.supplements || meals.length) {
+    L.push('\n## Fueling')
+    if (plan.fuel?.why) L.push(plan.fuel.why)
+    for (const m of meals) L.push(`• ${m.mealType ? m.mealType + ': ' : ''}${m.title}${m.kcal ? ` (${m.kcal} kcal)` : ''}${m.why ? ` — ${m.why}` : ''}`)
+    if (plan.fuel?.supplements) L.push(`Supplements: ${plan.fuel.supplements}`)
+  }
+  const mind = items.filter((it) => it.type === 'mind')
+  if (plan.mind?.why || mind.length) {
+    L.push('\n## Mind')
+    if (plan.mind?.why) L.push(plan.mind.why)
+    for (const s of mind) L.push(`• ${s.title}${s.minutes ? ` (${s.minutes} min)` : ''}${s.why ? ` — ${s.why}` : ''}`)
+  }
+  if (plan.recovery) L.push(`\n## Recovery\n${plan.recovery}`)
+  if (plan.success) L.push(`\n## Success\n${plan.success}`)
+  if (Array.isArray(plan.cues) && plan.cues.length) L.push(`\n## Cues\n${plan.cues.map((c) => `• ${c}`).join('\n')}`)
+  return L.length ? L.join('\n') + '\n\n— authored in Platyplus' : ''
+}
+// intervals/Wahoo won't render a single step longer than this — split + interpolate.
+const MAX_DOC_STEP_SECONDS = 3600
+function splitWorkoutStep(s) {
+  const dur = Number(s.duration) || 0, ps = Number(s.powerStart) || 0, pe = Number(s.powerEnd) || 0
+  const mk = (d, a, b, withText) => ({ duration: d, power: { start: Math.round(a), end: Math.round(b), units: '%ftp' }, ...(s.label && withText ? { text: s.label } : {}) })
+  if (dur <= MAX_DOC_STEP_SECONDS) return [mk(dur, ps, pe, true)]
+  const n = Math.ceil(dur / MAX_DOC_STEP_SECONDS), size = Math.round(dur / n)
+  const chunks = []; let elapsed = 0
+  for (let i = 0; i < n; i++) {
+    const d = i === n - 1 ? dur - elapsed : size
+    chunks.push(mk(d, ps + (pe - ps) * (elapsed / dur), ps + (pe - ps) * ((elapsed + d) / dur), i === 0))
+    elapsed += d
+  }
+  return chunks
+}
 // Map a plan to an intervals calendar event. Rides/runs carry a structured
 // workout_doc (power steps) so intervals pushes a real interval workout to Wahoo.
-function planToIcuEvent(plan) {
-  const ev = { start_date_local: plan.date + 'T00:00:00', category: 'WORKOUT', name: plan.title, external_id: plan.id, description: plan.notes || '' }
+function planToIcuEvent(plan, items = []) {
+  const brief = renderCoachBrief(plan, items)
+  const ev = { start_date_local: plan.date + 'T00:00:00', category: 'WORKOUT', name: plan.title, external_id: plan.id, description: '' }
   if (plan.sport === 'ride' || plan.sport === 'run') {
     const segs = plan.segments || []
     ev.type = plan.sport === 'ride' ? 'Ride' : 'Run'
     ev.moving_time = segs.reduce((s, x) => s + (Number(x.duration) || 0), 0)
-    if (segs.length) ev.workout_doc = { steps: segs.map((s) => ({ duration: Number(s.duration) || 0, power: { start: Number(s.powerStart) || 0, end: Number(s.powerEnd) || 0, units: '%ftp' }, ...(s.label ? { text: s.label } : {}) })) }
+    // duration (seconds) on each step IS the time target; power is the intensity target → Wahoo-ready.
+    // Split any step > MAX (3600s) into interpolated chunks — a single over-long step makes the
+    // intervals workout render EMPTY (matches cyclingcoach split_long_doc_step).
+    if (segs.length) ev.workout_doc = { steps: segs.flatMap((s) => splitWorkoutStep(s)) }
+    ev.description = [plan.notes, brief].filter(Boolean).join('\n\n')
   } else {
     ev.type = 'WeightTraining'
-    ev.description = `[gymapp] ${plan.rounds || 1} rounds\n` + (plan.exercises || []).map((x) => `• ${x.name}${x.exId ? ` [${x.exId}]` : ''} — ${(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}`).join('\n') + (plan.notes ? `\n\n${plan.notes}` : '')
+    const gym = `[gymapp] ${plan.rounds || 1} rounds\n` + (plan.exercises || []).map((x) => `• ${x.name}${x.exId ? ` [${x.exId}]` : ''} — ${(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}`).join('\n')
+    ev.description = [gym, plan.notes, brief].filter(Boolean).join('\n\n')
   }
   return ev
 }
@@ -545,7 +592,8 @@ function planToIcuEvent(plan) {
 async function pushPlanToIcu(user, plan) {
   if (!user.icuKey) return { skipped: 'no intervals key' }
   const ath = user.icuAthlete || 'i28814'
-  const ev = planToIcuEvent(plan)
+  const dayItems = (user.items || []).filter((it) => it.date === plan.date)
+  const ev = planToIcuEvent(plan, dayItems)
   try {
     if (plan.icuEventId) {
       const r = await icuFetch(user, `/athlete/${ath}/events/${plan.icuEventId}`, { method: 'PUT', body: JSON.stringify(ev) })
