@@ -15,34 +15,9 @@ import { EntryMenu } from '../EntryMenu'
 import { authApi, type Checkin } from '../auth/api'
 import { InfoDot } from '../charts'
 
-/** The Platyplus mascot as a 1–5 expression face (wiped → energized), reused for
- *  every check-in metric since all now read "higher = better". Selected = brand
- *  green head + a real smile; unselected = a dim grey platypus. Based on favicon.svg. */
-function Platyface({ level, on }: { level: number; on: boolean }) {
-  const s = (level - 3) / 2 // -1 (wiped) … +1 (energized)
-  const head = on ? '#34e07d' : '#48505f'
-  const billT = on ? '#249457' : '#39414e'
-  const billB = on ? '#175c3a' : '#2b313c'
-  const ink = '#0d0d0f'
-  const mouthCtrlY = 42.5 + s * 5.5 // >endpoints = smile, <endpoints = frown
-  return (
-    <svg viewBox="0 0 64 56" className="platyface" aria-hidden="true">
-      <ellipse cx="32" cy="28" rx="16.5" ry="14.5" fill={head} />
-      <path d="M17.5 23 Q32 16.5 46.5 23" stroke="#ff6b6b" strokeWidth="6" fill="none" strokeLinecap="round" opacity={on ? 1 : 0.5} />
-      <g stroke={ink} strokeWidth="2.4" strokeLinecap="round">
-        <path d={`M22.5 ${27 - s} L29 ${28.5 + s * 0.7}`} />
-        <path d={`M41.5 ${27 - s} L35 ${28.5 + s * 0.7}`} />
-      </g>
-      {level <= 1
-        ? <g stroke={ink} strokeWidth="2" strokeLinecap="round"><path d="M25 29l4 3M29 29l-4 3" /><path d="M35 29l4 3M39 29l-4 3" /></g>
-        : <g fill={ink}><circle cx="27" cy="30.5" r="2.2" /><circle cx="37" cy="30.5" r="2.2" /></g>}
-      <ellipse cx="32" cy="44" rx="15" ry="7" fill={billB} />
-      <ellipse cx="32" cy="42.5" rx="15" ry="5.8" fill={billT} />
-      <path d={`M25 42.5 Q32 ${mouthCtrlY} 39 42.5`} stroke={ink} strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.85" />
-      <circle cx="28" cy="41" r="1.1" fill={ink} /><circle cx="36" cy="41" r="1.1" fill={ink} />
-    </svg>
-  )
-}
+// Obvious + funny 1–5 faces (wrecked → amazing). One set for every metric since
+// all now read higher = better.
+const CHECKIN_FACES = ['💀', '😩', '😐', '😀', '🤩']
 
 /** Quick "how do you feel" check-in (energy/sleep/soreness) — a few taps, feeds the coach. */
 function CheckInCard() {
@@ -70,7 +45,7 @@ function CheckInCard() {
           <div className="checkin__faces">
             {[1, 2, 3, 4, 5].map((n) => {
               const stored = r.invert ? 6 - n : n, on = ci?.[r.key] === stored
-              return <button key={n} className={'checkin__face' + (on ? ' on' : '')} aria-label={`${r.label} ${n} of 5`} aria-pressed={on} onClick={() => set({ [r.key]: stored })}><Platyface level={n} on={on} /></button>
+              return <button key={n} className={'checkin__face' + (on ? ' on' : '')} aria-label={`${r.label} ${n} of 5`} aria-pressed={on} onClick={() => set({ [r.key]: stored })}>{CHECKIN_FACES[n - 1]}</button>
             })}
           </div>
         </div>
