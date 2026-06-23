@@ -7,6 +7,8 @@ description: Before implementing any UX / visual / layout / interaction change, 
 
 **Rule (JM directive):** do NOT implement a UX/visual/interaction change and let the user react. Present **2-3 distinct options, each with an ASCII mockup**, get the pick, THEN build only that one.
 
+**Companion rule — log every feedback (JM directive 2026-06-23):** the moment JM gives ANY feedback/idea, **append it as a numbered entry to the END of `gymapp/FEEDBACK-LOG.md`** before/while acting on it, and **build the OPEN queue in order, to the T**, unless JM says otherwise (one-offs are fine; keep the queue intact). Keep statuses current (⬜→🔨→✅). See memory `feedback-log-discipline`. This prevents losing UX feedback across long sessions.
+
 ## How
 1. **Research first** — current best practice + how leading apps solve it (see the platyplus-ops skill's UX rule). Research shapes the options; cite sources.
 2. **Surface constraints** — the user holds constraints you can't infer (e.g. "the check-in can't be collapsed — I'll forget to fill it in"). Options-first flushes these out before code.
