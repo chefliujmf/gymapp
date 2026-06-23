@@ -279,13 +279,19 @@ export function DoneStats({ a }: { a: IcuActivity }) {
   ].filter(Boolean) as [string, string][]
   return (
     <div className="done-stats">
-      <span className="done-badge">
-        <Check size={11} />
-        {isRideRun ? (isIndoorActivity(a) ? <><Home size={11} /> Indoor</> : <><Mountain size={11} /> Outdoor</>) : 'Done'}
-      </span>
-      {parts.map(([txt, kind], i) => <span key={i} className={`done-stat done-stat--${kind}`}>{txt}</span>)}
-      {a.id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://intervals.icu/activities/${a.id}`)}>intervals ↗</span>}
-      {a.strava_id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://www.strava.com/activities/${a.strava_id}`)}>Strava ↗</span>}
+      {/* Row 1: external links (left) + the Indoor/Outdoor label — keeps row 2 free for metrics (#60). */}
+      <div className="done-row done-row--labels">
+        {a.id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://intervals.icu/activities/${a.id}`)}>intervals ↗</span>}
+        {a.strava_id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://www.strava.com/activities/${a.strava_id}`)}>Strava ↗</span>}
+        <span className="done-badge">
+          <Check size={11} />
+          {isRideRun ? (isIndoorActivity(a) ? <><Home size={11} /> Indoor</> : <><Mountain size={11} /> Outdoor</>) : 'Done'}
+        </span>
+      </div>
+      {/* Row 2: the metric chips, on their own line. */}
+      <div className="done-row done-row--chips">
+        {parts.map(([txt, kind], i) => <span key={i} className={`done-stat done-stat--${kind}`}>{txt}</span>)}
+      </div>
     </div>
   )
 }
