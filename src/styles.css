@@ -893,8 +893,15 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .coachpick { background: rgba(52, 224, 125, 0.10); border: 1px solid rgba(52, 224, 125, 0.35); border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--text); margin-bottom: 12px; }
 .coachpick b { color: var(--accent, #34e07d); }
 /* check-in collapsed summary (once all 3 logged) */
-.checkin--mini { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 13px; }
+.checkin--mini { display: block; padding: 11px 13px; }
 .checkin__sum { font-size: 12.5px; color: var(--text); }
+.checkin__mhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.checkin__done { font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--accent, #34e07d); }
+.checkin__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.checkin__chips .mchip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; padding: 5px 11px; border-radius: 999px; border: 1px solid; }
+.mchip--energy   { color: #ffd54a; background: rgba(255,213,74,.12); border-color: rgba(255,213,74,.30); }
+.mchip--sleep    { color: #7ab8ff; background: rgba(122,184,255,.12); border-color: rgba(122,184,255,.30); }
+.mchip--soreness { color: #34e07d; background: rgba(52,224,125,.12); border-color: rgba(52,224,125,.30); }
 .checkin__edit { background: none; border: none; color: var(--accent, #34e07d); font-weight: 700; font-size: 13px; cursor: pointer; padding: 4px 6px; }
 /* post-workout feedback: intervals-style Feel faces + RPE + free text */
 .feelrow { display: flex; gap: 6px; }

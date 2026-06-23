@@ -43,8 +43,13 @@ function CheckInCard() {
   if (rows.every((r) => ci?.[r.key] != null) && !editing) {
     return (
       <div className="card checkin checkin--mini">
-        <span className="checkin__sum">{rows.map((r) => `${r.label} ${CHECKIN_FACES[(disp(r) as number) - 1]}`).join('   ')}</span>
-        <button className="checkin__edit" style={{ flex: 'none' }} onClick={() => setEditing(true)}>Edit</button>
+        <div className="checkin__mhead">
+          <span className="checkin__done">✓ Checked in today</span>
+          <button className="checkin__edit" style={{ flex: 'none' }} onClick={() => setEditing(true)}>Edit</button>
+        </div>
+        <div className="checkin__chips">
+          {rows.map((r) => { const v = disp(r) as number; return <span key={r.key} className={`mchip mchip--${r.key}`}>{CHECKIN_FACES[v - 1]} {r.label} {v}</span> })}
+        </div>
       </div>
     )
   }
