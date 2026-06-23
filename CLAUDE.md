@@ -3,6 +3,12 @@
 Read this before changing anything here. It lists the invariants and the
 "when you change X, also update Y" rules so nothing drifts.
 
+## ▶ CURRENT WORK QUEUE — start here
+**`FEEDBACK-LOG.md`** is the single, numbered, statused source of truth for what JM
+has asked for and where we're at (✅ done · 🔨 building · ⬜ todo). **Any session: read it
+first, work the OPEN queue top-down, to the T**, unless JM says otherwise. Append every new
+feedback/idea there (numbered) on receipt. Design detail for big items → `UX-BACKLOG.md`.
+
 ## Architecture (how it runs)
 - One Node container (`gymapp-auth`, `server/server.js`): serves the built SPA,
   handles **password + passkey auth** (own `store.json`), proxies intervals.icu,

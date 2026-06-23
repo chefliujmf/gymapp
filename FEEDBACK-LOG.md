@@ -29,7 +29,10 @@ Design detail for big items lives in `UX-BACKLOG.md`; this file is the ordered i
 
 ## 🔨/⬜ OPEN QUEUE — build in this order
 
-14. 🔨 **Coach P1b** — `planToIcuEvent` renders structured text + meal/mind refs + both why-levels into the intervals description; add `time_target` (Wahoo).
+> **👉 YOU ARE HERE: #15 (P1c, PlanDetail UI).** Done so far this build: #11 P1a (plan/item
+> schema), #14 P1b (intervals mirror + step-split #25) — both on QA. Resume at #15.
+
+14. ✅ **Coach P1b** — `planToIcuEvent` renders structured text + meal/mind refs + both why-levels into the intervals description; splits long steps. (`time_target` = step `duration`; verify Wahoo parity vs cyclingcoach before fully closing.)
 15. 🔨 **Coach P1c** — PlanDetail UI: universal shell (Objective·Fuel·Mind·Recovery·Success·Cues) + sport body (ride/run profile · gym list · yoga/pilates class); **meal chips = 2-col grid (not scroll)**, variable count; **bottom-sheet "why"** (no inline slab).
 16. 🔨 **Coach P1d** — recipe/session page "Coach's pick: …" banner (per-pick `why`).
 17. 🔨 **Coach P1e** — MCP: add `search_recipes` + `search_sessions` (mirror `search_exercises`); add structured fields + `why` to `create_*`/`schedule_*`; update BYO-AI tool descriptions. *(First check the server can search the recipe/mind catalog.)*
@@ -40,4 +43,4 @@ Design detail for big items lives in `UX-BACKLOG.md`; this file is the ordered i
 22. ⬜ **Train back-arrow** — confirm (it's a root tab; back absent by design) — add only if JM wants.
 23. ⬜ **intervals indoor-completion** — confirm an indoor-done Platyplus workout reaches intervals labeled clearly (FIT→Strava→intervals).
 24. ✅ **Skill: mockups in HTML, not ASCII** — `options-first` should say render mockups as HTML (open in browser), since JM reads those far better than ASCII. (done in skill below.)
-25. 🐛 **Mirror must split long workout steps** — a single >MAX-sec step makes the intervals workout render EMPTY (hit on the 60-min steady push). P1b workout_doc must split long steps like cyclingcoach (`split_long_doc_step`). [folded into P1b]
+25. ✅ **Mirror must split long workout steps** — a single >MAX-sec step makes the intervals workout render EMPTY (hit on the 60-min steady push). P1b workout_doc must split long steps like cyclingcoach (`split_long_doc_step`). [folded into P1b]
