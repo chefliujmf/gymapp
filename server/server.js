@@ -410,6 +410,8 @@ function buildSystemPrompt(user) {
   const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
   p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-5 (energy: 5=energized, sleep: 5=fully rested, soreness: 5=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
+  const ownedEq = Array.isArray(user.info?.equipment) ? user.info.equipment.filter((e) => typeof e === 'string') : []
+  if (ownedEq.length) p += `\n\n# Equipment the athlete OWNS: ${ownedEq.join(', ')}.\nWhen building gym/strength sessions, prescribe ONLY exercises that use this gear or Bodyweight — pass \`equipment="${ownedEq.join(',')}"\` to search_exercises so you never pick something they can't do. (They set this in Settings → Equipment.)`
   p += '\n\n' + APP_HELP
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
@@ -751,10 +753,12 @@ let EXERCISES = []
     else console.log(`catalog: no exercises.json at ${p} — /api/exercises returns empty`)
   } catch (e) { console.log('catalog load failed:', e.message) }
 })()
-function searchExercises(q, limit) {
+function searchExercises(q, limit, equipment) {
   const n = String(q || '').trim().toLowerCase()
-  const list = n ? EXERCISES.filter((e) => e.name.toLowerCase().includes(n)) : EXERCISES
-  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, image: e.image, video: e.video }))
+  const eq = equipment ? String(equipment).split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : null
+  let list = n ? EXERCISES.filter((e) => e.name.toLowerCase().includes(n)) : EXERCISES
+  if (eq) list = list.filter((e) => e.equipment && eq.includes(e.equipment.toLowerCase())) // owned-equipment filter
+  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, equipment: e.equipment, image: e.image, video: e.video }))
 }
 // Recipe + mind/movement catalogs — let the coach PICK real Platyplus content by id
 // (for fuel meals + meditation/yoga/pilates sessions), mirroring the exercise catalog.
@@ -848,7 +852,7 @@ app.post('/api/items', apiAuth, (req, res) => { const r = upsertItem(req.user, r
 app.delete('/api/items/:id', apiAuth, (req, res) => { deleteItemById(req.user, req.params.id); res.json({ ok: true }) })
 
 // Exercise catalog search — resolve a name to a real exId (with demo media).
-app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit)))
+app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit, req.query.equipment)))
 // Recipe + session catalog search — the coach picks a real id for fuel meals / mind sessions.
 app.get('/api/recipes', apiAuth, (req, res) => res.json(searchRecipes(req.query.q, req.query.limit, req.query.category)))
 app.get('/api/sessions', apiAuth, (req, res) => res.json(searchSessions(req.query.q, req.query.limit, req.query.kind)))

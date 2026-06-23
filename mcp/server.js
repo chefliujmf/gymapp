@@ -39,9 +39,9 @@ const server = new McpServer({ name: 'platyplus', version: '1.0.0' })
 
 // --- discovery ------------------------------------------------------------
 server.tool('search_exercises',
-  'Search the Platyplus exercise library by name; returns ids (exId) with demo media. Use the exId in create_workout so the app shows the right demo video.',
-  { query: z.string().describe('name fragment, e.g. "goblet squat"'), limit: z.number().int().min(1).max(100).optional() },
-  wrap((a) => api('GET', `/api/exercises?q=${encodeURIComponent(a.query)}&limit=${a.limit || 20}`)))
+  'Search the Platyplus exercise library by name; returns ids (exId), the equipment tag, and demo media. Use the exId in create_workout. IMPORTANT: pass `equipment` = the athlete\'s OWNED gear (see the profile) so you only ever prescribe exercises they can actually do; "Bodyweight" needs nothing.',
+  { query: z.string().describe('name fragment, e.g. "goblet squat"'), equipment: z.string().optional().describe('comma-separated owned equipment to limit to, e.g. "Dumbbell,Bodyweight,Bands"'), limit: z.number().int().min(1).max(100).optional() },
+  wrap((a) => api('GET', `/api/exercises?q=${encodeURIComponent(a.query)}&equipment=${encodeURIComponent(a.equipment || '')}&limit=${a.limit || 20}`)))
 
 server.tool('search_recipes',
   'Search the Platyplus recipe library to PICK a real meal for fueling; returns ids + macros (kcal, protein). Use the id as recipeId in schedule_meal so the meal links to the recipe. Filter by category and/or a name/tag query. (Pick however many meals/snacks the day warrants per your nutrition knowledge — variable, not fixed.)',
