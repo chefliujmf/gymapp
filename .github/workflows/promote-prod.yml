@@ -1,0 +1,38 @@
+name: Promote to prod
+
+# One-click promotion you trigger from the Actions tab AFTER testing on QA:
+#   repo → Actions → "Promote to prod" → Run workflow.
+# It opens (or reuses) a dev→main PR and enables auto-merge, so GitHub merges it
+# the moment the protected-branch `build` check passes → deploy.yml ships prod.
+#
+# The human QA test is the gate; this just removes the GitHub PR busywork.
+#
+# REQUIRES (one-time): repo Actions secret PROMOTE_TOKEN = a fine-grained PAT
+# (Contents + Pull requests: write). The built-in GITHUB_TOKEN can't be used: a PR
+# it opens does NOT trigger the `build` check, so auto-merge would wait forever.
+# Also: repo Settings → General → "Allow auto-merge" must be ON.
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: promote-prod
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open/reuse dev → main PR and enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.PROMOTE_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::PROMOTE_TOKEN secret missing — add a fine-grained PAT (Contents + Pull requests: write)."; exit 1
+          fi
+          gh pr create --repo "$REPO" -B main -H dev \
+            --title "Promote dev → main" \
+            --body "Promotion triggered from the Actions tab after a QA test. Auto-merges once \`build\` passes." \
+            || echo "PR already exists / nothing to promote — continuing."
+          gh pr merge dev --repo "$REPO" --auto --merge \
+            || echo "Could not enable auto-merge (no open PR, or already up to date)."

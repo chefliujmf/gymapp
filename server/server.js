@@ -266,9 +266,9 @@ function upsertCheckin(user, body) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(body?.date || '') ? body.date : new Date().toISOString().slice(0, 10)
   user.checkins = user.checkins || []
   const ci = { date,
-    energy: Number(body.energy) >= 1 && Number(body.energy) <= 10 ? Number(body.energy) : undefined,
-    sleep: Number(body.sleep) >= 1 && Number(body.sleep) <= 10 ? Number(body.sleep) : undefined,
-    soreness: Number(body.soreness) >= 1 && Number(body.soreness) <= 10 ? Number(body.soreness) : undefined,
+    energy: Number(body.energy) >= 1 && Number(body.energy) <= 5 ? Number(body.energy) : undefined,
+    sleep: Number(body.sleep) >= 1 && Number(body.sleep) <= 5 ? Number(body.sleep) : undefined,
+    soreness: Number(body.soreness) >= 1 && Number(body.soreness) <= 5 ? Number(body.soreness) : undefined,
     note: typeof body.note === 'string' ? body.note.slice(0, 200) : undefined }
   const i = user.checkins.findIndex((x) => x.date === date)
   if (i >= 0) user.checkins[i] = { ...user.checkins[i], ...ci }; else user.checkins.push(ci)
@@ -300,52 +300,6 @@ app.post('/auth/users/:id/reset', auth, admin, async (req, res) => {
 app.delete('/auth/users/:id', auth, admin, (req, res) => {
   if (req.params.id === req.user.id) return res.status(400).json({ error: "You can't delete yourself" })
   store.users = store.users.filter((u) => u.id !== req.params.id); save(store); res.json({ ok: true })
-})
-
-// ---- one-tap prod promotion (admin) --------------------------------------
-// Ship the current dev/QA build to PROD from inside the app, AFTER testing on QA.
-// main is a protected branch (requires the `build` check), so promotion goes
-// through a PR: we open (or reuse) a dev->main PR and turn on auto-merge, so
-// GitHub merges it the moment CI is green and deploy.yml ships prod. Needs a
-// fine-grained PAT in GITHUB_PROMOTE_TOKEN (Contents + Pull requests: write) and
-// the repo setting "Allow auto-merge". Without the token the endpoint reports
-// "not configured" and the UI hides the action.
-const GH_REPO = process.env.GITHUB_REPO || 'chefliujmf/gymapp'
-const GH_PROMOTE_TOKEN = process.env.GITHUB_PROMOTE_TOKEN || ''
-const ghHeaders = () => ({ authorization: 'Bearer ' + GH_PROMOTE_TOKEN, accept: 'application/vnd.github+json', 'content-type': 'application/json', 'user-agent': 'platyplus-promote', 'x-github-api-version': '2022-11-28' })
-async function findPromotePR() {
-  const owner = GH_REPO.split('/')[0]
-  const r = await fetch(`https://api.github.com/repos/${GH_REPO}/pulls?base=main&head=${owner}:dev&state=open`, { headers: ghHeaders() })
-  if (!r.ok) return null
-  const arr = await r.json().catch(() => [])
-  return Array.isArray(arr) && arr[0] ? arr[0] : null
-}
-app.get('/auth/promote/status', auth, admin, async (req, res) => {
-  if (!GH_PROMOTE_TOKEN) return res.json({ configured: false })
-  const pr = await findPromotePR().catch(() => null)
-  res.json({ configured: true, open: !!pr, number: pr?.number, url: pr?.html_url })
-})
-app.post('/auth/promote', auth, admin, async (req, res) => {
-  if (!GH_PROMOTE_TOKEN) return res.status(501).json({ error: 'Promotion not configured (GITHUB_PROMOTE_TOKEN missing on the server).' })
-  try {
-    let pr = await findPromotePR()
-    if (!pr) {
-      const cr = await fetch(`https://api.github.com/repos/${GH_REPO}/pulls`, { method: 'POST', headers: ghHeaders(), body: JSON.stringify({ title: 'Promote dev → main (in-app)', head: 'dev', base: 'main', body: 'Promotion triggered from the in-app admin button after a QA test. Auto-merges when the `build` check passes.' }) })
-      if (cr.status === 422) {
-        const j = await cr.json().catch(() => ({}))
-        if (JSON.stringify(j).includes('No commits between')) return res.json({ ok: true, upToDate: true, message: 'Prod is already up to date with dev — nothing to promote.' })
-        return res.status(422).json({ error: j.errors?.[0]?.message || j.message || 'Could not open the promotion PR.' })
-      }
-      if (!cr.ok) return res.status(502).json({ error: 'GitHub PR create failed', status: cr.status, detail: (await cr.text()).slice(0, 300) })
-      pr = await cr.json()
-    }
-    // Enable auto-merge (merge commit) so it ships once `build` passes.
-    const gq = await fetch('https://api.github.com/graphql', { method: 'POST', headers: ghHeaders(), body: JSON.stringify({ query: 'mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:MERGE}){pullRequest{number}}}', variables: { id: pr.node_id } }) })
-    const gj = await gq.json().catch(() => ({}))
-    const autoMerge = !gj.errors
-    const note = autoMerge ? 'will auto-merge when the build check passes' : 'is open — enable "Allow auto-merge" in repo settings (or merge it manually)'
-    res.json({ ok: true, number: pr.number, url: pr.html_url, autoMerge, message: `Promotion PR #${pr.number} ${note}.`, graphErrors: autoMerge ? undefined : (gj.errors || []).map((e) => e.message) })
-  } catch (e) { res.status(500).json({ error: String(e?.message || e) }) }
 })
 
 // ---- coach API token (shown to its owner only) ---------------------------
@@ -455,7 +409,7 @@ function buildSystemPrompt(user) {
   if (isCyclist && COACH_ENGINE_CYCLING) p += '\n\n' + COACH_ENGINE_CYCLING
   const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
-  p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-10 (energy: 10=energized, sleep: 10=fully rested, soreness: 10=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
+  p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-5 (energy: 5=energized, sleep: 5=fully rested, soreness: 5=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
   p += '\n\n' + APP_HELP
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()

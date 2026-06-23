@@ -718,7 +718,7 @@
     },
     "/auth/checkin": {
       "post": {
-        "summary": "Upsert today's daily check-in (energy/sleep/soreness, each 1-10; soreness 10=very sore)",
+        "summary": "Upsert today's daily check-in (energy/sleep/soreness, each 1-5; soreness 5=very sore)",
         "tags": ["checkin"],
         "security": [{ "cookieAuth": [] }],
         "responses": { "200": { "description": "the saved check-in" } }
@@ -739,22 +739,6 @@
         "tags": ["checkin"],
         "security": [{ "bearerAuth": [] }],
         "responses": { "200": { "description": "check-ins" } }
-      }
-    },
-    "/auth/promote/status": {
-      "get": {
-        "summary": "Admin: promotion status — whether prod promotion is configured and a dev→main PR is open",
-        "tags": ["admin"],
-        "security": [{ "cookieAuth": [] }],
-        "responses": { "200": { "description": "{ configured, open?, number?, url? }" }, "403": { "description": "admins only" } }
-      }
-    },
-    "/auth/promote": {
-      "post": {
-        "summary": "Admin: promote dev→prod — opens/reuses a dev→main PR and enables auto-merge (ships once CI passes)",
-        "tags": ["admin"],
-        "security": [{ "cookieAuth": [] }],
-        "responses": { "200": { "description": "{ ok, number?, url?, message, upToDate? }" }, "403": { "description": "admins only" }, "501": { "description": "GITHUB_PROMOTE_TOKEN not configured" } }
       }
     },
     "/auth/strava/activities": {
