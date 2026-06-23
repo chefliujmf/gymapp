@@ -44,16 +44,13 @@ function CheckInCard() {
     return (
       <div className="card checkin checkin--mini">
         <span className="checkin__sum">{rows.map((r) => `${r.label} ${CHECKIN_FACES[(disp(r) as number) - 1]}`).join('   ')}</span>
-        <span style={{ display: 'flex', gap: 4, flex: 'none' }}>
-          <button className="checkin__edit" onClick={() => setEditing(true)}>Edit</button>
-          <Link to="/logs" className="checkin__edit" style={{ textDecoration: 'none' }}>History</Link>
-        </span>
+        <button className="checkin__edit" style={{ flex: 'none' }} onClick={() => setEditing(true)}>Edit</button>
       </div>
     )
   }
   return (
     <div className="card checkin checkin--tight">
-      <div className="checkin__t">How do you feel today?</div>
+      <div className="checkin__t" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>How do you feel today?{editing && <button className="checkin__edit" onClick={() => setEditing(false)}>Done ✓</button>}</div>
       {rows.map((r) => (
         <div key={r.key} className="checkin__row2">
           <span className="checkin__lbl">{r.label} <InfoDot text={r.info} /></span>
