@@ -534,7 +534,7 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .log-best { color: var(--accent, #34e07d); font-weight: 700; font-size: 13px; margin-top: 4px; }
 
 /* daily check-in card */
-.checkin { padding: 12px 14px; margin-top: 10px; }
+.checkin { padding: 12px 14px; margin-top: 10px; overflow: visible; } /* let the ⓘ popover escape the card (card is overflow:hidden) */
 .checkin__t { font-weight: 800; font-size: 15px; margin-bottom: 8px; }
 .checkin__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0; }
 .checkin__row > span { font-size: 13px; color: var(--text-dim); }
@@ -549,14 +549,16 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .checkin__row2 { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0; }
 .checkin__lbl { font-size: 13px; color: var(--text-dim); white-space: nowrap; }
 .checkin__faces { display: flex; gap: 4px; flex: 1 1 auto; max-width: 64%; }
-.checkin__face { flex: 1 1 0; min-height: 40px; padding: 0; font-size: 22px; line-height: 1; background: transparent; border: 1px solid transparent; border-radius: 999px; cursor: pointer; opacity: 0.45; filter: grayscale(0.35); transition: opacity .12s ease, transform .12s ease, background .12s ease, box-shadow .12s ease, filter .12s ease; }
-.checkin__face:hover { opacity: 0.85; }
-.checkin__face.on { opacity: 1; filter: none; background: rgba(52, 224, 125, 0.18); border-color: var(--accent, #34e07d); transform: scale(1.08); box-shadow: 0 6px 16px -6px rgba(52, 224, 125, 0.65); }
+.checkin__face { flex: 1 1 0; min-height: 38px; padding: 2px 0; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 1px solid transparent; border-radius: 13px; cursor: pointer; opacity: 0.6; transition: opacity .12s ease, transform .12s ease, background .12s ease, box-shadow .12s ease; }
+.checkin__face:hover { opacity: 0.9; }
+.checkin__face.on { opacity: 1; background: rgba(52, 224, 125, 0.16); border-color: var(--accent, #34e07d); transform: scale(1.06); box-shadow: 0 6px 16px -6px rgba(52, 224, 125, 0.6); }
+.platyface { width: 27px; height: 24px; display: block; }
 /* compact variant — small + thin so it yields to the plan */
 .checkin--tight { padding: 8px 12px; margin-top: 8px; }
 .checkin--tight .checkin__t { font-size: 13px; margin-bottom: 2px; }
 .checkin--tight .checkin__row2 { margin: 1px 0; }
-.checkin--tight .checkin__face { min-height: 30px; font-size: 17px; }
+.checkin--tight .checkin__face { min-height: 30px; }
+.checkin--tight .platyface { width: 24px; height: 22px; }
 
 /* hub link rows (Train / Stats / More) */
 .hub-link { display: flex; align-items: center; gap: 14px; padding: 16px; text-decoration: none; color: inherit; }
