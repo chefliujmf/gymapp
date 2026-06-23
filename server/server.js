@@ -603,7 +603,13 @@ function planToIcuEvent(plan, items = []) {
     // Split any step > MAX (3600s) into interpolated chunks — a single over-long step makes the
     // intervals workout render EMPTY (matches cyclingcoach split_long_doc_step).
     if (segs.length) ev.workout_doc = { steps: segs.flatMap((s) => splitWorkoutStep(s)) }
-    ev.description = [plan.notes, brief].filter(Boolean).join('\n\n')
+    // ALSO emit readable native workout text alongside workout_doc — intervals needs it
+    // to render the power chart / readable structure (workout_doc stays authoritative for
+    // duration so moving_time isn't doubled). Format: "- 10m 50-62%".
+    const native = segs.length
+      ? '## Workout\n' + segs.map((s) => { const m = Math.round((Number(s.duration) || 0) / 60); const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; return `- ${m}m ${a === b ? a + '%' : a + '-' + b + '%'}${s.label ? ' ' + s.label : ''}` }).join('\n')
+      : ''
+    ev.description = [native, plan.notes, brief].filter(Boolean).join('\n\n')
   } else {
     ev.type = 'WeightTraining'
     const gym = `[gymapp] ${plan.rounds || 1} rounds\n` + (plan.exercises || []).map((x) => `• ${x.name}${x.exId ? ` [${x.exId}]` : ''} — ${(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}`).join('\n')
