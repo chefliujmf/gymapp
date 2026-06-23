@@ -4,6 +4,31 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown } from 'lucide-react'
 import { db, getSetting, setSetting, clearLogs } from '../db'
 import AccountSection from '../auth/AccountSection'
+import { useAuth } from '../auth/AuthContext'
+import { authApi } from '../auth/api'
+
+// Equipment the user owns — drives the Train filters (#20) AND the coach's exercise
+// picks (#32). Stored on the profile (info.equipment) so it's server-side. Bodyweight
+// is always available. Values match the catalog's equipment tags.
+const EQUIPMENT = ['Bodyweight', 'Dumbbell', 'Barbell', 'Kettlebell', 'Bands', 'Bench', 'Pull-up bar', 'Cable', 'Machine', 'Ball', 'Plate', 'TRX', 'Trainer / bike']
+function EquipmentSetting() {
+  const { user } = useAuth()
+  const [sel, setSel] = useState<string[]>(() => { const e = (user?.info as { equipment?: string[] } | undefined)?.equipment; return Array.isArray(e) && e.length ? e : ['Bodyweight'] })
+  const [saved, setSaved] = useState(false)
+  const toggle = (e: string) => {
+    if (e === 'Bodyweight') return
+    const next = sel.includes(e) ? sel.filter((x) => x !== e) : [...sel, e]
+    setSel(next)
+    authApi.saveProfile({ equipment: next }).then(() => { setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {})
+  }
+  return (
+    <>
+      <div className="section-title">My equipment{saved && <span className="meta" style={{ fontWeight: 400 }}> · Saved ✓</span>}</div>
+      <p className="meta" style={{ margin: '0 2px 8px' }}>Tick what you have — filters the library and the coach to what you can actually do.</p>
+      <div className="chips">{EQUIPMENT.map((e) => <button key={e} className={'chip' + ((e === 'Bodyweight' || sel.includes(e)) ? ' chip--active' : '')} onClick={() => toggle(e)}>{e}</button>)}</div>
+    </>
+  )
+}
 
 /** A chip-group setting that autosaves on tap and flashes "Saved ✓". */
 function ChipSetting({ title, hint, value, options, onPick }: {
@@ -60,6 +85,10 @@ export default function Settings() {
 
       <Collapsible title="Connections" subtitle="intervals.icu · Strava · Coach API">
         <AccountSection only="connections" />
+      </Collapsible>
+
+      <Collapsible title="Equipment" subtitle="What you own — filters workouts & coach">
+        <EquipmentSetting />
       </Collapsible>
 
       <Collapsible title="Preferences" subtitle="Diet, units, calendar, demos" defaultOpen>

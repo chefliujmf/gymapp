@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Platyplus · Train filters + equipment (#20/#21)</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--line:#2b303b;--bg:#0f1216;--card-grad:linear-gradient(180deg,#21252f,#191c24);--radius:16px;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center;padding:18px 12px 70px}
+  .phone{width:100%;max-width:430px}
+  .muted{color:var(--text-dim)}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;background:#161a21;border:1px solid var(--line);border-radius:999px;padding:4px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--text-dim);font-weight:700;font-size:13px;padding:8px;border-radius:999px;cursor:pointer}
+  .tabs button.on{background:var(--accent);color:#06281a}
+  h1{font-size:24px;margin:2px 0 2px}
+  .sub{color:var(--text-dim);font-size:13px;margin:0 0 12px}
+  .seg{display:flex;gap:6px;background:#161a21;border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:10px}
+  .seg button{flex:1;border:0;background:transparent;color:var(--text-dim);font-weight:700;font-size:13px;padding:9px;border-radius:9px;cursor:pointer}
+  .seg button.on{background:#2a2f3a;color:var(--text)}
+  .search{width:100%;background:#161a21;border:1px solid var(--line);border-radius:12px;color:var(--text-dim);padding:11px 13px;margin-bottom:10px}
+  /* filter bar */
+  .fbar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .fbtn{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:#161a21;color:var(--text);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:700;cursor:pointer}
+  .fbtn .badge{background:var(--accent);color:#06281a;border-radius:999px;font-size:11px;font-weight:800;padding:1px 7px}
+  .sort{margin-left:auto;border:1px solid var(--line);background:#161a21;color:var(--text-dim);border-radius:999px;padding:8px 12px;font-size:12.5px;cursor:pointer}
+  .active{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .achip{display:inline-flex;align-items:center;gap:6px;background:rgba(52,224,125,.14);border:1px solid rgba(52,224,125,.4);color:var(--accent);border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}
+  /* list */
+  .row{display:flex;gap:12px;align-items:center;padding:11px;border:1px solid var(--line);border-radius:14px;background:#161a21;margin-bottom:8px}
+  .row .th{width:54px;height:54px;flex:none;border-radius:11px;background:linear-gradient(135deg,#2a3340,#1b212a);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .row .nm{font-weight:700;font-size:14px}
+  .row .meta{font-size:12px;color:var(--text-dim);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap}
+  .tag{border:1px solid var(--line);border-radius:999px;padding:1px 7px;font-size:11px;color:var(--text-dim)}
+  .tag.eq{color:var(--accent);border-color:rgba(52,224,125,.4)}
+  /* filter sheet */
+  .sheet-back{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:60}
+  .sheet{width:100%;max-width:460px;background:#191c24;border:1px solid var(--line);border-radius:18px 18px 0 0;padding:16px 16px 22px;box-shadow:0 -12px 40px rgba(0,0,0,.5)}
+  .sheet h3{margin:0 0 2px}
+  .grp{margin-top:14px}.grp .lab{font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-dim);margin-bottom:7px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{border:1px solid var(--line);background:#161a21;color:var(--text-dim);border-radius:999px;padding:7px 12px;font-size:12.5px;cursor:pointer}
+  .chip.on{border-color:var(--accent);background:rgba(52,224,125,.16);color:var(--text);font-weight:700}
+  .chip.dis{opacity:.4;text-decoration:line-through}
+  .toggle{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:13px}
+  .sw{width:42px;height:24px;border-radius:999px;background:var(--accent);position:relative}
+  .sw::after{content:"";position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:999px;background:#06281a}
+  .applyrow{display:flex;gap:10px;margin-top:18px}
+  .apply{flex:1;border:0;border-radius:999px;padding:12px;font-weight:800;color:#06281a;background:var(--accent);cursor:pointer}
+  .clear{border:1px solid var(--line);background:transparent;color:var(--text-dim);border-radius:999px;padding:12px 16px;cursor:pointer}
+  /* settings equipment */
+  .eqlist{display:flex;flex-direction:column;gap:0}
+  .eqrow{display:flex;align-items:center;justify-content:space-between;padding:13px 4px;border-bottom:1px solid var(--line)}
+  .eqrow .box{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#06281a;font-weight:900}
+  .eqrow.on .box{background:var(--accent);border-color:var(--accent)}
+  .eqrow.lock{opacity:.7}
+  .note{margin:16px 4px 0;font-size:12px;color:var(--text-dim);text-align:center}
+  .hidden{display:none}
+</style></head>
+<body>
+<div class="phone">
+  <div class="tabs">
+    <button class="on" data-v="lib" onclick="vw('lib')">🔍 Library + filters</button>
+    <button data-v="eq" onclick="vw('eq')">⚙️ My equipment</button>
+  </div>
+
+  <!-- LIBRARY -->
+  <div id="lib">
+    <h1>Train</h1><p class="sub">139 sessions · 868 exercises</p>
+    <div class="seg"><button class="on">Workouts</button><button>Exercises</button></div>
+    <div class="search">Search workouts…</div>
+    <div class="fbar">
+      <button class="fbtn" onclick="document.getElementById('sheet').classList.remove('hidden')">⚙ Filters <span class="badge">2</span></button>
+      <button class="sort">↕ Shortest first ▾</button>
+    </div>
+    <div class="active">
+      <span class="achip">🏋️ Dumbbells ✕</span>
+      <span class="achip">⏱ ≤ 30 min ✕</span>
+      <span class="achip">🔥 Moderate ✕</span>
+    </div>
+    <div class="row"><div class="th">🧘</div><div><div class="nm">Desk worker rescue</div><div class="meta"><span class="tag">12 min</span><span class="tag">easy</span><span class="tag eq">bodyweight</span></div></div></div>
+    <div class="row"><div class="th">💪</div><div><div class="nm">Dumbbell upper pump</div><div class="meta"><span class="tag">22 min</span><span class="tag">moderate</span><span class="tag eq">dumbbells</span></div></div></div>
+    <div class="row"><div class="th">🔥</div><div><div class="nm">DB metcon blast</div><div class="meta"><span class="tag">28 min</span><span class="tag">moderate</span><span class="tag eq">dumbbells</span></div></div></div>
+    <p class="note">Filtered to what you OWN (dumbbells/bodyweight) · ≤30 min · moderate · sorted shortest-first</p>
+  </div>
+
+  <!-- SETTINGS EQUIPMENT -->
+  <div id="eq" class="hidden">
+    <h1>My equipment</h1><p class="sub">Tick what you have — workouts & exercises filter to what you can actually do.</p>
+    <div class="eqlist">
+      <div class="eqrow lock on"><span>🤸 Bodyweight <span class="muted" style="font-size:12px">· always</span></span><span class="box">✓</span></div>
+      <div class="eqrow on"><span>🏋️ Dumbbells</span><span class="box">✓</span></div>
+      <div class="eqrow on"><span>🪑 Bench</span><span class="box">✓</span></div>
+      <div class="eqrow on"><span>🎗️ Resistance bands</span><span class="box">✓</span></div>
+      <div class="eqrow on"><span>🔔 Kettlebell</span><span class="box">✓</span></div>
+      <div class="eqrow"><span>🏋️‍♂️ Barbell + plates</span><span class="box"></span></div>
+      <div class="eqrow"><span>🔗 Cable machine</span><span class="box"></span></div>
+      <div class="eqrow on"><span>🚪 Pull-up bar</span><span class="box">✓</span></div>
+      <div class="eqrow"><span>🚲 Trainer / bike</span><span class="box"></span></div>
+    </div>
+    <p class="note">Used by the Library filters (#20) and by the coach when it builds your sessions.</p>
+  </div>
+
+  <!-- FILTER SHEET -->
+  <div id="sheet" class="sheet-back hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="sheet">
+      <h3>Filters</h3>
+      <div class="toggle"><span><b>Only what I own</b> <span class="muted">(from My equipment)</span></span><span class="sw"></span></div>
+      <div class="grp"><div class="lab">Equipment</div><div class="chips">
+        <span class="chip on">Dumbbells</span><span class="chip on">Bodyweight</span><span class="chip on">Bench</span><span class="chip on">Bands</span><span class="chip on">Kettlebell</span><span class="chip dis">Barbell</span><span class="chip dis">Cable</span>
+      </div></div>
+      <div class="grp"><div class="lab">Time</div><div class="chips"><span class="chip">≤15</span><span class="chip on">15–30</span><span class="chip">30–45</span><span class="chip">45+</span></div></div>
+      <div class="grp"><div class="lab">Intensity</div><div class="chips"><span class="chip">Easy</span><span class="chip on">Moderate</span><span class="chip">Hard</span></div></div>
+      <div class="grp"><div class="lab">Sort by</div><div class="chips"><span class="chip">Relevance</span><span class="chip on">Shortest</span><span class="chip">Longest</span><span class="chip">Easiest</span><span class="chip">Hardest</span><span class="chip">A–Z</span></div></div>
+      <div class="applyrow"><button class="clear" onclick="document.getElementById('sheet').classList.add('hidden')">Clear</button><button class="apply" onclick="document.getElementById('sheet').classList.add('hidden')">Apply</button></div>
+    </div>
+  </div>
+</div>
+<script>
+  function vw(v){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+    document.getElementById('lib').classList.toggle('hidden',v!=='lib');document.getElementById('eq').classList.toggle('hidden',v!=='eq');}
+  document.querySelectorAll('.chip:not(.dis)').forEach(c=>c.onclick=()=>{ if(c.parentElement.previousElementSibling?.textContent==='Sort by'||['Time','Intensity'].includes(c.closest('.grp').querySelector('.lab').textContent)){c.parentElement.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));} c.classList.toggle('on'); });
+  document.querySelectorAll('.eqrow:not(.lock)').forEach(r=>r.onclick=()=>{r.classList.toggle('on');r.querySelector('.box').textContent=r.classList.contains('on')?'✓':'';});
+</script>
+</body></html>
