@@ -7,7 +7,7 @@ description: Before implementing any UX / visual / layout / interaction change, 
 
 **Rule (JM directive):** do NOT implement a UX/visual/interaction change and let the user react. Present **2-3 distinct options as a rendered HTML mockup** — write a self-contained HTML file to `gymapp/mockups/` and `open` it in the browser (JM reads HTML far better than ASCII; a sport/variant toggle in one file lets him compare). Get the pick, THEN build only that one.
 
-**Companion rule — log every feedback (JM directive 2026-06-23):** the moment JM gives ANY feedback/idea, **append it as a numbered entry to the END of `gymapp/FEEDBACK-LOG.md`** before/while acting on it, and **build the OPEN queue in order, to the T**, unless JM says otherwise (one-offs are fine; keep the queue intact). Keep statuses current (⬜→🔨→✅). See memory `feedback-log-discipline`. This prevents losing UX feedback across long sessions.
+**Companion rule — log every feedback, build in ORDER (JM directive 2026-06-23):** the moment JM gives ANY feedback/idea, **append it as its OWN numbered entry at the END of `gymapp/FEEDBACK-LOG.md`** (never merge onto a prior item). **Then LOGGING IS NOT WORKING IT — resume the current in-order item; do NOT jump to the fresh feedback.** Build the OPEN queue strictly top-to-bottom, **to the T**, unless JM EXPLICITLY reprioritizes or asks a one-off. The newest idea is the LAST to build, not the first. Keep statuses current (⬜→🔨→✅). See memory `feedback-log-discipline`. (JM caught me twice jumping ahead — hold the line.)
 
 ## How
 1. **Research first** — current best practice + how leading apps solve it (see the platyplus-ops skill's UX rule). Research shapes the options; cite sources.
