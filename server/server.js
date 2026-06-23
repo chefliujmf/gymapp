@@ -278,6 +278,23 @@ const checkinsInRange = (user, from, to) => (user.checkins || []).filter((c) => 
 app.post('/auth/checkin', auth, (req, res) => { const ci = upsertCheckin(req.user, req.body || {}); save(store); res.json(ci) })
 app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
 
+// Post-workout feedback (how the session went) — stored on the plan so the coach reads
+// it (it comes back on /api/plans). Fields are sport-specific; kept as a free object.
+app.post('/auth/plan/:id/feedback', auth, (req, res) => {
+  const plan = (req.user.plans || []).find((p) => p.id === req.params.id)
+  if (!plan) return res.status(404).json({ error: 'plan not found' })
+  const b = req.body || {}
+  plan.feedback = {
+    feel: typeof b.feel === 'string' ? b.feel : undefined,
+    rpe: Number(b.rpe) >= 1 && Number(b.rpe) <= 10 ? Number(b.rpe) : undefined,
+    fields: (b.fields && typeof b.fields === 'object') ? Object.fromEntries(Object.entries(b.fields).filter(([, v]) => typeof v === 'string').slice(0, 12)) : {},
+    note: typeof b.note === 'string' ? b.note.slice(0, 1000) : '',
+    at: Date.now(),
+  }
+  save(store)
+  res.json({ ok: true, feedback: plan.feedback })
+})
+
 // admin: user management
 app.get('/auth/users', auth, admin, (req, res) => res.json(store.users.map(pub)))
 app.post('/auth/users', auth, admin, async (req, res) => {
