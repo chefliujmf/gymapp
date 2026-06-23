@@ -206,7 +206,9 @@ export default function Today() {
     await calApi.delPlan(p.id); load()
   }
   async function removeItem(it: CalItem) { await calApi.delItem(it.id); load() }
-  const swapOn = (day: string) => navigate(`/plan?d=${day}&v=day`)
+  // Add/Substitute jump to that day's calendar AND auto-open the add sheet (add=1),
+  // so it's one tap — no landing on Plan and clicking Add again (#56/#57).
+  const swapOn = (day: string) => navigate(`/plan?d=${day}&v=day&add=1`)
 
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' })()
   // Merge-by-id: a coach/owned plan that's already shown as an intervals event card
