@@ -664,6 +664,8 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 /* Today scheduled item wrapper (kebab sits in the card's top-right corner). */
 /* Stretch the card to full width (it's an <a>/<button> — inline by default, and no
  * longer a direct .stack flex child once wrapped here). */
+/* Plan card description — full text, readable contrast (#73, not dark-grey-on-black). */
+.plan-desc { display: block; white-space: normal; font-size: 12.5px; line-height: 1.45; color: #c2c9d4; margin-top: 4px; }
 .today-entry { position: relative; display: flex; flex-direction: column; }
 .today-entry > .card { width: 100%; }
 
