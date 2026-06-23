@@ -22,44 +22,26 @@ function CheckInCard() {
   const [loaded, setLoaded] = useState(false)
   useEffect(() => { authApi.checkins(today, today).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [today])
   const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: today }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
-  const [expanded, setExpanded] = useState(false)
   if (!loaded) return null
-  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; emoji: string; info: string }[] = [
-    { key: 'energy', label: 'Energy', emoji: '⚡', info: 'How energized you feel right now, 1–5 (1 = wiped out, 5 = full of energy).' },
-    { key: 'sleep', label: 'Sleep', emoji: '😴', info: 'Last night’s sleep, 1–5 (1 = terrible, 5 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also reaches the coach automatically — this is the manual signal otherwise.' },
-    { key: 'soreness', label: 'Soreness', emoji: '💪', info: 'Muscle soreness, 1–5 (1 = none, 5 = very sore). Higher tells the coach to ease off.' },
+  // Emoji faces, 1–5, ALWAYS visible (JM: must not be hidden behind a tap or it gets
+  // skipped). One tap; the picked face lights up in the Platyplus green; others dim.
+  // Each row's faces match that metric's meaning (soreness 1 = fresh, 5 = wrecked).
+  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; info: string; faces: string[] }[] = [
+    { key: 'energy', label: 'Energy', info: 'How energized you feel right now, 1–5 (1 = wiped out, 5 = full of energy).', faces: ['😵', '😕', '😐', '🙂', '😄'] },
+    { key: 'sleep', label: 'Sleep', info: 'Last night’s sleep, 1–5 (1 = terrible, 5 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also reaches the coach automatically — this is the manual signal otherwise.', faces: ['😣', '😪', '😐', '🙂', '😌'] },
+    { key: 'soreness', label: 'Soreness', info: 'Muscle soreness, 1–5 (1 = none, 5 = very sore). Higher tells the coach to ease off.', faces: ['😄', '🙂', '😐', '😣', '😖'] },
   ]
-  const anySet = rows.some((r) => ci?.[r.key] != null)
-  const allSet = rows.every((r) => ci?.[r.key] != null)
-  // Progressive disclosure (Whoop/Oura keep the home screen for the plan, not a
-  // form): logged → one-line summary; not logged → a slim prompt that expands on
-  // tap. Either way it's a single line by default, never eating the screen.
-  if (allSet && !expanded) {
-    return (
-      <div className="card checkin checkin--mini">
-        <span className="checkin__sum">How you feel&nbsp; {rows.map((r) => `${r.emoji}${ci?.[r.key]}`).join('  ')}</span>
-        <button className="checkin__edit" onClick={() => setExpanded(true)}>Edit</button>
-      </div>
-    )
-  }
-  if (!anySet && !expanded) {
-    return (
-      <button type="button" className="card checkin checkin--mini checkin__prompt" onClick={() => setExpanded(true)}>
-        <span>How do you feel today?</span>
-        <span className="checkin__hint">{rows.map((r) => r.emoji).join(' ')}&nbsp; Log ›</span>
-      </button>
-    )
-  }
   return (
     <div className="card checkin">
       <div className="checkin__t">How do you feel today?</div>
       {rows.map((r) => (
         <div key={r.key} className="checkin__row2">
           <span className="checkin__lbl">{r.label} <InfoDot text={r.info} /></span>
-          <div className="checkin__seg">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <button key={n} className={'checkin__s' + (ci?.[r.key] === n ? ' on' : '')} aria-label={`${r.label} ${n} of 5`} aria-pressed={ci?.[r.key] === n} onClick={() => set({ [r.key]: n })}>{n}</button>
-            ))}
+          <div className="checkin__faces">
+            {r.faces.map((f, i) => {
+              const n = i + 1, on = ci?.[r.key] === n
+              return <button key={n} className={'checkin__face' + (on ? ' on' : '')} aria-label={`${r.label} ${n} of 5`} aria-pressed={on} onClick={() => set({ [r.key]: n })}>{f}</button>
+            })}
           </div>
         </div>
       ))}

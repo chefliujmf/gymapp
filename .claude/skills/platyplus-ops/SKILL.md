@@ -47,7 +47,10 @@ Personal/family fitness PWA (you + wife). Repo `chefliujmf/gymapp`. **Design rul
 **Non-negotiable, every time, no exceptions** (even "tiny" tweaks): BEFORE touching any UX/UI,
 **WebSearch current best practice + how leading apps do it** (NN/g, Android/iOS HIG, fitness apps
 like Strava/Whoop/Oura/intervals.icu), apply it, and **cite the sources in the reply**. Never guess
-or ship from memory. If you skip this, you're doing it wrong. Established patterns so far:
+or ship from memory. **THEN present 2-3 options WITH ASCII mockups (`AskUserQuestion` `preview`) and
+get JM's pick BEFORE implementing — never implement-then-iterate** (see the `options-first` skill +
+`show-options-and-mockups-first` memory; JM was burned by the check-in being shipped 4× then rejected).
+Established patterns so far:
 - **Nav:** ≤5 fixed bottom tabs; overflow → hubs/"More"; adapt CONTENT not structure (multi-sport).
 - **Charts:** one-takeaway-per-chart; round-number axes (1/2/5/10); interactive (scrub → value;
   mini-cards update the headline number, not a box); subtle draw-in motion; legible contrast.
