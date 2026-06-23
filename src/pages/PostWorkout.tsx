@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getCoachPlan } from '../plan'
 import { authApi } from '../auth/api'
+import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
+import { DoneStats } from '../ui'
 
 // Intervals.icu "Feel" scale (Strong/Good/Normal/Poor/Weak), mirrored backend-side.
 const FEEL: [string, string][] = [['Strong', '😎'], ['Good', '🙂'], ['Normal', '😐'], ['Poor', '🙁'], ['Weak', '😵']]
@@ -25,6 +27,8 @@ export default function PostWorkout() {
   const [fields, setFields] = useState<Record<string, string>>({})
   const [note, setNote] = useState('')
   const [saved, setSaved] = useState(false)
+  const [act, setAct] = useState<IcuActivity>()
+  useEffect(() => { if (p) fetchActivities(p.date, p.date).then((a) => setAct(a.find((x) => sportOfActivity(x) === p.sport))).catch(() => {}) }, [p?.date, p?.sport])
 
   if (!p) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button><h1>Plan not found</h1><p className="meta">Open it from Today.</p></div>
   const sportFields = FIELDS[p.sport] || FIELDS.gym
@@ -39,6 +43,8 @@ export default function PostWorkout() {
     <div>
       <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head"><span className="eyebrow">✓ Completed</span><h1>{p.title}</h1></div>
+
+      {act && <div className="card" style={{ padding: '12px 14px' }}><DoneStats a={act} /></div>}
 
       {(p.objective || p.recovery) && (
         <div className="card" style={{ padding: '12px 14px' }}>

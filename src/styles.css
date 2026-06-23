@@ -879,3 +879,5 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .weeknav__today + .weeknav__a { margin-left: 0; }
 .weeknav__l { flex: 1; } /* fill so the › sits at the right edge; Today before it */
 .weeknav__a:last-child, .weeknav__today { margin-left: 0; }
+/* DONE workout — obvious: green left bar + tinted border */
+.card--done { border-color: rgba(52, 224, 125, 0.55) !important; box-shadow: inset 3px 0 0 0 var(--accent, #34e07d), var(--card-shadow); }

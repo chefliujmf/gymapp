@@ -38,7 +38,7 @@ items → `UX-BACKLOG.md`. (Edit this file with Write/sed — NOT `perl -0pi`, w
 23. ⬜ intervals indoor-completion labeling — confirm indoor-done reaches intervals labeled (pairs w/ coach + a real completion).
 24. ✅ Skill: mockups in HTML, not ASCII.
 25. ✅ Mirror must split long workout steps (folded into P1b).
-26. ✅ Post-workout flow BUILT — `/feedback/:id`: coach notes + sport-dependent feedback + Save (stored on plan; coach reads it). FOLLOW-ONS: completed-activity STATS display + intervals private-feedback MIRROR (backend).
+26. ✅ Post-workout flow BUILT — `/feedback/:id`: coach notes + sport-dependent feedback + Save (stored on plan; coach reads it). FOLLOW-ON DONE: post-workout view now shows the completed-activity STATS (DoneStats). Remaining: intervals private-feedback MIRROR (backend, deprioritized).
 27. ✅ Post-workout SPORT-DEPENDENT BUILT — ride/run legs/fuel/niggles · gym how-heavy/soreness/form.
 28. ✅ **Week-strip prev/next arrows** — WeekStrip has ‹ This week › nav (offset state) + Today reset; Today fetch window widened to ~10 weeks so navigated weeks have data.
 29. ✅ Post-workout tweaks BUILT — Save-only button (intervals push is backend); intervals "Feel" faces (Strong/Good/Normal/Poor/Weak).
@@ -50,4 +50,4 @@ items → `UX-BACKLOG.md`. (Edit this file with Write/sed — NOT `perl -0pi`, w
 35. ✅ **Host-MCP re-sync** (P1f solo part) — push repo `mcp/server.js` to the box `/home/jmf/platyplus-chat/mcp/server.js` + restart helpers so the LIVE coach gets search_recipes/search_sessions + equipment filter + structured fields.
 36. ✅ **Native-text mirror parity** — Platyplus→intervals push now emits "## Workout" native text (- 10m 50-62%) alongside workout_doc. (Render parity verifies live under #18 — Platyplus push not active yet; coach pushes directly for now.)
 37. ✅ **Dedup planned workout shown twice** — Today + Calendar now hide a Platyplus plan/event duplicate matched by day+sport+title (not just id-link), so an unlinked same workout (e.g. coach pushed straight to intervals + a Platyplus plan) shows ONCE.
-38. ⬜ **Make a DONE workout more obvious** — completed cards should stand out (currently just dimmed title + small "✓ done"). Add a clear done treatment (green accent + badge).
+38. ✅ **Make a DONE workout more obvious** — done cards get a green left bar + tinted border (.card--done) on Today (CoachPlanCard + PlanCard).

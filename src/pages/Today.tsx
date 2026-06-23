@@ -84,7 +84,7 @@ function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p
   const isDone = done || !!act
   return (
     <div className="today-entry">
-      <button className="card" style={{ textAlign: 'left', width: '100%' }} onClick={() => nav('/coach/' + p.id)}>
+      <button className={'card' + (isDone ? ' card--done' : '')} style={{ textAlign: 'left', width: '100%' }} onClick={() => nav('/coach/' + p.id)}>
         <div className="card-row">
           {segs.length
             ? <div className="thumb"><MiniProfile segs={segs} /></div>
@@ -123,7 +123,7 @@ function PlanCard({ e, showDate, onSwap, onRemove, done, act }: { e: IcuEvent; s
   const rideSegs = !atp && (sportOf(e) === 'cycling' || e.type === 'Run') ? flattenIcuSteps(e.workout_doc?.steps) : []
   return (
     <div className="today-entry">
-      <Link to={`/plan/${e.id}`} className="card">
+      <Link to={`/plan/${e.id}`} className={'card' + (isDone ? ' card--done' : '')}>
         <div className="card-row">
           {rideSegs.length
             ? <div className="thumb"><MiniProfile segs={rideSegs} /></div>
