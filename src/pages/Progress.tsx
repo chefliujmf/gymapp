@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { authApi, type CoachReview } from '../auth/api'
 import { db, getSetting, type WorkoutLog, type SetEntry } from '../db'
 import { localISO } from '../date'
 import { allWorkoutsById, allExercisesById } from '../data/catalog'
@@ -48,6 +49,9 @@ export default function Progress() {
   const imp = (useLiveQuery(() => getSetting('units')) as string | undefined) === 'imperial'
   const [q, setQ] = useState('')
   const [facet, setFacet] = useState('Top movers')
+  // Real coach takeaways from the cyclingcoach engine (#91), if it has written any.
+  const [review, setReview] = useState<CoachReview | undefined>()
+  useEffect(() => { authApi.coachReviews().then((r) => setReview(r[0])).catch(() => {}) }, [])
 
   const data = useMemo(() => {
     const L = logs || []
@@ -175,13 +179,21 @@ export default function Progress() {
           </div>
         </>}
 
-        {/* coach takeaways */}
-        <div className="section-title">Coach takeaways</div>
+        {/* coach takeaways — REAL cyclingcoach review if present, else app heuristics (#91) */}
+        <div className="section-title">Coach takeaways{review && <span className="meta"> · {new Date(review.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}</div>
         <div className="card" style={{ padding: '12px 14px' }}>
-          {topMover && topMover.improve > 0 && <div className="gp2-hl">📈 <span><b>{topMover.name} is climbing</b> (+{topMover.improve}%) — progressive overload is working.</span></div>}
-          {under && under.pct < 12 && <div className="gp2-hl">⚠️ <span><b>{under.g} is under-trained</b> ({under.pct}% of volume) — add a set or a dedicated day.</span></div>}
-          {bestWeek && <div className="gp2-hl">🔥 <span><b>Best volume week yet.</b> Keep an eye on recovery in your check-ins.</span></div>}
-          {!topMover?.improve && !bestWeek && <div className="gp2-hl">💪 <span>Keep logging — a few more sessions and I'll surface trends & PRs here.</span></div>}
+          {review && (review.takeaways?.length || review.verdict || review.execution?.length || review.next) ? <>
+            {review.score != null && <div className="gp2-hl">⭐ <span><b>Score {review.score}/10.</b> {review.verdict}</span></div>}
+            {!review.score && review.verdict && <div className="gp2-hl">🧑‍🏫 <span>{review.verdict}</span></div>}
+            {(review.takeaways || review.execution || []).map((t, i) => <div key={i} className="gp2-hl">• <span>{t}</span></div>)}
+            {review.mind?.cue && <div className="gp2-hl">🧠 <span><b>Cue:</b> {review.mind.cue}</span></div>}
+            {review.next && <div className="gp2-hl">➡️ <span><b>Next:</b> {review.next}</span></div>}
+          </> : <>
+            {topMover && topMover.improve > 0 && <div className="gp2-hl">📈 <span><b>{topMover.name} is climbing</b> (+{topMover.improve}%) — progressive overload is working.</span></div>}
+            {under && under.pct < 12 && <div className="gp2-hl">⚠️ <span><b>{under.g} is under-trained</b> ({under.pct}% of volume) — add a set or a dedicated day.</span></div>}
+            {bestWeek && <div className="gp2-hl">🔥 <span><b>Best volume week yet.</b> Keep an eye on recovery in your check-ins.</span></div>}
+            {!topMover?.improve && !bestWeek && <div className="gp2-hl">💪 <span>Keep logging — a few more sessions and your coach's takeaways will appear here.</span></div>}
+          </>}
         </div>
       </>}
     </div>
