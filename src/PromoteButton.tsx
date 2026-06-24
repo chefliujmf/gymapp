@@ -3,15 +3,16 @@ import { Rocket } from 'lucide-react'
 import { useAuth } from './auth/AuthContext'
 import { authApi } from './auth/api'
 
-// Admin-only "Promote to prod" in the header (#78). Hidden on prod (you promote
-// FROM dev/QA), and only for admins. Triggers the GitHub promotion workflow.
-const isProd = typeof location !== 'undefined' && location.hostname === 'platyplus.duckdns.org'
+// Admin-only "Promote to prod" in the header (#78). Shown ONLY on QA (#88): the
+// real promotion must be tested on QA first, so DEV/prod never show it. Triggers
+// the GitHub promotion workflow (dev → main → prod).
+const isQA = typeof location !== 'undefined' && location.hostname === 'platyplus-qa.duckdns.org'
 
 export default function PromoteButton() {
   const { user } = useAuth()
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
-  if (isProd || user?.role !== 'admin') return null
+  if (!isQA || user?.role !== 'admin') return null
 
   async function promote() {
     if (!confirm('Promote the current dev/QA build to PRODUCTION? GitHub merges dev → main once CI is green, then prod deploys.')) return
