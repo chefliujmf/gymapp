@@ -59,7 +59,7 @@ export default function CoachPlanDetail() {
               return (
                 <div key={i} className="card" style={{ padding: 0, overflow: 'hidden' }}>
                   <div className="ex-row" style={{ alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => toggle(i)}>
-                    <div className="ex-thumb-sm" style={demo?.image ? { backgroundImage: `url(${demo.image})` } : undefined}>{demo?.video && <span className="ex-play-sm">▶</span>}</div>
+                    <div className="ex-thumb-sm" style={demo?.image ? { backgroundImage: `url(${demo.image})` } : undefined}>{!demo?.image && '🏋️'}{demo?.video && <span className="ex-play-sm">▶</span>}</div>
                     <div className="ex-row-text" style={{ flex: 1 }}>
                       <h4>{x.name}</h4>
                       <div className="meta" style={{ marginTop: 2 }}><span><b>{(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}</b></span>{x.rest ? <span className="dot">rest {x.rest}s</span> : null}</div>

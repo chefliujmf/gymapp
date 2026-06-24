@@ -74,6 +74,7 @@ export default function PlanDetail() {
                 <div key={i} className="card" style={{ padding: 0, overflow: 'hidden' }}>
                   <div className="ex-row" style={{ alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => toggle(i)}>
                     <div className="ex-thumb-sm" style={demo?.image ? { backgroundImage: `url(${demo.image})` } : undefined}>
+                      {!demo?.image && '🏋️'}
                       {demo?.video && <span className="ex-play-sm">▶</span>}
                     </div>
                     <div className="ex-row-text" style={{ flex: 1 }}>

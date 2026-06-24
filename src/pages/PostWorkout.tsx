@@ -7,7 +7,7 @@ import { DoneStats } from '../ui'
 
 // Intervals.icu "Feel" scale (Strong/Good/Normal/Poor/Weak), mirrored backend-side.
 const FEEL: [string, string][] = [['Strong', '😎'], ['Good', '🙂'], ['Normal', '😐'], ['Poor', '🙁'], ['Weak', '😵']]
-const RPE = [2, 3, 4, 5, 6, 7, 8, 9]
+const RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 // Sport-dependent feedback fields.
 const FIELDS: Record<string, [string, string[]][]> = {
   ride: [['Legs before', ['fresh', 'normal', 'heavy']], ['Legs after', ['fresh', 'tired OK', 'cooked']], ['Fuel / GI', ['great', 'ok', 'not needed', 'issues']], ['Pain / niggles', ['none', 'knee', 'back', 'other']]],

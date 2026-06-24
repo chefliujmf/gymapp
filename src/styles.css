@@ -289,9 +289,11 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .rctrl:active { transform: scale(.96); }
 
 /* Compact exercise rows on the workout detail */
-.ex-row { display:flex; gap:12px; align-items:center; padding:8px; border-radius:14px; background:var(--card,#fff); cursor:pointer; }
-.ex-row:active { background:rgba(0,0,0,.04); }
-.ex-thumb-sm { position:relative; flex:0 0 56px; width:56px; height:56px; border-radius:10px; background:#e9e9ee center/cover no-repeat; }
+.ex-row { display:flex; gap:12px; align-items:center; padding:12px; border-radius:14px; background:transparent; cursor:pointer; }
+.ex-row:active { background:rgba(255,255,255,.04); }
+/* Dark placeholder (was light #e9e9ee = "white squares" on the dark theme, #67/#68);
+   the emoji fallback shows when an exercise has no demo image. */
+.ex-thumb-sm { position:relative; flex:0 0 56px; width:56px; height:56px; border-radius:10px; background:#1b1e26 center/cover no-repeat; display:flex; align-items:center; justify-content:center; font-size:24px; color:var(--text-dim); }
 .ex-play-sm { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; background:rgba(0,0,0,.28); border-radius:10px; }
 .ex-row-text h4 { margin:0; font-size:15px; }
 .ex-video-inline { width:100%; border-radius:12px; margin-top:6px; background:#000; max-height:60vh; }
