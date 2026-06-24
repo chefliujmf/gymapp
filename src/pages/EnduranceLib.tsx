@@ -36,6 +36,7 @@ export default function EnduranceLib({ sport, title }: { sport: EnduranceSport; 
 
   return (
     <div>
+      <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head">
         <h1>{title}</h1>
         <p>{all.length} structured {sport} workouts</p>

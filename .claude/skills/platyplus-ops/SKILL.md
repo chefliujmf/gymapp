@@ -65,5 +65,11 @@ Established patterns so far:
   intervals.icu sleep score) — and then fix the touch ergonomics.
 Charts live in `src/charts.tsx` (TrendChart/BarChart/PowerCurveChart/InfoDot/ChartModal, dependency-free SVG).
 
+## Build / deploy gotchas (learned 2026-06-23)
+- **Check the build EXIT CODE, not just "✓ built in".** `npm run build` = `tsc -b` + `vite build` THEN a workbox/PWA precache step that can FAIL *after* vite prints success. Grepping only for "built in" hid an `exit 1`. Use `npm run build >/dev/null 2>&1; echo $?` or `npx tsc -b` for a pure typecheck.
+- **Local build can fail while CI is green:** LOCAL has the full synced catalog → bundle ~6.3MB trips workbox `maximumFileSizeToCacheInBytes` (now 12MB in vite.config); CI builds a SMALLER catalog (scraped `downloaded_pages/` is gitignored/absent) so it stays under. **Never claim "the deploy didn't ship" without `gh run list --branch dev`** — I wrongly told JM fixes weren't deploying when CI was green.
+- **Every `dev` push auto-redeploys QA → a ~10-20s Bad-Gateway window** (rapid pushes can auto-cancel an in-flight deploy). While JM tests, **BATCH commits**. Hard-reload (Cmd+Shift+R) clears the cached error / updates the autoUpdate SW.
+- **In-app Promote-to-prod** needs `GH_PROMOTE_TOKEN` (a PAT with **Actions: write**) as a LINE INSIDE the `AUTH_ENV_STAGING`/`_PROD` blob (the server env) — distinct from the `PROMOTE_TOKEN` Actions secret used *inside* `promote-prod.yml`. Until added, the button shows "not set"; promotion still works via the Actions tab or `gh workflow run promote-prod.yml`.
+
 ## "When you change X" (from CLAUDE.md)
 Any `server/*` change rebuilds the image (CI smoke-tests the module graph). New `/api`|`/auth` route → update `server/openapi.json`. User-facing batch → add to `src/notifications.ts`/releases. Keep `UX-BACKLOG.md` + memory current (the user stresses this).
