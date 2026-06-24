@@ -1,0 +1,13 @@
+{
+  "name": "platyplus-sensor-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local BLE sensor bridge: reads HR strap + smart trainer over the Mac's native Bluetooth and streams to the Platyplus ride player over a localhost WebSocket. Sidesteps macOS Chrome's Web Bluetooth limitation.",
+  "bin": { "platyplus-bridge": "bridge.mjs" },
+  "scripts": { "start": "node bridge.mjs" },
+  "dependencies": {
+    "@abandonware/noble": "^1.9.2-25",
+    "ws": "^8.18.0"
+  }
+}

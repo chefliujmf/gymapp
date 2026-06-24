@@ -30,8 +30,8 @@ export default function RidePlayer() {
   const ble = useBle()
   const live = ble.live
   const hr = ble.bpm
-  const trState: 'idle' | 'on' | 'erg' = ble.trainer ? (ble.trainer.hasErg ? 'erg' : 'on') : 'idle'
-  const hrState: 'idle' | 'on' = ble.hrDev ? 'on' : 'idle'
+  const trState: 'idle' | 'on' | 'erg' = ble.trainer ? (ble.trainer.hasErg ? 'erg' : 'on') : ble.bridge?.trainer ? 'erg' : 'idle'
+  const hrState: 'idle' | 'on' = ble.hrDev || ble.bridge?.hr ? 'on' : 'idle'
   const lastErg = useRef(0)
 
   const total = segs.reduce((s, x) => s + x.duration, 0)
