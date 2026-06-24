@@ -112,6 +112,17 @@ export async function pairDevice(cb: AttachCbs): Promise<Attached> {
   return attach(device, cb)
 }
 
+/** Escape hatch (#95): show EVERY Bluetooth device, for sensors that advertise
+ *  neither a fitness service UUID nor a recognized name. Noisy (mice/earphones)
+ *  but guarantees the device is selectable; we discover its services on connect. */
+export async function pairAnyDevice(cb: AttachCbs): Promise<Attached> {
+  const device = await bt().requestDevice({
+    acceptAllDevices: true,
+    optionalServices: [HR, FTMS, CPS, 'cycling_power'],
+  })
+  return attach(device, cb)
+}
+
 /** Silently reconnect to previously-granted devices (no chooser). */
 export async function reconnectKnown(cb: AttachCbs): Promise<Attached[]> {
   if (!bt().getDevices) return []

@@ -3,7 +3,7 @@
 // and reconnection is instant. Handles live at the provider (persist across nav).
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Bike, HeartPulse } from 'lucide-react'
-import { bleSupported, pairDevice, reconnectKnown, type Attached, type TrainerData } from './ble'
+import { bleSupported, pairDevice, pairAnyDevice, reconnectKnown, type Attached, type TrainerData } from './ble'
 
 interface BleCtx {
   supported: boolean
@@ -14,6 +14,7 @@ interface BleCtx {
   scanning: boolean
   reconnect(): Promise<void>
   addDevice(): Promise<void>
+  addDeviceAll(): Promise<void>
   setTargetPower(watts: number): void
 }
 const Ctx = createContext<BleCtx | null>(null)
@@ -37,10 +38,14 @@ export function BleProvider({ children }: { children: ReactNode }) {
     setScanning(true)
     try { place(await pairDevice(cbs)) } catch { /* cancelled */ } finally { setScanning(false) }
   }
+  async function addDeviceAll() {
+    setScanning(true)
+    try { place(await pairAnyDevice(cbs)) } catch { /* cancelled */ } finally { setScanning(false) }
+  }
   const setTargetPower = (w: number) => { trainer?.setTargetPower?.(w) }
 
   return (
-    <Ctx.Provider value={{ supported: bleSupported(), trainer, hrDev, live, bpm, scanning, reconnect, addDevice, setTargetPower }}>
+    <Ctx.Provider value={{ supported: bleSupported(), trainer, hrDev, live, bpm, scanning, reconnect, addDevice, addDeviceAll, setTargetPower }}>
       {children}
     </Ctx.Provider>
   )
@@ -68,6 +73,7 @@ export function BleDevices() {
       </div>
       <button className="btn btn--ghost" onClick={ble.addDevice} disabled={ble.scanning}>{ble.scanning ? 'Scanning…' : '＋ Add a device'}</button>
       <p className="meta" style={{ textAlign: 'center', margin: '8px 0 0' }}>Any brand works — trainer, power meter, or a heart-rate watch/strap (Garmin, Coros, Wahoo…).</p>
+      <button className="link-btn" onClick={ble.addDeviceAll} disabled={ble.scanning} style={{ display: 'block', margin: '6px auto 0', background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>Don't see your device? Show all Bluetooth devices</button>
     </div>
   )
 }
