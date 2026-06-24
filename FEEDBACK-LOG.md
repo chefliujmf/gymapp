@@ -11,9 +11,14 @@ items → `UX-BACKLOG.md`. (Edit this file with Write/sed — NOT `perl -0pi`, w
 > when it comes up — UNLESS JM tags it URGENT/now. The log is the durable store, so nothing is lost
 > across context/sessions. Never make JM ask "are you logging this?" — logging is automatic & visible.
 
-> **👉 YOU ARE HERE:** the coach feature (P1 + plan view), the whole equipment chain, and the
-> post-workout flow are BUILT + on QA. OPEN: #18 P1-verify (pairs w/ live coach) · #23 (pairs w/
-> coach) · #28 (week arrows) · #26 follow-ons (activity stats + intervals mirror). Next: #28 done. Open builds: #26 follow-ons (stats+mirror). Else pairs-with-coach (#18 verify, #23).
+> **👉 YOU ARE HERE (2026-06-23, end of a long QA session):** #39–#113 mostly BUILT + on QA — coach
+> notifications, diet-governs-meals, Progress redesign (insights+search+facets), History by-day,
+> nav rework (Today·Plan·Train·Eat·Stats, no More), ride-player gauge + intensity bias, sensor
+> bridge (#100) + mobile-only ride gate (#109). OPEN/NEXT: sensors on macOS = package the bridge as
+> a signed menubar app (#102, Electron scaffold started); coach-intelligence layer (#91 Platyplus
+> side DONE — cyclingcoach skill must POST /api/coach-review; +#76/#65/#81); real bugs to chase:
+> #103 HR-no-bpm, #107 ride-profile missing warmup, #72 ride thumbnail; #93 lift-detail chart (mock),
+> #64/#74 wellness in check-in, #110 Stats Strength/Progress overlap. cyclingcoach = its own repo.
 
 ---
 
@@ -120,6 +125,8 @@ items → `UX-BACKLOG.md`. (Edit this file with Write/sed — NOT `perl -0pi`, w
 107. ⬜ **Ride workout: profile preview misses the first (green) warmup segment** — the Jun-24 ride starts 130W (50% FTP) ramping up slowly (that's the warmup) — but the profile bar chart (setup preview AND in-ride) shows only the yellow sweet-spot intervals, not the first green warmup block. Rendering bug: first/low segment clipped or dropped. Also confirm the warmup ramp is intended (coach design) vs a parsing artifact.
 111. ✅ **Kill the "More" tab — surface Eat/Mind in the nav** — JM doesn't want a "More" bottom-nav tab (reopens #77). Restructure the 5 tabs so Eat/Mind are first-class. Candidate: Today · Plan · Train · Eat · Stats, with Mind folded INTO Train (yoga/pilates/meditation/mobility are "training"); Profile/Settings already live in the avatar menu. Decide + mock.
 110. ⬜ **Stats hub: Strength & Progress overlap — rework** — the Stats hub lists "Strength (est 1RM per exercise)" AND "Progress (trends, totals & streaks)", but the reworked Progress (#87) now already shows strength trends (est-1RM per lift). So Strength is redundant. Rework: fold Strength into Progress (it's the strength-trends section) OR clearly differentiate. Likely remove the standalone Strength item. Mock if non-obvious.
+112. ✅ **Mind page had no back button** — added a ‹ back button to the Mind page header (it's a Train sub-page now).
+113. ✅ **Drop "· yours" on Train discipline cards** — removed the "· yours" tag (clutter); the relevance sort stays.
 106. ⬜ **Advanced pedaling metrics + coach drills** — collect L/R balance + a force-distribution graph (the pedal-stroke "oval" / torque effectiveness & pedal smoothness) from the trainer/power meter; the coach reads it and gives feedback + drills to round out the stroke. Source: Cycling Power Measurement extended fields (pedal power balance, torque effectiveness, pedal smoothness) + Cycling Power Vector (force-angle) — the bridge can parse these. REF (JM): pycycling https://github.com/zacharyedwardbull/pycycling (Python; shows the available metrics — our bridge is Node/noble but same BLE characteristics). Pairs with the coach-intelligence layer (#91). — JM's reference (TrainerRoad/Wahoo-style): a gauge/dial + BIG live watts (367), with ERG indicator + target (394) smaller alongside, time elapsed/remaining. Currently the BIG number is the TARGET (root of #97 confusion). Flip it: live power is the hero, target is the reference. Mock it.
   - REF (JM found): Polar BLE SDK https://github.com/polarofficial/polar-ble-sdk — native (iOS/Android), Polar-only. Confirms macOS needs a NATIVE helper; but it's a native app + Polar sensors only (no trainer). Our noble bridge is the brand-agnostic equivalent (any strap + trainer) and already built. Keep Polar SDK as a fallback only if noble chokes on a Polar strap on macOS.
 102. 🔨 **macOS sensors MUST work for everybody — one-click app (JM: no alternatives)** — HARD FACT: no browser can read a HR strap on macOS (Web BT can't see advertising-only sensors; browser sandbox has no other BLE path) — so a native helper is unavoidable for macOS (true of every web app). Solution = package the bridge (#100) as a SIGNED menubar app (Electron + electron-builder): download .dmg, drag to Applications, menubar icon, then Platyplus sensors work in ANY Mac browser (Chrome/Firefox/Safari) with no terminal/npm. Cross-platform (.dmg + .exe). JM provides Apple Developer cert for notarization (else right-click-open). BUILDING the Electron scaffold.
