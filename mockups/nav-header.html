@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Platyplus — nav/header options</title>
+<style>
+  :root { --text:#eef1f4; --text-dim:#9298a6; --accent:#34e07d; --bg:#0f1216; --line:#272b33; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#0a0c0f; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:18px; }
+  h1 { font-size:17px; margin:0 0 4px; }
+  p.sub { color:var(--text-dim); font-size:13px; margin:0 0 16px; }
+  .opts { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+  .opts button { background:#191c24; color:var(--text); border:1px solid var(--line); border-radius:999px; padding:8px 14px; font-weight:700; font-size:13px; cursor:pointer; }
+  .opts button.on { background:var(--accent); color:#06281a; border-color:var(--accent); }
+  .stage { display:flex; gap:24px; flex-wrap:wrap; }
+  .phone { width:330px; height:620px; background:var(--bg); border-radius:30px; border:1px solid var(--line); overflow:hidden; position:relative; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+  .bar { display:flex; align-items:center; justify-content:space-between; padding:14px 14px 10px; }
+  .brand { display:flex; align-items:center; gap:7px; font-weight:800; font-size:16px; }
+  .brand .logo { width:22px; height:22px; border-radius:6px; background:linear-gradient(135deg,#34e07d,#1f9e57); }
+  .rightcluster { display:flex; align-items:center; }
+  .coachpill { display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,#34e07d,#22b463); color:#06281a; font-weight:800; font-size:13px; padding:7px 13px; border-radius:999px; }
+  .iconbtn { width:34px; height:34px; border-radius:50%; background:#191c24; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--text-dim); position:relative; }
+  .iconbtn .dot { position:absolute; top:7px; right:8px; width:7px; height:7px; border-radius:50%; background:var(--accent); }
+  .avatar { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,#3a7,#193); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; color:#fff; }
+  .body { flex:1; padding:6px 14px; overflow:hidden; }
+  .cardx { background:linear-gradient(#21252f,#191c24); border:1px solid var(--line); border-radius:14px; padding:13px; margin-bottom:10px; }
+  .cardx h3 { margin:0 0 4px; font-size:14px; }
+  .cardx .m { color:var(--text-dim); font-size:12px; }
+  .nav { display:flex; border-top:1px solid var(--line); background:#0c0e12; }
+  .nav a { flex:1; text-align:center; padding:9px 0 11px; color:var(--text-dim); font-size:10px; font-weight:700; text-decoration:none; }
+  .nav a .ic { display:block; font-size:17px; margin-bottom:2px; }
+  .nav a.on { color:var(--accent); }
+  .fab { position:absolute; right:14px; bottom:70px; display:inline-flex; align-items:center; gap:7px; background:linear-gradient(135deg,#34e07d,#22b463); color:#06281a; font-weight:800; font-size:14px; padding:13px 16px; border-radius:999px; box-shadow:0 6px 20px rgba(52,224,125,.4); }
+  .fab.round { padding:0; width:54px; height:54px; justify-content:center; font-size:22px; }
+  .note { width:300px; font-size:13px; color:var(--text-dim); line-height:1.5; }
+  .note b { color:var(--text); }
+  .gap { width:10px; }
+  .spacer { width:8px; }
+</style>
+</head>
+<body>
+  <h1>Platyplus — nav / header options</h1>
+  <p class="sub">Tap an option. Phone on the left, rationale on the right. (#44 More · #45 bell · #49 History · #50 Coach placement)</p>
+  <div class="opts">
+    <button data-opt="A" class="on">A · Coach as FAB (recommended)</button>
+    <button data-opt="B">B · Coach in bottom nav</button>
+    <button data-opt="C">C · Polish top-bar only</button>
+  </div>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="bar">
+        <div class="brand"><span class="logo"></span> Platyplus</div>
+        <div class="rightcluster" id="rc"></div>
+      </div>
+      <div class="body">
+        <div class="cardx"><h3>Today's plan</h3><div class="m">Tuesday Endurance Rebuild · ✓ Completed</div></div>
+        <div class="cardx"><h3>How do you feel?</h3><div class="m">💀 😩 😐 😀 🤩</div></div>
+        <div class="cardx"><h3>Coach's pick · lunch</h3><div class="m">Salmon avocado salad</div></div>
+      </div>
+      <div class="fab" id="fab" style="display:none"></div>
+      <div class="nav" id="nav"></div>
+    </div>
+    <div class="note" id="note"></div>
+  </div>
+
+<script>
+  const bell = '<div class="iconbtn">🔔<span class="dot"></span></div>';
+  const avatar = '<div class="avatar">JM</div>';
+  const coachPill = '<div class="coachpill">💬 Coach</div>';
+
+  const layouts = {
+    A: {
+      rc: bell + '<div class="spacer"></div>' + avatar,
+      fab: { show:true, html:'💬 Coach', round:false },
+      nav: ['🏠 Today','📅 Plan','🏋️ Train','📊 Stats','⋯ More'], on:0,
+      note: '<b>A · Coach as a FAB (recommended).</b> Top-right is now just 🔔 + avatar with clear spacing — a clean status cluster (fixes #45 & #50 spacing). Coach becomes a floating action button bottom-right: the standard place for a primary assistant action, always reachable with the thumb, mobile-first. "More" tab stays for Eat/Mind/etc. <br><br><b>Also:</b> History moves under Stats (#49); Profile/Settings live in the account menu only (drop the duplicate in More) to kill the #44 redundancy.'
+    },
+    B: {
+      rc: bell + '<div class="spacer"></div>' + avatar,
+      fab: { show:false },
+      nav: ['🏠 Today','📅 Plan','🏋️ Train','📊 Stats','💬 Coach'], on:4,
+      note: '<b>B · Coach in the bottom nav.</b> Replaces "More" with "Coach" as a 5th tab — Coach gets top billing and a permanent home. Top-right stays 🔔 + avatar. <br><br><b>Trade-off:</b> the "More" destinations (Eat, Mind, Recipes) need a new home — folded into Train/Stats hubs or the account menu. Bigger IA change; Coach is one tap but not floating over content.'
+    },
+    C: {
+      rc: coachPill + '<div class="gap"></div>' + bell + '<div class="spacer"></div>' + avatar,
+      fab: { show:false },
+      nav: ['🏠 Today','📅 Plan','🏋️ Train','📊 Stats','⋯ More'], on:0,
+      note: '<b>C · Keep the top-bar, just polish.</b> Same elements, but a bigger Coach pill, real spacing before 🔔, and the bell grouped tight to the avatar. Lowest-risk, smallest change. <br><br><b>Downside:</b> still mixes a primary action (Coach) into the status cluster — the root of the "weird sequence" you flagged. Looks better but doesn\'t fix the IA.'
+    }
+  };
+
+  function render(opt){
+    const L = layouts[opt];
+    document.getElementById('rc').innerHTML = L.rc;
+    const fab = document.getElementById('fab');
+    if (L.fab.show){ fab.style.display='inline-flex'; fab.className='fab'+(L.fab.round?' round':''); fab.innerHTML=L.fab.html; }
+    else fab.style.display='none';
+    document.getElementById('nav').innerHTML = L.nav.map((t,i)=>{
+      const [ic,...lbl]=t.split(' ');
+      return '<a class="'+(i===L.on?'on':'')+'"><span class="ic">'+ic+'</span>'+lbl.join(' ')+'</a>';
+    }).join('');
+    document.getElementById('note').innerHTML = L.note;
+    document.querySelectorAll('.opts button').forEach(b=>b.classList.toggle('on', b.dataset.opt===opt));
+  }
+  document.querySelectorAll('.opts button').forEach(b=> b.onclick=()=>render(b.dataset.opt));
+  render('A');
+</script>
+</body>
+</html>

@@ -39,9 +39,19 @@ const server = new McpServer({ name: 'platyplus', version: '1.0.0' })
 
 // --- discovery ------------------------------------------------------------
 server.tool('search_exercises',
-  'Search the Platyplus exercise library by name; returns ids (exId) with demo media. Use the exId in create_workout so the app shows the right demo video.',
-  { query: z.string().describe('name fragment, e.g. "goblet squat"'), limit: z.number().int().min(1).max(100).optional() },
-  wrap((a) => api('GET', `/api/exercises?q=${encodeURIComponent(a.query)}&limit=${a.limit || 20}`)))
+  'Search the Platyplus exercise library by name; returns ids (exId), the equipment tag, and demo media. Use the exId in create_workout. IMPORTANT: pass `equipment` = the athlete\'s OWNED gear (see the profile) so you only ever prescribe exercises they can actually do; "Bodyweight" needs nothing.',
+  { query: z.string().describe('name fragment, e.g. "goblet squat"'), equipment: z.string().optional().describe('comma-separated owned equipment to limit to, e.g. "Dumbbell,Bodyweight,Bands"'), limit: z.number().int().min(1).max(100).optional() },
+  wrap((a) => api('GET', `/api/exercises?q=${encodeURIComponent(a.query)}&equipment=${encodeURIComponent(a.equipment || '')}&limit=${a.limit || 20}`)))
+
+server.tool('search_recipes',
+  "Search the Platyplus recipe library to PICK a real meal for fueling; returns ids + macros (kcal, protein) + each recipe's `diet`. Results are ALREADY filtered to the athlete's dietary preference (vegetarian → veg+vegan only, vegan → vegan only), so every result is safe to suggest — never recommend a meal outside what's returned. Use the id as recipeId in schedule_meal. Filter by category and/or a name/tag query. (Pick however many meals/snacks the day warrants — variable, not fixed.)",
+  { query: z.string().optional().describe('name or tag fragment'), category: z.string().optional().describe('breakfast | lunch | dinner | snack'), limit: z.number().int().min(1).max(100).optional() },
+  wrap((a) => api('GET', `/api/recipes?q=${encodeURIComponent(a.query || '')}&category=${encodeURIComponent(a.category || '')}&limit=${a.limit || 20}`)))
+
+server.tool('search_sessions',
+  'Search the Platyplus mind/movement library (meditation, yoga, pilates, breathing) to PICK a real session/class; returns ids + duration. Use the id as refId in schedule_mind. Filter by kind and/or a query. For a yoga/pilates day you SELECT a class here (you do not author poses).',
+  { query: z.string().optional(), kind: z.string().optional().describe('meditation | yoga | pilates | breathing'), limit: z.number().int().min(1).max(100).optional() },
+  wrap((a) => api('GET', `/api/sessions?q=${encodeURIComponent(a.query || '')}&kind=${encodeURIComponent(a.kind || '')}&limit=${a.limit || 20}`)))
 
 server.tool('list_schedule',
   'List everything planned for an account between two dates: workouts/rides/runs (plans) and meals/mind/notes (items).',
@@ -81,8 +91,21 @@ server.tool('set_sports',
   wrap((a) => api('PUT', '/api/profile', { sports: a.sports })))
 
 // --- training -------------------------------------------------------------
+// Structured coaching the app renders as the plan SHELL (Platyplus is master; this
+// also mirrors into the intervals description). The meals/sessions themselves are
+// SEPARATE items (schedule_meal/schedule_mind, each with a per-pick `why`); fuel.why
+// and mind.why here are the STRATEGY, not the picks.
+const COACHING = {
+  objective: z.string().optional().describe('one-line goal of the session'),
+  cues: z.array(z.string()).optional().describe('short in-session cues'),
+  success: z.string().optional().describe('what "done well" looks like'),
+  recovery: z.string().optional().describe('post / evening / next-AM recovery guidance'),
+  fuel: z.object({ why: z.string().optional().describe('Pre/During/Post fueling strategy'), supplements: z.string().optional() }).optional(),
+  mind: z.object({ why: z.string().optional().describe('mental-focus theme') }).optional(),
+}
+const coachingOf = (a) => ({ objective: a.objective, cues: a.cues, success: a.success, recovery: a.recovery, fuel: a.fuel, mind: a.mind })
 server.tool('create_workout',
-  'Schedule a strength/gym workout on a date. Mirrors to intervals.icu in the canonical [gymapp] format the app parses. Re-call with the same id to UPDATE. Send the session the coach generated as-is (warm-up + cool-down, main set ordered by equipment, unilateral moves listed for both sides) — Platyplus stores exactly what you send.',
+  'Schedule a strength/gym workout on a date. Platyplus is the MASTER and mirrors to intervals.icu. Re-call with the same id to UPDATE. Send the session as generated (warm-up + cool-down, main set ordered by equipment, unilateral moves both sides). Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind strategy); pick exercises via search_exercises.',
   {
     date: DATE,
     title: z.string(),
@@ -98,11 +121,12 @@ server.tool('create_workout',
       rest: z.number().int().optional().describe('rest seconds (optional)'),
     })).min(1).describe('ordered list of exercises'),
     notes: z.string().optional(),
+    ...COACHING,
     id: z.string().optional().describe('omit to create (a new id is returned); pass it back to update'),
   },
   wrap((a) => api('POST', '/api/plan', {
     id: a.id || newId(), date: a.date, sport: 'gym', title: a.title,
-    rounds: a.rounds || 1, exercises: a.exercises, notes: a.notes || '',
+    rounds: a.rounds || 1, exercises: a.exercises, notes: a.notes || '', ...coachingOf(a),
   })))
 
 const SEGMENTS = z.array(z.object({
@@ -115,16 +139,17 @@ const SEGMENTS = z.array(z.object({
 const makeEndurance = (sport) => wrap((a) => api('POST', '/api/plan', {
   id: a.id || newId(), date: a.date, sport, title: a.title, ftp: a.ftp, notes: a.notes || '',
   segments: a.segments.map((s) => ({ duration: Math.round(s.minutes * 60), powerStart: s.powerStart, powerEnd: s.powerEnd ?? s.powerStart, label: s.label })),
+  ...coachingOf(a),
 }))
 
 server.tool('create_ride',
-  'Schedule a structured bike workout (power intervals). Mirrors to intervals.icu as a real workout (steps), so it can ride to a head unit/trainer. Re-call with same id to update.',
-  { date: DATE, title: z.string(), ftp: z.number().optional().describe('override FTP in watts'), segments: SEGMENTS, notes: z.string().optional(), id: z.string().optional() },
+  'Schedule a structured bike workout (power intervals). Platyplus is master; mirrors to intervals.icu as a real workout (steps → head unit/trainer). Re-call with same id to update. Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind).',
+  { date: DATE, title: z.string(), ftp: z.number().optional().describe('override FTP in watts'), segments: SEGMENTS, notes: z.string().optional(), ...COACHING, id: z.string().optional() },
   makeEndurance('ride'))
 
 server.tool('create_run',
-  'Schedule a structured run (pace/effort intervals as % of threshold). Re-call with same id to update.',
-  { date: DATE, title: z.string(), ftp: z.number().optional(), segments: SEGMENTS, notes: z.string().optional(), id: z.string().optional() },
+  'Schedule a structured run (pace/effort intervals as % of threshold). Re-call with same id to update. Optionally attach the coaching shell.',
+  { date: DATE, title: z.string(), ftp: z.number().optional(), segments: SEGMENTS, notes: z.string().optional(), ...COACHING, id: z.string().optional() },
   makeEndurance('run'))
 
 server.tool('remove_workout', 'Delete a scheduled workout/ride/run by id (also removes its intervals.icu mirror).',
@@ -132,14 +157,14 @@ server.tool('remove_workout', 'Delete a scheduled workout/ride/run by id (also r
 
 // --- nutrition / mind / notes --------------------------------------------
 server.tool('schedule_meal',
-  'Put a meal on a day (Platyplus calendar; no intervals push).',
-  { date: DATE, title: z.string(), recipeId: z.string().optional().describe('Platyplus recipe id, if linking one'), mealType: z.string().optional().describe('breakfast | lunch | dinner | snack'), kcal: z.number().optional(), id: z.string().optional() },
-  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'meal', title: a.title, refId: a.recipeId, mealType: a.mealType, kcal: a.kcal })))
+  'Put a meal on a day. PICK a real recipe via search_recipes and pass its id as recipeId so it links. `why` = your one-line reason for THIS pick (shown as "Coach\'s pick" on the recipe page). Schedule as many meals/snacks as the day needs.',
+  { date: DATE, title: z.string(), recipeId: z.string().optional().describe('Platyplus recipe id from search_recipes'), mealType: z.string().optional().describe('breakfast | lunch | dinner | snack'), kcal: z.number().optional(), why: z.string().optional().describe('why this pick for this athlete/day'), id: z.string().optional() },
+  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'meal', title: a.title, refId: a.recipeId, mealType: a.mealType, kcal: a.kcal, why: a.why })))
 
 server.tool('schedule_mind',
-  'Put a mind/recovery session (meditation, breathing) on a day.',
-  { date: DATE, title: z.string(), minutes: z.number().optional(), refId: z.string().optional(), id: z.string().optional() },
-  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'mind', title: a.title, minutes: a.minutes, refId: a.refId })))
+  'Put a mind/movement session (meditation, yoga, pilates, breathing) on a day. PICK a real session via search_sessions and pass its id as refId. `why` = your reason for THIS pick (shown as "Coach\'s pick" on the session page).',
+  { date: DATE, title: z.string(), minutes: z.number().optional(), refId: z.string().optional().describe('Platyplus session id from search_sessions'), why: z.string().optional().describe('why this pick'), id: z.string().optional() },
+  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'mind', title: a.title, minutes: a.minutes, refId: a.refId, why: a.why })))
 
 server.tool('add_note',
   'Add a free-text note to a day (reminders, coaching cues).',
@@ -148,6 +173,11 @@ server.tool('add_note',
 
 server.tool('remove_item', 'Delete a meal/mind/note item by id.',
   { id: z.string() }, wrap((a) => api('DELETE', `/api/items/${encodeURIComponent(a.id)}`)))
+
+server.tool('notify',
+  'Tell the athlete what you JUST did, in their voice-of-coach. Call this AFTER you create/adjust their plan or review a workout, so a short note appears in their notification bell (e.g. title "Updated your week", items ["Reviewed Monday\'s ride", "Added a rest day Thu", "Bumped Sat to 3h endurance"]). Keep it human and brief.',
+  { title: z.string().describe('one-line summary, e.g. "Updated your training plan"'), body: z.string().optional().describe('optional one-line context'), items: z.array(z.string()).optional().describe('bullet list of what changed/was reviewed') },
+  wrap((a) => api('POST', '/api/notify', { title: a.title, body: a.body, items: a.items })))
 
 await server.connect(new StdioServerTransport())
 console.error(`platyplus-mcp ready -> ${BASE}`)

@@ -50,7 +50,7 @@ if (!store.users.length) {
   console.log('Seeded admin user.')
 }
 // Backfill api tokens / plan arrays for any user created before these existed.
-for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = []; if (!u.items) u.items = [] }
+for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = []; if (!u.items) u.items = []; if (!u.notifications) u.notifications = []; if (!u.coachReviews) u.coachReviews = [] }
 save(store)
 // Late-seed the admin's intervals.icu key if it wasn't stored yet (idempotent).
 const seedKey = process.env.SEED_ICU_KEY
@@ -250,6 +250,39 @@ app.put('/auth/profile', auth, (req, res) => {
   save(store); res.json(pub(req.user))
 })
 
+// Admin: trigger the prod-promotion GitHub workflow (workflow_dispatch) from the app
+// instead of the Actions tab (#47). Needs a GH token with actions:write in the server
+// env (GH_PROMOTE_TOKEN, injected via AUTH_ENV at deploy). Promotes dev → prod.
+app.post('/auth/promote-prod', auth, admin, async (req, res) => {
+  const token = process.env.GH_PROMOTE_TOKEN
+  if (!token) return res.status(503).json({ error: 'GH_PROMOTE_TOKEN not set on the server — add it to the deploy secrets to enable in-app promotion.' })
+  try {
+    const r = await fetch('https://api.github.com/repos/chefliujmf/gymapp/actions/workflows/promote-prod.yml/dispatches', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'platyplus-server' },
+      body: JSON.stringify({ ref: 'main' }),
+    })
+    if (r.status === 204) return res.json({ ok: true })
+    return res.status(502).json({ error: `GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` })
+  } catch (e) { return res.status(502).json({ error: String(e).slice(0, 200) }) }
+})
+
+// Coach post-workout reviews — the app reads to render takeaways (#91).
+app.get('/auth/coach-reviews', auth, (req, res) => {
+  let r = req.user.coachReviews || []
+  if (req.query.from) r = r.filter((x) => x.date >= req.query.from)
+  if (req.query.to) r = r.filter((x) => x.date <= req.query.to)
+  res.json(r)
+})
+
+// Coach-activity notifications — the user reads (bell) + marks read.
+app.get('/auth/notifications', auth, (req, res) => res.json(req.user.notifications || []))
+app.post('/auth/notifications/read', auth, (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids : null
+  for (const n of req.user.notifications || []) { if (!ids || ids.includes(n.id)) n.read = true }
+  save(store); res.json({ ok: true })
+})
+
 // Athlete profile — the per-user coaching profile (engine-native markdown) the
 // coach reads to personalize every answer. Reviewable/editable in Profile → Athlete.
 app.get('/auth/profile/athlete', auth, (req, res) => res.json({ profile: req.user.coachProfile || '', updatedAt: req.user.coachProfileAt || 0 }))
@@ -277,6 +310,23 @@ function upsertCheckin(user, body) {
 const checkinsInRange = (user, from, to) => (user.checkins || []).filter((c) => (!from || c.date >= from) && (!to || c.date <= to)).sort((a, b) => (a.date < b.date ? -1 : 1))
 app.post('/auth/checkin', auth, (req, res) => { const ci = upsertCheckin(req.user, req.body || {}); save(store); res.json(ci) })
 app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
+
+// Post-workout feedback (how the session went) — stored on the plan so the coach reads
+// it (it comes back on /api/plans). Fields are sport-specific; kept as a free object.
+app.post('/auth/plan/:id/feedback', auth, (req, res) => {
+  const plan = (req.user.plans || []).find((p) => p.id === req.params.id)
+  if (!plan) return res.status(404).json({ error: 'plan not found' })
+  const b = req.body || {}
+  plan.feedback = {
+    feel: typeof b.feel === 'string' ? b.feel : undefined,
+    rpe: Number(b.rpe) >= 1 && Number(b.rpe) <= 10 ? Number(b.rpe) : undefined,
+    fields: (b.fields && typeof b.fields === 'object') ? Object.fromEntries(Object.entries(b.fields).filter(([, v]) => typeof v === 'string').slice(0, 12)) : {},
+    note: typeof b.note === 'string' ? b.note.slice(0, 1000) : '',
+    at: Date.now(),
+  }
+  save(store)
+  res.json({ ok: true, feedback: plan.feedback })
+})
 
 // admin: user management
 app.get('/auth/users', auth, admin, (req, res) => res.json(store.users.map(pub)))
@@ -410,6 +460,10 @@ function buildSystemPrompt(user) {
   const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
   p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-5 (energy: 5=energized, sleep: 5=fully rested, soreness: 5=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
+  const ownedEq = Array.isArray(user.info?.equipment) ? user.info.equipment.filter((e) => typeof e === 'string') : []
+  if (ownedEq.length) p += `\n\n# Equipment the athlete OWNS: ${ownedEq.join(', ')}.\nWhen building gym/strength sessions, prescribe ONLY exercises that use this gear or Bodyweight — pass \`equipment="${ownedEq.join(',')}"\` to search_exercises so you never pick something they can't do. (They set this in Settings → Equipment.)`
+  const diet = String(user.info?.diet || '').toLowerCase()
+  if (diet === 'vegetarian' || diet === 'vegan') p += `\n\n# DIET: the athlete is ${diet.toUpperCase()}.\nEVERY meal you pick or suggest MUST be ${diet}. search_recipes already returns ONLY ${diet}-compatible recipes for this athlete, so pick from those — never recommend a meal outside their diet, and don't suggest meat${diet === 'vegan' ? ', fish, dairy, eggs, or honey' : ' or fish'}. (They set this in Settings → Preferences.)`
   p += '\n\n' + APP_HELP
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
@@ -526,18 +580,75 @@ const ICU_API = 'https://intervals.icu/api/v1'
 function icuFetch(user, path, opts = {}) {
   return fetch(ICU_API + path, { ...opts, headers: { authorization: 'Basic ' + Buffer.from('API_KEY:' + user.icuKey).toString('base64'), 'content-type': 'application/json', accept: 'application/json', ...(opts.headers || {}) } })
 }
+// Render the coach's structured brief (objective, fueling + the day's meals, mind +
+// the day's session, recovery, success, cues) into the intervals event description,
+// so intervals.icu MIRRORS the full plan even though Platyplus is the master. Meals/
+// mind are separate calendar items (passed in for plan.date); each carries its own
+// per-pick `why`, the plan carries the strategy `why`. Returns '' when there's nothing.
+function renderCoachBrief(plan, items = []) {
+  const L = []
+  if (plan.objective) L.push(`Objective: ${plan.objective}`)
+  const meals = items.filter((it) => it.type === 'meal')
+  if (plan.fuel?.why || plan.fuel?.supplements || meals.length) {
+    L.push('\n## Fueling')
+    if (plan.fuel?.why) L.push(plan.fuel.why)
+    for (const m of meals) L.push(`• ${m.mealType ? m.mealType + ': ' : ''}${m.title}${m.kcal ? ` (${m.kcal} kcal)` : ''}${m.why ? ` — ${m.why}` : ''}`)
+    if (plan.fuel?.supplements) L.push(`Supplements: ${plan.fuel.supplements}`)
+  }
+  const mind = items.filter((it) => it.type === 'mind')
+  if (plan.mind?.why || mind.length) {
+    L.push('\n## Mind')
+    if (plan.mind?.why) L.push(plan.mind.why)
+    for (const s of mind) L.push(`• ${s.title}${s.minutes ? ` (${s.minutes} min)` : ''}${s.why ? ` — ${s.why}` : ''}`)
+  }
+  if (plan.recovery) L.push(`\n## Recovery\n${plan.recovery}`)
+  if (plan.success) L.push(`\n## Success\n${plan.success}`)
+  if (Array.isArray(plan.cues) && plan.cues.length) L.push(`\n## Cues\n${plan.cues.map((c) => `• ${c}`).join('\n')}`)
+  return L.length ? L.join('\n') + '\n\n— authored in Platyplus' : ''
+}
+// intervals/Wahoo won't render a single step longer than this — split + interpolate.
+const MAX_DOC_STEP_SECONDS = 3600
+function splitWorkoutStep(s) {
+  const dur = Number(s.duration) || 0, ps = Number(s.powerStart) || 0, pe = Number(s.powerEnd) || 0
+  const mk = (d, a, b, withText) => ({ duration: d, power: { start: Math.round(a), end: Math.round(b), units: '%ftp' }, ...(s.label && withText ? { text: s.label } : {}) })
+  if (dur <= MAX_DOC_STEP_SECONDS) return [mk(dur, ps, pe, true)]
+  const n = Math.ceil(dur / MAX_DOC_STEP_SECONDS), size = Math.round(dur / n)
+  const chunks = []; let elapsed = 0
+  for (let i = 0; i < n; i++) {
+    const d = i === n - 1 ? dur - elapsed : size
+    chunks.push(mk(d, ps + (pe - ps) * (elapsed / dur), ps + (pe - ps) * ((elapsed + d) / dur), i === 0))
+    elapsed += d
+  }
+  return chunks
+}
 // Map a plan to an intervals calendar event. Rides/runs carry a structured
 // workout_doc (power steps) so intervals pushes a real interval workout to Wahoo.
-function planToIcuEvent(plan) {
-  const ev = { start_date_local: plan.date + 'T00:00:00', category: 'WORKOUT', name: plan.title, external_id: plan.id, description: plan.notes || '' }
+function planToIcuEvent(plan, items = []) {
+  const brief = renderCoachBrief(plan, items)
+  const ev = { start_date_local: plan.date + 'T00:00:00', category: 'WORKOUT', name: plan.title, external_id: plan.id, description: '' }
   if (plan.sport === 'ride' || plan.sport === 'run') {
     const segs = plan.segments || []
     ev.type = plan.sport === 'ride' ? 'Ride' : 'Run'
     ev.moving_time = segs.reduce((s, x) => s + (Number(x.duration) || 0), 0)
-    if (segs.length) ev.workout_doc = { steps: segs.map((s) => ({ duration: Number(s.duration) || 0, power: { start: Number(s.powerStart) || 0, end: Number(s.powerEnd) || 0, units: '%ftp' }, ...(s.label ? { text: s.label } : {}) })) }
+    // CRITICAL: intervals only MODELS a ride/run (chart, planned load, Wahoo steps) when the
+    // event carries a top-level `time_target` (total seconds) alongside moving_time + workout_doc.
+    // Without it the event stores UNMODELED → empty chart. (TODO P1f: also emit native workout
+    // text for the chart, per cyclingcoach instructions_intervals_icu — verify parity before closing #14.)
+    ev.time_target = ev.moving_time
+    // Split any step > MAX (3600s) into interpolated chunks — a single over-long step makes the
+    // intervals workout render EMPTY (matches cyclingcoach split_long_doc_step).
+    if (segs.length) ev.workout_doc = { steps: segs.flatMap((s) => splitWorkoutStep(s)) }
+    // ALSO emit readable native workout text alongside workout_doc — intervals needs it
+    // to render the power chart / readable structure (workout_doc stays authoritative for
+    // duration so moving_time isn't doubled). Format: "- 10m 50-62%".
+    const native = segs.length
+      ? '## Workout\n' + segs.map((s) => { const m = Math.round((Number(s.duration) || 0) / 60); const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; return `- ${m}m ${a === b ? a + '%' : a + '-' + b + '%'}${s.label ? ' ' + s.label : ''}` }).join('\n')
+      : ''
+    ev.description = [native, plan.notes, brief].filter(Boolean).join('\n\n')
   } else {
     ev.type = 'WeightTraining'
-    ev.description = `[gymapp] ${plan.rounds || 1} rounds\n` + (plan.exercises || []).map((x) => `• ${x.name}${x.exId ? ` [${x.exId}]` : ''} — ${(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}`).join('\n') + (plan.notes ? `\n\n${plan.notes}` : '')
+    const gym = `[gymapp] ${plan.rounds || 1} rounds\n` + (plan.exercises || []).map((x) => `• ${x.name}${x.exId ? ` [${x.exId}]` : ''} — ${(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}`).join('\n')
+    ev.description = [gym, plan.notes, brief].filter(Boolean).join('\n\n')
   }
   return ev
 }
@@ -545,7 +656,8 @@ function planToIcuEvent(plan) {
 async function pushPlanToIcu(user, plan) {
   if (!user.icuKey) return { skipped: 'no intervals key' }
   const ath = user.icuAthlete || 'i28814'
-  const ev = planToIcuEvent(plan)
+  const dayItems = (user.items || []).filter((it) => it.date === plan.date)
+  const ev = planToIcuEvent(plan, dayItems)
   try {
     if (plan.icuEventId) {
       const r = await icuFetch(user, `/athlete/${ath}/events/${plan.icuEventId}`, { method: 'PUT', body: JSON.stringify(ev) })
@@ -570,6 +682,15 @@ async function upsertPlan(user, body) {
   const plan = {
     id: body.id, date: body.date, sport: body.sport, title: body.title,
     notes: body.notes || '', updatedAt: Date.now(),
+    // Structured coaching (all optional, additive). Meals/mind are separate
+    // calendar items (with their own per-pick `why`); these are the plan-level
+    // strategy + cues. The plan view joins the day's items by date.
+    objective: typeof body.objective === 'string' ? body.objective : '',
+    cues: Array.isArray(body.cues) ? body.cues.filter((c) => typeof c === 'string') : [],
+    success: typeof body.success === 'string' ? body.success : '',
+    recovery: typeof body.recovery === 'string' ? body.recovery : '',
+    fuel: body.fuel && typeof body.fuel === 'object' ? { why: String(body.fuel.why || ''), supplements: String(body.fuel.supplements || '') } : undefined,
+    mind: body.mind && typeof body.mind === 'object' ? { why: String(body.mind.why || '') } : undefined,
     origin: i >= 0 ? (user.plans[i].origin || 'platyplus') : 'platyplus',
     icuEventId: i >= 0 ? user.plans[i].icuEventId : undefined,
     ...(body.sport === 'gym'
@@ -669,7 +790,7 @@ function validateItem(b) {
 function upsertItem(user, b) {
   const err = validateItem(b); if (err) return { status: 400, body: { error: err } }
   user.items = user.items || []
-  const item = { id: b.id || newId(), date: b.date, type: b.type, title: b.title || '', refId: b.refId || '', mealType: b.mealType || '', kcal: b.kcal, minutes: b.minutes, notes: b.notes || '', updatedAt: Date.now() }
+  const item = { id: b.id || newId(), date: b.date, type: b.type, title: b.title || '', refId: b.refId || '', mealType: b.mealType || '', kcal: b.kcal, minutes: b.minutes, notes: b.notes || '', why: typeof b.why === 'string' ? b.why : '', updatedAt: Date.now() }
   const i = user.items.findIndex((x) => x.id === item.id)
   if (i >= 0) user.items[i] = item; else user.items.push(item)
   save(store)
@@ -690,10 +811,46 @@ let EXERCISES = []
     else console.log(`catalog: no exercises.json at ${p} — /api/exercises returns empty`)
   } catch (e) { console.log('catalog load failed:', e.message) }
 })()
-function searchExercises(q, limit) {
+function searchExercises(q, limit, equipment) {
   const n = String(q || '').trim().toLowerCase()
-  const list = n ? EXERCISES.filter((e) => e.name.toLowerCase().includes(n)) : EXERCISES
-  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, image: e.image, video: e.video }))
+  const eq = equipment ? String(equipment).split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : null
+  let list = n ? EXERCISES.filter((e) => e.name.toLowerCase().includes(n)) : EXERCISES
+  if (eq) list = list.filter((e) => e.equipment && eq.includes(e.equipment.toLowerCase())) // owned-equipment filter
+  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, equipment: e.equipment, image: e.image, video: e.video }))
+}
+// Recipe + mind/movement catalogs — let the coach PICK real Platyplus content by id
+// (for fuel meals + meditation/yoga/pilates sessions), mirroring the exercise catalog.
+let RECIPES = [], MIND = []
+;(() => {
+  try {
+    const cdir = process.env.CATALOG_DIR || join(__dirname, '..', 'src', 'data', 'generated')
+    const rp = join(cdir, 'recipes.json'); if (existsSync(rp)) { RECIPES = JSON.parse(readFileSync(rp, 'utf8')); console.log(`catalog: ${RECIPES.length} recipes`) }
+    const mp = join(cdir, 'mind.json'); if (existsSync(mp)) { MIND = JSON.parse(readFileSync(mp, 'utf8')); console.log(`catalog: ${MIND.length} mind/movement sessions`) }
+  } catch (e) { console.log('recipe/mind catalog load failed:', e.message) }
+})()
+// Diet gate (#40): a vegetarian athlete may only get vegetarian+vegan recipes; a
+// vegan only vegan; anything else = no restriction. Enforced HERE so the coach
+// physically cannot pick a non-conforming meal, not just asked to.
+function dietAllows(pref, recipeDiet) {
+  const p = String(pref || '').toLowerCase()
+  const d = String(recipeDiet || 'omnivore').toLowerCase()
+  if (p === 'vegan') return d === 'vegan'
+  if (p === 'vegetarian') return d === 'vegetarian' || d === 'vegan'
+  return true // 'no preference' / unset
+}
+function searchRecipes(q, limit, category, diet) {
+  const n = String(q || '').trim().toLowerCase()
+  let list = RECIPES.filter((r) => dietAllows(diet, r.diet))
+  if (category) list = list.filter((r) => String(r.category || '').toLowerCase() === String(category).toLowerCase())
+  if (n) list = list.filter((r) => r.title.toLowerCase().includes(n) || (r.tags || []).some((t) => String(t).toLowerCase().includes(n)))
+  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((r) => ({ id: r.id, title: r.title, category: r.category, kcal: r.kcal, protein: r.protein, minutes: r.minutes, diet: r.diet }))
+}
+function searchSessions(q, limit, kind) {
+  const n = String(q || '').trim().toLowerCase()
+  let list = MIND
+  if (kind) list = list.filter((m) => String(m.kind || '').toLowerCase() === String(kind).toLowerCase())
+  if (n) list = list.filter((m) => m.title.toLowerCase().includes(n) || String(m.summary || '').toLowerCase().includes(n))
+  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((m) => ({ id: m.id, title: m.title, kind: m.kind, duration: m.duration }))
 }
 
 // Upsert a planned session by id (idempotent — re-POST to update).
@@ -763,7 +920,64 @@ app.post('/api/items', apiAuth, (req, res) => { const r = upsertItem(req.user, r
 app.delete('/api/items/:id', apiAuth, (req, res) => { deleteItemById(req.user, req.params.id); res.json({ ok: true }) })
 
 // Exercise catalog search — resolve a name to a real exId (with demo media).
-app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit)))
+// Coach-activity notification: the coach posts a short note of what it just did
+// (created/adjusted the plan, reviewed a workout). Surfaces in the user's bell.
+function pushNotification(u, { title, body, items }) {
+  if (!u.notifications) u.notifications = []
+  const t = String(title || '').trim().slice(0, 120)
+  if (!t) return null
+  const n = {
+    id: 'coach-' + randomBytes(6).toString('base64url'),
+    kind: 'coach',
+    date: new Date().toISOString().slice(0, 10),
+    at: new Date().toISOString(),
+    title: t,
+    body: typeof body === 'string' ? body.trim().slice(0, 600) : undefined,
+    items: Array.isArray(items) ? items.filter((x) => typeof x === 'string').map((x) => x.trim().slice(0, 200)).slice(0, 12) : undefined,
+    read: false,
+  }
+  u.notifications.unshift(n)
+  u.notifications = u.notifications.slice(0, 50) // cap
+  return n
+}
+app.post('/api/notify', apiAuth, (req, res) => {
+  const n = pushNotification(req.user, req.body || {})
+  if (!n) return res.status(400).json({ error: 'title is required' })
+  save(store); res.status(201).json(n)
+})
+
+// Coach post-workout REVIEW (#91): the cyclingcoach engine writes its existing
+// COACHCHECK output (Verdict/Execution/Body/Mind/Next) HERE — Platyplus is master,
+// not intervals. Stored per-user; surfaced in-app (Progress takeaways + post-workout).
+// Keyed by date (+ optional planId/activityId) so re-POST updates. Mirror-to-intervals
+// is a follow-on (the planned-workout mirror already exists).
+app.post('/api/coach-review', apiAuth, (req, res) => {
+  const b = req.body || {}
+  const date = String(b.date || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date (YYYY-MM-DD) is required' })
+  if (!req.user.coachReviews) req.user.coachReviews = []
+  const arr = (x) => Array.isArray(x) ? x.filter((s) => typeof s === 'string').map((s) => s.slice(0, 300)).slice(0, 8) : undefined
+  const review = {
+    id: b.id || ('rev-' + date + (b.activityId ? '-' + b.activityId : '')),
+    date, planId: b.planId || undefined, activityId: b.activityId || undefined,
+    sport: typeof b.sport === 'string' ? b.sport.slice(0, 20) : undefined,
+    score: typeof b.score === 'number' ? b.score : undefined,
+    verdict: typeof b.verdict === 'string' ? b.verdict.slice(0, 600) : undefined,
+    execution: arr(b.execution),
+    body: typeof b.body === 'string' ? b.body.slice(0, 600) : undefined,
+    mind: b.mind && typeof b.mind === 'object' ? { pattern: String(b.mind.pattern || '').slice(0, 300), cue: String(b.mind.cue || '').slice(0, 300) } : undefined,
+    next: typeof b.next === 'string' ? b.next.slice(0, 600) : undefined,
+    recovery: typeof b.recovery === 'string' ? b.recovery.slice(0, 800) : undefined,
+    takeaways: arr(b.takeaways), // optional short bullets for the Progress card
+    at: new Date().toISOString(),
+  }
+  req.user.coachReviews = [review, ...req.user.coachReviews.filter((r) => r.id !== review.id)].slice(0, 200)
+  save(store); res.status(201).json(review)
+})
+app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit, req.query.equipment)))
+// Recipe + session catalog search — the coach picks a real id for fuel meals / mind sessions.
+app.get('/api/recipes', apiAuth, (req, res) => res.json(searchRecipes(req.query.q, req.query.limit, req.query.category, req.query.diet || req.user.info?.diet)))
+app.get('/api/sessions', apiAuth, (req, res) => res.json(searchSessions(req.query.q, req.query.limit, req.query.kind)))
 
 // ---- OpenAPI spec + Swagger UI (session-gated — not public) ---------------
 // `auth` requires a valid login cookie, so the docs + spec are invisible to

@@ -71,11 +71,14 @@ export default function Calendar() {
   }, [range])
   useEffect(() => { reload() }, [reload])
   useEffect(() => { listTemplates().then(setTemplates); listRideTemplates().then(setRideTemplates); getSetting('ftp').then((v) => v && setFtp(Number(v))) }, [])
+  // Arriving from Today's "Add"/"Substitute" (?add=1) opens the add sheet straight away
+  // so it's a single tap, not land-on-Plan-then-click-Add (#56/#57). Runs once.
+  useEffect(() => { if (params.get('add') === '1') { setSheet({ date: qDay || sel }); navigate(`/plan?d=${qDay || sel}&v=day`, { replace: true }) } }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const entriesFor = (day: string): Entry[] => {
     const out: Entry[] = []
     plans.filter((p) => p.date === day).forEach((plan) => out.push({ k: 'plan', plan }))
-    events.filter((e) => e.start_date_local.slice(0, 10) === day && !plans.some((p) => (e.external_id && p.id === e.external_id) || (p.icuEventId != null && String(p.icuEventId) === String(e.id)))).forEach((ev) => out.push({ k: 'event', ev }))
+    events.filter((e) => e.start_date_local.slice(0, 10) === day && !plans.some((p) => (e.external_id && p.id === e.external_id) || (p.icuEventId != null && String(p.icuEventId) === String(e.id)) || (p.date === day && (p.sport === 'ride' ? 'cycling' : p.sport) === sportOf(e) && String(p.title || '').trim().toLowerCase() === String(e.name || '').trim().toLowerCase()))).forEach((ev) => out.push({ k: 'event', ev }))
     items.filter((it) => it.date === day).forEach((item) => out.push({ k: 'item', item }))
     return out
   }

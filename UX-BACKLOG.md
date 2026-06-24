@@ -451,3 +451,82 @@ existing `claude login` OAuth — no API billing). The chatbot must **never modi
 - [ ] Real per-workout/ride imagery as card background (currently sport-themed gradient + logo overlay stopgap)
 
 - [ ] Free CC meditation audio: Tibetan singing-bowl / chant / "world peace" tracks (Freesound CC0, Free Music Archive, Pixabay Music). Self-host + manifest. (user request)
+
+## 🗓️ 2026-06-23 session — captured (do later)
+
+**Planning source-of-truth — cyclingcoach must author INTO Platyplus, not intervals.**
+- Today cyclingcoach publishes plans DIRECTLY to intervals.icu (`tools/intervals_icu_workouts.py`)
+  because the Platyplus→intervals push currently omits `time_target` (Wahoo needs it). So Platyplus
+  is NOT yet the single master for *planning* — dual-writing to intervals causes conflicts/dupes.
+- ⬜ **Migrate cyclingcoach → publish to Platyplus** (`tools/publish_platyplus_plan.py`) as the ONLY
+  authoring surface; Platyplus fans out to intervals→Wahoo. **Blocker:** add `time_target` to the
+  Platyplus→intervals event push so Wahoo rides are complete. Until then, do NOT push planned
+  workouts from Platyplus (cyclingcoach owns intervals directly). [Root cause of the 2026-06-23
+  "delete them" — Platyplus re-push conflicted with cyclingcoach's direct intervals events.]
+
+**Train — filters & sorting (workouts + exercises).**
+- ⬜ Filter + sort **Workouts AND Exercises** by **equipment**, **time/duration**, **intensity**.
+- ⬜ **Settings → equipment list** (what the user owns) to power the equipment filter.
+
+**Check-in.**
+- ⬜ History: once all 3 logged, collapse the Today card to a one-line summary; full history in Logs.
+
+**Nav.**
+- ⬜ Train back-arrow — root tab (no back by design); revisit only if reached via a hub.
+
+**intervals.icu — indoor completion.**
+- ⬜ Confirm an indoor-completed Platyplus workout reaches intervals labeled clearly (FIT→Strava→intervals).
+
+## 🗓️ 2026-06-23 — Coach plan-authoring → Platyplus (DESIGN LOCKED, building Phase 1)
+
+**Architecture:** Platyplus = single MASTER for planning. cyclingcoach (and every BYO-AI)
+authors INTO Platyplus via the MCP/Coach-API; Platyplus **mirrors to intervals.icu**
+(workout steps + a rendered rich description, WITH the meal/mind references + both why-levels)
+and to Wahoo. Retire cyclingcoach's direct intervals publish (`tools/intervals_icu_workouts.py`
+→ pure renderer Platyplus calls). Add `time_target` to the Platyplus→intervals ride push (Wahoo).
+
+**Plan view (universal shell + sport-specific body):**
+- Shell (all sports): 🎯 Objective · 🍽️ Fuel · 🧠 Mind · 🛌 Recovery · ✓ Success · 💬 Cues.
+- Body swaps: Ride/Run → power/pace profile + "Ride/Run now"; Gym → exercise list (sets×reps,
+  equipment, demo) + Start; Yoga/Pilates → guided class (duration/flow) + Start. **Run ≈ Ride.**
+
+**Fuel/Mind — referencing, not duplication (one source = the day's calendar items):**
+- Meals & mind stay separate calendar items (`schedule_meal`/`schedule_mind` → `/api/items`),
+  surfaced INLINE in the plan (no jump). On Today they show once (plan chips); the algorithmic
+  "Suggested fuel/reset" sections only appear when nothing's scheduled.
+- **Meal chips = a 2-COLUMN GRID, not horizontal scroll** (mobile-friendly, all visible, scales).
+- **`fuel.meals` is a VARIABLE-LENGTH array** — count is the COACH's call from its nutrition
+  knowledge base (e.g. strength days → more frequent protein feedings ~0.4 g/kg ×4–5; endurance →
+  fewer/bigger carb meals). Don't hardcode breakfast/lunch/dinner/snack.
+- **Two why-levels:** section *strategy* on the plan (`fuel.why`=Pre/During/Post+supplements,
+  `mind.why`=mental-focus theme) shown via section ⓘ; per-pick *reason* on each item
+  (`schedule_meal/mind` gain `why`), shown on the item's recipe/session page ("Coach's pick: …").
+- **Mobile-first "why" (NOT inline expanding slabs):** per-pick why → on the recipe/session PAGE;
+  section strategy why → a bottom SHEET (slide-up). Nothing expands inline.
+
+**Coach enablement — replicate the `search_exercises` pattern for food & mind:**
+- `search_exercises`→`create_workout` ALREADY works (coach picks exercises, builds, assigns).
+- ADD `search_recipes` + `search_sessions` MCP tools (mirrors) so the coach picks REAL recipes +
+  meditation/yoga/pilates classes by id, then `schedule_meal/mind(refId, why)`.
+- Extend `create_ride/create_workout/create_run` + `schedule_meal/mind` with the structured fields
+  (objective, cues[], success, recovery, fuel{why,supplements}, mind{why}, per-item why).
+- Update the coach instructions + BYO-AI MCP descriptions: author via Platyplus, SELECT content
+  from the catalog, fill the why's, variable meal count from theory, per sport (author ride/gym;
+  SELECT a class for yoga/pilates). cyclingcoach `AGENTS.md` + cycling-coach SKILL updated.
+
+**Mockup (clickable, multi-sport toggle):** `gymapp/mockups/plan-view.html`.
+
+**Phase 1 build (in progress):** server schema (plan structured fields + item.why) → planToIcuEvent
+render+time_target → PlanDetail UI (grid chips + sheet why) → recipe Coach's-pick banner →
+MCP (search_recipes/search_sessions + structured fields) → cyclingcoach publisher + instructions.
+
+## 🗓️ 2026-06-23 — Check-in (SHIPPED to QA)
+- Emoji faces 💀😩😐😀🤩 (obvious+funny), 1–5, ALWAYS visible (no collapse — gets skipped).
+  "Soreness"→"Freshness" so all rows read higher=better (stored soreness inverted server-side).
+  Compact; picked face = green pop, others dim. Fixed ⓘ popover clipped by card overflow.
+- TODO: history (collapse-when-done on Today + list in Logs).
+
+## Process rule (JM, 2026-06-23): OPTIONS + MOCKUPS FIRST
+Before any UX change: research best practice, then present 2–3 options WITH mockups (HTML render
+when it helps) and get the pick BEFORE building. Never implement-then-iterate. (Memory:
+`show-options-and-mockups-first` + skill `options-first`.)

@@ -3,7 +3,17 @@ import { Link } from 'react-router-dom'
 import { recipes, allRecipesById } from '../data/catalog'
 import { calApi, type CalItem } from '../calendar'
 import { localISO } from '../date'
+import { useAuth } from '../auth/AuthContext'
 import type { Recipe } from '../types'
+
+// Diet gate (#40): vegetarian sees veg+vegan; vegan sees vegan only; else everything.
+export function dietAllows(pref: string | undefined, recipeDiet: string | undefined): boolean {
+  const p = (pref || '').toLowerCase()
+  const d = (recipeDiet || 'omnivore').toLowerCase()
+  if (p === 'vegan') return d === 'vegan'
+  if (p === 'vegetarian') return d === 'vegetarian' || d === 'vegan'
+  return true
+}
 
 type Cat = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 const CATS: Cat[] = ['breakfast', 'lunch', 'dinner', 'snack']
@@ -112,6 +122,8 @@ function MealRow({ r }: { r: Recipe }) {
 const addDays = (iso: string, n: number) => { const d = new Date(iso + 'T00:00'); d.setDate(d.getDate() + n); return localISO(d) }
 
 export default function Eat() {
+  const { user } = useAuth()
+  const diet = (user?.info as { diet?: string } | undefined)?.diet
   const [tab, setTab] = useState<'packs' | 'meals' | 'shop'>('packs')
   const [q, setQ] = useState('')
   const [cat, setCat] = useState<Cat | 'all'>('all')
@@ -126,7 +138,7 @@ export default function Eat() {
     calApi.items(from, to).then(setItems).catch(() => setItems([]))
   }, [tab, span])
 
-  const meals = useMemo(() => recipes.filter((r) => (cat === 'all' || r.category === cat) && (!q || r.title.toLowerCase().includes(q.toLowerCase()))).slice(0, 120), [q, cat])
+  const meals = useMemo(() => recipes.filter((r) => dietAllows(diet, r.diet) && (cat === 'all' || r.category === cat) && (!q || r.title.toLowerCase().includes(q.toLowerCase()))).slice(0, 120), [q, cat, diet])
 
   const assignedMeals = items.filter((it) => it.type === 'meal' && it.refId)
   const shopping = useMemo(() => {

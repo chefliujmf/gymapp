@@ -4,6 +4,31 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown } from 'lucide-react'
 import { db, getSetting, setSetting, clearLogs } from '../db'
 import AccountSection from '../auth/AccountSection'
+import { useAuth } from '../auth/AuthContext'
+import { authApi } from '../auth/api'
+
+// Equipment the user owns — drives the Train filters (#20) AND the coach's exercise
+// picks (#32). Stored on the profile (info.equipment) so it's server-side. Bodyweight
+// is always available. Values match the catalog's equipment tags.
+const EQUIPMENT = ['Bodyweight', 'Dumbbell', 'Barbell', 'Kettlebell', 'Bands', 'Bench', 'Pull-up bar', 'Cable', 'Machine', 'Ball', 'Plate', 'TRX', 'Trainer / bike']
+function EquipmentSetting() {
+  const { user } = useAuth()
+  const [sel, setSel] = useState<string[]>(() => { const e = (user?.info as { equipment?: string[] } | undefined)?.equipment; return Array.isArray(e) && e.length ? e : ['Bodyweight'] })
+  const [saved, setSaved] = useState(false)
+  const toggle = (e: string) => {
+    if (e === 'Bodyweight') return
+    const next = sel.includes(e) ? sel.filter((x) => x !== e) : [...sel, e]
+    setSel(next)
+    authApi.saveProfile({ equipment: next }).then(() => { setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {})
+  }
+  return (
+    <>
+      <div className="section-title">My equipment{saved && <span className="meta" style={{ fontWeight: 400 }}> · Saved ✓</span>}</div>
+      <p className="meta" style={{ margin: '0 2px 8px' }}>Tick what you have — filters the library and the coach to what you can actually do.</p>
+      <div className="chips">{EQUIPMENT.map((e) => <button key={e} className={'chip' + ((e === 'Bodyweight' || sel.includes(e)) ? ' chip--active' : '')} onClick={() => toggle(e)}>{e}</button>)}</div>
+    </>
+  )
+}
 
 /** A chip-group setting that autosaves on tap and flashes "Saved ✓". */
 function ChipSetting({ title, hint, value, options, onPick }: {
@@ -36,7 +61,10 @@ function Collapsible({ title, subtitle, defaultOpen = false, children }: { title
 
 export default function Settings() {
   const navigate = useNavigate()
-  const diet = useLiveQuery(() => getSetting('diet'))
+  const { user, refresh } = useAuth()
+  // Diet is server-side (info.diet) so the coach honors it (#40); mirror locally for offline reads.
+  const diet = (user?.info as { diet?: string } | undefined)?.diet
+  const setDiet = (v: string) => { setSetting('diet', v); authApi.saveProfile({ diet: v }).then(() => refresh()).catch(() => {}) }
   const units = useLiveQuery(() => getSetting('units'))
   const calView = useLiveQuery(() => getSetting('calView'))
   const stills = useLiveQuery(() => getSetting('exerciseStills'))
@@ -62,8 +90,13 @@ export default function Settings() {
         <AccountSection only="connections" />
       </Collapsible>
 
+      <Collapsible title="Equipment" subtitle="What you own — filters workouts & coach">
+        <EquipmentSetting />
+      </Collapsible>
+
       <Collapsible title="Preferences" subtitle="Diet, units, calendar, demos" defaultOpen>
-        <ChipSetting title="Diet" value={diet ?? 'vegetarian'} onPick={(v) => setSetting('diet', v)}
+        <ChipSetting title="Diet" value={diet ?? 'no preference'} onPick={setDiet}
+          hint="Your coach picks ONLY meals that match — vegetarian shows veg + vegan; vegan shows vegan only."
           options={[['vegetarian', 'vegetarian'], ['vegan', 'vegan'], ['no preference', 'no preference']]} />
         <ChipSetting title="Units" value={units ?? 'metric'} onPick={(v) => setSetting('units', v)}
           options={[['metric', 'metric'], ['imperial', 'imperial']]} />

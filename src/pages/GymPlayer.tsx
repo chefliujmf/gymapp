@@ -125,7 +125,10 @@ export default function GymPlayer() {
   // kg/lbs from the saved units preference; toggleable live during the workout.
   const units = (useLiveQuery(() => getSetting('units')) as string | undefined) ?? 'metric'
   const unit = units === 'imperial' ? 'lb' : 'kg'
-  const stills = (useLiveQuery(() => getSetting('exerciseStills')) as string | undefined) === '1'
+  const stillsPref = (useLiveQuery(() => getSetting('exerciseStills')) as string | undefined) === '1'
+  // In-workout override (#53): flip image/video on the fly without leaving the player.
+  const [stillsOverride, setStillsOverride] = useState<boolean | null>(null)
+  const stills = stillsOverride ?? stillsPref
 
   // Build steps and resume in-progress position/log/start-time across a refresh.
   useEffect(() => {
@@ -262,22 +265,75 @@ export default function GymPlayer() {
     </div>
   )
 
-  if (done) return (
-    <div className="gp2 gp2--done">
-      <div className="gp2-donecard">
-        <div style={{ fontSize: 56 }}>🎉</div>
-        <h1 style={{ margin: '8px 0 2px' }}>Workout complete</h1>
-        <p style={{ color: 'var(--text-dim,#888)' }}>{w.title}</p>
-        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', width: '100%', marginTop: 16 }}>
-          <div className="stat"><div className="v">{totalEx}</div><div className="k">exercises</div></div>
-          <div className="stat"><div className="v">{finalMin}</div><div className="k">minutes</div></div>
-          <div className="stat"><div className="v">{gymTSS(finalMin, w.intensity)}</div><div className="k">TSS</div></div>
+  if (done) {
+    // ---- Post-gym summary (#69): totals + by-exercise + highlights + coach tip ----
+    const doneSets = (i: number) => (log[i] || []).filter((s) => s?.done && (s.reps || 0) > 0)
+    const allDone = order.flatMap((_, i) => doneSets(i))
+    const totVol = Math.round(allDone.reduce((v, s) => v + (s.weight || 0) * (s.reps || 0), 0))
+    const totReps = allDone.reduce((r, s) => r + (s.reps || 0), 0)
+    const byEx = order.map((ex, i) => {
+      const ss = doneSets(i)
+      const vol = ss.reduce((v, s) => v + (s.weight || 0) * (s.reps || 0), 0)
+      const top = ss.slice().sort((a, b) => (b.weight || 0) - (a.weight || 0))[0]
+      const lib = ex.exId ? allExercisesById[ex.exId] : undefined
+      const muscle = (lib?.muscle || lib?.category || '').toString()
+      const est = top?.weight ? Math.round(e1rm(top.weight, top.reps || 1)) : 0
+      return { name: ex.name, sets: ss, vol, top, est, muscle }
+    }).filter((e) => e.sets.length)
+    const maxVol = Math.max(1, ...byEx.map((e) => e.vol))
+    const muscles = [...new Set(byEx.map((e) => e.muscle).filter(Boolean))]
+    const hardest = allDone.slice().sort((a, b) => (b.weight || 0) - (a.weight || 0))[0]
+    const coachTip = totVol > 0
+      ? `Strong session — ${allDone.length} sets, ${totVol.toLocaleString()} kg moved. Next time, nudge the top set up a notch on the lifts that felt smooth.`
+      : `Nice work finishing all ${byEx.length || totalEx} exercises. Log your weights next time and I'll track volume & PRs for you.`
+    return (
+      <div className="gp2 gp2--done">
+        <div className="gp2-sum">
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 52 }}>🎉</div>
+            <h1 style={{ margin: '6px 0 2px' }}>Workout complete</h1>
+            <p style={{ color: 'var(--text-dim,#888)', margin: 0 }}>{w.title}</p>
+          </div>
+
+          {/* A — summary totals */}
+          <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginTop: 16 }}>
+            <div className="stat"><div className="v">{totVol > 0 ? totVol.toLocaleString() : totalEx}<small>{totVol > 0 ? ' kg' : ''}</small></div><div className="k">{totVol > 0 ? 'Volume' : 'Exercises'}</div></div>
+            <div className="stat"><div className="v">{allDone.length || totalEx}</div><div className="k">Sets</div></div>
+            <div className="stat"><div className="v">{totReps || '—'}</div><div className="k">Reps</div></div>
+            <div className="stat"><div className="v">{finalMin}<small> min</small></div><div className="k">Time</div></div>
+          </div>
+
+          {/* B — by exercise */}
+          {byEx.length > 0 && <>
+            <div className="section-title" style={{ marginTop: 18 }}>By exercise</div>
+            <div className="stack" style={{ gap: 8 }}>
+              {byEx.map((e, i) => (
+                <div key={i} className="card" style={{ padding: '11px 13px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <strong style={{ fontSize: 14 }}>{e.name}</strong>
+                    {e.est > 0 && <span className="meta" style={{ flex: 'none' }}>est 1RM {e.est} kg</span>}
+                  </div>
+                  <div className="plan-desc" style={{ marginTop: 2 }}>{e.sets.map((s) => `${s.weight || 0}×${s.reps || 0}`).join(' · ')}{e.vol > 0 ? ` — ${e.vol.toLocaleString()} kg` : ''}</div>
+                  <div className="gymbar"><i style={{ width: `${Math.round((e.vol / maxVol) * 100)}%` }} /></div>
+                </div>
+              ))}
+            </div>
+          </>}
+
+          {/* C — highlights + coach tip */}
+          <div className="section-title" style={{ marginTop: 18 }}>Highlights</div>
+          <div className="card" style={{ padding: '12px 14px' }}>
+            {hardest?.weight ? <div className="gp2-hl">💪 <span><b>Hardest set:</b> {hardest.weight}×{hardest.reps} kg</span></div> : null}
+            {muscles.length > 0 && <div className="gp2-hl">🎯 <span><b>Muscles hit:</b> <span className="checkin__chips" style={{ display: 'inline-flex', marginLeft: 4 }}>{muscles.slice(0, 6).map((m) => <span key={m} className="mchip mchip--soreness">{m}</span>)}</span></span></div>}
+            <div className="gp2-hl">🧑‍🏫 <span>{coachTip}</span></div>
+          </div>
+
+          <button className="btn" style={{ marginTop: 18 }} onClick={() => navigate('/progress')}>View progress</button>
+          <button className="btn btn--ghost" onClick={() => navigate('/exercises')}>Done</button>
         </div>
-        <button className="btn" style={{ marginTop: 20 }} onClick={() => navigate('/progress')}>View progress</button>
-        <button className="btn btn--ghost" onClick={() => navigate('/exercises')}>Done</button>
       </div>
-    </div>
-  )
+    )
+  }
 
   const sec = Math.ceil(remaining)
   const showVid = cur.kind === 'timed' || cur.kind === 'set'
@@ -321,6 +377,11 @@ export default function GymPlayer() {
         {showVid
           ? <StageVideo ex={cur.ex} female={female} stills={stills} />
           : <div className="gp2-restbig">{cur.kind === 'rest' ? 'REST' : 'GET READY'}</div>}
+        {showVid && (cur.ex.video || cur.ex.image) && (
+          <button className="gp2-demotoggle" onClick={(e) => { e.stopPropagation(); setStillsOverride(!stills) }} title="Switch demo image/video">
+            {stills ? '▶ Video' : '🖼 Still'}
+          </button>
+        )}
       </div>
 
       <div className="gp2-info">

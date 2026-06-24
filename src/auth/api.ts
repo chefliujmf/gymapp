@@ -1,6 +1,8 @@
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 
 export interface Passkey { id: string; label: string; createdAt: number }
+export interface CoachNotification { id: string; kind: 'coach'; date: string; at: string; title: string; body?: string; items?: string[]; read?: boolean }
+export interface CoachReview { id: string; date: string; planId?: string; activityId?: string; sport?: string; score?: number; verdict?: string; execution?: string[]; body?: string; mind?: { pattern?: string; cue?: string }; next?: string; recovery?: string; takeaways?: string[]; at: string }
 export interface Checkin { date: string; energy?: number; sleep?: number; soreness?: number; note?: string }
 
 export interface User {
@@ -70,6 +72,11 @@ export const authApi = {
   saveAthlete: (profile: string) => req<{ profile: string; updatedAt: number }>('/profile/athlete', { method: 'PUT', body: { profile } }),
   checkin: (data: Checkin) => req<Checkin>('/checkin', { method: 'POST', body: data }),
   checkins: (from: string, to: string) => req<Checkin[]>(`/checkins?from=${from}&to=${to}`),
+  planFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string }) => req<{ ok: boolean }>(`/plan/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
+  promoteProd: () => req<{ ok: boolean }>('/promote-prod', { method: 'POST' }),
+  notifications: () => req<CoachNotification[]>('/notifications'),
+  coachReviews: () => req<CoachReview[]>('/coach-reviews'),
+  markNotificationsRead: (ids?: string[]) => req<{ ok: boolean }>('/notifications/read', { method: 'POST', body: { ids } }),
   saveIcu: (icuKey: string, icuAthlete: string) => req<User>('/icu', { method: 'PUT', body: { icuKey, icuAthlete } }),
   saveAvatar: (avatar: string) => req<User>('/avatar', { method: 'PUT', body: { avatar } }),
   getToken: () => req<{ token: string }>('/token'),

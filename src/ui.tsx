@@ -9,29 +9,42 @@ import { localISO } from './date'
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
 /** Mon–Sun strip for the current week, today highlighted. week header. */
-export function WeekStrip({ selected, onSelect }: { selected?: string; onSelect?: (iso: string) => void } = {}) {
+export function WeekStrip({ selected, onSelect, marked }: { selected?: string; onSelect?: (iso: string) => void; marked?: Set<string> } = {}) {
   const now = new Date()
+  const [offset, setOffset] = useState(0) // weeks from the current week (‹ ›)
   const monday = new Date(now)
-  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + offset * 7)
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
     return d
   })
+  const sunday = days[6]
   const todayKey = now.toDateString()
+  const label = `${monday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${sunday.toLocaleDateString(undefined, monday.getMonth() === sunday.getMonth() ? { day: 'numeric' } : { month: 'short', day: 'numeric' })}`
   return (
-    <div className="week">
-      {days.map((d) => {
-        const iso = localISO(d)
-        const on = selected ? iso === selected : d.toDateString() === todayKey
-        return (
-          <button key={iso} className={on ? 'on' : ''} onClick={() => onSelect?.(iso)}>
-            {DOW[d.getDay()]}
-            <b>{d.getDate()}</b>
-          </button>
-        )
-      })}
-    </div>
+    <>
+      <div className="weeknav">
+        <button className="weeknav__a" onClick={() => setOffset((o) => o - 1)} aria-label="Previous week">‹</button>
+        <span className="weeknav__l">{offset === 0 ? 'This week' : label}</span>
+        {offset !== 0 && <button className="weeknav__today" onClick={() => { setOffset(0); onSelect?.(localISO(now)) }}>Today</button>}
+        <button className="weeknav__a" onClick={() => setOffset((o) => o + 1)} aria-label="Next week">›</button>
+      </div>
+      <div className="week">
+        {days.map((d) => {
+          const iso = localISO(d)
+          const on = selected ? iso === selected : d.toDateString() === todayKey
+          const hasContent = !!marked?.has(iso)
+          return (
+            <button key={iso} className={on ? 'on' : ''} onClick={() => onSelect?.(iso)}>
+              {DOW[d.getDay()]}
+              <b>{d.getDate()}</b>
+              <span className={'week__dot' + (hasContent ? ' week__dot--on' : '')} />
+            </button>
+          )
+        })}
+      </div>
+    </>
   )
 }
 
@@ -257,23 +270,30 @@ export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: 
  * badge + duration · distance · avg HR · avg power · Load (TSS) · RPE. */
 export function DoneStats({ a }: { a: IcuActivity }) {
   const isRideRun = /ride|run/i.test(a.type) && !/weight/i.test(a.type)
-  const parts = [
-    a.moving_time ? `${Math.round(a.moving_time / 60)} min` : null,
-    a.distance ? `${(a.distance / 1000).toFixed(1)} km` : null,
-    a.average_heartrate ? `${Math.round(a.average_heartrate)} bpm` : null,
-    a.icu_average_watts ? `${Math.round(a.icu_average_watts)} W` : null,
-    a.icu_training_load ? `${a.icu_training_load} TSS` : null,
-    a.icu_rpe ? `RPE ${a.icu_rpe}` : null,
-  ].filter(Boolean)
+  // each chip carries a metric color (intervals-style) so it reads at a glance (#58)
+  const parts: [string, string][] = [
+    a.moving_time ? [`⏱ ${Math.round(a.moving_time / 60)} min`, 'time'] : null,
+    a.distance ? [`📍 ${(a.distance / 1000).toFixed(1)} km`, 'dist'] : null,
+    a.average_heartrate ? [`❤️ ${Math.round(a.average_heartrate)} bpm`, 'hr'] : null,
+    a.icu_average_watts ? [`⚡ ${Math.round(a.icu_average_watts)} W`, 'pwr'] : null,
+    a.icu_training_load ? [`🔥 ${a.icu_training_load} TSS`, 'load'] : null,
+    a.icu_rpe ? [`😊 RPE ${a.icu_rpe}`, 'rpe'] : null,
+  ].filter(Boolean) as [string, string][]
   return (
     <div className="done-stats">
-      <span className="done-badge">
-        <Check size={11} />
-        {isRideRun ? (isIndoorActivity(a) ? <><Home size={11} /> Indoor</> : <><Mountain size={11} /> Outdoor</>) : 'Done'}
-      </span>
-      {parts.map((p, i) => <span key={i} className="done-stat">{p}</span>)}
-      {a.id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://intervals.icu/activities/${a.id}`)}>intervals ↗</span>}
-      {a.strava_id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://www.strava.com/activities/${a.strava_id}`)}>Strava ↗</span>}
+      {/* Row 1: external links (left) + the Indoor/Outdoor label — keeps row 2 free for metrics (#60). */}
+      <div className="done-row done-row--labels">
+        {a.id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://intervals.icu/activities/${a.id}`)}>intervals ↗</span>}
+        {a.strava_id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://www.strava.com/activities/${a.strava_id}`)}>Strava ↗</span>}
+        <span className="done-badge">
+          <Check size={11} />
+          {isRideRun ? (isIndoorActivity(a) ? <><Home size={11} /> Indoor</> : <><Mountain size={11} /> Outdoor</>) : 'Done'}
+        </span>
+      </div>
+      {/* Row 2: the metric chips, on their own line. */}
+      <div className="done-row done-row--chips">
+        {parts.map(([txt, kind], i) => <span key={i} className={`done-stat done-stat--${kind}`}>{txt}</span>)}
+      </div>
     </div>
   )
 }

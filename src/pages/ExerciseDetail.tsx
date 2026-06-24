@@ -12,6 +12,7 @@ export default function ExerciseDetail() {
   const ex = id ? allExercisesById[id] : undefined
   const [added, setAdded] = useState(0)
   const gender = (useLiveQuery(() => getSetting('gender')) as 'male' | 'female' | undefined) ?? 'male'
+  const stills = useLiveQuery(() => getSetting('exerciseStills')) as string | undefined
 
   // Which library workouts feature this exercise (by name).
   const usedIn = useMemo(
@@ -23,7 +24,9 @@ export default function ExerciseDetail() {
 
   const hasFemale = !!ex.videoFemale
   const female = gender === 'female' && hasFemale
-  const video = female ? ex.videoFemale : ex.video
+  // Respect the Settings "Exercise demos" pref (#53): Stills-only ('1') shows the image.
+  const stillsOnly = stills === '1'
+  const video = stillsOnly ? undefined : (female ? ex.videoFemale : ex.video)
   const poster = female ? (ex.imageFemale || ex.image) : ex.image
   const facets = [ex.equipment, ex.muscle, ex.difficulty].filter(Boolean) as string[]
 
@@ -34,7 +37,9 @@ export default function ExerciseDetail() {
           <button className="back-btn" onClick={() => navigate(-1)}>‹</button>
           {video
             ? <video key={video} className="ex-hero-video" src={video} poster={poster} controls autoPlay loop muted playsInline controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={(e) => e.preventDefault()} />
-            : poster && <img className="ex-hero-video" src={poster} alt={ex.name} />}
+            : poster
+              ? <img className="ex-hero-video" src={poster} alt={ex.name} />
+              : <div className="ex-hero-video ex-hero-video--empty" aria-label="No demo available">🏋️</div>}
         </div>
       </div>
 

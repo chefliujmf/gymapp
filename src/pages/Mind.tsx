@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { mindSessions } from '../data/catalog'
 import type { MindKind } from '../types'
 import { MindCard } from '../ui'
@@ -19,8 +20,10 @@ export default function Mind() {
     )
   }, [kind, q])
 
+  const navigate = useNavigate()
   return (
     <div>
+      <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head">
         <h1>Mind</h1>
         <p>{mindSessions.length} sessions — meditation, breathwork, sleep & focus</p>

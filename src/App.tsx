@@ -1,16 +1,17 @@
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
-import { Home, CalendarDays, Dumbbell, BarChart3, MoreHorizontal, MessageCircle } from 'lucide-react'
+import { Home, CalendarDays, Dumbbell, BarChart3, Salad, MessageCircle } from 'lucide-react'
 import AccountMenu from './auth/AccountMenu'
 import ReleaseBell from './ReleaseBell'
+import PromoteButton from './PromoteButton'
 
 // 5 fixed tabs (best practice). Train & Stats are hubs whose CONTENT adapts to the
 // user's sports, so the nav stays the same for a one-sport or multi-sport athlete.
 const tabs = [
   { to: '/', label: 'Today', icon: <Home strokeWidth={1.75} />, end: true },
   { to: '/plan', label: 'Plan', icon: <CalendarDays strokeWidth={1.75} />, end: false },
-  { to: '/train', label: 'Train', icon: <Dumbbell strokeWidth={1.75} />, end: false, match: /^\/(train|gym|workouts|exercises|programs|trainers|cycle|run|ride-builder|run-builder)/ },
-  { to: '/stats', label: 'Stats', icon: <BarChart3 strokeWidth={1.75} />, end: false, match: /^\/(stats|fitness|strength|progress)/ },
-  { to: '/more', label: 'More', icon: <MoreHorizontal strokeWidth={1.75} />, end: false, match: /^\/(more|eat|mind|recipes|profile|settings)/ },
+  { to: '/train', label: 'Train', icon: <Dumbbell strokeWidth={1.75} />, end: false, match: /^\/(train|gym|workouts|exercises|programs|trainers|cycle|run|ride-builder|run-builder|mind)/ },
+  { to: '/eat', label: 'Eat', icon: <Salad strokeWidth={1.75} />, end: false, match: /^\/(eat|recipes)/ },
+  { to: '/stats', label: 'Stats', icon: <BarChart3 strokeWidth={1.75} />, end: false, match: /^\/(stats|fitness|strength|progress|logs)/ },
 ]
 
 export default function App() {
@@ -23,15 +24,19 @@ export default function App() {
       {!isDetail && (
         <header className="app-bar">
           <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=4" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</Link>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <Link to="/chat" aria-label="Coach chat" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--accent-grad)', color: 'var(--on-accent)', fontWeight: 800, fontSize: 13, padding: '7px 12px', borderRadius: 999, textDecoration: 'none' }}><MessageCircle size={16} /> Coach</Link>
-            <ReleaseBell /><AccountMenu />
+          {/* Top-right is the status cluster only: notifications + account (Coach moved to the FAB). */}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <PromoteButton /><ReleaseBell /><AccountMenu />
           </div>
         </header>
       )}
       <main className="app-main">
         <Outlet />
       </main>
+      {/* Coach FAB — primary assistant action, thumb-reachable bottom-right, above the tab bar (#50). */}
+      {!isDetail && (
+        <Link to="/chat" className="coach-fab" aria-label="Coach chat"><MessageCircle size={20} /> <span className="coach-fab__l">Coach</span></Link>
+      )}
       {!isDetail && (
         <nav className="tab-bar">
           {tabs.map((t) => (

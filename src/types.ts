@@ -81,7 +81,8 @@ export interface Recipe {
   steps: string[]
   thumbnail?: string
   tags: string[]
-  diet?: ('vegan' | 'vegetarian' | 'high-protein' | 'low-carb' | 'gluten-free')[]
+  /** ingredient-inferred dietary class (build-catalog) — gates coach + in-app meal browse (#40) */
+  diet?: 'omnivore' | 'vegetarian' | 'vegan'
   servings?: number
   /** original recipe source URL (e.g. TheMealDB / blog) */
   source?: string

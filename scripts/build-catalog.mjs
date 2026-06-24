@@ -128,8 +128,23 @@ function mapRecipe(d, isSnack) {
     thumbnail: localImg(isSnack ? 'snacks_images' : 'recipes_images', r.urlPartial),
     tags: [...new Set((r.tags || []).map((t) => t.name).filter(Boolean))].slice(0, 8),
     servings: r.serves || undefined,
-    diet: ['vegetarian'],
   }
+}
+
+// Classify a recipe's diet from its ingredients (+ title) so the coach/UI can
+// honor the athlete's dietary preference (#40). Conservative: any meat/fish ⇒
+// 'omnivore'; else any dairy/egg/honey ⇒ 'vegetarian'; else 'vegan'.
+const MEAT = ['beef', 'steak', 'veal', 'lamb', 'mutton', 'pork', 'bacon', 'ham', 'gammon', 'prosciutto', 'pancetta', 'guanciale', 'salami', 'pepperoni', 'chorizo', 'sausage', 'sausages', 'mince', 'meatball', 'meatballs', 'meat', 'chicken', 'turkey', 'duck', 'goose', 'quail', 'poultry', 'venison', 'rabbit', 'goat', 'bison', 'oxtail', 'liver', 'kidney', 'kidneys', 'tripe', 'lard', 'suet', 'gelatin', 'gelatine', 'mortadella', 'bresaola', 'speck', 'hotdog', 'frankfurter', 'fish', 'salmon', 'tuna', 'cod', 'haddock', 'pollock', 'halibut', 'tilapia', 'trout', 'mackerel', 'sardine', 'sardines', 'anchovy', 'anchovies', 'herring', 'kipper', 'snapper', 'bass', 'bream', 'sole', 'plaice', 'eel', 'prawn', 'prawns', 'shrimp', 'crab', 'lobster', 'crayfish', 'crawfish', 'mussel', 'mussels', 'oyster', 'oysters', 'clam', 'clams', 'scallop', 'scallops', 'squid', 'calamari', 'octopus', 'caviar', 'roe', 'surimi', 'shellfish', 'seafood']
+const DAIRY_EGG = ['egg', 'eggs', 'milk', 'butter', 'cheese', 'parmesan', 'parmigiano', 'mozzarella', 'cheddar', 'feta', 'halloumi', 'ricotta', 'mascarpone', 'gruyere', 'gouda', 'brie', 'camembert', 'paneer', 'cream', 'yogurt', 'yoghurt', 'ghee', 'custard', 'buttermilk', 'kefir', 'whey', 'casein', 'honey', 'mayonnaise', 'mayo']
+// Plant-based phrases that contain a dairy/meat substring — neutralize before matching.
+const NEUTRALIZE = ['coconut milk', 'almond milk', 'soy milk', 'soya milk', 'oat milk', 'rice milk', 'cashew milk', 'hemp milk', 'plant milk', 'peanut butter', 'almond butter', 'cashew butter', 'nut butter', 'seed butter', 'cocoa butter', 'apple butter', 'butter bean', 'butterbean', 'butternut', 'butterhead', 'cocoa', 'eggplant', 'egg plant', 'beancurd', 'nutritional yeast', 'vegan ', 'meatless', 'meat-free', 'meat free', 'mock meat', 'plant-based', 'plant based']
+function dietOf(ings, title) {
+  let t = ' ' + ([title, ...(ings || [])].join(' ')).toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ') + ' '
+  for (const p of NEUTRALIZE) t = t.split(p).join(' ')
+  const has = (words) => words.some((w) => t.includes(' ' + w + ' '))
+  if (has(MEAT)) return 'omnivore'
+  if (has(DAIRY_EGG)) return 'vegetarian'
+  return 'vegan'
 }
 
 // --- Gym workouts ---------------------------------------------------------
@@ -460,6 +475,7 @@ const centrRecipes = [
   ...listJson(join(DL, 'snacks')).map((f) => mapRecipe(readJson(join(DL, 'snacks', f)), true)),
 ].filter(Boolean).map((r) => ({ ...r, source: r.source || 'centr' })).filter((r) => !haveRecipe.has(cnorm(r.title)))
 const recipes = [...tmdbRecipes, ...centrRecipes]
+for (const r of recipes) r.diet = dietOf(r.ingredients, r.title) // #40 — tag omnivore/vegetarian/vegan
 const workoutFiles = listJson(join(DL, 'workouts'))
 const workouts = workoutFiles.map((f) => mapWorkout(readJson(join(DL, 'workouts', f))))
 // Exercises — free-exercise-db (resell-safe) FIRST, then MuscleWiki (video), then Centr.
@@ -468,6 +484,33 @@ const mwExtras = muscleWikiExtras(fedbExtras)
 const haveEx = new Set([...fedbExtras, ...mwExtras].map((e) => cnorm(e.name)))
 const centrExercises = extractExercises(workoutFiles).map((e) => ({ ...e, source: 'centr' })).filter((e) => !haveEx.has(cnorm(e.name)))
 const exercises = [...fedbExtras, ...mwExtras, ...centrExercises].sort((a, b) => a.name.localeCompare(b.name))
+
+// VIDEO UPLIFT (#43): free-exercise-db wins dedup (resell-safe) but is image-only, so
+// any MuscleWiki twin's VIDEO was dropped. Re-attach it by exact normalized-name match.
+// selfHostVideo() only returns a path when the file already exists in our set, so this
+// adds zero 404 risk and needs no new hosting — it just stops discarding videos we have.
+{
+  const mwPath = join(DL, 'musclewiki.json')
+  if (existsSync(mwPath)) {
+    const mwVid = new Map()
+    for (const e of readJson(mwPath)) {
+      const m = mapMuscleWiki(e)
+      if (m && m.video) mwVid.set(cnorm(m.name), m)
+    }
+    let lifted = 0
+    for (const ex of exercises) {
+      if (ex.video || ex.videoFemale) continue
+      const tw = mwVid.get(cnorm(ex.name))
+      if (!tw) continue
+      ex.video = tw.video
+      if (tw.videoFemale) ex.videoFemale = tw.videoFemale
+      if (!ex.image && tw.image) ex.image = tw.image
+      if (!ex.imageFemale && tw.imageFemale) ex.imageFemale = tw.imageFemale
+      lifted++
+    }
+    console.log(`video uplift: +${lifted} exercises got a MuscleWiki video (name-matched)`) // eslint-disable-line no-console
+  }
+}
 // Consolidate equipment across sources (free-exercise-db lowercase vs MuscleWiki/Centr)
 // so the Train equipment filter isn't fragmented (dumbbell vs Dumbbells vs …).
 const normEquip = (raw) => {
@@ -486,6 +529,24 @@ const normEquip = (raw) => {
   return raw // keep anything unrecognised as-is
 }
 for (const ex of exercises) ex.equipment = normEquip(ex.equipment)
+
+// Infer equipment where the source left it blank (Centr ships none; MuscleWiki drops
+// yoga/pilates/stretch/cardio). ACCURATE-only: a name cue, else a no-kit category →
+// Bodyweight. Genuinely-ambiguous items stay undefined (for source lookup), never guessed.
+const EQ_BY_NAME = [['Dumbbell', /dumbbell|\bdb\b/i], ['Barbell', /barbell|\bbb\b|\bez[- ]?bar/i], ['Kettlebell', /kettlebell|\bkb\b/i], ['Cable', /cable/i], ['Machine', /machine|smith|leg press|pulldown|pec deck|hack squat|hammer strength|leg extension|leg curl/i], ['Bands', /\bband/i], ['Ball', /swiss ball|medicine ball|stability ball|\bmed ball|\bbosu/i], ['Plate', /\bplate|weighted/i], ['TRX', /\btrx|suspension/i], ['Bodyweight', /push-?up|pull-?up|chin-?up|\bplank|\bdip\b|\bsquat\b|\blunge|\bcrunch|sit-?up|burpee|mountain climber|glute bridge|bird dog|superman|hollow|\braise\b/i]]
+const EQ_CAT_BODYWEIGHT = /yoga|pilates|stretch|mobilit|recovery|cardio|warm|cool|core/i
+// REASONED cues (exercise-type → implied gear) for items with no source data + no name
+// match. NOT source-truth — an educated call (JM approved 2026-06-23) so 100% are filterable;
+// Bodyweight is the default (the residual is Centr, which skews bodyweight).
+const EQ_REASONED = [['Barbell', /deadlift|romanian|\brdl\b|clean|snatch|back squat|front squat|overhead press|bench press|landmine/i], ['Kettlebell', /\bswing\b|turkish|windmill|goblet/i], ['Dumbbell', /curl|\brow\b|fly|flye|lateral raise|front raise|shoulder press|chest press|thruster|renegade|arnold|hammer|kickback|pullover|devil press|\bpress\b|reverse fly|upright row/i], ['Bands', /band|pull-?apart|pull-?through/i], ['Cable', /cable|pulldown|pushdown|face pull/i], ['Plate', /\bplate|weighted/i]]
+for (const ex of exercises) {
+  if (ex.equipment) continue
+  let tag = null
+  for (const [k, re] of EQ_BY_NAME) if (re.test(ex.name)) { tag = k; break }
+  if (!tag && EQ_CAT_BODYWEIGHT.test(ex.category || '')) tag = 'Bodyweight'
+  if (!tag) for (const [k, re] of EQ_REASONED) if (re.test(ex.name)) { tag = k; break }
+  ex.equipment = tag || 'Bodyweight' // reasoned default → 100% coverage
+}
 
 // Canonicalise primary muscle into a tidy set of groups (sources disagree on case/synonyms),
 // so the library can offer a clean muscle filter.

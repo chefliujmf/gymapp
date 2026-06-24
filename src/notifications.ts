@@ -9,6 +9,7 @@ export interface Notification {
   id: string
   kind: NotifKind
   date: string // YYYY-MM-DD
+  at?: string // ISO timestamp (coach notes) — finer-grained ordering than date
   title: string
   items?: string[] // bullet body (release notes)
   body?: string // single-line body (reminders/alerts)

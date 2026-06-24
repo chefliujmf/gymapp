@@ -10,6 +10,7 @@ export interface CalItem {
   kcal?: number
   minutes?: number
   notes?: string
+  why?: string // coach's per-pick reason (shown as "Coach's pick: …")
 }
 
 async function j<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {

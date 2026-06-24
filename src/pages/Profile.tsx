@@ -13,7 +13,6 @@ export default function Profile() {
   const logs = useLiveQuery(() => db.logs.toArray())
   const ftp = useLiveQuery(() => getSetting('ftp'))
   const coachName = useLiveQuery(() => getSetting('coachName'))
-  const diet = useLiveQuery(() => getSetting('diet'))
   const [coachSaved, setCoachSaved] = useState(false)
   const [sportSaved, setSportSaved] = useState(false)
 
@@ -69,14 +68,6 @@ export default function Profile() {
         ))}
       </div>
       <p className="meta" style={{ margin: '6px 2px 4px' }}>Pick all that apply — tunes your nav & coach. Cycling/Running unlock the endurance method & Fitness page.</p>
-
-      <div className="section-title">Diet</div>
-      <div className="chips">
-        {['vegetarian', 'vegan', 'no preference'].map((d) => (
-          <button key={d} className={'chip' + ((diet ?? 'vegetarian') === d ? ' chip--active' : '')} onClick={() => setSetting('diet', d)}>{d}</button>
-        ))}
-      </div>
-      <p className="meta" style={{ margin: '6px 2px 4px' }}>Your coach & meal suggestions use this (also in Settings).</p>
     </div>
   )
 }

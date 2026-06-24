@@ -32,7 +32,7 @@ const loadRoles = (): Record<string, DeviceRole> => { try { return JSON.parse(lo
 const saveRole = (id: string, r: DeviceRole) => { const m = loadRoles(); m[id] = r; localStorage.setItem(ROLE_KEY, JSON.stringify(m)) }
 
 const dv = (e: Event) => (e.target as unknown as { value: DataView }).value
-async function hasService(server: BluetoothRemoteGATTServer, uuid: number) {
+async function hasService(server: BluetoothRemoteGATTServer, uuid: number | string) {
   try { await server.getPrimaryService(uuid); return true } catch { return false }
 }
 
@@ -75,28 +75,65 @@ async function attachTrainer(server: BluetoothRemoteGATTServer, onData?: (d: Tra
 async function attachHR(server: BluetoothRemoteGATTServer, onBpm?: (bpm: number) => void) {
   const svc = await server.getPrimaryService(HR)
   const ch = await svc.getCharacteristic(HRM)
+  // Attach the listener BEFORE enabling notifications so the first reading isn't missed.
+  ch.addEventListener('characteristicvaluechanged', (e) => {
+    const v = dv(e); const f = v.getUint8(0); const bpm = f & 0x1 ? v.getUint16(1, true) : v.getUint8(1)
+    console.log('[ble] HR', bpm); onBpm?.(bpm)
+  })
   await ch.startNotifications()
-  ch.addEventListener('characteristicvaluechanged', (e) => { const v = dv(e); const f = v.getUint8(0); onBpm?.(f & 0x1 ? v.getUint16(1, true) : v.getUint8(1)) })
+  try { await ch.readValue() } catch { /* not all straps support read; notifications still flow */ }
 }
 
 async function attach(device: BluetoothDevice, cb: AttachCbs): Promise<Attached> {
   const server = await device.gatt!.connect()
-  let role = loadRoles()[device.id]
-  if (!role) role = (await hasService(server, FTMS)) || (await hasService(server, CPS)) ? 'trainer' : 'hr'
-  if (role === 'trainer') {
-    const { hasErg, setTargetPower } = await attachTrainer(server, cb.onTrainer)
-    saveRole(device.id, 'trainer')
-    return { role, device, name: device.name || 'Trainer', hasErg, setTargetPower, disconnect: () => device.gatt?.disconnect() }
+  // Decide role from the ACTUAL services the device offers (self-heals a stale
+  // cached role — the #103 "connected but no bpm" when a HR strap was cached as a
+  // trainer and we ran the wrong attach). Cache only breaks a genuine tie.
+  const hasTrainer = (await hasService(server, FTMS)) || (await hasService(server, CPS))
+  const hasHr = await hasService(server, HR)
+  console.log('[ble] services', { hasHr, hasTrainer, cached: loadRoles()[device.id] })
+  const role: DeviceRole = hasHr && !hasTrainer ? 'hr' : hasTrainer && !hasHr ? 'trainer'
+    : (loadRoles()[device.id] || (hasHr ? 'hr' : 'trainer'))
+  if (role === 'hr' && hasHr) {
+    await attachHR(server, cb.onHr); saveRole(device.id, 'hr')
+    return { role, device, name: device.name || 'HR monitor', disconnect: () => device.gatt?.disconnect() }
   }
-  await attachHR(server, cb.onHr)
-  saveRole(device.id, 'hr')
-  return { role, device, name: device.name || 'HR monitor', disconnect: () => device.gatt?.disconnect() }
+  if (hasTrainer) {
+    const { hasErg, setTargetPower } = await attachTrainer(server, cb.onTrainer); saveRole(device.id, 'trainer')
+    return { role: 'trainer', device, name: device.name || 'Trainer', hasErg, setTargetPower, disconnect: () => device.gatt?.disconnect() }
+  }
+  // last resort: try HR even if detection was fuzzy
+  await attachHR(server, cb.onHr); saveRole(device.id, 'hr')
+  return { role: 'hr', device, name: device.name || 'HR monitor', disconnect: () => device.gatt?.disconnect() }
 }
 
-/** Pair a new device (one chooser for trainer or HR). */
-export async function pairDevice(cb: AttachCbs): Promise<Attached> {
+// Known fitness brand name-prefixes — so HR straps / trainers that don't advertise
+// their service UUID still show, WITHOUT listing mice/earphones (#94/#95).
+const FITNESS_NAMES = ['Polar', 'Wahoo', 'KICKR', 'TICKR', 'Tacx', 'TACX', 'Garmin', 'HRM', 'Coros', 'COROS', 'Magene', 'Elite', 'Saris', 'Suunto', 'Scosche', 'Kinetic', 'Stages', '4iiii', 'Favero', 'Zwift', 'Decathlon', 'Kestrel', 'Van Rysel', 'Heart', 'HR ', 'Cadence', 'Power', 'Trainer', 'Bike']
+/** Pair a new device. Filters to fitness SERVICES or fitness brand NAMES: many HR
+ *  straps / trainers don't advertise their service UUID (only a name) so a pure
+ *  services filter hides them (#94); acceptAllDevices listed mice/earphones (#95).
+ *  This shows real fitness gear and hides the junk. optionalServices lets us still
+ *  discover + use the services after connecting. */
+export async function pairDevice(cb: AttachCbs, kind?: DeviceRole): Promise<Attached> {
+  // Per-row add (#116): narrow the chooser to HR or to trainer/power; attach() still
+  // detects the real role from services, so a mis-pick self-heals.
+  const svcFilters = kind === 'hr' ? [{ services: [HR] }]
+    : kind === 'trainer' ? [{ services: [FTMS] }, { services: [CPS] }, { services: ['cycling_power'] }]
+      : [{ services: [HR] }, { services: [FTMS] }, { services: [CPS] }, { services: ['cycling_power'] }]
   const device = await bt().requestDevice({
-    filters: [{ services: [HR] }, { services: [FTMS] }, { services: [CPS] }],
+    filters: [...svcFilters, ...FITNESS_NAMES.map((namePrefix) => ({ namePrefix }))],
+    optionalServices: [HR, FTMS, CPS, 'cycling_power'],
+  })
+  return attach(device, cb)
+}
+
+/** Escape hatch (#95): show EVERY Bluetooth device, for sensors that advertise
+ *  neither a fitness service UUID nor a recognized name. Noisy (mice/earphones)
+ *  but guarantees the device is selectable; we discover its services on connect. */
+export async function pairAnyDevice(cb: AttachCbs): Promise<Attached> {
+  const device = await bt().requestDevice({
+    acceptAllDevices: true,
     optionalServices: [HR, FTMS, CPS, 'cycling_power'],
   })
   return attach(device, cb)

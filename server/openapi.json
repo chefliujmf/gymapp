@@ -601,6 +601,76 @@
         }
       }
     },
+    "/api/recipes": {
+      "get": {
+        "summary": "Search recipe library \u2014 coach picks a real meal id for fueling (Bearer)",
+        "tags": ["catalog"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "q", "in": "query", "schema": { "type": "string" } }, { "name": "category", "in": "query", "schema": { "type": "string" }, "description": "breakfast|lunch|dinner|snack" }, { "name": "limit", "in": "query", "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "[{ id, title, category, kcal, protein, minutes }]" } }
+      }
+    },
+    "/api/sessions": {
+      "get": {
+        "summary": "Search mind/movement library (meditation/yoga/pilates) \u2014 coach picks a session id (Bearer)",
+        "tags": ["catalog"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "q", "in": "query", "schema": { "type": "string" } }, { "name": "kind", "in": "query", "schema": { "type": "string" }, "description": "meditation|yoga|pilates|breathing" }, { "name": "limit", "in": "query", "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "[{ id, title, kind, duration }]" } }
+      }
+    },
+    "/api/notify": {
+      "post": {
+        "summary": "Post a coach-activity notification to the athlete's bell (Bearer)",
+        "description": "Call after creating/adjusting the plan or reviewing a workout, so a short note appears in the athlete's notification center.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "description": "one-line summary, e.g. 'Updated your training plan'" },
+                  "body": { "type": "string", "description": "optional one-line context" },
+                  "items": { "type": "array", "items": { "type": "string" }, "description": "bullets of what changed/was reviewed" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Notification created" },
+          "400": { "description": "title is required" }
+        }
+      }
+    },
+    "/api/coach-review": {
+      "post": {
+        "summary": "Coach posts a post-workout REVIEW (Bearer) \u2014 Verdict/Execution/Body/Mind/Next from the cyclingcoach engine",
+        "description": "Platyplus is master: the coach writes its COACHCHECK review here (not intervals). Keyed by date (+ optional planId/activityId); re-POST updates. Surfaced in-app.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": {
+            "type": "object", "required": ["date"],
+            "properties": {
+              "date": { "type": "string", "format": "date" },
+              "planId": { "type": "string" }, "activityId": { "type": "string" }, "sport": { "type": "string" },
+              "score": { "type": "number", "description": "0-10 execution score" },
+              "verdict": { "type": "string" },
+              "execution": { "type": "array", "items": { "type": "string" } },
+              "body": { "type": "string" },
+              "mind": { "type": "object", "properties": { "pattern": { "type": "string" }, "cue": { "type": "string" } } },
+              "next": { "type": "string" }, "recovery": { "type": "string" },
+              "takeaways": { "type": "array", "items": { "type": "string" }, "description": "short bullets for the Progress card" }
+            }
+          } } }
+        },
+        "responses": { "201": { "description": "review stored" }, "400": { "description": "date required" } }
+      }
+    },
     "/api/exercises": {
       "get": {
         "summary": "Search exercise library \u2014 resolve names to exIds with demo media (Bearer)",
@@ -714,6 +784,14 @@
             "description": "profile too long"
           }
         }
+      }
+    },
+    "/auth/promote-prod": {
+      "post": {
+        "summary": "Admin: trigger the prod-promotion GitHub workflow (workflow_dispatch). Needs GH_PROMOTE_TOKEN in the server env.",
+        "tags": ["admin"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "promotion started" }, "503": { "description": "GH_PROMOTE_TOKEN not configured" }, "502": { "description": "GitHub API error" } }
       }
     },
     "/auth/checkin": {

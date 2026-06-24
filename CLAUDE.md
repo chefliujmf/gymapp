@@ -3,6 +3,12 @@
 Read this before changing anything here. It lists the invariants and the
 "when you change X, also update Y" rules so nothing drifts.
 
+## ▶ CURRENT WORK QUEUE — start here
+**`FEEDBACK-LOG.md`** is the single, numbered, statused source of truth for what JM
+has asked for and where we're at (✅ done · 🔨 building · ⬜ todo). **Any session: read it
+first, work the OPEN queue top-down, to the T**, unless JM says otherwise. Append every new
+feedback/idea there (numbered) on receipt. Design detail for big items → `UX-BACKLOG.md`.
+
 ## Architecture (how it runs)
 - One Node container (`gymapp-auth`, `server/server.js`): serves the built SPA,
   handles **password + passkey auth** (own `store.json`), proxies intervals.icu,
@@ -16,9 +22,8 @@ Read this before changing anything here. It lists the invariants and the
   it ships once the protected-branch `build` check passes → `deploy.yml` (push:`main`, CI-gated)
   deploys **prod** via the XPS self-hosted runner (`build:app` + synced catalog). So: push `dev` →
   test on QA → Run workflow → prod. Auth = Actions secret `PROMOTE_TOKEN` (fine-grained PAT, Contents+PRs
-  write — a PAT's PR triggers the `build` check; `GITHUB_TOKEN`'s would not). Repo "Allow auto-merge" on.
-  **Heads-up:** fine-grained PATs expire — re-mint + `gh secret set PROMOTE_TOKEN` when it lapses, or switch
-  to a GitHub App (`create-github-app-token`) for never-expiring auth. `npm run deploy` = Mac hotfix path.
+  write, configured **no-expiration** → set-and-forget; a PAT's PR triggers the `build` check, `GITHUB_TOKEN`'s
+  would not). Repo "Allow auto-merge" on. `npm run deploy` = Mac hotfix path.
 
 ## INVARIANT: 100% media independence (do not break)
 - The catalog must contain **zero** third-party media URLs (Centr, MuscleWiki,

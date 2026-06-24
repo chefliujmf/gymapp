@@ -17,7 +17,7 @@ Personal/family fitness PWA (you + wife). Repo `chefliujmf/gymapp`. **Design rul
 - To QA: just `git push origin dev` (auto-deploys to https://platyplus-qa.duckdns.org, prod password).
 - **To prod: test on QA, then repo → Actions → "Promote to prod" → Run workflow.** `promote-prod.yml` (`workflow_dispatch`) **opens/reuses a `dev`→`main` PR and enables auto-merge**, so GitHub merges it once the protected-branch `build` check passes → `deploy.yml` (push:`main`, CI-gated) ships prod. The human QA test is the gate; no PR busywork.
 - **`main` is a PROTECTED branch** requiring the `build` check — a direct push (even a merge) is rejected (`protected branch hook declined`), so promotion MUST go through a PR. (Also: `main` carries PR **merge commits**, so it never fast-forwards from `dev`.)
-- **Auth = `PROMOTE_TOKEN` Actions secret** (a fine-grained PAT, Contents+PRs write, repo-scoped). A PAT acts as a real user, so its PR triggers the `build` check (the built-in `GITHUB_TOKEN`'s would NOT — that's why a PAT, not GITHUB_TOKEN). Repo "Allow auto-merge" ON (`gh api -X PATCH repos/chefliujmf/gymapp -f allow_auto_merge=true`, done). Set/rotate: `gh secret set PROMOTE_TOKEN --repo chefliujmf/gymapp` (reads stdin). JM keeps the PAT in gitignored `.secrets/github.env` (`fine_grain_token=`). **CAVEAT (JM wanted zero-maintenance):** fine-grained PATs EXPIRE — when it lapses the promote workflow fails; re-mint + re-set the secret, OR upgrade to a **GitHub App** (`actions/create-github-app-token` minting a fresh 1h token from `APP_ID`+`APP_PRIVATE_KEY`; App key never expires) for truly never-touch-it auth. The App version of `promote-prod.yml` was built then reverted when JM supplied a PAT — re-applying it is the upgrade path.
+- **Auth = `PROMOTE_TOKEN` Actions secret** (a fine-grained PAT, Contents+PRs write, repo-scoped). A PAT acts as a real user, so its PR triggers the `build` check (the built-in `GITHUB_TOKEN`'s would NOT — that's why a PAT, not GITHUB_TOKEN). Repo "Allow auto-merge" ON (`gh api -X PATCH repos/chefliujmf/gymapp -f allow_auto_merge=true`, done). Set/rotate: `gh secret set PROMOTE_TOKEN --repo chefliujmf/gymapp` (reads stdin). **The PAT is configured with NO expiration (JM confirmed 2026-06-23) → zero-maintenance, nothing to rotate.** (So don't push the GitHub-App alternative — it was built then reverted when JM supplied the PAT; only relevant if the no-expiry PAT is ever revoked.) **No local secret copies anymore** — JM had me delete `.secrets/` (github.env + dev strava.env) on 2026-06-23; GitHub Secrets is the sole home. Local dev Strava therefore needs a re-"Connect" if used (dev-api.sh sources `.secrets/strava.env` only `[ -f ]`, so it just skips).
 - **`gh` is authenticated on the Mac** (as `chefliujmf`, scopes `repo`+`workflow`, since 2026-06-23) — use it directly for PRs/secrets/merges/`gh run`. The first promotion (to ship `promote-prod.yml` itself to prod) is bootstrapped with authed `gh`: `gh pr create -B main -H dev` → `gh pr merge dev --auto --merge`. (Earlier the classifier blocked repurposing the *keychain git* token for gh — irrelevant now that gh has its own login.)
 - Watch runs: `gh run list -L 5` or `curl -s "https://api.github.com/repos/chefliujmf/gymapp/actions/runs?per_page=5"`.
 
@@ -47,7 +47,10 @@ Personal/family fitness PWA (you + wife). Repo `chefliujmf/gymapp`. **Design rul
 **Non-negotiable, every time, no exceptions** (even "tiny" tweaks): BEFORE touching any UX/UI,
 **WebSearch current best practice + how leading apps do it** (NN/g, Android/iOS HIG, fitness apps
 like Strava/Whoop/Oura/intervals.icu), apply it, and **cite the sources in the reply**. Never guess
-or ship from memory. If you skip this, you're doing it wrong. Established patterns so far:
+or ship from memory. **THEN present 2-3 options WITH ASCII mockups (`AskUserQuestion` `preview`) and
+get JM's pick BEFORE implementing — never implement-then-iterate** (see the `options-first` skill +
+`show-options-and-mockups-first` memory; JM was burned by the check-in being shipped 4× then rejected).
+Established patterns so far:
 - **Nav:** ≤5 fixed bottom tabs; overflow → hubs/"More"; adapt CONTENT not structure (multi-sport).
 - **Charts:** one-takeaway-per-chart; round-number axes (1/2/5/10); interactive (scrub → value;
   mini-cards update the headline number, not a box); subtle draw-in motion; legible contrast.
@@ -61,6 +64,12 @@ or ship from memory. If you skip this, you're doing it wrong. Established patter
   data-quality diff vs 1–10 is trivial). Keep 1–10 only when mirroring an external score (e.g.
   intervals.icu sleep score) — and then fix the touch ergonomics.
 Charts live in `src/charts.tsx` (TrendChart/BarChart/PowerCurveChart/InfoDot/ChartModal, dependency-free SVG).
+
+## Build / deploy gotchas (learned 2026-06-23)
+- **Check the build EXIT CODE, not just "✓ built in".** `npm run build` = `tsc -b` + `vite build` THEN a workbox/PWA precache step that can FAIL *after* vite prints success. Grepping only for "built in" hid an `exit 1`. Use `npm run build >/dev/null 2>&1; echo $?` or `npx tsc -b` for a pure typecheck.
+- **Local build can fail while CI is green:** LOCAL has the full synced catalog → bundle ~6.3MB trips workbox `maximumFileSizeToCacheInBytes` (now 12MB in vite.config); CI builds a SMALLER catalog (scraped `downloaded_pages/` is gitignored/absent) so it stays under. **Never claim "the deploy didn't ship" without `gh run list --branch dev`** — I wrongly told JM fixes weren't deploying when CI was green.
+- **Every `dev` push auto-redeploys QA → a ~10-20s Bad-Gateway window** (rapid pushes can auto-cancel an in-flight deploy). While JM tests, **BATCH commits**. Hard-reload (Cmd+Shift+R) clears the cached error / updates the autoUpdate SW.
+- **In-app Promote-to-prod** needs `GH_PROMOTE_TOKEN` (a PAT with **Actions: write**) as a LINE INSIDE the `AUTH_ENV_STAGING`/`_PROD` blob (the server env) — distinct from the `PROMOTE_TOKEN` Actions secret used *inside* `promote-prod.yml`. Until added, the button shows "not set"; promotion still works via the Actions tab or `gh workflow run promote-prod.yml`.
 
 ## "When you change X" (from CLAUDE.md)
 Any `server/*` change rebuilds the image (CI smoke-tests the module graph). New `/api`|`/auth` route → update `server/openapi.json`. User-facing batch → add to `src/notifications.ts`/releases. Keep `UX-BACKLOG.md` + memory current (the user stresses this).

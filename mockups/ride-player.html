@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ride player — live power</title>
+<style>
+  :root { --text:#eef1f4; --dim:#aab2c0; --accent:#34e07d; --line:#2c313d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#0a0c0f; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:18px; display:flex; flex-direction:column; align-items:center; }
+  h1 { font-size:16px; margin:0 0 4px; } p.sub { color:var(--dim); font-size:13px; margin:0 0 14px; text-align:center; }
+  .opts { display:flex; gap:8px; margin-bottom:16px; }
+  .opts button { background:#191c24; color:var(--text); border:1px solid var(--line); border-radius:999px; padding:8px 14px; font-weight:700; font-size:13px; cursor:pointer; }
+  .opts button.on { background:var(--accent); color:#06281a; border-color:var(--accent); }
+  .phone { width:300px; background:#0e1014; border-radius:30px; border:1px solid var(--line); padding:16px 14px 18px; box-shadow:0 12px 40px rgba(0,0,0,.55); }
+  .ctrls { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .ctrls .ib { width:38px;height:38px;border-radius:50%;background:#1b1f27;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--text);font-size:15px; }
+  .seg-time { background:#c0392b;color:#fff;font-weight:800;border-radius:8px;padding:3px 10px;font-size:14px; }
+  .seg-rem { color:var(--dim);font-weight:700;font-size:14px; }
+  .gaugewrap { position:relative; width:240px; height:130px; margin:8px auto 0; overflow:hidden; }
+  .big { text-align:center; }
+  .big .w { font-size:64px; font-weight:800; line-height:1; letter-spacing:-1px; }
+  .big .u { font-size:14px; color:var(--dim); font-weight:700; margin-top:-2px; }
+  .targetrow { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:10px; }
+  .erg { background:#3a2; color:#fff; font-size:10px; font-weight:800; padding:3px 8px; border-radius:6px; letter-spacing:.5px; }
+  .target { font-size:30px; font-weight:800; color:var(--dim); } .target .lab { font-size:12px; font-weight:700; }
+  .delta { font-size:13px; font-weight:800; }
+  .bottom { display:flex; justify-content:space-between; margin-top:16px; padding-top:12px; border-top:1px solid var(--line); font-weight:800; }
+  .bottom small { display:block; color:var(--dim); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
+  .secondrow { display:flex; justify-content:center; gap:18px; margin-top:10px; }
+  .secondrow .s b { font-size:20px; } .secondrow .s small { display:block; color:var(--dim); font-size:10px; text-transform:uppercase; }
+  .bar { height:10px; border-radius:999px; background:#1b1f27; margin:12px 6px 0; position:relative; overflow:hidden; }
+  .bar > i { position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg,#34e07d,#ffb13d); }
+  .bar > .tick { position:absolute; top:-3px; bottom:-3px; width:3px; background:#fff; }
+</style>
+</head>
+<body>
+  <h1>Ride player — live power is the hero (#104)</h1>
+  <p class="sub">Live 367 W · target 394 W · ERG on. (red = under target here)</p>
+  <div class="opts">
+    <button data-opt="A" class="on">A · Gauge (like your ref)</button>
+    <button data-opt="B">B · Minimal + target bar</button>
+  </div>
+
+  <div class="phone">
+    <div class="ctrls">
+      <div class="ib">⏮</div>
+      <div class="seg-time">0:04</div>
+      <div class="seg-rem">0:16</div>
+      <div class="ib">⏭</div>
+    </div>
+
+    <div id="gauge"></div>
+
+    <div class="big">
+      <div class="w" id="liveW" style="color:#5ec8ff">367<span style="font-size:22px;color:var(--dim)"> W</span></div>
+      <div class="u">your power</div>
+    </div>
+
+    <div class="targetrow">
+      <span class="erg">⚡ ERG</span>
+      <span class="target"><span class="lab">target</span> 394<span style="font-size:14px"> W</span></span>
+      <span class="delta" style="color:#5ec8ff">−27</span>
+    </div>
+
+    <div class="secondrow">
+      <div class="s"><b style="color:#ff6b6b">142</b><small>♥ bpm</small></div>
+      <div class="s"><b>88</b><small>rpm</small></div>
+      <div class="s"><b>Z2</b><small>zone</small></div>
+    </div>
+
+    <div class="bottom">
+      <div>0:00:10<small>elapsed</small></div>
+      <div style="text-align:right">1:53:56<small>remaining</small></div>
+    </div>
+  </div>
+
+<script>
+function gaugeSVG(){
+  // semicircle gauge, needle at live vs target
+  const live=367, target=394, max=500;
+  const ang = (v)=> -90 + (Math.min(v,max)/max)*180;
+  const needle = ang(live), tgt = ang(target);
+  const rad = (a)=> (a-90)*Math.PI/180;
+  const cx=120, cy=120, r=100;
+  const pt=(a,rr)=>`${cx+rr*Math.cos(rad(a))},${cy+rr*Math.sin(rad(a))}`;
+  return `<div class="gaugewrap"><svg width="240" height="130" viewBox="0 0 240 130">
+    <path d="M20 120 A100 100 0 0 1 220 120" fill="none" stroke="#1b1f27" stroke-width="16" stroke-linecap="round"/>
+    <path d="M20 120 A100 100 0 0 1 220 120" fill="none" stroke="url(#g)" stroke-width="16" stroke-linecap="round" stroke-dasharray="${(live/max)*314} 314"/>
+    <line x1="${pt(tgt,70)}" x2="${pt(tgt,104)}" stroke="#fff" stroke-width="3"/>
+    <line x1="${cx},${cy}" x2="${pt(needle,92)}" stroke="#5ec8ff" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="6" fill="#5ec8ff"/>
+    <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#34e07d"/><stop offset="1" stop-color="#ffb13d"/></linearGradient></defs>
+  </svg></div>`;
+}
+const barHTML = `<div class="bar"><i style="width:74%"></i><div class="tick" style="left:79%"></div></div>
+  <p class="sub" style="margin:6px 0 0;font-size:11px">target marker (white) vs your output (fill)</p>`;
+function render(o){
+  document.getElementById('gauge').innerHTML = o==='A' ? gaugeSVG() : barHTML;
+  document.querySelectorAll('.opts button').forEach(b=>b.classList.toggle('on',b.dataset.opt===o));
+}
+document.querySelectorAll('.opts button').forEach(b=>b.onclick=()=>render(b.dataset.opt));
+render('A');
+</script>
+</body>
+</html>

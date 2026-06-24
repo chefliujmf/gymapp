@@ -9,6 +9,25 @@ import { useBle, BleDevices } from '../BleContext'
 import { Bluetooth } from 'lucide-react'
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, Math.floor(s % 60))).padStart(2, '0')}`
+const zoneOf = (pct: number) => pct < 55 ? 1 : pct < 75 ? 2 : pct < 90 ? 3 : pct < 105 ? 4 : pct < 120 ? 5 : pct < 150 ? 6 : 7
+
+/** Semicircle power gauge (#104): filled arc = live power, white tick = target. */
+function Gauge({ live, target, max, color, deltaColor }: { live?: number; target: number; max: number; color: string; deltaColor: string }) {
+  const W = 240, H = 128, cx = 120, cy = 120, r = 100
+  const ang = (v: number) => -180 + Math.min(1, Math.max(0, v / max)) * 180 // degrees, 0W=left(-180), max=right(0)
+  const pt = (a: number, rr: number) => `${(cx + rr * Math.cos((a * Math.PI) / 180)).toFixed(1)} ${(cy + rr * Math.sin((a * Math.PI) / 180)).toFixed(1)}`
+  const arcLen = Math.PI * r // semicircle length
+  const fill = live != null ? Math.min(1, live / max) : 0
+  const tA = ang(target)
+  return (
+    <svg className="rp-gauge" width="100%" viewBox={`0 0 ${W} ${H}`}>
+      <path d={`M ${pt(-180, r)} A ${r} ${r} 0 0 1 ${pt(0, r)}`} fill="none" stroke="#1b1f27" strokeWidth="15" strokeLinecap="round" />
+      {live != null && <path d={`M ${pt(-180, r)} A ${r} ${r} 0 0 1 ${pt(0, r)}`} fill="none" stroke={deltaColor} strokeWidth="15" strokeLinecap="round" strokeDasharray={`${fill * arcLen} ${arcLen}`} />}
+      <line x1={pt(tA, 78).split(' ')[0]} y1={pt(tA, 78).split(' ')[1]} x2={pt(tA, 110).split(' ')[0]} y2={pt(tA, 110).split(' ')[1]} stroke="#fff" strokeWidth="3" />
+      <text x={cx} y={cy - 8} textAnchor="middle" fontSize="11" fill="var(--text-dim)" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>{color ? '' : ''}target {target}W</text>
+    </svg>
+  )
+}
 
 export default function RidePlayer() {
   const navigate = useNavigate()
@@ -30,8 +49,10 @@ export default function RidePlayer() {
   const ble = useBle()
   const live = ble.live
   const hr = ble.bpm
-  const trState: 'idle' | 'on' | 'erg' = ble.trainer ? (ble.trainer.hasErg ? 'erg' : 'on') : 'idle'
-  const hrState: 'idle' | 'on' = ble.hrDev ? 'on' : 'idle'
+  const trState: 'idle' | 'on' | 'erg' = ble.trainer ? (ble.trainer.hasErg ? 'erg' : 'on') : ble.bridge?.trainer ? 'erg' : 'idle'
+  const hrState: 'idle' | 'on' = ble.hrDev || ble.bridge?.hr ? 'on' : 'idle'
+  // Intensity bias (#105) — scale the whole workout's watts down on a bad day.
+  const [bias, setBias] = useState(1)
   const lastErg = useRef(0)
 
   const total = segs.reduce((s, x) => s + x.duration, 0)
@@ -66,9 +87,9 @@ export default function RidePlayer() {
   // keep it matched to the interval during the ride. Throttled writes.
   useEffect(() => {
     if (trState !== 'erg' || paused || !cur || phase === 'setup') return
-    const target = phase === 'ride' ? wattsAt(cur, elapsedInSeg, ftp) : wattsAt(cur, 0, ftp)
+    const target = Math.round((phase === 'ride' ? wattsAt(cur, elapsedInSeg, ftp) : wattsAt(cur, 0, ftp)) * bias)
     if (Math.abs(target - lastErg.current) >= 2) { lastErg.current = target; ble.setTargetPower(target) }
-  }, [now, idx, paused, cur, segStart, pausedAt, ftp, phase, trState, ble, elapsedInSeg])
+  }, [now, idx, paused, cur, segStart, pausedAt, ftp, phase, trState, ble, elapsedInSeg, bias])
 
   async function finish() {
     await logWorkout({ workoutId: ride?.source ?? 'ride', title: ride?.title ?? 'Ride', discipline: ride?.sport ?? 'cycling', duration: Math.round(total / 60), date: localISO() })
@@ -76,6 +97,22 @@ export default function RidePlayer() {
   }
 
   if (!ride || !cur) return <div className="page-head"><h1>No ride loaded</h1><button className="btn" onClick={() => navigate(-1)}>Back</button></div>
+
+  // Riding is mobile-first (#109): on a desktop without the sensor bridge, point to
+  // the phone instead of launching a sensor-less ride. The bridge is the exception.
+  const isMobile = typeof window !== 'undefined' && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || window.innerWidth < 820)
+  if (!isMobile && !ble.bridge) return (
+    <div className="rp">
+      <div className="rp-top"><button className="rp-x" onClick={() => navigate(-1)}>✕</button><div className="rp-title">{sportIcon[ride.sport]} {ride.title}</div><div style={{ width: 34 }} /></div>
+      <div className="rp-main" style={{ textAlign: 'center', padding: '0 24px' }}>
+        <div style={{ fontSize: 56 }}>📱</div>
+        <h2 style={{ margin: '8px 0 6px' }}>Ride from your phone</h2>
+        <p className="meta" style={{ maxWidth: 340, lineHeight: 1.5 }}>Open Platyplus on your phone to do this ride — that's where your HR strap & trainer connect (Bluetooth works on mobile). Prop it on the bars or near the trainer.</p>
+        <p className="meta" style={{ marginTop: 10, fontSize: 11 }}>On a Mac and want the big screen? Run the desktop sensor bridge (tools/sensor-bridge) — then this page rides here too.</p>
+        <button className="btn" style={{ marginTop: 18, width: 'auto', padding: '12px 22px' }} onClick={() => navigate(-1)}>Got it</button>
+      </div>
+    </div>
+  )
 
   const firstW = wattsAt(segs[0], 0, ftp)
   const profile = (
@@ -96,7 +133,7 @@ export default function RidePlayer() {
     <div className="rp-live">
       {trState !== 'idle' && <div className="rp-stat"><b>{live.power ?? '–'}</b><small>watts</small></div>}
       {trState !== 'idle' && <div className="rp-stat"><b>{live.cadence != null ? Math.round(live.cadence) : '–'}</b><small>rpm</small></div>}
-      {hrState === 'on' && <div className="rp-stat"><b style={{ color: '#ff6b6b' }}>{hr ?? '–'}</b><small>bpm</small></div>}
+      {hrState === 'on' && <div className="rp-stat"><b style={{ color: '#ff6b6b' }}>{hr || '–'}</b><small>bpm</small></div>}
     </div>
   )
   // Devices reachable from ANY phase (like JOIN's in-workout devices page) — pair a
@@ -158,10 +195,13 @@ export default function RidePlayer() {
   }
 
   // ---- RIDE ----
-  const watts = wattsAt(cur, elapsedInSeg, ftp)
-  const pctNow = Math.round(cur.powerStart + (cur.powerEnd - cur.powerStart) * (cur.duration ? Math.min(1, elapsedInSeg / cur.duration) : 0))
+  const rawWatts = wattsAt(cur, elapsedInSeg, ftp)
+  const target = Math.round(rawWatts * bias)        // biased target (#105)
+  const pctNow = Math.round((cur.powerStart + (cur.powerEnd - cur.powerStart) * (cur.duration ? Math.min(1, elapsedInSeg / cur.duration) : 0)) * bias)
   const next = segs[idx + 1]
-  const over = live.power != null && trState !== 'idle' ? live.power - watts : undefined
+  const hasLive = trState !== 'idle' && live.power != null
+  const delta = hasLive ? (live.power as number) - target : undefined
+  const deltaColor = delta == null ? 'var(--text)' : Math.abs(delta) <= 10 ? 'var(--accent)' : delta > 0 ? '#ffb13d' : '#5ec8ff'
   return (
     <div className="rp">
       <div className="rp-top">
@@ -172,17 +212,38 @@ export default function RidePlayer() {
       {deviceSheet}
 
       <div className="rp-main">
-        <div className="rp-target" style={{ color: zoneColor(pctNow) }}>{watts}<span>W</span></div>
-        <div className="rp-sub">target · {pctNow}% FTP{cur.label ? ` · ${cur.label}W` : ''}{cur.hr ? ` · ${cur.hr} bpm` : ''}{cur.powerStart !== cur.powerEnd ? ' · ramp' : ''}</div>
-        {(trState !== 'idle' || hrState === 'on') && (
+        {/* interval position + time left in THIS interval */}
+        <div className="rp-iv">interval {idx + 1} / {segs.length} · {clock(remaining)} left{next ? ` · next ${Math.round(next.powerStart * bias)}% FTP` : ' · last'}</div>
+
+        <Gauge live={hasLive ? (live.power as number) : undefined} target={target} max={Math.max(target * 1.4, 200)} color={zoneColor(pctNow)} deltaColor={deltaColor} />
+
+        {/* hero: YOUR live power (falls back to target if no trainer) */}
+        {hasLive
+          ? <div className="rp-hero" style={{ color: deltaColor }}>{live.power}<span>W</span><em>your power</em></div>
+          : <div className="rp-hero" style={{ color: zoneColor(pctNow) }}>{target}<span>W</span><em>target</em></div>}
+
+        {/* target + ERG + delta */}
+        <div className="rp-targetrow">
+          {trState === 'erg' && <span className="rp-erg">⚡ ERG</span>}
+          <span className="rp-tgt">target <b>{target}</b> W · {pctNow}% FTP</span>
+          {delta != null && <span className="rp-delta" style={{ color: deltaColor }}>{delta > 0 ? '+' : ''}{delta}</span>}
+        </div>
+
+        {/* live secondary stats */}
+        {(hasLive || hrState === 'on') && (
           <div className="rp-live">
-            {trState !== 'idle' && <div className="rp-stat"><b style={{ color: over != null ? (Math.abs(over) <= 10 ? 'var(--accent)' : over > 0 ? '#ffb13d' : '#7fd1ff') : undefined }}>{live.power ?? '–'}</b><small>watts</small></div>}
             {trState !== 'idle' && <div className="rp-stat"><b>{live.cadence != null ? Math.round(live.cadence) : '–'}</b><small>rpm</small></div>}
-            {hrState === 'on' && <div className="rp-stat"><b style={{ color: '#ff6b6b' }}>{hr ?? '–'}</b><small>bpm</small></div>}
+            {hrState === 'on' && <div className="rp-stat"><b style={{ color: '#ff6b6b' }}>{hr || '–'}</b><small>bpm</small></div>}
+            <div className="rp-stat"><b>{cur.powerStart === cur.powerEnd ? `Z${zoneOf(pctNow)}` : 'ramp'}</b><small>zone</small></div>
           </div>
         )}
-        <div className="rp-timer">{clock(remaining)}</div>
-        <div className="rp-iv">interval {idx + 1} / {segs.length}{next ? ` · next ${Math.round(next.powerStart)}% FTP` : ' · last interval'}</div>
+
+        {/* intensity bias — reduce the whole workout on a bad day (#105) */}
+        <div className="rp-bias">
+          <button className="rp-bias__b" onClick={() => setBias((b) => Math.max(0.5, Math.round((b - 0.01) * 100) / 100))} aria-label="Easier">−</button>
+          <span className="rp-bias__v">{Math.round(bias * 100)}%<small>intensity</small></span>
+          <button className="rp-bias__b" onClick={() => setBias((b) => Math.min(1.2, Math.round((b + 0.01) * 100) / 100))} aria-label="Harder">+</button>
+        </div>
       </div>
 
       {profile}

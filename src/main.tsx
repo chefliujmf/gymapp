@@ -38,6 +38,8 @@ import { TrainHub, StatsHub, MoreHub } from './pages/hubs'
 import Chat from './pages/Chat'
 import Progress from './pages/Progress'
 import PlanDetail from './pages/PlanDetail'
+import CoachPlanDetail from './pages/CoachPlanDetail'
+import PostWorkout from './pages/PostWorkout'
 import { BleProvider } from './BleContext'
 import { AuthProvider, Gate } from './auth/AuthContext'
 import EnvBadge from './EnvBadge'
@@ -64,6 +66,8 @@ const router = createBrowserRouter([
       { path: 'template/:id/play', element: <GymPlayer /> },
       { path: 'gym-session/play', element: <GymPlayer /> },
       { path: 'plan/:id', element: <PlanDetail /> },
+      { path: 'coach/:id', element: <CoachPlanDetail /> },
+      { path: 'feedback/:id', element: <PostWorkout /> },
       { path: 'programs', element: <Programs /> },
       { path: 'programs/:id', element: <ProgramDetail /> },
       { path: 'trainers', element: <Trainers /> },

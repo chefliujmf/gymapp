@@ -18,6 +18,14 @@ export interface CoachPlan {
   exercises?: Array<{ name: string; exId?: string; mode?: 'timed' | 'reps'; seconds?: number; sets?: number; reps?: number; weight?: number; rest?: number }>
   icuEventId?: string // set when this plan mirrors an intervals.icu event
   origin?: 'platyplus' | 'icu'
+  // Structured coaching (optional; coach-authored). Meals/mind are separate calendar
+  // items joined by date; these are the plan-level strategy + cues.
+  objective?: string
+  cues?: string[]
+  success?: string
+  recovery?: string
+  fuel?: { why?: string; supplements?: string }
+  mind?: { why?: string }
 }
 
 /** Fetch the account's coach-pushed plans for a date range (session-authed). */
@@ -54,6 +62,12 @@ export function gymSessionFromPlan(p: CoachPlan): AdHocSession {
 export function setPlanEvents(evs: IcuEvent[]) { sessionStorage.setItem('planEvents', JSON.stringify(evs)) }
 export function getPlanEvent(id: string): IcuEvent | undefined {
   try { return (JSON.parse(sessionStorage.getItem('planEvents') || '[]') as IcuEvent[]).find((e) => String(e.id) === id) } catch { return undefined }
+}
+
+// Stash coach plans so /coach/:id can read one by id (mirrors planEvents).
+export function setCoachPlans(plans: CoachPlan[]) { try { sessionStorage.setItem('coachPlans', JSON.stringify(plans)) } catch { /* quota */ } }
+export function getCoachPlan(id: string): CoachPlan | undefined {
+  try { return (JSON.parse(sessionStorage.getItem('coachPlans') || '[]') as CoachPlan[]).find((p) => p.id === id) } catch { return undefined }
 }
 
 export interface AdHocEx {
