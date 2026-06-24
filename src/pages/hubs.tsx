@@ -41,10 +41,11 @@ export function StatsHub() {
   const { user } = useAuth()
   const sports = user?.sports || []
   const has = (arr: string[]) => !sports.length || sports.some((s) => arr.includes(s))
+  // Progress now covers strength (est-1RM trends per lift), so the standalone
+  // "Strength" item is folded in — no duplicate (#110).
   const items: Item[] = [
     ...(has(ENDUR) ? [{ label: 'Fitness & Form', sub: 'CTL/ATL/Form, VO₂max, power curve', to: '/fitness', icon: <Activity strokeWidth={1.75} /> }] : []),
-    ...(has(['strength']) ? [{ label: 'Strength', sub: 'Estimated 1RM per exercise', to: '/strength', icon: <Dumbbell strokeWidth={1.75} /> }] : []),
-    { label: 'Progress', sub: 'Trends, totals & streaks', to: '/progress', icon: <TrendingUp strokeWidth={1.75} /> },
+    { label: 'Progress', sub: has(['strength']) ? 'Volume, PRs & est-1RM strength trends' : 'Trends, totals & streaks', to: '/progress', icon: <TrendingUp strokeWidth={1.75} /> },
     { label: 'History', sub: 'Your logged sessions', to: '/logs', icon: <History strokeWidth={1.75} /> },
   ]
   return (
