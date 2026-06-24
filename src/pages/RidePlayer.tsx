@@ -96,7 +96,7 @@ export default function RidePlayer() {
     <div className="rp-live">
       {trState !== 'idle' && <div className="rp-stat"><b>{live.power ?? '–'}</b><small>watts</small></div>}
       {trState !== 'idle' && <div className="rp-stat"><b>{live.cadence != null ? Math.round(live.cadence) : '–'}</b><small>rpm</small></div>}
-      {hrState === 'on' && <div className="rp-stat"><b style={{ color: '#ff6b6b' }}>{hr ?? '–'}</b><small>bpm</small></div>}
+      {hrState === 'on' && <div className="rp-stat"><b style={{ color: '#ff6b6b' }}>{hr || '–'}</b><small>bpm</small></div>}
     </div>
   )
   // Devices reachable from ANY phase (like JOIN's in-workout devices page) — pair a
@@ -178,7 +178,7 @@ export default function RidePlayer() {
           <div className="rp-live">
             {trState !== 'idle' && <div className="rp-stat"><b style={{ color: over != null ? (Math.abs(over) <= 10 ? 'var(--accent)' : over > 0 ? '#ffb13d' : '#7fd1ff') : undefined }}>{live.power ?? '–'}</b><small>watts</small></div>}
             {trState !== 'idle' && <div className="rp-stat"><b>{live.cadence != null ? Math.round(live.cadence) : '–'}</b><small>rpm</small></div>}
-            {hrState === 'on' && <div className="rp-stat"><b style={{ color: '#ff6b6b' }}>{hr ?? '–'}</b><small>bpm</small></div>}
+            {hrState === 'on' && <div className="rp-stat"><b style={{ color: '#ff6b6b' }}>{hr || '–'}</b><small>bpm</small></div>}
           </div>
         )}
         <div className="rp-timer">{clock(remaining)}</div>
