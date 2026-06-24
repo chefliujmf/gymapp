@@ -30,7 +30,7 @@ jobs:
       BUILD_CMD: npm run build:app
       CATALOG_DIR: /home/jmf/content/generated
       AUTH_ENV: ${{ secrets.AUTH_ENV_PROD }}   # GitHub Secrets = master; deploy.sh writes auth.env from it
-      GH_PROMOTE_TOKEN: ${{ secrets.GH_PROMOTE_TOKEN }}   # PAT (Actions:write) for the in-app Promote button (#47)
+      GH_PROMOTE_TOKEN: ${{ secrets.PROMOTE_TOKEN }}   # reuse the existing promote PAT for the in-app Promote button (#47)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
