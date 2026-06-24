@@ -50,7 +50,7 @@ if (!store.users.length) {
   console.log('Seeded admin user.')
 }
 // Backfill api tokens / plan arrays for any user created before these existed.
-for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = []; if (!u.items) u.items = []; if (!u.notifications) u.notifications = [] }
+for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = []; if (!u.items) u.items = []; if (!u.notifications) u.notifications = []; if (!u.coachReviews) u.coachReviews = [] }
 save(store)
 // Late-seed the admin's intervals.icu key if it wasn't stored yet (idempotent).
 const seedKey = process.env.SEED_ICU_KEY
@@ -265,6 +265,14 @@ app.post('/auth/promote-prod', auth, admin, async (req, res) => {
     if (r.status === 204) return res.json({ ok: true })
     return res.status(502).json({ error: `GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` })
   } catch (e) { return res.status(502).json({ error: String(e).slice(0, 200) }) }
+})
+
+// Coach post-workout reviews — the app reads to render takeaways (#91).
+app.get('/auth/coach-reviews', auth, (req, res) => {
+  let r = req.user.coachReviews || []
+  if (req.query.from) r = r.filter((x) => x.date >= req.query.from)
+  if (req.query.to) r = r.filter((x) => x.date <= req.query.to)
+  res.json(r)
 })
 
 // Coach-activity notifications — the user reads (bell) + marks read.
@@ -936,6 +944,35 @@ app.post('/api/notify', apiAuth, (req, res) => {
   const n = pushNotification(req.user, req.body || {})
   if (!n) return res.status(400).json({ error: 'title is required' })
   save(store); res.status(201).json(n)
+})
+
+// Coach post-workout REVIEW (#91): the cyclingcoach engine writes its existing
+// COACHCHECK output (Verdict/Execution/Body/Mind/Next) HERE — Platyplus is master,
+// not intervals. Stored per-user; surfaced in-app (Progress takeaways + post-workout).
+// Keyed by date (+ optional planId/activityId) so re-POST updates. Mirror-to-intervals
+// is a follow-on (the planned-workout mirror already exists).
+app.post('/api/coach-review', apiAuth, (req, res) => {
+  const b = req.body || {}
+  const date = String(b.date || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date (YYYY-MM-DD) is required' })
+  if (!req.user.coachReviews) req.user.coachReviews = []
+  const arr = (x) => Array.isArray(x) ? x.filter((s) => typeof s === 'string').map((s) => s.slice(0, 300)).slice(0, 8) : undefined
+  const review = {
+    id: b.id || ('rev-' + date + (b.activityId ? '-' + b.activityId : '')),
+    date, planId: b.planId || undefined, activityId: b.activityId || undefined,
+    sport: typeof b.sport === 'string' ? b.sport.slice(0, 20) : undefined,
+    score: typeof b.score === 'number' ? b.score : undefined,
+    verdict: typeof b.verdict === 'string' ? b.verdict.slice(0, 600) : undefined,
+    execution: arr(b.execution),
+    body: typeof b.body === 'string' ? b.body.slice(0, 600) : undefined,
+    mind: b.mind && typeof b.mind === 'object' ? { pattern: String(b.mind.pattern || '').slice(0, 300), cue: String(b.mind.cue || '').slice(0, 300) } : undefined,
+    next: typeof b.next === 'string' ? b.next.slice(0, 600) : undefined,
+    recovery: typeof b.recovery === 'string' ? b.recovery.slice(0, 800) : undefined,
+    takeaways: arr(b.takeaways), // optional short bullets for the Progress card
+    at: new Date().toISOString(),
+  }
+  req.user.coachReviews = [review, ...req.user.coachReviews.filter((r) => r.id !== review.id)].slice(0, 200)
+  save(store); res.status(201).json(review)
 })
 app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit, req.query.equipment)))
 // Recipe + session catalog search — the coach picks a real id for fuel meals / mind sessions.

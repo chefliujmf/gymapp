@@ -646,6 +646,31 @@
         }
       }
     },
+    "/api/coach-review": {
+      "post": {
+        "summary": "Coach posts a post-workout REVIEW (Bearer) \u2014 Verdict/Execution/Body/Mind/Next from the cyclingcoach engine",
+        "description": "Platyplus is master: the coach writes its COACHCHECK review here (not intervals). Keyed by date (+ optional planId/activityId); re-POST updates. Surfaced in-app.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": {
+            "type": "object", "required": ["date"],
+            "properties": {
+              "date": { "type": "string", "format": "date" },
+              "planId": { "type": "string" }, "activityId": { "type": "string" }, "sport": { "type": "string" },
+              "score": { "type": "number", "description": "0-10 execution score" },
+              "verdict": { "type": "string" },
+              "execution": { "type": "array", "items": { "type": "string" } },
+              "body": { "type": "string" },
+              "mind": { "type": "object", "properties": { "pattern": { "type": "string" }, "cue": { "type": "string" } } },
+              "next": { "type": "string" }, "recovery": { "type": "string" },
+              "takeaways": { "type": "array", "items": { "type": "string" }, "description": "short bullets for the Progress card" }
+            }
+          } } }
+        },
+        "responses": { "201": { "description": "review stored" }, "400": { "description": "date required" } }
+      }
+    },
     "/api/exercises": {
       "get": {
         "summary": "Search exercise library \u2014 resolve names to exIds with demo media (Bearer)",
