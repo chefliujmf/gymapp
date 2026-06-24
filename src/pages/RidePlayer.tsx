@@ -98,6 +98,22 @@ export default function RidePlayer() {
 
   if (!ride || !cur) return <div className="page-head"><h1>No ride loaded</h1><button className="btn" onClick={() => navigate(-1)}>Back</button></div>
 
+  // Riding is mobile-first (#109): on a desktop without the sensor bridge, point to
+  // the phone instead of launching a sensor-less ride. The bridge is the exception.
+  const isMobile = typeof window !== 'undefined' && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || window.innerWidth < 820)
+  if (!isMobile && !ble.bridge) return (
+    <div className="rp">
+      <div className="rp-top"><button className="rp-x" onClick={() => navigate(-1)}>✕</button><div className="rp-title">{sportIcon[ride.sport]} {ride.title}</div><div style={{ width: 34 }} /></div>
+      <div className="rp-main" style={{ textAlign: 'center', padding: '0 24px' }}>
+        <div style={{ fontSize: 56 }}>📱</div>
+        <h2 style={{ margin: '8px 0 6px' }}>Ride from your phone</h2>
+        <p className="meta" style={{ maxWidth: 340, lineHeight: 1.5 }}>Open Platyplus on your phone to do this ride — that's where your HR strap & trainer connect (Bluetooth works on mobile). Prop it on the bars or near the trainer.</p>
+        <p className="meta" style={{ marginTop: 10, fontSize: 11 }}>On a Mac and want the big screen? Run the desktop sensor bridge (tools/sensor-bridge) — then this page rides here too.</p>
+        <button className="btn" style={{ marginTop: 18, width: 'auto', padding: '12px 22px' }} onClick={() => navigate(-1)}>Got it</button>
+      </div>
+    </div>
+  )
+
   const firstW = wattsAt(segs[0], 0, ftp)
   const profile = (
     <div className="rp-profile">
