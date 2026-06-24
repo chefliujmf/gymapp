@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
-import { Home, CalendarDays, Dumbbell, BarChart3, MoreHorizontal, MessageCircle } from 'lucide-react'
+import { Home, CalendarDays, Dumbbell, BarChart3, Salad, MessageCircle } from 'lucide-react'
 import AccountMenu from './auth/AccountMenu'
 import ReleaseBell from './ReleaseBell'
 import PromoteButton from './PromoteButton'
@@ -9,9 +9,9 @@ import PromoteButton from './PromoteButton'
 const tabs = [
   { to: '/', label: 'Today', icon: <Home strokeWidth={1.75} />, end: true },
   { to: '/plan', label: 'Plan', icon: <CalendarDays strokeWidth={1.75} />, end: false },
-  { to: '/train', label: 'Train', icon: <Dumbbell strokeWidth={1.75} />, end: false, match: /^\/(train|gym|workouts|exercises|programs|trainers|cycle|run|ride-builder|run-builder)/ },
-  { to: '/stats', label: 'Stats', icon: <BarChart3 strokeWidth={1.75} />, end: false, match: /^\/(stats|fitness|strength|progress)/ },
-  { to: '/more', label: 'More', icon: <MoreHorizontal strokeWidth={1.75} />, end: false, match: /^\/(more|eat|mind|recipes)/ },
+  { to: '/train', label: 'Train', icon: <Dumbbell strokeWidth={1.75} />, end: false, match: /^\/(train|gym|workouts|exercises|programs|trainers|cycle|run|ride-builder|run-builder|mind)/ },
+  { to: '/eat', label: 'Eat', icon: <Salad strokeWidth={1.75} />, end: false, match: /^\/(eat|recipes)/ },
+  { to: '/stats', label: 'Stats', icon: <BarChart3 strokeWidth={1.75} />, end: false, match: /^\/(stats|fitness|strength|progress|logs)/ },
 ]
 
 export default function App() {

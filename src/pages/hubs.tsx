@@ -9,7 +9,7 @@ function HubLink({ it }: { it: Item }) {
   return (
     <Link to={it.to} className="card hub-link">
       <span className="hub-link__ic">{it.icon}</span>
-      <span className="hub-link__t"><h3>{it.label}{it.mine && <em> · yours</em>}</h3><div className="meta">{it.sub}</div></span>
+      <span className="hub-link__t"><h3>{it.label}</h3><div className="meta">{it.sub}</div></span>
       <span className="hub-link__ch">›</span>
     </Link>
   )
