@@ -637,6 +637,9 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .rp-setup-pair { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:1px; opacity:.6; margin-top:8px; }
 .ble-devices { display:flex; flex-direction:column; gap:8px; }
 .ble-dev { display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:14px; padding:12px 14px; color:var(--text-dim); }
+/* Per-row add (#116): a ＋ on the HR / trainer row to pair that device type. */
+.ble-add { flex:none; width:40px; height:40px; border-radius:50%; background:var(--accent-grad); color:var(--on-accent); border:none; font-size:22px; font-weight:800; line-height:1; cursor:pointer; }
+.ble-add:disabled { opacity:.5; }
 .ble-dev.on { color:var(--text); border-color:var(--accent); background:rgba(52,224,125,.08); }
 .ble-dev b { display:block; font-size:15px; }
 .ble-dev small { opacity:.7; }

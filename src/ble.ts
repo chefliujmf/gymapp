@@ -115,12 +115,14 @@ const FITNESS_NAMES = ['Polar', 'Wahoo', 'KICKR', 'TICKR', 'Tacx', 'TACX', 'Garm
  *  services filter hides them (#94); acceptAllDevices listed mice/earphones (#95).
  *  This shows real fitness gear and hides the junk. optionalServices lets us still
  *  discover + use the services after connecting. */
-export async function pairDevice(cb: AttachCbs): Promise<Attached> {
+export async function pairDevice(cb: AttachCbs, kind?: DeviceRole): Promise<Attached> {
+  // Per-row add (#116): narrow the chooser to HR or to trainer/power; attach() still
+  // detects the real role from services, so a mis-pick self-heals.
+  const svcFilters = kind === 'hr' ? [{ services: [HR] }]
+    : kind === 'trainer' ? [{ services: [FTMS] }, { services: [CPS] }, { services: ['cycling_power'] }]
+      : [{ services: [HR] }, { services: [FTMS] }, { services: [CPS] }, { services: ['cycling_power'] }]
   const device = await bt().requestDevice({
-    filters: [
-      { services: [HR] }, { services: [FTMS] }, { services: [CPS] }, { services: ['cycling_power'] },
-      ...FITNESS_NAMES.map((namePrefix) => ({ namePrefix })),
-    ],
+    filters: [...svcFilters, ...FITNESS_NAMES.map((namePrefix) => ({ namePrefix }))],
     optionalServices: [HR, FTMS, CPS, 'cycling_power'],
   })
   return attach(device, cb)

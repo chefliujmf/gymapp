@@ -15,7 +15,7 @@ interface BleCtx {
   err: string
   bridge: { trainer?: string; hr?: string } | null // connected via the desktop sensor bridge (#100)
   reconnect(): Promise<void>
-  addDevice(): Promise<void>
+  addDevice(kind?: 'hr' | 'trainer'): Promise<void>
   addDeviceAll(): Promise<void>
   setTargetPower(watts: number): void
 }
@@ -67,9 +67,9 @@ export function BleProvider({ children }: { children: ReactNode }) {
     if (!bleSupported()) return
     try { (await reconnectKnown(cbs)).forEach(place) } catch { /* none in range */ }
   }
-  async function addDevice() {
+  async function addDevice(kind?: 'hr' | 'trainer') {
     setScanning(true); setErr('')
-    try { place(await pairDevice(cbs)) } catch (e) { reportErr(e) } finally { setScanning(false) }
+    try { place(await pairDevice(cbs, kind)) } catch (e) { reportErr(e) } finally { setScanning(false) }
   }
   async function addDeviceAll() {
     setScanning(true); setErr('')
@@ -114,18 +114,20 @@ export function BleDevices() {
       <div className={'ble-dev' + (trName ? ' on' : '')}>
         <Bike size={22} />
         <div style={{ flex: 1 }}><b>{trName || 'Smart trainer'}</b><small>{trName ? (ble.bridge?.trainer ? 'Connected · bridge' : ble.trainer?.hasErg ? 'Connected · ERG' : 'Connected') : 'Not connected'}</small></div>
-        {trName && <div style={{ textAlign: 'right' }}><b style={{ fontSize: 18 }}>{ble.live.power != null ? ble.live.power : '·'}</b><small style={{ display: 'block' }}>watts</small></div>}
+        {trName
+          ? <div style={{ textAlign: 'right' }}><b style={{ fontSize: 18 }}>{ble.live.power != null ? ble.live.power : '·'}</b><small style={{ display: 'block' }}>watts</small></div>
+          : ble.supported && <button className="ble-add" onClick={() => ble.addDevice('trainer')} disabled={ble.scanning} aria-label="Add trainer">＋</button>}
       </div>
       <div className={'ble-dev' + (hrName ? ' on' : '')}>
         <HeartPulse size={22} />
-        <div style={{ flex: 1 }}><b>{hrName || 'Heart rate'}</b><small>{hrName ? (ble.bridge?.hr ? 'Connected · bridge' : 'Connected') : 'Watch or strap · not connected'}</small></div>
-        {hrName && <div style={{ textAlign: 'right' }}><b style={{ fontSize: 18, color: '#ff6b6b' }}>{ble.bpm ? ble.bpm : '·'}</b><small style={{ display: 'block' }}>bpm</small></div>}
+        <div style={{ flex: 1 }}><b>{hrName || 'Heart rate'}</b><small>{hrName ? (ble.bridge?.hr ? 'Connected · bridge' : 'Connected') : 'Strap or watch · not connected'}</small></div>
+        {hrName
+          ? <div style={{ textAlign: 'right' }}><b style={{ fontSize: 18, color: '#ff6b6b' }}>{ble.bpm ? ble.bpm : '·'}</b><small style={{ display: 'block' }}>bpm</small></div>
+          : ble.supported && <button className="ble-add" onClick={() => ble.addDevice('hr')} disabled={ble.scanning} aria-label="Add heart-rate">＋</button>}
       </div>
+      {ble.scanning && <p className="meta" style={{ textAlign: 'center', margin: '6px 0 0', fontSize: 11 }}>Scanning…</p>}
       {ble.err && <p className="meta" style={{ textAlign: 'center', margin: '6px 0 0', color: 'var(--danger,#ff6b6b)', fontSize: 11 }}>⚠ {ble.err}</p>}
-      {ble.supported && <>
-        <button className="btn btn--ghost" onClick={ble.addDevice} disabled={ble.scanning}>{ble.scanning ? 'Scanning…' : '＋ Add a device'}</button>
-        <button className="link-btn" onClick={ble.addDeviceAll} disabled={ble.scanning} style={{ display: 'block', margin: '8px auto 0', background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>Show all devices</button>
-      </>}
+      {ble.supported && <button className="link-btn" onClick={ble.addDeviceAll} disabled={ble.scanning} style={{ display: 'block', margin: '8px auto 0', background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>Show all devices</button>}
     </div>
   )
 }
