@@ -279,12 +279,9 @@ export default function Today() {
 
   return (
     <div>
-      <div className="page-head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <span className="eyebrow">{greeting}</span>
-          <h1>Ready to train?</h1>
-        </div>
-        <Link to="/progress" className="chip" style={{ marginTop: 6 }}>📈 History</Link>
+      <div className="page-head">
+        <span className="eyebrow">{greeting}</span>
+        <h1>Ready to train?</h1>
       </div>
 
       <WeekStrip selected={selDay} onSelect={setSelDay} marked={markedDays} />

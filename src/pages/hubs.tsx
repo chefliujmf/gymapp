@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, TrendingUp } from 'lucide-react'
+import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, TrendingUp, History } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
 type Item = { label: string; sub: string; to: string; icon: ReactNode; mine?: boolean }
@@ -44,7 +44,8 @@ export function StatsHub() {
   const items: Item[] = [
     ...(has(ENDUR) ? [{ label: 'Fitness & Form', sub: 'CTL/ATL/Form, VO₂max, power curve', to: '/fitness', icon: <Activity strokeWidth={1.75} /> }] : []),
     ...(has(['strength']) ? [{ label: 'Strength', sub: 'Estimated 1RM per exercise', to: '/strength', icon: <Dumbbell strokeWidth={1.75} /> }] : []),
-    { label: 'Progress', sub: 'History, totals & streaks', to: '/progress', icon: <TrendingUp strokeWidth={1.75} /> },
+    { label: 'Progress', sub: 'Trends, totals & streaks', to: '/progress', icon: <TrendingUp strokeWidth={1.75} /> },
+    { label: 'History', sub: 'Your logged sessions', to: '/logs', icon: <History strokeWidth={1.75} /> },
   ]
   return (
     <div>
