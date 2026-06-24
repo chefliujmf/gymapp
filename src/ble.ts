@@ -75,22 +75,36 @@ async function attachTrainer(server: BluetoothRemoteGATTServer, onData?: (d: Tra
 async function attachHR(server: BluetoothRemoteGATTServer, onBpm?: (bpm: number) => void) {
   const svc = await server.getPrimaryService(HR)
   const ch = await svc.getCharacteristic(HRM)
+  // Attach the listener BEFORE enabling notifications so the first reading isn't missed.
+  ch.addEventListener('characteristicvaluechanged', (e) => {
+    const v = dv(e); const f = v.getUint8(0); const bpm = f & 0x1 ? v.getUint16(1, true) : v.getUint8(1)
+    console.log('[ble] HR', bpm); onBpm?.(bpm)
+  })
   await ch.startNotifications()
-  ch.addEventListener('characteristicvaluechanged', (e) => { const v = dv(e); const f = v.getUint8(0); onBpm?.(f & 0x1 ? v.getUint16(1, true) : v.getUint8(1)) })
+  try { await ch.readValue() } catch { /* not all straps support read; notifications still flow */ }
 }
 
 async function attach(device: BluetoothDevice, cb: AttachCbs): Promise<Attached> {
   const server = await device.gatt!.connect()
-  let role = loadRoles()[device.id]
-  if (!role) role = (await hasService(server, FTMS)) || (await hasService(server, CPS)) ? 'trainer' : 'hr'
-  if (role === 'trainer') {
-    const { hasErg, setTargetPower } = await attachTrainer(server, cb.onTrainer)
-    saveRole(device.id, 'trainer')
-    return { role, device, name: device.name || 'Trainer', hasErg, setTargetPower, disconnect: () => device.gatt?.disconnect() }
+  // Decide role from the ACTUAL services the device offers (self-heals a stale
+  // cached role — the #103 "connected but no bpm" when a HR strap was cached as a
+  // trainer and we ran the wrong attach). Cache only breaks a genuine tie.
+  const hasTrainer = (await hasService(server, FTMS)) || (await hasService(server, CPS))
+  const hasHr = await hasService(server, HR)
+  console.log('[ble] services', { hasHr, hasTrainer, cached: loadRoles()[device.id] })
+  const role: DeviceRole = hasHr && !hasTrainer ? 'hr' : hasTrainer && !hasHr ? 'trainer'
+    : (loadRoles()[device.id] || (hasHr ? 'hr' : 'trainer'))
+  if (role === 'hr' && hasHr) {
+    await attachHR(server, cb.onHr); saveRole(device.id, 'hr')
+    return { role, device, name: device.name || 'HR monitor', disconnect: () => device.gatt?.disconnect() }
   }
-  await attachHR(server, cb.onHr)
-  saveRole(device.id, 'hr')
-  return { role, device, name: device.name || 'HR monitor', disconnect: () => device.gatt?.disconnect() }
+  if (hasTrainer) {
+    const { hasErg, setTargetPower } = await attachTrainer(server, cb.onTrainer); saveRole(device.id, 'trainer')
+    return { role: 'trainer', device, name: device.name || 'Trainer', hasErg, setTargetPower, disconnect: () => device.gatt?.disconnect() }
+  }
+  // last resort: try HR even if detection was fuzzy
+  await attachHR(server, cb.onHr); saveRole(device.id, 'hr')
+  return { role: 'hr', device, name: device.name || 'HR monitor', disconnect: () => device.gatt?.disconnect() }
 }
 
 // Known fitness brand name-prefixes — so HR straps / trainers that don't advertise
