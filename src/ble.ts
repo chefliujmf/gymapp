@@ -93,14 +93,20 @@ async function attach(device: BluetoothDevice, cb: AttachCbs): Promise<Attached>
   return { role, device, name: device.name || 'HR monitor', disconnect: () => device.gatt?.disconnect() }
 }
 
-/** Pair a new device (one chooser for trainer or HR).
- *  Uses acceptAllDevices (not service filters): many HR straps / trainers don't
- *  ADVERTISE their service UUID (only their name), so a services filter hides them
- *  from the chooser — the #94 "didn't find my HR/trainer". We list the services in
- *  optionalServices so we can still discover + use them after connecting. */
+// Known fitness brand name-prefixes — so HR straps / trainers that don't advertise
+// their service UUID still show, WITHOUT listing mice/earphones (#94/#95).
+const FITNESS_NAMES = ['Polar', 'Wahoo', 'KICKR', 'TICKR', 'Tacx', 'TACX', 'Garmin', 'HRM', 'Coros', 'COROS', 'Magene', 'Elite', 'Saris', 'Suunto', 'Scosche', 'Kinetic', 'Stages', '4iiii', 'Favero', 'Zwift', 'Decathlon', 'Kestrel', 'Van Rysel', 'Heart', 'HR ', 'Cadence', 'Power', 'Trainer', 'Bike']
+/** Pair a new device. Filters to fitness SERVICES or fitness brand NAMES: many HR
+ *  straps / trainers don't advertise their service UUID (only a name) so a pure
+ *  services filter hides them (#94); acceptAllDevices listed mice/earphones (#95).
+ *  This shows real fitness gear and hides the junk. optionalServices lets us still
+ *  discover + use the services after connecting. */
 export async function pairDevice(cb: AttachCbs): Promise<Attached> {
   const device = await bt().requestDevice({
-    acceptAllDevices: true,
+    filters: [
+      { services: [HR] }, { services: [FTMS] }, { services: [CPS] }, { services: ['cycling_power'] },
+      ...FITNESS_NAMES.map((namePrefix) => ({ namePrefix })),
+    ],
     optionalServices: [HR, FTMS, CPS, 'cycling_power'],
   })
   return attach(device, cb)
