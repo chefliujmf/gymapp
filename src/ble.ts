@@ -32,7 +32,7 @@ const loadRoles = (): Record<string, DeviceRole> => { try { return JSON.parse(lo
 const saveRole = (id: string, r: DeviceRole) => { const m = loadRoles(); m[id] = r; localStorage.setItem(ROLE_KEY, JSON.stringify(m)) }
 
 const dv = (e: Event) => (e.target as unknown as { value: DataView }).value
-async function hasService(server: BluetoothRemoteGATTServer, uuid: number) {
+async function hasService(server: BluetoothRemoteGATTServer, uuid: number | string) {
   try { await server.getPrimaryService(uuid); return true } catch { return false }
 }
 
