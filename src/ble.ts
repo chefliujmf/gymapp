@@ -93,10 +93,14 @@ async function attach(device: BluetoothDevice, cb: AttachCbs): Promise<Attached>
   return { role, device, name: device.name || 'HR monitor', disconnect: () => device.gatt?.disconnect() }
 }
 
-/** Pair a new device (one chooser for trainer or HR). */
+/** Pair a new device (one chooser for trainer or HR).
+ *  Uses acceptAllDevices (not service filters): many HR straps / trainers don't
+ *  ADVERTISE their service UUID (only their name), so a services filter hides them
+ *  from the chooser — the #94 "didn't find my HR/trainer". We list the services in
+ *  optionalServices so we can still discover + use them after connecting. */
 export async function pairDevice(cb: AttachCbs): Promise<Attached> {
   const device = await bt().requestDevice({
-    filters: [{ services: [HR] }, { services: [FTMS] }, { services: [CPS] }],
+    acceptAllDevices: true,
     optionalServices: [HR, FTMS, CPS, 'cycling_power'],
   })
   return attach(device, cb)
