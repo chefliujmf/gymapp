@@ -477,7 +477,19 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 .rp-stat b { display:block; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; }
 .rp-stat small { font-size:10px; opacity:.55; text-transform:uppercase; letter-spacing:1px; }
 .rp-timer { font-size:46px; font-weight:800; font-variant-numeric:tabular-nums; margin-top:18px; }
-.rp-iv { opacity:.6; font-size:13px; }
+.rp-iv { opacity:.7; font-size:13px; font-weight:700; }
+/* Gauge ride view (#104/#105) */
+.rp-gauge { max-width:260px; margin:6px auto -6px; display:block; }
+.rp-hero { font-size:72px; font-weight:800; line-height:1; letter-spacing:-1px; font-variant-numeric:tabular-nums; }
+.rp-hero span { font-size:22px; opacity:.6; }
+.rp-hero em { display:block; font-size:12px; font-style:normal; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+.rp-targetrow { display:flex; align-items:center; gap:10px; margin-top:8px; }
+.rp-erg { background:#2e7d46; color:#fff; font-size:10px; font-weight:800; padding:3px 8px; border-radius:6px; letter-spacing:.5px; }
+.rp-tgt { color:var(--text-dim); font-size:14px; font-weight:700; } .rp-tgt b { color:var(--text); }
+.rp-delta { font-size:14px; font-weight:800; font-variant-numeric:tabular-nums; }
+.rp-bias { display:flex; align-items:center; gap:14px; margin-top:18px; }
+.rp-bias__b { width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,.07); border:1px solid var(--line); color:var(--text); font-size:24px; font-weight:800; }
+.rp-bias__v { font-size:18px; font-weight:800; min-width:70px; text-align:center; } .rp-bias__v small { display:block; font-size:9px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; }
 .rp-profile { position:relative; display:flex; align-items:flex-end; gap:1px; height:120px; padding:0 14px; margin:6px 0; }
 .rp-bar { flex-basis:0; border-radius:3px 3px 0 0; min-width:1px; }
 .rp-cursor { position:absolute; top:0; bottom:0; width:2px; background:#fff; opacity:.55; }
