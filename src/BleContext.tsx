@@ -105,11 +105,13 @@ export function BleDevices() {
       {viaBridge && <p className="meta" style={{ textAlign: 'center', margin: '0 0 8px', color: 'var(--accent)' }}>🖥️ Desktop bridge connected — sensors stream natively.</p>}
       <div className={'ble-dev' + (trName ? ' on' : '')}>
         <Bike size={22} />
-        <div><b>{trName || 'Smart trainer'}</b><small>{trName ? (ble.bridge?.trainer ? 'Connected · bridge' : ble.trainer?.hasErg ? 'Connected · ERG' : 'Connected') : 'Not connected'}</small></div>
+        <div style={{ flex: 1 }}><b>{trName || 'Smart trainer'}</b><small>{trName ? (ble.bridge?.trainer ? 'Connected · bridge' : ble.trainer?.hasErg ? 'Connected · ERG' : 'Connected') : 'Not connected'}</small></div>
+        {trName && <div style={{ textAlign: 'right' }}><b style={{ fontSize: 18 }}>{ble.live.power != null ? ble.live.power : '·'}</b><small style={{ display: 'block' }}>watts</small></div>}
       </div>
       <div className={'ble-dev' + (hrName ? ' on' : '')}>
         <HeartPulse size={22} />
-        <div><b>{hrName || 'Heart rate'}</b><small>{hrName ? (ble.bridge?.hr ? 'Connected · bridge' : 'Connected') : 'Watch or strap · not connected'}</small></div>
+        <div style={{ flex: 1 }}><b>{hrName || 'Heart rate'}</b><small>{hrName ? (ble.bridge?.hr ? 'Connected · bridge' : 'Connected') : 'Watch or strap · not connected'}</small></div>
+        {hrName && <div style={{ textAlign: 'right' }}><b style={{ fontSize: 18, color: '#ff6b6b' }}>{ble.bpm ? ble.bpm : '·'}</b><small style={{ display: 'block' }}>bpm</small></div>}
       </div>
       {ble.supported && <>
         <button className="btn btn--ghost" onClick={ble.addDevice} disabled={ble.scanning}>{ble.scanning ? 'Scanning…' : '＋ Add a device'}</button>

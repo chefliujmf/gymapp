@@ -14,6 +14,8 @@
 //                     {type:'device', role:'hr'|'trainer', name, connected:bool}
 //   client → server : {cmd:'erg', watts:N}   (sets ERG target if the trainer supports it)
 
+// Exposes startBridge({onStatus}) so the menubar app (#102) can run it; also runs
+// standalone via `node bridge.mjs` for power users.
 import noble from '@abandonware/noble'
 import { WebSocketServer } from 'ws'
 
@@ -24,6 +26,10 @@ const CPS = '1818', CPM = '2a63'
 const WANT = [HR, FTMS, CPS]
 
 const norm = (u) => String(u).toLowerCase().replace(/-/g, '').replace(/^0000([0-9a-f]{4})0000.*/, '$1')
+
+export function startBridge({ onStatus } = {}) {
+const status = { bluetooth: 'unknown', hr: null, trainer: null }
+const emit = () => { try { onStatus?.({ ...status }) } catch { /* noop */ } }
 const log = (...a) => console.log('[bridge]', ...a)
 
 // ---- WebSocket server ----
@@ -32,7 +38,7 @@ const live = { hr: undefined, power: undefined, cadence: undefined, speed: undef
 let ergControl = null
 function broadcast(msg) { const s = JSON.stringify(msg); for (const c of wss.clients) if (c.readyState === 1) c.send(s) }
 function pushLive() { broadcast({ type: 'live', ...live }) }
-wss.on('listening', () => log(`WebSocket up on ws://localhost:${PORT} — open a ride in Chrome.`))
+wss.on('listening', () => log(`WebSocket up on ws://localhost:${PORT} — open a ride in any browser.`))
 wss.on('connection', (c) => {
   log('ride player connected'); pushLive()
   c.on('message', (raw) => {
@@ -69,7 +75,7 @@ function parseCps(d) { return { power: d.readInt16LE(2) } } // flags(2) + instan
 // ---- BLE ----
 const connected = new Set()
 noble.on('stateChange', (state) => {
-  log('bluetooth', state)
+  log('bluetooth', state); status.bluetooth = state; emit()
   if (state === 'poweredOn') { log('scanning for HR strap + trainer…'); noble.startScanning(WANT, false) }
   else noble.stopScanning()
 })
@@ -89,12 +95,13 @@ noble.on('discover', async (p) => {
     const byUuid = (u) => characteristics.find((c) => norm(c.uuid) === u)
     p.once('disconnect', () => {
       connected.delete(p.id); log('lost', name)
+      if (isHr) status.hr = null; else status.trainer = null; emit()
       broadcast({ type: 'device', role: isHr ? 'hr' : 'trainer', name, connected: false })
       if (noble.state === 'poweredOn') noble.startScanning(WANT, false)
     })
 
     const hrm = byUuid(HRM)
-    if (hrm) { await hrm.subscribeAsync(); hrm.on('data', (d) => { live.hr = parseHR(d); pushLive() }); log('HR streaming:', name); broadcast({ type: 'device', role: 'hr', name, connected: true }) }
+    if (hrm) { await hrm.subscribeAsync(); hrm.on('data', (d) => { live.hr = parseHR(d); pushLive() }); log('HR streaming:', name); status.hr = name; emit(); broadcast({ type: 'device', role: 'hr', name, connected: true }) }
 
     const idb = byUuid(IDB)
     const cpm = byUuid(CPM)
@@ -102,10 +109,10 @@ noble.on('discover', async (p) => {
       await idb.subscribeAsync(); idb.on('data', (d) => { Object.assign(live, parseIndoorBike(d)); pushLive() })
       const cp = byUuid(FTCP)
       if (cp) { try { await cp.subscribeAsync(); await cp.writeAsync(Buffer.from([0x00]), false); ergControl = cp; log('ERG control ready') } catch { /* read-only trainer */ } }
-      log('trainer streaming (FTMS):', name); broadcast({ type: 'device', role: 'trainer', name, connected: true })
+      log('trainer streaming (FTMS):', name); status.trainer = name; emit(); broadcast({ type: 'device', role: 'trainer', name, connected: true })
     } else if (cpm) {
       await cpm.subscribeAsync(); cpm.on('data', (d) => { Object.assign(live, parseCps(d)); pushLive() })
-      log('power meter streaming (CPS):', name); broadcast({ type: 'device', role: 'trainer', name, connected: true })
+      log('power meter streaming (CPS):', name); status.trainer = name; emit(); broadcast({ type: 'device', role: 'trainer', name, connected: true })
     }
 
     // keep scanning for the OTHER device (HR + trainer)
@@ -116,4 +123,12 @@ noble.on('discover', async (p) => {
   }
 })
 
-process.on('SIGINT', () => { log('bye'); noble.stopScanning(); process.exit(0) })
+emit()
+return { status, stop: () => { try { noble.stopScanning() } catch { /* noop */ } try { wss.close() } catch { /* noop */ } } }
+}
+
+// Standalone CLI (power users): `node bridge.mjs`
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startBridge({ onStatus: (s) => console.log('[bridge] status', JSON.stringify(s)) })
+  process.on('SIGINT', () => { console.log('[bridge] bye'); process.exit(0) })
+}
