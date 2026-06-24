@@ -12,6 +12,7 @@ interface BleCtx {
   live: TrainerData
   bpm?: number
   scanning: boolean
+  err: string
   bridge: { trainer?: string; hr?: string } | null // connected via the desktop sensor bridge (#100)
   reconnect(): Promise<void>
   addDevice(): Promise<void>
@@ -31,6 +32,7 @@ export function BleProvider({ children }: { children: ReactNode }) {
   const [live, setLive] = useState<TrainerData>({})
   const [bpm, setBpm] = useState<number>()
   const [scanning, setScanning] = useState(false)
+  const [err, setErr] = useState('')
   const [bridge, setBridge] = useState<{ trainer?: string; hr?: string } | null>(null)
   const cbs = useRef({ onTrainer: setLive, onHr: setBpm }).current
   const wsRef = useRef<WebSocket | null>(null)
@@ -66,12 +68,18 @@ export function BleProvider({ children }: { children: ReactNode }) {
     try { (await reconnectKnown(cbs)).forEach(place) } catch { /* none in range */ }
   }
   async function addDevice() {
-    setScanning(true)
-    try { place(await pairDevice(cbs)) } catch { /* cancelled */ } finally { setScanning(false) }
+    setScanning(true); setErr('')
+    try { place(await pairDevice(cbs)) } catch (e) { reportErr(e) } finally { setScanning(false) }
   }
   async function addDeviceAll() {
-    setScanning(true)
-    try { place(await pairAnyDevice(cbs)) } catch { /* cancelled */ } finally { setScanning(false) }
+    setScanning(true); setErr('')
+    try { place(await pairAnyDevice(cbs)) } catch (e) { reportErr(e) } finally { setScanning(false) }
+  }
+  function reportErr(e: unknown) {
+    const m = (e as Error)?.message || String(e)
+    // Don't nag when the user just closed the chooser.
+    if (/cancell|User cancelled|chooser|NotFoundError/i.test(m)) return
+    setErr(m)
   }
   const setTargetPower = (w: number) => {
     trainer?.setTargetPower?.(w)
@@ -79,7 +87,7 @@ export function BleProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ supported: bleSupported(), trainer, hrDev, live, bpm, scanning, bridge, reconnect, addDevice, addDeviceAll, setTargetPower }}>
+    <Ctx.Provider value={{ supported: bleSupported(), trainer, hrDev, live, bpm, scanning, err, bridge, reconnect, addDevice, addDeviceAll, setTargetPower }}>
       {children}
     </Ctx.Provider>
   )
@@ -113,6 +121,7 @@ export function BleDevices() {
         <div style={{ flex: 1 }}><b>{hrName || 'Heart rate'}</b><small>{hrName ? (ble.bridge?.hr ? 'Connected · bridge' : 'Connected') : 'Watch or strap · not connected'}</small></div>
         {hrName && <div style={{ textAlign: 'right' }}><b style={{ fontSize: 18, color: '#ff6b6b' }}>{ble.bpm ? ble.bpm : '·'}</b><small style={{ display: 'block' }}>bpm</small></div>}
       </div>
+      {ble.err && <p className="meta" style={{ textAlign: 'center', margin: '6px 0 0', color: 'var(--danger,#ff6b6b)', fontSize: 11 }}>⚠ {ble.err}</p>}
       {ble.supported && <>
         <button className="btn btn--ghost" onClick={ble.addDevice} disabled={ble.scanning}>{ble.scanning ? 'Scanning…' : '＋ Add a device'}</button>
         <p className="meta" style={{ textAlign: 'center', margin: '8px 0 0' }}>Any brand works — trainer, power meter, or a heart-rate watch/strap (Garmin, Coros, Wahoo…).</p>

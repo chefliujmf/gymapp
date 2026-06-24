@@ -240,9 +240,9 @@ export default function RidePlayer() {
 
         {/* intensity bias — reduce the whole workout on a bad day (#105) */}
         <div className="rp-bias">
-          <button className="rp-bias__b" onClick={() => setBias((b) => Math.max(0.5, Math.round((b - 0.05) * 100) / 100))} aria-label="Easier">−</button>
+          <button className="rp-bias__b" onClick={() => setBias((b) => Math.max(0.5, Math.round((b - 0.01) * 100) / 100))} aria-label="Easier">−</button>
           <span className="rp-bias__v">{Math.round(bias * 100)}%<small>intensity</small></span>
-          <button className="rp-bias__b" onClick={() => setBias((b) => Math.min(1.2, Math.round((b + 0.05) * 100) / 100))} aria-label="Harder">+</button>
+          <button className="rp-bias__b" onClick={() => setBias((b) => Math.min(1.2, Math.round((b + 0.01) * 100) / 100))} aria-label="Harder">+</button>
         </div>
       </div>
 
