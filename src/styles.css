@@ -5,7 +5,8 @@
   --card: #1c1f28;          /* alias used by some components */
   --line: #2c313d;          /* borders */
   --text: #eef1f4;
-  --text-dim: #9298a6;
+  --text-dim: #aab2c0;      /* secondary text — kept readable on black (no dark-grey-on-black) */
+  --muted: #aab2c0;         /* alias; some components used var(--muted,#666) → that #666 was unreadable */
   --ink: #eef1f4;           /* high-contrast element on dark */
   --on-accent: #082015;     /* text on the green accent */
   --accent: #34e07d;        /* vivid green */
