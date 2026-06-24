@@ -13,16 +13,6 @@ export default function Admin() {
   const [em, setEm] = useState('')
   const [role, setRole] = useState<'user' | 'admin'>('user')
   const [msg, setMsg] = useState('')
-  const [promoting, setPromoting] = useState(false)
-  const [promoteMsg, setPromoteMsg] = useState('')
-
-  async function promote() {
-    if (!confirm('Promote the current dev/QA build to PRODUCTION? GitHub will merge dev → main once CI is green and deploy prod.')) return
-    setPromoting(true); setPromoteMsg('')
-    try { await authApi.promoteProd(); setPromoteMsg('✓ Promotion started — GitHub is merging dev → main; prod deploys when CI passes.') }
-    catch (e) { setPromoteMsg('✗ ' + (e as Error).message) }
-    finally { setPromoting(false) }
-  }
 
   const list = async () => { try { setUsers(await authApi.listUsers()) } catch { setUsers([]) } }
   useEffect(() => { list() }, [])
@@ -49,15 +39,6 @@ export default function Admin() {
       <div className="page-head">
         <h1>Admin</h1>
         <p>Manage who can access Platyplus</p>
-      </div>
-
-      <div className="section-title">Deploy</div>
-      <div className="card" style={{ padding: '13px 14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div><strong>🚀 Promote to prod</strong><div className="meta">Ship the tested dev/QA build to production.</div></div>
-          <button className="btn" style={{ width: 'auto', padding: '9px 16px' }} disabled={promoting} onClick={promote}>{promoting ? '…' : 'Promote'}</button>
-        </div>
-        {promoteMsg && <p className="meta" style={{ marginTop: 10, color: promoteMsg.startsWith('✓') ? 'var(--accent)' : 'var(--danger)' }}>{promoteMsg}</p>}
       </div>
 
       <div className="section-title">Users · {users.length}</div>

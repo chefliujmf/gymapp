@@ -687,6 +687,11 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 }
 .entry-kebab:active { transform: scale(.94); }
 .entry-kebab:hover { color: #fff; background: rgba(255,255,255,.12); }
+/* Admin-only "Promote to prod" in the header (#78). */
+.promote-btn { display:inline-flex; align-items:center; gap:5px; background:rgba(255,140,26,.16); color:#ff8c1a; border:1px solid rgba(255,140,26,.4); border-radius:999px; padding:6px 12px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
+.promote-btn:hover { background:rgba(255,140,26,.26); }
+.promote-btn:disabled { opacity:.6; }
+
 /* On Today, float it over the top-right of the card. */
 .today-entry > .entry-kebab { position: absolute; top: 12px; right: 12px; z-index: 2; }
 
