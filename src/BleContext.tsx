@@ -124,10 +124,8 @@ export function BleDevices() {
       {ble.err && <p className="meta" style={{ textAlign: 'center', margin: '6px 0 0', color: 'var(--danger,#ff6b6b)', fontSize: 11 }}>⚠ {ble.err}</p>}
       {ble.supported && <>
         <button className="btn btn--ghost" onClick={ble.addDevice} disabled={ble.scanning}>{ble.scanning ? 'Scanning…' : '＋ Add a device'}</button>
-        <p className="meta" style={{ textAlign: 'center', margin: '8px 0 0' }}>Any brand works — trainer, power meter, or a heart-rate watch/strap (Garmin, Coros, Wahoo…).</p>
-        <button className="link-btn" onClick={ble.addDeviceAll} disabled={ble.scanning} style={{ display: 'block', margin: '6px auto 0', background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>Don't see your device? Show all Bluetooth devices</button>
+        <button className="link-btn" onClick={ble.addDeviceAll} disabled={ble.scanning} style={{ display: 'block', margin: '8px auto 0', background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>Show all devices</button>
       </>}
-      {!viaBridge && <p className="meta" style={{ textAlign: 'center', margin: '8px 0 0', fontSize: 11 }}>On a Mac (or Firefox/Safari), sensors not showing? Run the desktop bridge (tools/sensor-bridge) — native Bluetooth, any browser.</p>}
     </div>
   )
 }
