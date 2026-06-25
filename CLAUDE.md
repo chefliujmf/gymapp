@@ -31,6 +31,10 @@ feedback/idea there (numbered) on receipt. Design detail for big items → `UX-B
   `/media/...` path served from our XPS, or dropped (UI shows an emoji).
 - `scripts/build-catalog.mjs` enforces this with an **independence gate** that
   FAILS the build if any third-party media URL appears. Never weaken it.
+- Scope: the gate is about **bundled CATALOG media** (videos/images/audio). A
+  **runtime map service is NOT catalog media** — the route maps (`RouteMapLeaflet`/
+  `FlybyMap`, #141/#51) load **OpenStreetMap tiles** live (free, no key); that's
+  allowed and does NOT trip the gate. Don't "fix" it by ripping out the map.
 - Media lives on the XPS at `/home/jmf/gymapp/media/{video,audio,images/...}`
   (served via the `./media:/srv/media:ro` mount). Catalog paths must match the
   on-disk layout.
