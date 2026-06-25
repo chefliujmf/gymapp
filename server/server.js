@@ -1077,6 +1077,21 @@ app.use('/media', express.static(MEDIA_DIR, { maxAge: '365d', immutable: true })
 app.use(express.static(STATIC_DIR, { index: false, setHeaders: (res, p) => { if (p.endsWith('index.html') || p.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache') } }))
 app.get('*', (req, res) => res.sendFile(join(STATIC_DIR, 'index.html')))
 
+// ---- observability: log every failure so it's reviewable (not silent) --------
+// Structured, greppable lines (prefix `[err`, `[unhandled`, `[boot`) so the
+// monitoring routine / a future watchdog bot can scrape docker logs, flag spikes,
+// and act. Each 500 carries a short `ref` echoed to the client for correlation.
+const errId = () => randomBytes(4).toString('hex')
+app.use((err, req, res, next) => {
+  const ref = errId()
+  console.error(`[err ${ref}] ${req.method} ${req.originalUrl} uid=${req.user?.id || '-'} :: ${err?.message || err}\n${err?.stack || ''}`)
+  if (res.headersSent) return next(err)
+  res.status(err?.status || 500).json({ error: 'Internal error', ref })
+})
+// Last-resort safety nets — async throws that bypass Express still get logged.
+process.on('unhandledRejection', (e) => console.error(`[unhandledRejection] ${e?.stack || e}`))
+process.on('uncaughtException', (e) => console.error(`[uncaughtException] ${e?.stack || e}`))
+
 // Startup: connect Postgres → load the cache → seed/defaults → listen. (#DB migration)
 async function start() {
   if (USE_PG) {
@@ -1093,6 +1108,9 @@ async function start() {
     store = loadJsonStore() // local dev / CI: the JSON file store (no Postgres around)
   }
   await seedAndDefaults()
+  // boot self-check — a missing sessionSecret would 500 every login (silently before).
+  if (!store.sessionSecret) console.error('[boot] CRITICAL: store.sessionSecret missing — logins will 500')
+  console.log(`[boot] store=${USE_PG ? 'postgres' : 'file'} users=${store.users.length} sessionSecret=${store.sessionSecret ? 'ok' : 'MISSING'}`)
   app.listen(PORT, () => console.log(`gymapp listening on :${PORT} (rpID ${RP_ID}) [${USE_PG ? 'postgres' : 'file'}, ${store.users.length} users]`))
 }
 start().catch((e) => { console.error('FATAL startup failed:', e); process.exit(1) })

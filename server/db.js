@@ -58,6 +58,11 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS checkins (
       user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       date date NOT NULL, doc jsonb NOT NULL, PRIMARY KEY (user_id, date));
+    -- singleton row holding the store-level fields (sessionSecret, resets) the
+    -- file store kept at top level. Losing sessionSecret breaks every JWT.
+    CREATE TABLE IF NOT EXISTS app_meta (
+      id int PRIMARY KEY DEFAULT 1, doc jsonb NOT NULL DEFAULT '{}'::jsonb,
+      CONSTRAINT app_meta_singleton CHECK (id = 1));
   `)
 }
 
@@ -83,7 +88,11 @@ export async function loadStore() {
     u.checkins = await child('checkins')
     users.push(u)
   }
-  return { users }
+  // store-level fields (sessionSecret signs every JWT; resets holds reset codes)
+  const meta = (await pool.query('SELECT doc FROM app_meta WHERE id=1')).rows[0]?.doc || {}
+  const sessionSecret = meta.sessionSecret || randomBytes(48).toString('hex')
+  const resets = meta.resets || {}
+  return { users, sessionSecret, resets }
 }
 
 // save the whole in-memory store transactionally (per-user row + replace child rows).
@@ -130,6 +139,11 @@ async function _save(store) {
       await repl('passkeys', passkeys, 'id, doc', '$2,$3')
       await repl('checkins', checkins, 'date, doc', '$2,$3')
     }
+    await client.query(
+      `INSERT INTO app_meta (id, doc) VALUES (1, $1)
+       ON CONFLICT (id) DO UPDATE SET doc = EXCLUDED.doc`,
+      [{ sessionSecret: store.sessionSecret, resets: store.resets || {} }],
+    )
     await client.query('COMMIT')
   } catch (e) { await client.query('ROLLBACK'); console.error('[db] _save rollback', e.message); throw e } finally { client.release() }
 }
