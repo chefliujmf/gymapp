@@ -16,8 +16,12 @@ import {
   generateRegistrationOptions, verifyRegistrationResponse,
   generateAuthenticationOptions, verifyAuthenticationResponse,
 } from '@simplewebauthn/server'
-import { initDb, loadStore, save, newId } from './db.js'
-import { load as loadJsonStore } from './store.js' // legacy file store — read once to auto-migrate
+import { initDb, loadStore, save as pgSave, newId } from './db.js'
+import { load as loadJsonStore, save as fileSave } from './store.js'
+// Store backend: QA/prod set DATABASE_URL → Postgres. Local dev (scripts/dev-api.sh)
+// and the CI module-graph smoke-test have no DATABASE_URL → the JSON file store.
+const USE_PG = !!process.env.DATABASE_URL
+const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -1075,19 +1079,20 @@ app.get('*', (req, res) => res.sendFile(join(STATIC_DIR, 'index.html')))
 
 // Startup: connect Postgres → load the cache → seed/defaults → listen. (#DB migration)
 async function start() {
-  await initDb()
-  store = await loadStore()
-  // First Postgres boot with an empty DB: auto-import the legacy JSON store (no data loss).
-  if (!store.users.length) {
-    try {
-      const fileStore = loadJsonStore()
-      if (fileStore?.users?.length) { store = fileStore; await save(store); console.log(`Migrated ${store.users.length} users from store.json → Postgres`) }
-    } catch (e) { console.log('No legacy store.json to migrate (' + e.message + ')') }
+  if (USE_PG) {
+    await initDb()
+    store = await loadStore()
+    // First Postgres boot with an empty DB: auto-import the legacy JSON store (no data loss).
+    if (!store.users.length) {
+      try {
+        const fileStore = loadJsonStore()
+        if (fileStore?.users?.length) { store = fileStore; await save(store); console.log(`Migrated ${store.users.length} users from store.json → Postgres`) }
+      } catch (e) { console.log('No legacy store.json to migrate (' + e.message + ')') }
+    }
+  } else {
+    store = loadJsonStore() // local dev / CI: the JSON file store (no Postgres around)
   }
   await seedAndDefaults()
-  app.listen(PORT, () => console.log(`gymapp listening on :${PORT} (rpID ${RP_ID}) [postgres, ${store.users.length} users]`))
+  app.listen(PORT, () => console.log(`gymapp listening on :${PORT} (rpID ${RP_ID}) [${USE_PG ? 'postgres' : 'file'}, ${store.users.length} users]`))
 }
-// Start only when a DB is configured — lets the CI module-graph smoke-test import
-// server.js without a Postgres around (it just checks the graph resolves).
-if (process.env.DATABASE_URL) start().catch((e) => { console.error('FATAL startup failed:', e); process.exit(1) })
-else console.warn('DATABASE_URL not set — server not started (module-graph check only).')
+start().catch((e) => { console.error('FATAL startup failed:', e); process.exit(1) })

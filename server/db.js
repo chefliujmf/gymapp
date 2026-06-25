@@ -5,15 +5,25 @@
 // coach_reviews / passkeys / checkins (FKs, indexes). Irregular nested fields live
 // in a JSONB `doc` per row; queried fields are real columns. Single-instance app, so
 // the in-memory cache is the read path and Postgres is the durable, queryable store.
-import pg from 'pg'
 import { randomBytes } from 'node:crypto'
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 8 })
-pool.on('error', (e) => console.error('[db] pool error', e.message))
+// pg is loaded LAZILY (dynamic import) + the pool created on first use, so local dev
+// and the CI smoke-test can import this module without `pg` installed / a DB around.
+// Only the Postgres code paths (DATABASE_URL set) ever touch it.
+let pool = null
+async function getPool() {
+  if (!pool) {
+    const pg = (await import('pg')).default
+    pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 8 })
+    pool.on('error', (e) => console.error('[db] pool error', e.message))
+  }
+  return pool
+}
 
 export const newId = () => randomBytes(9).toString('base64url')
 
 export async function initDb() {
+  const pool = await getPool()
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id text PRIMARY KEY, username text, email text, role text DEFAULT 'user',
@@ -58,6 +68,7 @@ const onlyDate = (d) => (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d) ?
 
 export async function loadStore() {
   await initDb()
+  const pool = await getPool()
   const users = []
   const { rows } = await pool.query('SELECT * FROM users')
   for (const r of rows) {
@@ -83,6 +94,7 @@ export function save(store) {
   return saving
 }
 async function _save(store) {
+  const pool = await getPool()
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
@@ -121,5 +133,3 @@ async function _save(store) {
     await client.query('COMMIT')
   } catch (e) { await client.query('ROLLBACK'); console.error('[db] _save rollback', e.message); throw e } finally { client.release() }
 }
-
-export { pool }
