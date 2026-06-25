@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { workouts, programs, trainers } from '../data/catalog'
-import { WorkoutCard, ProgramCard, TrainerCard } from '../ui'
+import { workouts, trainers } from '../data/catalog'
+import { WorkoutCard, TrainerCard } from '../ui'
 
 export default function Train() {
   const navigate = useNavigate()
@@ -9,15 +9,7 @@ export default function Train() {
       <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head">
         <h1>Gym</h1>
-        <p>Programs, workouts and your trainers</p>
-      </div>
-
-      <div className="section-title">
-        Programs
-        <Link to="/programs" className="see-all">All →</Link>
-      </div>
-      <div className="stack">
-        {programs.slice(0, 2).map((p) => <ProgramCard key={p.id} p={p} />)}
+        <p>Workouts and your trainers</p>
       </div>
 
       <div className="section-title">

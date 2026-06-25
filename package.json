@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Personal self-hosted fitness app (Centr-style) — installable PWA",
   "scripts": {
-    "dev": "concurrently -k -n api,web -c green,cyan \"npm:dev:api\" \"npm:dev:web\"",
+    "dev": "concurrently -k --restart-tries 20 --restart-after 1000 -n api,web -c green,cyan \"npm:dev:api\" \"npm:dev:web\"",
     "dev:web": "vite",
     "dev:api": "bash scripts/dev-api.sh",
     "dev:full": "npm run dev",
