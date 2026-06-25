@@ -1,0 +1,188 @@
+{
+  "workout_id": "strength_maintenance_protect_thursday_2026-05-26",
+  "title": "Full-Body Strength Maintenance",
+  "sport": "strength",
+  "discipline": "gym",
+  "estimated_duration_sec": 3600,
+  "objective": "Keep real full-body strength in the week while protecting Thursday's threshold confidence check.",
+  "why_now": "Monday's aerobic re-entry was strong, so the bike proof point moves earlier. Strength stays in the week, but lower-body work must not create soreness before Thursday.",
+  "source_context": {
+    "week_objective": "Restart rhythm and validate threshold readiness without catch-up fatigue.",
+    "phase": "Phase 1 Build 2 Adjusted",
+    "target_system": "strength maintenance",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": true,
+    "outdoor": false,
+    "max_duration_min": 60,
+    "equipment": [
+      "full_gym",
+      "centr_optional"
+    ]
+  },
+  "targets": {
+    "primary": "rpe",
+    "notes": "60 minutes. Lower body RPE 5-6 with 2-3 reps in reserve. Upper body RPE 6-7. No failure, no finisher, no lower-body soreness chasing."
+  },
+  "centr_recommendation": {
+    "primary": "Centr full-body or upper/lower strength session, using the coach table as the prescription",
+    "alternatives": [
+      "Power Pro: Week 1, Day 3",
+      "Multi-Gym Strength full-body session",
+      "Strength for Sports upper-body plus lower-body basics"
+    ],
+    "links": [
+      "Tutorial - Cable Romanian deadlift: https://centr.com/article/show/32423/power-shred-tutorial-cable-romanian-deadlift",
+      "Dumbbell leg workout article: https://centr.com/blog/show/27279/dumbbell-leg-workouts"
+    ],
+    "keep": [
+      "squat or leg press pattern",
+      "Romanian deadlift or hinge",
+      "row or pull movement",
+      "upper-body push",
+      "vertical pull",
+      "core bracing"
+    ],
+    "skip": [
+      "HIIT finisher",
+      "max-effort sets",
+      "extra glute/quad burnout",
+      "jump conditioning"
+    ],
+    "notes": "Use Centr for demos or substitutions; keep lower body controlled and upper body honest."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "rpe": [
+          2,
+          3
+        ]
+      },
+      "notes": "Easy cardio plus dynamic mobility."
+    }
+  ],
+  "gym_table": [
+    {
+      "movement": "Squat pattern",
+      "exercise": "Hack squat or leg press",
+      "sets": 2,
+      "reps": "6-8",
+      "rest": "90s",
+      "notes": "Controlled, not maximal."
+    },
+    {
+      "movement": "Hinge pattern",
+      "exercise": "Romanian deadlift",
+      "sets": 2,
+      "reps": "8",
+      "rest": "90s",
+      "notes": "Moderate load, clean hamstring tension."
+    },
+    {
+      "movement": "Horizontal pull",
+      "exercise": "Chest-supported row or cable row",
+      "sets": 3,
+      "reps": "10",
+      "rest": "60-75s",
+      "notes": "Posture and scapular control."
+    },
+    {
+      "movement": "Upper push",
+      "exercise": "Dumbbell bench press or machine chest press",
+      "sets": 3,
+      "reps": "6-10",
+      "rest": "90s",
+      "notes": "RPE 6-7, clean reps."
+    },
+    {
+      "movement": "Vertical pull",
+      "exercise": "Lat pulldown or assisted pull-up",
+      "sets": 3,
+      "reps": "8-10",
+      "rest": "75-90s",
+      "notes": "Controlled, no swinging."
+    },
+    {
+      "movement": "Core",
+      "exercise": "Pallof press plus side plank",
+      "sets": 2,
+      "reps": "10/side + 30s/side",
+      "rest": "45-60s",
+      "notes": "Quiet hips."
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "rpe": [
+          1,
+          2
+        ]
+      },
+      "notes": "Mobility: hips, calves, hamstrings, t-spine."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal meal 2-4h before. If training hungry, take 20-30g carbs plus 10-20g protein 30-60 min before.",
+    "during": "Water to thirst, roughly 400-750ml/hour. Electrolytes only if hot or you sweat heavily.",
+    "post": "Protein-forward meal/snack with 25-35g protein; add 30-60g carbs if dinner is delayed.",
+    "centr_recipe": "Salted Caramel Super Smoothie, https://centr.com/recipe/show/12693/salted-caramel-super-smoothie",
+    "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Protein-forward meal/snack and easy walking if legs feel stiff.",
+    "evening": "No extra lower-body work. Prioritize sleep.",
+    "next_morning_check": "If soreness is more than mild, make Wednesday rest and keep Thursday protected."
+  },
+  "skill_focus": [
+    {
+      "action": "Keep lower-body reps controlled and symmetrical, especially through the left calf/ankle chain.",
+      "why": "Strength supports durable power only if it does not create compensation before Thursday."
+    },
+    {
+      "action": "Upper body can work honestly; lower body stops with 2-3 reps in reserve.",
+      "why": "This respects the strength goal while preserving the bike proof point."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Train strength, not soreness.",
+    "why": "The week gets its confidence test on the bike, so gym work has to support that test.",
+    "cue": "Clean reps, reserve intact.",
+    "reset": "If a lower-body set turns grindy, stop the set, reduce load or reps, and keep the rest of the session upper-body/core focused."
+  },
+  "execution_notes": {
+    "pre_interval_cues": [
+      "This is useful strength, not catch-up training.",
+      "Protect Thursday."
+    ],
+    "during_workout_cues": [
+      "Keep reps clean.",
+      "Upper body can work harder than legs.",
+      "No lower-body grinding."
+    ],
+    "if_too_easy": "Add one upper-body accessory set, not heavy leg volume.",
+    "if_too_hard": "Reduce lower-body work to one set each.",
+    "success_criteria": "No leg heaviness Wednesday morning.",
+    "post_workout_capture": [
+      "Legs before/after",
+      "Fueling/GI",
+      "Pain/niggles",
+      "Schedule/life",
+      "Gym/Centr if relevant",
+      "Other unusual context"
+    ]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-05-26",
+      "sync_to_wahoo": false
+    }
+  }
+}

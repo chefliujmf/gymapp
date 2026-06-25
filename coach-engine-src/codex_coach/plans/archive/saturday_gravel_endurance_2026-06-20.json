@@ -1,0 +1,98 @@
+{
+  "workout_id": "saturday_gravel_endurance_2026-06-20",
+  "title": "Saturday Gravel Endurance",
+  "sport": "cycling",
+  "discipline": "bike",
+  "estimated_duration_sec": 7800,
+  "objective": "The week's main aerobic load: a steady Z2 gravel ride that builds durability and keeps weekly volume honest without adding intensity to a high-stress week.",
+  "why_now": "With Thursday dropped and Friday reduced to tempo, the weekend carries the aerobic volume. Pure endurance on gravel is low-strain, recovery-compatible, and exactly what a stressed system can absorb and benefit from.",
+  "source_context": {
+    "week_objective": "Absorb a high-stress week: keep frequency, cut intensity",
+    "phase": "Aggressive June Build",
+    "target_system": "aerobic endurance + durability",
+    "confidence": "high"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 150,
+    "equipment": ["power_meter", "gravel_bike"]
+  },
+  "targets": {
+    "primary": "endurance",
+    "ftp_reference_w": 260,
+    "notes": "Z2 by feel, not by the number. Aim for conversational endurance (60-70% FTP, ~155-180 W on the flats); on gravel let terrain move the power around and just keep the effort aerobic. Never let it drift into tempo."
+  },
+  "warmup": [
+    {
+      "type": "steady",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [2, 3]},
+      "notes": "Roll out easy, let the body and the surface settle before finding endurance rhythm."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "steady",
+          "duration_sec": 6600,
+          "target": {"power_pct_ftp": [0.60, 0.70], "rpe": [3, 4]},
+          "notes": "Steady aerobic gravel. Keep it conversational - you should be able to talk in full sentences. Climbs will spike power; soft-pedal the descents to even it out. Fuel and drink on a schedule, don't wait until you're empty."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.45, 0.55], "rpe": [1, 2]},
+      "notes": "Ease the last few km home."
+    }
+  ],
+  "nutrition": {
+    "pre": "Proper breakfast 1.5-3h before, carb-forward; this is the long ride of the week so start topped up.",
+    "during": "40-60g carbs/hour from the start and drink to thirst; steady fueling is what keeps a long Z2 ride feeling easy the whole way.",
+    "post": "25-35g protein plus carbs within an hour; a real meal is ideal after the week's main ride.",
+    "centr_recipe": "No new Centr link needed; a normal recovery plate works.",
+    "supplements": "None needed."
+  },
+  "recovery": {
+    "post_session": "Refuel, hydrate, easy walk or legs-up later if stiff; left-calf routine if it tightened on the climbs.",
+    "evening": "Keep protecting sleep; a calm Sunday helps you start next week recovered.",
+    "next_morning_check": "Sunday is optional - only ride if you genuinely feel like it and wellness is stable; otherwise take the rest."
+  },
+  "skill_focus": [
+    {
+      "action": "Keep the effort aerobic on the climbs - shift down and spin rather than forcing the power.",
+      "why": "Letting gravel climbs push you into tempo/threshold turns an easy ride into a hard one and defeats the recovery purpose."
+    },
+    {
+      "action": "Relax on rough surfaces - loose grip, let the bike move under you.",
+      "why": "Tension on gravel wastes energy and tires the upper body; staying loose keeps a long ride comfortable."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Long, easy, enjoyable. Time on the bike, not numbers.",
+    "why": "After a stressful week, an unhurried aerobic ride is both the training and the decompression.",
+    "cue": "Conversational all day.",
+    "reset": "If you notice you're pushing, ease back to a pace you could hold for hours and enjoy the terrain."
+  },
+  "execution_notes": {
+    "pre_interval_cues": ["Endurance, not tempo.", "Fuel from the first 30 minutes.", "Dress for showers - it's a cool, wet-ish day."],
+    "during_workout_cues": ["Full sentences.", "Spin the climbs.", "Soft-pedal the descents."],
+    "if_too_easy": "Stay easy - the value is the aerobic time, not the watts. You can extend toward 2.5h if you feel good and have the time, but keep it Z2.",
+    "if_too_hard": "Cut it short to 60-90 minutes or call it - a stressed, under-slept body benefits more from rest than from forcing volume. No guilt.",
+    "success_criteria": "Finished a steady aerobic ride feeling pleasantly tired, not drained, having stayed conversational throughout.",
+    "post_workout_capture": ["RPE", "Feel", "Duration actually ridden", "Legs before/after", "Weather/surface notes"]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-06-20",
+      "sync_to_wahoo": true
+    }
+  }
+}

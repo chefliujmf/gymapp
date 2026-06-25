@@ -28,3 +28,11 @@ server/data
 auth.env
 server/dev-data
 media-opt
+
+# cyclingcoach engine copied in (#fork) — books are 173MB copyrighted binaries,
+# local-only (cyclingcoach gitignores them too). The method + notes ARE committed.
+coach-engine-src/knowledge_base/
+coach-engine-src/.venv/
+coach-engine-src/.secrets/
+coach-engine-src/**/__pycache__/
+coach-engine-src/**/*.apk

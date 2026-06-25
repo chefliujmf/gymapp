@@ -1,0 +1,93 @@
+{
+  "workout_id": "monday_recovery_endurance_after_cottage_work_2026-06-15",
+  "title": "Monday Recovery Endurance Check",
+  "sport": "cycling",
+  "discipline": "bike",
+  "objective": "Restart bike rhythm after a weekend with no riding but meaningful cottage manual work.",
+  "why_now": "The missed Saturday ride is deleted, not carried as debt. The 2h hike, tree cutting, and trench digging count as real fatigue context, so Monday should check legs/back and restore easy bike frequency before Tuesday volume and Wednesday sweet spot.",
+  "source_context": {
+    "week_objective": "300W aerobic power build",
+    "phase": "Aggressive June Build",
+    "target_system": "recovery-biased aerobic support",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 60,
+    "equipment": ["power_meter"]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 260,
+    "notes": "60 minutes easy endurance at 52-66% FTP. Keep pressure light; this is a readiness check, not make-up training."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.48, 0.60], "rpe": [1, 2]},
+      "notes": "Start very easy and check legs/back."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "steady",
+          "duration_sec": 2400,
+          "target": {"power_pct_ftp": [0.52, 0.66], "rpe": [2, 3]},
+          "notes": "Easy endurance only. Smooth cadence, low force, no tempo."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.45, 0.55], "rpe": [1, 2]},
+      "notes": "Ease down."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal meal timing is enough. If hungry, add 20-30g carbs 30-60 min before.",
+    "during": "Water to thirst.",
+    "post": "Normal meal with 25-35g protein and a normal carb serving.",
+    "centr_recipe": "No new Centr link needed; use a normal recovery plate.",
+    "supplements": "Today's workout needs: none required beyond normal fluids. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Easy walking only if it loosens the back/hips.",
+    "evening": "No extra lower-body or heavy yard work if Wednesday sweet spot is still the goal.",
+    "next_morning_check": "Tuesday volume proceeds if legs/back feel normal and sleep is acceptable."
+  },
+  "skill_focus": [
+    {
+      "action": "Keep cadence smooth and torque low.",
+      "why": "This unloads back/hips after digging and keeps the ride useful without adding fatigue."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Reset rhythm.",
+    "why": "A clean easy ride restores bike frequency without pretending the missed weekend ride is debt.",
+    "cue": "Light pressure only.",
+    "reset": "If you chase speed, shift easier for two minutes and let the ride stay boring."
+  },
+  "execution_notes": {
+    "pre_interval_cues": ["Check back and legs.", "No make-up training.", "Easy only."],
+    "during_workout_cues": ["Light pressure.", "Smooth cadence.", "No tempo."],
+    "if_too_easy": "Stay easy.",
+    "if_too_hard": "Cut to 45 minutes easy spin or stop if back/legs feel worse after 15 minutes.",
+    "success_criteria": "Finish looser or the same, not more tired.",
+    "post_workout_capture": ["RPE", "Feel", "Legs before/after", "Back/hips", "Pain/niggles"]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-06-15",
+      "sync_to_wahoo": true
+    }
+  }
+}

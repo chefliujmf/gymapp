@@ -1,0 +1,94 @@
+{
+  "workout_id": "tuesday_endurance_rebuild_2026-06-23",
+  "title": "Tuesday Endurance Rebuild",
+  "sport": "cycling",
+  "discipline": "bike",
+  "estimated_duration_sec": 3600,
+  "objective": "Rebuild bike frequency and aerobic volume after a disrupted, manual-labor weekend - the first real ride back, steady and aerobic, no intensity.",
+  "why_now": "Bike-specific load has been low for two weeks and the weekend was 3h of digging and tree cutting. The re-entry rule rebuilds frequency and easy volume first, so Tuesday restores aerobic time and confirms the back and legs are ready before Wednesday's quality block.",
+  "source_context": {
+    "week_objective": "Re-entry and aerobic rebuild after a disrupted, manual-labor weekend",
+    "phase": "Aggressive June Build",
+    "target_system": "aerobic endurance + frequency",
+    "confidence": "high"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 60,
+    "equipment": ["power_meter"]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 260,
+    "notes": "60 minutes steady endurance at 58-70% FTP (~150-180 W). Aerobic by feel - able to talk in full sentences. No tempo, no chasing the climbs. Only 1h available today, so hold the cap."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]},
+      "notes": "Ramp naturally into endurance and check that the back and legs feel normal after Monday."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "steady",
+          "duration_sec": 3600,
+          "target": {"power_pct_ftp": [0.58, 0.70], "rpe": [2, 3]},
+          "notes": "Steady aerobic endurance. Smooth cadence, low force on any climbs, no surges. This is volume and rhythm, not a workout."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]},
+      "notes": "Ease down."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal meal timing. If hungry, 20-30g carbs 30-60 min before.",
+    "during": "Water to thirst; a small carb top-up is optional on a ride this length.",
+    "post": "Normal meal with 25-35g protein and a carb serving.",
+    "centr_recipe": "No new Centr link needed; a normal recovery plate works.",
+    "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Refuel, hydrate, and run the left-calf routine if it tightened.",
+    "evening": "Protect sleep so Wednesday's quality block lands well.",
+    "next_morning_check": "Wednesday's sweet spot proceeds only if the back is fine, legs feel normal, and sleep was acceptable. If any of those are off, ride Wednesday as endurance instead."
+  },
+  "skill_focus": [
+    {
+      "action": "Hold one comfortable gear on gentle rolling terrain for 2 x 8 min and let cadence drift with the road, shifting only if power would exceed the endurance cap.",
+      "why": "Smooth low-force pressure rebuilds aerobic durability and unloads the back/hips after digging, without turning an endurance ride into intensity."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Rebuild, don't make up.",
+    "why": "Frequency and easy volume are what a re-entry week needs; chasing the missed sessions now would just deepen the hole.",
+    "cue": "Boring is correct.",
+    "reset": "If you catch yourself pressing, exhale, shift easier, and ride 60 seconds below the cap before settling back in."
+  },
+  "execution_notes": {
+    "pre_interval_cues": ["First ride back - aerobic only.", "Check the back early.", "No tempo."],
+    "during_workout_cues": ["Full sentences.", "Low force on climbs.", "Smooth cadence."],
+    "if_too_easy": "Good - leave it easy. You may extend to 90 minutes if time allows and the back is fine, but keep it endurance.",
+    "if_too_hard": "Cut to 60 minutes or stop if the back feels worse after 15 minutes.",
+    "success_criteria": "Finished steady and loose, not tired, with the back no worse than before.",
+    "post_workout_capture": ["RPE", "Feel", "Legs before/after", "Back/hips", "Pain/niggles"]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-06-23",
+      "sync_to_wahoo": true
+    }
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "workout_id": "friday_sustained_anchor_ftp_read_2026-06-19",
+  "title": "Friday Sustained Anchor + FTP Read",
+  "sport": "cycling",
+  "discipline": "bike",
+  "estimated_duration_sec": 8700,
+  "objective": "Anchor the week's sustained-power load AND collect a clean FTP read: a front-loaded ~28-min sustained block tests whether 260 W is repeatable, and the smooth early ramp + steady effort give a valid DFA a1 (Polar H10) threshold read before cardiac drift sets in.",
+  "why_now": "Friday is the week's key bike stimulus and the athlete prefers to use it for the FTP estimation rather than a separate test. Front-loading the sustained effort keeps the durability purpose while putting the estimation data in the first ~45 min, the only window where DFA a1 is trustworthy. FTP 260 W is athlete-confirmed but unvalidated by a long effort; this reads it without a maximal test.",
+  "source_context": {
+    "week_objective": "300W aerobic power build",
+    "phase": "Aggressive June Build",
+    "target_system": "threshold validation + aerobic durability",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 150,
+    "equipment": ["power_meter", "polar_h10"]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 260,
+    "notes": "Wear the Polar H10 and ride smooth/steady (no surging) for the first 45 min so the R-R data is clean for DFA a1. Sustained block holds 96-100% FTP (250-260 W) for ~28 min, RPE capped at 7 - honest, not maximal. This is a read, not a race."
+  },
+  "warmup": [
+    {
+      "type": "ramp",
+      "duration_sec": 900,
+      "target": {"power_pct_ftp": [0.50, 0.82], "rpe": [2, 4]},
+      "notes": "Smooth, continuous ramp from easy to high tempo. Keep it gradual and steady - this clean ramp is also the DFA a1 aerobic-threshold read."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "work",
+          "duration_sec": 360,
+          "target": {"power_pct_ftp": [0.88, 0.94], "rpe": [5, 6]},
+          "notes": "Settle into sweet spot. Even power, relaxed breathing, find a rhythm before lifting."
+        },
+        {
+          "type": "work",
+          "duration_sec": 1680,
+          "target": {"power_pct_ftp": [0.96, 1.00], "rpe": [6, 7]},
+          "notes": "The read: hold 250-260 W steady for the full 28 min. Smooth, no surges. Cap RPE at 7 - if it climbs to 8 or power starts sagging, hold the low end (250) and finish clean. Note whether the last 5 min felt the same as the first 5."
+        }
+      ]
+    },
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {"power_pct_ftp": [0.50, 0.60], "rpe": [2, 3]},
+          "notes": "Easy spin to recover from the block before the endurance work."
+        }
+      ]
+    },
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "steady",
+          "duration_sec": 4560,
+          "target": {"power_pct_ftp": [0.56, 0.68], "rpe": [3, 4]},
+          "notes": "Durability endurance - the anchor's main aerobic purpose. Smooth Z2, fuel steadily, keep cadence comfortable."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.45, 0.55], "rpe": [1, 2]},
+      "notes": "Ease down."
+    }
+  ],
+  "nutrition": {
+    "pre": "Carb-forward meal 2-4h before, ~1-2g carbs/kg. This is a long, meaningful ride - start topped up.",
+    "during": "40-60g carbs/hour from the sustained block onward; start drinking early. Good fueling protects both the block quality and the endurance back half.",
+    "post": "25-35g protein plus 60-90g carbs within an hour; it's a big day before the weekend.",
+    "centr_recipe": "No new Centr link needed; a normal carb+protein recovery plate works.",
+    "supplements": "Today's workout needs: optional caffeine 1-3 mg/kg 30-60 min before if tolerated and not late in the day. Daily baseline only if already routine."
+  },
+  "recovery": {
+    "post_session": "Refuel promptly, fluids to thirst, legs-up or easy walk if stiff.",
+    "evening": "Protect sleep; it's the input to a clean wellness reading tomorrow.",
+    "next_morning_check": "Note legs, sleep, HRV/resting HR before any weekend plans."
+  },
+  "skill_focus": [
+    {
+      "action": "Hold the sustained block at even power - no surging over the top, no coasting.",
+      "why": "Steady output keeps the DFA a1 R-R signal clean and makes the power-duration read trustworthy; surging corrupts both."
+    },
+    {
+      "action": "Stay aero-comfortable and breathe in rhythm; relax hands, jaw, shoulders.",
+      "why": "Wasted tension raises HR and RPE without raising useful power, and noisy breathing muddies the a1 read."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Read your engine honestly - not a hero effort, not a soft one.",
+    "why": "A clean, controlled 28 min tells us exactly where FTP sits; burying yourself or backing off both waste the data.",
+    "cue": "Smooth and honest, RPE 7 ceiling.",
+    "reset": "If you start fighting the bike, exhale, drop to 250 W, re-settle for a minute, then continue at the steady end."
+  },
+  "execution_notes": {
+    "pre_interval_cues": ["Polar H10 on and reading.", "First 45 min smooth and steady for the a1 read.", "The block is a read, not a race - cap RPE at 7."],
+    "during_workout_cues": ["Even power, no surges.", "Relaxed breathing.", "Last 5 min should match the first 5."],
+    "if_too_easy": "Hold the top of the range (260 W) for the full block; do not jump above 100% - that breaks the read.",
+    "if_too_hard": "Drop to 250 W and hold steady; a clean 28 min at 250 still gives a usable read. Stop the block if power fades hard or RPE hits 8-9, and note where it broke.",
+    "success_criteria": "Held 250-260 W for the full 28 min at RPE <=7 with no power fade in the last 5 min, smooth breathing throughout. That confirms 260. Fade or RPE 8-9 means the working FTP is closer to 250.",
+    "post_workout_capture": ["RPE", "Feel", "Did the last 5 min match the first 5", "Highest steady power you could have held for the full block", "Legs before/after", "Polar H10 worn the whole ride"]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-06-19",
+      "sync_to_wahoo": true
+    }
+  }
+}

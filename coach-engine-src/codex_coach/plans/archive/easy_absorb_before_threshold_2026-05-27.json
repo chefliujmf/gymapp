@@ -1,0 +1,138 @@
+{
+  "workout_id": "easy_absorb_before_threshold_2026-05-27",
+  "title": "Easy Aerobic Absorb",
+  "sport": "cycling",
+  "discipline": "bike",
+  "objective": "Keep rhythm while absorbing Monday's ride and Tuesday gym before Thursday's threshold confidence check.",
+  "why_now": "You felt strong Monday, but the next useful step is a controlled proof point, not making the support day harder.",
+  "source_context": {
+    "week_objective": "Restart rhythm and validate threshold readiness without catch-up fatigue.",
+    "phase": "Phase 1 Build 2 Adjusted",
+    "target_system": "aerobic support",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 60,
+    "equipment": [
+      "power_meter"
+    ]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 255,
+    "notes": "Outdoor only if it fits easily and there is a clean 60-minute window. Ride easy endurance/low Z2 at about 55-68% FTP after a gentle ramp. This should feel easy enough that Thursday still looks attractive."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "power_pct_ftp": [
+          0.45,
+          0.60
+        ],
+        "rpe": [
+          1,
+          2
+        ]
+      },
+      "notes": "Start easy and ramp gradually into low endurance. The warmup should never feel harder than the main ride."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "work",
+          "duration_sec": 2400,
+          "target": {
+            "power_pct_ftp": [
+              0.55,
+              0.68
+            ],
+            "rpe": [
+              2,
+              3
+            ]
+          },
+          "notes": "Easy endurance/low Z2. No hidden tempo."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "power_pct_ftp": [
+          0.45,
+          0.55
+        ],
+        "rpe": [
+          1,
+          2
+        ]
+      },
+      "notes": "Ease down below the main ride. Keep pressure light and let the legs unload."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal meal timing is enough. If hungry, add 20-30g carbs 30-60 min before.",
+    "during": "Water to thirst. No ride carbs needed if well-fed; take 10-20g carbs only if starting hungry or feeling flat.",
+    "post": "Normal meal within 1-2h with 25-35g protein.",
+    "centr_recipe": "Swirled Banana & Oat Pots, https://centr.com/recipe/show/32848/swirled-banana-oat-pots",
+    "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Normal meal and fluids to thirst.",
+    "evening": "No extra lower-body work.",
+    "next_morning_check": "Thursday proceeds only if legs feel normal and the ride felt clearly easy."
+  },
+  "skill_focus": [
+    {
+      "action": "Keep rises capped and pressure light.",
+      "why": "The ride adds rhythm without stealing from the threshold confidence check."
+    },
+    {
+      "action": "Use relaxed hands and an easy gear when the road tilts up.",
+      "why": "Low-torque pedaling helps keep the left calf quiet."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Earn Thursday by staying easy.",
+    "why": "This support ride improves the week only if it leaves the proof-point session better.",
+    "cue": "Save the proof for Thursday.",
+    "reset": "If you start chasing speed, exhale once, shift easier, relax hands and jaw, and ride below 60% FTP for 2 minutes."
+  },
+  "execution_notes": {
+    "pre_interval_cues": [
+      "Skip if Tuesday gym leaves leg heaviness or if there is not a clean 60-minute outdoor window.",
+      "No intensity."
+    ],
+    "during_workout_cues": [
+      "Keep pressure light.",
+      "Let the ride feel too easy."
+    ],
+    "if_too_easy": "Correct. Stop on time.",
+    "if_too_hard": "If legs feel wrong before starting, rest instead. If already riding, turn home easy; do not turn this into a forced workout.",
+    "success_criteria": "You finish fresher and still want to do Thursday.",
+    "post_workout_capture": [
+      "Legs before/after",
+      "Fueling/GI",
+      "Pain/niggles",
+      "Schedule/life",
+      "Other unusual context"
+    ]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-05-27",
+      "sync_to_wahoo": true
+    }
+  }
+}

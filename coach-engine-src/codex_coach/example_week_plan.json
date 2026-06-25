@@ -1,0 +1,125 @@
+{
+  "week_id": "2026-05-18_build_01",
+  "week_label": "Build Week 1",
+  "notes": "Sample week plan for batch publishing to Intervals.icu.",
+  "workouts": [
+    {
+      "spec_path": "codex_coach/example_threshold_4x8_controlled.json",
+      "planned_date": "2026-05-18"
+    },
+    {
+      "workout_id": "bike_endurance_tempo_finish_2026-05-20",
+      "title": "Endurance With Tempo Finish",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add aerobic support and controlled fatigue resistance.",
+      "why_now": "Fits a build week where durability matters more than extra intensity.",
+      "source_context": {
+        "week_objective": "Raise repeatable threshold work while supporting durability.",
+        "phase": "Build",
+        "target_system": "aerobic durability",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": true,
+        "outdoor": true,
+        "max_duration_min": 90,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 248,
+        "notes": "Keep the endurance section easy enough to finish the tempo block cleanly."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.65
+            ]
+          },
+          "notes": "Start calm and build rhythm."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 3000,
+              "target": {
+                "power_pct_ftp": [
+                  0.62,
+                  0.72
+                ],
+                "rpe": [
+                  3,
+                  4
+                ]
+              },
+              "notes": "Stay aerobic."
+            },
+            {
+              "type": "work",
+              "duration_sec": 1200,
+              "target": {
+                "power_pct_ftp": [
+                  0.82,
+                  0.88
+                ],
+                "rpe": [
+                  5,
+                  6
+                ]
+              },
+              "notes": "Lift smoothly into tempo and hold form."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.4,
+              0.55
+            ]
+          },
+          "notes": "Spin down."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Do not turn the first hour into hidden tempo."
+        ],
+        "during_workout_cues": [
+          "Keep cadence relaxed and pressure even.",
+          "The tempo finish should feel strong, not desperate."
+        ],
+        "if_too_easy": "Add 5 minutes to the tempo finish, not extra watts.",
+        "if_too_hard": "Shorten the tempo finish to 10 minutes and keep it controlled.",
+        "success_criteria": "Easy aerobic first hour plus a clean tempo finish.",
+        "post_workout_capture": [
+          "RPE",
+          "fueling quality",
+          "late-ride leg sensation"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-20",
+          "sync_to_wahoo": true
+        }
+      }
+    }
+  ]
+}

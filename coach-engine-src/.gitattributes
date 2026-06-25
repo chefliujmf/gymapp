@@ -1,0 +1,3 @@
+# Normalize line endings for text. Binary book/asset trees are local-only
+# (see .gitignore) and intentionally NOT tracked or routed through LFS.
+* text=auto

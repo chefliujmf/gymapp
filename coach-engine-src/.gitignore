@@ -1,0 +1,17 @@
+.secrets/
+data/
+.vendor/
+.venv/
+# Binary book/asset trees: kept local-only, never tracked (see AUDIT.md)
+knowledge_base/
+coach_books/
+coach_book_source_assets/
+.env
+.env.*
+!.env.example
+.DS_Store
+__pycache__/
+*.pyc
+# JOIN scraping artifacts — keep out of this public repo (binary; collector holds a live token)
+*.apk
+join_collector.py

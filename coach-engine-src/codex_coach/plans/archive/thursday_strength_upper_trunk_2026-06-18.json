@@ -1,0 +1,152 @@
+{
+  "workout_id": "thursday_strength_upper_trunk_2026-06-18",
+  "title": "Upper-Body & Trunk Strength",
+  "sport": "strength",
+  "discipline": "gym",
+  "estimated_duration_sec": 3600,
+  "objective": "Keep a real strength dose in the week with meaningful upper-body and trunk work, while fully protecting Friday's sustained-power anchor.",
+  "why_now": "The week had no strength session, which is a stated gym-identity priority and the weekly minimum-dose rule. Thursday sits the day before Friday's 150-min sustained anchor, so loaded lower-body work is off the table; upper body and trunk carry the dose with no impact on Friday's legs.",
+  "source_context": {
+    "week_objective": "300W aerobic power build",
+    "phase": "Aggressive June Build",
+    "target_system": "strength maintenance (upper/trunk)",
+    "confidence": "high"
+  },
+  "constraints": {
+    "indoor": true,
+    "outdoor": false,
+    "max_duration_min": 60,
+    "equipment": ["full_gym", "centr_optional"]
+  },
+  "targets": {
+    "primary": "rpe",
+    "notes": "60 minutes. Upper body honest at RPE 6-7 with 1-2 reps in reserve. Trunk controlled. No loaded squat/hinge, no leg fatigue, no finisher - Friday's anchor is the priority."
+  },
+  "centr_recommendation": {
+    "primary": "Centr upper-body or push/pull strength session, using the coach table as the prescription",
+    "alternatives": [
+      "Power Pro upper-body day",
+      "Multi-Gym upper/push-pull session",
+      "Strength for Sports upper-body block"
+    ],
+    "keep": [
+      "horizontal push",
+      "vertical pull",
+      "horizontal pull",
+      "shoulder/overhead",
+      "trunk anti-rotation and anti-extension"
+    ],
+    "skip": [
+      "loaded squat or leg press",
+      "Romanian deadlift or heavy hinge",
+      "HIIT or jump finisher",
+      "anything that fatigues legs before Friday"
+    ],
+    "notes": "Use Centr for demos or substitutions; keep everything off the legs."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 480,
+      "target": {"rpe": [2, 3]},
+      "notes": "Easy cardio plus dynamic upper-body and t-spine mobility."
+    }
+  ],
+  "gym_table": [
+    {
+      "movement": "Upper push",
+      "exercise": "Dumbbell bench press or machine chest press",
+      "sets": 3,
+      "reps": "6-10",
+      "rest": "90s",
+      "notes": "RPE 6-7, clean reps, 1-2 in reserve."
+    },
+    {
+      "movement": "Vertical pull",
+      "exercise": "Lat pulldown or assisted pull-up",
+      "sets": 3,
+      "reps": "8-10",
+      "rest": "75-90s",
+      "notes": "Controlled, full range, no swing."
+    },
+    {
+      "movement": "Horizontal pull",
+      "exercise": "Chest-supported row or cable row",
+      "sets": 3,
+      "reps": "10",
+      "rest": "60-75s",
+      "notes": "Posture and scapular control."
+    },
+    {
+      "movement": "Shoulder",
+      "exercise": "Seated dumbbell or machine shoulder press",
+      "sets": 2,
+      "reps": "8-10",
+      "rest": "75s",
+      "notes": "Honest but not grindy; protect the neck/shoulder."
+    },
+    {
+      "movement": "Core anti-rotation",
+      "exercise": "Pallof press",
+      "sets": 2,
+      "reps": "10/side",
+      "rest": "45-60s",
+      "notes": "Quiet hips, braced trunk."
+    },
+    {
+      "movement": "Core anti-extension",
+      "exercise": "Side plank plus dead bug",
+      "sets": 2,
+      "reps": "30s/side + 8/side",
+      "rest": "45s",
+      "notes": "Slow and controlled; no lower-back strain after the weekend digging."
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 420,
+      "target": {"rpe": [1, 2]},
+      "notes": "Mobility: t-spine, lats, chest, plus gentle hip/back opener after the weekend manual work."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal meal 2-4h before. If training hungry, 20-30g carbs plus 10-20g protein 30-60 min before.",
+    "during": "Water to thirst.",
+    "post": "Protein-forward meal/snack with 25-35g protein; add carbs since Friday is a big ride.",
+    "centr_recipe": "No new Centr link needed; a normal protein-forward recovery plate is enough.",
+    "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Protein-forward meal/snack; easy walking if the back/hips feel stiff.",
+    "evening": "No extra lower-body work. Fuel and sleep for Friday's anchor.",
+    "next_morning_check": "Friday anchor proceeds if legs and back feel normal; if the back is still tender from digging, cap Friday at ~120 min."
+  },
+  "skill_focus": [
+    {
+      "action": "Keep all work above the waist; brace the trunk without loading the lower back.",
+      "why": "Strength supports durable position and breathing on long rides, but only if it leaves the legs and back fresh for Friday."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Train strength, protect the anchor.",
+    "why": "The week's key bike stimulus is Friday, so today's job is a real upper-body dose with zero leg cost.",
+    "cue": "Strong up top, legs untouched.",
+    "reset": "If a set pulls on the lower back, reduce load and shift to fully supported variations."
+  },
+  "execution_notes": {
+    "pre_interval_cues": ["Real strength, not catch-up training.", "Nothing that touches the legs.", "Protect Friday."],
+    "during_workout_cues": ["Clean reps.", "Brace the trunk, spare the lower back.", "No leg work."],
+    "if_too_easy": "Add one upper-body accessory set (arms or rear delts), not legs.",
+    "if_too_hard": "Drop the shoulder press or one core block; keep it short.",
+    "success_criteria": "No leg or lower-back fatigue Friday morning.",
+    "post_workout_capture": ["Legs before/after", "Back/hips", "Fueling/GI", "Pain/niggles", "Schedule/life", "Gym/Centr if relevant"]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-06-18",
+      "sync_to_wahoo": false
+    }
+  }
+}

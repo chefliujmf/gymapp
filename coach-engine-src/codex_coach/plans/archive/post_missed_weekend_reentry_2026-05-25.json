@@ -1,0 +1,752 @@
+{
+  "week_id": "post_missed_weekend_reentry_2026-05-25_to_2026-05-31",
+  "week_label": "Post-Missed-Weekend Re-entry",
+  "notes": "Missed May 23-24 workouts are dropped, not moved forward. May 29 is blocked on Google Calendar, so the week's single hard bike stimulus shifts to Saturday at a reduced dose. The objective is to restart rhythm, protect consistency, and avoid catch-up fatigue.",
+  "workouts": [
+    {
+      "workout_id": "post_missed_weekend_easy_reentry_2026-05-25",
+      "title": "Easy Aerobic Re-entry",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Restart rhythm after the missed weekend with low-stress aerobic work.",
+      "why_now": "The weekend workouts were missed for life reasons, so this is not a make-up ride. It gives the legs one easy bike touch before gym and the later key session.",
+      "source_context": {
+        "week_objective": "Restart rhythm without catch-up fatigue.",
+        "phase": "Phase 1 Build 2 Adjusted",
+        "target_system": "aerobic frequency",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 255,
+        "notes": "Outdoor if easy to fit. 45-60 minutes at 50-65% FTP. This should feel like rhythm, not training debt."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ramp naturally. Do not chase watts."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 3,
+          "steps": [
+            {
+              "type": "cadence",
+              "duration_sec": 120,
+              "target": {
+                "power_pct_ftp": [
+                  0.5,
+                  0.65
+                ],
+                "rpe": [
+                  2,
+                  3
+                ]
+              },
+              "cadence": {
+                "min": 95,
+                "max": 100
+              },
+              "notes": "Light cadence pickup. Smooth, not hard."
+            },
+            {
+              "type": "recovery",
+              "duration_sec": 480,
+              "target": {
+                "power_pct_ftp": [
+                  0.5,
+                  0.63
+                ],
+                "rpe": [
+                  1,
+                  3
+                ]
+              },
+              "notes": "Easy endurance."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 1200,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Keep it conversational and finish fresh."
+        }
+      ],
+      "nutrition": {
+        "pre": "Normal meal timing is enough. If starting hungry, take 20-30g carbs 30-60 min before.",
+        "during": "Water to thirst. No ride carbs needed unless you start hungry.",
+        "post": "Normal meal with 25-35g protein; add 30-60g carbs if dinner is delayed.",
+        "centr_recipe": "Swirled Banana & Oat Pots, https://centr.com/recipe/show/32848/swirled-banana-oat-pots",
+        "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Normal meal, fluids to thirst, and no extra training.",
+        "evening": "Protect sleep. The value today is rhythm, not fatigue.",
+        "next_morning_check": "Gym is fine only if legs feel normal and the ride felt easy."
+      },
+      "skill_focus": [
+        {
+          "action": "Use 3 x 2 min at 95-100 rpm only if power stays capped.",
+          "why": "This wakes up coordination without adding intensity before the real key ride later in the week."
+        },
+        {
+          "action": "Keep hands and jaw relaxed during cadence changes.",
+          "why": "Relaxed upper body supports smoother power and lower fatigue cost."
+        }
+      ],
+      "mental_focus": {
+        "intention": "Restart rhythm without paying back missed work.",
+        "why": "Consistency improves faster when missed sessions are absorbed instead of crammed.",
+        "cue": "Rhythm, not debt.",
+        "reset": "If you start chasing speed, shift easier, exhale once, and ride below the cap for 2 minutes."
+      },
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Start only if the 45-60 minute window is clean.",
+          "If life is still messy, skip without debt."
+        ],
+        "during_workout_cues": [
+          "Easy should feel easy.",
+          "No tempo.",
+          "Cadence pickups stay light."
+        ],
+        "if_too_easy": "Good. Do not add intensity.",
+        "if_too_hard": "Shorten to 30-45 minutes or rest.",
+        "success_criteria": "You finish fresher than you started and the week feels back on track.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-25",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "post_missed_weekend_strength_2026-05-26",
+      "title": "Full-Body Strength Maintenance",
+      "sport": "strength",
+      "discipline": "gym",
+      "estimated_duration_sec": 3600,
+      "objective": "Keep real full-body strength in the week while protecting Saturday's key ride.",
+      "why_now": "The missed weekend reduces bike fatigue, but life stress still counts. This keeps strength useful without turning lower body into soreness.",
+      "source_context": {
+        "week_objective": "Restart rhythm without catch-up fatigue.",
+        "phase": "Phase 1 Build 2 Adjusted",
+        "target_system": "strength maintenance",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": true,
+        "outdoor": false,
+        "max_duration_min": 60,
+        "equipment": [
+          "full_gym",
+          "centr_optional"
+        ]
+      },
+      "targets": {
+        "primary": "rpe",
+        "notes": "60 minutes. Lower body RPE 5-6 with 2-3 reps in reserve. Upper body RPE 6-7. No failure and no soreness chasing."
+      },
+      "centr_recommendation": {
+        "primary": "Centr full-body or upper/lower strength session, using the coach table as the prescription",
+        "alternatives": [
+          "Power Pro: Week 1, Day 3",
+          "Multi-Gym Strength full-body session",
+          "Strength for Sports upper-body plus lower-body basics"
+        ],
+        "links": [
+          "Tutorial - Cable Romanian deadlift: https://centr.com/article/show/32423/power-shred-tutorial-cable-romanian-deadlift",
+          "Dumbbell leg workout article: https://centr.com/blog/show/27279/dumbbell-leg-workouts"
+        ],
+        "keep": [
+          "squat or leg press pattern",
+          "Romanian deadlift or hinge",
+          "row or pull movement",
+          "upper-body push",
+          "vertical pull",
+          "core bracing"
+        ],
+        "skip": [
+          "HIIT finisher",
+          "max-effort sets",
+          "extra glute/quad burnout",
+          "jump conditioning"
+        ],
+        "notes": "Use Centr for demos or substitutions; keep lower body controlled and upper body honest."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "rpe": [
+              2,
+              3
+            ]
+          },
+          "notes": "Easy cardio plus dynamic mobility."
+        }
+      ],
+      "gym_table": [
+        {
+          "movement": "Squat pattern",
+          "exercise": "Hack squat or leg press",
+          "sets": 2,
+          "reps": "6-8",
+          "rest": "90s",
+          "notes": "Controlled, not maximal."
+        },
+        {
+          "movement": "Hinge pattern",
+          "exercise": "Romanian deadlift",
+          "sets": 2,
+          "reps": "8",
+          "rest": "90s",
+          "notes": "Moderate load, clean hamstring tension."
+        },
+        {
+          "movement": "Horizontal pull",
+          "exercise": "Chest-supported row or cable row",
+          "sets": 3,
+          "reps": "10",
+          "rest": "60-75s",
+          "notes": "Posture and scapular control."
+        },
+        {
+          "movement": "Upper push",
+          "exercise": "Dumbbell bench press or machine chest press",
+          "sets": 3,
+          "reps": "6-10",
+          "rest": "90s",
+          "notes": "RPE 6-7, clean reps."
+        },
+        {
+          "movement": "Vertical pull",
+          "exercise": "Lat pulldown or assisted pull-up",
+          "sets": 3,
+          "reps": "8-10",
+          "rest": "75-90s",
+          "notes": "Controlled, no swinging."
+        },
+        {
+          "movement": "Core",
+          "exercise": "Pallof press plus side plank",
+          "sets": 2,
+          "reps": "10/side + 30s/side",
+          "rest": "45-60s",
+          "notes": "Quiet hips."
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Mobility: hips, calves, hamstrings, t-spine."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "This is useful strength, not catch-up training."
+        ],
+        "during_workout_cues": [
+          "Keep reps clean.",
+          "Upper body can work harder than legs.",
+          "No lower-body grinding."
+        ],
+        "if_too_easy": "Add one upper-body accessory set, not heavy leg volume.",
+        "if_too_hard": "Reduce lower-body work to one set each.",
+        "success_criteria": "No leg heaviness the next morning.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-26",
+          "sync_to_wahoo": false
+        }
+      }
+    },
+    {
+      "workout_id": "post_missed_weekend_easy_check_2026-05-27",
+      "title": "Easy Aerobic Check",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add easy aerobic work and confirm that the week is settling after the missed weekend.",
+      "why_now": "This keeps bike frequency without stacking intensity before the Saturday key ride.",
+      "source_context": {
+        "week_objective": "Restart rhythm without catch-up fatigue.",
+        "phase": "Phase 1 Build 2 Adjusted",
+        "target_system": "aerobic maintenance",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 255,
+        "notes": "Outdoor only. 50-68% FTP. This is easy frequency, not a hidden tempo ride."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.65
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ramp naturally into endurance."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 2400,
+              "target": {
+                "power_pct_ftp": [
+                  0.5,
+                  0.68
+                ],
+                "rpe": [
+                  2,
+                  3
+                ]
+              },
+              "notes": "Easy endurance. Keep pressure light."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel."
+        }
+      ],
+      "nutrition": {
+        "pre": "Normal meal timing is enough. If hungry, add 20-30g carbs 30-60 min before.",
+        "during": "Water to thirst. No ride carbs needed.",
+        "post": "Normal meal within 1-2h with 25-35g protein.",
+        "centr_recipe": "Swirled Banana & Oat Pots, https://centr.com/recipe/show/32848/swirled-banana-oat-pots",
+        "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Normal meal and fluids to thirst.",
+        "evening": "No extra lower-body work.",
+        "next_morning_check": "If legs feel heavier on Thursday, keep Thursday blank and protect Saturday."
+      },
+      "execution_notes": {
+        "pre_interval_cues": [
+          "No intensity."
+        ],
+        "during_workout_cues": [
+          "Keep pressure light.",
+          "Let the ride feel almost too easy."
+        ],
+        "if_too_easy": "Correct. Keep it easy.",
+        "if_too_hard": "Shorten or rest.",
+        "success_criteria": "Easy ride feels easy and leaves Saturday protected.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-27",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "post_missed_weekend_over_under_2026-05-30",
+      "title": "Controlled Over-Under Re-entry",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Build threshold control with one reduced-dose hard stimulus, not an FTP test.",
+      "why_now": "Friday is calendar-blocked, so the key bike session moves to Saturday. Because the weekend was missed and life stress was high, this uses two controlled sets instead of the original three.",
+      "source_context": {
+        "week_objective": "Restart rhythm and touch threshold control without catch-up fatigue.",
+        "phase": "Phase 1 Build 2 Adjusted",
+        "target_system": "threshold control",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 80,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 255,
+        "notes": "Outdoor only. Execute only if freshness is good. This is the week's single hard stimulus and not a make-up workout."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 1500,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.75
+            ],
+            "rpe": [
+              2,
+              5
+            ]
+          },
+          "notes": "Build gradually."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 2,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 420,
+              "target": {
+                "power_pct_ftp": [
+                  0.92,
+                  0.96
+                ],
+                "rpe": [
+                  6,
+                  7
+                ]
+              },
+              "notes": "Controlled under."
+            },
+            {
+              "type": "work",
+              "duration_sec": 240,
+              "target": {
+                "power_pct_ftp": [
+                  1.0,
+                  1.03
+                ],
+                "rpe": [
+                  7,
+                  8
+                ]
+              },
+              "notes": "Short over. No sprinting."
+            },
+            {
+              "type": "recovery",
+              "duration_sec": 420,
+              "target": {
+                "power_pct_ftp": [
+                  0.45,
+                  0.6
+                ],
+                "rpe": [
+                  1,
+                  3
+                ]
+              },
+              "notes": "Reset."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 900,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel."
+        }
+      ],
+      "nutrition": {
+        "pre": "Carb-forward meal 2-4h before with about 1-2g carbs/kg. Optional 20-40g simple carbs 30-60 min before.",
+        "during": "30-60g carbs/hour if the ride goes over 75 minutes; otherwise water is acceptable if well-fed.",
+        "post": "25-35g protein plus 60-90g carbs, especially because Sunday may include endurance.",
+        "centr_recipe": "Salted Caramel Super Smoothie, https://centr.com/recipe/show/12693/salted-caramel-super-smoothie",
+        "supplements": "Today's workout needs: optional caffeine only if tolerated and not late day, about 1-3 mg/kg 30-60 min before. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Carbs plus protein, fluids to thirst, and 5-10 min easy spin/walk if legs tighten.",
+        "evening": "No extra hard training. Keep dinner digestible and protect sleep.",
+        "next_morning_check": "Sunday long ride happens only if legs, mood, and family schedule are good."
+      },
+      "skill_focus": [
+        {
+          "action": "Rebuild power over 5-8 pedal strokes after corners or interruptions.",
+          "why": "This trains outdoor threshold control without wasting energy in spikes."
+        },
+        {
+          "action": "Keep cadence steady and avoid torque spikes, especially late in each set.",
+          "why": "Smoother torque helps protect the left calf and makes higher FTP work repeatable."
+        }
+      ],
+      "mental_focus": {
+        "intention": "Pressure with restraint.",
+        "why": "Controlled threshold work raises sustainable power better than turning a disrupted week into a test.",
+        "cue": "Cap first, ego second.",
+        "reset": "If breathing or cadence gets ragged, ride 90 seconds at the low end of the target; if it still feels forced, finish the set and skip remaining work."
+      },
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Skip or downgrade if the week still feels messy.",
+          "Two good sets beat three forced sets."
+        ],
+        "during_workout_cues": [
+          "Smooth power, no testing.",
+          "If cadence or breathing collapses, stop the set."
+        ],
+        "if_too_easy": "Add only 10-15 minutes easy endurance. Do not add a third over-under set.",
+        "if_too_hard": "Convert to 3x8 minutes at 88-92% or ride endurance only.",
+        "success_criteria": "Controlled work with no desperation and enough freshness left for Sunday if schedule allows.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-30",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "post_missed_weekend_long_endurance_2026-05-31",
+      "title": "Long Aerobic Endurance Flexible Cap",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Build aerobic durability if Saturday is absorbed, with a clear cap to avoid make-up fatigue.",
+      "why_now": "The missed long ride from May 24 is dropped. This ride is the normal endurance support for the adjusted week, not repayment for the weekend.",
+      "source_context": {
+        "week_objective": "Restart rhythm and keep aerobic durability moving.",
+        "phase": "Phase 1 Build 2 Adjusted",
+        "target_system": "aerobic durability",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 165,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 255,
+        "notes": "Outdoor only. 58-72% FTP. Default 2h15-2h30. Extend to 2h45 only if Saturday was controlled and family timing is easy."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.65
+            ],
+            "rpe": [
+              1,
+              3
+            ]
+          },
+          "notes": "Ramp naturally into endurance."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 7800,
+              "target": {
+                "power_pct_ftp": [
+                  0.58,
+                  0.72
+                ],
+                "rpe": [
+                  3,
+                  4
+                ]
+              },
+              "notes": "Aerobic endurance and fueling practice. Keep climbs controlled."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel."
+        }
+      ],
+      "nutrition": {
+        "pre": "Carb-forward meal 2-4h before with about 1-2g carbs/kg.",
+        "during": "Start in the first 30 min. Target 40-70g carbs/hour depending on gut tolerance and duration.",
+        "post": "25-35g protein plus 60-100g carbs; use a simple recovery meal if dinner is delayed.",
+        "centr_recipe": "Salted Caramel Super Smoothie, https://centr.com/recipe/show/12693/salted-caramel-super-smoothie",
+        "supplements": "Today's workout needs: electrolytes/sodium if hot or heavy sweating; otherwise none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Carbs plus protein, fluids to thirst, and easy walking if legs tighten.",
+        "evening": "No extra training. Protect sleep and Monday freshness.",
+        "next_morning_check": "If legs are heavy or HRV/resting HR worsens, reduce Tuesday gym lower-body work."
+      },
+      "skill_focus": [
+        {
+          "action": "Keep climbs capped and seated when practical.",
+          "why": "This builds aerobic durability without turning endurance into threshold spikes."
+        },
+        {
+          "action": "Check shoulders, jaw, and grip every 20-30 minutes.",
+          "why": "Relaxed upper body reduces wasted energy over longer rides."
+        }
+      ],
+      "mental_focus": {
+        "intention": "Build patient durability and fuel early.",
+        "why": "Long aerobic consistency makes higher FTP usable outside, not only in short efforts.",
+        "cue": "Eat early, ride boring.",
+        "reset": "If you get impatient or chase speed, drink, eat if due, relax grip, and ride below the endurance cap for 2 minutes."
+      },
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Start only if Saturday was controlled and family timing is clean.",
+          "If Saturday was costly, ride 75-120 minutes easy or rest."
+        ],
+        "during_workout_cues": [
+          "Eat early.",
+          "Keep every climb controlled.",
+          "No tempo finish."
+        ],
+        "if_too_easy": "Cap at 2h45. Do not make up the missed May 24 ride.",
+        "if_too_hard": "Shorten to 75-120 minutes easy or stop.",
+        "success_criteria": "Finish steady, fueled, and not depleted.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-31",
+          "sync_to_wahoo": true
+        }
+      }
+    }
+  ]
+}

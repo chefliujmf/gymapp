@@ -1,0 +1,140 @@
+{
+  "workout_id": "phase1_w2_indoor_aerobic_control_2026-05-24",
+  "title": "Indoor Aerobic Control",
+  "sport": "cycling",
+  "discipline": "bike",
+  "objective": "Preserve aerobic frequency with a controlled 1-hour indoor ride while outdoor rain blocks the road option.",
+  "why_now": "Saturday became a family-rest day and Sunday is forecast rain. A short indoor aerobic ride keeps rhythm without creating catch-up fatigue.",
+  "source_context": {
+    "week_objective": "Rebuild rhythm and aerobic consistency.",
+    "phase": "Phase 1 Build 1",
+    "target_system": "aerobic frequency",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": true,
+    "outdoor": false,
+    "max_duration_min": 60,
+    "equipment": [
+      "trainer",
+      "power_meter"
+    ]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 255,
+    "notes": "Indoor trainer. 60 minutes at 50-68% FTP. Keep it conversational. This replaces the missed Saturday frequency ride, not the full long ride."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "power_pct_ftp": [
+          0.45,
+          0.6
+        ],
+        "rpe": [
+          1,
+          2
+        ]
+      },
+      "notes": "Easy ramp. Let the legs come around."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "steady",
+          "duration_sec": 2400,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.68
+            ],
+            "rpe": [
+              2,
+              4
+            ]
+          },
+          "notes": "Easy aerobic. Include 3 x 3 min at 95-100 rpm if it stays smooth."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "power_pct_ftp": [
+          0.4,
+          0.55
+        ],
+        "rpe": [
+          1,
+          2
+        ]
+      },
+      "notes": "Ease down by feel."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal meal timing is enough. If starting hungry, take 20-30g carbs 30-60 min before.",
+    "during": "Water to thirst. Carbs are optional, not required, unless you start hungry.",
+    "post": "Normal meal with 25-35g protein and some carbs is enough.",
+    "centr_recipe": "Swirled Banana & Oat Pots if this is before breakfast or Salted Caramel Super Smoothie if a meal is delayed: https://centr.com/recipe/show/32848/swirled-banana-oat-pots, https://centr.com/recipe/show/12693/salted-caramel-super-smoothie",
+    "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Normal meal, fluids to thirst, and easy walking if legs feel stiff.",
+    "evening": "No extra training. Protect sleep.",
+    "next_morning_check": "Check legs, left calf, sleep, resting HR/HRV if available, and whether the indoor ride felt genuinely easy."
+  },
+  "skill_focus": [
+    {
+      "action": "Use 3 x 3 min at 95-100 rpm only if power stays capped.",
+      "why": "This keeps the cadence skill from Friday alive without adding intensity."
+    },
+    {
+      "action": "Keep upper body quiet and hands light.",
+      "why": "Relaxed posture supports smooth indoor pedaling and reduces wasted tension."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Keep rhythm, not catch up.",
+    "why": "The missed long ride is dropped, and this session should help the week absorb rather than become another stressor.",
+    "cue": "More often, not harder.",
+    "reset": "If you start chasing watts, shift easier, exhale once, and ride 2 minutes below the cap."
+  },
+  "execution_notes": {
+    "pre_interval_cues": [
+      "Do this only if you have a clean 60-minute window.",
+      "If family timing is messy, skip without debt."
+    ],
+    "during_workout_cues": [
+      "No tempo.",
+      "Keep the cadence drill optional.",
+      "Finish fresher than a real workout."
+    ],
+    "if_too_easy": "Good. Do not add intensity.",
+    "if_too_hard": "Shorten to 30-45 minutes or rest.",
+    "success_criteria": "Easy ride feels easy and Monday does not need catch-up.",
+    "post_workout_capture": [
+      "Legs before/after",
+      "Fueling/GI",
+      "Pain/niggles",
+      "Schedule/life",
+      "Other unusual context"
+    ]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-05-24",
+      "sync_to_wahoo": true
+    }
+  }
+}

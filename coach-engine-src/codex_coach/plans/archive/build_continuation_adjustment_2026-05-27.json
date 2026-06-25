@@ -1,0 +1,511 @@
+{
+  "week_id": "build_continuation_adjustment_2026-05-27",
+  "week_label": "Build Continuation Adjustment",
+  "notes": "Corrects the previous plan because projected Form was rising through the supposed build block. Default is to keep the May 28 threshold confidence check, add the missing May 30 easy support ride, and continue building June 5-10 instead of starting a deload early. Downgrade the June build continuation only if the threshold check or recovery markers show the athlete is not absorbing the work.",
+  "workouts": [
+    {
+      "workout_id": "adjusted_easy_support_2026-05-30",
+      "title": "Easy Aerobic Support Ride",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add low-cost aerobic volume and prevent the build week from decaying into a freshness week.",
+      "why_now": "Projected Form was rising despite the build objective; this restores frequency without adding intensity before the long ride.",
+      "source_context": {
+        "week_objective": "Restart rhythm and validate threshold readiness without catch-up fatigue.",
+        "phase": "Phase 1 Build 2 Adjusted",
+        "target_system": "aerobic support",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 70,
+        "equipment": ["power_meter"]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only if roads and calendar make this low cost. 70 minutes total. Easy endurance only; no tempo."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {"power_pct_ftp": [0.45, 0.60], "rpe": [1, 2]},
+          "notes": "Start easy and ramp gradually."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 3000,
+              "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]},
+              "notes": "Easy endurance. Smooth pressure, no hidden tempo."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {"power_pct_ftp": [0.45, 0.55], "rpe": [1, 2]},
+          "notes": "Ease down below the main ride."
+        }
+      ],
+      "nutrition": {
+        "pre": "Normal meal timing is enough. If hungry, add 20-30g carbs 30-60 min before.",
+        "during": "Water to thirst. Add 10-20g carbs only if starting hungry or riding late.",
+        "post": "Normal meal within 1-2h with 25-35g protein.",
+        "centr_recipe": "Swirled Banana & Oat Pots, https://centr.com/recipe/show/32848/swirled-banana-oat-pots",
+        "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Normal meal and fluids to thirst.",
+        "evening": "No extra lower-body work.",
+        "next_morning_check": "Sunday long ride proceeds only if this felt genuinely easy."
+      },
+      "skill_focus": [
+        {
+          "action": "Keep rises seated and capped.",
+          "why": "This adds aerobic time without stealing from Sunday's durability ride."
+        }
+      ],
+      "mental_focus": {
+        "intention": "Build frequency, not fatigue.",
+        "why": "The plan needs more load, but the added load has to be absorbable.",
+        "cue": "Easy volume counts.",
+        "reset": "If you start chasing speed, shift easier and ride below 60% FTP for 2 minutes."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["Skip if Thursday's threshold check left heavy legs.", "No intensity."],
+        "during_workout_cues": ["Keep pressure light.", "Protect Sunday."],
+        "if_too_easy": "Correct. Stop on time.",
+        "if_too_hard": "Turn home easy or rest.",
+        "success_criteria": "You add volume and still want the long ride.",
+        "post_workout_capture": ["Legs before/after", "Fueling/GI", "Pain/niggles", "Schedule/life", "Other unusual context"]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-30",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "adjusted_tempo_durability_2026-06-05",
+      "title": "Tempo Durability Build",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add meaningful aerobic power load without turning the week into threshold testing.",
+      "why_now": "The previous plan started deload while Form was already rising. Friday should carry a controlled build stimulus if recovery is normal.",
+      "source_context": {
+        "week_objective": "Build durable aerobic power.",
+        "phase": "Phase 1 Build Continuation",
+        "target_system": "tempo durability",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 105,
+        "equipment": ["power_meter"]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor priority. 100-105 minutes with 2 x 20 min tempo at 80-85% FTP. This is durable pressure, not threshold."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 900,
+          "target": {"power_pct_ftp": [0.50, 0.72], "rpe": [2, 4]},
+          "notes": "Build gradually."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 2,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 1200,
+              "target": {"power_pct_ftp": [0.80, 0.85], "rpe": [5, 6]},
+              "notes": "Tempo pressure. Smooth, repeatable, no threshold creep."
+            },
+            {
+              "type": "recovery",
+              "duration_sec": 480,
+              "target": {"power_pct_ftp": [0.55, 0.65], "rpe": [2, 3]},
+              "notes": "Easy endurance between tempo blocks."
+            }
+          ]
+        },
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 1200,
+              "target": {"power_pct_ftp": [0.58, 0.70], "rpe": [3, 4]},
+              "notes": "Endurance extension. Keep climbs capped."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {"power_pct_ftp": [0.45, 0.58], "rpe": [1, 2]},
+          "notes": "Ease down below endurance pressure."
+        }
+      ],
+      "nutrition": {
+        "pre": "Carb-forward meal 2-4h before with about 1-2g/kg carbs. Add 20-30g carbs 30-60 min before if starting hungry.",
+        "during": "Use 30-60g carbs/hour and water to thirst.",
+        "post": "25-35g protein plus 60-90g carbs.",
+        "centr_recipe": "Salted Caramel Super Smoothie, https://centr.com/recipe/show/12693/salted-caramel-super-smoothie",
+        "supplements": "Today's workout needs: electrolytes/sodium if hot or heavy sweating; otherwise none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Carbs plus protein within 1-2h.",
+        "evening": "No extra lower-body work.",
+        "next_morning_check": "Saturday stays easy unless legs are clearly normal."
+      },
+      "skill_focus": [
+        {
+          "action": "Cap tempo at 85% FTP even when it feels easy.",
+          "why": "The load target is durability, not another threshold proof."
+        }
+      ],
+      "mental_focus": {
+        "intention": "Make the work repeatable.",
+        "why": "Sustainable FTP improves from controlled pressure that you can absorb and repeat.",
+        "cue": "Durable, not dramatic.",
+        "reset": "If power creeps toward sweet spot, shift easier for 60 seconds and settle back under 85%."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["Do this only if the May 28 threshold check was controlled and recovery is normal."],
+        "during_workout_cues": ["No threshold creep.", "Eat during the first 30 minutes."],
+        "if_too_easy": "Hold the cap and finish clean.",
+        "if_too_hard": "Convert to endurance only at 58-70% FTP.",
+        "success_criteria": "Both tempo blocks steady with no late fade.",
+        "post_workout_capture": ["Legs before/after", "Fueling/GI", "Pain/niggles", "Schedule/life", "Other unusual context"]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-05",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "adjusted_easy_endurance_2026-06-06",
+      "title": "Easy Endurance Support",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Preserve frequency after Friday's tempo work without adding another intensity stimulus.",
+      "why_now": "The build needs more total load, but Saturday must protect the Sunday long ride.",
+      "source_context": {
+        "week_objective": "Build durable aerobic power.",
+        "phase": "Phase 1 Build Continuation",
+        "target_system": "aerobic support",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": ["power_meter"]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "60 minutes easy endurance only. No tempo and no extension."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {"power_pct_ftp": [0.45, 0.60], "rpe": [1, 2]},
+          "notes": "Start easy and ramp gradually."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 2400,
+              "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]},
+              "notes": "Easy endurance."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {"power_pct_ftp": [0.45, 0.55], "rpe": [1, 2]},
+          "notes": "Ease down."
+        }
+      ],
+      "nutrition": {
+        "pre": "Normal meal timing is enough. If hungry, add 20-30g carbs 30-60 min before.",
+        "during": "Water to thirst.",
+        "post": "Normal meal with 25-35g protein.",
+        "centr_recipe": "Swirled Banana & Oat Pots, https://centr.com/recipe/show/32848/swirled-banana-oat-pots",
+        "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Normal meal and fluids.",
+        "evening": "Keep legs fresh for Sunday.",
+        "next_morning_check": "Sunday proceeds only if legs feel normal."
+      },
+      "skill_focus": [
+        {
+          "action": "Keep climbs seated and below the cap.",
+          "why": "This adds useful volume without creating fatigue debt."
+        }
+      ],
+      "mental_focus": {
+        "intention": "Absorb while building.",
+        "why": "The added frequency only helps if it supports the long ride.",
+        "cue": "Cap first.",
+        "reset": "If you surge, ride below 60% FTP for 2 minutes."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["Skip if Friday was costly."],
+        "during_workout_cues": ["No tempo.", "Protect Sunday."],
+        "if_too_easy": "Correct. Stop on time.",
+        "if_too_hard": "Rest instead.",
+        "success_criteria": "You finish fresher than you expected.",
+        "post_workout_capture": ["Legs before/after", "Fueling/GI", "Pain/niggles", "Schedule/life", "Other unusual context"]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-06",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "adjusted_long_endurance_2026-06-07",
+      "title": "Long Aerobic Durability",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Build aerobic durability with enough volume to support a real build week.",
+      "why_now": "A rising Form projection shows the previous plan did not contain enough endurance load.",
+      "source_context": {
+        "week_objective": "Build durable aerobic power.",
+        "phase": "Phase 1 Build Continuation",
+        "target_system": "aerobic durability",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 180,
+        "equipment": ["power_meter"]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only. 3h cap at 58-72% FTP. No tempo finish unless explicitly reviewed."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {"power_pct_ftp": [0.45, 0.60], "rpe": [1, 2]},
+          "notes": "Start easy."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 9600,
+              "target": {"power_pct_ftp": [0.58, 0.72], "rpe": [3, 4]},
+              "notes": "Aerobic endurance. Eat early and keep climbs controlled."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {"power_pct_ftp": [0.45, 0.58], "rpe": [1, 2]},
+          "notes": "Ease down."
+        }
+      ],
+      "nutrition": {
+        "pre": "Carb-forward meal 2-4h before with about 1-2g/kg carbs.",
+        "during": "Use 45-75g carbs/hour and fluids to thirst. Add sodium if hot or heavy sweating.",
+        "post": "25-35g protein plus 80-120g carbs across the next meal window.",
+        "centr_recipe": "Salted Caramel Super Smoothie, https://centr.com/recipe/show/12693/salted-caramel-super-smoothie",
+        "supplements": "Today's workout needs: sodium/electrolytes if hot or heavy sweating. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Fuel promptly and keep the evening low-stress.",
+        "evening": "No extra training.",
+        "next_morning_check": "Monday can be rest if legs are heavy."
+      },
+      "skill_focus": [
+        {
+          "action": "Fuel before you feel low.",
+          "why": "Long endurance only builds durability if power stays stable without late depletion."
+        },
+        {
+          "action": "Keep rises below 75% FTP unless safety requires otherwise.",
+          "why": "Avoiding spikes preserves aerobic specificity and reduces fatigue cost."
+        }
+      ],
+      "mental_focus": {
+        "intention": "Steady beats heroic.",
+        "why": "This is the aerobic load anchor for the week.",
+        "cue": "Eat early, cap climbs.",
+        "reset": "If the ride starts drifting hard, take 5 minutes at the low end of endurance and resume only if breathing settles."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["Shorten to 2h15-2h30 if Friday/Saturday left fatigue."],
+        "during_workout_cues": ["Eat early.", "Cap climbs.", "No tempo finish."],
+        "if_too_easy": "Do not extend beyond 3h without review.",
+        "if_too_hard": "Cut to 2h15-2h30.",
+        "success_criteria": "Finish steady, fueled, and not depleted.",
+        "post_workout_capture": ["Legs before/after", "Fueling/GI", "Pain/niggles", "Schedule/life", "Other unusual context"]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-07",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "adjusted_endurance_cadence_2026-06-10",
+      "title": "Endurance Cadence Skills",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add midweek aerobic work with low-force cadence skill.",
+      "why_now": "Keeps the build moving after the weekend load while avoiding another hard threshold day.",
+      "source_context": {
+        "week_objective": "Build durable aerobic power.",
+        "phase": "Phase 1 Build Continuation",
+        "target_system": "aerobic skill",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 75,
+        "equipment": ["power_meter"]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "75 minutes easy endurance with 5 x 1 min fast-leg cadence. Cadence work must stay low force."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {"power_pct_ftp": [0.45, 0.60], "rpe": [1, 2]},
+          "notes": "Start easy."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 5,
+          "steps": [
+            {
+              "type": "cadence",
+              "duration_sec": 60,
+              "target": {"power_pct_ftp": [0.55, 0.70], "rpe": [2, 4]},
+              "cadence": {"min": 100, "max": 110},
+              "notes": "Fast legs, low force."
+            },
+            {
+              "type": "recovery",
+              "duration_sec": 300,
+              "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]},
+              "notes": "Easy endurance."
+            }
+          ]
+        },
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 1200,
+              "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]},
+              "notes": "Easy endurance extension."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {"power_pct_ftp": [0.45, 0.55], "rpe": [1, 2]},
+          "notes": "Ease down."
+        }
+      ],
+      "nutrition": {
+        "pre": "Normal meal timing is enough. If hungry, add 20-30g carbs 30-60 min before.",
+        "during": "Water to thirst; add 20-30g carbs if starting hungry.",
+        "post": "Normal meal with 25-35g protein.",
+        "centr_recipe": "Swirled Banana & Oat Pots, https://centr.com/recipe/show/32848/swirled-banana-oat-pots",
+        "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Normal meal and fluids.",
+        "evening": "No extra lower-body work.",
+        "next_morning_check": "Next hard work depends on legs and wellness."
+      },
+      "skill_focus": [
+        {
+          "action": "Hold cadence with low torque, not higher power.",
+          "why": "Fast-leg skill supports outdoor efficiency without adding much fatigue."
+        }
+      ],
+      "mental_focus": {
+        "intention": "Keep skill separate from intensity.",
+        "why": "Technique work supports all-round cycling only if it stays low-cost.",
+        "cue": "Fast legs, light pressure.",
+        "reset": "If cadence raises power above the cap, shift easier immediately."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["Skip cadence if legs are heavy from the weekend."],
+        "during_workout_cues": ["Smooth hips.", "Keep pressure light."],
+        "if_too_easy": "Stay easy.",
+        "if_too_hard": "Ride endurance only.",
+        "success_criteria": "Smooth cadence without fatigue.",
+        "post_workout_capture": ["Legs before/after", "Fueling/GI", "Pain/niggles", "Schedule/life", "Other unusual context"]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-10",
+          "sync_to_wahoo": true
+        }
+      }
+    }
+  ]
+}

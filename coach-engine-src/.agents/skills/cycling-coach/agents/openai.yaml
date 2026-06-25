@@ -1,0 +1,7 @@
+interface:
+  display_name: "Cycling Coach"
+  short_description: "Jean-Manuel training and Intervals workflow"
+  default_prompt: "Use $cycling-coach to run COACHCHECK or adjust my cycling plan from Intervals.icu and coach memory."
+
+policy:
+  allow_implicit_invocation: true

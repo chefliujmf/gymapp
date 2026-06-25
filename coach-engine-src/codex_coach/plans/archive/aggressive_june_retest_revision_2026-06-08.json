@@ -1,0 +1,317 @@
+{
+  "week_id": "aggressive_june_retest_revision_2026-06-08",
+  "week_label": "Aggressive June 300W Progression",
+  "notes": "Raises June bike frequency and sustained-power workload after the athlete set 300 W by September 1, 2026 as an explicit stretch target. Uses weekday rides to cover cottage no-bike weekends. Most sessions are training, not tests; validation appears only when it informs the next FTP step.",
+  "workouts": [
+    {
+      "workout_id": "retest_tempo_check_2026-06-09",
+      "title": "Tempo Progression Ride",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add a controlled bike day tomorrow and build sustained aerobic pressure before Thursday threshold.",
+      "why_now": "The athlete is not tired, Monday was very easy, and the week needs more bike work. This adds useful tempo without stealing the main threshold session.",
+      "source_context": {"week_objective": "300W progression build", "phase": "Aggressive June Build", "target_system": "tempo progression", "confidence": "medium"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 75, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "75 minutes with 3 x 10 min tempo at 82-88% FTP. RPE cap 6. Finish wanting Thursday."},
+      "warmup": [{"type": "free_ride", "duration_sec": 720, "target": {"power_pct_ftp": [0.50, 0.70], "rpe": [1, 3]}, "notes": "Progressive warmup."}],
+      "main_set": [
+        {"repeat": 3, "steps": [
+          {"type": "work", "duration_sec": 600, "target": {"power_pct_ftp": [0.82, 0.88], "rpe": [4, 6]}, "notes": "Tempo progression. Smooth, repeatable, no threshold creep."},
+          {"type": "recovery", "duration_sec": 240, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Easy endurance."}
+        ]},
+        {"repeat": 1, "steps": [
+          {"type": "steady", "duration_sec": 660, "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]}, "notes": "Endurance extension."}
+        ]}
+      ],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "nutrition": {
+        "pre": "Normal meal 2-4h before. If hungry, add 20-30g carbs 30-60 min before.",
+        "during": "Water to thirst; add 20-30g carbs if starting hungry or if the ride is late.",
+        "post": "25-35g protein plus a normal carb serving at the next meal.",
+        "centr_recipe": "No new Centr link needed; use the cookbook normal recovery plate fallback.",
+        "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Normal meal and fluids. No lower-body strength after.",
+        "evening": "Protect sleep; Wednesday stays easy and Thursday is the real threshold evidence.",
+        "next_morning_check": "Wednesday proceeds if legs are normal and the tempo did not feel forced."
+      },
+      "skill_focus": [
+        {"action": "Hold tempo by pressure, not by chasing speed.", "why": "This shows whether sustained power is repeatable outdoors without turning the day into a threshold race."},
+        {"action": "Rebuild power gradually after corners over 5-8 pedal strokes.", "why": "Smooth rebuilds make FTP usable on real roads without wasting energy in surges."}
+      ],
+      "mental_focus": {
+        "intention": "Train control, not bravery.",
+        "why": "Tempo volume helps the 300 W target only if Thursday remains high-quality.",
+        "cue": "Tempo builds the engine; threshold sharpens it.",
+        "reset": "If power drifts above 88% FTP, shift easier for one minute and restart the block under the cap."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["RPE cap 6.", "No threshold creep.", "Finish wanting Thursday."],
+        "during_workout_cues": ["Smooth pressure.", "Cap climbs.", "No surges."],
+        "if_too_easy": "Hold the cap. The progression is Thursday, not today.",
+        "if_too_hard": "Make the third rep endurance at 58-70% FTP.",
+        "success_criteria": "All three tempo reps feel controlled and Thursday still looks attractive.",
+        "post_workout_capture": ["RPE", "Feel", "Legs before/after", "Fueling/GI", "Pain/niggles"]
+      },
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-09", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "retest_threshold_validation_2026-06-11",
+      "title": "Threshold Progression",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Use repeatable threshold pressure as the week's main FTP-development session.",
+      "why_now": "The athlete wants a real path toward 300 W, and recent easy execution supports a stricter target than the previous conservative version.",
+      "source_context": {"week_objective": "300W progression build", "phase": "Aggressive June Build", "target_system": "threshold repeatability", "confidence": "medium"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 90, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "90 minutes with 3 x 12 min at 92-98% FTP. RPE cap 8. This is progression work, not a maximal FTP test."},
+      "warmup": [{"type": "free_ride", "duration_sec": 900, "target": {"power_pct_ftp": [0.50, 0.72], "rpe": [1, 3]}, "notes": "Progressive warmup."}],
+      "main_set": [
+        {"repeat": 3, "steps": [
+          {"type": "work", "duration_sec": 720, "target": {"power_pct_ftp": [0.92, 0.98], "rpe": [6, 8]}, "notes": "Controlled threshold progression."},
+          {"type": "recovery", "duration_sec": 300, "target": {"power_pct_ftp": [0.45, 0.60], "rpe": [1, 2]}, "notes": "Easy spin."}
+        ]},
+        {"repeat": 1, "steps": [
+          {"type": "steady", "duration_sec": 840, "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]}, "notes": "Endurance extension."}
+        ]}
+      ],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.45, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "execution_notes": {
+        "pre_interval_cues": ["Start only if legs and sleep are normal.", "RPE cap 8."],
+        "during_workout_cues": ["Cap first.", "No surges.", "Third rep decides the verdict."],
+        "if_too_easy": "Hold the cap and finish clean; do not turn it into a maximal test.",
+        "if_too_hard": "Drop to 90-94% FTP and complete all three reps.",
+        "success_criteria": "Third rep remains controlled with no fade and RPE no higher than 8.",
+        "post_workout_capture": ["RPE", "Feel", "Legs before/after", "Fueling/GI", "Pain/niggles"]
+      },
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-11", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "retest_friday_aerobic_anchor_2026-06-12",
+      "title": "Friday Long Aerobic Anchor",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Make Friday the true no-cottage-bike weekend anchor.",
+      "why_now": "The athlete wants more bike load and will not have reliable bike access at the cottage. Friday has to carry the weekend endurance dose.",
+      "source_context": {"week_objective": "300W progression build", "phase": "Aggressive June Build", "target_system": "aerobic durability", "confidence": "high"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 150, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "2h30 endurance durability at 58-74% FTP. No tempo finish after Thursday threshold."},
+      "warmup": [{"type": "free_ride", "duration_sec": 900, "target": {"power_pct_ftp": [0.50, 0.65], "rpe": [1, 3]}, "notes": "Ramp naturally."}],
+      "main_set": [{"repeat": 1, "steps": [{"type": "steady", "duration_sec": 7500, "target": {"power_pct_ftp": [0.58, 0.74], "rpe": [2, 4]}, "notes": "Long aerobic durability. Fuel early, cap climbs, stay below tempo."}]}],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "nutrition": {
+        "pre": "Carb-forward meal 2-4h before with about 1-2g carbs/kg.",
+        "during": "Start in the first 30 minutes. Target 50-70g carbs/hour and drink to thirst.",
+        "post": "25-35g protein plus 80-110g carbs across the next meal window.",
+        "centr_recipe": "High-protein Lentil Braise with Flatbread, Centr collection link: https://centr.com/blog/show/32824/10-high-protein-recipes-for-easy-meal-prep",
+        "supplements": "Today's workout needs: electrolytes/sodium if hot or heavy sweating; otherwise none required. Daily baseline only if already part of routine."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["Fuel early.", "No tempo finish.", "This replaces mandatory cottage riding."],
+        "during_workout_cues": ["Cap climbs.", "Stay aerobic.", "No surges."],
+        "if_too_easy": "Finish steady; do not add tempo after Thursday.",
+        "if_too_hard": "Cut to 2h low endurance.",
+        "success_criteria": "Steady power, no depletion, no need to force Saturday.",
+        "post_workout_capture": ["Legs before/after", "Fueling/GI", "Pain/niggles", "Schedule/life"]
+      },
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-12", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "retest_monday_aerobic_build_2026-06-15",
+      "title": "Monday Aerobic Build Ride",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Start the next build week with enough volume to avoid drifting fresh.",
+      "why_now": "June needs more bike frequency and weekend bike access is unreliable.",
+      "source_context": {"week_objective": "Aerobic power build", "phase": "Aggressive June Build", "target_system": "aerobic support", "confidence": "medium"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 75, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "75 minutes easy endurance at 55-70% FTP."},
+      "warmup": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Ramp naturally."}],
+      "main_set": [{"repeat": 1, "steps": [{"type": "steady", "duration_sec": 3300, "target": {"power_pct_ftp": [0.55, 0.70], "rpe": [2, 3]}, "notes": "Easy endurance."}]}],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-15", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "retest_tuesday_aerobic_volume_2026-06-16",
+      "title": "Tuesday Aerobic Volume",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add weekday bike volume so the week no longer depends on cottage riding.",
+      "why_now": "The athlete wants more riding, and this is the low-risk place to add it before Wednesday quality.",
+      "source_context": {"week_objective": "Aerobic power build", "phase": "Aggressive June Build", "target_system": "aerobic support", "confidence": "medium"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 75, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "75 minutes endurance at 55-70% FTP with light cadence work only."},
+      "warmup": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Ramp naturally."}],
+      "main_set": [
+        {"repeat": 4, "steps": [
+          {"type": "work", "duration_sec": 60, "target": {"power_pct_ftp": [0.55, 0.70], "rpe": [2, 3]}, "notes": "Fast legs, low force."},
+          {"type": "steady", "duration_sec": 300, "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]}, "notes": "Easy endurance."}
+        ]},
+        {"repeat": 1, "steps": [{"type": "steady", "duration_sec": 1860, "target": {"power_pct_ftp": [0.55, 0.70], "rpe": [2, 3]}, "notes": "Endurance extension."}]}
+      ],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-16", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "retest_sweet_spot_validation_2026-06-17",
+      "title": "Sweet Spot Progression",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Build repeatable sub-threshold power with more total pressure than the old version.",
+      "why_now": "This creates a second FTP-adjacent training stimulus after the June 11 threshold progression.",
+      "source_context": {"week_objective": "Aerobic power build", "phase": "Aggressive June Build", "target_system": "sweet spot repeatability", "confidence": "medium"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 90, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "90 minutes with 3 x 15 min at 88-94% FTP. RPE cap 7."},
+      "warmup": [{"type": "free_ride", "duration_sec": 900, "target": {"power_pct_ftp": [0.50, 0.70], "rpe": [1, 3]}, "notes": "Progressive warmup."}],
+      "main_set": [
+        {"repeat": 3, "steps": [
+          {"type": "work", "duration_sec": 900, "target": {"power_pct_ftp": [0.88, 0.94], "rpe": [5, 7]}, "notes": "Sustained sweet spot."},
+          {"type": "recovery", "duration_sec": 300, "target": {"power_pct_ftp": [0.45, 0.60], "rpe": [1, 2]}, "notes": "Easy spin."}
+        ]},
+        {"repeat": 1, "steps": [{"type": "steady", "duration_sec": 300, "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]}, "notes": "Short endurance extension."}]}
+      ],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.45, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "execution_notes": {
+        "pre_interval_cues": ["Controlled progression.", "RPE cap 7."],
+        "during_workout_cues": ["Smooth pressure.", "No surges.", "Third rep matters."],
+        "if_too_easy": "Hold the cap. Do not turn sweet spot into threshold.",
+        "if_too_hard": "Drop to 86-90% FTP and complete all three reps.",
+        "success_criteria": "Rep 3 is steady, controlled, and not a fade.",
+        "post_workout_capture": ["RPE", "Feel", "Legs before/after", "Fueling/GI"]
+      },
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-17", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "retest_thursday_easy_support_2026-06-18",
+      "title": "Thursday Easy Support",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add frequency without adding fatigue before the Friday anchor.",
+      "why_now": "The plan needs more riding, but the day before Friday should support the anchor rather than compete with it.",
+      "source_context": {"week_objective": "Aerobic power build", "phase": "Aggressive June Build", "target_system": "aerobic support", "confidence": "medium"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 60, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "60 minutes easy endurance at 55-68% FTP. No tempo."},
+      "warmup": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Ramp naturally."}],
+      "main_set": [{"repeat": 1, "steps": [{"type": "steady", "duration_sec": 2400, "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]}, "notes": "Easy endurance."}]}],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-18", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "retest_friday_sustained_anchor_2026-06-19",
+      "title": "Friday Sustained Power Anchor",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Move the week-endurance dose into Friday with sustained tempo plus long aerobic support.",
+      "why_now": "The cottage weekend cannot be assumed rideable, so Friday carries the main durability and sustained-power work.",
+      "source_context": {"week_objective": "Aerobic power build", "phase": "Aggressive June Build", "target_system": "tempo durability", "confidence": "medium"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 150, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "2h30 with 2 x 30 min tempo at 80-86% FTP, then endurance. Fuel early."},
+      "warmup": [{"type": "free_ride", "duration_sec": 900, "target": {"power_pct_ftp": [0.50, 0.70], "rpe": [1, 3]}, "notes": "Progressive warmup."}],
+      "main_set": [
+        {"repeat": 2, "steps": [
+          {"type": "work", "duration_sec": 1800, "target": {"power_pct_ftp": [0.80, 0.86], "rpe": [4, 6]}, "notes": "Durable tempo. No threshold drift."},
+          {"type": "recovery", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Easy endurance."}
+        ]},
+        {"repeat": 1, "steps": [{"type": "steady", "duration_sec": 2700, "target": {"power_pct_ftp": [0.58, 0.72], "rpe": [2, 4]}, "notes": "Endurance extension. Cap climbs."}]}
+      ],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.45, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-19", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "retest_tuesday_aerobic_volume_2026-06-23",
+      "title": "Tuesday Aerobic Volume",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Keep overload week from depending on weekend access.",
+      "why_now": "This adds controlled volume between Monday aerobic work and Wednesday over-under validation.",
+      "source_context": {"week_objective": "Controlled overload", "phase": "Aggressive June Build", "target_system": "aerobic support", "confidence": "medium"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 75, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "75 minutes endurance at 55-70% FTP. No tempo."},
+      "warmup": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Ramp naturally."}],
+      "main_set": [{"repeat": 1, "steps": [{"type": "steady", "duration_sec": 3300, "target": {"power_pct_ftp": [0.55, 0.70], "rpe": [2, 3]}, "notes": "Endurance volume."}]}],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-23", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "retest_over_under_validation_2026-06-24",
+      "title": "Over-Under Progression",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Build FTP control with longer over-under blocks around threshold.",
+      "why_now": "The 300 W target needs stronger threshold control, not more conservative holding patterns.",
+      "source_context": {"week_objective": "Controlled overload", "phase": "Aggressive June Build", "target_system": "threshold control", "confidence": "medium"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 95, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "95 minutes with 4 x 10 min at 94-102% FTP. RPE cap 8. No sprinting the overs."},
+      "warmup": [{"type": "free_ride", "duration_sec": 900, "target": {"power_pct_ftp": [0.50, 0.72], "rpe": [1, 3]}, "notes": "Progressive warmup."}],
+      "main_set": [
+        {"repeat": 4, "steps": [
+          {"type": "work", "duration_sec": 600, "target": {"power_pct_ftp": [0.94, 1.02], "rpe": [6, 8]}, "notes": "Controlled over-under pressure."},
+          {"type": "recovery", "duration_sec": 300, "target": {"power_pct_ftp": [0.45, 0.60], "rpe": [1, 2]}, "notes": "Easy spin."}
+        ]},
+        {"repeat": 1, "steps": [{"type": "steady", "duration_sec": 600, "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]}, "notes": "Endurance extension."}]}
+      ],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.45, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "execution_notes": {
+        "pre_interval_cues": ["No sprinting.", "RPE cap 8.", "Smooth transitions."],
+        "during_workout_cues": ["Cap first.", "Control the overs.", "Last block matters."],
+        "if_too_easy": "Keep the cap. The goal is repeatability, not max watts.",
+        "if_too_hard": "Ride the remaining blocks steady at 90-96% FTP.",
+        "success_criteria": "Fourth block stays controlled with no fade or panic surges.",
+        "post_workout_capture": ["RPE", "Feel", "Legs before/after", "Fueling/GI"]
+      },
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-24", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "retest_thursday_easy_support_2026-06-25",
+      "title": "Thursday Easy Support",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add low-cost volume before the long Friday anchor.",
+      "why_now": "The overload week needs more bike time, but Friday remains the bigger sustained-power day.",
+      "source_context": {"week_objective": "Controlled overload", "phase": "Aggressive June Build", "target_system": "aerobic support", "confidence": "medium"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 60, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "60 minutes easy endurance at 55-68% FTP. No tempo."},
+      "warmup": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Ramp naturally."}],
+      "main_set": [{"repeat": 1, "steps": [{"type": "steady", "duration_sec": 2400, "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]}, "notes": "Easy endurance."}]}],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-25", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "retest_friday_overload_anchor_2026-06-26",
+      "title": "Friday Overload Anchor",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Make Friday the main overload ride of late June.",
+      "why_now": "With no reliable cottage weekend bike access, this is the correct place for the biggest sustained-power and durability dose.",
+      "source_context": {"week_objective": "Controlled overload", "phase": "Aggressive June Build", "target_system": "tempo durability", "confidence": "medium"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 180, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "3h with 2 x 40 min tempo at 80-86% FTP plus endurance. Fuel from the first 30 minutes."},
+      "warmup": [{"type": "free_ride", "duration_sec": 900, "target": {"power_pct_ftp": [0.50, 0.70], "rpe": [1, 3]}, "notes": "Progressive warmup."}],
+      "main_set": [
+        {"repeat": 2, "steps": [
+          {"type": "work", "duration_sec": 2400, "target": {"power_pct_ftp": [0.80, 0.86], "rpe": [4, 6]}, "notes": "Long tempo. Smooth and capped."},
+          {"type": "recovery", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Easy endurance."}
+        ]},
+        {"repeat": 1, "steps": [{"type": "steady", "duration_sec": 3300, "target": {"power_pct_ftp": [0.58, 0.72], "rpe": [2, 4]}, "notes": "Endurance extension. Fuel and cap climbs."}]}
+      ],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.45, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "nutrition": {
+        "pre": "Carb-forward meal 2-4h before with about 1-2g carbs/kg.",
+        "during": "Start in first 30 minutes. Target 60-80g carbs/hour if tolerated and drink to thirst.",
+        "post": "25-35g protein plus 100-130g carbs across the next meal window.",
+        "centr_recipe": "Creamy Roasted Tofu & Cauliflower Korma, Centr collection link: https://centr.com/blog/show/32824/10-high-protein-recipes-for-easy-meal-prep",
+        "supplements": "Today's workout needs: electrolytes/sodium if hot or heavy sweating; optional caffeine only if tolerated and not late. Daily baseline only if already part of routine."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["Fuel early.", "No threshold drift.", "This is the overload anchor."],
+        "during_workout_cues": ["Cap tempo.", "Eat early.", "No surges."],
+        "if_too_easy": "Finish the duration; do not lift above 86% FTP.",
+        "if_too_hard": "Shorten the second tempo block to 25-30 minutes and keep the rest endurance.",
+        "success_criteria": "Second tempo block is steady, fueled, and not forced.",
+        "post_workout_capture": ["RPE", "Feel", "Legs before/after", "Fueling/GI", "Pain/niggles"]
+      },
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-26", "sync_to_wahoo": true}}
+    }
+  ]
+}
