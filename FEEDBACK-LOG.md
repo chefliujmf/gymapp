@@ -20,6 +20,24 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 
 ## 🔨 / ⬜ Open queue
 
+131. 🔨 **Import an activity from the calendar + link it to a planned workout (long-standing).** BUILT
+    (Option A, JM's pick — mockup mockups/import-activity.html): calendar Add sheet gains an "Import an
+    activity" row → opens /log-activity?date=<day>. LogActivity reads ?date, loads that day's plans, and
+    shows "Link to plan: <title>" (auto-on when sport matches) → on save it names the activity after the
+    plan + stores planId so day+sport+title matching counts it done. QA-verify. ORIGINAL ASK: The day/"Add
+    to <date>" modal only searches PLANNED workouts — no way to import a completed one, and no way to link an
+    import to that day's plan. Build: (a) entry point "Import an activity" in the calendar day + Add modal →
+    opens /log-activity with date prefilled; (b) in /log-activity, if a plan exists that day (matching sport),
+    show "Link to plan: <planned workout>" → on save, mark the plan done + attach the activity (reuse Today's
+    actFor day+sport match). Builds on #129 (manual entry) + #130 (History merge). JM: reported long ago.
+130. ⬜ **History should surface intervals activities (read-hub direction).** A device activity recorded
+    straight to intervals (e.g. a "morning run" not done via Platyplus) shows in intervals but NOT in
+    Platyplus History — History reads only local `db.logs`. Per #121 (intervals = read hub), History/Progress
+    should MERGE intervals activities (match-first by day+sport so a Platyplus-logged + intervals copy aren't
+    shown twice), with the intervals↗/Strava↗ links (ui.tsx already renders these). NOTE: the manual-entry
+    upload (#129) DOES create a local copy, so it'll appear in both — this gap is only for activities born on
+    a device. (Separate: "not in Strava" = intervals→Strava sync isn't automatic unless the recording
+    source/Strava is configured to; Platyplus doesn't control that.)
 129. 🔨 **Manual activity entry — with/without a workout file, with/without GPS.** BUILT (single smart
     form, JM's pick; FIT+GPX+TCX): `/log-activity` page (file import prefills, SVG route map when GPS,
     sport/date/time/duration/distance/HR/power/RPE/notes) + entry points (Train hub + History "+ Log").

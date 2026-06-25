@@ -28,6 +28,8 @@ export interface WorkoutLog {
   kcal?: number
   /** how this log was created: a recorded player, a manual entry, or a file import */
   source?: 'manual' | 'file' | 'player'
+  /** linked planned-workout id (#131) when an import is tied to a plan that day */
+  planId?: string
   /** downsampled GPS route [lat,lng][] for the History map (only when the file had GPS) */
   track?: [number, number][]
   /** full per-exercise set snapshot, for progressive-overload prefill */

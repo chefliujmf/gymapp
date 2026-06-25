@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Import an activity + link to a plan — options</title>
+<style>
+  :root { --text:#eef1f4; --text-dim:#9298a6; --accent:#34e07d; --bg:#0f1216; --line:#2a2f3a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#06080b; color:var(--text); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:18px; }
+  h1 { font-size:17px; margin:0 0 4px; }
+  .lede { color:var(--text-dim); font-size:13px; margin:0 0 16px; max-width:900px; }
+  .toggle { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .toggle button { background:linear-gradient(#21252f,#191c24); color:var(--text); border:1px solid var(--line); border-radius:11px; padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+  .toggle button.on { background:var(--accent); color:#04110a; border-color:var(--accent); }
+  .stage { display:flex; gap:22px; flex-wrap:wrap; align-items:flex-start; }
+  .panel { display:none; }
+  .panel.on { display:flex; gap:22px; flex-wrap:wrap; }
+  .phone { width:430px; max-width:94vw; background:var(--bg); border:1px solid var(--line); border-radius:26px; padding:16px; box-shadow:0 18px 50px rgba(0,0,0,.5); }
+  .note { width:300px; min-width:240px; color:var(--text-dim); font-size:13px; }
+  .note h3 { color:var(--text); font-size:14px; margin:0 0 6px; }
+  .note ul { margin:6px 0 14px; padding-left:18px; } .note li { margin:3px 0; }
+  .tag { display:inline-block; font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; }
+  .rec { background:var(--accent); color:#04110a; }
+  .calhead { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .calhead .day { font-weight:800; font-size:16px; } .calhead .sub { color:var(--text-dim); font-size:12px; }
+  .addbtn { background:var(--accent); color:#04110a; border:none; border-radius:999px; padding:9px 15px; font-weight:800; font-size:13px; }
+  .card { background:linear-gradient(#21252f,#191c24); border:1px solid var(--line); border-radius:16px; padding:14px; margin:10px 0; }
+  .empty { color:var(--text-dim); font-size:13px; padding:8px 2px; }
+  .field { width:100%; background:#0c0f14; border:1px solid var(--line); border-radius:12px; padding:11px 13px; color:var(--text); font-size:14px; margin:6px 0; }
+  .seg { display:flex; background:#0c0f14; border:1px solid var(--line); border-radius:12px; padding:4px; gap:4px; margin:6px 0 12px; }
+  .seg div { flex:1; text-align:center; padding:8px; border-radius:9px; font-size:13px; font-weight:700; color:var(--text-dim); cursor:pointer; }
+  .seg div.on { background:var(--accent); color:#04110a; }
+  .or { display:flex; align-items:center; gap:10px; color:var(--text-dim); font-size:12px; margin:12px 0; }
+  .or::before,.or::after { content:""; flex:1; height:1px; background:var(--line); }
+  .drop { display:flex; align-items:center; gap:12px; border:1px dashed var(--line); border-radius:14px; padding:14px; background:#0c0f14; cursor:pointer; }
+  .drop b { display:block; } .drop .s { color:var(--text-dim); font-size:12px; }
+  .ic { width:34px; height:34px; border-radius:9px; background:#0c0f14; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:17px; flex:none; }
+  .rowflex { display:flex; align-items:center; gap:12px; }
+  .modalt { font-weight:800; font-size:16px; }
+  .x { margin-left:auto; width:30px; height:30px; border-radius:999px; background:var(--accent); color:#04110a; border:none; font-weight:800; }
+  .linkbox { border:1px solid var(--accent); border-radius:14px; padding:12px; margin:12px 0; background:rgba(52,224,125,.07); }
+  .linkbox .h { font-size:12px; font-weight:800; color:var(--accent); margin-bottom:8px; letter-spacing:.02em; }
+  .planrow { display:flex; align-items:center; gap:10px; }
+  .check { width:22px; height:22px; border-radius:7px; background:var(--accent); color:#04110a; display:flex; align-items:center; justify-content:center; font-weight:800; flex:none; }
+  .planrow .t b { display:block; } .planrow .t span { color:var(--text-dim); font-size:12px; }
+  .save { width:100%; background:var(--accent); color:#04110a; border:none; border-radius:13px; padding:13px; font-weight:800; font-size:15px; margin-top:8px; }
+  .ghost { width:100%; background:#0c0f14; color:var(--text); border:1px solid var(--line); border-radius:13px; padding:12px; font-weight:700; font-size:14px; margin-top:8px; display:flex; align-items:center; gap:10px; justify-content:center; }
+  .plancard { border-left:3px solid var(--accent); }
+  .plancard .top { display:flex; align-items:center; gap:10px; }
+  .plancard .acts { display:flex; gap:8px; margin-top:10px; }
+  .miniact { flex:1; text-align:center; background:#0c0f14; border:1px solid var(--line); border-radius:10px; padding:8px; font-size:12px; font-weight:700; }
+  .miniact.accent { background:var(--accent); color:#04110a; border-color:var(--accent); }
+  .small { color:var(--text-dim); font-size:11px; }
+</style>
+</head>
+<body>
+  <h1>Import an activity &amp; link it to a plan — 3 placements (#131)</h1>
+  <p class="lede">All three open the same Log-activity form (file import or manual). They differ in WHERE you start the import and how linking-to-a-plan is surfaced. Tap to compare. Recommendation: <b>Option A</b>.</p>
+  <div class="toggle">
+    <button class="on" data-p="A">A · Add-modal mode toggle <span class="tag rec">Recommended</span></button>
+    <button data-p="B">B · Separate “Import” button</button>
+    <button data-p="C">C · Import from the plan card</button>
+  </div>
+
+  <!-- ============ OPTION A ============ -->
+  <div class="panel on" data-panel="A">
+    <div class="phone">
+      <div class="calhead"><div><div class="day">Thursday, Jun 25</div><div class="sub">1 planned</div></div><button class="addbtn">+ Add</button></div>
+      <div class="card" style="padding:16px;">
+        <div class="rowflex" style="margin-bottom:12px;"><div class="modalt">Add to Jun 25</div><button class="x">✕</button></div>
+        <div class="seg"><div class="on">Plan a workout</div><div>Import an activity</div></div>
+        <div class="drop"><span class="ic">⬆</span><div><b>Import a file</b><span class="s">.fit · .gpx · .tcx — or enter it by hand</span></div></div>
+        <div class="linkbox"><div class="h">LINK TO TODAY’S PLAN</div>
+          <div class="planrow"><span class="check">✓</span><div class="t"><b>Sweet Spot Ride</b><span>planned · Jun 25 · matched by sport</span></div></div>
+        </div>
+        <button class="save">Continue → Save activity</button>
+      </div>
+    </div>
+    <div class="note">
+      <h3>A · Add-modal mode toggle</h3>
+      <ul>
+        <li>The existing “Add to &lt;day&gt;” modal gains a <b>Plan / Import</b> segment.</li>
+        <li>Import shows the file-drop + manual fields right there; the <b>Link to plan</b> box appears only when that day has a matching planned workout.</li>
+        <li>Fewest new surfaces — one modal does both planning &amp; importing.</li>
+      </ul>
+      <p class="small">Best when the calendar is your hub for everything about a day.</p>
+    </div>
+  </div>
+
+  <!-- ============ OPTION B ============ -->
+  <div class="panel" data-panel="B">
+    <div class="phone">
+      <div class="calhead">
+        <div><div class="day">Thursday, Jun 25</div><div class="sub">1 planned</div></div>
+        <div style="display:flex; gap:8px;"><button class="ghost" style="width:auto; padding:9px 13px; margin:0;">↥ Import</button><button class="addbtn">+ Add</button></div>
+      </div>
+      <div class="card plancard"><div class="top"><span class="ic">🚴</span><div><b>Sweet Spot Ride</b><div class="small">planned · 1h45 · 75 TSS</div></div></div></div>
+      <div class="empty">— or tap <b>↥ Import</b> to add a completed activity →</div>
+      <div class="card" style="margin-top:14px;">
+        <div class="modalt" style="margin-bottom:10px;">Log activity · Jun 25</div>
+        <div class="drop"><span class="ic">⬆</span><div><b>Import a file</b><span class="s">.fit · .gpx · .tcx (optional)</span></div></div>
+        <div class="linkbox"><div class="h">LINK TO A PLAN</div>
+          <div class="planrow"><span class="check">✓</span><div class="t"><b>Sweet Spot Ride</b><span>planned · Jun 25</span></div></div>
+        </div>
+        <button class="save">Save activity</button>
+      </div>
+    </div>
+    <div class="note">
+      <h3>B · Separate “Import” button</h3>
+      <ul>
+        <li>The day header gets its own <b>↥ Import</b> action next to <b>+ Add</b>.</li>
+        <li>Planning and importing stay visually distinct — “Add” = future, “Import” = something you did.</li>
+        <li>Opens the full Log-activity page; link-to-plan row appears if a plan matches.</li>
+      </ul>
+      <p class="small">Clearest mental model, but adds a second button to the day header.</p>
+    </div>
+  </div>
+
+  <!-- ============ OPTION C ============ -->
+  <div class="panel" data-panel="C">
+    <div class="phone">
+      <div class="calhead"><div><div class="day">Thursday, Jun 25</div><div class="sub">1 planned</div></div><button class="addbtn">+ Add</button></div>
+      <div class="card plancard">
+        <div class="top"><span class="ic">🚴</span><div><b>Sweet Spot Ride</b><div class="small">planned · 1h45 · 75 TSS</div></div></div>
+        <div class="acts"><div class="miniact accent">＋ Log / attach activity</div><div class="miniact">Edit</div></div>
+      </div>
+      <div class="empty" style="margin-top:12px;">No plan? A general <b>＋ Import activity</b> sits at the bottom of the day.</div>
+      <button class="ghost">＋ Import activity (unplanned)</button>
+      <div class="card" style="margin-top:14px;">
+        <div class="modalt" style="margin-bottom:4px;">Log activity</div>
+        <div class="small" style="margin-bottom:10px;">Linked to <b style="color:var(--accent)">Sweet Spot Ride</b> — saving marks it done.</div>
+        <div class="drop"><span class="ic">⬆</span><div><b>Import a file</b><span class="s">.fit · .gpx · .tcx (optional)</span></div></div>
+        <button class="save">Save &amp; mark plan done</button>
+      </div>
+    </div>
+    <div class="note">
+      <h3>C · Import from the plan card</h3>
+      <ul>
+        <li>Linking is the <b>primary</b> path: each planned card has <b>＋ Log / attach activity</b>, pre-linked.</li>
+        <li>Unplanned days get a general <b>＋ Import activity</b> at the bottom.</li>
+        <li>Most natural for “I did the workout I planned” — one tap from the plan.</li>
+      </ul>
+      <p class="small">Strongest plan↔activity tie, but import-without-a-plan is a touch less prominent.</p>
+    </div>
+  </div>
+
+<script>
+  const btns = document.querySelectorAll('.toggle button');
+  btns.forEach(b => b.onclick = () => {
+    btns.forEach(x => x.classList.remove('on')); b.classList.add('on');
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.dataset.panel === b.dataset.p));
+  });
+</script>
+</body>
+</html>

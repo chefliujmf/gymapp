@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Upload, FileCheck2, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Upload, FileCheck2, X, Link2 } from 'lucide-react'
 import { authApi, type ParsedActivity } from '../auth/api'
 import { logWorkout } from '../db'
+import { fetchGymPlans, type CoachPlan } from '../plan'
 import { localISO } from '../date'
 
 // Single smart form (#129): optionally drop a .fit/.gpx/.tcx to prefill everything,
@@ -47,9 +48,11 @@ function RouteMap({ track }: { track: [number, number][] }) {
 
 export default function LogActivity() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const fileRef = useRef<HTMLInputElement>(null)
+  const qDate = params.get('date')
   const [sport, setSport] = useState('ride')
-  const [date, setDate] = useState(localISO())
+  const [date, setDate] = useState(qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : localISO())
   const [time, setTime] = useState('12:00')
   const [durationMin, setDurationMin] = useState('')
   const [distanceKm, setDistanceKm] = useState('')
@@ -63,6 +66,18 @@ export default function LogActivity() {
   const [parsing, setParsing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  // Plan linking (#131): load the chosen day's planned workouts; offer to link one
+  // that matches the sport so saving the import counts toward that plan.
+  const [dayPlans, setDayPlans] = useState<CoachPlan[]>([])
+  const [linkPlanId, setLinkPlanId] = useState('')
+  useEffect(() => {
+    let live = true
+    fetchGymPlans(date, date).then((ps) => { if (live) setDayPlans(ps) }).catch(() => { if (live) setDayPlans([]) })
+    return () => { live = false }
+  }, [date])
+  const planMatch = dayPlans.find((p) => p.sport === sport)
+  // auto-select a matching plan when one appears; clear if the sport no longer matches
+  useEffect(() => { setLinkPlanId((cur) => (planMatch ? (cur && dayPlans.some((p) => p.id === cur && p.sport === sport) ? cur : planMatch.id) : '')) }, [planMatch?.id, sport]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -90,7 +105,9 @@ export default function LogActivity() {
     const dur = Math.round(Number(durationMin) || 0)
     if (!dur && !fileB64) { setErr('Add a duration (or import a file).'); return }
     setBusy(true)
-    const title = notes.trim().split('\n')[0].slice(0, 60) || `${SPORTS.find((s) => s.v === sport)?.label.replace(/^\S+\s/, '') || 'Activity'} · ${date}`
+    const linked = linkPlanId ? dayPlans.find((p) => p.id === linkPlanId) : undefined
+    // a linked plan names the activity (so day+sport+title matching ties them as done)
+    const title = (linked?.title || notes.trim().split('\n')[0]).slice(0, 60) || `${SPORTS.find((s) => s.v === sport)?.label.replace(/^\S+\s/, '') || 'Activity'} · ${date}`
     const startIso = new Date(`${date}T${time || '12:00'}:00`).toISOString()
     const distM = distanceKm ? Math.round(Number(distanceKm) * 1000) : undefined
     const hr = avgHr ? Number(avgHr) : undefined
@@ -101,6 +118,7 @@ export default function LogActivity() {
         workoutId: fileB64 ? 'imported' : 'manual', title, discipline: discOf(sport), duration: dur, date,
         notes: notes.trim() || undefined, rpe: rpe || undefined, distanceKm: distanceKm ? Number(distanceKm) : undefined,
         avgHr: hr, avgPower: pw, source: fileB64 ? 'file' : 'manual', track: track.length ? track : undefined,
+        planId: linked?.id,
       })
       // 2) fan out to intervals (match-first): raw file or a summary TCX
       await authApi.logManualActivity({
@@ -143,6 +161,14 @@ export default function LogActivity() {
       <select className="search" value={sport} onChange={(e) => setSport(e.target.value)}>
         {SPORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
       </select>
+
+      {planMatch && (
+        <button type="button" className={`link-plan${linkPlanId ? ' on' : ''}`} onClick={() => setLinkPlanId(linkPlanId ? '' : planMatch.id)}>
+          <span className="link-plan__check">{linkPlanId ? '✓' : ''}</span>
+          <Link2 size={16} />
+          <span className="link-plan__t"><b>Link to plan: {planMatch.title}</b><span>planned · {date} — saving counts it as done</span></span>
+        </button>
+      )}
 
       <div className="form-row">
         <div><label className="field-label">Date</label><input className="search" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
