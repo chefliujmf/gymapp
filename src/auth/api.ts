@@ -74,6 +74,9 @@ export const authApi = {
   checkins: (from: string, to: string) => req<Checkin[]>(`/checkins?from=${from}&to=${to}`),
   planFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string }) => req<{ ok: boolean }>(`/plan/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   promoteProd: () => req<{ ok: boolean }>('/promote-prod', { method: 'POST' }),
+  // Fan a Platyplus-recorded workout out to intervals (match-first, server-side, #122/#123).
+  completeActivity: (a: { sport: string; title: string; date: string; startIso: string; durationSec: number; samples: { t: number; power?: number; cadence?: number; hr?: number }[] }) =>
+    req<{ status: string; icuId?: number | null; error?: string }>('/activity/complete', { method: 'POST', body: a }),
   notifications: () => req<CoachNotification[]>('/notifications'),
   coachReviews: () => req<CoachReview[]>('/coach-reviews'),
   markNotificationsRead: (ids?: string[]) => req<{ ok: boolean }>('/notifications/read', { method: 'POST', body: { ids } }),

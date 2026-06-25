@@ -874,6 +874,66 @@ async function icuGet(user, path) {
 }
 const icuDay = (n = 0) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
 
+// ---- Completed-activity capture → intervals (MATCH-FIRST, #122/#123) -------------
+// The locked data-flow model (UX-BACKLOG): intervals = read hub; Platyplus always
+// keeps the local copy; for in-app workouts, check intervals for a device activity
+// first (match → don't duplicate), else upload our own. No Strava dependency.
+const tcxSport = (s) => /ride|cycl|bike/i.test(s) ? 'Biking' : /run/i.test(s) ? 'Running' : 'Other'
+function tcxFromSamples(samples, { sport, startIso, durationSec }) {
+  const t0 = new Date(startIso).getTime()
+  const pts = (samples || []).map((s) => {
+    const time = new Date(t0 + (s.t || 0) * 1000).toISOString().replace(/\.\d+Z$/, 'Z')
+    let x = `<Trackpoint><Time>${time}</Time>`
+    if (s.hr != null) x += `<HeartRateBpm><Value>${Math.round(s.hr)}</Value></HeartRateBpm>`
+    if (s.cadence != null) x += `<Cadence>${Math.round(s.cadence)}</Cadence>`
+    if (s.power != null) x += `<Extensions><ns3:TPX><ns3:Watts>${Math.round(s.power)}</ns3:Watts></ns3:TPX></Extensions>`
+    return x + '</Trackpoint>'
+  }).join('')
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2"><Activities><Activity Sport="${tcxSport(sport)}"><Id>${startIso}</Id><Lap StartTime="${startIso}"><TotalTimeSeconds>${Math.round(durationSec)}</TotalTimeSeconds><DistanceMeters>0</DistanceMeters><Intensity>Active</Intensity><TriggerMethod>Manual</TriggerMethod><Track>${pts}</Track></Lap></Activity></Activities></TrainingCenterDatabase>`
+}
+// Find a device activity already in intervals for this day+sport (so we don't dup).
+async function icuFindMatch(user, { date, sport }) {
+  const ath = user.icuAthlete || 'i28814'
+  const acts = await icuGet(user, `/athlete/${ath}/activities?oldest=${date}&newest=${date}`)
+  if (!Array.isArray(acts)) return null
+  const want = /ride|cycl|bike/i.test(sport) ? /ride|cycl|bike/i : /run/i.test(sport) ? /run/i : /weight|strength|workout/i
+  return acts.find((a) => want.test(String(a.type || ''))) || null
+}
+async function icuUploadTcx(user, tcx, name) {
+  const ath = user.icuAthlete || 'i28814'
+  const fd = new FormData()
+  fd.append('file', new Blob([tcx], { type: 'application/xml' }), `${String(name).replace(/[^\w-]/g, '_').slice(0, 40)}.tcx`)
+  const r = await fetch(`${ICU_API}/athlete/${ath}/activities`, {
+    method: 'POST', body: fd,
+    headers: { authorization: 'Basic ' + Buffer.from('API_KEY:' + user.icuKey).toString('base64') },
+  })
+  if (!r.ok) throw new Error(`icu upload ${r.status}: ${(await r.text()).slice(0, 160)}`)
+  return r.json().catch(() => ({}))
+}
+
+// A Platyplus-recorded workout finished. Keep the local copy (client already logged it);
+// fan out to intervals match-first. Body: {sport, title, date, startIso, durationSec, samples[]}.
+app.post('/auth/activity/complete', auth, async (req, res) => {
+  const b = req.body || {}
+  const date = String(b.date || '').slice(0, 10)
+  const sport = String(b.sport || 'ride').slice(0, 20)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date required' })
+  if (!req.user.icuKey) return res.json({ status: 'local-only' }) // no intervals → lives in Platyplus
+  try {
+    const match = await icuFindMatch(req.user, { date, sport })
+    if (match) return res.json({ status: 'matched', icuId: match.id }) // device recorded it → don't dup
+    const samples = Array.isArray(b.samples) ? b.samples.slice(0, 60000) : []
+    if (!samples.length) return res.json({ status: 'no-stream' }) // nothing to upload (e.g. gym handled separately)
+    const startIso = typeof b.startIso === 'string' ? b.startIso : new Date(date + 'T12:00:00Z').toISOString()
+    const tcx = tcxFromSamples(samples, { sport, startIso, durationSec: Number(b.durationSec) || samples.length })
+    const up = await icuUploadTcx(req.user, tcx, b.title || sport)
+    res.json({ status: 'uploaded', icuId: up?.id ?? up?.activity?.id ?? null })
+  } catch (e) {
+    res.json({ status: 'error', error: String(e).slice(0, 160) })
+  }
+})
+
 app.get('/api/intervals/wellness', apiAuth, async (req, res) => {
   const days = Math.min(60, Math.max(1, Number(req.query.days) || 14))
   const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete || 'i28814'}/wellness?oldest=${icuDay(days)}&newest=${icuDay(0)}`)

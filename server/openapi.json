@@ -786,6 +786,24 @@
         }
       }
     },
+    "/auth/activity/complete": {
+      "post": {
+        "summary": "A Platyplus-recorded workout finished → fan out to intervals (match-first, #122/#123)",
+        "description": "Keeps the local Platyplus copy; checks intervals for a matching device activity (don't duplicate), else uploads a TCX built from the sample stream. No-op (local-only) when intervals isn't connected.",
+        "tags": ["activity"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["date", "sport"],
+          "properties": {
+            "sport": { "type": "string" }, "title": { "type": "string" },
+            "date": { "type": "string", "format": "date" }, "startIso": { "type": "string" },
+            "durationSec": { "type": "number" },
+            "samples": { "type": "array", "items": { "type": "object", "properties": { "t": { "type": "number" }, "power": { "type": "number" }, "cadence": { "type": "number" }, "hr": { "type": "number" } } } }
+          }
+        } } } },
+        "responses": { "200": { "description": "status: uploaded | matched | local-only | no-stream | error" } }
+      }
+    },
     "/auth/promote-prod": {
       "post": {
         "summary": "Admin: trigger the prod-promotion GitHub workflow (workflow_dispatch). Needs GH_PROMOTE_TOKEN in the server env.",

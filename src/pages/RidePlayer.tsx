@@ -6,6 +6,7 @@ import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { logWorkout } from '../db'
 import { localISO } from '../date'
 import { useBle, BleDevices } from '../BleContext'
+import { authApi } from '../auth/api'
 import { Bluetooth } from 'lucide-react'
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, Math.floor(s % 60))).padStart(2, '0')}`
@@ -49,6 +50,24 @@ export default function RidePlayer() {
   const ble = useBle()
   const live = ble.live
   const hr = ble.bpm
+
+  // Record a per-second power/HR/cadence stream so the ride can be uploaded to
+  // intervals on finish (#122). liveRef mirrors the latest sensor values each render.
+  const samplesRef = useRef<{ t: number; power?: number; cadence?: number; hr?: number }[]>([])
+  const startedAtRef = useRef(0)
+  const liveRef = useRef<{ power?: number; cadence?: number; hr?: number }>({})
+  liveRef.current = { power: live.power, cadence: live.cadence != null ? Math.round(live.cadence) : undefined, hr }
+  useEffect(() => {
+    if (phase !== 'ride') return
+    if (!startedAtRef.current) startedAtRef.current = Date.now()
+    const id = setInterval(() => {
+      if (paused) return
+      const v = liveRef.current
+      if (v.power == null && v.hr == null && v.cadence == null) return // no sensors → skip
+      samplesRef.current.push({ t: Math.round((Date.now() - startedAtRef.current) / 1000), power: v.power, cadence: v.cadence, hr: v.hr })
+    }, 1000)
+    return () => clearInterval(id)
+  }, [phase, paused])
   const trState: 'idle' | 'on' | 'erg' = ble.trainer ? (ble.trainer.hasErg ? 'erg' : 'on') : ble.bridge?.trainer ? 'erg' : 'idle'
   const hrState: 'idle' | 'on' = ble.hrDev || ble.bridge?.hr ? 'on' : 'idle'
   // Intensity bias (#105) — scale the whole workout's watts down on a bad day.
@@ -92,7 +111,17 @@ export default function RidePlayer() {
   }, [now, idx, paused, cur, segStart, pausedAt, ftp, phase, trState, ble, elapsedInSeg, bias])
 
   async function finish() {
+    // Always keep the Platyplus copy.
     await logWorkout({ workoutId: ride?.source ?? 'ride', title: ride?.title ?? 'Ride', discipline: ride?.sport ?? 'cycling', duration: Math.round(total / 60), date: localISO() })
+    // Fan out the recorded ride to intervals (match-first, server-side, #122).
+    const samples = samplesRef.current
+    if (samples.length) {
+      authApi.completeActivity({
+        sport: ride?.sport || 'ride', title: ride?.title || 'Indoor ride', date: localISO(),
+        startIso: new Date(startedAtRef.current || Date.now()).toISOString(),
+        durationSec: Math.round(total), samples,
+      }).catch(() => { /* local copy is already saved; intervals is best-effort */ })
+    }
     navigate('/progress')
   }
 
