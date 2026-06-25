@@ -24,6 +24,28 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 > auto-migrated store.json → Postgres (1 user/17 plans), real 28-char PG_PASSWORD, nightly encrypted
 > pg_dump verified (pg-backup.timer → Drive). Healthy + 200.
 
+143. ⬜ **Align Log-activity feedback with the post-workout feedback page.** The "How hard? (RPE)" + Notes
+    in /log-activity should match the existing post-workout feedback flow (PostWorkout.tsx, `feedback/:id`) —
+    same fields/component (feel/RPE/form/notes) + feed the SAME coach-review pipeline (#76) so a logged/linked
+    activity reviews like a completed planned workout. One feedback model, not two. JM 2026-06-25.
+142. ⬜ **Imported file = read-only metrics (#129).** When a .fit/.gpx/.tcx is imported, the file-driven
+    fields (sport, date/time, duration, distance, avg HR, avg power) should be LOCKED/display-only — the file
+    is the source of truth, not editable number inputs. Keep RPE + Notes editable (not in the file). Manual
+    (no file) entry stays fully editable. JM 2026-06-25.
+141. ⬜ **Route shows as a bare line, no actual MAP underneath (#129 import).** The GPS route renders
+    (green SVG polyline, confirmed on QA w/ the .fit — 300 pts) but there are no map tiles/streets behind it,
+    so JM reads it as "no map." Decision needed (mock-first): (a) real tile map — Leaflet + OpenStreetMap
+    tiles (free, no key, but a live third-party source — weigh vs the media-independence rule, which is about
+    BUNDLED catalog media, not a live map service); or (b) keep it independent but make it read as a route
+    (graticule/grid bg, start/end pins, distance label). Pairs with #51 (post-workout GPS map + flyby). JM 2026-06-25.
+140. ⬜ **BUG: Plan/Calendar Day view snaps back to TODAY.** Navigating to another day then clicking Add /
+    changing something resets the selected day to today ("Add to <today>" instead of the day you were on).
+    The selected-day state isn't preserved across the action/re-render. (Calendar.tsx `sel`.) JM 2026-06-25.
+139. ⬜ **BUG: desktop can start a ride — mobile-only gate not enforced at "Ride now".** On desktop (dev),
+    the ride detail page shows "▶ Ride now" and lets you proceed; rides are MOBILE-FIRST (#109) — there was
+    a "Ride from your phone" gate page. Re-enforce it (the RidePlayer gate exists for no-bridge desktop; make
+    sure "Ride now" routes through it / hides on desktop). NOTE: the ride PROFILE now renders correctly
+    (varied green/blue bars) — #72/#107 fix confirmed in JM's screenshot. JM 2026-06-25.
 138. ⬜ **Dev keeps "can't connect / Something went wrong" — backend not running.** Recurring: local
     `npm run dev` stops (terminal closed / api exits) → :8088 dead → vite proxies /auth to nothing → 500.
     Mitigated: `npm run dev` self-heals (`--restart-tries 20`) + must stay in its own terminal. During a

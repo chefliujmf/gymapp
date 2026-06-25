@@ -71,5 +71,10 @@ Charts live in `src/charts.tsx` (TrendChart/BarChart/PowerCurveChart/InfoDot/Cha
 - **Every `dev` push auto-redeploys QA → a ~10-20s Bad-Gateway window** (rapid pushes can auto-cancel an in-flight deploy). While JM tests, **BATCH commits**. Hard-reload (Cmd+Shift+R) clears the cached error / updates the autoUpdate SW.
 - **In-app Promote-to-prod** needs `GH_PROMOTE_TOKEN` (a PAT with **Actions: write**) as a LINE INSIDE the `AUTH_ENV_STAGING`/`_PROD` blob (the server env) — distinct from the `PROMOTE_TOKEN` Actions secret used *inside* `promote-prod.yml`. Until added, the button shows "not set"; promotion still works via the Actions tab or `gh workflow run promote-prod.yml`.
 
+## Local dev server — keep it RUNNING (JM hit "can't connect / 500" ~4× in one session)
+- A 500 / "Something went wrong on our end" / "Firefox can't connect 5173" in **dev** almost always = **the backend isn't running**, NOT a code bug. Vite (5173) proxies `/auth`→`localhost:8088`; with no API there it returns a text/plain 500 → the client shows its generic fallback. My changes are client-only unless `server/` changed, so suspect "not running" first.
+- `npm run dev` now runs api+web with `concurrently -k --restart-tries 20` (self-heals an api hiccup); `dev:web` = frontend-only. It must stay in its own terminal — if JM closes it, 5173/8088 die.
+- **When working WITH JM in a session, keep a persistent dev server up for him:** start `npm run dev` as a REAL background task (`run_in_background: true`), NOT `( npm run dev ) &` inside a one-shot Bash call — that child gets reaped when the call returns, leaving the ports dead and JM unable to connect (caused repeat reports). Verify with `curl -s -o /dev/null -w '%{http_code}' localhost:5173`.
+
 ## "When you change X" (from CLAUDE.md)
 Any `server/*` change rebuilds the image (CI smoke-tests the module graph). New `/api`|`/auth` route → update `server/openapi.json`. User-facing batch → add to `src/notifications.ts`/releases. Keep `UX-BACKLOG.md` + memory current (the user stresses this).
