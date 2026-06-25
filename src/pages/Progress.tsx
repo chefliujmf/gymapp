@@ -6,6 +6,7 @@ import { db, getSetting, type WorkoutLog, type SetEntry } from '../db'
 import { localISO } from '../date'
 import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { matchExercise } from '../plan'
+import { TrendChart, ChartModal } from '../charts'
 import { e1rm } from '../strength'
 
 const LB = 2.2046226
@@ -49,6 +50,8 @@ export default function Progress() {
   const imp = (useLiveQuery(() => getSetting('units')) as string | undefined) === 'imperial'
   const [q, setQ] = useState('')
   const [facet, setFacet] = useState('Top movers')
+  // #93: tap a lift → its dated est-1RM progression in a modal
+  const [liftModal, setLiftModal] = useState<{ name: string; pts: { date: number; e1rm: number }[]; peak: number; improve: number; n: number; prThisWeek: boolean } | null>(null)
   // Real coach takeaways from the cyclingcoach engine (#91), if it has written any.
   const [review, setReview] = useState<CoachReview | undefined>()
   useEffect(() => { authApi.coachReviews().then((r) => setReview(r[0])).catch(() => {}) }, [])
@@ -86,7 +89,7 @@ export default function Progress() {
       const peak = Math.max(...series)
       const prThisWeek = e.pts.some((p, i) => p.date >= startOfWeek(0) && p.e1rm >= Math.max(...series.slice(0, i + 1)) && i > 0)
       const lastDate = e.pts[e.pts.length - 1].date
-      return { name: e.name, group: e.group, series, improve, peak: conv(peak), n: e.pts.length, prThisWeek, lastDate }
+      return { name: e.name, group: e.group, series, pts: e.pts, improve, peak: conv(peak), n: e.pts.length, prThisWeek, lastDate }
     })
     const prCount = lifts.filter((x) => x.prThisWeek).length
     const totalGroup = [...groupVol.values()].reduce((a, b) => a + b, 0) || 1
@@ -154,11 +157,12 @@ export default function Progress() {
             </div>
             <div style={{ marginTop: 6 }}>
               {list.length === 0 ? <p className="meta" style={{ margin: '10px 2px' }}>No lifts match.</p> : list.map((l) => (
-                <div key={l.name} className="prog-lift">
+                <button key={l.name} className="prog-lift" onClick={() => setLiftModal(l)} aria-label={`Open ${l.name} chart`}>
                   <div style={{ flex: 1, minWidth: 0 }}><b style={{ fontSize: 14 }}>{l.name}</b>{l.prThisWeek && <span className="pill pill--pr" style={{ marginLeft: 6 }}>PR</span>}<div className="meta" style={{ fontSize: 11 }}>{l.peak} {unit} e1RM · {l.n} sessions</div></div>
                   <Spark pts={l.series} color={l.improve > 1 ? '#34e07d' : 'var(--text-dim)'} />
                   <div className={'prog-lift__d ' + (l.improve > 0 ? 'up' : l.improve < 0 ? 'down' : '')}>{l.improve > 0 ? '+' : ''}{l.improve}%</div>
-                </div>
+                  <span className="prog-lift__chev">›</span>
+                </button>
               ))}
               {shown.length > list.length && <p className="meta" style={{ textAlign: 'center', marginTop: 8 }}>Showing {list.length} of {shown.length} — refine with search</p>}
             </div>
@@ -196,6 +200,19 @@ export default function Progress() {
           </>}
         </div>
       </>}
+      {liftModal && (
+        <ChartModal title={liftModal.name} onClose={() => setLiftModal(null)}>
+          <TrendChart axes height={220} unit={` ${unit}`}
+            series={[{ label: 'e1RM', data: liftModal.pts.map((p) => Math.round(conv(p.e1rm))), color: '#34e07d', area: true }]}
+            labels={liftModal.pts.map((p) => new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} />
+          <div className="chips" style={{ marginTop: 12 }}>
+            <span className="pill">Best {liftModal.peak} {unit}</span>
+            <span className="pill">{liftModal.improve > 0 ? '+' : ''}{liftModal.improve}% · {liftModal.n} sessions</span>
+            {liftModal.prThisWeek && <span className="pill pill--pr">🏆 PR this week</span>}
+          </div>
+          <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Estimated 1-rep max (Epley) from your logged sets. Tap/drag the chart to read each session.</p>
+        </ChartModal>
+      )}
     </div>
   )
 }
