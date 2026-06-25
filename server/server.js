@@ -16,7 +16,8 @@ import {
   generateRegistrationOptions, verifyRegistrationResponse,
   generateAuthenticationOptions, verifyAuthenticationResponse,
 } from '@simplewebauthn/server'
-import { load, save, newId } from './store.js'
+import { initDb, loadStore, save, newId } from './db.js'
+import { load as loadJsonStore } from './store.js' // legacy file store — read once to auto-migrate
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -30,33 +31,36 @@ const COOKIE = 'gymapp_sess'
 const ICU = 'https://intervals.icu'
 
 // ---- one-time seed of the admin account ---------------------------------
-const store = load()
-if (!store.users.length) {
-  store.users.push({
-    id: newId(),
-    username: process.env.SEED_USER || 'jmfiset',
-    email: (process.env.SEED_EMAIL || 'jmfiset@gmail.com').toLowerCase(),
-    role: 'admin',
-    passwordHash: bcrypt.hashSync(process.env.SEED_PASSWORD || 'qwerty123456', 10),
-    passkeys: [],
-    info: {},
-    icuKey: process.env.SEED_ICU_KEY || '',
-    icuAthlete: process.env.SEED_ICU_ATHLETE || 'i28814',
-    apiToken: randomBytes(24).toString('base64url'),
-    plans: [],
-    createdAt: Date.now(),
-  })
-  save(store)
-  console.log('Seeded admin user.')
-}
-// Backfill api tokens / plan arrays for any user created before these existed.
-for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = []; if (!u.items) u.items = []; if (!u.notifications) u.notifications = []; if (!u.coachReviews) u.coachReviews = [] }
-save(store)
-// Late-seed the admin's intervals.icu key if it wasn't stored yet (idempotent).
-const seedKey = process.env.SEED_ICU_KEY
-if (seedKey) {
-  const a = store.users.find((u) => u.role === 'admin')
-  if (a && !a.icuKey) { a.icuKey = seedKey; a.icuAthlete = process.env.SEED_ICU_ATHLETE || a.icuAthlete || 'i28814'; save(store); console.log('Seeded admin intervals.icu key.') }
+// The in-memory cache — loaded from Postgres in start() (bottom of file); reads use
+// it directly (fast), every mutation calls save(store) which persists to Postgres.
+let store = { users: [] }
+async function seedAndDefaults() {
+  if (!store.users.length) {
+    store.users.push({
+      id: newId(),
+      username: process.env.SEED_USER || 'jmfiset',
+      email: (process.env.SEED_EMAIL || 'jmfiset@gmail.com').toLowerCase(),
+      role: 'admin',
+      passwordHash: bcrypt.hashSync(process.env.SEED_PASSWORD || 'qwerty123456', 10),
+      passkeys: [],
+      info: {},
+      icuKey: process.env.SEED_ICU_KEY || '',
+      icuAthlete: process.env.SEED_ICU_ATHLETE || 'i28814',
+      apiToken: randomBytes(24).toString('base64url'),
+      plans: [],
+      createdAt: Date.now(),
+    })
+    console.log('Seeded admin user.')
+  }
+  // Backfill api tokens / plan arrays for any user created before these existed.
+  for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = []; if (!u.items) u.items = []; if (!u.notifications) u.notifications = []; if (!u.coachReviews) u.coachReviews = [] }
+  // Late-seed the admin's intervals.icu key if it wasn't stored yet (idempotent).
+  const seedKey = process.env.SEED_ICU_KEY
+  if (seedKey) {
+    const a = store.users.find((u) => u.role === 'admin')
+    if (a && !a.icuKey) { a.icuKey = seedKey; a.icuAthlete = process.env.SEED_ICU_ATHLETE || a.icuAthlete || 'i28814'; console.log('Seeded admin intervals.icu key.') }
+  }
+  await save(store)
 }
 
 // ---- email (optional) ----------------------------------------------------
@@ -1069,4 +1073,21 @@ app.use('/media', express.static(MEDIA_DIR, { maxAge: '365d', immutable: true })
 app.use(express.static(STATIC_DIR, { index: false, setHeaders: (res, p) => { if (p.endsWith('index.html') || p.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache') } }))
 app.get('*', (req, res) => res.sendFile(join(STATIC_DIR, 'index.html')))
 
-app.listen(PORT, () => console.log(`gymapp listening on :${PORT} (rpID ${RP_ID})`))
+// Startup: connect Postgres → load the cache → seed/defaults → listen. (#DB migration)
+async function start() {
+  await initDb()
+  store = await loadStore()
+  // First Postgres boot with an empty DB: auto-import the legacy JSON store (no data loss).
+  if (!store.users.length) {
+    try {
+      const fileStore = loadJsonStore()
+      if (fileStore?.users?.length) { store = fileStore; await save(store); console.log(`Migrated ${store.users.length} users from store.json → Postgres`) }
+    } catch (e) { console.log('No legacy store.json to migrate (' + e.message + ')') }
+  }
+  await seedAndDefaults()
+  app.listen(PORT, () => console.log(`gymapp listening on :${PORT} (rpID ${RP_ID}) [postgres, ${store.users.length} users]`))
+}
+// Start only when a DB is configured — lets the CI module-graph smoke-test import
+// server.js without a Postgres around (it just checks the graph resolves).
+if (process.env.DATABASE_URL) start().catch((e) => { console.error('FATAL startup failed:', e); process.exit(1) })
+else console.warn('DATABASE_URL not set — server not started (module-graph check only).')

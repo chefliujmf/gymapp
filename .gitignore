@@ -36,3 +36,4 @@ coach-engine-src/.venv/
 coach-engine-src/.secrets/
 coach-engine-src/**/__pycache__/
 coach-engine-src/**/*.apk
+pgdata/

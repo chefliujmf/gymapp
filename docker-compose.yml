@@ -17,6 +17,11 @@ services:
       # container). Prod has its own helper instance on 8791 -> Coach API on 8088.
       # CHAT_HELPER_SECRET comes from auth.env.
       CHAT_HELPER_URL: http://host.docker.internal:8791
+      # Postgres store (relational). First boot auto-migrates the legacy /data/store.json.
+      DATABASE_URL: postgres://platyplus:${PG_PASSWORD:-platyplus}@db:5432/platyplus
+    depends_on:
+      db:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -36,4 +41,26 @@ services:
       interval: 60s
       timeout: 5s
       retries: 3
+      start_period: 30s
+
+  db:
+    image: postgres:16-alpine
+    container_name: gymapp-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: platyplus
+      POSTGRES_USER: platyplus
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-platyplus}
+    volumes:
+      - "./pgdata:/var/lib/postgresql/data"   # relational store — backed up via pg_dump
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platyplus -d platyplus"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
       start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
