@@ -20,6 +20,11 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 
 ## 🔨 / ⬜ Open queue
 
+125. 🔨 **Postgres migration (JM: "full relational, most robust").** Built + **verified on QA**:
+    `server/db.js` drop-in for store.js (relational tables + JSONB doc); pg `db` service in both
+    compose files; first boot auto-migrates store.json (QA migrated 1 user/17 plans/1 log/1 passkey,
+    healthy, 200). REMAINING before heavy prod use: real `PG_PASSWORD` + nightly `pg_dump` backup;
+    later per-entity writes. Prod promote will auto-migrate prod's store.json the same way.
 18. 🔨 **Coach P1f — verify the full coach→Platyplus loop with the LIVE coach.** Native-text mirror + host-MCP sync done; REMAINING: `publish_platyplus_plan.py` structured-field mapping + a real QA run with the coach. (cyclingcoach is its own repo.)
 23. ⬜ **intervals indoor-completion labeling** — confirm an indoor-done workout reaches intervals labeled (pairs w/ coach + a real completion).
 51. ⬜ **Post-workout GPS map + Strava-style flyby** — route map + an animated dot replaying the path. Needs the activity GPS stream + a map render. Pairs w/ #54.

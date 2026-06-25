@@ -76,6 +76,23 @@ feedback/idea there (numbered) on receipt. Design detail for big items → `UX-B
 - `PROMOTE_TOKEN` (Actions secret) is the prod-promotion PAT — used by `promote-prod.yml` only.
 - When you change `auth.env` keys, update **both** the GitHub Secret blob and this list.
 
+## Data store: Postgres (since 2026-06-23)
+- The live store is **Postgres 16** (a `db` service in each compose file; container
+  `gymapp-db` prod / `gymapp-staging-db` QA, isolated `./pgdata` volume, NOT
+  port-published — reachable only on the compose network). App connects via
+  `DATABASE_URL` (`postgres://platyplus:${PG_PASSWORD:-platyplus}@db:5432/platyplus`).
+- `server/db.js` is a **drop-in** for the old `server/store.js`: relational tables
+  (users + child plans/logs/calendar_items/notifications/coach_reviews/passkeys/
+  checkins; FKs, indexes; irregular fields in a JSONB `doc` per row). `loadStore()`
+  rebuilds the in-memory `store`; `save(store)` persists transactionally (serialized,
+  dedup-guarded). Single instance → in-memory read cache + Postgres durable store.
+- **First boot on an empty DB auto-migrates `/data/store.json`** into Postgres (logs
+  `Migrated N users … → Postgres`), then keeps the file as a backup. Startup is
+  guarded on `DATABASE_URL` so the CI module-graph smoke-test imports without a DB.
+- ⚠️ Prod TODO before heavy use: set a real `PG_PASSWORD` + a **nightly `pg_dump`**
+  backup (the old nightly `store.json` backup no longer captures live writes).
+
 ## Data that matters (backed up)
-- `data/store.json` — accounts/passkeys (nightly **encrypted** backup to Drive).
+- **Postgres `pgdata`** — the live store (accounts/passkeys/plans/logs/…); back up via `pg_dump`.
+- `data/store.json` — legacy seed, kept as the pre-migration backup (nightly **encrypted** backup to Drive).
 - `auth.env` — derived from GitHub Secrets at deploy (still backed up). Media + dist sync separately (weekly/Drive).
