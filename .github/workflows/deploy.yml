@@ -31,6 +31,10 @@ jobs:
       CATALOG_DIR: /home/jmf/content/generated
       AUTH_ENV: ${{ secrets.AUTH_ENV_PROD }}   # GitHub Secrets = master; deploy.sh writes auth.env from it
       GH_PROMOTE_TOKEN: ${{ secrets.PROMOTE_TOKEN }}   # reuse the existing promote PAT for the in-app Promote button (#47)
+      # Postgres password — compose interpolates ${PG_PASSWORD} for the db service +
+      # DATABASE_URL. Set on the FIRST prod boot (pgdata created with it). Don't change
+      # after the volume exists (POSTGRES_PASSWORD only applies on init).
+      PG_PASSWORD: ${{ secrets.PG_PASSWORD_PROD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
