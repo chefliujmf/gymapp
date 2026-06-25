@@ -49,7 +49,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     opens /log-activity with date prefilled; (b) in /log-activity, if a plan exists that day (matching sport),
     show "Link to plan: <planned workout>" → on save, mark the plan done + attach the activity (reuse Today's
     actFor day+sport match). Builds on #129 (manual entry) + #130 (History merge). JM: reported long ago.
-130. ⬜ **History should surface intervals activities (read-hub direction).** A device activity recorded
+130. 🔨 **History should surface intervals activities (read-hub direction).** A device activity recorded
     straight to intervals (e.g. a "morning run" not done via Platyplus) shows in intervals but NOT in
     Platyplus History — History reads only local `db.logs`. Per #121 (intervals = read hub), History/Progress
     should MERGE intervals activities (match-first by day+sport so a Platyplus-logged + intervals copy aren't
