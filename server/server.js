@@ -23,6 +23,7 @@ import { load as loadJsonStore, save as fileSave } from './store.js'
 const USE_PG = !!process.env.DATABASE_URL
 const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
+import { parseActivityFile } from './activity-parse.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -118,7 +119,7 @@ app.use((req, res, next) => {
   if (xfp && xfp !== 'https') return res.redirect(308, ORIGIN + req.originalUrl)
   next()
 })
-app.use(express.json())
+app.use(express.json({ limit: '25mb' })) // base64 activity files (.fit/.gpx/.tcx) ride along in JSON
 app.use(cookieParser())
 
 // password login
@@ -935,6 +936,74 @@ app.post('/auth/activity/complete', auth, async (req, res) => {
     if (!samples.length) return res.json({ status: 'no-stream' }) // nothing to upload (e.g. gym handled separately)
     const startIso = typeof b.startIso === 'string' ? b.startIso : new Date(date + 'T12:00:00Z').toISOString()
     const tcx = tcxFromSamples(samples, { sport, startIso, durationSec: Number(b.durationSec) || samples.length })
+    const up = await icuUploadTcx(req.user, tcx, b.title || sport)
+    res.json({ status: 'uploaded', icuId: up?.id ?? up?.activity?.id ?? null })
+  } catch (e) {
+    res.json({ status: 'error', error: String(e).slice(0, 160) })
+  }
+})
+
+// Upload a RAW activity file (.fit/.gpx/.tcx) straight to intervals — best fidelity.
+async function icuUploadRaw(user, buffer, filename) {
+  const ath = user.icuAthlete || 'i28814'
+  const fd = new FormData()
+  fd.append('file', new Blob([buffer]), String(filename || 'activity').replace(/[^\w.\-]/g, '_').slice(0, 60))
+  const r = await fetch(`${ICU_API}/athlete/${ath}/activities`, {
+    method: 'POST', body: fd,
+    headers: { authorization: 'Basic ' + Buffer.from('API_KEY:' + user.icuKey).toString('base64') },
+  })
+  if (!r.ok) throw new Error(`icu upload ${r.status}: ${(await r.text()).slice(0, 160)}`)
+  return r.json().catch(() => ({}))
+}
+// Build a minimal TCX from entered totals (manual entry, no file) so intervals gets
+// duration/distance + avg HR/power.
+function tcxManual({ sport, startIso, durationSec, distanceM, avgHr, avgPower }) {
+  const t0 = new Date(startIso).getTime()
+  const dur = Math.max(1, Math.round(durationSec || 1))
+  const mk = (offset) => {
+    const time = new Date(t0 + offset * 1000).toISOString().replace(/\.\d+Z$/, 'Z')
+    let x = `<Trackpoint><Time>${time}</Time>`
+    if (avgHr != null) x += `<HeartRateBpm><Value>${Math.round(avgHr)}</Value></HeartRateBpm>`
+    if (avgPower != null) x += `<Extensions><ns3:TPX><ns3:Watts>${Math.round(avgPower)}</ns3:Watts></ns3:TPX></Extensions>`
+    return x + '</Trackpoint>'
+  }
+  const hrLap = avgHr != null ? `<AverageHeartRateBpm><Value>${Math.round(avgHr)}</Value></AverageHeartRateBpm>` : ''
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2"><Activities><Activity Sport="${tcxSport(sport)}"><Id>${startIso}</Id><Lap StartTime="${startIso}"><TotalTimeSeconds>${dur}</TotalTimeSeconds><DistanceMeters>${Math.round(distanceM || 0)}</DistanceMeters>${hrLap}<Intensity>Active</Intensity><TriggerMethod>Manual</TriggerMethod><Track>${mk(0)}${mk(dur)}</Track></Lap></Activity></Activities></TrainingCenterDatabase>`
+}
+
+// Parse an uploaded activity file → summary + GPS track, to prefill manual entry.
+// Body: { name, b64 }. Pure parse — no storage, no intervals call.
+app.post('/auth/activity/parse', auth, async (req, res) => {
+  try {
+    const { name, b64 } = req.body || {}
+    if (!b64) return res.status(400).json({ error: 'file required' })
+    const buffer = Buffer.from(String(b64), 'base64')
+    if (buffer.length > 25 * 1024 * 1024) return res.status(413).json({ error: 'file too large (25MB max)' })
+    res.json(await parseActivityFile(name || 'activity', buffer))
+  } catch (e) { res.status(422).json({ error: String(e.message || e).slice(0, 200) }) }
+})
+
+// Manual activity entry (with or without a file). The local Platyplus copy is already
+// saved via /logs; here we fan out to intervals match-first: upload the raw file
+// (best fidelity) or a summary TCX built from the entered totals. Body:
+// {sport,title,date,startIso,durationSec,distanceM,avgHr,avgPower, file?:{name,b64}}.
+app.post('/auth/activity/manual', auth, async (req, res) => {
+  const b = req.body || {}
+  const date = String(b.date || '').slice(0, 10)
+  const sport = String(b.sport || 'other').slice(0, 20)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date required' })
+  if (!req.user.icuKey) return res.json({ status: 'local-only' }) // no intervals → Platyplus-only
+  try {
+    const match = await icuFindMatch(req.user, { date, sport })
+    if (match) return res.json({ status: 'matched', icuId: match.id }) // device already has it
+    const startIso = typeof b.startIso === 'string' && b.startIso ? b.startIso : new Date(date + 'T12:00:00Z').toISOString()
+    if (b.file && b.file.b64) {
+      const buffer = Buffer.from(String(b.file.b64), 'base64')
+      const up = await icuUploadRaw(req.user, buffer, b.file.name || `${sport}.fit`)
+      return res.json({ status: 'uploaded', icuId: up?.id ?? up?.activity?.id ?? null })
+    }
+    const tcx = tcxManual({ sport, startIso, durationSec: Number(b.durationSec) || 0, distanceM: Number(b.distanceM) || 0, avgHr: b.avgHr != null ? Number(b.avgHr) : null, avgPower: b.avgPower != null ? Number(b.avgPower) : null })
     const up = await icuUploadTcx(req.user, tcx, b.title || sport)
     res.json({ status: 'uploaded', icuId: up?.id ?? up?.activity?.id ?? null })
   } catch (e) {

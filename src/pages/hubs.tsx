@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, TrendingUp, History } from 'lucide-react'
+import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, TrendingUp, History, PlusCircle } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
 type Item = { label: string; sub: string; to: string; icon: ReactNode; mine?: boolean }
@@ -31,7 +31,10 @@ export function TrainHub() {
   return (
     <div>
       <div className="page-head"><h1>Train</h1><p>Your disciplines</p></div>
-      <div className="stack">{disc.map((it) => <HubLink key={it.label} it={it} />)}</div>
+      <div className="stack">
+        <HubLink it={{ label: 'Log activity', sub: 'Add a session — manual, or import a .fit/.gpx/.tcx', to: '/log-activity', icon: <PlusCircle strokeWidth={1.75} /> }} />
+        {disc.map((it) => <HubLink key={it.label} it={it} />)}
+      </div>
     </div>
   )
 }

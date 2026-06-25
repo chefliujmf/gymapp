@@ -37,3 +37,8 @@ coach-engine-src/.secrets/
 coach-engine-src/**/__pycache__/
 coach-engine-src/**/*.apk
 pgdata/
+
+# Personal activity files (never commit)
+*.fit
+*.gpx
+*.tcx

@@ -54,6 +54,31 @@ async function req<T>(path: string, opts: { method?: string; body?: unknown } = 
   return data as T
 }
 
+export interface ParsedActivity {
+  format: 'fit' | 'gpx' | 'tcx'
+  sport: string
+  startIso: string | null
+  durationSec?: number
+  distanceM?: number
+  avgHr?: number
+  avgPower?: number
+  elevationM?: number
+  kcal?: number
+  hasGps: boolean
+  track: [number, number][]
+}
+export interface ManualActivity {
+  sport: string
+  title: string
+  date: string
+  startIso: string
+  durationSec: number
+  distanceM?: number
+  avgHr?: number
+  avgPower?: number
+  file?: { name: string; b64: string }
+}
+
 export const authApi = {
   me: () => req<User>('/me'),
   login: (login: string, password: string) => req<User>('/login', { body: { login, password } }),
@@ -94,6 +119,10 @@ export const authApi = {
   // Fan a Platyplus-recorded workout out to intervals (match-first, server-side, #122/#123).
   completeActivity: (a: { sport: string; title: string; date: string; startIso: string; durationSec: number; samples: { t: number; power?: number; cadence?: number; hr?: number }[] }) =>
     req<{ status: string; icuId?: number | null; error?: string }>('/activity/complete', { method: 'POST', body: a }),
+  // Manual activity entry (#129): parse an uploaded .fit/.gpx/.tcx, then fan the
+  // entered/edited activity out to intervals (match-first). Local copy via logWorkout.
+  parseActivityFile: (name: string, b64: string) => req<ParsedActivity>('/activity/parse', { method: 'POST', body: { name, b64 } }),
+  logManualActivity: (a: ManualActivity) => req<{ status: string; icuId?: number | null; error?: string }>('/activity/manual', { method: 'POST', body: a }),
   notifications: () => req<CoachNotification[]>('/notifications'),
   coachReviews: () => req<CoachReview[]>('/coach-reviews'),
   markNotificationsRead: (ids?: string[]) => req<{ ok: boolean }>('/notifications/read', { method: 'POST', body: { ids } }),

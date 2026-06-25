@@ -111,6 +111,7 @@ export default function Logs() {
       <div className="sub-head">
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
         <div className="sub-head-t"><h1>History</h1><p>Each day's check-in & sessions — tap a number to fix it</p></div>
+        <button className="btn btn-sm" onClick={() => navigate('/log-activity')} style={{ marginLeft: 'auto' }}>+ Log</button>
       </div>
       {logs === undefined ? <p className="meta">Loading…</p> : !days.length ? <p className="meta">Nothing logged yet — your check-ins and workouts will show here by day.</p> : (
         days.map(([date, d]) => (

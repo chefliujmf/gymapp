@@ -34,6 +34,7 @@ import Settings from './pages/Settings'
 import Fitness from './pages/Fitness'
 import Strength from './pages/Strength'
 import Logs from './pages/Logs'
+import LogActivity from './pages/LogActivity'
 import { TrainHub, StatsHub, MoreHub } from './pages/hubs'
 import Chat from './pages/Chat'
 import Progress from './pages/Progress'
@@ -90,6 +91,7 @@ const router = createBrowserRouter([
       { path: 'fitness', element: <Fitness /> },
       { path: 'strength', element: <Strength /> },
       { path: 'logs', element: <Logs /> },
+      { path: 'log-activity', element: <LogActivity /> },
       { path: 'progress', element: <Progress /> },
     ],
   },
