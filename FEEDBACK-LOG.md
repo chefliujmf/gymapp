@@ -20,6 +20,25 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 
 ## 🔨 / ⬜ Open queue
 
+> **⚠️ ENV DISCONNECT (2026-06-25):** #125–#131 are all on **QA/dev only**. PROD has NOT been promoted,
+> so JM's prod screenshots still show the OLD Add modal (straight to "Search ride…", no type grid, no
+> Import row) and none of the fixes. NEXT: pg_dump backup → promote Postgres + #126–#131 to prod.
+
+136. ⬜ **PROMOTE to prod — everything below is QA-only.** Postgres (#125) + logging/errors/eye (#126–#128)
+    + manual activity entry (#129) + calendar import & plan-link (#131) are live on QA, NOT prod. Prod still
+    runs the old build (JM's "Search ride…" Add modal = old code). Do: set a real PG_PASSWORD + nightly
+    pg_dump, then promote. Prod auto-migrates its store.json → Postgres on first boot.
+135. ✅ **Local dev login == QA.** Local dev used isolated `dev-data` (seeded `devpass`) so JM's QA password
+    was rejected. Synced the QA account (same bcrypt hash + 17 plans) into `server/dev-data/store.json`.
+134. ✅ **`npm run dev` now starts BOTH api+web.** Running `npm run dev` alone = frontend only → :8088 dead →
+    vite proxied /auth to nothing → text/plain 500 → "Firefox can't connect 5173" / "Something went wrong".
+    Fixed: `dev` = concurrently api+web; `dev:web` = frontend-only.
+133. ✅ **Local dev backend broke under the Postgres migration.** server.js required DATABASE_URL + db.js
+    imported `pg` at top → local dev (no DATABASE_URL, no pg installed) crashed → passkey fell back to
+    password, login failed. Fixed: dual-mode store (file store when no DATABASE_URL) + lazy `pg` import.
+132. ✅ **HTTP 500 on login after the Postgres deploy.** loadStore() dropped the top-level `sessionSecret`
+    (signs every JWT) → after a redeploy it was undefined → jwt.sign threw → every login 500'd + sessions
+    died. Fixed: persist/restore sessionSecret+resets via an `app_meta` table; boot self-check logs if missing.
 131. 🔨 **Import an activity from the calendar + link it to a planned workout (long-standing).** BUILT
     (Option A, JM's pick — mockup mockups/import-activity.html): calendar Add sheet gains an "Import an
     activity" row → opens /log-activity?date=<day>. LogActivity reads ?date, loads that day's plans, and
