@@ -1,0 +1,106 @@
+{
+  "workout_id": "friday_endurance_durability_2026-06-26",
+  "title": "Friday Ride to Skov",
+  "sport": "cycling",
+  "discipline": "bike",
+  "estimated_duration_sec": 18000,
+  "objective": "Ride home-to-cottage as the week's aerobic anchor: a long, fully aerobic point-to-point from St-Lambert to Austin that turns the commute to Skov into durability volume - the right kind of load for a re-entry week.",
+  "why_now": "Friday PM in summer is the high-value window, and a long Z2 ride is the safest way to add load after a disrupted, manual-labor fortnight - far better than intensity. The route to the cottage is hilly through the Townships, so the discipline is capping every climb and fueling early; this is a deliberate long-endurance day, not a tempo ride. Weather-gated: if conditions are bad, drive and ride locally or rest instead.",
+  "source_context": {
+    "week_objective": "Re-entry and aerobic rebuild after a disrupted, manual-labor weekend",
+    "phase": "Aggressive June Build",
+    "target_system": "aerobic durability + fatigue resistance",
+    "confidence": "high"
+  },
+  "route": {
+    "from": "66 Croissant de Navarre, St-Lambert, QC",
+    "to": "39 rue des Chenes, Austin, QC (Skov)",
+    "approx_distance_km": "120-140",
+    "terrain": "rolling South Shore to hilly Eastern Townships near Orford/Memphremagog; real climbing in the back half",
+    "notes": "Plan a cycling route that avoids autoroutes (e.g. Chambly/Marieville/Granby/Eastman corridor). Carry food, layers, lights, and a plan to refill bottles."
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 330,
+    "equipment": ["power_meter", "road_bike"]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 260,
+    "notes": "120-140 km fully aerobic at 56-70% FTP (~145-182 W) on the flats. Conversational the whole way. Climbs will spike power - shift down, stay seated when you can, and cap the surges; do not let the hills turn this into a tempo grind. No structured intervals."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 900,
+      "target": {"power_pct_ftp": [0.48, 0.62], "rpe": [1, 3]},
+      "notes": "Roll out of St-Lambert easy; let the legs and back settle before the terrain stands up."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 4,
+      "steps": [
+        {"type": "steady", "duration_sec": 3600, "target": {"power_pct_ftp": [0.58, 0.66], "rpe": [2, 4]}, "notes": "Z2 hour: fuel and drink on schedule, cap every climb (shift down, stay seated), reset posture."}
+      ]
+    },
+    {
+      "repeat": 1,
+      "steps": [
+        {"type": "steady", "duration_sec": 1800, "target": {"power_pct_ftp": [0.56, 0.64], "rpe": [2, 4]}, "notes": "Final 30 min into Austin - ease the effort and finish relaxed."}
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 900,
+      "target": {"power_pct_ftp": [0.45, 0.58], "rpe": [1, 2]},
+      "notes": "Spin the last few km into Austin easy."
+    }
+  ],
+  "nutrition": {
+    "pre": "Full carb-forward breakfast 2-3h before, ~2g carbs/kg. Top up 30-40g carbs in the last hour before rolling.",
+    "during": "60-90g carbs/hour from the start - this is a 4-5h ride, so real food plus drink mix, not just gels. Drink to thirst plus electrolytes; plan a store/refill stop. Do not ride the back-half climbs underfueled.",
+    "post": "Big recovery meal: 30-40g protein plus generous carbs, then keep grazing through the evening at the cottage.",
+    "centr_recipe": "High-protein Lentil Braise with Flatbread, Centr collection link: https://centr.com/blog/show/32824/10-high-protein-recipes-for-easy-meal-prep",
+    "supplements": "Today's workout needs: electrolytes/sodium across the ride, especially if hot. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Refuel hard, rehydrate, legs-up and the left-calf routine in the evening.",
+    "evening": "Easy cottage evening; protect sleep after a long day in the saddle.",
+    "next_morning_check": "Saturday is recovery by feel. If the legs/back are cooked, make Saturday a short flush or full rest; only ride longer if you genuinely feel good."
+  },
+  "skill_focus": [
+    {
+      "action": "On every climb, shift early and rebuild power smoothly over the crest instead of punching over the top; keep surges under ~78% FTP.",
+      "why": "Capping the Townships climbs is what keeps a long ride aerobic and protects the back and the rest of the cottage week - the durability comes from steady hours, not from attacking hills."
+    },
+    {
+      "action": "Reset posture every 20-30 min: loosen the grip, drop the shoulders, shift hand position.",
+      "why": "Position fatigue on a 4-5h ride is what tightens the back and left calf; small resets keep you durable late."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Long and patient, all the way to Skov.",
+    "why": "The point is hours of clean aerobic load and arriving at the cottage tired-but-fueled, not a fast time or KOMs on the climbs.",
+    "cue": "Eat early, cap the hills.",
+    "reset": "If you start chasing a climb or a segment, ease off the crest, eat or drink if due, and settle back below the cap for two minutes."
+  },
+  "execution_notes": {
+    "pre_interval_cues": ["Weather-gated: if it is storming or unsafe, drive and ride local or rest - do not force a 5h ride in bad conditions.", "Carry food, layers, lights, and a refill plan.", "Aerobic all day, cap the climbs."],
+    "during_workout_cues": ["Full sentences.", "Fuel every 30-40 min.", "Shift early, spare the back."],
+    "if_too_easy": "Good - leave it aerobic. The distance is the stimulus; do not add tempo on the climbs.",
+    "if_too_hard": "Shorten the route, stop to eat and reset, or drive the final leg if the back or legs are done - this is endurance, not a sufferfest. No guilt in cutting it.",
+    "success_criteria": "Arrived at Skov having stayed conversational and well-fueled, capped the climbs, with the back no worse than at the start.",
+    "post_workout_capture": ["RPE", "Feel", "Distance/time actually ridden", "Legs before/after", "Back/hips", "Fueling/GI", "Weather/route notes"]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-06-26",
+      "sync_to_wahoo": true
+    }
+  }
+}

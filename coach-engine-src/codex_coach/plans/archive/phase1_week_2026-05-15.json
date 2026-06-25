@@ -1,0 +1,743 @@
+{
+  "week_id": "phase1_2026-05-15",
+  "week_label": "Phase 1 Transition Week",
+  "notes": "Transition week after the intense Girona block. No threshold, tempo, or structured intensity. Saturday May 16, Sunday May 17, and the Monday May 18 holiday can be used as a three-day easy outdoor block because legs feel decent, but all rides must stay aerobic. Monday holiday availability overrides the all-day calendar holiday entry. Tuesday becomes recovery/mobility only. In summer, no trainer fallback: if rain blocks outdoor sessions, use mobility, yoga, rest, or move the ride. Completed activity rule: completed rides are read from Intervals as activities and must not be republished as planned workouts.",
+  "workouts": [
+    {
+      "workout_id": "holiday_weekend_z2_2026-05-16",
+      "title": "One-Hour Easy Z2 Ride",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Use today for a controlled one-hour aerobic ride within the available time.",
+      "why_now": "Legs feel decent, but availability is capped at 1 hour and this is still the post-Girona transition week.",
+      "source_context": {
+        "week_objective": "Absorb Girona, restore freshness, and keep routine with low-cost aerobic work.",
+        "phase": "Phase 1",
+        "target_system": "aerobic recovery",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 255,
+        "notes": "Outdoor only. Exactly 55-60 minutes mostly 55-68% FTP, RPE 2-4. No extension today, no tempo, no attacks, no low-cadence grinding."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.4,
+              0.55
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Roll out calmly."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 2400,
+              "target": {
+                "power_pct_ftp": [
+                  0.55,
+                  0.68
+                ],
+                "rpe": [
+                  2,
+                  4
+                ]
+              },
+              "notes": "Easy Z2 only. Smooth cadence, steady pressure, no tempo creep."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.4,
+              0.55
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Finish easy."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Today is time-capped at 1 hour.",
+          "Start with a 15-minute freshness check."
+        ],
+        "during_workout_cues": [
+          "Keep the ride conversational and below tempo.",
+          "Do not extend even if legs feel good.",
+          "Use this as the first ride of a three-day easy block."
+        ],
+        "if_too_easy": "Good. Stop at 60 minutes and save freshness for Sunday and Monday.",
+        "if_too_hard": "Cap at 45 minutes and make Sunday very easy or rest.",
+        "success_criteria": "You finish with decent legs and no fatigue debt.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-16",
+          "sync_to_wahoo": true
+        }
+      },
+      "nutrition": {
+        "pre": "Normal meal is enough. Small carb snack only if starting hungry.",
+        "during": "Water only for 1 hour unless it is hot or you skipped a meal.",
+        "post": "Normal meal with protein later today.",
+        "centr_recipe": "Swirled Banana & Oat Pots, https://centr.com/recipe/show/32848/swirled-banana-oat-pots",
+        "supplements": "Today's ride needs: none required. Keep normal vegetarian baseline stack if already tolerated: creatine, B12, vitamin D if needed, and algae omega 3."
+      }
+    },
+    {
+      "workout_id": "holiday_weekend_easy_endurance_2026-05-17",
+      "title": "Holiday Weekend Easy Endurance",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add a second easy aerobic touch if Saturday was absorbed well.",
+      "why_now": "This supports frequency and aerobic durability without adding intensity during the transition week.",
+      "source_context": {
+        "week_objective": "Absorb Girona, restore freshness, and keep routine with low-cost aerobic work.",
+        "phase": "Phase 1",
+        "target_system": "aerobic maintenance",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 85,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 255,
+        "notes": "Outdoor only. 60-75 minutes mostly 55-68% FTP, RPE 2-3. Optional 85-minute cap only if Saturday felt easy and legs are fresh. No tempo finish."
+      },
+      "skill_focus": [
+        "Cadence block: 3 x 4 min at 90-95 rpm on flat road, same easy power target, 2 min normal cadence between.",
+        "Low-cadence check: 2 x 3 min seated at 60-65 rpm on gentle terrain, low force only, no knee strain.",
+        "Corner exit drill: for 6 corners, finish braking before the turn and rebuild power over 5-8 pedal strokes instead of one spike."
+      ],
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.62
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Use the first 10 minutes as a recovery check. Easy but not soft-pedaling."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 3300,
+              "target": {
+                "power_pct_ftp": [
+                  0.55,
+                  0.68
+                ],
+                "rpe": [
+                  2,
+                  3
+                ]
+              },
+              "notes": "Easy endurance only. Natural outdoor Z2, no tempo creep."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.55
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Spin down."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Ride only if Saturday finished with legs tired-but-OK or better.",
+          "If Saturday created fatigue, rest or do 30 minutes mobility instead."
+        ],
+        "during_workout_cues": [
+          "Keep it easier than you think you need.",
+          "No tempo, no KOMs, no chasing wheels."
+        ],
+        "if_too_easy": "Do not turn this into intensity. Save freshness for Monday.",
+        "if_too_hard": "Stop early and make Monday optional recovery only.",
+        "success_criteria": "You add easy time and still feel like Monday is possible.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-17",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "holiday_monday_recovery_endurance_2026-05-18",
+      "title": "Holiday Monday Endurance Plus",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Use the holiday for controlled endurance with a small tempo touch only if the body confirms readiness.",
+      "why_now": "Coros shows strong recovery today: long sleep, resting HR 53, and HRV 35 ms inside your normal range. That permits a small progression, but this is still a transition-block ride, not a test.",
+      "source_context": {
+        "week_objective": "Absorb Girona, restore freshness, and keep routine with low-cost aerobic work.",
+        "phase": "Phase 1",
+        "target_system": "aerobic endurance with tempo touch",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 75,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 255,
+        "notes": "Outdoor only. 60-75 minutes. Mostly 55-68% FTP, RPE 2-4, with optional 2 x 8 min at 75-80% FTP only if legs feel good after 25 minutes and roads are dry/safe. No threshold, no attacks, no chasing."
+      },
+      "skill_focus": [
+        "High-cadence drill: 3 x 3 min at 100-105 rpm, low force, power stays under endurance cap, 3 min normal cadence between.",
+        "Single-gear drill: 2 x 5 min on gentle rolling terrain. Pick one comfortable gear and stay in it. When the road rises, let cadence slow a little and keep effort easy; when the road drops, let cadence rise a little. Shift only if power would exceed the endurance cap or cadence would get awkward.",
+        "Line-choice drill: pick the exit before entering each corner; no mid-corner corrections unless safety requires it."
+      ],
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.62
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Use the first 10 minutes as a recovery check. If legs feel good, settle into endurance; if not, keep it recovery."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 1500,
+              "target": {
+                  "power_pct_ftp": [
+                  0.55,
+                  0.68
+                ],
+                "rpe": [
+                  2,
+                  4
+                ]
+              },
+              "notes": "Controlled endurance. Firm aerobic pressure only; no tempo creep."
+            },
+            {
+              "type": "work",
+              "duration_sec": 480,
+              "target": {
+                "power_pct_ftp": [
+                  0.75,
+                  0.8
+                ],
+                "rpe": [
+                  4,
+                  5
+                ]
+              },
+              "notes": "Optional tempo touch. Start only if legs are good, breathing is controlled, and roads are safe."
+            },
+            {
+              "type": "recovery",
+              "duration_sec": 300,
+              "target": {
+                "power_pct_ftp": [
+                  0.5,
+                  0.62
+                ],
+                "rpe": [
+                  2,
+                  3
+                ]
+              },
+              "notes": "Easy endurance between tempo touches."
+            },
+            {
+              "type": "work",
+              "duration_sec": 480,
+              "target": {
+                "power_pct_ftp": [
+                  0.75,
+                  0.8
+                ],
+                "rpe": [
+                  4,
+                  5
+                ]
+              },
+              "notes": "Second optional tempo touch. Skip if the first one pushes above RPE 5."
+            },
+            {
+              "type": "work",
+              "duration_sec": 540,
+              "target": {
+                "power_pct_ftp": [
+                  0.55,
+                  0.68
+                ],
+                "rpe": [
+                  2,
+                  4
+                ]
+              },
+              "notes": "Return to controlled endurance. Do not chase average power."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.55
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Spin down."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Green light for a small upgrade because Coros shows long sleep, resting HR 53, and HRV 35 ms in normal range.",
+          "If roads are still wet, keep cornering conservative and skip any drill that compromises safety.",
+          "If legs are heavy after 15-20 minutes, downgrade to recovery or go home."
+        ],
+        "during_workout_cues": [
+          "Start easy, then ride steady endurance if the body confirms it.",
+          "Add the 2 x 8 min tempo only if legs still feel good after 25 minutes.",
+          "This is not a missed-workout catch-up and not a fitness test."
+        ],
+        "if_too_easy": "Complete the 2 x 8 min tempo touch and stop by 75 minutes. Do not add a third rep.",
+        "if_too_hard": "Stop early and protect Tuesday recovery.",
+        "success_criteria": "You finish the three-day block fresher than expected and ready to absorb it.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "nutrition": {
+        "pre": "Normal meal is enough. If starting hungry, take a small carb snack 30-60 min before.",
+        "during": "Water. If the ride goes past 60 min or you feel energy dipping, use 10-25g simple carbs such as a small amount of candy or sports drink.",
+        "post": "Normal meal with protein later today; add carbs if dinner is delayed or legs feel depleted.",
+        "centr_recipe": "Swirled Banana & Oat Pots, https://centr.com/recipe/show/32848/swirled-banana-oat-pots",
+        "supplements": "Today's ride needs: none required. Keep normal vegetarian baseline stack if already tolerated: creatine, B12, vitamin D if needed, and algae omega 3."
+      },
+      "recovery": {
+        "post_session": "Do not add extra training. Eat normally, hydrate to thirst, and use 5-10 min easy mobility only if it makes legs feel better.",
+        "evening": "Protect sleep tonight; this is the main recovery tool after the three-day block.",
+        "next_morning_check": "Check legs plus HRV/resting HR before doing Tuesday mobility. If recovery markers worsen or legs feel heavy, make Tuesday full rest."
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-18",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "gym_mobility_strength_support_2026-05-19",
+      "title": "Upper Body Strength With Recovery Legs",
+      "sport": "strength",
+      "discipline": "gym",
+      "objective": "Train real upper-body strength while keeping the legs in recovery mode after the three-ride block.",
+      "why_now": "After three consecutive outdoor ride opportunities, Tuesday should protect lower-body freshness, but upper-body and trunk strength can still be trained properly.",
+      "source_context": {
+        "week_objective": "Absorb Girona, restore freshness, and keep routine with low-cost support.",
+        "phase": "Phase 1",
+        "target_system": "upper-body strength and recovery support",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": true,
+        "outdoor": false,
+        "max_duration_min": 70,
+        "equipment": [
+          "full_gym",
+          "centr_optional"
+        ]
+      },
+      "targets": {
+        "primary": "rpe",
+        "notes": "60-70 minutes. Upper body RPE 6-7 with 1-2 reps in reserve. Lower body stays recovery-only: mobility, easy walking, calves/hips range of motion, no loaded leg strength."
+      },
+      "centr_recommendation": {
+        "primary": "Centr upper-body or full-body strength session, using the coach table as the prescription",
+        "alternatives": [
+          "Strength for Sports upper-body session",
+          "Multi-Gym Strength upper-body session",
+          "HYROX Recover mobility only as cooldown, not as the main workout"
+        ],
+        "keep": [
+          "pressing",
+          "rowing",
+          "vertical pull",
+          "trunk bracing",
+          "mobility cooldown"
+        ],
+        "skip": [
+          "conditioning",
+          "HIIT",
+          "lower-body strength",
+          "leg press",
+          "squats",
+          "lunges",
+          "deadlifts",
+          "anything that creates soreness"
+        ],
+        "notes": "This is a real gym session for upper body and trunk. Keep legs recovery-only so Wednesday remains available."
+      },
+      "skill_focus": [
+        "Keep upper-body reps controlled and symmetrical.",
+        "Keep lower body recovery-only: no loaded leg work, no calf fatigue, no conditioning."
+      ],
+      "mental_focus": {
+        "intention": "Feel strong in the gym without turning a recovery-leg day into hidden fatigue.",
+        "cue": "Upper body works; legs recover.",
+        "reset": "If you feel tempted to add legs or conditioning, pause, check tomorrow's ride goal, and add mobility or stop instead."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Walk, easy bike, or elliptical. RPE 1-2 only."
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Easy walk, gentle stretching, and breathing reset."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Lower body is recovery-only today. Upper body can work."
+        ],
+        "during_workout_cues": [
+          "Push and pull cleanly.",
+          "No conditioning finisher.",
+          "No loaded lower-body strength."
+        ],
+        "if_too_easy": "Add one upper-body accessory set or mobility, not leg loading.",
+        "if_too_hard": "Drop shoulder press and keep bench, row, pulldown, and trunk only.",
+        "success_criteria": "Upper body feels trained; legs feel fresher or unchanged on Wednesday.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "nutrition": {
+        "pre": "Normal meal timing. No special snack needed unless you are genuinely hungry.",
+        "during": "Water.",
+        "post": "Protein-forward normal meal or snack if dinner is delayed.",
+        "centr_recipe": "Salted Caramel Super Smoothie, https://centr.com/recipe/show/12693/salted-caramel-super-smoothie",
+        "supplements": "Today's recovery needs: none required. Keep normal vegetarian baseline stack if already tolerated. Protein powder is acceptable only as a convenience if normal food is not practical."
+      },
+      "recovery": {
+        "post_session": "Protein-forward meal or snack. Easy walking only if legs feel stiff.",
+        "evening": "No extra leg strength or conditioning. Keep dinner and bedtime boring.",
+        "next_morning_check": "Wednesday ride happens only if legs and HRV/resting HR show recovery is stabilizing."
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-19",
+          "sync_to_wahoo": false
+        }
+      },
+      "estimated_duration_sec": 4200,
+      "gym_table": [
+        {
+          "movement": "Upper push",
+          "exercise": "Dumbbell bench press or machine chest press",
+          "sets": 3,
+          "reps": "6-10",
+          "rest": "90s",
+          "notes": "RPE 6-7, stop 1-2 reps before failure."
+        },
+        {
+          "movement": "Horizontal pull",
+          "exercise": "Chest-supported row or cable row",
+          "sets": 3,
+          "reps": "8-10",
+          "rest": "75-90s",
+          "notes": "Strong posture and full control."
+        },
+        {
+          "movement": "Vertical pull",
+          "exercise": "Lat pulldown or assisted pull-up",
+          "sets": 3,
+          "reps": "8-10",
+          "rest": "75-90s",
+          "notes": "No swinging."
+        },
+        {
+          "movement": "Upper push",
+          "exercise": "Seated dumbbell shoulder press or landmine press",
+          "sets": 2,
+          "reps": "8",
+          "rest": "75s",
+          "notes": "Skip if shoulders feel cranky or fatigue is high."
+        },
+        {
+          "movement": "Trunk",
+          "exercise": "Pallof press plus side plank",
+          "sets": 2,
+          "reps": "10/side + 30s/side",
+          "rest": "45-60s",
+          "notes": "Controlled, no strain."
+        },
+        {
+          "movement": "Lower recovery",
+          "exercise": "Hip, calf, and hamstring mobility",
+          "sets": 1,
+          "reps": "8-12 min",
+          "rest": "as needed",
+          "notes": "Range of motion only; no loaded leg work."
+        }
+      ]
+    },
+    {
+      "workout_id": "bike_tempo_durability_2x20_2026-05-20",
+      "title": "Easy Aerobic Check Or Rest",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Check whether freshness is returning without adding intensity.",
+      "why_now": "The original tempo session is too much for the transition week after Girona.",
+      "source_context": {
+        "week_objective": "Absorb Girona, restore freshness, and prepare for the next build week.",
+        "phase": "Phase 1",
+        "target_system": "recovery validation",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 255,
+        "notes": "Outdoor only. Easy aerobic check at 50-62% FTP. Prefer rest if the three-day block created fatigue. No tempo."
+      },
+      "skill_focus": [
+        "Fast legs: 4 x 1 min at 105-110 rpm, easy power, 2 min normal cadence between; stop if bouncing.",
+        "Seated torque touch: 3 x 2 min at 60-65 rpm on a gentle grade, RPE stays easy, hips stable.",
+        "Power ceiling drill: over 10 min rolling terrain, keep every surge under 75% FTP unless safety/traffic requires it."
+      ],
+      "mental_focus": {
+        "intention": "Practice restraint and honest readiness checking after the three-day block.",
+        "cue": "Cap first, ego second.",
+        "reset": "If you surge or feel impatient, exhale once, relax grip, and ride the next 60 seconds back inside the cap."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.62
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Start easy but keep enough pressure to feel natural outdoors."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 2400,
+              "target": {
+                "power_pct_ftp": [
+                  0.5,
+                  0.62
+                ],
+                "rpe": [
+                  2,
+                  3
+                ]
+              },
+              "notes": "Easy spin only. This is a readiness check, not a workout to force."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.55
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Finish easy."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Ride only if the three-day block was absorbed and freshness is improving."
+        ],
+        "during_workout_cues": [
+          "Keep it easy even if power feels good.",
+          "If legs feel flat, go home early."
+        ],
+        "if_too_easy": "Good. Keep it easy and save intensity for Build 1.",
+        "if_too_hard": "Convert to rest or HYROX Recover Week 1 Day 1 Mobility.",
+        "success_criteria": "You finish the week feeling ready to start building, not like you extended Girona fatigue.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "nutrition": {
+        "pre": "Normal meal is enough. Add a small carb snack 30-60 min before only if starting hungry.",
+        "during": "Water. Optional 10-20g simple carbs only if the ride extends or you feel underfueled.",
+        "post": "Normal meal with protein; do not deliberately underfuel because this is still recovery validation.",
+        "centr_recipe": "Swirled Banana & Oat Pots, https://centr.com/recipe/show/32848/swirled-banana-oat-pots",
+        "supplements": "Today's ride needs: none required. Keep normal vegetarian baseline stack if already tolerated: creatine, B12, vitamin D if needed, and algae omega 3."
+      },
+      "recovery": {
+        "post_session": "If you ride, stop while still fresh. Eat normally and skip extra training.",
+        "evening": "Keep sleep the priority so Build 1 can start from freshness.",
+        "next_morning_check": "Progress only if legs, HRV/resting HR, and RPE memory are normal; otherwise absorb one more day."
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-20",
+          "sync_to_wahoo": true
+        }
+      }
+    }
+  ]
+}

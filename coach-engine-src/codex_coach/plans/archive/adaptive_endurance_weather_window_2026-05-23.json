@@ -1,0 +1,122 @@
+{
+  "workout_id": "phase1_w2_endurance_weather_window_2026-05-23",
+  "title": "One-Hour Aerobic Family Window",
+  "sport": "cycling",
+  "discipline": "bike",
+  "objective": "Use the available 1-hour family window for low-stress aerobic frequency after Friday's successful sweet spot ride.",
+  "why_now": "Family constraints reduced Saturday availability, so the goal changes from endurance load to keeping rhythm without forcing volume.",
+  "source_context": {
+    "week_objective": "Rebuild rhythm and aerobic consistency.",
+    "phase": "Phase 1 Build 1",
+    "target_system": "aerobic durability",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 60,
+    "equipment": [
+      "power_meter"
+    ]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 255,
+    "notes": "Outdoor only. 1h cap at 50-68% FTP. This is aerobic frequency, not the long ride. Fuel is optional if well fed; use water unless starting hungry."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "power_pct_ftp": [
+          0.5,
+          0.65
+        ],
+        "rpe": [
+          1,
+          3
+        ]
+      },
+      "notes": "Ramp naturally into endurance."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "work",
+          "duration_sec": 2400,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.68
+            ],
+            "rpe": [
+              2,
+              4
+            ]
+          },
+          "notes": "Easy aerobic. Keep climbs controlled and stay conversational."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "power_pct_ftp": [
+          0.5,
+          0.6
+        ],
+        "rpe": [
+          1,
+          2
+        ]
+      },
+      "notes": "Ease down by feel; no need to force ultra-low watts."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal meal timing is enough. If starting hungry, take 20-30g carbs 30-60 min before.",
+    "during": "Water to thirst. Carbs are optional, not required, unless you start hungry.",
+    "post": "Normal meal with 25-35g protein and some carbs is enough.",
+    "centr_recipe": "Salted Caramel Super Smoothie, https://centr.com/recipe/show/12693/salted-caramel-super-smoothie",
+    "supplements": "Today's workout needs: electrolytes/sodium only if hot or heavy sweating; otherwise none required. Daily baseline: keep creatine, B12, algae omega 3, vitamin D by season/sun/bloodwork, protein powder only for convenience, and glycine/magnesium only if useful for sleep; skip EAA, L-glutamine, taurine, and collagen unless a specific reason exists."
+  },
+  "recovery": {
+    "post_session": "Normal meal, fluids to thirst, and easy walking if legs feel stiff.",
+    "evening": "Keep the evening low stress; no extra hard training.",
+    "next_morning_check": "Check legs, left calf, sleep, resting HR/HRV if available, and whether the ride felt genuinely easy."
+  },
+  "execution_notes": {
+    "pre_interval_cues": [
+      "This is a 1-hour family-window ride, not the long ride.",
+      "Start only if Friday's sweet spot feels absorbed."
+    ],
+    "during_workout_cues": [
+      "Keep it aerobic.",
+      "No tempo chasing."
+    ],
+    "if_too_easy": "Stay aerobic. Do not add intensity.",
+    "if_too_hard": "Shorten to 30-45 minutes or rest.",
+    "success_criteria": "Easy ride feels easy, no left-calf warning, and family timing stays protected.",
+    "post_workout_capture": [
+      "Legs before/after",
+      "Fueling/GI",
+      "Pain/niggles",
+      "Schedule/life",
+      "Other unusual context"
+    ]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-05-23",
+      "sync_to_wahoo": true
+    }
+  }
+}

@@ -228,6 +228,43 @@ ol.steps li { margin: 10px 0; line-height: 1.4; }
 }
 .search:focus { outline: none; border-color: var(--accent); }
 
+/* Manual activity entry (#129 LogActivity) */
+.btn-sm { padding: 7px 13px; font-size: 13px; border-radius: 10px; }
+.field-label { display: block; font-size: 12px; font-weight: 700; color: var(--text-dim); margin: 8px 2px 2px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.import-drop { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer; padding: 14px; border: 1px dashed var(--line); background: var(--bg-soft); color: inherit; }
+.import-drop:hover { border-color: var(--accent); }
+.import-drop b { display: block; }
+.import-done { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-top: 10px; }
+.import-done .ok { color: var(--accent); flex: none; }
+.import-done b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-map { display: block; background: var(--bg-soft); border-radius: 10px; }
+.rpe-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.rpe-dot { flex: 1; min-width: 26px; padding: 9px 0; border: 1px solid var(--line); border-radius: 9px; background: var(--bg-soft); color: var(--text-dim); font-weight: 700; font-size: 13px; cursor: pointer; }
+.rpe-dot.on { background: var(--accent); border-color: var(--accent); color: #04110a; }
+textarea.search { resize: vertical; font-family: inherit; }
+select.search { appearance: none; -webkit-appearance: none; }
+/* link-an-import-to-a-plan (#131) */
+.link-plan { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; margin: 8px 0 2px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 13px; background: var(--bg-soft); color: var(--text-dim); cursor: pointer; }
+.link-plan.on { border-color: var(--accent); background: rgba(52, 224, 125, 0.08); color: var(--text); }
+.link-plan__check { width: 20px; height: 20px; flex: none; border-radius: 6px; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; }
+.link-plan.on .link-plan__check { background: var(--accent); border-color: var(--accent); color: #04110a; }
+.link-plan__t b { display: block; } .link-plan__t span { font-size: 12px; color: var(--text-dim); }
+/* "Import an activity" row in the calendar Add sheet (#131) */
+.import-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; margin-top: 10px; }
+.import-row__ic { width: 38px; height: 38px; flex: none; border-radius: 11px; background: var(--bg-soft); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--accent); }
+
+/* Password field with a show/hide eye toggle (PasswordInput) */
+.pw-wrap { position: relative; margin: 4px 0 10px; }
+.pw-wrap .search { margin: 0; padding-right: 44px; }
+.pw-eye {
+  position: absolute; top: 0; right: 0; height: 100%; width: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--muted); opacity: 0.75;
+}
+.pw-eye:hover { color: var(--accent); opacity: 1; }
+
 .video-poster {
   width: 100%;
   aspect-ratio: 16 / 9;

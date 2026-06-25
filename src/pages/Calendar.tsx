@@ -8,7 +8,7 @@ import { calApi, newId, type CalItem } from '../calendar'
 import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
 import { listTemplates, listRideTemplates, getSetting, setSetting, type WorkoutTemplate, type RideTemplate } from '../db'
 import { localISO } from '../date'
-import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, ChevronLeft, ChevronRight, Flag } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, Plus, X, ChevronLeft, ChevronRight, Flag, Upload } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -271,6 +271,7 @@ function AddSheet({ date, replacing, ftp, templates, rideTemplates, onClose, onA
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [count, setCount] = useState(0)
+  const navigate = useNavigate()
 
   // Replace mode adds one then swaps out the old entry. Otherwise stay open so
   // you can quick-add several to the same day; "Done" closes.
@@ -293,11 +294,21 @@ function AddSheet({ date, replacing, ftp, templates, rideTemplates, onClose, onA
         <div className="sheet-head"><strong>{replacing ? 'Substitute on' : 'Add to'} {new Date(date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{count > 0 ? ` · ${count} added` : ''}</strong><button className="btn" style={{ width: 'auto', padding: '6px 14px' }} onClick={onClose}>{count > 0 ? 'Done' : <X size={18} />}</button></div>
 
         {!type && (
-          <div className="sheet-types">
-            {([['ride', 'Ride', Bike], ['run', 'Run', Footprints], ['gym', 'Gym', Dumbbell], ['meal', 'Meal', Salad], ['mind', 'Mind', Brain], ['note', 'Note', StickyNote]] as const).map(([t, label, Icon]) => (
-              <button key={t} className="sheet-type" style={{ color: colorFor(t) }} onClick={() => setType(t)}><Icon size={22} /><span>{label}</span></button>
-            ))}
-          </div>
+          <>
+            <div className="sheet-types">
+              {([['ride', 'Ride', Bike], ['run', 'Run', Footprints], ['gym', 'Gym', Dumbbell], ['meal', 'Meal', Salad], ['mind', 'Mind', Brain], ['note', 'Note', StickyNote]] as const).map(([t, label, Icon]) => (
+                <button key={t} className="sheet-type" style={{ color: colorFor(t) }} onClick={() => setType(t)}><Icon size={22} /><span>{label}</span></button>
+              ))}
+            </div>
+            {/* Import a COMPLETED activity (vs the planned items above) — #131. Opens the
+                Log-activity importer with this day prefilled; it offers to link a plan. */}
+            {!replacing && (
+              <button className="card import-row" onClick={() => { onClose(); navigate('/log-activity?date=' + date) }}>
+                <span className="import-row__ic"><Upload size={18} /></span>
+                <div className="card-body"><h3>Import an activity</h3><div className="meta">Something you already did — .fit/.gpx/.tcx or by hand · links to a plan if there is one</div></div>
+              </button>
+            )}
+          </>
         )}
 
         {type && type !== 'note' && (

@@ -1,0 +1,111 @@
+{
+  "workout_id": "wednesday_sweet_spot_durability_2026-06-24",
+  "title": "Wednesday Sweet Spot Durability",
+  "sport": "cycling",
+  "discipline": "bike",
+  "estimated_duration_sec": 8100,
+  "objective": "The week's key session, on the St-Jean holiday: three sub-threshold sweet spot blocks for sustained-power durability and soft FTP evidence, wrapped in extra Z2 endurance since the day off gives the time. Quality without the cost of threshold or over-unders.",
+  "why_now": "This is a re-entry week after a manual-labor weekend, so the plan keeps a single controlled stimulus rather than the originally planned over-unders. Sweet spot sits clearly below threshold, absorbs cleanly, and tells us whether 260 W still reads right - useful since the working FTP is unvalidated and the whole 300 W path depends on it. A genuine fresh validation comes later, once re-entry confirms absorption.",
+  "source_context": {
+    "week_objective": "Re-entry and aerobic rebuild after a disrupted, manual-labor weekend",
+    "phase": "Aggressive June Build",
+    "target_system": "sweet spot durability + soft FTP evidence",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 150,
+    "equipment": ["power_meter"]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 260,
+    "notes": "~2h15: 3 x 12 min at 88-92% FTP (~229-239 W), RPE 6-7, 4 min easy between, then ~1h steady Z2 endurance to use the holiday time. Sub-threshold and repeatable - third block as clean as the first. Not a test; cap is strict. If short on time or legs/back are off, drop the endurance tail (or a block) and keep it ~90 min."
+  },
+  "warmup": [
+    {
+      "type": "ramp",
+      "duration_sec": 900,
+      "target": {"power_pct_ftp": [0.50, 0.78], "rpe": [2, 4]},
+      "notes": "Progressive ramp; let the legs and HR come around. Add a couple of 30s openers near the top if you feel flat."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 3,
+      "steps": [
+        {
+          "type": "work",
+          "duration_sec": 720,
+          "target": {"power_pct_ftp": [0.88, 0.92], "rpe": [6, 7]},
+          "notes": "Sweet spot block - 229-239 W. Smooth and even, breathing controlled, no surging toward threshold. Cap climbs so they don't push you over."
+        },
+        {
+          "type": "recovery",
+          "duration_sec": 240,
+          "target": {"power_pct_ftp": [0.50, 0.60], "rpe": [1, 2]},
+          "notes": "Easy spin between blocks; let HR settle."
+        }
+      ]
+    },
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "steady",
+          "duration_sec": 3600,
+          "target": {"power_pct_ftp": [0.58, 0.68], "rpe": [2, 3]},
+          "notes": "~1h steady Z2 endurance after the blocks - use the holiday time for durability. Conversational, smooth, cap any climbs. Drop this tail if short on time or the legs/back are flat."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.45, 0.55], "rpe": [1, 2]},
+      "notes": "Ease down."
+    }
+  ],
+  "nutrition": {
+    "pre": "Carb-forward meal 2-3h before, ~1g carbs/kg.",
+    "during": "30-50g carbs/hour and drink to thirst; fueling the blocks keeps the third one clean.",
+    "post": "25-35g protein plus carbs within an hour.",
+    "centr_recipe": "No new Centr link needed.",
+    "supplements": "Today's workout needs: optional caffeine if tolerated and not late in the day. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Refuel, hydrate, left-calf routine if tight.",
+    "evening": "Protect sleep - Thursday is a busy day with the interview.",
+    "next_morning_check": "Thursday is a rest/mobility day regardless; just note legs and back before Friday's anchor."
+  },
+  "skill_focus": [
+    {
+      "action": "Hold each block at even, relaxed power - rebuild smoothly over 5-8 pedal strokes after any climb or interruption rather than spiking back up.",
+      "why": "Even sub-threshold pressure is what builds repeatable sustained power; surging burns matches and corrupts the FTP read."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Controlled stimulus, not a test.",
+    "why": "One clean sweet spot session rebuilds quality without the recovery cost that would wreck a re-entry week or the busy Thursday.",
+    "cue": "Smooth first, watts second.",
+    "reset": "If the power creeps up, exhale, loosen hands and jaw, and drop back into the 88-92% band."
+  },
+  "execution_notes": {
+    "pre_interval_cues": ["Start only if back is fine, legs are normal, and sleep was acceptable.", "Sweet spot, not threshold - cap is strict.", "If the legs feel flat in the warmup, ride endurance instead."],
+    "during_workout_cues": ["Even power, relaxed.", "Cap the climbs.", "Third block as clean as the first."],
+    "if_too_easy": "Hold the cap - at most touch 92% (239 W). Do not turn it into a threshold test; progression comes later.",
+    "if_too_hard": "Drop to 2 blocks, lower to 86-88% FTP, or convert the whole main set to endurance. A flat day after the labor weekend means absorb, not force.",
+    "success_criteria": "Three controlled blocks at RPE <=7 with no fade in the third, finishing able to do more.",
+    "post_workout_capture": ["RPE", "Feel", "Did the third block fade or hold", "Legs before/after", "Back/hips", "Fueling/GI"]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-06-24",
+      "sync_to_wahoo": true
+    }
+  }
+}

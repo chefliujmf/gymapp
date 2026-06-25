@@ -1,0 +1,94 @@
+{
+  "workout_id": "sunday_cottage_endurance_optional_2026-06-28",
+  "title": "Sunday Endurance at Skov (optional)",
+  "sport": "cycling",
+  "discipline": "bike",
+  "estimated_duration_sec": 5400,
+  "objective": "Optional, non-debt aerobic ride to enjoy the cottage roads if - and only if - the legs and back have recovered from Friday's long ride.",
+  "why_now": "With both bikes at Skov and a quiet Sunday, easy frequency is welcome, but Friday's 4-5h ride is the week's real load. This ride is discretionary: it adds aerobic time when recovery is good and is dropped without a second thought when it is not.",
+  "source_context": {
+    "week_objective": "Re-entry and aerobic rebuild after a disrupted, manual-labor weekend",
+    "phase": "Aggressive June Build",
+    "target_system": "aerobic endurance (optional volume)",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 90,
+    "equipment": ["power_meter", "gravel_bike", "road_bike"]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 260,
+    "notes": "Optional. Up to 90 min easy endurance at 56-68% FTP. Gravel or road, by feel. Cap the climbs; this is aerobic enjoyment, not training. Skip with zero guilt if the legs/back are not fully recovered - it creates no debt."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.48, 0.60], "rpe": [1, 2]},
+      "notes": "Start easy and read the legs/back from Friday before committing to the full hour and a half."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "steady",
+          "duration_sec": 3600,
+          "target": {"power_pct_ftp": [0.56, 0.68], "rpe": [2, 3]},
+          "notes": "Easy aerobic on the cottage roads. Full sentences, low force on climbs, soft-pedal descents. Turn for home whenever you have had enough."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.45, 0.55], "rpe": [1, 2]},
+      "notes": "Spin home easy."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal cottage breakfast; add 20-30g carbs if hungry.",
+    "during": "Water to thirst; a small carb top-up if you go the full 90 min.",
+    "post": "Normal recovery plate with 25-35g protein.",
+    "centr_recipe": "No new Centr link needed.",
+    "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Left-calf routine, hydrate, easy cottage day.",
+    "evening": "Set up the week ahead with good sleep.",
+    "next_morning_check": "Monday June 29 opens Week 5; with this week's added volume from the long Friday, Week 5 should lean recovery-biased rather than the originally planned overload - reassess from how this week absorbed."
+  },
+  "skill_focus": [
+    {
+      "action": "Keep it genuinely easy - no climbs pushed, no segments chased.",
+      "why": "Optional volume only helps if it stays aerobic; pushing it would eat into recovery from the long ride and the start of next week."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Enjoy it or skip it.",
+    "why": "This ride is a bonus, not a box to tick; recovery from Friday matters more than the extra hour.",
+    "cue": "Bonus miles, easy only.",
+    "reset": "If you feel flat in the first 15 min, turn around - that is the right call, not a failure."
+  },
+  "execution_notes": {
+    "pre_interval_cues": ["Optional - only ride if legs and back are recovered.", "Easy aerobic, no debt if skipped."],
+    "during_workout_cues": ["Full sentences.", "Cap the climbs.", "Stop when you have had enough."],
+    "if_too_easy": "Perfect - keep it easy and enjoy the roads.",
+    "if_too_hard": "Turn for home; rest is the better training choice today.",
+    "success_criteria": "Either an easy enjoyable hour-ish, or a guilt-free rest day - both are wins.",
+    "post_workout_capture": ["RPE", "Feel", "Legs before/after", "Back/hips", "Whether ridden or skipped"]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-06-28",
+      "sync_to_wahoo": true
+    }
+  }
+}

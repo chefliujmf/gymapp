@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Fingerprint, Trash2, Camera, Copy, RefreshCw, Eye, EyeOff } from 'lucide-react'
 import { authApi } from './api'
 import { useAuth } from './AuthContext'
+import PasswordInput from '../PasswordInput'
 
 /** Center-crop + resize an image file to a square data URL. */
 function resizeImage(file: File, size: number): Promise<string> {
@@ -108,8 +109,8 @@ export default function AccountSection({ only }: { only?: 'account' | 'connectio
       </div>
 
       <div className="section-title">Change password</div>
-      <input className="search" type="password" placeholder="Current password" value={cur} onChange={(e) => setCur(e.target.value)} />
-      <input className="search" type="password" placeholder="New password" value={nw} onChange={(e) => setNw(e.target.value)} />
+      <PasswordInput value={cur} onChange={setCur} placeholder="Current password" autoComplete="current-password" />
+      <PasswordInput value={nw} onChange={setNw} placeholder="New password" autoComplete="new-password" />
       <button className="btn" onClick={changePw} disabled={!cur || !nw}>Update password</button>
       {pwMsg && <p className="meta" style={{ marginTop: 8 }}>{pwMsg}</p>}
 

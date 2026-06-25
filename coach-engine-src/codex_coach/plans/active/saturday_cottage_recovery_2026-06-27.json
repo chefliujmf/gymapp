@@ -1,0 +1,94 @@
+{
+  "workout_id": "saturday_cottage_recovery_2026-06-27",
+  "title": "Saturday Recovery Spin at Skov",
+  "sport": "cycling",
+  "discipline": "bike",
+  "estimated_duration_sec": 3600,
+  "objective": "Flush the legs after the long ride to the cottage - a short, low-pressure spin by feel, or full rest if Friday emptied the tank.",
+  "why_now": "Friday was a 4-5h point-to-point. Saturday's job is circulation and movement, not load. With both bikes at Skov this can be an easy gravel or road spin on quiet roads; if the legs or back are cooked, it is rest with no debt.",
+  "source_context": {
+    "week_objective": "Re-entry and aerobic rebuild after a disrupted, manual-labor weekend",
+    "phase": "Aggressive June Build",
+    "target_system": "active recovery",
+    "confidence": "high"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 60,
+    "equipment": ["power_meter", "gravel_bike", "road_bike"]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 260,
+    "notes": "Up to 60 min very easy at 50-62% FTP. Soft pedal, low force, no climbs pushed. This is recovery - if it stops feeling like recovery, go home. Skip entirely and rest if Friday's legs/back say so."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.45, 0.55], "rpe": [1, 2]},
+      "notes": "Start very easy on flat or rolling roads near the cottage."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "steady",
+          "duration_sec": 2400,
+          "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 3]},
+          "notes": "Easy spin, smooth cadence, enjoy the lake/forest roads. Walk the bike or turn around on any steep pitch rather than loading the legs."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.45, 0.55], "rpe": [1, 2]},
+      "notes": "Roll home easy."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal cottage breakfast; nothing special.",
+    "during": "Water to thirst.",
+    "post": "Keep refueling from Friday - protein plus carbs across the day; you are still topping up from the long ride.",
+    "centr_recipe": "No new Centr link needed.",
+    "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Left-calf routine, legs-up, hydrate.",
+    "evening": "Normal cottage evening; sleep well.",
+    "next_morning_check": "Sunday is optional endurance by feel; only ride if the legs and back are genuinely good."
+  },
+  "skill_focus": [
+    {
+      "action": "Keep torque low and cadence smooth the whole spin.",
+      "why": "Low-force pedalling flushes the legs and unloads the back after the long ride without adding fatigue."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Recovery, not training.",
+    "why": "The week's load is already in the bank from Friday; today protects it.",
+    "cue": "Soft pedals only.",
+    "reset": "If you start pressing, shift easier or just turn for home."
+  },
+  "execution_notes": {
+    "pre_interval_cues": ["Recovery or rest - your call from how Friday's legs feel.", "No climbs pushed."],
+    "during_workout_cues": ["Soft pedal.", "Smooth cadence.", "Enjoy it."],
+    "if_too_easy": "Perfect - keep it that easy.",
+    "if_too_hard": "Cut it short or go home; rest is a valid choice today.",
+    "success_criteria": "Legs looser than they started, no added fatigue.",
+    "post_workout_capture": ["RPE", "Feel", "Legs before/after", "Back/hips"]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-06-27",
+      "sync_to_wahoo": true
+    }
+  }
+}

@@ -14,6 +14,11 @@ services:
       # Coach chat: proxy to the host chat-helper (claude can't run in this Alpine
       # container). CHAT_HELPER_SECRET comes from auth.env.
       CHAT_HELPER_URL: http://host.docker.internal:8790
+      # Postgres (relational store). First boot auto-migrates /data/store.json. Own DB.
+      DATABASE_URL: postgres://platyplus:${PG_PASSWORD:-platyplus}@db:5432/platyplus
+    depends_on:
+      db:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
@@ -36,4 +41,26 @@ services:
       interval: 60s
       timeout: 5s
       retries: 3
+      start_period: 30s
+
+  db:
+    image: postgres:16-alpine
+    container_name: gymapp-staging-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: platyplus
+      POSTGRES_USER: platyplus
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-platyplus}
+    volumes:
+      - "./pgdata:/var/lib/postgresql/data"   # ISOLATED staging DB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platyplus -d platyplus"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
       start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

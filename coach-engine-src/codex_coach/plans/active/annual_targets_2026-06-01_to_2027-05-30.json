@@ -1,0 +1,848 @@
+{
+  "plan_id": "annual_ftp_priority_targets_2026-06-01_to_2027-05-30",
+  "created_date": "2026-05-27",
+  "athlete_objective": "FTP-priority macrocycle: become the best possible all-round cyclist with the highest sustainable FTP realistically possible, with 300 W by September 1, 2026 as an explicit stretch target. Accept controlled overload when recovery supports it.",
+  "planning_notes": [
+    "This is an FTP-priority macrocycle, not a maintenance plan. Weekly target events guide Intervals fitness/form evolution; they are not fixed daily workouts.",
+    "Detailed workouts should be regenerated every 2-4 weeks from actual execution, wellness, weather, family calendar, and power evidence.",
+    "Normal build weeks should usually include two purposeful bike stimuli: one threshold/VO2/over-under stimulus and one tempo/sweet-spot durability stimulus, plus a long endurance ride and strength maintenance.",
+    "Through September 1, 2026, do not treat 260 W as a comfortable ceiling. Use progressive training blocks that make 300 W possible: frequent sustained aerobic/tempo volume, weekly threshold-adjacent work, overload weeks when wellness is stable, and validation only when it informs the next FTP step.",
+    "About 70-80% of riding time should remain easy across each block; the higher ambition comes mainly from more absorbable volume and repeatable sustained work, not random intensity.",
+    "Recovery weeks are mandatory. If RPE, Feel, sleep, HRV/resting HR, or Form show poor absorption, lower the week before protecting the headline load.",
+    "June 2026 was corrected more aggressively after Intervals projection showed Form stayed above -10 until month-end despite the FTP-priority objective."
+  ],
+  "targets": [
+    {
+      "week": 1,
+      "start_date": "2026-06-01",
+      "end_date": "2026-06-08",
+      "name": "ATP W01 - Build continuation",
+      "type": "Ride",
+      "icu_training_load": 390,
+      "time_target": 26280,
+      "description": "Annual macro target week 1/52. Phase: Build continuation. Focus: Tempo durability, long aerobic ride, endurance-skill ride, strength maintenance. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w01:2026-06-01",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Build continuation"
+      ]
+    },
+    {
+      "week": 2,
+      "start_date": "2026-06-08",
+      "end_date": "2026-06-15",
+      "name": "ATP W02 - 300W progression build",
+      "type": "Ride",
+      "icu_training_load": 131,
+      "time_target": 11880,
+      "description": "Annual macro target week 2/52. Phase: 300W progression build. Focus: Three completed bike rides only after Thursday, Friday, and Saturday were blocked; weekend hike plus cottage tree/trench work counts as fatigue context, not FTP-specific bike load. No catch-up debt. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w02:2026-06-08",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "300W progression build"
+      ]
+    },
+    {
+      "week": 3,
+      "start_date": "2026-06-15",
+      "end_date": "2026-06-22",
+      "name": "ATP W03 - 300W aerobic power build",
+      "type": "Ride",
+      "icu_training_load": 300,
+      "time_target": 23400,
+      "description": "Annual macro target week 3/52. Phase: 300W aerobic power build. Focus: Start with a recovery-biased Monday check after cottage manual work, then preserve Tuesday volume, Wednesday sweet spot if legs/back are normal, and a Friday sustained-power anchor so the week does not depend on cottage bike access. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Adjusted 2026-06-15: load/hours moderated from the original 340 to ramp from the actual CTL ~32.5 (down from ~37) after a disrupted week + cottage manual labor; ramp gate wins over the table. FTP stays 260 (athlete-confirmed).",
+      "external_id": "annual-targets-2026-2027:w03:2026-06-15",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "300W aerobic power build"
+      ]
+    },
+    {
+      "week": 4,
+      "start_date": "2026-06-22",
+      "end_date": "2026-06-29",
+      "name": "ATP W04 - 300W overload preparation",
+      "type": "Ride",
+      "icu_training_load": 350,
+      "time_target": 27000,
+      "description": "Annual macro target week 4/52. Phase: 300W overload preparation. Focus: Over-under progression plus a Friday overload anchor, enough load to enter controlled green if recovery is stable, with weekend cottage workouts optional only if access is confirmed. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Adjusted 2026-06-15: load/hours moderated from the original 395 to ramp from the actual CTL ~32.5 (down from ~37) after a disrupted week + cottage manual labor; ramp gate wins over the table. FTP stays 260 (athlete-confirmed).",
+      "external_id": "annual-targets-2026-2027:w04:2026-06-22",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "300W overload preparation"
+      ]
+    },
+    {
+      "week": 5,
+      "start_date": "2026-06-29",
+      "end_date": "2026-07-06",
+      "name": "ATP W05 - Controlled overload",
+      "type": "Ride",
+      "icu_training_load": 400,
+      "time_target": 30600,
+      "description": "Annual macro target week 5/52. Phase: Controlled overload. Focus: Highest load of the June wave; one threshold/VO2 stimulus, one sustained tempo/durability anchor, and long aerobic support if recovery markers stay stable. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Adjusted 2026-06-15: load/hours moderated from the original 430 to ramp from the actual CTL ~32.5 (down from ~37) after a disrupted week + cottage manual labor; ramp gate wins over the table. FTP stays 260 (athlete-confirmed).",
+      "external_id": "annual-targets-2026-2027:w05:2026-06-29",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Controlled overload"
+      ]
+    },
+    {
+      "week": 6,
+      "start_date": "2026-07-06",
+      "end_date": "2026-07-13",
+      "name": "ATP W06 - Recovery consolidation",
+      "type": "Ride",
+      "icu_training_load": 250,
+      "time_target": 18720,
+      "description": "Annual macro target week 6/52. Phase: Recovery consolidation. Focus: Absorb the first 300W block, preserve frequency, and keep one light opener only if fresh. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w06:2026-07-06",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Recovery consolidation"
+      ]
+    },
+    {
+      "week": 7,
+      "start_date": "2026-07-13",
+      "end_date": "2026-07-20",
+      "name": "ATP W07 - Threshold development",
+      "type": "Ride",
+      "icu_training_load": 390,
+      "time_target": 28800,
+      "description": "Annual macro target week 7/52. Phase: Threshold development. Focus: Threshold repeatability plus sweet spot durability and long endurance; strength only if it does not blunt bike quality. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w07:2026-07-13",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Threshold development"
+      ]
+    },
+    {
+      "week": 8,
+      "start_date": "2026-07-20",
+      "end_date": "2026-07-27",
+      "name": "ATP W08 - Threshold development overload",
+      "type": "Ride",
+      "icu_training_load": 430,
+      "time_target": 31680,
+      "description": "Annual macro target week 8/52. Phase: Threshold development overload. Focus: Progress threshold duration or density before raising FTP targets, while preserving long aerobic durability. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w08:2026-07-20",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Threshold development overload"
+      ]
+    },
+    {
+      "week": 9,
+      "start_date": "2026-07-27",
+      "end_date": "2026-08-03",
+      "name": "ATP W09 - Summer opportunity overload",
+      "type": "Ride",
+      "icu_training_load": 460,
+      "time_target": 34200,
+      "description": "Annual macro target week 9/52. Phase: Summer opportunity overload. Focus: Use summer time for aerobic durability and sustained pressure, not random intensity. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w09:2026-07-27",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Summer opportunity overload"
+      ]
+    },
+    {
+      "week": 10,
+      "start_date": "2026-08-03",
+      "end_date": "2026-08-10",
+      "name": "ATP W10 - Recovery consolidation",
+      "type": "Ride",
+      "icu_training_load": 260,
+      "time_target": 19800,
+      "description": "Annual macro target week 10/52. Phase: Recovery consolidation. Focus: Absorb July overload and decide whether FTP targets can step upward before the final summer build. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w10:2026-08-03",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Recovery consolidation"
+      ]
+    },
+    {
+      "week": 11,
+      "start_date": "2026-08-10",
+      "end_date": "2026-08-17",
+      "name": "ATP W11 - VO2 and FTP support",
+      "type": "Ride",
+      "icu_training_load": 400,
+      "time_target": 28800,
+      "description": "Annual macro target week 11/52. Phase: VO2 and FTP support. Focus: One VO2 or over-under stimulus, one sweet spot or tempo durability session, and endurance support. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w11:2026-08-10",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "VO2 and FTP support"
+      ]
+    },
+    {
+      "week": 12,
+      "start_date": "2026-08-17",
+      "end_date": "2026-08-24",
+      "name": "ATP W12 - Final 300W build week",
+      "type": "Ride",
+      "icu_training_load": 440,
+      "time_target": 32400,
+      "description": "Annual macro target week 12/52. Phase: Final 300W build week. Focus: Last hard build before the September 1 validation: high-aerobic work, sustained power, and long durability while keeping easy volume dominant. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w12:2026-08-17",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Final 300W build week"
+      ]
+    },
+    {
+      "week": 13,
+      "start_date": "2026-08-24",
+      "end_date": "2026-08-31",
+      "name": "ATP W13 - September 1 300W validation",
+      "type": "Ride",
+      "icu_training_load": 370,
+      "time_target": 25200,
+      "description": "Annual macro target week 13/52. Phase: September 1 300W validation. Focus: Controlled field validation and FTP decision before September 1; reduce filler so the key evidence is high quality, not a classic max FTP test by default. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development toward the 300 W September 1 target through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w13:2026-08-24",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "September 1 300W validation"
+      ]
+    },
+    {
+      "week": 14,
+      "start_date": "2026-08-31",
+      "end_date": "2026-09-07",
+      "name": "ATP W14 - September target review recovery",
+      "type": "Ride",
+      "icu_training_load": 240,
+      "time_target": 18000,
+      "description": "Annual macro target week 14/52. Phase: September target review recovery. Focus: Freshen after the September 1 push and reset fall targets from the result. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w14:2026-08-31",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "September target review recovery"
+      ]
+    },
+    {
+      "week": 15,
+      "start_date": "2026-09-07",
+      "end_date": "2026-09-14",
+      "name": "ATP W15 - Fall durability build",
+      "type": "Ride",
+      "icu_training_load": 375,
+      "time_target": 27720,
+      "description": "Annual macro target week 15/52. Phase: Fall durability build. Focus: Longer endurance and tempo durability with outdoor skill focus. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w15:2026-09-07",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Fall durability build"
+      ]
+    },
+    {
+      "week": 16,
+      "start_date": "2026-09-14",
+      "end_date": "2026-09-21",
+      "name": "ATP W16 - Fall durability build",
+      "type": "Ride",
+      "icu_training_load": 410,
+      "time_target": 30240,
+      "description": "Annual macro target week 16/52. Phase: Fall durability build. Focus: Sustained tempo/sweet spot plus long aerobic ride. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w16:2026-09-14",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Fall durability build"
+      ]
+    },
+    {
+      "week": 17,
+      "start_date": "2026-09-21",
+      "end_date": "2026-09-28",
+      "name": "ATP W17 - Aerobic durability overload",
+      "type": "Ride",
+      "icu_training_load": 440,
+      "time_target": 32400,
+      "description": "Annual macro target week 17/52. Phase: Aerobic durability overload. Focus: Main fall endurance load; fuel long ride properly. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w17:2026-09-21",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Aerobic durability overload"
+      ]
+    },
+    {
+      "week": 18,
+      "start_date": "2026-09-28",
+      "end_date": "2026-10-05",
+      "name": "ATP W18 - Recovery consolidation",
+      "type": "Ride",
+      "icu_training_load": 250,
+      "time_target": 19080,
+      "description": "Annual macro target week 18/52. Phase: Recovery consolidation. Focus: Reduce load and preserve movement quality. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w18:2026-09-28",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Recovery consolidation"
+      ]
+    },
+    {
+      "week": 19,
+      "start_date": "2026-10-05",
+      "end_date": "2026-10-12",
+      "name": "ATP W19 - Aerobic skill and strength",
+      "type": "Ride",
+      "icu_training_load": 335,
+      "time_target": 24840,
+      "description": "Annual macro target week 19/52. Phase: Aerobic skill and strength. Focus: Endurance, cadence/torque skill, and stronger gym maintenance. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w19:2026-10-05",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Aerobic skill and strength"
+      ]
+    },
+    {
+      "week": 20,
+      "start_date": "2026-10-12",
+      "end_date": "2026-10-19",
+      "name": "ATP W20 - Aerobic skill and strength",
+      "type": "Ride",
+      "icu_training_load": 360,
+      "time_target": 26640,
+      "description": "Annual macro target week 20/52. Phase: Aerobic skill and strength. Focus: Tempo support plus all-round strength. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w20:2026-10-12",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Aerobic skill and strength"
+      ]
+    },
+    {
+      "week": 21,
+      "start_date": "2026-10-19",
+      "end_date": "2026-10-26",
+      "name": "ATP W21 - Aerobic skill and strength",
+      "type": "Ride",
+      "icu_training_load": 390,
+      "time_target": 28800,
+      "description": "Annual macro target week 21/52. Phase: Aerobic skill and strength. Focus: Final fall build week before recovery. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w21:2026-10-19",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Aerobic skill and strength"
+      ]
+    },
+    {
+      "week": 22,
+      "start_date": "2026-10-26",
+      "end_date": "2026-11-02",
+      "name": "ATP W22 - Recovery consolidation",
+      "type": "Ride",
+      "icu_training_load": 240,
+      "time_target": 18000,
+      "description": "Annual macro target week 22/52. Phase: Recovery consolidation. Focus: Absorb fall load and keep easy frequency. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w22:2026-10-26",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Recovery consolidation"
+      ]
+    },
+    {
+      "week": 23,
+      "start_date": "2026-11-02",
+      "end_date": "2026-11-09",
+      "name": "ATP W23 - Late-fall base",
+      "type": "Ride",
+      "icu_training_load": 310,
+      "time_target": 23040,
+      "description": "Annual macro target week 23/52. Phase: Late-fall base. Focus: Aerobic base and strength emphasis as outdoor windows shrink. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w23:2026-11-02",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Late-fall base"
+      ]
+    },
+    {
+      "week": 24,
+      "start_date": "2026-11-09",
+      "end_date": "2026-11-16",
+      "name": "ATP W24 - Late-fall base",
+      "type": "Ride",
+      "icu_training_load": 335,
+      "time_target": 24840,
+      "description": "Annual macro target week 24/52. Phase: Late-fall base. Focus: Endurance plus controlled sweet spot if weather/recovery allow. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w24:2026-11-09",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Late-fall base"
+      ]
+    },
+    {
+      "week": 25,
+      "start_date": "2026-11-16",
+      "end_date": "2026-11-23",
+      "name": "ATP W25 - Late-fall base",
+      "type": "Ride",
+      "icu_training_load": 360,
+      "time_target": 26640,
+      "description": "Annual macro target week 25/52. Phase: Late-fall base. Focus: Sustained aerobic work, gym strength, no fatigue chase. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w25:2026-11-16",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Late-fall base"
+      ]
+    },
+    {
+      "week": 26,
+      "start_date": "2026-11-23",
+      "end_date": "2026-11-30",
+      "name": "ATP W26 - Recovery consolidation",
+      "type": "Ride",
+      "icu_training_load": 230,
+      "time_target": 18000,
+      "description": "Annual macro target week 26/52. Phase: Recovery consolidation. Focus: Lower load before winter base. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w26:2026-11-23",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Recovery consolidation"
+      ]
+    },
+    {
+      "week": 27,
+      "start_date": "2026-11-30",
+      "end_date": "2026-12-07",
+      "name": "ATP W27 - Winter base and strength",
+      "type": "Ride",
+      "icu_training_load": 290,
+      "time_target": 21600,
+      "description": "Annual macro target week 27/52. Phase: Winter base and strength. Focus: Aerobic consistency, real strength, technique work. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w27:2026-11-30",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Winter base and strength"
+      ]
+    },
+    {
+      "week": 28,
+      "start_date": "2026-12-07",
+      "end_date": "2026-12-14",
+      "name": "ATP W28 - Winter base and strength",
+      "type": "Ride",
+      "icu_training_load": 315,
+      "time_target": 23400,
+      "description": "Annual macro target week 28/52. Phase: Winter base and strength. Focus: Progress base volume carefully; strength can be more meaningful. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w28:2026-12-07",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Winter base and strength"
+      ]
+    },
+    {
+      "week": 29,
+      "start_date": "2026-12-14",
+      "end_date": "2026-12-21",
+      "name": "ATP W29 - Winter base and strength",
+      "type": "Ride",
+      "icu_training_load": 340,
+      "time_target": 25200,
+      "description": "Annual macro target week 29/52. Phase: Winter base and strength. Focus: One sweet spot or tempo support session, mostly easy riding. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w29:2026-12-14",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Winter base and strength"
+      ]
+    },
+    {
+      "week": 30,
+      "start_date": "2026-12-21",
+      "end_date": "2026-12-28",
+      "name": "ATP W30 - Holiday recovery",
+      "type": "Ride",
+      "icu_training_load": 205,
+      "time_target": 16200,
+      "description": "Annual macro target week 30/52. Phase: Holiday recovery. Focus: Protect consistency without forcing holiday load. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w30:2026-12-21",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Holiday recovery"
+      ]
+    },
+    {
+      "week": 31,
+      "start_date": "2026-12-28",
+      "end_date": "2027-01-04",
+      "name": "ATP W31 - New-year base",
+      "type": "Ride",
+      "icu_training_load": 285,
+      "time_target": 21600,
+      "description": "Annual macro target week 31/52. Phase: New-year base. Focus: Rebuild rhythm after holidays. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w31:2026-12-28",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "New-year base"
+      ]
+    },
+    {
+      "week": 32,
+      "start_date": "2027-01-04",
+      "end_date": "2027-01-11",
+      "name": "ATP W32 - New-year base",
+      "type": "Ride",
+      "icu_training_load": 315,
+      "time_target": 23400,
+      "description": "Annual macro target week 32/52. Phase: New-year base. Focus: Base volume plus strength progression. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w32:2027-01-04",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "New-year base"
+      ]
+    },
+    {
+      "week": 33,
+      "start_date": "2027-01-11",
+      "end_date": "2027-01-18",
+      "name": "ATP W33 - New-year base",
+      "type": "Ride",
+      "icu_training_load": 345,
+      "time_target": 25560,
+      "description": "Annual macro target week 33/52. Phase: New-year base. Focus: Sustained aerobic work and gym strength. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w33:2027-01-11",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "New-year base"
+      ]
+    },
+    {
+      "week": 34,
+      "start_date": "2027-01-18",
+      "end_date": "2027-01-25",
+      "name": "ATP W34 - Recovery consolidation",
+      "type": "Ride",
+      "icu_training_load": 230,
+      "time_target": 18000,
+      "description": "Annual macro target week 34/52. Phase: Recovery consolidation. Focus: Reduce load and monitor HRV/resting HR. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w34:2027-01-18",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Recovery consolidation"
+      ]
+    },
+    {
+      "week": 35,
+      "start_date": "2027-01-25",
+      "end_date": "2027-02-01",
+      "name": "ATP W35 - Sweet spot base",
+      "type": "Ride",
+      "icu_training_load": 330,
+      "time_target": 24480,
+      "description": "Annual macro target week 35/52. Phase: Sweet spot base. Focus: Raise aerobic power with controlled sub-threshold work. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w35:2027-01-25",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Sweet spot base"
+      ]
+    },
+    {
+      "week": 36,
+      "start_date": "2027-02-01",
+      "end_date": "2027-02-08",
+      "name": "ATP W36 - Sweet spot base",
+      "type": "Ride",
+      "icu_training_load": 365,
+      "time_target": 27000,
+      "description": "Annual macro target week 36/52. Phase: Sweet spot base. Focus: Progress duration before intensity. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w36:2027-02-01",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Sweet spot base"
+      ]
+    },
+    {
+      "week": 37,
+      "start_date": "2027-02-08",
+      "end_date": "2027-02-15",
+      "name": "ATP W37 - Sweet spot base",
+      "type": "Ride",
+      "icu_training_load": 395,
+      "time_target": 29160,
+      "description": "Annual macro target week 37/52. Phase: Sweet spot base. Focus: Highest winter base week if recovery supports it. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w37:2027-02-08",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Sweet spot base"
+      ]
+    },
+    {
+      "week": 38,
+      "start_date": "2027-02-15",
+      "end_date": "2027-02-22",
+      "name": "ATP W38 - Recovery consolidation",
+      "type": "Ride",
+      "icu_training_load": 240,
+      "time_target": 18000,
+      "description": "Annual macro target week 38/52. Phase: Recovery consolidation. Focus: Absorb winter base. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w38:2027-02-15",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Recovery consolidation"
+      ]
+    },
+    {
+      "week": 39,
+      "start_date": "2027-02-22",
+      "end_date": "2027-03-01",
+      "name": "ATP W39 - Threshold preparation",
+      "type": "Ride",
+      "icu_training_load": 355,
+      "time_target": 26280,
+      "description": "Annual macro target week 39/52. Phase: Threshold preparation. Focus: Transition from base toward repeatable threshold. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w39:2027-02-22",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Threshold preparation"
+      ]
+    },
+    {
+      "week": 40,
+      "start_date": "2027-03-01",
+      "end_date": "2027-03-08",
+      "name": "ATP W40 - Threshold preparation",
+      "type": "Ride",
+      "icu_training_load": 390,
+      "time_target": 28800,
+      "description": "Annual macro target week 40/52. Phase: Threshold preparation. Focus: Threshold progression plus durability ride. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w40:2027-03-01",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Threshold preparation"
+      ]
+    },
+    {
+      "week": 41,
+      "start_date": "2027-03-08",
+      "end_date": "2027-03-15",
+      "name": "ATP W41 - Threshold preparation",
+      "type": "Ride",
+      "icu_training_load": 425,
+      "time_target": 31320,
+      "description": "Annual macro target week 41/52. Phase: Threshold preparation. Focus: Controlled overload; no max FTP test unless evidence demands it. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w41:2027-03-08",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Threshold preparation"
+      ]
+    },
+    {
+      "week": 42,
+      "start_date": "2027-03-15",
+      "end_date": "2027-03-22",
+      "name": "ATP W42 - Recovery consolidation",
+      "type": "Ride",
+      "icu_training_load": 250,
+      "time_target": 19080,
+      "description": "Annual macro target week 42/52. Phase: Recovery consolidation. Focus: Reduce load before spring build. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w42:2027-03-15",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Recovery consolidation"
+      ]
+    },
+    {
+      "week": 43,
+      "start_date": "2027-03-22",
+      "end_date": "2027-03-29",
+      "name": "ATP W43 - Spring build",
+      "type": "Ride",
+      "icu_training_load": 375,
+      "time_target": 27720,
+      "description": "Annual macro target week 43/52. Phase: Spring build. Focus: Outdoor-specific sustained work and endurance. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w43:2027-03-22",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Spring build"
+      ]
+    },
+    {
+      "week": 44,
+      "start_date": "2027-03-29",
+      "end_date": "2027-04-05",
+      "name": "ATP W44 - Spring build",
+      "type": "Ride",
+      "icu_training_load": 410,
+      "time_target": 30240,
+      "description": "Annual macro target week 44/52. Phase: Spring build. Focus: Progress FTP support and long ride durability. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w44:2027-03-29",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Spring build"
+      ]
+    },
+    {
+      "week": 45,
+      "start_date": "2027-04-05",
+      "end_date": "2027-04-12",
+      "name": "ATP W45 - Spring opportunity overload",
+      "type": "Ride",
+      "icu_training_load": 450,
+      "time_target": 33120,
+      "description": "Annual macro target week 45/52. Phase: Spring opportunity overload. Focus: Use spring weather for aerobic load if life stress is low. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w45:2027-04-05",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Spring opportunity overload"
+      ]
+    },
+    {
+      "week": 46,
+      "start_date": "2027-04-12",
+      "end_date": "2027-04-19",
+      "name": "ATP W46 - Recovery consolidation",
+      "type": "Ride",
+      "icu_training_load": 260,
+      "time_target": 19440,
+      "description": "Annual macro target week 46/52. Phase: Recovery consolidation. Focus: Freshen after spring overload. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w46:2027-04-12",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Recovery consolidation"
+      ]
+    },
+    {
+      "week": 47,
+      "start_date": "2027-04-19",
+      "end_date": "2027-04-26",
+      "name": "ATP W47 - Specific FTP build",
+      "type": "Ride",
+      "icu_training_load": 390,
+      "time_target": 28800,
+      "description": "Annual macro target week 47/52. Phase: Specific FTP build. Focus: Threshold repeatability, outdoor pacing, and strength maintenance. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w47:2027-04-19",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Specific FTP build"
+      ]
+    },
+    {
+      "week": 48,
+      "start_date": "2027-04-26",
+      "end_date": "2027-05-03",
+      "name": "ATP W48 - Specific FTP build",
+      "type": "Ride",
+      "icu_training_load": 430,
+      "time_target": 31680,
+      "description": "Annual macro target week 48/52. Phase: Specific FTP build. Focus: Progress sustained power and durability. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w48:2027-04-26",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Specific FTP build"
+      ]
+    },
+    {
+      "week": 49,
+      "start_date": "2027-05-03",
+      "end_date": "2027-05-10",
+      "name": "ATP W49 - Peak durability block",
+      "type": "Ride",
+      "icu_training_load": 470,
+      "time_target": 34200,
+      "description": "Annual macro target week 49/52. Phase: Peak durability block. Focus: Highest planned annual load; only execute if recovery is stable. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w49:2027-05-03",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Peak durability block"
+      ]
+    },
+    {
+      "week": 50,
+      "start_date": "2027-05-10",
+      "end_date": "2027-05-17",
+      "name": "ATP W50 - Recovery consolidation",
+      "type": "Ride",
+      "icu_training_load": 260,
+      "time_target": 19440,
+      "description": "Annual macro target week 50/52. Phase: Recovery consolidation. Focus: Absorb peak durability block. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w50:2027-05-10",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Recovery consolidation"
+      ]
+    },
+    {
+      "week": 51,
+      "start_date": "2027-05-17",
+      "end_date": "2027-05-24",
+      "name": "ATP W51 - Validation and sharpening",
+      "type": "Ride",
+      "icu_training_load": 335,
+      "time_target": 24480,
+      "description": "Annual macro target week 51/52. Phase: Validation and sharpening. Focus: Controlled FTP/durability validation, not a mandatory max test. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing. Default FTP-priority week: one threshold/VO2/over-under stimulus, one tempo or sweet-spot durability stimulus, one long endurance ride, and one strength-maintenance session when recovery supports it.",
+      "external_id": "annual-targets-2026-2027:w51:2027-05-17",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Validation and sharpening"
+      ]
+    },
+    {
+      "week": 52,
+      "start_date": "2027-05-24",
+      "end_date": "2027-05-31",
+      "name": "ATP W52 - Transition and next-season review",
+      "type": "Ride",
+      "icu_training_load": 240,
+      "time_target": 18000,
+      "description": "Annual macro target week 52/52. Phase: Transition and next-season review. Focus: Reduce load, review evidence, set the next annual target. This is a weekly target, not a fixed workout prescription. Generate exact workouts adaptively from recent execution and recovery. Objective guardrail: FTP-priority development through controlled overload, repeatable sustained power, aerobic durability, and recovery discipline; not chart-chasing.",
+      "external_id": "annual-targets-2026-2027:w52:2027-05-24",
+      "tags": [
+        "Codex Coach",
+        "Annual Target",
+        "Transition and next-season review"
+      ]
+    }
+  ]
+}

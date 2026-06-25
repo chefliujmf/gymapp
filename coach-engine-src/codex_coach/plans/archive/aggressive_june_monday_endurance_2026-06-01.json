@@ -1,0 +1,139 @@
+{
+  "workout_id": "aggressive_june_monday_endurance_2026-06-01",
+  "title": "Monday Aerobic Build Ride",
+  "sport": "cycling",
+  "discipline": "bike",
+  "objective": "Add early-week aerobic load so June starts like an FTP-priority build, not a freshness drift.",
+  "why_now": "You feel good, recovery markers rebounded after the bad sleep day, and the current projection stays too fresh for too long. This adds useful load without stealing from Friday tempo or Sunday durability.",
+  "source_context": {
+    "week_objective": "Aggressive June FTP-priority correction with controlled aerobic volume and repeatable sustained work.",
+    "phase": "Aggressive June Build Correction",
+    "target_system": "aerobic support",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 75,
+    "equipment": [
+      "power_meter"
+    ]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 260,
+    "notes": "Outdoor if practical. 75 minutes easy endurance at 55-68% FTP. No tempo, no attacks, no chasing speed."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "power_pct_ftp": [
+          0.5,
+          0.62
+        ],
+        "rpe": [
+          1,
+          2
+        ]
+      },
+      "notes": "Ramp naturally into endurance."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "steady",
+          "duration_sec": 3300,
+          "target": {
+            "power_pct_ftp": [
+              0.55,
+              0.68
+            ],
+            "rpe": [
+              2,
+              3
+            ]
+          },
+          "notes": "Easy endurance. Keep pressure smooth and boring."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "power_pct_ftp": [
+          0.48,
+          0.58
+        ],
+        "rpe": [
+          1,
+          2
+        ]
+      },
+      "notes": "Ease down below the main ride."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal meal timing is enough. If hungry, add 20-30g carbs 30-60 min before.",
+    "during": "Water to thirst. Add 20-30g carbs if starting hungry or riding late.",
+    "post": "Normal meal within 1-2h with 25-35g protein; add 30-60g carbs if dinner is delayed.",
+    "centr_recipe": "Swirled Banana & Oat Pots, https://centr.com/recipe/show/32848/swirled-banana-oat-pots",
+    "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Normal food and fluids. Do not add extra intervals.",
+    "evening": "Protect sleep; Tuesday is strength, not another bike load chase.",
+    "next_morning_check": "Tuesday gym proceeds if legs are normal and soreness is absent."
+  },
+  "skill_focus": [
+    {
+      "action": "Keep rises seated and under 70% FTP unless traffic requires otherwise.",
+      "why": "This builds useful aerobic load without turning the first added ride into fatigue noise."
+    },
+    {
+      "action": "Relax hands and jaw every 10 minutes.",
+      "why": "Quiet upper body saves energy and supports the sustained-power rider profile."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Start the aggressive block with control.",
+    "why": "Aggressive FTP training works when the extra load is repeatable and absorbable.",
+    "cue": "More load, same restraint.",
+    "reset": "If you start pushing tempo, shift easier for 2 minutes and return to the endurance cap."
+  },
+  "execution_notes": {
+    "pre_interval_cues": [
+      "This is added load, not a test.",
+      "Keep it easy enough that Tuesday gym and Friday tempo still look good."
+    ],
+    "during_workout_cues": [
+      "Smooth pressure.",
+      "No tempo.",
+      "No chasing speed."
+    ],
+    "if_too_easy": "Correct. Stop at 75 minutes.",
+    "if_too_hard": "Keep it endurance-only; stop only for safety, symptoms, or abnormal fatigue.",
+    "success_criteria": "You add load and still feel ready for the rest of the week.",
+    "post_workout_capture": [
+      "Legs before/after",
+      "Fueling/GI",
+      "Pain/niggles",
+      "Schedule/life",
+      "Other unusual context"
+    ]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-06-01",
+      "sync_to_wahoo": true
+    }
+  }
+}

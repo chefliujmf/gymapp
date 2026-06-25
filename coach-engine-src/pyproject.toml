@@ -1,0 +1,24 @@
+[project]
+name = "cyclingcoach-tools"
+version = "0.1.0"
+description = "Intervals.icu publishing/readback and coach book tooling for the cyclingcoach workspace."
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+# Dev/test tooling, so local setup matches CI: `pip install -e ".[dev]"`.
+dev = ["pytest", "ruff"]
+
+[tool.pytest.ini_options]
+# Lets tests do `import intervals_icu_workouts` without packaging the tools dir.
+pythonpath = ["tools"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = [".venv", ".vendor", "archive", "knowledge_base", "coach_books"]
+
+[tool.ruff.lint]
+# Sensible default rule set: pyflakes, pycodestyle, isort, bugbear, pyupgrade.
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]  # line length handled by formatter, not enforced hard

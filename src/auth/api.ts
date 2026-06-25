@@ -22,19 +22,61 @@ export interface User {
 }
 
 async function req<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
-  const res = await fetch('/auth' + path, {
-    method: opts.method || (opts.body ? 'POST' : 'GET'),
-    headers: opts.body ? { 'content-type': 'application/json' } : undefined,
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-    credentials: 'same-origin',
-  })
+  let res: Response
+  try {
+    res = await fetch('/auth' + path, {
+      method: opts.method || (opts.body ? 'POST' : 'GET'),
+      headers: opts.body ? { 'content-type': 'application/json' } : undefined,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      credentials: 'same-origin',
+    })
+  } catch {
+    // fetch only rejects on a network-level failure (offline, server unreachable).
+    throw new Error("Can't reach the server. Check your connection and try again.")
+  }
   const data = res.status === 204 ? null : await res.json().catch(() => null)
   if (!res.ok) {
-    const err = new Error((data && (data as { error?: string }).error) || `HTTP ${res.status}`) as Error & { status?: number }
+    const body = (data || {}) as { error?: string; ref?: string }
+    // Prefer the server's human message; turn bare 5xx/4xx into plain English.
+    let message = body.error
+    if (!message) {
+      if (res.status >= 500) message = 'Something went wrong on our end. It has been logged.'
+      else if (res.status === 401) message = 'Wrong username or password.'
+      else if (res.status === 404) message = 'Not found.'
+      else message = 'That request could not be completed.'
+    }
+    if (res.status >= 500 && body.ref) message += ` (ref ${body.ref})`
+    const err = new Error(message) as Error & { status?: number; ref?: string }
     err.status = res.status // so callers can tell a server error (e.g. 401) from a network failure
+    err.ref = body.ref
     throw err
   }
   return data as T
+}
+
+export interface ParsedActivity {
+  format: 'fit' | 'gpx' | 'tcx'
+  sport: string
+  startIso: string | null
+  durationSec?: number
+  distanceM?: number
+  avgHr?: number
+  avgPower?: number
+  elevationM?: number
+  kcal?: number
+  hasGps: boolean
+  track: [number, number][]
+}
+export interface ManualActivity {
+  sport: string
+  title: string
+  date: string
+  startIso: string
+  durationSec: number
+  distanceM?: number
+  avgHr?: number
+  avgPower?: number
+  file?: { name: string; b64: string }
 }
 
 export const authApi = {
@@ -74,6 +116,13 @@ export const authApi = {
   checkins: (from: string, to: string) => req<Checkin[]>(`/checkins?from=${from}&to=${to}`),
   planFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string }) => req<{ ok: boolean }>(`/plan/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   promoteProd: () => req<{ ok: boolean }>('/promote-prod', { method: 'POST' }),
+  // Fan a Platyplus-recorded workout out to intervals (match-first, server-side, #122/#123).
+  completeActivity: (a: { sport: string; title: string; date: string; startIso: string; durationSec: number; samples: { t: number; power?: number; cadence?: number; hr?: number }[] }) =>
+    req<{ status: string; icuId?: number | null; error?: string }>('/activity/complete', { method: 'POST', body: a }),
+  // Manual activity entry (#129): parse an uploaded .fit/.gpx/.tcx, then fan the
+  // entered/edited activity out to intervals (match-first). Local copy via logWorkout.
+  parseActivityFile: (name: string, b64: string) => req<ParsedActivity>('/activity/parse', { method: 'POST', body: { name, b64 } }),
+  logManualActivity: (a: ManualActivity) => req<{ status: string; icuId?: number | null; error?: string }>('/activity/manual', { method: 'POST', body: a }),
   notifications: () => req<CoachNotification[]>('/notifications'),
   coachReviews: () => req<CoachReview[]>('/coach-reviews'),
   markNotificationsRead: (ids?: string[]) => req<{ ok: boolean }>('/notifications/read', { method: 'POST', body: { ids } }),

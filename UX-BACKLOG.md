@@ -530,3 +530,40 @@ MCP (search_recipes/search_sessions + structured fields) → cyclingcoach publis
 Before any UX change: research best practice, then present 2–3 options WITH mockups (HTML render
 when it helps) and get the pick BEFORE building. Never implement-then-iterate. (Memory:
 `show-options-and-mockups-first` + skill `options-first`.)
+
+---
+
+## Workout data-flow model (LOCKED 2026-06-25, reviewed w/ JM)
+
+**intervals.icu = the READ HUB.** Everything funnels there (Garmin/Wahoo/Coros push to
+intervals; Strava→intervals). Platyplus reads every completed workout back from intervals.
+
+**Platyplus = the always-present LOCAL HOME.** In-app workouts save to Platyplus first and work
+with ZERO external connections (the coach reads Platyplus's own data). intervals AND Strava are
+BOTH optional — never hard dependencies.
+
+**MATCH-FIRST, upload-only-if-missing** (the one rule that covers every flow):
+Platyplus checks intervals for a matching device activity (by day + sport + time window).
+- Match found (device recorded it) → **match + enrich** that activity; do NOT upload (no duplicate).
+- No match AND Platyplus is the source → **upload its own** (FIT/activity) to intervals.
+
+**Fan-out for Platyplus-recorded workouts** = upload **directly to intervals** when connected (no
+Strava dependency). Strava is an optional extra doorway (for users who live in Strava; one upload,
+let Strava→intervals carry it, never both-at-once → dup).
+
+**Planning direction** = Platyplus → intervals → device: bike planned workouts reach the head unit
+(Garmin/Wahoo), run planned workouts reach the **Coros** watch (Coros supports planned-workout
+download from intervals). Same mirror Platyplus already builds for rides.
+
+**Per-flow:**
+| Flow | Recorded where | Into Platyplus | Build |
+|------|----------------|----------------|-------|
+| 1 Planning | Coach→Platyplus | n/a (authored) | ✅ Platyplus→intervals→device |
+| 2 Outdoor ride | Garmin/Wahoo | read+match from intervals | ✅ works |
+| 3 Indoor ride | Platyplus player | own it → upload to intervals | ⬜ #122 (capture stream + upload) |
+| 4 Gym | Platyplus log (+Coros HR) | match-first vs Coros activity | ⬜ #123 (source + match) |
+| 5 Run/walk/hike | Coros | read+match (completed); plan→Coros | ⬜ #124 (mostly verify) |
+
+Coros has **no open OAuth** — never a direct Platyplus↔Coros link; it reaches Platyplus only via
+intervals/Strava (read) and receives plans via intervals (download). That's fine — match-first
+needs no direct device connection.

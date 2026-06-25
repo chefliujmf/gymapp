@@ -16,6 +16,9 @@ write_auth_env() {
   local dir="$1"
   [ -n "${AUTH_ENV:-}" ] || { echo ">> AUTH_ENV not injected — keeping existing $dir/auth.env"; return 0; }
   printf '%s\n' "$AUTH_ENV" > "$dir/auth.env.tmp"; chmod 600 "$dir/auth.env.tmp"; mv "$dir/auth.env.tmp" "$dir/auth.env"
+  # GH_PROMOTE_TOKEN is its own secret (PAT w/ Actions:write) for the in-app Promote
+  # button (#47) — append it so the server can dispatch promote-prod.yml.
+  [ -n "${GH_PROMOTE_TOKEN:-}" ] && printf 'GH_PROMOTE_TOKEN=%s\n' "$GH_PROMOTE_TOKEN" >> "$dir/auth.env"
   echo ">> wrote $dir/auth.env from injected GitHub Secret ($(grep -c '=' "$dir/auth.env") vars)"
 }
 

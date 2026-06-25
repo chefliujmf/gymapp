@@ -1,0 +1,248 @@
+{
+  "week_id": "june_cottage_weekend_adjustment_2026-06-02",
+  "week_label": "June Cottage Weekend Adjustment",
+  "notes": "Adjusts June weekend rides because the athlete is at the cottage every weekend and returns to Montreal on Sundays, making three-hour Sunday rides unrealistic. Keeps Sundays as travel/recovery breaks and preserves durability with Friday volume where useful plus Saturday two-hour cottage endurance anchors. This week is bike-only: remove the Tuesday gym session while soreness from reintroducing gym settles.",
+  "workouts": [
+    {
+      "workout_id": "june_bike_only_easy_endurance_2026-06-02",
+      "title": "Tuesday Easy Endurance",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Replace the removed gym session with low-cost aerobic work while soreness from reintroducing gym settles.",
+      "why_now": "This keeps bike frequency high during a bike-only week without adding strength soreness or compromising Friday's bigger sustained-power ride.",
+      "source_context": {"week_objective": "Bike-only build adjustment", "phase": "Cottage June Build", "target_system": "aerobic support", "confidence": "high"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 75, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "75-minute easy endurance ride at 55-68% FTP. No tempo. Optional low-force cadence only if legs feel normal."},
+      "warmup": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Ramp naturally into endurance."}],
+      "main_set": [
+        {"repeat": 4, "steps": [
+          {"type": "work", "duration_sec": 60, "target": {"power_pct_ftp": [0.55, 0.70], "rpe": [2, 3]}, "notes": "Fast legs, low force. Skip if legs are sore."},
+          {"type": "steady", "duration_sec": 300, "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]}, "notes": "Easy endurance."}
+        ]},
+        {"repeat": 1, "steps": [
+          {"type": "steady", "duration_sec": 1860, "target": {"power_pct_ftp": [0.55, 0.68], "rpe": [2, 3]}, "notes": "Easy endurance extension. Keep pressure light."}
+        ]}
+      ],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down by feel."}],
+      "nutrition": {
+        "pre": "Normal meal is enough. If hungry, add 20-30g carbs 30-60 min before.",
+        "during": "Water to thirst, roughly 400-750ml/hour if warm or sweating. No ride carbs needed unless starting hungry.",
+        "post": "Normal meal within one to two hours with 25-35g protein.",
+        "centr_recipe": "Swirled Banana & Oat Pots, https://centr.com/recipe/show/32848/swirled-banana-oat-pots",
+        "supplements": "Today's workout needs: none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Normal meal and fluids. No extra lower-body work.",
+        "evening": "Protect sleep; the week gets harder Friday.",
+        "next_morning_check": "Wednesday proceeds only if legs feel normal and soreness is not increasing."
+      },
+      "skill_focus": [
+        {"action": "Keep cadence light and low force.", "why": "This adds coordination without loading sore gym muscles."},
+        {"action": "Ride conversational and cap rises.", "why": "Easy frequency supports the build only if Friday still looks attractive."}
+      ],
+      "mental_focus": {
+        "intention": "Use the bike to loosen up, not prove fitness.",
+        "why": "The useful aggressive move this week is more bike rhythm with controlled cost, then a bigger Friday anchor.",
+        "cue": "Easy rhythm today, pressure Friday.",
+        "reset": "If you start pushing tempo, shift easier for 2 minutes and return to the endurance cap."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["No gym.", "No tempo.", "Skip cadence drills if legs are sore."],
+        "during_workout_cues": ["Keep pressure light.", "Smooth hips.", "Save Friday."],
+        "if_too_easy": "Correct. Stop at 75 minutes.",
+        "if_too_hard": "Ride low endurance only and cut to 60 minutes if soreness increases.",
+        "success_criteria": "You finish looser and still want to ride Wednesday or Friday.",
+        "post_workout_capture": ["Legs before/after", "Fueling/GI", "Pain/niggles", "Schedule/life"]
+      },
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-02", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "june_cottage_friday_long_tempo_2026-06-05",
+      "title": "Friday Long Tempo Durability",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Use the bigger Friday window for the week's main sustained-power stimulus while keeping Sunday free for travel and recovery.",
+      "why_now": "Sunday return-to-Montreal logistics make a Sunday ride fragile this week, and Friday has more time available. Moving load to Friday preserves FTP-focused work without forcing the weekend.",
+      "source_context": {"week_objective": "Build durable aerobic power", "phase": "Cottage June Build", "target_system": "tempo durability", "confidence": "high"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 120, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "Two-hour outdoor ride with 2 x 25 minutes tempo at 80-85% FTP. This is durable pressure, not threshold."},
+      "warmup": [{"type": "free_ride", "duration_sec": 900, "target": {"power_pct_ftp": [0.50, 0.72], "rpe": [2, 4]}, "notes": "Build gradually."}],
+      "main_set": [
+        {"repeat": 2, "steps": [
+          {"type": "work", "duration_sec": 1500, "target": {"power_pct_ftp": [0.80, 0.85], "rpe": [5, 6]}, "notes": "Tempo pressure. Smooth, repeatable, no threshold creep."},
+          {"type": "recovery", "duration_sec": 480, "target": {"power_pct_ftp": [0.55, 0.65], "rpe": [2, 3]}, "notes": "Easy endurance between tempo blocks."}
+        ]},
+        {"repeat": 1, "steps": [
+          {"type": "steady", "duration_sec": 1740, "target": {"power_pct_ftp": [0.58, 0.70], "rpe": [3, 4]}, "notes": "Endurance extension. Keep climbs capped."}
+        ]}
+      ],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.45, 0.58], "rpe": [1, 2]}, "notes": "Ease down below endurance pressure."}],
+      "nutrition": {
+        "pre": "Carb-forward meal two to four hours before with about 1-2g/kg carbs. Add 20-30g carbs 30-60 min before if starting hungry.",
+        "during": "Use 40-70g carbs/hour and water to thirst. Start during the first 30 minutes.",
+        "post": "25-35g protein plus 60-100g carbs across the next meal window.",
+        "centr_recipe": "High-protein Lentil Braise with Flatbread, Centr collection link: https://centr.com/blog/show/32824/10-high-protein-recipes-for-easy-meal-prep",
+        "supplements": "Today's workout needs: electrolytes/sodium if hot or heavy sweating; otherwise none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Carbs plus protein within one to two hours, then normal dinner.",
+        "evening": "No extra lower-body work. Saturday stays endurance only.",
+        "next_morning_check": "Saturday endurance proceeds only if legs are normal and Friday did not feel forced."
+      },
+      "skill_focus": [
+        {"action": "Cap tempo at 85% FTP even if it feels easy.", "why": "The goal is durable sustained pressure that leaves Saturday available, not another threshold proof."},
+        {"action": "Rebuild power gradually after stops and corners.", "why": "Smooth outdoor execution helps make higher FTP usable without wasting energy in surges."}
+      ],
+      "mental_focus": {
+        "intention": "Put the week's ambition in the right place.",
+        "why": "A bigger Friday ride and a Sunday break fits the actual cottage weekend better than pretending Sunday has a clean training window.",
+        "cue": "Durable Friday, quiet Sunday.",
+        "reset": "If power drifts above tempo, shift easier for 60 seconds, relax hands and jaw, and settle back under the cap."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["Start only if legs feel normal.", "Fuel early."],
+        "during_workout_cues": ["No threshold creep.", "Eat during the first 30 minutes.", "Cap climbs."],
+        "if_too_easy": "Hold the cap and finish clean. Do not lift above 85% FTP.",
+        "if_too_hard": "Convert the second tempo block to endurance at 58-70% FTP.",
+        "success_criteria": "Both tempo blocks steady with no late fade, and Saturday still looks doable.",
+        "post_workout_capture": ["Legs before/after", "Fueling/GI", "Pain/niggles", "Schedule/life", "Other unusual context"]
+      },
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-05", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "june_cottage_friday_support_2026-06-12",
+      "title": "Friday Aerobic Durability Anchor",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Move the cottage-weekend endurance load into Friday so Saturday is not mandatory when bike or gym access at the cottage is unavailable.",
+      "why_now": "The previous version assumed Saturday cottage bike access. That is not reliable. Friday is the dependable bike window, so this becomes the aerobic durability anchor after Thursday's threshold work.",
+      "source_context": {"week_objective": "Build absorption with cottage access constraint", "phase": "Cottage June Build", "target_system": "aerobic durability", "confidence": "high"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 150, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "2h15 endurance durability at 58-72% FTP. No tempo finish. This is aerobic volume after Thursday threshold, not another quality session."},
+      "warmup": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Ramp naturally."}],
+      "main_set": [{"repeat": 1, "steps": [{"type": "steady", "duration_sec": 6900, "target": {"power_pct_ftp": [0.58, 0.72], "rpe": [2, 4]}, "notes": "Endurance durability. Fuel early, cap climbs, stay aerobic."}]}],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "nutrition": {
+        "pre": "Carb-forward meal two to four hours before with about 1-2g carbs/kg. Add 20-30g carbs 30-60 min before if starting hungry.",
+        "during": "Start in the first 30 minutes. Target 40-60g carbs/hour and drink to thirst.",
+        "post": "25-35g protein plus 60-90g carbs across the next meal window.",
+        "centr_recipe": "High-protein Lentil Braise with Flatbread, Centr collection link: https://centr.com/blog/show/32824/10-high-protein-recipes-for-easy-meal-prep",
+        "supplements": "Today's workout needs: electrolytes/sodium if hot or heavy sweating; otherwise none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Carbs plus protein, fluids to thirst, and easy walking if legs stiffen.",
+        "evening": "No extra lower-body work. Saturday is not mandatory unless bike access and weather are actually good.",
+        "next_morning_check": "Saturday is rest, cottage work, or optional easy movement unless bike access is confirmed and legs are normal."
+      },
+      "skill_focus": [
+        {"action": "Cap climbs and avoid low-cadence grinding.", "why": "This keeps the Friday anchor aerobic after Thursday threshold instead of turning it into a second hard session."},
+        {"action": "Relax shoulders and jaw every 20 minutes.", "why": "Lower tension improves repeatable outdoor endurance and reduces wasted energy on longer rides."}
+      ],
+      "mental_focus": {
+        "intention": "Make Friday the durable aerobic anchor, not another threshold test.",
+        "why": "A real Friday endurance block preserves the weekly training dose when cottage bike access is uncertain.",
+        "cue": "Long and steady.",
+        "reset": "If you start pushing tempo, shift easier for two minutes and settle back under the endurance cap."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["No tempo finish.", "Fuel early.", "This is the weekend bike anchor."],
+        "during_workout_cues": ["Cap climbs.", "Stay conversational.", "No surges."],
+        "if_too_easy": "Correct. Extend only to 2h30 if daylight, logistics, and legs are all good.",
+        "if_too_hard": "Cut to 90-105 minutes low endurance.",
+        "success_criteria": "You finish with steady power, no depletion, and no need to force Saturday.",
+        "post_workout_capture": ["Legs before/after", "Fueling/GI", "Pain/niggles", "Schedule/life"]
+      },
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-12", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "june_cottage_saturday_endurance_2026-06-06",
+      "title": "Cottage Saturday Endurance",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Build weekend durability while keeping Sunday free for travel and recovery.",
+      "why_now": "The week now uses Friday as the bigger load anchor and Sunday as a break, so Saturday should be steady endurance, not a two-day setup.",
+      "source_context": {"week_objective": "Build durable aerobic power", "phase": "Cottage June Build", "target_system": "aerobic durability", "confidence": "high"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 120, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "Two-hour endurance ride at 58-70% FTP. No tempo finish. Fuel from the first 30 minutes."},
+      "warmup": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Ramp naturally into endurance."}],
+      "main_set": [{"repeat": 1, "steps": [{"type": "steady", "duration_sec": 6000, "target": {"power_pct_ftp": [0.58, 0.70], "rpe": [2, 4]}, "notes": "Endurance. Keep climbs capped and seated when practical."}]}],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down by feel."}],
+      "nutrition": {
+        "pre": "Carb-forward meal two to four hours before with about 1-2g carbs/kg.",
+        "during": "Start in the first 30 min. Target 40-60g carbs/hour and drink to thirst.",
+        "post": "25-35g protein plus 60-90g carbs across the next meal window.",
+        "centr_recipe": "Creamy Roasted Tofu & Cauliflower Korma, Centr collection link: https://centr.com/blog/show/32824/10-high-protein-recipes-for-easy-meal-prep",
+        "supplements": "Today's workout needs: electrolytes/sodium if hot or heavy sweating; otherwise none required. Daily baseline only if already part of routine."
+      },
+      "recovery": {
+        "post_session": "Carbs plus protein, fluids to thirst, and 5-10 min easy walking if legs tighten.",
+        "evening": "No extra training. Let Sunday be a real break unless life opens an easy optional window.",
+        "next_morning_check": "Sunday is rest/travel by default. Ride only if unusually fresh and logistics are calm."
+      },
+      "skill_focus": [
+        {"action": "Cap climbs and avoid torque spikes.", "why": "The goal is durable endurance without creating fatigue that follows you into Monday."},
+        {"action": "Check shoulders, jaw, and grip every 20-30 minutes.", "why": "Relaxed upper body saves energy over longer cottage roads."}
+      ],
+      "mental_focus": {
+        "intention": "Finish the training week cleanly.",
+        "why": "Sunday recovery makes the Friday/Saturday load more repeatable across cottage weekends.",
+        "cue": "Earn the break.",
+        "reset": "If you start chasing speed, eat or drink if due, relax grip, and ride below the endurance cap for two minutes."
+      },
+      "execution_notes": {
+        "pre_interval_cues": ["Fuel early.", "No tempo finish."],
+        "during_workout_cues": ["Cap climbs.", "Eat early.", "Sunday is off."],
+        "if_too_easy": "Do not add tempo. Let the week end clean.",
+        "if_too_hard": "Cut to 90 minutes easy endurance.",
+        "success_criteria": "Finish steady, fueled, and not depleted.",
+        "post_workout_capture": ["Legs before/after", "Fueling/GI", "Pain/niggles", "Schedule/life"]
+      },
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-06", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "june_cottage_saturday_endurance_2026-06-13",
+      "title": "Cottage Saturday Endurance",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Anchor the cottage weekend with one steady Saturday endurance ride and keep Sunday free for return logistics.",
+      "why_now": "Sunday travel makes Sunday training fragile; Saturday is the reliable cottage endurance slot.",
+      "source_context": {"week_objective": "Build absorption", "phase": "Cottage June Build", "target_system": "aerobic durability", "confidence": "high"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 120, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "Two-hour endurance ride at 58-70% FTP. No tempo finish."},
+      "warmup": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Ramp naturally."}],
+      "main_set": [{"repeat": 1, "steps": [{"type": "steady", "duration_sec": 6000, "target": {"power_pct_ftp": [0.58, 0.70], "rpe": [2, 4]}, "notes": "Endurance. Fuel early and keep climbs capped."}]}],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-13", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "june_cottage_saturday_endurance_2026-06-20",
+      "title": "Cottage Saturday Endurance",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Use Saturday as the cottage endurance anchor while Sunday remains travel/recovery.",
+      "why_now": "This preserves durability without pretending Sunday has a clean long-ride window.",
+      "source_context": {"week_objective": "Aerobic power build", "phase": "Cottage June Build", "target_system": "aerobic durability", "confidence": "high"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 120, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "Two-hour endurance ride at 58-70% FTP. No tempo finish."},
+      "warmup": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Ramp naturally."}],
+      "main_set": [{"repeat": 1, "steps": [{"type": "steady", "duration_sec": 6000, "target": {"power_pct_ftp": [0.58, 0.70], "rpe": [2, 4]}, "notes": "Endurance. Fuel early and cap climbs."}]}],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-20", "sync_to_wahoo": true}}
+    },
+    {
+      "workout_id": "june_cottage_saturday_endurance_2026-06-27",
+      "title": "Cottage Saturday Endurance",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Complete the June overload week with a practical Saturday endurance anchor.",
+      "why_now": "Sunday is kept clear for return logistics, so Saturday carries the weekend endurance dose.",
+      "source_context": {"week_objective": "Controlled overload", "phase": "Cottage June Build", "target_system": "aerobic durability", "confidence": "high"},
+      "constraints": {"indoor": false, "outdoor": true, "max_duration_min": 120, "equipment": ["power_meter"]},
+      "targets": {"primary": "power", "ftp_reference_w": 260, "notes": "Two-hour endurance ride at 58-70% FTP. No tempo finish."},
+      "warmup": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.50, 0.62], "rpe": [1, 2]}, "notes": "Ramp naturally."}],
+      "main_set": [{"repeat": 1, "steps": [{"type": "steady", "duration_sec": 6000, "target": {"power_pct_ftp": [0.58, 0.70], "rpe": [2, 4]}, "notes": "Endurance. Fuel early and cap climbs."}]}],
+      "cooldown": [{"type": "free_ride", "duration_sec": 600, "target": {"power_pct_ftp": [0.48, 0.58], "rpe": [1, 2]}, "notes": "Ease down."}],
+      "publication": {"intervals_icu": {"folder": "Codex Coach", "planned_date": "2026-06-27", "sync_to_wahoo": true}}
+    }
+  ]
+}

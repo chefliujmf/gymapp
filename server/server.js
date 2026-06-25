@@ -16,8 +16,14 @@ import {
   generateRegistrationOptions, verifyRegistrationResponse,
   generateAuthenticationOptions, verifyAuthenticationResponse,
 } from '@simplewebauthn/server'
-import { load, save, newId } from './store.js'
+import { initDb, loadStore, save as pgSave, newId } from './db.js'
+import { load as loadJsonStore, save as fileSave } from './store.js'
+// Store backend: QA/prod set DATABASE_URL → Postgres. Local dev (scripts/dev-api.sh)
+// and the CI module-graph smoke-test have no DATABASE_URL → the JSON file store.
+const USE_PG = !!process.env.DATABASE_URL
+const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
+import { parseActivityFile } from './activity-parse.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -30,33 +36,36 @@ const COOKIE = 'gymapp_sess'
 const ICU = 'https://intervals.icu'
 
 // ---- one-time seed of the admin account ---------------------------------
-const store = load()
-if (!store.users.length) {
-  store.users.push({
-    id: newId(),
-    username: process.env.SEED_USER || 'jmfiset',
-    email: (process.env.SEED_EMAIL || 'jmfiset@gmail.com').toLowerCase(),
-    role: 'admin',
-    passwordHash: bcrypt.hashSync(process.env.SEED_PASSWORD || 'qwerty123456', 10),
-    passkeys: [],
-    info: {},
-    icuKey: process.env.SEED_ICU_KEY || '',
-    icuAthlete: process.env.SEED_ICU_ATHLETE || 'i28814',
-    apiToken: randomBytes(24).toString('base64url'),
-    plans: [],
-    createdAt: Date.now(),
-  })
-  save(store)
-  console.log('Seeded admin user.')
-}
-// Backfill api tokens / plan arrays for any user created before these existed.
-for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = []; if (!u.items) u.items = []; if (!u.notifications) u.notifications = []; if (!u.coachReviews) u.coachReviews = [] }
-save(store)
-// Late-seed the admin's intervals.icu key if it wasn't stored yet (idempotent).
-const seedKey = process.env.SEED_ICU_KEY
-if (seedKey) {
-  const a = store.users.find((u) => u.role === 'admin')
-  if (a && !a.icuKey) { a.icuKey = seedKey; a.icuAthlete = process.env.SEED_ICU_ATHLETE || a.icuAthlete || 'i28814'; save(store); console.log('Seeded admin intervals.icu key.') }
+// The in-memory cache — loaded from Postgres in start() (bottom of file); reads use
+// it directly (fast), every mutation calls save(store) which persists to Postgres.
+let store = { users: [] }
+async function seedAndDefaults() {
+  if (!store.users.length) {
+    store.users.push({
+      id: newId(),
+      username: process.env.SEED_USER || 'jmfiset',
+      email: (process.env.SEED_EMAIL || 'jmfiset@gmail.com').toLowerCase(),
+      role: 'admin',
+      passwordHash: bcrypt.hashSync(process.env.SEED_PASSWORD || 'qwerty123456', 10),
+      passkeys: [],
+      info: {},
+      icuKey: process.env.SEED_ICU_KEY || '',
+      icuAthlete: process.env.SEED_ICU_ATHLETE || 'i28814',
+      apiToken: randomBytes(24).toString('base64url'),
+      plans: [],
+      createdAt: Date.now(),
+    })
+    console.log('Seeded admin user.')
+  }
+  // Backfill api tokens / plan arrays for any user created before these existed.
+  for (const u of store.users) { if (!u.apiToken) u.apiToken = randomBytes(24).toString('base64url'); if (!u.plans) u.plans = []; if (!u.logs) u.logs = []; if (!u.items) u.items = []; if (!u.notifications) u.notifications = []; if (!u.coachReviews) u.coachReviews = [] }
+  // Late-seed the admin's intervals.icu key if it wasn't stored yet (idempotent).
+  const seedKey = process.env.SEED_ICU_KEY
+  if (seedKey) {
+    const a = store.users.find((u) => u.role === 'admin')
+    if (a && !a.icuKey) { a.icuKey = seedKey; a.icuAthlete = process.env.SEED_ICU_ATHLETE || a.icuAthlete || 'i28814'; console.log('Seeded admin intervals.icu key.') }
+  }
+  await save(store)
 }
 
 // ---- email (optional) ----------------------------------------------------
@@ -110,7 +119,7 @@ app.use((req, res, next) => {
   if (xfp && xfp !== 'https') return res.redirect(308, ORIGIN + req.originalUrl)
   next()
 })
-app.use(express.json())
+app.use(express.json({ limit: '25mb' })) // base64 activity files (.fit/.gpx/.tcx) ride along in JSON
 app.use(cookieParser())
 
 // password login
@@ -874,6 +883,134 @@ async function icuGet(user, path) {
 }
 const icuDay = (n = 0) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
 
+// ---- Completed-activity capture → intervals (MATCH-FIRST, #122/#123) -------------
+// The locked data-flow model (UX-BACKLOG): intervals = read hub; Platyplus always
+// keeps the local copy; for in-app workouts, check intervals for a device activity
+// first (match → don't duplicate), else upload our own. No Strava dependency.
+const tcxSport = (s) => /ride|cycl|bike/i.test(s) ? 'Biking' : /run/i.test(s) ? 'Running' : 'Other'
+function tcxFromSamples(samples, { sport, startIso, durationSec }) {
+  const t0 = new Date(startIso).getTime()
+  const pts = (samples || []).map((s) => {
+    const time = new Date(t0 + (s.t || 0) * 1000).toISOString().replace(/\.\d+Z$/, 'Z')
+    let x = `<Trackpoint><Time>${time}</Time>`
+    if (s.hr != null) x += `<HeartRateBpm><Value>${Math.round(s.hr)}</Value></HeartRateBpm>`
+    if (s.cadence != null) x += `<Cadence>${Math.round(s.cadence)}</Cadence>`
+    if (s.power != null) x += `<Extensions><ns3:TPX><ns3:Watts>${Math.round(s.power)}</ns3:Watts></ns3:TPX></Extensions>`
+    return x + '</Trackpoint>'
+  }).join('')
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2"><Activities><Activity Sport="${tcxSport(sport)}"><Id>${startIso}</Id><Lap StartTime="${startIso}"><TotalTimeSeconds>${Math.round(durationSec)}</TotalTimeSeconds><DistanceMeters>0</DistanceMeters><Intensity>Active</Intensity><TriggerMethod>Manual</TriggerMethod><Track>${pts}</Track></Lap></Activity></Activities></TrainingCenterDatabase>`
+}
+// Find a device activity already in intervals for this day+sport (so we don't dup).
+async function icuFindMatch(user, { date, sport }) {
+  const ath = user.icuAthlete || 'i28814'
+  const acts = await icuGet(user, `/athlete/${ath}/activities?oldest=${date}&newest=${date}`)
+  if (!Array.isArray(acts)) return null
+  const want = /ride|cycl|bike/i.test(sport) ? /ride|cycl|bike/i : /run/i.test(sport) ? /run/i : /weight|strength|workout/i
+  return acts.find((a) => want.test(String(a.type || ''))) || null
+}
+async function icuUploadTcx(user, tcx, name) {
+  const ath = user.icuAthlete || 'i28814'
+  const fd = new FormData()
+  fd.append('file', new Blob([tcx], { type: 'application/xml' }), `${String(name).replace(/[^\w-]/g, '_').slice(0, 40)}.tcx`)
+  const r = await fetch(`${ICU_API}/athlete/${ath}/activities`, {
+    method: 'POST', body: fd,
+    headers: { authorization: 'Basic ' + Buffer.from('API_KEY:' + user.icuKey).toString('base64') },
+  })
+  if (!r.ok) throw new Error(`icu upload ${r.status}: ${(await r.text()).slice(0, 160)}`)
+  return r.json().catch(() => ({}))
+}
+
+// A Platyplus-recorded workout finished. Keep the local copy (client already logged it);
+// fan out to intervals match-first. Body: {sport, title, date, startIso, durationSec, samples[]}.
+app.post('/auth/activity/complete', auth, async (req, res) => {
+  const b = req.body || {}
+  const date = String(b.date || '').slice(0, 10)
+  const sport = String(b.sport || 'ride').slice(0, 20)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date required' })
+  if (!req.user.icuKey) return res.json({ status: 'local-only' }) // no intervals → lives in Platyplus
+  try {
+    const match = await icuFindMatch(req.user, { date, sport })
+    if (match) return res.json({ status: 'matched', icuId: match.id }) // device recorded it → don't dup
+    const samples = Array.isArray(b.samples) ? b.samples.slice(0, 60000) : []
+    if (!samples.length) return res.json({ status: 'no-stream' }) // nothing to upload (e.g. gym handled separately)
+    const startIso = typeof b.startIso === 'string' ? b.startIso : new Date(date + 'T12:00:00Z').toISOString()
+    const tcx = tcxFromSamples(samples, { sport, startIso, durationSec: Number(b.durationSec) || samples.length })
+    const up = await icuUploadTcx(req.user, tcx, b.title || sport)
+    res.json({ status: 'uploaded', icuId: up?.id ?? up?.activity?.id ?? null })
+  } catch (e) {
+    res.json({ status: 'error', error: String(e).slice(0, 160) })
+  }
+})
+
+// Upload a RAW activity file (.fit/.gpx/.tcx) straight to intervals — best fidelity.
+async function icuUploadRaw(user, buffer, filename) {
+  const ath = user.icuAthlete || 'i28814'
+  const fd = new FormData()
+  fd.append('file', new Blob([buffer]), String(filename || 'activity').replace(/[^\w.\-]/g, '_').slice(0, 60))
+  const r = await fetch(`${ICU_API}/athlete/${ath}/activities`, {
+    method: 'POST', body: fd,
+    headers: { authorization: 'Basic ' + Buffer.from('API_KEY:' + user.icuKey).toString('base64') },
+  })
+  if (!r.ok) throw new Error(`icu upload ${r.status}: ${(await r.text()).slice(0, 160)}`)
+  return r.json().catch(() => ({}))
+}
+// Build a minimal TCX from entered totals (manual entry, no file) so intervals gets
+// duration/distance + avg HR/power.
+function tcxManual({ sport, startIso, durationSec, distanceM, avgHr, avgPower }) {
+  const t0 = new Date(startIso).getTime()
+  const dur = Math.max(1, Math.round(durationSec || 1))
+  const mk = (offset) => {
+    const time = new Date(t0 + offset * 1000).toISOString().replace(/\.\d+Z$/, 'Z')
+    let x = `<Trackpoint><Time>${time}</Time>`
+    if (avgHr != null) x += `<HeartRateBpm><Value>${Math.round(avgHr)}</Value></HeartRateBpm>`
+    if (avgPower != null) x += `<Extensions><ns3:TPX><ns3:Watts>${Math.round(avgPower)}</ns3:Watts></ns3:TPX></Extensions>`
+    return x + '</Trackpoint>'
+  }
+  const hrLap = avgHr != null ? `<AverageHeartRateBpm><Value>${Math.round(avgHr)}</Value></AverageHeartRateBpm>` : ''
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2"><Activities><Activity Sport="${tcxSport(sport)}"><Id>${startIso}</Id><Lap StartTime="${startIso}"><TotalTimeSeconds>${dur}</TotalTimeSeconds><DistanceMeters>${Math.round(distanceM || 0)}</DistanceMeters>${hrLap}<Intensity>Active</Intensity><TriggerMethod>Manual</TriggerMethod><Track>${mk(0)}${mk(dur)}</Track></Lap></Activity></Activities></TrainingCenterDatabase>`
+}
+
+// Parse an uploaded activity file → summary + GPS track, to prefill manual entry.
+// Body: { name, b64 }. Pure parse — no storage, no intervals call.
+app.post('/auth/activity/parse', auth, async (req, res) => {
+  try {
+    const { name, b64 } = req.body || {}
+    if (!b64) return res.status(400).json({ error: 'file required' })
+    const buffer = Buffer.from(String(b64), 'base64')
+    if (buffer.length > 25 * 1024 * 1024) return res.status(413).json({ error: 'file too large (25MB max)' })
+    res.json(await parseActivityFile(name || 'activity', buffer))
+  } catch (e) { res.status(422).json({ error: String(e.message || e).slice(0, 200) }) }
+})
+
+// Manual activity entry (with or without a file). The local Platyplus copy is already
+// saved via /logs; here we fan out to intervals match-first: upload the raw file
+// (best fidelity) or a summary TCX built from the entered totals. Body:
+// {sport,title,date,startIso,durationSec,distanceM,avgHr,avgPower, file?:{name,b64}}.
+app.post('/auth/activity/manual', auth, async (req, res) => {
+  const b = req.body || {}
+  const date = String(b.date || '').slice(0, 10)
+  const sport = String(b.sport || 'other').slice(0, 20)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date required' })
+  if (!req.user.icuKey) return res.json({ status: 'local-only' }) // no intervals → Platyplus-only
+  try {
+    const match = await icuFindMatch(req.user, { date, sport })
+    if (match) return res.json({ status: 'matched', icuId: match.id }) // device already has it
+    const startIso = typeof b.startIso === 'string' && b.startIso ? b.startIso : new Date(date + 'T12:00:00Z').toISOString()
+    if (b.file && b.file.b64) {
+      const buffer = Buffer.from(String(b.file.b64), 'base64')
+      const up = await icuUploadRaw(req.user, buffer, b.file.name || `${sport}.fit`)
+      return res.json({ status: 'uploaded', icuId: up?.id ?? up?.activity?.id ?? null })
+    }
+    const tcx = tcxManual({ sport, startIso, durationSec: Number(b.durationSec) || 0, distanceM: Number(b.distanceM) || 0, avgHr: b.avgHr != null ? Number(b.avgHr) : null, avgPower: b.avgPower != null ? Number(b.avgPower) : null })
+    const up = await icuUploadTcx(req.user, tcx, b.title || sport)
+    res.json({ status: 'uploaded', icuId: up?.id ?? up?.activity?.id ?? null })
+  } catch (e) {
+    res.json({ status: 'error', error: String(e).slice(0, 160) })
+  }
+})
+
 app.get('/api/intervals/wellness', apiAuth, async (req, res) => {
   const days = Math.min(60, Math.max(1, Number(req.query.days) || 14))
   const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete || 'i28814'}/wellness?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
@@ -1009,4 +1146,51 @@ app.use('/media', express.static(MEDIA_DIR, { maxAge: '365d', immutable: true })
 app.use(express.static(STATIC_DIR, { index: false, setHeaders: (res, p) => { if (p.endsWith('index.html') || p.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache') } }))
 app.get('*', (req, res) => res.sendFile(join(STATIC_DIR, 'index.html')))
 
-app.listen(PORT, () => console.log(`gymapp listening on :${PORT} (rpID ${RP_ID})`))
+// ---- observability: log every failure so it's reviewable (not silent) --------
+// Structured, greppable lines (prefix `[err`, `[unhandled`, `[boot`) so the
+// monitoring routine / a future watchdog bot can scrape docker logs, flag spikes,
+// and act. Each 500 carries a short `ref` echoed to the client for correlation.
+const errId = () => randomBytes(4).toString('hex')
+// Translate a raw error into a sentence a human (and a monitoring bot) can act on.
+function humanizeError(err) {
+  const m = String(err?.message || err || '')
+  if (/secretOrPrivateKey|jwt/i.test(m)) return "The server's session key wasn't loaded, so sign-in is temporarily unavailable."
+  if (/ECONNREFUSED|ETIMEDOUT|terminating connection|the database system|relation .* does not exist|password authentication|too many clients/i.test(m)) return 'The database is unavailable or misconfigured right now.'
+  if (/fetch failed|ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(m)) return 'A service we depend on (e.g. intervals.icu) is unreachable right now.'
+  if (/ENOSPC|EROFS|disk/i.test(m)) return 'The server is out of disk space.'
+  return 'Something unexpected went wrong on our end.'
+}
+app.use((err, req, res, next) => {
+  const ref = errId()
+  const human = humanizeError(err)
+  // Plain-English summary first, then the where + raw detail + stack for investigation.
+  console.error(`[err ${ref}] ${human}\n  where: ${req.method} ${req.originalUrl} (user ${req.user?.username || req.user?.id || 'anonymous'})\n  detail: ${err?.message || err}\n${err?.stack || ''}`)
+  if (res.headersSent) return next(err)
+  res.status(err?.status || 500).json({ error: human, ref })
+})
+// Last-resort safety nets — async throws that bypass Express still get logged.
+process.on('unhandledRejection', (e) => console.error(`[unhandledRejection] ${e?.stack || e}`))
+process.on('uncaughtException', (e) => console.error(`[uncaughtException] ${e?.stack || e}`))
+
+// Startup: connect Postgres → load the cache → seed/defaults → listen. (#DB migration)
+async function start() {
+  if (USE_PG) {
+    await initDb()
+    store = await loadStore()
+    // First Postgres boot with an empty DB: auto-import the legacy JSON store (no data loss).
+    if (!store.users.length) {
+      try {
+        const fileStore = loadJsonStore()
+        if (fileStore?.users?.length) { store = fileStore; await save(store); console.log(`Migrated ${store.users.length} users from store.json → Postgres`) }
+      } catch (e) { console.log('No legacy store.json to migrate (' + e.message + ')') }
+    }
+  } else {
+    store = loadJsonStore() // local dev / CI: the JSON file store (no Postgres around)
+  }
+  await seedAndDefaults()
+  // boot self-check — a missing sessionSecret would 500 every login (silently before).
+  if (!store.sessionSecret) console.error('[boot] CRITICAL: the session key is missing — every sign-in will fail until this is fixed.')
+  console.log(`[boot] Ready on the ${USE_PG ? 'Postgres' : 'file'} store with ${store.users.length} user account(s). Session key ${store.sessionSecret ? 'loaded' : 'MISSING'}.`)
+  app.listen(PORT, () => console.log(`gymapp listening on :${PORT} (rpID ${RP_ID}) [${USE_PG ? 'postgres' : 'file'}, ${store.users.length} users]`))
+}
+start().catch((e) => { console.error('FATAL startup failed:', e); process.exit(1) })

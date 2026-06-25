@@ -1,0 +1,2086 @@
+{
+  "week_id": "phase1_2026-05-22_to_2026-06-11",
+  "week_label": "Phase 1 Weeks 2-4 Adaptive Draft",
+  "notes": "Future phase plan published to Intervals.icu so the full month is visible. These workouts are adaptive drafts: review feedback, Intervals form, weather, sleep, and family schedule before execution. Summer rule remains no indoor trainer. Friday PM is a high-value summer bike window when dry, not a default gym slot. Default is 1 gym session per week plus 4 bike touches; a fifth ride is optional only when it helps move build weeks into controlled green form without compromising recovery.",
+  "workouts": [
+    {
+      "workout_id": "phase1_w2_gym_strength_2026-05-26",
+      "title": "Full-Body Strength Maintenance",
+      "sport": "strength",
+      "discipline": "gym",
+      "estimated_duration_sec": 4200,
+      "objective": "Build real full-body strength while keeping lower-body fatigue controlled for the bike.",
+      "why_now": "A lower-value weekday slot is better for gym work, preserving Friday PM for an outdoor bike session while still giving upper body a proper training dose.",
+      "source_context": {
+        "week_objective": "Rebuild rhythm and aerobic consistency.",
+        "phase": "Phase 1 Build 1",
+        "target_system": "strength maintenance",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": true,
+        "outdoor": false,
+        "max_duration_min": 65,
+        "equipment": [
+          "full_gym",
+          "centr_optional"
+        ]
+      },
+      "targets": {
+        "primary": "rpe",
+        "notes": "65-70 minutes. Lower body RPE 5-6 with 2-3 reps in reserve. Upper body RPE 6-7 with 1-2 reps in reserve. This is real strength work, not mobility, but no failure or soreness chasing."
+      },
+      "centr_recommendation": {
+        "primary": "Centr full-body or upper/lower strength session, using the coach table as the prescription",
+        "alternatives": [
+          "Power Pro: Week 1, Day 3",
+          "Multi-Gym Strength full-body session",
+          "Strength for Sports upper-body plus lower-body basics"
+        ],
+        "links": [
+          "Tutorial - Cable Romanian deadlift: https://centr.com/article/show/32423/power-shred-tutorial-cable-romanian-deadlift",
+          "Dumbbell leg workout article: https://centr.com/blog/show/27279/dumbbell-leg-workouts"
+        ],
+        "keep": [
+          "leg press or squat pattern",
+          "Romanian deadlift or hinge",
+          "row or pull movement",
+          "upper-body push",
+          "vertical pull",
+          "step-up or split squat",
+          "core bracing"
+        ],
+        "skip": [
+          "HIIT finisher",
+          "max-effort sets",
+          "extra glute/quad burnout",
+          "jump conditioning"
+        ],
+        "notes": "Use the coach table as the prescription. Use Centr for demos or substitutions; keep upper body honest and lower body controlled."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "rpe": [
+              2,
+              3
+            ]
+          },
+          "notes": "Easy cardio plus dynamic mobility."
+        }
+      ],
+      "gym_table": [
+        {
+          "movement": "Squat pattern",
+          "exercise": "Hack squat or leg press",
+          "sets": 3,
+          "reps": "6-8",
+          "rest": "90s",
+          "notes": "Controlled, not maximal."
+        },
+        {
+          "movement": "Hinge pattern",
+          "exercise": "Romanian deadlift",
+          "sets": 3,
+          "reps": "8",
+          "rest": "90s",
+          "notes": "Moderate load, clean hamstring tension."
+        },
+        {
+          "movement": "Horizontal pull",
+          "exercise": "Chest-supported row or cable row",
+          "sets": 3,
+          "reps": "10",
+          "rest": "60-75s",
+          "notes": "Posture and scapular control."
+        },
+        {
+          "movement": "Upper push",
+          "exercise": "Dumbbell bench press or machine chest press",
+          "sets": 3,
+          "reps": "6-10",
+          "rest": "90s",
+          "notes": "RPE 6-7, clean reps."
+        },
+        {
+          "movement": "Vertical pull",
+          "exercise": "Lat pulldown or assisted pull-up",
+          "sets": 3,
+          "reps": "8-10",
+          "rest": "75-90s",
+          "notes": "Controlled, no swinging."
+        },
+        {
+          "movement": "Single-leg support",
+          "exercise": "Step-up or split squat",
+          "sets": 2,
+          "reps": "8/side",
+          "rest": "60-75s",
+          "notes": "Stop if legs feel heavy."
+        },
+        {
+          "movement": "Core",
+          "exercise": "Pallof press plus side plank",
+          "sets": 2,
+          "reps": "10/side + 30s/side",
+          "rest": "45-60s",
+          "notes": "Quiet hips."
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Mobility: hips, calves, hamstrings, t-spine."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "This is real strength work. Keep lower body controlled and upper body honest."
+        ],
+        "during_workout_cues": [
+          "Keep reps clean.",
+          "Upper body can work harder than legs.",
+          "Use Centr only for matching exercise demos or substitutions."
+        ],
+        "if_too_easy": "Add one upper-body accessory set, not heavy leg volume.",
+        "if_too_hard": "Reduce lower-body work to 2 sets.",
+        "success_criteria": "No leg heaviness the next morning.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-26",
+          "sync_to_wahoo": false
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w2_sweet_spot_2026-05-22",
+      "title": "Controlled Sweet Spot Rebuild",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Reintroduce sustained pressure below threshold without testing.",
+      "why_now": "Friday PM is the best weekday bike window, and this controlled quality ride uses that availability without maximal testing.",
+      "source_context": {
+        "week_objective": "Rebuild rhythm and aerobic consistency.",
+        "phase": "Phase 1 Build 1",
+        "target_system": "sustained aerobic power",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 80,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only. Do this only if legs are fresh. RPE cap 6. This is controlled green-zone build, not a test."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 1200,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.7
+            ],
+            "rpe": [
+              2,
+              4
+            ]
+          },
+          "notes": "Build gradually."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 3,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 720,
+              "target": {
+                "power_pct_ftp": [
+                  0.86,
+                  0.91
+                ],
+                "rpe": [
+                  5,
+                  6
+                ]
+              },
+              "notes": "Steady pressure, no threshold feel."
+            },
+            {
+              "type": "recovery",
+              "duration_sec": 300,
+              "target": {
+                "power_pct_ftp": [
+                  0.45,
+                  0.6
+                ],
+                "rpe": [
+                  1,
+                  3
+                ]
+              },
+              "notes": "Reset."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 1200,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Downgrade to endurance if sleep, legs, or weather are poor."
+        ],
+        "during_workout_cues": [
+          "No surges.",
+          "If RPE hits 7, ride endurance instead."
+        ],
+        "if_too_easy": "Stay within target. Do not turn this into threshold.",
+        "if_too_hard": "Do 3x10 minutes or convert to endurance.",
+        "success_criteria": "Three controlled reps with no fade and RPE no higher than 6.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-22",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w2_endurance_2026-05-24",
+      "title": "Aerobic Endurance With Fueling Practice",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Build endurance while practicing early fueling.",
+      "why_now": "Longer aerobic ride after controlled quality, not another hard session.",
+      "source_context": {
+        "week_objective": "Rebuild rhythm and aerobic consistency.",
+        "phase": "Phase 1 Build 1",
+        "target_system": "aerobic durability",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 205,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only. Keep 58-72% FTP. Eat early and steadily. This is the main aerobic load builder for the week."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.65
+            ],
+            "rpe": [
+              1,
+              3
+            ]
+          },
+          "notes": "Ramp naturally into endurance."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 9900,
+              "target": {
+                "power_pct_ftp": [
+                  0.58,
+                  0.72
+                ],
+                "rpe": [
+                  3,
+                  4
+                ]
+              },
+              "notes": "Steady aerobic. Fuel from the first 30 minutes. Keep climbs controlled."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel; no need to force ultra-low watts."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "If Friday sweet spot or Saturday's easy ride felt costly, cap this at 90-120 minutes."
+        ],
+        "during_workout_cues": [
+          "Keep it aerobic.",
+          "Drink and eat before hunger."
+        ],
+        "if_too_easy": "Do not extend without review; this week should already reach light green.",
+        "if_too_hard": "Shorten to 90-120 minutes if fatigue is clearly elevated; otherwise cap at 2h15-2h45.",
+        "success_criteria": "Stable power, stable mood, no late bonk.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-24",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w2_easy_frequency_2026-05-23",
+      "title": "Easy Endurance Frequency Ride",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add a fourth low-stress bike touch while keeping the week mostly aerobic.",
+      "why_now": "This low-cost Saturday ride preserves frequency after Friday quality while keeping Sunday endurance protected.",
+      "source_context": {
+        "week_objective": "Rebuild rhythm and aerobic consistency.",
+        "phase": "Phase 1 Build 1",
+        "target_system": "aerobic frequency",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only. 70 minutes at 50-68% FTP. If rain blocks the ride, skip or do easy Centr mobility at home; do not add a second gym session."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.65
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ramp naturally into endurance."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "steady",
+              "duration_sec": 3000,
+              "target": {
+                "power_pct_ftp": [
+                  0.5,
+                  0.68
+                ],
+                "rpe": [
+                  2,
+                  4
+                ]
+              },
+              "notes": "Comfortable endurance. Keep it conversational."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel; no need to force ultra-low watts."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Skip if the weekend created unusual fatigue."
+        ],
+        "during_workout_cues": [
+          "No tempo.",
+          "Use this to add frequency, not stress."
+        ],
+        "if_too_easy": "Do not add intensity.",
+        "if_too_hard": "Shorten to 30-45 minutes or rest.",
+        "success_criteria": "Easy ride feels easy.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-23",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w2_easy_check_2026-05-27",
+      "title": "Easy Aerobic Check",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add low-stress aerobic work and check freshness.",
+      "why_now": "Keeps frequency without stacking intensity.",
+      "source_context": {
+        "week_objective": "Rebuild rhythm and aerobic consistency.",
+        "phase": "Phase 1 Build 1",
+        "target_system": "aerobic maintenance",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only if it fits easily and there is a clean 60-minute window. Ride easy endurance/low Z2 at about 55-68% FTP after a gentle ramp. Skip or move if rain blocks the ride."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.60
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Start easy and ramp gradually into low endurance. The warmup should never feel harder than the main ride."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 2400,
+              "target": {
+                "power_pct_ftp": [
+                  0.55,
+                  0.68
+                ],
+                "rpe": [
+                  2,
+                  3
+                ]
+              },
+              "notes": "Easy endurance/low Z2. No hidden tempo."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.55
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down below the main ride. Keep pressure light and let the legs unload."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "No intensity.",
+          "Skip if Tuesday gym leaves leg heaviness or if there is not a clean 60-minute outdoor window."
+        ],
+        "during_workout_cues": [
+          "Keep pressure light."
+        ],
+        "if_too_easy": "Keep it easy.",
+        "if_too_hard": "If legs feel wrong before starting, rest instead. If already riding, turn home easy; do not turn this into a forced workout.",
+        "success_criteria": "Easy ride feels easy.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-27",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w2_optional_recovery_2026-05-28",
+      "title": "Optional Green-Zone Recovery Spin",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add low-cost frequency only if Week 2 is being absorbed well.",
+      "why_now": "The fitness graph needs some productive fatigue, but the safest addition is a short easy ride, not more intensity.",
+      "source_context": {
+        "week_objective": "Rebuild rhythm and aerobic consistency while nudging form into light green.",
+        "phase": "Phase 1 Build 1",
+        "target_system": "aerobic frequency",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Optional outdoor ride. 60 minutes at 45-62% FTP. Drop first if sleep, legs, rain, or family schedule are not easy."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.4,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Very easy by feel; do not chase an artificially low wattage."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "steady",
+              "duration_sec": 2400,
+              "target": {
+                "power_pct_ftp": [
+                  0.45,
+                  0.62
+                ],
+                "rpe": [
+                  1,
+                  3
+                ]
+              },
+              "notes": "Recovery endurance only. Keep it easier than normal endurance."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.4,
+              0.55
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Only do this if the week feels controlled and sleep is normal."
+        ],
+        "during_workout_cues": [
+          "Keep it calm.",
+          "No tempo and no chasing average speed."
+        ],
+        "if_too_easy": "Good. Do not add intensity.",
+        "if_too_hard": "Skip it.",
+        "success_criteria": "Adds fatigue gently without changing next week readiness.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-28",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w3_gym_strength_2026-06-02",
+      "title": "Full-Body Strength Maintenance",
+      "sport": "strength",
+      "discipline": "gym",
+      "estimated_duration_sec": 4200,
+      "objective": "Maintain full-body strength with proper upper-body push/pull while keeping legs ready for the weekend.",
+      "why_now": "A lower-value weekday slot is better for gym work, preserving Friday PM for the key outdoor bike session while still progressing gym strength.",
+      "source_context": {
+        "week_objective": "Build durable sustained power.",
+        "phase": "Phase 1 Build 2",
+        "target_system": "strength maintenance",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": true,
+        "outdoor": false,
+        "max_duration_min": 65,
+        "equipment": [
+          "full_gym",
+          "centr_optional"
+        ]
+      },
+      "targets": {
+        "primary": "rpe",
+        "notes": "65-70 minutes. Default to 3 controlled sets for squat, hinge, and trunk work if legs are normal. Lower body RPE 5-6 with 2-3 reps in reserve, no failure. Upper body RPE 6-7 with 1-2 reps in reserve. Reduce lower-body volume first if soreness or bike fatigue appears."
+      },
+      "centr_recommendation": {
+        "primary": "Centr full-body or upper/lower strength session, using the coach table as the prescription",
+        "alternatives": [
+          "Lifting: Lower Body",
+          "Strength for Sports full-body session",
+          "Multi-Gym Strength upper-body plus lower-body basics"
+        ],
+        "links": [
+          "Tutorial - Cable Romanian deadlift: https://centr.com/article/show/32423/power-shred-tutorial-cable-romanian-deadlift",
+          "Dumbbell leg workout article: https://centr.com/blog/show/27279/dumbbell-leg-workouts"
+        ],
+        "keep": [
+          "leg press or goblet squat",
+          "Romanian deadlift or hinge",
+          "lat pulldown or row",
+          "upper-body push",
+          "horizontal pull",
+          "core bracing"
+        ],
+        "skip": [
+          "HIIT finisher",
+          "failure sets",
+          "plyometric blocks",
+          "extra lower-body accessories"
+        ],
+        "notes": "This is full-body maintenance. If the selected Centr workout is harder than the coach table, reduce lower-body sets first and keep upper-body work controlled."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "rpe": [
+              2,
+              3
+            ]
+          },
+          "notes": "Easy cardio and mobility."
+        }
+      ],
+      "gym_table": [
+        {
+          "movement": "Squat pattern",
+          "exercise": "Leg press or goblet squat",
+          "sets": 3,
+          "reps": "8",
+          "rest": "90s",
+          "notes": "Moderate."
+        },
+        {
+          "movement": "Hinge pattern",
+          "exercise": "Romanian deadlift",
+          "sets": 3,
+          "reps": "8",
+          "rest": "90s",
+          "notes": "Moderate load, clean hamstring tension, no grinding."
+        },
+        {
+          "movement": "Vertical pull",
+          "exercise": "Lat pulldown",
+          "sets": 3,
+          "reps": "10",
+          "rest": "60s",
+          "notes": "Controlled."
+        },
+        {
+          "movement": "Upper push",
+          "exercise": "Dumbbell bench press or machine chest press",
+          "sets": 3,
+          "reps": "6-10",
+          "rest": "90s",
+          "notes": "RPE 6-7, clean reps."
+        },
+        {
+          "movement": "Horizontal pull",
+          "exercise": "Chest-supported row or cable row",
+          "sets": 2,
+          "reps": "8-10",
+          "rest": "75s",
+          "notes": "Balanced with pressing."
+        },
+        {
+          "movement": "Core",
+          "exercise": "Pallof press and side plank",
+          "sets": 3,
+          "reps": "10/side + 30s/side",
+          "rest": "45s",
+          "notes": "Quality only."
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Mobility cooldown."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Reduce volume if legs are not fresh."
+        ],
+        "during_workout_cues": [
+          "Clean reps only.",
+          "Upper body can work harder than legs."
+        ],
+        "if_too_easy": "If legs are normal, keep the 3 controlled sets and add one upper-body accessory set only if time remains.",
+        "if_too_hard": "Cut squat and hinge to 2 sets, then fill remaining time with upper body, trunk, mobility, or easy cardio rather than ending underdosed.",
+        "success_criteria": "No soreness that affects the weekend.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-02",
+          "sync_to_wahoo": false
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w3_over_under_2026-05-29",
+      "title": "Controlled Over-Under Without Testing",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Build threshold control without doing an FTP test.",
+      "why_now": "Second build week can include one harder sustained-power stimulus if feedback is stable, and Friday PM is the best weekday window to execute it well.",
+      "source_context": {
+        "week_objective": "Build durable sustained power.",
+        "phase": "Phase 1 Build 2",
+        "target_system": "threshold control",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 85,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only. Execute only if freshness is good. This is the single hard stimulus of the week, not an FTP test."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 1500,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.75
+            ],
+            "rpe": [
+              2,
+              5
+            ]
+          },
+          "notes": "Build gradually."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 3,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 420,
+              "target": {
+                "power_pct_ftp": [
+                  0.92,
+                  0.96
+                ],
+                "rpe": [
+                  6,
+                  7
+                ]
+              },
+              "notes": "Controlled under."
+            },
+            {
+              "type": "work",
+              "duration_sec": 240,
+              "target": {
+                "power_pct_ftp": [
+                  1.0,
+                  1.03
+                ],
+                "rpe": [
+                  7,
+                  8
+                ]
+              },
+              "notes": "Short over. No sprinting."
+            },
+            {
+              "type": "recovery",
+              "duration_sec": 420,
+              "target": {
+                "power_pct_ftp": [
+                  0.45,
+                  0.6
+                ],
+                "rpe": [
+                  1,
+                  3
+                ]
+              },
+              "notes": "Reset."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 1200,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Skip or downgrade if Week 2 felt costly."
+        ],
+        "during_workout_cues": [
+          "Smooth power, no testing.",
+          "If cadence or breathing collapses, stop the set."
+        ],
+        "if_too_easy": "Do not add a fourth set without coach review.",
+        "if_too_hard": "Convert to 3x8 minutes at 88-92%.",
+        "success_criteria": "Controlled work with no desperation.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-29",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w3_long_endurance_2026-05-31",
+      "title": "Long Aerobic Endurance",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Extend aerobic durability with stable fueling.",
+      "why_now": "Builds endurance after the weekly quality day without extra intensity.",
+      "source_context": {
+        "week_objective": "Build durable sustained power.",
+        "phase": "Phase 1 Build 2",
+        "target_system": "aerobic durability",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 205,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only. 58-72% FTP. Main aerobic durability load. No tempo finish unless explicitly reviewed."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.65
+            ],
+            "rpe": [
+              1,
+              3
+            ]
+          },
+          "notes": "Ramp naturally into endurance."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 10200,
+              "target": {
+                "power_pct_ftp": [
+                  0.58,
+                  0.72
+                ],
+                "rpe": [
+                  3,
+                  4
+                ]
+              },
+              "notes": "Aerobic endurance and fueling practice."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel; no need to force ultra-low watts."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Shorten if Saturday was costly."
+        ],
+        "during_workout_cues": [
+          "Eat early.",
+          "Keep every climb controlled."
+        ],
+        "if_too_easy": "Do not extend without review; this week is already a controlled overload.",
+        "if_too_hard": "Cut to 2h15-2h45.",
+        "success_criteria": "Finish steady, not depleted.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-31",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w3_easy_support_2026-05-30",
+      "title": "Easy Aerobic Support Ride",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Preserve bike frequency and add easy aerobic volume without another hard stimulus.",
+      "why_now": "This low-cost Saturday ride supports frequency after Friday quality while preserving the Sunday long ride.",
+      "source_context": {
+        "week_objective": "Build durable sustained power.",
+        "phase": "Phase 1 Build 2",
+        "target_system": "aerobic support",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 75,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only. 70 minutes mostly 50-68% FTP. If rain blocks the ride, use easy mobility at home; do not add a second gym day."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.65
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ramp naturally into endurance."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "steady",
+              "duration_sec": 3000,
+              "target": {
+                "power_pct_ftp": [
+                  0.5,
+                  0.68
+                ],
+                "rpe": [
+                  2,
+                  4
+                ]
+              },
+              "notes": "Endurance only. Smooth cadence, no pressure."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel; no need to force ultra-low watts."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Only ride if weekend fatigue is normal."
+        ],
+        "during_workout_cues": [
+          "No tempo.",
+          "Keep it easy enough to protect the next rides."
+        ],
+        "if_too_easy": "Do not add intensity.",
+        "if_too_hard": "Shorten or rest.",
+        "success_criteria": "You add volume without fatigue debt.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-05-30",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w3_endurance_cadence_2026-06-03",
+      "title": "Endurance With Cadence Skills",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Add easy aerobic time with low-cost cadence work.",
+      "why_now": "Maintains frequency without another intensity day.",
+      "source_context": {
+        "week_objective": "Build durable sustained power.",
+        "phase": "Phase 1 Build 2",
+        "target_system": "aerobic skill",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 80,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only. Keep power easy during cadence work."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.65
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ramp naturally into endurance."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 6,
+          "steps": [
+            {
+              "type": "cadence",
+              "duration_sec": 60,
+              "target": {
+                "power_pct_ftp": [
+                  0.55,
+                  0.7
+                ],
+                "rpe": [
+                  2,
+                  4
+                ]
+              },
+              "cadence": {
+                "min": 100,
+                "max": 110
+              },
+              "notes": "Fast legs, low force."
+            },
+            {
+              "type": "recovery",
+              "duration_sec": 240,
+              "target": {
+                "power_pct_ftp": [
+                  0.5,
+                  0.65
+                ],
+                "rpe": [
+                  2,
+                  3
+                ]
+              },
+              "notes": "Easy endurance."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 1800,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.6
+            ],
+            "rpe": [
+              2,
+              3
+            ]
+          },
+          "notes": "Ease down by feel; no need to force ultra-low watts."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Cadence work should not become intensity."
+        ],
+        "during_workout_cues": [
+          "Smooth hips.",
+          "Keep pressure light."
+        ],
+        "if_too_easy": "Stay easy.",
+        "if_too_hard": "Skip cadence and ride endurance.",
+        "success_criteria": "Smooth cadence without fatigue.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-03",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w3_optional_recovery_2026-06-04",
+      "title": "Optional Absorption Spin",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Hold productive green-zone fatigue without adding another hard session.",
+      "why_now": "If Build Week 2 is being absorbed, a short easy ride can keep frequency high before deload.",
+      "source_context": {
+        "week_objective": "Build durable sustained power while keeping fatigue controlled.",
+        "phase": "Phase 1 Build 2",
+        "target_system": "aerobic frequency",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Optional outdoor ride. 60 minutes at 45-62% FTP. Drop first if form is too negative, RPE is high, or sleep is poor."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.4,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Very easy by feel; do not chase an artificially low wattage."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "steady",
+              "duration_sec": 2400,
+              "target": {
+                "power_pct_ftp": [
+                  0.45,
+                  0.62
+                ],
+                "rpe": [
+                  1,
+                  3
+                ]
+              },
+              "notes": "Recovery endurance only."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.4,
+              0.55
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Only do this if you are absorbing the week well."
+        ],
+        "during_workout_cues": [
+          "Keep it below normal endurance pressure.",
+          "No surges."
+        ],
+        "if_too_easy": "Good. Save energy for adaptation.",
+        "if_too_hard": "Skip and start deload early.",
+        "success_criteria": "You enter deload pleasantly tired, not depleted.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-04",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w4_mobility_2026-06-09",
+      "title": "Deload Mobility And Light Strength",
+      "sport": "strength",
+      "discipline": "gym",
+      "estimated_duration_sec": 3600,
+      "objective": "Start deload week with mobility and very light strength.",
+      "why_now": "The goal is absorption, not more training load; Friday PM stays available for an easy outdoor ride if weather and fatigue allow.",
+      "source_context": {
+        "week_objective": "Absorb work and validate readiness.",
+        "phase": "Phase 1 Deload",
+        "target_system": "recovery",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": true,
+        "outdoor": false,
+        "max_duration_min": 65,
+        "equipment": [
+          "centr_recommended",
+          "full_gym"
+        ]
+      },
+      "targets": {
+        "primary": "rpe",
+        "notes": "RPE 3-4. Centr yoga, Pilates, mobility, or easy core preferred."
+      },
+      "centr_recommendation": {
+        "primary": "Centr Pilates Fusion - Week 1 Day 4 - Pilates & mobility - 45 min",
+        "alternatives": [
+          "HYROX Recover - Week 1 Day 1 - Mobility - 20 min - Bodyweight",
+          "HYROX Recover - Week 1 Day 3 - Mobility - 20 min - Bodyweight"
+        ],
+        "links": [
+          "Centr Align: Pilates Day 1: https://centr.com/workout/overview/0/14536/align-pilates-1-sylvia-with-tahl",
+          "Centr Fusion: PowerFlow: https://centr.com/workout/overview/0/13740/fusion-powerflow-move-to-release"
+        ],
+        "keep": [
+          "mobility",
+          "easy trunk control",
+          "breathing",
+          "gentle range of motion"
+        ],
+        "skip": [
+          "hard core circuits",
+          "conditioning",
+          "loaded lower-body work",
+          "anything that creates soreness"
+        ],
+        "notes": "Deload week: this should make you feel fresher, not trained."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 300,
+          "target": {
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Easy."
+        }
+      ],
+      "gym_table": [
+        {
+          "movement": "Mobility / yoga",
+          "exercise": "Centr recovery mobility, yoga, or Pilates",
+          "sets": 1,
+          "reps": "35-45 min",
+          "rest": "as needed",
+          "notes": "Easy."
+        },
+        {
+          "movement": "Core",
+          "exercise": "Dead bug and side plank",
+          "sets": 2,
+          "reps": "8/side + 25s/side",
+          "rest": "45s",
+          "notes": "Low effort."
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 300,
+          "target": {
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Breathing reset."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "No soreness allowed."
+        ],
+        "during_workout_cues": [
+          "Keep it easy."
+        ],
+        "if_too_easy": "Perfect. Deload should feel easy.",
+        "if_too_hard": "Stop at mobility only.",
+        "success_criteria": "Freshness improves.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-09",
+          "sync_to_wahoo": false
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w4_easy_openers_2026-06-06",
+      "title": "Deload Easy Spin With Optional Openers",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Keep legs moving during deload without accumulating fatigue.",
+      "why_now": "Maintains rhythm while lowering load.",
+      "source_context": {
+        "week_objective": "Absorb work and validate readiness.",
+        "phase": "Phase 1 Deload",
+        "target_system": "recovery and readiness",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only. Optional openers only if legs are clearly fresh."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 900,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.65
+            ],
+            "rpe": [
+              1,
+              3
+            ]
+          },
+          "notes": "Ramp naturally into easy endurance."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 3,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 60,
+              "target": {
+                "power_pct_ftp": [
+                  0.9,
+                  1.0
+                ],
+                "rpe": [
+                  5,
+                  6
+                ]
+              },
+              "notes": "Optional opener. Skip if not fresh."
+            },
+            {
+              "type": "recovery",
+              "duration_sec": 300,
+              "target": {
+                "power_pct_ftp": [
+                  0.45,
+                  0.6
+                ],
+                "rpe": [
+                  1,
+                  2
+                ]
+              },
+              "notes": "Easy."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 1620,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Skip openers if fatigue is present."
+        ],
+        "during_workout_cues": [
+          "Nothing hard."
+        ],
+        "if_too_easy": "Keep it short.",
+        "if_too_hard": "Skip the openers and ride easy only; stop early only if safety or symptoms require it.",
+        "success_criteria": "Legs feel better after than before.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-06",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w4_easy_endurance_2026-06-07",
+      "title": "Deload Easy Endurance Or Rest",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Optional easy ride during deload if freshness is improving.",
+      "why_now": "Keeps frequency while prioritizing recovery.",
+      "source_context": {
+        "week_objective": "Absorb work and validate readiness.",
+        "phase": "Phase 1 Deload",
+        "target_system": "aerobic maintenance",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 90,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Optional. 50-65% FTP. Rest instead if life schedule or weather makes this costly."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.65
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ramp naturally into easy endurance."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 3600,
+              "target": {
+                "power_pct_ftp": [
+                  0.5,
+                  0.65
+                ],
+                "rpe": [
+                  2,
+                  3
+                ]
+              },
+              "notes": "Easy endurance."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Rest is acceptable and may be better."
+        ],
+        "during_workout_cues": [
+          "Easy means easy."
+        ],
+        "if_too_easy": "Do not extend much during deload.",
+        "if_too_hard": "Stop early.",
+        "success_criteria": "Recovery continues.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-07",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w4_recovery_spin_2026-06-05",
+      "title": "Deload Recovery Spin Or Mobility",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Keep frequency during deload with a very easy aerobic touch.",
+      "why_now": "Friday PM is available for riding, but deload logic keeps this as an easy spin only if it improves recovery.",
+      "source_context": {
+        "week_objective": "Absorb work and validate readiness.",
+        "phase": "Phase 1 Deload",
+        "target_system": "recovery frequency",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only. 60 minutes easy at 45-60% FTP. If rain or fatigue makes this costly, skip and use 20-30 minutes Centr mobility."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.4,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Very easy by feel; do not chase an artificially low wattage."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 1,
+          "steps": [
+            {
+              "type": "steady",
+              "duration_sec": 2400,
+              "target": {
+                "power_pct_ftp": [
+                  0.45,
+                  0.6
+                ],
+                "rpe": [
+                  1,
+                  3
+                ]
+              },
+              "notes": "Recovery endurance only."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 600,
+          "target": {
+            "power_pct_ftp": [
+              0.4,
+              0.55
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "This is optional. Rest is acceptable during deload."
+        ],
+        "during_workout_cues": [
+          "Keep it calmer than normal endurance.",
+          "Stop if legs feel worse after 15 minutes."
+        ],
+        "if_too_easy": "That is the point.",
+        "if_too_hard": "Stop early or do mobility only.",
+        "success_criteria": "You feel looser and more rested after.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-05",
+          "sync_to_wahoo": true
+        }
+      }
+    },
+    {
+      "workout_id": "phase1_w4_readiness_check_2026-06-10",
+      "title": "Easy Readiness Check",
+      "sport": "cycling",
+      "discipline": "bike",
+      "objective": "Check readiness at the end of deload without testing FTP.",
+      "why_now": "Determines whether the next phase can progress.",
+      "source_context": {
+        "week_objective": "Absorb work and validate readiness.",
+        "phase": "Phase 1 Deload",
+        "target_system": "readiness validation",
+        "confidence": "medium"
+      },
+      "constraints": {
+        "indoor": false,
+        "outdoor": true,
+        "max_duration_min": 60,
+        "equipment": [
+          "power_meter"
+        ]
+      },
+      "targets": {
+        "primary": "power",
+        "ftp_reference_w": 260,
+        "notes": "Outdoor only. Easy with 3 short controlled efforts only if fresh."
+      },
+      "warmup": [
+        {
+          "type": "free_ride",
+          "duration_sec": 1260,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.65
+            ],
+            "rpe": [
+              1,
+              3
+            ]
+          },
+          "notes": "Ramp naturally into endurance."
+        }
+      ],
+      "main_set": [
+        {
+          "repeat": 3,
+          "steps": [
+            {
+              "type": "work",
+              "duration_sec": 120,
+              "target": {
+                "power_pct_ftp": [
+                  0.88,
+                  0.95
+                ],
+                "rpe": [
+                  5,
+                  6
+                ]
+              },
+              "notes": "Controlled pressure, not a test."
+            },
+            {
+              "type": "recovery",
+              "duration_sec": 360,
+              "target": {
+                "power_pct_ftp": [
+                  0.45,
+                  0.6
+                ],
+                "rpe": [
+                  1,
+                  2
+                ]
+              },
+              "notes": "Easy."
+            }
+          ]
+        }
+      ],
+      "cooldown": [
+        {
+          "type": "free_ride",
+          "duration_sec": 900,
+          "target": {
+            "power_pct_ftp": [
+              0.5,
+              0.6
+            ],
+            "rpe": [
+              1,
+              2
+            ]
+          },
+          "notes": "Ease down by feel; no need to force ultra-low watts."
+        }
+      ],
+      "execution_notes": {
+        "pre_interval_cues": [
+          "Skip efforts if not fresh."
+        ],
+        "during_workout_cues": [
+          "This checks feel, not max power."
+        ],
+        "if_too_easy": "Good. Save it for next phase.",
+        "if_too_hard": "Ride easy only.",
+        "success_criteria": "Controlled efforts feel smooth and leave freshness.",
+        "post_workout_capture": [
+          "Legs before/after",
+          "Fueling/GI",
+          "Pain/niggles",
+          "Schedule/life",
+          "Gym/Centr if relevant",
+          "Other unusual context"
+        ]
+      },
+      "publication": {
+        "intervals_icu": {
+          "folder": "Codex Coach",
+          "planned_date": "2026-06-10",
+          "sync_to_wahoo": true
+        }
+      }
+    }
+  ]
+}

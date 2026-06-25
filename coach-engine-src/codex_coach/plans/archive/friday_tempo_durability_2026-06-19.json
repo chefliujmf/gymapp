@@ -1,0 +1,110 @@
+{
+  "workout_id": "friday_tempo_durability_2026-06-19",
+  "title": "Friday Tempo Durability",
+  "sport": "cycling",
+  "discipline": "bike",
+  "estimated_duration_sec": 6960,
+  "objective": "Hold one controlled sub-threshold stimulus during a high-stress week: three tempo blocks plus steady endurance keep aerobic durability and rhythm without the recovery cost of threshold work.",
+  "why_now": "Work stress is high and acute wellness has turned (RHR 53->58, HRV 36->32, sleep 8.6h->6.7h over two days). Form reads green (+12) only because training load is low, so this is life stress, not training readiness - the wrong week to spend it on an FTP read. Tempo gives the requested intervals while staying clearly below FTP so it absorbs cleanly.",
+  "source_context": {
+    "week_objective": "Absorb a high-stress week: keep frequency, cut intensity",
+    "phase": "Aggressive June Build",
+    "target_system": "aerobic durability + tempo",
+    "confidence": "high"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 120,
+    "equipment": ["power_meter"]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 260,
+    "notes": "Tempo, not threshold. Blocks sit at 83-88% FTP (216-229 W), RPE 5-6 - conversational-hard, never a grind. This is a deliberately easy-intensity week; if the legs or HR don't want it, downgrade rather than force it."
+  },
+  "warmup": [
+    {
+      "type": "ramp",
+      "duration_sec": 900,
+      "target": {"power_pct_ftp": [0.50, 0.78], "rpe": [2, 4]},
+      "notes": "Easy to high-Z2 ramp. Let the legs and HR come around before the first block; no rush on a tired week."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 3,
+      "steps": [
+        {
+          "type": "work",
+          "duration_sec": 720,
+          "target": {"power_pct_ftp": [0.83, 0.88], "rpe": [5, 6]},
+          "notes": "Tempo block - 216-229 W. Smooth, steady, breathing controlled and able to speak a short sentence. Stay off the top of the range; this should feel sustainable, not threshold."
+        },
+        {
+          "type": "recovery",
+          "duration_sec": 300,
+          "target": {"power_pct_ftp": [0.55, 0.60], "rpe": [2, 3]},
+          "notes": "Easy spin between blocks. Soft pedal, let HR settle."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "steady",
+      "duration_sec": 2400,
+      "target": {"power_pct_ftp": [0.60, 0.68], "rpe": [3, 4]},
+      "notes": "Steady Z2 to finish - durability volume, fuel and drink, comfortable cadence. This is the aerobic part of the day; keep it relaxed."
+    },
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {"power_pct_ftp": [0.45, 0.55], "rpe": [1, 2]},
+      "notes": "Ease down."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal carb-forward meal 2-3h before, ~1g carbs/kg. Nothing special - it's a moderate day.",
+    "during": "30-50g carbs/hour and drink to thirst; on a low-sleep week, fueling well also protects mood and the rest of your day.",
+    "post": "20-30g protein plus carbs within an hour or just a normal balanced meal if you eat soon after.",
+    "centr_recipe": "No new Centr link needed.",
+    "supplements": "None needed. Skip the pre-workout caffeine if it would touch tonight's sleep - sleep is the priority this week."
+  },
+  "recovery": {
+    "post_session": "Refuel, hydrate, gentle left-calf roll if it feels tight.",
+    "evening": "Guard sleep hard tonight - earlier wind-down, screens down. Sleep is the real training input this week.",
+    "next_morning_check": "Note legs, sleep, HRV/resting HR before the weekend ride; if RHR is still climbing, downgrade Saturday to easy."
+  },
+  "skill_focus": [
+    {
+      "action": "Hold each tempo block at even, relaxed power - no surging, no chasing the top of the range.",
+      "why": "Steady sub-threshold output builds durability without the fatigue spike that would compound a stressed week."
+    },
+    {
+      "action": "Keep shoulders, hands and jaw relaxed; breathe in rhythm.",
+      "why": "On a low-sleep day, wasted tension inflates HR and RPE and makes an easy effort feel hard."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Take the stimulus, not the strain. Easy week, on purpose.",
+    "why": "Channelling stress into a hard ride feels good for an hour and costs you for three days right now. Tempo keeps the rhythm and lets the body recover.",
+    "cue": "Smooth first, watts second.",
+    "reset": "If you feel yourself pushing the pace up, exhale, drop back into the range, and remind yourself this is a recovery-protecting week."
+  },
+  "execution_notes": {
+    "pre_interval_cues": ["This is tempo, not threshold - cap the effort.", "If the legs feel flat in the warmup, plan to downgrade.", "Conversational-hard, never a grind."],
+    "during_workout_cues": ["Even power, relaxed.", "Able to speak a short sentence.", "Off the top of the range."],
+    "if_too_easy": "Good - leave it easy. At most hold the top of the range (229 W). Do not turn tempo blocks into threshold; the point of the week is to absorb, not to push.",
+    "if_too_hard": "Drop to 2 blocks, or convert the whole main set to straight Z2 endurance. A flat HR/legs day means the body is using its capacity on life stress - back off without guilt.",
+    "success_criteria": "Completed the tempo blocks at RPE <=6 feeling sustainable, finished the ride relaxed rather than emptied. If you finished wanting more, that is exactly right for this week.",
+    "post_workout_capture": ["RPE", "Feel", "Did tempo feel sustainable or like a grind", "Legs before/after"]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-06-19",
+      "sync_to_wahoo": true
+    }
+  }
+}

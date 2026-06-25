@@ -1,0 +1,170 @@
+{
+  "workout_id": "threshold_confidence_check_2026-05-30",
+  "title": "Saturday Threshold Confidence Check",
+  "sport": "cycling",
+  "discipline": "bike",
+  "objective": "Validate threshold readiness with controlled over-under work instead of a maximal FTP test.",
+  "why_now": "Thursday readiness said rest: tired, poor sleep, higher resting HR, and lower HRV. Moving the proof point to Saturday protects the quality work instead of forcing it tired.",
+  "source_context": {
+    "week_objective": "Restart rhythm and validate threshold readiness without catch-up fatigue.",
+    "phase": "Phase 1 Build 2 Adjusted",
+    "target_system": "threshold control",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 60,
+    "equipment": [
+      "power_meter"
+    ]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 255,
+    "notes": "Outdoor only. This is not a max FTP test. It is a controlled threshold-confidence check with RPE cap 8 and clean execution as the pass/fail. Do not start if Friday night or Saturday morning recovery is poor."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 900,
+      "target": {
+        "power_pct_ftp": [
+          0.5,
+          0.75
+        ],
+        "rpe": [
+          2,
+          5
+        ]
+      },
+      "notes": "Build gradually. Include 2 x 30s high-cadence openers if legs feel good."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 2,
+      "steps": [
+        {
+          "type": "work",
+          "duration_sec": 480,
+          "target": {
+            "power_pct_ftp": [
+              0.92,
+              0.96
+            ],
+            "rpe": [
+              6,
+              7
+            ]
+          },
+          "notes": "Controlled under. Smooth, no grinding."
+        },
+        {
+          "type": "work",
+          "duration_sec": 240,
+          "target": {
+            "power_pct_ftp": [
+              1.0,
+              1.03
+            ],
+            "rpe": [
+              7,
+              8
+            ]
+          },
+          "notes": "Short over. No sprinting."
+        },
+        {
+          "type": "recovery",
+          "duration_sec": 300,
+          "target": {
+            "power_pct_ftp": [
+              0.45,
+              0.6
+            ],
+            "rpe": [
+              1,
+              3
+            ]
+          },
+          "notes": "Reset."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 660,
+      "target": {
+        "power_pct_ftp": [
+          0.45,
+          0.6
+        ],
+        "rpe": [
+          1,
+          2
+        ]
+      },
+      "notes": "Ease down by feel."
+    }
+  ],
+  "nutrition": {
+    "pre": "Carb-forward meal 2-4h before with about 1-2g carbs/kg. Add 20-40g simple carbs 30-60 min before if starting hungry.",
+    "during": "Water is acceptable if well-fed. Use 20-40g carbs if the ride starts hungry or drifts over 60 minutes.",
+    "post": "25-35g protein plus 60-90g carbs because this is the week's key bike stimulus.",
+    "centr_recipe": "Salted Caramel Super Smoothie, https://centr.com/recipe/show/12693/salted-caramel-super-smoothie",
+    "supplements": "Today's workout needs: optional caffeine only if tolerated and not late day, about 1-3 mg/kg 30-60 min before. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Carbs plus protein, fluids to thirst, and 5-10 min easy spin/walk if legs tighten.",
+    "evening": "No extra hard training. Keep dinner digestible and protect sleep.",
+    "next_morning_check": "If this lands at RPE 7-8 or lower with no fade, the next threshold progression can move up. If it costs more, hold the targets."
+  },
+  "skill_focus": [
+    {
+      "action": "Rebuild power over 5-8 pedal strokes after corners or interruptions.",
+      "why": "This tests usable outdoor threshold control instead of trainer-perfect numbers."
+    },
+    {
+      "action": "Keep cadence steady and avoid torque spikes late in each over.",
+      "why": "Smooth torque protects the left calf and makes higher FTP work repeatable."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Prove control, not ego.",
+    "why": "A controlled threshold file tells us more about your next training step than forcing a hard day after poor sleep.",
+    "cue": "Pressure, then proof.",
+    "reset": "If power, cadence, or breathing gets ragged, ride 90 seconds at the low end of target; if it still feels forced, finish the current rep and skip the next over."
+  },
+  "execution_notes": {
+    "pre_interval_cues": [
+      "Start only if Friday is low stress and Saturday morning sleep, HRV/resting HR, and legs are back to normal.",
+      "This is a confidence check, not a maximal FTP test."
+    ],
+    "during_workout_cues": [
+      "No sprinting.",
+      "No chasing a higher average.",
+      "Keep RPE under 8."
+    ],
+    "if_too_easy": "Finish exactly as written. A clean pass is the signal to progress next week, not to improvise today.",
+    "if_too_hard": "Convert to 3 x 8 minutes at 88-92% or ride endurance only.",
+    "success_criteria": "Both sets controlled, no desperation, no cadence collapse, and RPE no higher than 8.",
+    "post_workout_capture": [
+      "Legs before/after",
+      "Fueling/GI",
+      "Pain/niggles",
+      "Schedule/life",
+      "Mental state",
+      "Other unusual context"
+    ]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-05-30",
+      "sync_to_wahoo": true
+    }
+  }
+}

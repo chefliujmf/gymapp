@@ -21,11 +21,13 @@
 // Usage: node scripts/sync-coach-engine.mjs [path-to-cyclingcoach]
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname, basename } from 'node:path'
-import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 
-const engineRepo = process.argv[2] || process.env.COACH_ENGINE_REPO || join(homedir(), 'dev/cyclingcoach')
 const here = dirname(fileURLToPath(import.meta.url))
+// FORKED 2026-06-24: Platyplus OWNS its coach engine. The source is now the in-repo
+// `coach-engine-src/` (a copy of cyclingcoach at the fork), NOT ~/dev/cyclingcoach.
+// Adapt the engine HERE; cyclingcoach is now an independent intervals-only coach.
+const engineRepo = process.argv[2] || process.env.COACH_ENGINE_REPO || join(here, '..', 'coach-engine-src')
 
 // GENERIC — applies to ANY athlete/sport.
 const SHARED = [

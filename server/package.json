@@ -5,13 +5,18 @@
   "version": "1.0.0",
   "description": "Auth + static + intervals.icu proxy for gymapp",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "@simplewebauthn/server": "^13.1.1",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "express": "^4.21.2",
+    "fast-xml-parser": "^5.9.3",
+    "fit-file-parser": "^3.0.2",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^6.9.16",
+    "pg": "^8.13.1"
   }
 }

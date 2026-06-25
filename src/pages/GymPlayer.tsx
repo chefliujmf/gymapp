@@ -6,6 +6,7 @@ import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { db, getSetting, setSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
 import { e1rm, weightForReps, roundLoad, bestE1rmByExercise } from '../strength'
 import { getGymSession } from '../plan'
+import { authApi } from '../auth/api'
 import { localISO } from '../date'
 import { gymTSS, type GymIntensity } from '../tss'
 
@@ -236,6 +237,10 @@ export default function GymPlayer() {
     const exNames = order.map((e) => e.name)
     const exIds = order.map((e) => e.exId)
     await logWorkout({ workoutId: w.workoutId, title: w.title, discipline: w.discipline, duration: actualMin, date: localISO(), sets: log, setsCompleted, volume, tss, exNames, exIds })
+    // Match-first (#123): if a device (Coros) recorded this gym session in intervals, link it
+    // — don't duplicate. No stream here, so when nothing matches it just stays in Platyplus
+    // (the coach reads the rich set/rep log from Platyplus anyway).
+    authApi.completeActivity({ sport: 'gym', title: w.title, date: localISO(), startIso: new Date(startedAt).toISOString(), durationSec: actualMin * 60, samples: [] }).catch(() => { /* best-effort */ })
   }
 
   if (!w || !cur) return <div className="page-head"><h1>No workout loaded</h1><button className="btn" onClick={() => navigate(-1)}>Back</button></div>

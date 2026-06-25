@@ -1,0 +1,188 @@
+{
+  "workout_id": "rain_day_strength_fallback_2026-05-31",
+  "title": "Rain-Day Strength Maintenance",
+  "sport": "strength",
+  "discipline": "gym",
+  "estimated_duration_sec": 3600,
+  "objective": "Use the rainy day for strength maintenance while absorbing Saturday's threshold check.",
+  "why_now": "Saturday's threshold check passed and you feel rested, but rain makes the outdoor endurance ride low-probability. Gym is the default; a clean dry window can replace it with easy aerobic volume.",
+  "source_context": {
+    "week_objective": "Restart rhythm and validate threshold readiness without catch-up fatigue.",
+    "phase": "Phase 1 Build 2 Adjusted",
+    "target_system": "strength maintenance / aerobic fallback",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": true,
+    "outdoor": true,
+    "max_duration_min": 135,
+    "equipment": [
+      "full_gym",
+      "power_meter if outdoor window appears"
+    ]
+  },
+  "targets": {
+    "primary": "rpe",
+    "notes": "Default: 60 min gym. Lower body RPE 5-6 with 2-3 reps in reserve; upper body RPE 6-7. No failure, no finisher. If a clean dry outdoor window appears, replace gym with 2h00-2h15 easy endurance at 55-68% of working FTP 260w, no tempo finish."
+  },
+  "centr_recommendation": {
+    "primary": "Centr full-body or upper/lower strength session, using the coach table as the prescription",
+    "alternatives": [
+      "Power Pro: Week 1, Day 3",
+      "Multi-Gym Strength full-body session",
+      "Strength for Sports upper-body plus lower-body basics"
+    ],
+    "links": [
+      "Tutorial - Cable Romanian deadlift: https://centr.com/article/show/32423/power-shred-tutorial-cable-romanian-deadlift",
+      "Dumbbell leg workout article: https://centr.com/blog/show/27279/dumbbell-leg-workouts"
+    ],
+    "keep": [
+      "squat or leg press pattern",
+      "Romanian deadlift or hinge",
+      "row or pull movement",
+      "upper-body push",
+      "vertical pull",
+      "core bracing"
+    ],
+    "skip": [
+      "HIIT finisher",
+      "max-effort sets",
+      "extra glute/quad burnout",
+      "jump conditioning"
+    ],
+    "notes": "Use Centr for demos or substitutions; keep lower body controlled after Saturday and let upper body work honestly."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "rpe": [
+          2,
+          3
+        ]
+      },
+      "notes": "Easy cardio plus dynamic mobility."
+    }
+  ],
+  "gym_table": [
+    {
+      "movement": "Squat pattern",
+      "exercise": "Hack squat or leg press",
+      "sets": 2,
+      "reps": "6-8",
+      "rest": "90s",
+      "notes": "Controlled, not maximal. Stop with 2-3 reps in reserve."
+    },
+    {
+      "movement": "Hinge pattern",
+      "exercise": "Romanian deadlift",
+      "sets": 2,
+      "reps": "8",
+      "rest": "90s",
+      "notes": "Moderate load, clean hamstring tension."
+    },
+    {
+      "movement": "Horizontal pull",
+      "exercise": "Chest-supported row or cable row",
+      "sets": 3,
+      "reps": "10",
+      "rest": "60-75s",
+      "notes": "Posture and scapular control."
+    },
+    {
+      "movement": "Upper push",
+      "exercise": "Dumbbell bench press or machine chest press",
+      "sets": 3,
+      "reps": "6-10",
+      "rest": "90s",
+      "notes": "RPE 6-7, clean reps."
+    },
+    {
+      "movement": "Vertical pull",
+      "exercise": "Lat pulldown or assisted pull-up",
+      "sets": 3,
+      "reps": "8-10",
+      "rest": "75-90s",
+      "notes": "Controlled, no swinging."
+    },
+    {
+      "movement": "Core",
+      "exercise": "Pallof press plus side plank",
+      "sets": 2,
+      "reps": "10/side + 30s/side",
+      "rest": "45-60s",
+      "notes": "Quiet hips."
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "rpe": [
+          1,
+          2
+        ]
+      },
+      "notes": "Mobility: hips, calves, hamstrings, t-spine."
+    }
+  ],
+  "nutrition": {
+    "pre": "Normal meal 2-4h before. If training hungry, take 20-30g carbs plus 10-20g protein 30-60 min before.",
+    "during": "Water to thirst, roughly 400-750ml/hour. If the outdoor ride happens, use 30-50g carbs/hour.",
+    "post": "Protein-forward meal/snack with 25-35g protein; add 30-60g carbs if dinner is delayed, or 60-90g carbs if you replace gym with the outdoor ride.",
+    "centr_recipe": "Salted Caramel Super Smoothie, https://centr.com/recipe/show/12693/salted-caramel-super-smoothie",
+    "supplements": "Today's workout needs: none required for gym; electrolytes/sodium only if the outdoor ride is hot or sweaty. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Protein-forward meal/snack and easy walking if legs feel stiff.",
+    "evening": "No extra lower-body work after gym. Protect sleep.",
+    "next_morning_check": "If soreness is more than mild, reduce Tuesday gym lower-body work or move strength later."
+  },
+  "skill_focus": [
+    {
+      "action": "Keep lower-body reps controlled and symmetrical, especially through the left calf/ankle chain.",
+      "why": "Strength supports durable power only if it does not create compensation after Saturday's threshold work."
+    },
+    {
+      "action": "Upper body can work honestly; lower body stops with 2-3 reps in reserve.",
+      "why": "This keeps the strength signal without stealing freshness from next week's FTP work."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Use the day, do not force the day.",
+    "why": "The goal is sustained FTP progression, so weather should redirect the stimulus without turning Sunday into fatigue chasing.",
+    "cue": "Useful strength or easy volume.",
+    "reset": "If you catch yourself trying to make up for rain, cut the extra work and finish with clean reps or easy endurance only."
+  },
+  "execution_notes": {
+    "pre_interval_cues": [
+      "Default is gym if rain makes the ride awkward.",
+      "Outdoor replacement is allowed only with a clean dry window and normal legs."
+    ],
+    "during_workout_cues": [
+      "Keep reps clean.",
+      "Upper body can work harder than legs.",
+      "No lower-body grinding."
+    ],
+    "if_too_easy": "Add one upper-body accessory set, not heavy leg volume. If riding outside, cap at 2h15.",
+    "if_too_hard": "Reduce lower-body work to one set each or make it mobility only.",
+    "success_criteria": "Finish feeling trained, not sore or depleted.",
+    "post_workout_capture": [
+      "Legs before/after",
+      "Fueling/GI",
+      "Pain/niggles",
+      "Schedule/life",
+      "Gym/Centr if relevant",
+      "Other unusual context"
+    ]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-05-31",
+      "sync_to_wahoo": false
+    }
+  }
+}

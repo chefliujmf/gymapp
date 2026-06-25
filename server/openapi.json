@@ -786,6 +786,56 @@
         }
       }
     },
+    "/auth/activity/complete": {
+      "post": {
+        "summary": "A Platyplus-recorded workout finished → fan out to intervals (match-first, #122/#123)",
+        "description": "Keeps the local Platyplus copy; checks intervals for a matching device activity (don't duplicate), else uploads a TCX built from the sample stream. No-op (local-only) when intervals isn't connected.",
+        "tags": ["activity"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["date", "sport"],
+          "properties": {
+            "sport": { "type": "string" }, "title": { "type": "string" },
+            "date": { "type": "string", "format": "date" }, "startIso": { "type": "string" },
+            "durationSec": { "type": "number" },
+            "samples": { "type": "array", "items": { "type": "object", "properties": { "t": { "type": "number" }, "power": { "type": "number" }, "cadence": { "type": "number" }, "hr": { "type": "number" } } } }
+          }
+        } } } },
+        "responses": { "200": { "description": "status: uploaded | matched | local-only | no-stream | error" } }
+      }
+    },
+    "/auth/activity/parse": {
+      "post": {
+        "summary": "Parse an uploaded activity file (.fit/.gpx/.tcx) → summary + GPS track (#129)",
+        "description": "Pure parse for manual-entry prefill — no storage, no intervals call. Returns sport, start, duration, distance, avg HR/power, elevation, calories, and a downsampled GPS track (hasGps=false when the file has no positions).",
+        "tags": ["activity"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["b64"],
+          "properties": { "name": { "type": "string" }, "b64": { "type": "string", "description": "base64 of the file" } }
+        } } } },
+        "responses": { "200": { "description": "parsed summary + track" }, "413": { "description": "file too large (25MB max)" }, "422": { "description": "unparseable / unsupported file" } }
+      }
+    },
+    "/auth/activity/manual": {
+      "post": {
+        "summary": "Manual activity entry → fan out to intervals match-first (#129)",
+        "description": "Local Platyplus copy is saved via /auth/logs; this fans out to intervals: uploads the raw file (best fidelity) or a summary TCX built from the entered totals. No-op (local-only) when intervals isn't connected.",
+        "tags": ["activity"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "type": "object", "required": ["date", "sport"],
+          "properties": {
+            "sport": { "type": "string" }, "title": { "type": "string" },
+            "date": { "type": "string", "format": "date" }, "startIso": { "type": "string" },
+            "durationSec": { "type": "number" }, "distanceM": { "type": "number" },
+            "avgHr": { "type": "number" }, "avgPower": { "type": "number" },
+            "file": { "type": "object", "properties": { "name": { "type": "string" }, "b64": { "type": "string" } } }
+          }
+        } } } },
+        "responses": { "200": { "description": "status: uploaded | matched | local-only | error" } }
+      }
+    },
     "/auth/promote-prod": {
       "post": {
         "summary": "Admin: trigger the prod-promotion GitHub workflow (workflow_dispatch). Needs GH_PROMOTE_TOKEN in the server env.",

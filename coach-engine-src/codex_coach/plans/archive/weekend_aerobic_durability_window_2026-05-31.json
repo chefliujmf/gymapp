@@ -1,0 +1,139 @@
+{
+  "workout_id": "weekend_aerobic_durability_window_2026-05-31",
+  "title": "Sunday Aerobic Absorb",
+  "sport": "cycling",
+  "discipline": "bike",
+  "objective": "Absorb Saturday's threshold check while keeping low-cost aerobic frequency.",
+  "why_now": "Saturday's threshold check passed, but it ran longer and hotter than prescribed. Sunday should support adaptation without stacking fatigue.",
+  "source_context": {
+    "week_objective": "Restart rhythm and validate threshold readiness without catch-up fatigue.",
+    "phase": "Phase 1 Build 2 Adjusted",
+    "target_system": "aerobic durability",
+    "confidence": "medium"
+  },
+  "constraints": {
+    "indoor": false,
+    "outdoor": true,
+    "max_duration_min": 150,
+    "equipment": [
+      "power_meter"
+    ]
+  },
+  "targets": {
+    "primary": "power",
+    "ftp_reference_w": 260,
+    "notes": "Outdoor only if it is easy to fit. Default is about 100 minutes at 55-68% FTP. Extend only if legs are clearly normal; skip if sleep or legs are poor."
+  },
+  "warmup": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "power_pct_ftp": [
+          0.5,
+          0.65
+        ],
+        "rpe": [
+          1,
+          3
+        ]
+      },
+      "notes": "Ramp naturally into endurance."
+    }
+  ],
+  "main_set": [
+    {
+      "repeat": 1,
+      "steps": [
+        {
+          "type": "work",
+      "duration_sec": 4800,
+      "target": {
+        "power_pct_ftp": [
+          0.55,
+          0.68
+        ],
+        "rpe": [
+          3,
+          3
+        ]
+      },
+      "notes": "Easy aerobic absorb. Keep climbs controlled and pressure light."
+        }
+      ]
+    }
+  ],
+  "cooldown": [
+    {
+      "type": "free_ride",
+      "duration_sec": 600,
+      "target": {
+        "power_pct_ftp": [
+          0.5,
+          0.6
+        ],
+        "rpe": [
+          1,
+          2
+        ]
+      },
+      "notes": "Ease down by feel."
+    }
+  ],
+  "nutrition": {
+    "pre": "Carb-forward meal 2-4h before with about 1-2g carbs/kg.",
+    "during": "Water to thirst. Use 20-40g carbs if riding near 100 minutes or starting hungry.",
+    "post": "25-35g protein plus normal carbs; use a simple recovery meal if dinner is delayed.",
+    "centr_recipe": "Salted Caramel Super Smoothie, https://centr.com/recipe/show/12693/salted-caramel-super-smoothie",
+    "supplements": "Today's workout needs: electrolytes/sodium if hot or heavy sweating; otherwise none required. Daily baseline only if already part of routine."
+  },
+  "recovery": {
+    "post_session": "Normal meal with protein and fluids to thirst. Easy walking if legs tighten.",
+    "evening": "No extra training. Protect sleep and Monday freshness.",
+    "next_morning_check": "If legs are heavy or HRV/resting HR worsens, reduce Tuesday gym lower-body work."
+  },
+  "skill_focus": [
+    {
+      "action": "Keep climbs capped and seated when practical.",
+      "why": "This builds aerobic durability without turning endurance into threshold spikes."
+    },
+    {
+      "action": "Check shoulders, jaw, and grip every 20-30 minutes.",
+      "why": "Relaxed upper body reduces wasted energy over longer rides."
+    }
+  ],
+  "mental_focus": {
+    "intention": "Build patient durability and fuel early.",
+    "why": "Long aerobic consistency makes higher FTP usable outside, not only in short efforts.",
+    "cue": "Eat early, ride boring.",
+    "reset": "If you get impatient or chase speed, drink, eat if due, relax grip, and ride below the endurance cap for 2 minutes."
+  },
+  "execution_notes": {
+    "pre_interval_cues": [
+      "Start only if legs feel normal after Saturday.",
+      "If sleep is poor, legs are heavy, or the day is crowded, skip without debt."
+    ],
+    "during_workout_cues": [
+      "Keep pressure light.",
+      "Keep every climb controlled.",
+      "No tempo finish."
+    ],
+    "if_too_easy": "Good. Stop around the planned duration unless recovery is unusually clean.",
+    "if_too_hard": "Shorten to an easy endurance ride or stop.",
+    "success_criteria": "Finish steady, fueled, and not depleted.",
+    "post_workout_capture": [
+      "Legs before/after",
+      "Fueling/GI",
+      "Pain/niggles",
+      "Schedule/life",
+      "Other unusual context"
+    ]
+  },
+  "publication": {
+    "intervals_icu": {
+      "folder": "Codex Coach",
+      "planned_date": "2026-05-31",
+      "sync_to_wahoo": true
+    }
+  }
+}
