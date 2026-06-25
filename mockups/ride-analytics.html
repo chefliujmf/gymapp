@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rich ride analytics (#54)</title>
+<style>
+  :root { --text:#eef1f4; --text-dim:#9298a6; --accent:#34e07d; --bg:#0f1216; --line:#2a2f3a; --blue:#4aa3ff; --pwr:#34e07d; --hr:#ff5d6c; --alt:#7a8699; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#06080b; color:var(--text); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:18px; }
+  h1 { font-size:17px; margin:0 0 4px; }
+  .lede { color:var(--text-dim); font-size:13px; margin:0 0 16px; max-width:900px; }
+  .toggle { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .toggle button { background:linear-gradient(#21252f,#191c24); color:var(--text); border:1px solid var(--line); border-radius:11px; padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+  .toggle button.on { background:var(--accent); color:#04110a; border-color:var(--accent); }
+  .tag{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px}.rec{background:var(--accent);color:#04110a}
+  .panel{display:none;gap:22px;flex-wrap:wrap}.panel.on{display:flex}
+  .phone{width:400px;max-width:94vw;background:var(--bg);border:1px solid var(--line);border-radius:24px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+  .note{width:300px;min-width:240px;color:var(--text-dim);font-size:13px}.note h3{color:var(--text);font-size:14px;margin:0 0 6px}.note ul{margin:6px 0 14px;padding-left:18px}.note li{margin:4px 0}
+  .tabs{display:flex;gap:4px;margin:4px 0 12px;border-bottom:1px solid var(--line)}
+  .tabs div{flex:1;text-align:center;padding:9px 4px;font-size:12px;font-weight:700;color:var(--text-dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tabs div.on{color:var(--text);border-bottom-color:var(--accent)}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+  .chip{background:#0c0f14;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12px;color:var(--text-dim);flex:1;min-width:70px}
+  .chip b{display:block;color:var(--text);font-size:16px}
+  .chip.pwr b{color:var(--pwr)}.chip.hr b{color:var(--hr)}
+  .chartcard{background:linear-gradient(#21252f,#191c24);border:1px solid var(--line);border-radius:14px;padding:10px 8px 4px;margin-bottom:10px}
+  .clabel{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);padding:0 6px 4px;font-weight:700}
+  .scrub{position:relative}
+  .scrub .cursor{position:absolute;top:0;bottom:18px;width:1px;background:#fff8;left:62%}
+  svg{display:block;width:100%}
+  .leg{display:flex;gap:14px;font-size:11px;font-weight:700;padding:2px 6px 0}
+  .leg span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .leg .lp::before{background:var(--pwr)}.leg .lh::before{background:var(--hr)}.leg .la::before{background:var(--alt)}
+  .zones{display:flex;height:18px;border-radius:5px;overflow:hidden;margin:8px 0}
+  .zones i{display:block}
+  .small{color:var(--text-dim);font-size:11px}
+</style>
+</head>
+<body>
+  <h1>Rich ride analytics — Timeline / Power / HR tabs (#54)</h1>
+  <p class="lede">Extends the #51 activity-detail page. Pulls power/HR/altitude/cadence streams from intervals; scrub to read values at any point. Map tab = the #51 flyby. Recommendation: <b>A</b> (stacked, synced scrub — intervals/Strava standard, readable on mobile).</p>
+  <div class="toggle">
+    <button class="on" data-p="A">A · Stacked synced charts <span class="tag rec">Recommended</span></button>
+    <button data-p="B">B · One overlaid multi-axis chart</button>
+  </div>
+
+  <!-- A: stacked synced -->
+  <div class="panel on" data-panel="A">
+    <div class="phone">
+      <div class="tabs"><div>Map</div><div class="on">Timeline</div><div>Power</div><div>HR</div></div>
+      <div class="chips">
+        <div class="chip pwr">@ 1:08:24<b>241 W</b></div>
+        <div class="chip hr">HR<b>163</b></div>
+        <div class="chip">Alt<b>212 m</b></div>
+        <div class="chip">Cad<b>92</b></div>
+      </div>
+      <div class="scrub"><div class="cursor"></div>
+        <div class="chartcard"><div class="clabel"><span>POWER (W)</span><span>241</span></div>
+          <svg viewBox="0 0 360 70"><polyline fill="rgba(52,224,125,.18)" stroke="none" points="0,70 0,40 30,44 60,30 90,34 120,20 150,28 180,16 210,26 240,18 270,30 300,24 330,38 360,34 360,70"/><polyline fill="none" stroke="var(--pwr)" stroke-width="2" points="0,40 30,44 60,30 90,34 120,20 150,28 180,16 210,26 240,18 270,30 300,24 330,38 360,34"/></svg></div>
+        <div class="chartcard"><div class="clabel"><span>HEART RATE (bpm)</span><span>163</span></div>
+          <svg viewBox="0 0 360 60"><polyline fill="none" stroke="var(--hr)" stroke-width="2" points="0,46 40,40 80,34 120,30 160,26 200,24 240,22 280,23 320,21 360,22"/></svg></div>
+        <div class="chartcard"><div class="clabel"><span>ALTITUDE (m)</span><span>212</span></div>
+          <svg viewBox="0 0 360 50"><polyline fill="rgba(122,134,153,.25)" stroke="var(--alt)" stroke-width="1.5" points="0,40 60,36 120,24 180,30 240,14 300,22 360,18 360,50 0,50"/></svg></div>
+      </div>
+      <p class="small" style="text-align:center">drag anywhere to scrub · all three move together</p>
+    </div>
+    <div class="note">
+      <h3>A · Stacked, synced scrub</h3>
+      <ul>
+        <li>Power / HR / Altitude each get a short row, **vertically aligned** &amp; sharing one scrubber.</li>
+        <li>Top chips show the value at the cursor for every metric at once.</li>
+        <li>Readable on a phone — no cramped dual axes; matches intervals/Strava.</li>
+        <li>Reuses our <code>TrendChart</code> (scrub + bands already built).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- B: overlaid -->
+  <div class="panel" data-panel="B">
+    <div class="phone">
+      <div class="tabs"><div>Map</div><div class="on">Timeline</div><div>Power</div><div>HR</div></div>
+      <div class="leg"><span class="lp">Power</span><span class="lh">HR</span><span class="la">Alt</span></div>
+      <div class="chartcard scrub" style="padding-top:6px"><div class="cursor"></div>
+        <svg viewBox="0 0 360 150">
+          <polyline fill="rgba(52,224,125,.15)" stroke="none" points="0,150 0,90 30,96 60,70 90,78 120,50 150,66 180,42 210,62 240,46 270,70 300,58 330,86 360,78 360,150"/>
+          <polyline fill="none" stroke="var(--pwr)" stroke-width="2" points="0,90 30,96 60,70 90,78 120,50 150,66 180,42 210,62 240,46 270,70 300,58 330,86 360,78"/>
+          <polyline fill="none" stroke="var(--hr)" stroke-width="2" points="0,120 40,110 80,96 120,88 160,80 200,74 240,70 280,72 320,66 360,68"/>
+          <polyline fill="none" stroke="var(--alt)" stroke-width="1.5" stroke-dasharray="3 3" points="0,130 60,124 120,108 180,114 240,96 300,104 360,100"/>
+        </svg>
+      </div>
+      <div class="chips"><div class="chip pwr">Power<b>241 W</b></div><div class="chip hr">HR<b>163</b></div><div class="chip">Alt<b>212 m</b></div></div>
+    </div>
+    <div class="note">
+      <h3>B · One overlaid chart</h3>
+      <ul>
+        <li>All series on a single chart (different colors + a legend), one scrubber.</li>
+        <li>Compact, but mixing W / bpm / m on shared vertical space gets visually noisy and the y-scales aren't comparable.</li>
+      </ul>
+      <p class="small">Denser; harder to read precisely on a phone.</p>
+    </div>
+  </div>
+
+<script>
+  const btns=document.querySelectorAll('.toggle button');
+  btns.forEach(b=>b.onclick=()=>{btns.forEach(x=>x.classList.remove('on'));b.classList.add('on');document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.dataset.panel===b.dataset.p));});
+</script>
+</body>
+</html>
