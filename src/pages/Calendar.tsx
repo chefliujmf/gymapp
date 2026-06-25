@@ -34,7 +34,7 @@ type Entry = { k: 'plan'; plan: CoachPlan } | { k: 'event'; ev: IcuEvent } | { k
 
 export default function Calendar() {
   const navigate = useNavigate()
-  const [params] = useSearchParams()
+  const [params, setSearchParams] = useSearchParams()
   const now = new Date()
   const qDay = params.get('d')
   const qView = params.get('v') as View | null
@@ -74,6 +74,11 @@ export default function Calendar() {
   // Arriving from Today's "Add"/"Substitute" (?add=1) opens the add sheet straight away
   // so it's a single tap, not land-on-Plan-then-click-Add (#56/#57). Runs once.
   useEffect(() => { if (params.get('add') === '1') { setSheet({ date: qDay || sel }); navigate(`/plan?d=${qDay || sel}&v=day`, { replace: true }) } }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Keep the selected day + view in the URL so leaving and coming back (e.g. the
+  // import flow, or re-tapping Plan) restores them instead of snapping to today (#140).
+  useEffect(() => {
+    setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set('d', sel); n.set('v', view); n.delete('add'); return n }, { replace: true })
+  }, [sel, view]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const entriesFor = (day: string): Entry[] => {
     const out: Entry[] = []

@@ -8,7 +8,8 @@ const DEFAULT_ATHLETE = 'i28814'
 
 export interface IcuStep {
   duration?: number
-  power?: { start: number; end: number; units: string }
+  // intervals expresses power as a ramp {start,end} OR a steady {value} (%FTP) — both occur
+  power?: { start?: number; end?: number; value?: number; units?: string }
   reps?: number
   steps?: IcuStep[]
   text?: string
@@ -94,6 +95,7 @@ export interface IcuWellness {
   restingHR: number | null
   hrv: number | null
   sleepHours: number | null
+  sleepScore: number | null // 0-100 from a sleep tracker (Garmin/Oura/…), when present
 }
 /** Recent wellness/fitness series from intervals.icu (read-only). Empty on no key/error. */
 export async function fetchWellness(oldest: string, newest: string): Promise<IcuWellness[]> {
@@ -110,6 +112,7 @@ export async function fetchWellness(oldest: string, newest: string): Promise<Icu
       load: d.ctlLoad ?? d.atlLoad ?? null, eftp: d.eftp ?? (d as Record<string, number>).icu_eftp ?? null,
       weight: d.weight ?? null, restingHR: d.restingHR ?? null,
       hrv: d.hrv ?? d.hrvSDNN ?? null, sleepHours: d.sleepSecs ? Math.round((d.sleepSecs / 3600) * 10) / 10 : null,
+      sleepScore: d.sleepScore ?? null,
     }))
   } catch { return [] }
 }
@@ -144,6 +147,7 @@ export interface IcuActivity {
   name?: string
   moving_time?: number
   distance?: number // metres
+  total_elevation_gain?: number // metres climbed
   icu_average_watts?: number
   average_heartrate?: number
   icu_training_load?: number // TSS
@@ -162,6 +166,32 @@ export async function fetchActivities(oldest: string, newest: string): Promise<I
     return res.ok ? await res.json() : []
   } catch { return [] }
 }
+/** A single completed activity by id (summary). Null on no key / error. (#51) */
+export async function fetchActivity(id: string | number): Promise<IcuActivity | null> {
+  const { apiKey, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return null
+  try {
+    const res = await fetch(`${ICU}/activity/${id}`, { headers: icuHeaders(apiKey) })
+    return res.ok ? await res.json() : null
+  } catch { return null }
+}
+/** Per-sample streams of an activity from intervals (GPS + power/HR/altitude/cadence
+ *  over time). Empty on no key / error. Powers the post-workout map (#51) + the
+ *  timeline analytics (#54). */
+export interface ActivityStreams { time?: number[]; watts?: (number | null)[]; heartrate?: (number | null)[]; altitude?: (number | null)[]; cadence?: (number | null)[]; latlng?: [number, number][] }
+export async function fetchActivityStreams(id: string | number, types: string[] = ['latlng', 'time', 'watts', 'heartrate', 'altitude', 'cadence']): Promise<ActivityStreams> {
+  const { apiKey, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return {}
+  try {
+    const res = await fetch(`${ICU}/activity/${id}/streams?types=${types.join(',')}`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return {}
+    const arr = await res.json()
+    const out: Record<string, unknown> = {}
+    if (Array.isArray(arr)) for (const s of arr) if (s?.type && Array.isArray(s.data)) out[s.type] = s.data
+    return out as ActivityStreams
+  } catch { return {} }
+}
+export const cleanLatLng = (t?: [number, number][]) => (t || []).filter((p) => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
 export const sportOfActivity = (a: IcuActivity) => (/run/i.test(a.type) ? 'run' : /ride|cycl/i.test(a.type) ? 'ride' : 'gym')
 /** Indoor = trainer/virtual; otherwise outdoor (only meaningful for ride/run). */
 export const isIndoorActivity = (a: IcuActivity) => a.trainer === true || /virtual/i.test(a.type || '')
@@ -324,8 +354,10 @@ export function flattenIcuSteps(steps: IcuStep[] = []): Segment[] {
     } else if (s.steps) {
       s.steps.forEach(walk)
     } else if (s.duration) {
+      // steady steps carry {value}; ramps carry {start,end}. Fall back to value so a
+      // steady effort isn't flattened to 0 (#72 flat-blue) and warmups render (#107).
       const p = s.power
-      out.push({ duration: s.duration, powerStart: p?.start ?? 0, powerEnd: p?.end ?? 0 })
+      out.push({ duration: s.duration, powerStart: p?.start ?? p?.value ?? 0, powerEnd: p?.end ?? p?.value ?? 0 })
     }
   }
   steps.forEach(walk)

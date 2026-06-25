@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Post-workout GPS map + flyby (#51)</title>
+<style>
+  :root { --text:#eef1f4; --text-dim:#9298a6; --accent:#34e07d; --bg:#0f1216; --line:#2a2f3a; --blue:#4aa3ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#06080b; color:var(--text); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:18px; }
+  h1 { font-size:17px; margin:0 0 4px; }
+  .lede { color:var(--text-dim); font-size:13px; margin:0 0 16px; max-width:900px; }
+  .toggle { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .toggle button { background:linear-gradient(#21252f,#191c24); color:var(--text); border:1px solid var(--line); border-radius:11px; padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+  .toggle button.on { background:var(--accent); color:#04110a; border-color:var(--accent); }
+  .tag { font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; } .rec { background:var(--accent); color:#04110a; }
+  .panel { display:none; gap:22px; flex-wrap:wrap; } .panel.on { display:flex; }
+  .phone { width:390px; max-width:94vw; background:var(--bg); border:1px solid var(--line); border-radius:26px; padding:0; overflow:hidden; box-shadow:0 18px 50px rgba(0,0,0,.5); }
+  .note { width:300px; min-width:240px; color:var(--text-dim); font-size:13px; } .note h3 { color:var(--text); font-size:14px; margin:0 0 6px; } .note ul { margin:6px 0 14px; padding-left:18px; } .note li { margin:4px 0; }
+  .hdr { display:flex; align-items:center; gap:10px; padding:14px 16px 8px; }
+  .x { width:30px; height:30px; border-radius:999px; background:#181c23; border:1px solid var(--line); color:var(--text); }
+  .hdr h2 { font-size:16px; margin:0; } .hdr .sub { color:var(--text-dim); font-size:12px; }
+  /* fake map */
+  .map { position:relative; height:230px; background:
+      repeating-linear-gradient(0deg, #1a2330 0 1px, transparent 1px 26px),
+      repeating-linear-gradient(90deg, #1a2330 0 1px, transparent 1px 26px),
+      radial-gradient(120% 90% at 50% 20%, #16202c, #0c1420); }
+  .map svg { position:absolute; inset:0; width:100%; height:100%; }
+  .route { fill:none; stroke:var(--accent); stroke-width:4; stroke-linejoin:round; stroke-linecap:round; filter:drop-shadow(0 0 5px rgba(52,224,125,.5)); }
+  .trace { fill:none; stroke:#bfffe0; stroke-width:4; stroke-linecap:round; stroke-dasharray:1400; stroke-dashoffset:1400; animation:draw 6s linear infinite; }
+  @keyframes draw { to { stroke-dashoffset:0; } }
+  .dot { fill:#fff; stroke:var(--accent); stroke-width:3; offset-path:path('M40,200 C70,120 120,150 150,90 C180,40 210,60 250,40'); offset-distance:0%; animation:fly 6s linear infinite; }
+  @keyframes fly { to { offset-distance:100%; } }
+  .pin { fill:#04110a; stroke:var(--accent); stroke-width:3; }
+  .pinE { fill:#04110a; stroke:#fff; stroke-width:3; }
+  .ctrl { position:absolute; left:0; right:0; bottom:10px; display:flex; justify-content:center; gap:8px; }
+  .ctrl button { background:rgba(8,12,16,.85); color:var(--text); border:1px solid var(--line); border-radius:999px; padding:8px 16px; font-weight:700; font-size:13px; }
+  .ctrl .play { background:var(--accent); color:#04110a; border:none; }
+  /* stats */
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:14px 16px; }
+  .stat { background:linear-gradient(#21252f,#191c24); border:1px solid var(--line); border-radius:13px; padding:10px 12px; }
+  .stat span { display:block; color:var(--text-dim); font-size:11px; } .stat b { font-size:18px; }
+  .tabs { display:flex; gap:6px; padding:4px 16px 0; }
+  .tabs div { flex:1; text-align:center; padding:9px; font-size:12px; font-weight:700; color:var(--text-dim); border-bottom:2px solid transparent; }
+  .tabs div.on { color:var(--text); border-bottom-color:var(--accent); }
+  .links { display:flex; gap:12px; padding:6px 16px 16px; } .lnk { font-size:12px; font-weight:700; } .lnk.a{color:var(--accent)} .lnk.b{color:#ff8a3d}
+  /* option B: inline card */
+  .card { background:linear-gradient(#21252f,#191c24); border:1px solid var(--line); border-radius:16px; margin:16px; overflow:hidden; }
+  .cardhead { display:flex; align-items:center; gap:10px; padding:13px 14px; }
+  .ic { width:38px;height:38px;border-radius:11px;background:#0c0f14;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:18px }
+  .small{color:var(--text-dim);font-size:11px}
+</style>
+</head>
+<body>
+  <h1>Post-workout GPS map + Strava-style flyby (#51)</h1>
+  <p class="lede">Tap a completed ride/run → its route on a real map, a ▶ replay that animates a dot along the path, and the key stats. Pulls the GPS + power/HR streams from intervals. The map below is a stylized stand-in; the build uses the real Leaflet/OSM map from #141. Recommendation: <b>A</b>.</p>
+  <div class="toggle">
+    <button class="on" data-p="A">A · Full activity detail + flyby <span class="tag rec">Recommended</span></button>
+    <button data-p="B">B · Inline expand on the card</button>
+  </div>
+
+  <!-- A -->
+  <div class="panel on" data-panel="A">
+    <div class="phone">
+      <div class="hdr"><button class="x">‹</button><div><h2>Friday Ride to Skov</h2><div class="sub">Ride · Jun 26 · outdoor</div></div></div>
+      <div class="map">
+        <svg viewBox="0 0 390 230" preserveAspectRatio="none">
+          <path class="route" d="M40,200 C70,120 120,150 150,90 C180,40 210,60 250,40"/>
+          <path class="trace" d="M40,200 C70,120 120,150 150,90 C180,40 210,60 250,40"/>
+          <circle class="pin" cx="40" cy="200" r="6"/><circle class="pinE" cx="250" cy="40" r="6"/>
+          <circle class="dot" r="7" cx="0" cy="0"/>
+        </svg>
+        <div class="ctrl"><button class="play">▶ Replay</button><button>1×</button></div>
+      </div>
+      <div class="tabs"><div class="on">Map</div><div>Power</div><div>HR</div><div>Splits</div></div>
+      <div class="stats">
+        <div class="stat"><span>Distance</span><b>54.0<small> km</small></b></div>
+        <div class="stat"><span>Time</span><b>1:46</b></div>
+        <div class="stat"><span>Avg power</span><b>183<small> W</small></b></div>
+        <div class="stat"><span>Avg HR</span><b>149</b></div>
+        <div class="stat"><span>Elev</span><b>612<small> m</small></b></div>
+        <div class="stat"><span>TSS</span><b>95</b></div>
+      </div>
+      <div class="links"><span class="lnk a">intervals ↗</span><span class="lnk b">Strava ↗</span></div>
+    </div>
+    <div class="note">
+      <h3>A · Full activity detail + flyby</h3>
+      <ul>
+        <li>Tap a done activity → its own page: <b>route on the map</b> + <b>▶ Replay</b> animating a dot along the path (speed control).</li>
+        <li>Tabs for Map / Power / HR / Splits (extends toward #54's rich analytics).</li>
+        <li>Big stat grid + the intervals↗/Strava↗ links.</li>
+        <li>Reuses the #141 Leaflet map; pulls GPS+power+HR streams from intervals.</li>
+      </ul>
+      <p class="small">Standard for Strava/intervals; room to grow into #54.</p>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="panel" data-panel="B">
+    <div class="phone">
+      <div class="hdr"><button class="x">‹</button><div><h2>History</h2><div class="sub">Wed · Jun 26</div></div></div>
+      <div class="card">
+        <div class="cardhead"><span class="ic">🚴</span><div style="flex:1"><b>Friday Ride to Skov</b><div class="small">1:46 · 54.0 km · 183 W · 95 TSS</div></div><span style="color:var(--accent)">▾</span></div>
+        <div class="map" style="height:180px;border-top:1px solid var(--line)">
+          <svg viewBox="0 0 390 180" preserveAspectRatio="none">
+            <path class="route" d="M40,150 C70,90 120,110 150,70 C180,30 210,50 250,30"/>
+            <circle class="pin" cx="40" cy="150" r="5"/><circle class="pinE" cx="250" cy="30" r="5"/>
+          </svg>
+          <div class="ctrl"><button class="play">▶ Replay</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="note">
+      <h3>B · Inline expand on the card</h3>
+      <ul>
+        <li>The History/Today activity card expands in place to show the map + replay — no separate page.</li>
+        <li>Lighter, fewer taps; but cramped for tabs/rich analytics (#54 wouldn't fit well).</li>
+      </ul>
+      <p class="small">Good if you want it quick & inline; weaker as a base for deeper analytics.</p>
+    </div>
+  </div>
+
+<script>
+  const btns=document.querySelectorAll('.toggle button');
+  btns.forEach(b=>b.onclick=()=>{btns.forEach(x=>x.classList.remove('on'));b.classList.add('on');document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.dataset.panel===b.dataset.p));});
+</script>
+</body>
+</html>

@@ -4,6 +4,8 @@ import { Upload, FileCheck2, X, Link2 } from 'lucide-react'
 import { authApi, type ParsedActivity } from '../auth/api'
 import { logWorkout } from '../db'
 import { fetchGymPlans, type CoachPlan } from '../plan'
+import { FEEL, FIELDS } from './PostWorkout'
+import RouteMapLeaflet from '../RouteMapLeaflet'
 import { localISO } from '../date'
 
 // Single smart form (#129): optionally drop a .fit/.gpx/.tcx to prefill everything,
@@ -28,24 +30,6 @@ function readBase64(file: File): Promise<string> {
   })
 }
 
-/** Normalize a [lat,lng][] track into an SVG polyline (no map tiles — keeps it light + independent). */
-function RouteMap({ track }: { track: [number, number][] }) {
-  const W = 320, H = 150, pad = 10
-  const lats = track.map((p) => p[0]), lngs = track.map((p) => p[1])
-  const minLat = Math.min(...lats), maxLat = Math.max(...lats)
-  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
-  const spanLat = maxLat - minLat || 1e-6, spanLng = maxLng - minLng || 1e-6
-  // keep aspect-ish: scale by the larger span so the route isn't stretched
-  const scale = Math.min((W - 2 * pad) / spanLng, (H - 2 * pad) / spanLat)
-  const ox = (W - spanLng * scale) / 2, oy = (H - spanLat * scale) / 2
-  const pts = track.map(([la, ln]) => `${(ox + (ln - minLng) * scale).toFixed(1)},${(oy + (maxLat - la) * scale).toFixed(1)}`).join(' ')
-  return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="route-map" role="img" aria-label="Route">
-      <polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  )
-}
-
 export default function LogActivity() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -59,6 +43,8 @@ export default function LogActivity() {
   const [avgHr, setAvgHr] = useState('')
   const [avgPower, setAvgPower] = useState('')
   const [rpe, setRpe] = useState(0)
+  const [feel, setFeel] = useState('')
+  const [fields, setFields] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState('')
   const [fileName, setFileName] = useState('')
   const [fileB64, setFileB64] = useState('')
@@ -125,6 +111,8 @@ export default function LogActivity() {
         sport, title, date, startIso, durationSec: dur * 60, distanceM: distM, avgHr: hr, avgPower: pw,
         file: fileB64 ? { name: fileName, b64: fileB64 } : undefined,
       }).catch(() => { /* local copy already saved; intervals is best-effort */ })
+      // 3) linked to a plan → feed the SAME coach-review pipeline as a completed plan (#143)
+      if (linked) await authApi.planFeedback(linked.id, { feel: feel || undefined, rpe: rpe || undefined, fields, note: notes.trim() || undefined }).catch(() => {})
       navigate('/logs')
     } catch (e) { setErr((e as Error).message || 'Could not save'); setBusy(false) }
   }
@@ -154,11 +142,12 @@ export default function LogActivity() {
       )}
       <input ref={fileRef} type="file" accept=".fit,.gpx,.tcx" hidden onChange={onFile} />
 
-      {track.length > 1 && <div className="card" style={{ padding: 8, marginTop: 10 }}><RouteMap track={track} /></div>}
+      {track.length > 1 && <div className="card" style={{ padding: 6, marginTop: 10 }}><RouteMapLeaflet track={track} /></div>}
 
       <div className="section-title"><h2>Details</h2></div>
+      {fileB64 && <p className="meta" style={{ margin: '0 2px 8px' }}>From your file — read-only. Add RPE &amp; notes below.</p>}
       <label className="field-label">Sport</label>
-      <select className="search" value={sport} onChange={(e) => setSport(e.target.value)}>
+      <select className="search" value={sport} disabled={!!fileB64} onChange={(e) => setSport(e.target.value)}>
         {SPORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
       </select>
 
@@ -171,17 +160,26 @@ export default function LogActivity() {
       )}
 
       <div className="form-row">
-        <div><label className="field-label">Date</label><input className="search" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-        <div><label className="field-label">Start</label><input className="search" type="time" value={time} onChange={(e) => setTime(e.target.value)} /></div>
+        <div><label className="field-label">Date</label><input className="search" type="date" value={date} disabled={!!fileB64} onChange={(e) => setDate(e.target.value)} /></div>
+        <div><label className="field-label">Start</label><input className="search" type="time" value={time} disabled={!!fileB64} onChange={(e) => setTime(e.target.value)} /></div>
       </div>
       <div className="form-row">
-        <div><label className="field-label">Duration (min)</label><input className="search" type="number" inputMode="numeric" placeholder="45" value={durationMin} onChange={(e) => setDurationMin(e.target.value)} /></div>
-        <div><label className="field-label">Distance (km)</label><input className="search" type="number" inputMode="decimal" placeholder="—" value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} /></div>
+        <div><label className="field-label">Duration (min)</label><input className="search" type="number" inputMode="numeric" placeholder="45" value={durationMin} disabled={!!fileB64} onChange={(e) => setDurationMin(e.target.value)} /></div>
+        <div><label className="field-label">Distance (km)</label><input className="search" type="number" inputMode="decimal" placeholder="—" value={distanceKm} disabled={!!fileB64} onChange={(e) => setDistanceKm(e.target.value)} /></div>
       </div>
       <div className="form-row">
-        <div><label className="field-label">Avg HR</label><input className="search" type="number" inputMode="numeric" placeholder="—" value={avgHr} onChange={(e) => setAvgHr(e.target.value)} /></div>
-        <div><label className="field-label">Avg power (W)</label><input className="search" type="number" inputMode="numeric" placeholder="—" value={avgPower} onChange={(e) => setAvgPower(e.target.value)} /></div>
+        <div><label className="field-label">Avg HR</label><input className="search" type="number" inputMode="numeric" placeholder="—" value={avgHr} disabled={!!fileB64} onChange={(e) => setAvgHr(e.target.value)} /></div>
+        <div><label className="field-label">Avg power (W)</label><input className="search" type="number" inputMode="numeric" placeholder="—" value={avgPower} disabled={!!fileB64} onChange={(e) => setAvgPower(e.target.value)} /></div>
       </div>
+
+      {/* Linked to a plan → same feedback model as the post-workout page (#143):
+          feel + RPE + sport fields all feed planFeedback → the coach review. */}
+      {linkPlanId && (
+        <>
+          <label className="field-label">How did you feel?</label>
+          <div className="feelrow">{FEEL.map(([l, f]) => <button key={l} type="button" className={'feel' + (feel === l ? ' on' : '')} onClick={() => setFeel(feel === l ? '' : l)}><span className="feel__f">{f}</span><span className="feel__l">{l}</span></button>)}</div>
+        </>
+      )}
 
       <label className="field-label">How hard? (RPE)</label>
       <div className="rpe-row">
@@ -189,6 +187,13 @@ export default function LogActivity() {
           <button key={n} type="button" className={`rpe-dot${rpe >= n ? ' on' : ''}`} onClick={() => setRpe(n === rpe ? 0 : n)} aria-label={`RPE ${n}`}>{n}</button>
         ))}
       </div>
+
+      {linkPlanId && (FIELDS[sport] || FIELDS.gym).map(([label, opts]) => (
+        <div key={label}>
+          <label className="field-label">{label}</label>
+          <div className="chips">{opts.map((o) => <button key={o} type="button" className={'chip' + (fields[label] === o ? ' chip--active' : '')} onClick={() => setFields((f) => ({ ...f, [label]: o }))}>{o}</button>)}</div>
+        </div>
+      ))}
 
       <label className="field-label">Notes</label>
       <textarea className="search" rows={2} placeholder="How did it go?" value={notes} onChange={(e) => setNotes(e.target.value)} />

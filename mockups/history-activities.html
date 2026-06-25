@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>History — surface intervals activities (#130)</title>
+<style>
+  :root { --text:#eef1f4; --text-dim:#9298a6; --accent:#34e07d; --bg:#0f1216; --line:#2a2f3a; --blue:#4aa3ff; --orange:#ff8a3d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#06080b; color:var(--text); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:18px; }
+  h1 { font-size:17px; margin:0 0 4px; }
+  .lede { color:var(--text-dim); font-size:13px; margin:0 0 16px; max-width:900px; }
+  .toggle { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .toggle button { background:linear-gradient(#21252f,#191c24); color:var(--text); border:1px solid var(--line); border-radius:11px; padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+  .toggle button.on { background:var(--accent); color:#04110a; border-color:var(--accent); }
+  .tag { display:inline-block; font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; } .rec { background:var(--accent); color:#04110a; }
+  .stage { display:flex; gap:22px; flex-wrap:wrap; align-items:flex-start; }
+  .panel { display:none; gap:22px; flex-wrap:wrap; } .panel.on { display:flex; }
+  .phone { width:430px; max-width:94vw; background:var(--bg); border:1px solid var(--line); border-radius:26px; padding:16px; box-shadow:0 18px 50px rgba(0,0,0,.5); }
+  .note { width:300px; min-width:240px; color:var(--text-dim); font-size:13px; }
+  .note h3 { color:var(--text); font-size:14px; margin:0 0 6px; } .note ul { margin:6px 0 14px; padding-left:18px; } .note li { margin:4px 0; }
+  .h-head { font-weight:800; font-size:16px; } .h-sub { color:var(--text-dim); font-size:12px; margin-bottom:14px; }
+  .daylabel { font-size:12px; font-weight:800; color:var(--text-dim); letter-spacing:.04em; text-transform:uppercase; margin:16px 2px 8px; }
+  .grouplabel { font-size:11px; font-weight:800; color:var(--text-dim); margin:10px 2px 6px; display:flex; align-items:center; gap:6px; }
+  .chips { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .chip { background:#0c0f14; border:1px solid var(--line); border-radius:999px; padding:5px 11px; font-size:12px; color:var(--text-dim); }
+  .chip b { color:var(--text); }
+  .card { background:linear-gradient(#21252f,#191c24); border:1px solid var(--line); border-radius:16px; padding:13px 14px; margin:8px 0; }
+  .row { display:flex; align-items:center; gap:12px; }
+  .ic { width:40px; height:40px; border-radius:11px; background:#0c0f14; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:20px; flex:none; }
+  .body { flex:1; min-width:0; }
+  .body h3 { margin:0; font-size:15px; } .body .meta { color:var(--text-dim); font-size:12px; margin-top:2px; }
+  .src { font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:999px; flex:none; }
+  .src.pp { background:rgba(52,224,125,.16); color:var(--accent); }
+  .src.dev { background:rgba(74,163,255,.16); color:var(--blue); }
+  .links { display:flex; gap:12px; margin-top:9px; padding-top:9px; border-top:1px solid var(--line); }
+  .lnk { font-size:12px; font-weight:700; color:var(--text-dim); } .lnk.a { color:var(--accent); } .lnk.b { color:var(--orange); }
+  .accent-l { border-left:3px solid var(--blue); }
+  .small { color:var(--text-dim); font-size:11px; }
+</style>
+</head>
+<body>
+  <h1>History — show activities recorded straight to intervals (#130)</h1>
+  <p class="lede">Today History lists only Platyplus-logged sessions. The gap: a device "Morning Run" (Garmin→intervals, not done in-app) never appears. Both options merge intervals activities in, deduped against local logs. Recommendation: <b>Option A</b>.</p>
+  <div class="toggle">
+    <button class="on" data-p="A">A · Unified feed + source tag <span class="tag rec">Recommended</span></button>
+    <button data-p="B">B · Grouped “Done here” / “Synced”</button>
+  </div>
+
+  <!-- OPTION A -->
+  <div class="panel on" data-panel="A">
+    <div class="phone">
+      <div class="h-head">History</div>
+      <div class="h-sub">Each day’s check-in &amp; sessions — every source in one feed</div>
+
+      <div class="daylabel">Wed · Jun 24</div>
+      <div class="chips"><span class="chip">Energy <b>7</b></span><span class="chip">Sleep <b>8</b></span><span class="chip">Freshness <b>6</b></span></div>
+
+      <div class="card accent-l">
+        <div class="row"><span class="ic">🏃</span>
+          <div class="body"><h3>Morning Run</h3><div class="meta">52 min · 9.4 km · HR 149 · 61 TSS</div></div>
+          <span class="src dev">Garmin → intervals</span>
+        </div>
+        <div class="links"><span class="lnk a">intervals ↗</span><span class="lnk b">Strava ↗</span></div>
+      </div>
+
+      <div class="card">
+        <div class="row"><span class="ic">🚴</span>
+          <div class="body"><h3>Sweet Spot Ride</h3><div class="meta">1h46 · 54.0 km · 183 W · 95 TSS</div></div>
+          <span class="src pp">Platyplus</span>
+        </div>
+        <div class="links"><span class="lnk a">intervals ↗</span><span class="small" style="margin-left:auto">matched · shown once</span></div>
+      </div>
+
+      <div class="card">
+        <div class="row"><span class="ic">🏋️</span>
+          <div class="body"><h3>Upper-Body Strength</h3><div class="meta">38 min · 12 sets · 4 200 kg vol</div></div>
+          <span class="src pp">Platyplus</span>
+        </div>
+      </div>
+    </div>
+    <div class="note">
+      <h3>A · Unified feed + source tag</h3>
+      <ul>
+        <li>One chronological feed per day; a small <b>source tag</b> (Platyplus / Garmin→intervals) on each card.</li>
+        <li>Device activities get a subtle blue left-edge so they read as “recorded elsewhere”.</li>
+        <li>Match-first dedup: a Platyplus ride that also synced to intervals shows <b>once</b> (“matched · shown once”).</li>
+        <li>Keeps the intervals↗ / Strava↗ links you already have.</li>
+      </ul>
+      <p class="small">Standard for a unified history (Strava/intervals do this). Least friction.</p>
+    </div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="panel" data-panel="B">
+    <div class="phone">
+      <div class="h-head">History</div>
+      <div class="h-sub">Each day’s check-in &amp; sessions</div>
+
+      <div class="daylabel">Wed · Jun 24</div>
+      <div class="chips"><span class="chip">Energy <b>7</b></span><span class="chip">Sleep <b>8</b></span><span class="chip">Freshness <b>6</b></span></div>
+
+      <div class="grouplabel">✅ DONE IN PLATYPLUS</div>
+      <div class="card">
+        <div class="row"><span class="ic">🚴</span><div class="body"><h3>Sweet Spot Ride</h3><div class="meta">1h46 · 54.0 km · 183 W · 95 TSS</div></div></div>
+        <div class="links"><span class="lnk a">intervals ↗</span></div>
+      </div>
+      <div class="card">
+        <div class="row"><span class="ic">🏋️</span><div class="body"><h3>Upper-Body Strength</h3><div class="meta">38 min · 12 sets · 4 200 kg vol</div></div></div>
+      </div>
+
+      <div class="grouplabel" style="color:var(--blue)">📡 SYNCED FROM INTERVALS</div>
+      <div class="card accent-l">
+        <div class="row"><span class="ic">🏃</span><div class="body"><h3>Morning Run</h3><div class="meta">52 min · 9.4 km · HR 149 · 61 TSS</div></div></div>
+        <div class="links"><span class="lnk a">intervals ↗</span><span class="lnk b">Strava ↗</span></div>
+      </div>
+    </div>
+    <div class="note">
+      <h3>B · Grouped per day</h3>
+      <ul>
+        <li>Each day splits into <b>Done in Platyplus</b> vs <b>Synced from intervals</b> subgroups.</li>
+        <li>Very explicit about provenance; good if you want a hard line between in-app vs device.</li>
+        <li>More visual chrome; a day with one of each shows two headers.</li>
+      </ul>
+      <p class="small">Clearer provenance, busier layout.</p>
+    </div>
+  </div>
+
+<script>
+  const btns=document.querySelectorAll('.toggle button');
+  btns.forEach(b=>b.onclick=()=>{btns.forEach(x=>x.classList.remove('on'));b.classList.add('on');document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.dataset.panel===b.dataset.p));});
+</script>
+</body>
+</html>
