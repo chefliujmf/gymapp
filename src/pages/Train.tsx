@@ -12,6 +12,9 @@ export default function Train() {
         <p>Workouts and your trainers</p>
       </div>
 
+      {/* #118: surface the gym builder here (parity with Ride/Run "+ Build") */}
+      <Link to="/build" className="btn" style={{ marginBottom: 12 }}>＋ Build a gym workout</Link>
+
       <div className="section-title">
         Workouts
         <Link to="/workouts" className="see-all">All {workouts.length} →</Link>
