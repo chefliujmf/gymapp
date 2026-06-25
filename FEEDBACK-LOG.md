@@ -20,14 +20,14 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 
 ## 🔨 / ⬜ Open queue
 
-> **⚠️ ENV DISCONNECT (2026-06-25):** #125–#131 are all on **QA/dev only**. PROD has NOT been promoted,
-> so JM's prod screenshots still show the OLD Add modal (straight to "Search ride…", no type grid, no
-> Import row) and none of the fixes. NEXT: pg_dump backup → promote Postgres + #126–#131 to prod.
+> **✅ SHIPPED TO PROD (2026-06-25):** #125–#131 are now LIVE on prod (PR #37, deploy 6cd23a9). Prod
+> auto-migrated store.json → Postgres (1 user/17 plans), real 28-char PG_PASSWORD, nightly encrypted
+> pg_dump verified (pg-backup.timer → Drive). Healthy + 200.
 
-136. ⬜ **PROMOTE to prod — everything below is QA-only.** Postgres (#125) + logging/errors/eye (#126–#128)
-    + manual activity entry (#129) + calendar import & plan-link (#131) are live on QA, NOT prod. Prod still
-    runs the old build (JM's "Search ride…" Add modal = old code). Do: set a real PG_PASSWORD + nightly
-    pg_dump, then promote. Prod auto-migrates its store.json → Postgres on first boot.
+136. ✅ **PROMOTED to prod (2026-06-25).** Postgres (#125) + logging/errors/eye (#126–#128) + manual
+    activity entry (#129) + calendar import & plan-link (#131) shipped. Set real PG_PASSWORD_PROD secret +
+    wired deploy.yml; nightly `pg-backup.timer` (age-encrypted pg_dump → Drive, 30-day retention). Prod
+    verified: migrated, healthy, backup runs.
 135. ✅ **Local dev login == QA.** Local dev used isolated `dev-data` (seeded `devpass`) so JM's QA password
     was rejected. Synced the QA account (same bcrypt hash + 17 plans) into `server/dev-data/store.json`.
 134. ✅ **`npm run dev` now starts BOTH api+web.** Running `npm run dev` alone = frontend only → :8088 dead →
@@ -39,7 +39,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 132. ✅ **HTTP 500 on login after the Postgres deploy.** loadStore() dropped the top-level `sessionSecret`
     (signs every JWT) → after a redeploy it was undefined → jwt.sign threw → every login 500'd + sessions
     died. Fixed: persist/restore sessionSecret+resets via an `app_meta` table; boot self-check logs if missing.
-131. 🔨 **Import an activity from the calendar + link it to a planned workout (long-standing).** BUILT
+131. ✅ **Import an activity from the calendar + link it to a planned workout (long-standing).** BUILT
     (Option A, JM's pick — mockup mockups/import-activity.html): calendar Add sheet gains an "Import an
     activity" row → opens /log-activity?date=<day>. LogActivity reads ?date, loads that day's plans, and
     shows "Link to plan: <title>" (auto-on when sport matches) → on save it names the activity after the
@@ -57,7 +57,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     upload (#129) DOES create a local copy, so it'll appear in both — this gap is only for activities born on
     a device. (Separate: "not in Strava" = intervals→Strava sync isn't automatic unless the recording
     source/Strava is configured to; Platyplus doesn't control that.)
-129. 🔨 **Manual activity entry — with/without a workout file, with/without GPS.** BUILT (single smart
+129. ✅ **Manual activity entry — with/without a workout file, with/without GPS.** BUILT (single smart
     form, JM's pick; FIT+GPX+TCX): `/log-activity` page (file import prefills, SVG route map when GPS,
     sport/date/time/duration/distance/HR/power/RPE/notes) + entry points (Train hub + History "+ Log").
     Server: `server/activity-parse.js` (fit-file-parser + fast-xml-parser) + `/auth/activity/parse` +
@@ -70,7 +70,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 128. ✅ **Password show/hide "eye" toggle.** Reusable `PasswordInput` (Eye/EyeOff) on the login password, reset "new password", and account change-password fields.
 127. ✅ **Human-readable errors (not "HTTP 500").** Server returns a plain-English message + a short `ref`; client turns network/5xx/4xx into real sentences; logs lead with a human summary line. `humanizeError()` maps known causes (session key, DB down, upstream unreachable, disk).
 126. ✅ **Observability logging (for review + a future watchdog bot).** Global Express error handler logs every failure as `[err <ref>]` (human summary + where + raw detail + stack); `unhandledRejection`/`uncaughtException` nets; `[boot]` self-check that screams if the session key is missing. The 500 that started this was SILENT before. Foundation for a bot that scrapes the rotated docker logs, flags spikes, acts.
-125. 🔨 **Postgres migration (JM: "full relational, most robust").** Built + **verified on QA**:
+125. ✅ **Postgres migration (JM: "full relational, most robust").** Built + **verified on QA**:
     `server/db.js` drop-in for store.js (relational tables + JSONB doc); pg `db` service in both
     compose files; first boot auto-migrates store.json (QA migrated 1 user/17 plans/1 log/1 passkey,
     healthy, 200). REMAINING before heavy prod use: real `PG_PASSWORD` + nightly `pg_dump` backup;
