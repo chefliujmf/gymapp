@@ -32,7 +32,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     fields (sport, date/time, duration, distance, avg HR, avg power) should be LOCKED/display-only — the file
     is the source of truth, not editable number inputs. Keep RPE + Notes editable (not in the file). Manual
     (no file) entry stays fully editable. JM 2026-06-25.
-141. ⬜ **Route shows as a bare line, no actual MAP underneath (#129 import).** The GPS route renders
+141. 🔨 **Route shows as a bare line, no actual MAP underneath (#129 import).** The GPS route renders
     (green SVG polyline, confirmed on QA w/ the .fit — 300 pts) but there are no map tiles/streets behind it,
     so JM reads it as "no map." Decision needed (mock-first): (a) real tile map — Leaflet + OpenStreetMap
     tiles (free, no key, but a live third-party source — weigh vs the media-independence rule, which is about

@@ -4,6 +4,7 @@ import { Upload, FileCheck2, X, Link2 } from 'lucide-react'
 import { authApi, type ParsedActivity } from '../auth/api'
 import { logWorkout } from '../db'
 import { fetchGymPlans, type CoachPlan } from '../plan'
+import RouteMapLeaflet from '../RouteMapLeaflet'
 import { localISO } from '../date'
 
 // Single smart form (#129): optionally drop a .fit/.gpx/.tcx to prefill everything,
@@ -26,24 +27,6 @@ function readBase64(file: File): Promise<string> {
     r.onerror = () => reject(new Error('Could not read the file'))
     r.readAsDataURL(file)
   })
-}
-
-/** Normalize a [lat,lng][] track into an SVG polyline (no map tiles — keeps it light + independent). */
-function RouteMap({ track }: { track: [number, number][] }) {
-  const W = 320, H = 150, pad = 10
-  const lats = track.map((p) => p[0]), lngs = track.map((p) => p[1])
-  const minLat = Math.min(...lats), maxLat = Math.max(...lats)
-  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
-  const spanLat = maxLat - minLat || 1e-6, spanLng = maxLng - minLng || 1e-6
-  // keep aspect-ish: scale by the larger span so the route isn't stretched
-  const scale = Math.min((W - 2 * pad) / spanLng, (H - 2 * pad) / spanLat)
-  const ox = (W - spanLng * scale) / 2, oy = (H - spanLat * scale) / 2
-  const pts = track.map(([la, ln]) => `${(ox + (ln - minLng) * scale).toFixed(1)},${(oy + (maxLat - la) * scale).toFixed(1)}`).join(' ')
-  return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="route-map" role="img" aria-label="Route">
-      <polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  )
 }
 
 export default function LogActivity() {
@@ -154,7 +137,7 @@ export default function LogActivity() {
       )}
       <input ref={fileRef} type="file" accept=".fit,.gpx,.tcx" hidden onChange={onFile} />
 
-      {track.length > 1 && <div className="card" style={{ padding: 8, marginTop: 10 }}><RouteMap track={track} /></div>}
+      {track.length > 1 && <div className="card" style={{ padding: 6, marginTop: 10 }}><RouteMapLeaflet track={track} /></div>}
 
       <div className="section-title"><h2>Details</h2></div>
       {fileB64 && <p className="meta" style={{ margin: '0 2px 8px' }}>From your file — read-only. Add RPE &amp; notes below.</p>}
