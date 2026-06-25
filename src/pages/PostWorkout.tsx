@@ -13,7 +13,8 @@ const RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 export const FIELDS: Record<string, [string, string[]][]> = {
   ride: [['Legs before', ['fresh', 'normal', 'heavy']], ['Legs after', ['fresh', 'tired OK', 'cooked']], ['Fuel / GI', ['great', 'ok', 'not needed', 'issues']], ['Pain / niggles', ['none', 'knee', 'back', 'other']]],
   run: [['Legs before', ['fresh', 'normal', 'heavy']], ['Legs after', ['fresh', 'tired OK', 'cooked']], ['Fuel / GI', ['great', 'ok', 'not needed', 'issues']], ['Pain / niggles', ['none', 'shin', 'knee', 'other']]],
-  gym: [['How heavy', ['easy', 'right', 'too hard']], ['Soreness / pump', ['none', 'good pump', 'already sore']], ['Form', ['clean', 'ok', 'broke down']], ['Pain / niggles', ['none', 'shoulder', 'low back', 'other']]],
+  // "How heavy" removed (#75) — it duplicated RPE 1–10. Effort = RPE; these stay distinct.
+  gym: [['Soreness / pump', ['none', 'good pump', 'already sore']], ['Form', ['clean', 'ok', 'broke down']], ['Pain / niggles', ['none', 'shoulder', 'low back', 'other']]],
 }
 
 /** Post-workout feedback for a completed coach plan — sport-dependent. Coach notes
