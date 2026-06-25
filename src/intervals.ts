@@ -8,7 +8,8 @@ const DEFAULT_ATHLETE = 'i28814'
 
 export interface IcuStep {
   duration?: number
-  power?: { start: number; end: number; units: string }
+  // intervals expresses power as a ramp {start,end} OR a steady {value} (%FTP) — both occur
+  power?: { start?: number; end?: number; value?: number; units?: string }
   reps?: number
   steps?: IcuStep[]
   text?: string
@@ -324,8 +325,10 @@ export function flattenIcuSteps(steps: IcuStep[] = []): Segment[] {
     } else if (s.steps) {
       s.steps.forEach(walk)
     } else if (s.duration) {
+      // steady steps carry {value}; ramps carry {start,end}. Fall back to value so a
+      // steady effort isn't flattened to 0 (#72 flat-blue) and warmups render (#107).
       const p = s.power
-      out.push({ duration: s.duration, powerStart: p?.start ?? 0, powerEnd: p?.end ?? 0 })
+      out.push({ duration: s.duration, powerStart: p?.start ?? p?.value ?? 0, powerEnd: p?.end ?? p?.value ?? 0 })
     }
   }
   steps.forEach(walk)
