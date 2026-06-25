@@ -173,19 +173,23 @@ export async function fetchActivity(id: string | number): Promise<IcuActivity | 
     return res.ok ? await res.json() : null
   } catch { return null }
 }
-/** The GPS track ([lat,lng][]) of an activity from its intervals stream. Empty if
- *  indoor / no GPS / error. Used for the post-workout map + flyby (#51). */
-export async function fetchActivityLatLng(id: string | number): Promise<[number, number][]> {
+/** Per-sample streams of an activity from intervals (GPS + power/HR/altitude/cadence
+ *  over time). Empty on no key / error. Powers the post-workout map (#51) + the
+ *  timeline analytics (#54). */
+export interface ActivityStreams { time?: number[]; watts?: (number | null)[]; heartrate?: (number | null)[]; altitude?: (number | null)[]; cadence?: (number | null)[]; latlng?: [number, number][] }
+export async function fetchActivityStreams(id: string | number, types: string[] = ['latlng', 'time', 'watts', 'heartrate', 'altitude', 'cadence']): Promise<ActivityStreams> {
   const { apiKey, serverKey } = await getIcuConfig()
-  if (!apiKey && !serverKey) return []
+  if (!apiKey && !serverKey) return {}
   try {
-    const res = await fetch(`${ICU}/activity/${id}/streams?types=latlng`, { headers: icuHeaders(apiKey) })
-    if (!res.ok) return []
-    const data = await res.json()
-    const s = Array.isArray(data) ? data.find((x: { type?: string }) => x.type === 'latlng') : null
-    return ((s?.data as [number, number][]) || []).filter((p) => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
-  } catch { return [] }
+    const res = await fetch(`${ICU}/activity/${id}/streams?types=${types.join(',')}`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return {}
+    const arr = await res.json()
+    const out: Record<string, unknown> = {}
+    if (Array.isArray(arr)) for (const s of arr) if (s?.type && Array.isArray(s.data)) out[s.type] = s.data
+    return out as ActivityStreams
+  } catch { return {} }
 }
+export const cleanLatLng = (t?: [number, number][]) => (t || []).filter((p) => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
 export const sportOfActivity = (a: IcuActivity) => (/run/i.test(a.type) ? 'run' : /ride|cycl/i.test(a.type) ? 'ride' : 'gym')
 /** Indoor = trainer/virtual; otherwise outdoor (only meaningful for ride/run). */
 export const isIndoorActivity = (a: IcuActivity) => a.trainer === true || /virtual/i.test(a.type || '')

@@ -52,9 +52,13 @@ const range = (series: Series[]) => {
 
 /** Smooth multi-series line chart: gradient area, draw-in animation, and tap/hover
  * scrubbing with a tooltip. Responsive (stretches to width). */
-export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover, bands }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void; bands?: { from: number; to: number; color: string }[] }) {
+export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover, bands, cursor }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void; bands?: { from: number; to: number; color: string }[]; cursor?: number | null }) {
   const uid = useId()
-  const [hi, setHi] = useState<number | null>(null)
+  const [hi_, setHi] = useState<number | null>(null)
+  // `cursor` makes the chart CONTROLLED — used to sync several stacked charts to one
+  // scrubber (#54). When omitted, the chart tracks its own hover.
+  const ctrl = cursor !== undefined
+  const hi = ctrl ? cursor : hi_
   const r = range(series)
   if (!r) return <div className="chart-empty">No data yet</div>
   const H = height
@@ -65,7 +69,7 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
   const x = (i: number) => P + (i / Math.max(1, n - 1)) * (VW - 2 * P)
   const y = (v: number) => P + (1 - (v - dMin) / ((dMax - dMin) || 1)) * (H - 2 * P)
   const fv = (v: number) => (fmt ? fmt(v) : `${Math.round(v * 10) / 10}${unit}`)
-  const setH = (i: number | null) => { setHi(i); onHover?.(i) }
+  const setH = (i: number | null) => { if (!ctrl) setHi(i); onHover?.(i) }
   const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - rect.left) / rect.width; setH(Math.max(0, Math.min(n - 1, Math.round(fx * (n - 1))))) }
   const hx = hi != null ? (hi / Math.max(1, n - 1)) * 100 : 0
   const gridYs = nice ? nice.ticks.map((v) => y(v)) : [0, 0.5, 1].map((g) => P + g * (H - 2 * P))
