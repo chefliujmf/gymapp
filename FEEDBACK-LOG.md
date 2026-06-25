@@ -24,7 +24,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 > auto-migrated store.json → Postgres (1 user/17 plans), real 28-char PG_PASSWORD, nightly encrypted
 > pg_dump verified (pg-backup.timer → Drive). Healthy + 200.
 
-143. ⬜ **Align Log-activity feedback with the post-workout feedback page.** The "How hard? (RPE)" + Notes
+143. 🔨 **Align Log-activity feedback with the post-workout feedback page.** The "How hard? (RPE)" + Notes
     in /log-activity should match the existing post-workout feedback flow (PostWorkout.tsx, `feedback/:id`) —
     same fields/component (feel/RPE/form/notes) + feed the SAME coach-review pipeline (#76) so a logged/linked
     activity reviews like a completed planned workout. One feedback model, not two. JM 2026-06-25.

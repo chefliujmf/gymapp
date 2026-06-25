@@ -4,6 +4,7 @@ import { Upload, FileCheck2, X, Link2 } from 'lucide-react'
 import { authApi, type ParsedActivity } from '../auth/api'
 import { logWorkout } from '../db'
 import { fetchGymPlans, type CoachPlan } from '../plan'
+import { FEEL, FIELDS } from './PostWorkout'
 import RouteMapLeaflet from '../RouteMapLeaflet'
 import { localISO } from '../date'
 
@@ -42,6 +43,8 @@ export default function LogActivity() {
   const [avgHr, setAvgHr] = useState('')
   const [avgPower, setAvgPower] = useState('')
   const [rpe, setRpe] = useState(0)
+  const [feel, setFeel] = useState('')
+  const [fields, setFields] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState('')
   const [fileName, setFileName] = useState('')
   const [fileB64, setFileB64] = useState('')
@@ -108,6 +111,8 @@ export default function LogActivity() {
         sport, title, date, startIso, durationSec: dur * 60, distanceM: distM, avgHr: hr, avgPower: pw,
         file: fileB64 ? { name: fileName, b64: fileB64 } : undefined,
       }).catch(() => { /* local copy already saved; intervals is best-effort */ })
+      // 3) linked to a plan → feed the SAME coach-review pipeline as a completed plan (#143)
+      if (linked) await authApi.planFeedback(linked.id, { feel: feel || undefined, rpe: rpe || undefined, fields, note: notes.trim() || undefined }).catch(() => {})
       navigate('/logs')
     } catch (e) { setErr((e as Error).message || 'Could not save'); setBusy(false) }
   }
@@ -167,12 +172,28 @@ export default function LogActivity() {
         <div><label className="field-label">Avg power (W)</label><input className="search" type="number" inputMode="numeric" placeholder="—" value={avgPower} disabled={!!fileB64} onChange={(e) => setAvgPower(e.target.value)} /></div>
       </div>
 
+      {/* Linked to a plan → same feedback model as the post-workout page (#143):
+          feel + RPE + sport fields all feed planFeedback → the coach review. */}
+      {linkPlanId && (
+        <>
+          <label className="field-label">How did you feel?</label>
+          <div className="feelrow">{FEEL.map(([l, f]) => <button key={l} type="button" className={'feel' + (feel === l ? ' on' : '')} onClick={() => setFeel(feel === l ? '' : l)}><span className="feel__f">{f}</span><span className="feel__l">{l}</span></button>)}</div>
+        </>
+      )}
+
       <label className="field-label">How hard? (RPE)</label>
       <div className="rpe-row">
         {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
           <button key={n} type="button" className={`rpe-dot${rpe >= n ? ' on' : ''}`} onClick={() => setRpe(n === rpe ? 0 : n)} aria-label={`RPE ${n}`}>{n}</button>
         ))}
       </div>
+
+      {linkPlanId && (FIELDS[sport] || FIELDS.gym).map(([label, opts]) => (
+        <div key={label}>
+          <label className="field-label">{label}</label>
+          <div className="chips">{opts.map((o) => <button key={o} type="button" className={'chip' + (fields[label] === o ? ' chip--active' : '')} onClick={() => setFields((f) => ({ ...f, [label]: o }))}>{o}</button>)}</div>
+        </div>
+      ))}
 
       <label className="field-label">Notes</label>
       <textarea className="search" rows={2} placeholder="How did it go?" value={notes} onChange={(e) => setNotes(e.target.value)} />

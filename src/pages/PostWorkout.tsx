@@ -6,10 +6,11 @@ import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals
 import { DoneStats } from '../ui'
 
 // Intervals.icu "Feel" scale (Strong/Good/Normal/Poor/Weak), mirrored backend-side.
-const FEEL: [string, string][] = [['Strong', '😎'], ['Good', '🙂'], ['Normal', '😐'], ['Poor', '🙁'], ['Weak', '😵']]
+// Exported so Log-activity shares ONE feedback model + coach pipeline (#143).
+export const FEEL: [string, string][] = [['Strong', '😎'], ['Good', '🙂'], ['Normal', '😐'], ['Poor', '🙁'], ['Weak', '😵']]
 const RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 // Sport-dependent feedback fields.
-const FIELDS: Record<string, [string, string[]][]> = {
+export const FIELDS: Record<string, [string, string[]][]> = {
   ride: [['Legs before', ['fresh', 'normal', 'heavy']], ['Legs after', ['fresh', 'tired OK', 'cooked']], ['Fuel / GI', ['great', 'ok', 'not needed', 'issues']], ['Pain / niggles', ['none', 'knee', 'back', 'other']]],
   run: [['Legs before', ['fresh', 'normal', 'heavy']], ['Legs after', ['fresh', 'tired OK', 'cooked']], ['Fuel / GI', ['great', 'ok', 'not needed', 'issues']], ['Pain / niggles', ['none', 'shin', 'knee', 'other']]],
   gym: [['How heavy', ['easy', 'right', 'too hard']], ['Soreness / pump', ['none', 'good pump', 'already sore']], ['Form', ['clean', 'ok', 'broke down']], ['Pain / niggles', ['none', 'shoulder', 'low back', 'other']]],
