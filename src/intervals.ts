@@ -95,6 +95,7 @@ export interface IcuWellness {
   restingHR: number | null
   hrv: number | null
   sleepHours: number | null
+  sleepScore: number | null // 0-100 from a sleep tracker (Garmin/Oura/…), when present
 }
 /** Recent wellness/fitness series from intervals.icu (read-only). Empty on no key/error. */
 export async function fetchWellness(oldest: string, newest: string): Promise<IcuWellness[]> {
@@ -111,6 +112,7 @@ export async function fetchWellness(oldest: string, newest: string): Promise<Icu
       load: d.ctlLoad ?? d.atlLoad ?? null, eftp: d.eftp ?? (d as Record<string, number>).icu_eftp ?? null,
       weight: d.weight ?? null, restingHR: d.restingHR ?? null,
       hrv: d.hrv ?? d.hrvSDNN ?? null, sleepHours: d.sleepSecs ? Math.round((d.sleepSecs / 3600) * 10) / 10 : null,
+      sleepScore: d.sleepScore ?? null,
     }))
   } catch { return [] }
 }

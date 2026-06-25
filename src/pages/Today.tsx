@@ -3,7 +3,15 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting } from '../db'
 import { WeekStrip, MiniProfile, DoneStats } from '../ui'
-import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
+import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, fetchWellness, type IcuEvent, type IcuActivity, type IcuWellness } from '../intervals'
+
+// Map an intervals wellness day to the 1–5 check-in Sleep scale (#64): prefer a
+// device sleep SCORE (0-100), else infer from hours slept.
+function sleepTo5(w: IcuWellness): number | null {
+  if (w.sleepScore != null) return Math.max(1, Math.min(5, Math.ceil(w.sleepScore / 20)))
+  if (w.sleepHours != null) { const h = w.sleepHours; return h < 5 ? 1 : h < 6 ? 2 : h < 7 ? 3 : h < 8 ? 4 : 5 }
+  return null
+}
 import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, setCoachPlans, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
 import { calApi, type CalItem } from '../calendar'
@@ -27,6 +35,16 @@ function CheckInCard({ day }: { day: string }) {
   useEffect(() => { setLoaded(false); authApi.checkins(day, day).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [day])
   const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: day }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
   const [editing, setEditing] = useState(false)
+  // #64: when intervals is connected, prefill Sleep from that day's wellness sleep
+  // score (still editable). #74: surface HRV + resting HR as read-only chips.
+  const [icuW, setIcuW] = useState<IcuWellness | null>(null)
+  const [sleepFromIcu, setSleepFromIcu] = useState(false)
+  useEffect(() => { let live = true; setIcuW(null); fetchWellness(day, day).then((ws) => { if (live) setIcuW(ws.find((x) => x.date === day) || null) }).catch(() => {}); return () => { live = false } }, [day])
+  useEffect(() => {
+    if (!loaded || !icuW) return
+    const s = sleepTo5(icuW)
+    if (s != null && ci?.sleep == null) { set({ sleep: s }); setSleepFromIcu(true) }
+  }, [loaded, icuW]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!loaded) return null
   // Emoji faces, 1–5, ALWAYS visible (JM: must not be hidden or it gets skipped).
   // Consistent direction: best feeling is always the RIGHT face. Soreness is shown
@@ -58,15 +76,23 @@ function CheckInCard({ day }: { day: string }) {
       <div className="checkin__t" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>How {isToday ? 'do' : 'did'} you feel{isToday ? ' today' : ''}?{editing && <button className="checkin__edit" onClick={() => setEditing(false)}>Done ✓</button>}</div>
       {rows.map((r) => (
         <div key={r.key} className="checkin__row2">
-          <span className="checkin__lbl">{r.label} <InfoDot text={r.info} /></span>
+          <span className="checkin__lbl">{r.label} <InfoDot text={r.info} />{r.key === 'sleep' && sleepFromIcu && <span className="checkin__src"> · from tracker</span>}</span>
           <div className="checkin__faces">
             {[1, 2, 3, 4, 5].map((n) => {
               const stored = r.invert ? 6 - n : n, on = ci?.[r.key] === stored
-              return <button key={n} className={'checkin__face' + (on ? ' on' : '')} aria-label={`${r.label} ${n} of 5`} aria-pressed={on} onClick={() => set({ [r.key]: stored })}>{CHECKIN_FACES[n - 1]}</button>
+              return <button key={n} className={'checkin__face' + (on ? ' on' : '')} aria-label={`${r.label} ${n} of 5`} aria-pressed={on} onClick={() => { if (r.key === 'sleep') setSleepFromIcu(false); set({ [r.key]: stored }) }}>{CHECKIN_FACES[n - 1]}</button>
             })}
           </div>
         </div>
       ))}
+      {icuW && (icuW.hrv != null || icuW.restingHR != null || icuW.sleepHours != null) && (
+        <div className="checkin__wchips">
+          {icuW.sleepHours != null && <span className="wchip">😴 {icuW.sleepHours}h</span>}
+          {icuW.hrv != null && <span className="wchip">HRV {Math.round(icuW.hrv)}</span>}
+          {icuW.restingHR != null && <span className="wchip">Rest HR {Math.round(icuW.restingHR)}</span>}
+          <span className="wchip wchip--src">intervals</span>
+        </div>
+      )}
     </div>
   )
 }
