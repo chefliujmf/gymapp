@@ -28,7 +28,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     in /log-activity should match the existing post-workout feedback flow (PostWorkout.tsx, `feedback/:id`) —
     same fields/component (feel/RPE/form/notes) + feed the SAME coach-review pipeline (#76) so a logged/linked
     activity reviews like a completed planned workout. One feedback model, not two. JM 2026-06-25.
-142. ⬜ **Imported file = read-only metrics (#129).** When a .fit/.gpx/.tcx is imported, the file-driven
+142. 🔨 **Imported file = read-only metrics (#129).** When a .fit/.gpx/.tcx is imported, the file-driven
     fields (sport, date/time, duration, distance, avg HR, avg power) should be LOCKED/display-only — the file
     is the source of truth, not editable number inputs. Keep RPE + Notes editable (not in the file). Manual
     (no file) entry stays fully editable. JM 2026-06-25.
@@ -38,10 +38,10 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     tiles (free, no key, but a live third-party source — weigh vs the media-independence rule, which is about
     BUNDLED catalog media, not a live map service); or (b) keep it independent but make it read as a route
     (graticule/grid bg, start/end pins, distance label). Pairs with #51 (post-workout GPS map + flyby). JM 2026-06-25.
-140. ⬜ **BUG: Plan/Calendar Day view snaps back to TODAY.** Navigating to another day then clicking Add /
+140. 🔨 **BUG: Plan/Calendar Day view snaps back to TODAY.** Navigating to another day then clicking Add /
     changing something resets the selected day to today ("Add to <today>" instead of the day you were on).
     The selected-day state isn't preserved across the action/re-render. (Calendar.tsx `sel`.) JM 2026-06-25.
-139. ⬜ **BUG: desktop can start a ride — mobile-only gate not enforced at "Ride now".** On desktop (dev),
+139. 🔨 **BUG: desktop can start a ride — mobile-only gate not enforced at "Ride now".** On desktop (dev),
     the ride detail page shows "▶ Ride now" and lets you proceed; rides are MOBILE-FIRST (#109) — there was
     a "Ride from your phone" gate page. Re-enforce it (the RidePlayer gate exists for no-bridge desktop; make
     sure "Ride now" routes through it / hides on desktop). NOTE: the ride PROFILE now renders correctly
@@ -50,7 +50,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     `npm run dev` stops (terminal closed / api exits) → :8088 dead → vite proxies /auth to nothing → 500.
     Mitigated: `npm run dev` self-heals (`--restart-tries 20`) + must stay in its own terminal. During a
     session, keep a persistent dev server running for JM. (See memory [[platyplus-testing-workflow]].)
-137. ⬜ **BUG: check-in summary only shows for TODAY in the Today view.** Selecting another day in the
+137. 🔨 **BUG: check-in summary only shows for TODAY in the Today view.** Selecting another day in the
     WeekStrip hides the "Checked in · Energy/Sleep/Freshness" block even when that day HAS a check-in (it's
     in History). Today.tsx renders the check-in for `today` only — should render it for the SELECTED day
     (fetch/show the check-in for the day picked in the strip). JM screenshot 2026-06-25.

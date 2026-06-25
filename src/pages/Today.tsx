@@ -20,12 +20,12 @@ import { InfoDot } from '../charts'
 const CHECKIN_FACES = ['💀', '😩', '😐', '😀', '🤩']
 
 /** Quick "how do you feel" check-in (energy/sleep/soreness) — a few taps, feeds the coach. */
-function CheckInCard() {
-  const today = localISO()
+function CheckInCard({ day }: { day: string }) {
+  const isToday = day === localISO()
   const [ci, setCi] = useState<Checkin | null>(null)
   const [loaded, setLoaded] = useState(false)
-  useEffect(() => { authApi.checkins(today, today).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [today])
-  const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: today }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
+  useEffect(() => { setLoaded(false); authApi.checkins(day, day).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [day])
+  const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: day }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
   const [editing, setEditing] = useState(false)
   if (!loaded) return null
   // Emoji faces, 1–5, ALWAYS visible (JM: must not be hidden or it gets skipped).
@@ -44,7 +44,7 @@ function CheckInCard() {
     return (
       <div className="card checkin checkin--mini">
         <div className="checkin__mhead">
-          <span className="checkin__done">✓ Checked in today</span>
+          <span className="checkin__done">✓ Checked in{isToday ? ' today' : ''}</span>
           <button className="checkin__edit" style={{ flex: 'none' }} onClick={() => setEditing(true)}>Edit</button>
         </div>
         <div className="checkin__chips">
@@ -55,7 +55,7 @@ function CheckInCard() {
   }
   return (
     <div className="card checkin checkin--tight">
-      <div className="checkin__t" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>How do you feel today?{editing && <button className="checkin__edit" onClick={() => setEditing(false)}>Done ✓</button>}</div>
+      <div className="checkin__t" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>How {isToday ? 'do' : 'did'} you feel{isToday ? ' today' : ''}?{editing && <button className="checkin__edit" onClick={() => setEditing(false)}>Done ✓</button>}</div>
       {rows.map((r) => (
         <div key={r.key} className="checkin__row2">
           <span className="checkin__lbl">{r.label} <InfoDot text={r.info} /></span>
@@ -286,7 +286,7 @@ export default function Today() {
 
       <WeekStrip selected={selDay} onSelect={setSelDay} marked={markedDays} />
 
-      {selDay === todayISO() && <CheckInCard />}
+      <CheckInCard key={selDay} day={selDay} />
 
       {todaysLogs && todaysLogs.length > 0 && (
         <Link to="/progress" style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — see history →</Link>

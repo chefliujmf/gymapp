@@ -157,8 +157,9 @@ export default function LogActivity() {
       {track.length > 1 && <div className="card" style={{ padding: 8, marginTop: 10 }}><RouteMap track={track} /></div>}
 
       <div className="section-title"><h2>Details</h2></div>
+      {fileB64 && <p className="meta" style={{ margin: '0 2px 8px' }}>From your file — read-only. Add RPE &amp; notes below.</p>}
       <label className="field-label">Sport</label>
-      <select className="search" value={sport} onChange={(e) => setSport(e.target.value)}>
+      <select className="search" value={sport} disabled={!!fileB64} onChange={(e) => setSport(e.target.value)}>
         {SPORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
       </select>
 
@@ -171,16 +172,16 @@ export default function LogActivity() {
       )}
 
       <div className="form-row">
-        <div><label className="field-label">Date</label><input className="search" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-        <div><label className="field-label">Start</label><input className="search" type="time" value={time} onChange={(e) => setTime(e.target.value)} /></div>
+        <div><label className="field-label">Date</label><input className="search" type="date" value={date} disabled={!!fileB64} onChange={(e) => setDate(e.target.value)} /></div>
+        <div><label className="field-label">Start</label><input className="search" type="time" value={time} disabled={!!fileB64} onChange={(e) => setTime(e.target.value)} /></div>
       </div>
       <div className="form-row">
-        <div><label className="field-label">Duration (min)</label><input className="search" type="number" inputMode="numeric" placeholder="45" value={durationMin} onChange={(e) => setDurationMin(e.target.value)} /></div>
-        <div><label className="field-label">Distance (km)</label><input className="search" type="number" inputMode="decimal" placeholder="—" value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} /></div>
+        <div><label className="field-label">Duration (min)</label><input className="search" type="number" inputMode="numeric" placeholder="45" value={durationMin} disabled={!!fileB64} onChange={(e) => setDurationMin(e.target.value)} /></div>
+        <div><label className="field-label">Distance (km)</label><input className="search" type="number" inputMode="decimal" placeholder="—" value={distanceKm} disabled={!!fileB64} onChange={(e) => setDistanceKm(e.target.value)} /></div>
       </div>
       <div className="form-row">
-        <div><label className="field-label">Avg HR</label><input className="search" type="number" inputMode="numeric" placeholder="—" value={avgHr} onChange={(e) => setAvgHr(e.target.value)} /></div>
-        <div><label className="field-label">Avg power (W)</label><input className="search" type="number" inputMode="numeric" placeholder="—" value={avgPower} onChange={(e) => setAvgPower(e.target.value)} /></div>
+        <div><label className="field-label">Avg HR</label><input className="search" type="number" inputMode="numeric" placeholder="—" value={avgHr} disabled={!!fileB64} onChange={(e) => setAvgHr(e.target.value)} /></div>
+        <div><label className="field-label">Avg power (W)</label><input className="search" type="number" inputMode="numeric" placeholder="—" value={avgPower} disabled={!!fileB64} onChange={(e) => setAvgPower(e.target.value)} /></div>
       </div>
 
       <label className="field-label">How hard? (RPE)</label>
