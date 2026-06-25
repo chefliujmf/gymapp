@@ -145,6 +145,7 @@ export interface IcuActivity {
   name?: string
   moving_time?: number
   distance?: number // metres
+  total_elevation_gain?: number // metres climbed
   icu_average_watts?: number
   average_heartrate?: number
   icu_training_load?: number // TSS
@@ -161,6 +162,28 @@ export async function fetchActivities(oldest: string, newest: string): Promise<I
   try {
     const res = await fetch(`${ICU}/athlete/${athleteId}/activities?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey) })
     return res.ok ? await res.json() : []
+  } catch { return [] }
+}
+/** A single completed activity by id (summary). Null on no key / error. (#51) */
+export async function fetchActivity(id: string | number): Promise<IcuActivity | null> {
+  const { apiKey, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return null
+  try {
+    const res = await fetch(`${ICU}/activity/${id}`, { headers: icuHeaders(apiKey) })
+    return res.ok ? await res.json() : null
+  } catch { return null }
+}
+/** The GPS track ([lat,lng][]) of an activity from its intervals stream. Empty if
+ *  indoor / no GPS / error. Used for the post-workout map + flyby (#51). */
+export async function fetchActivityLatLng(id: string | number): Promise<[number, number][]> {
+  const { apiKey, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return []
+  try {
+    const res = await fetch(`${ICU}/activity/${id}/streams?types=latlng`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return []
+    const data = await res.json()
+    const s = Array.isArray(data) ? data.find((x: { type?: string }) => x.type === 'latlng') : null
+    return ((s?.data as [number, number][]) || []).filter((p) => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
   } catch { return [] }
 }
 export const sportOfActivity = (a: IcuActivity) => (/run/i.test(a.type) ? 'run' : /ride|cycl/i.test(a.type) ? 'ride' : 'gym')
