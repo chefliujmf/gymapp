@@ -20,6 +20,9 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 
 ## 🔨 / ⬜ Open queue
 
+128. ✅ **Password show/hide "eye" toggle.** Reusable `PasswordInput` (Eye/EyeOff) on the login password, reset "new password", and account change-password fields.
+127. ✅ **Human-readable errors (not "HTTP 500").** Server returns a plain-English message + a short `ref`; client turns network/5xx/4xx into real sentences; logs lead with a human summary line. `humanizeError()` maps known causes (session key, DB down, upstream unreachable, disk).
+126. ✅ **Observability logging (for review + a future watchdog bot).** Global Express error handler logs every failure as `[err <ref>]` (human summary + where + raw detail + stack); `unhandledRejection`/`uncaughtException` nets; `[boot]` self-check that screams if the session key is missing. The 500 that started this was SILENT before. Foundation for a bot that scrapes the rotated docker logs, flags spikes, acts.
 125. 🔨 **Postgres migration (JM: "full relational, most robust").** Built + **verified on QA**:
     `server/db.js` drop-in for store.js (relational tables + JSONB doc); pg `db` service in both
     compose files; first boot auto-migrates store.json (QA migrated 1 user/17 plans/1 log/1 passkey,

@@ -22,16 +22,33 @@ export interface User {
 }
 
 async function req<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
-  const res = await fetch('/auth' + path, {
-    method: opts.method || (opts.body ? 'POST' : 'GET'),
-    headers: opts.body ? { 'content-type': 'application/json' } : undefined,
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-    credentials: 'same-origin',
-  })
+  let res: Response
+  try {
+    res = await fetch('/auth' + path, {
+      method: opts.method || (opts.body ? 'POST' : 'GET'),
+      headers: opts.body ? { 'content-type': 'application/json' } : undefined,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      credentials: 'same-origin',
+    })
+  } catch {
+    // fetch only rejects on a network-level failure (offline, server unreachable).
+    throw new Error("Can't reach the server. Check your connection and try again.")
+  }
   const data = res.status === 204 ? null : await res.json().catch(() => null)
   if (!res.ok) {
-    const err = new Error((data && (data as { error?: string }).error) || `HTTP ${res.status}`) as Error & { status?: number }
+    const body = (data || {}) as { error?: string; ref?: string }
+    // Prefer the server's human message; turn bare 5xx/4xx into plain English.
+    let message = body.error
+    if (!message) {
+      if (res.status >= 500) message = 'Something went wrong on our end. It has been logged.'
+      else if (res.status === 401) message = 'Wrong username or password.'
+      else if (res.status === 404) message = 'Not found.'
+      else message = 'That request could not be completed.'
+    }
+    if (res.status >= 500 && body.ref) message += ` (ref ${body.ref})`
+    const err = new Error(message) as Error & { status?: number; ref?: string }
     err.status = res.status // so callers can tell a server error (e.g. 401) from a network failure
+    err.ref = body.ref
     throw err
   }
   return data as T

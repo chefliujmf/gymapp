@@ -1082,11 +1082,22 @@ app.get('*', (req, res) => res.sendFile(join(STATIC_DIR, 'index.html')))
 // monitoring routine / a future watchdog bot can scrape docker logs, flag spikes,
 // and act. Each 500 carries a short `ref` echoed to the client for correlation.
 const errId = () => randomBytes(4).toString('hex')
+// Translate a raw error into a sentence a human (and a monitoring bot) can act on.
+function humanizeError(err) {
+  const m = String(err?.message || err || '')
+  if (/secretOrPrivateKey|jwt/i.test(m)) return "The server's session key wasn't loaded, so sign-in is temporarily unavailable."
+  if (/ECONNREFUSED|ETIMEDOUT|terminating connection|the database system|relation .* does not exist|password authentication|too many clients/i.test(m)) return 'The database is unavailable or misconfigured right now.'
+  if (/fetch failed|ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(m)) return 'A service we depend on (e.g. intervals.icu) is unreachable right now.'
+  if (/ENOSPC|EROFS|disk/i.test(m)) return 'The server is out of disk space.'
+  return 'Something unexpected went wrong on our end.'
+}
 app.use((err, req, res, next) => {
   const ref = errId()
-  console.error(`[err ${ref}] ${req.method} ${req.originalUrl} uid=${req.user?.id || '-'} :: ${err?.message || err}\n${err?.stack || ''}`)
+  const human = humanizeError(err)
+  // Plain-English summary first, then the where + raw detail + stack for investigation.
+  console.error(`[err ${ref}] ${human}\n  where: ${req.method} ${req.originalUrl} (user ${req.user?.username || req.user?.id || 'anonymous'})\n  detail: ${err?.message || err}\n${err?.stack || ''}`)
   if (res.headersSent) return next(err)
-  res.status(err?.status || 500).json({ error: 'Internal error', ref })
+  res.status(err?.status || 500).json({ error: human, ref })
 })
 // Last-resort safety nets — async throws that bypass Express still get logged.
 process.on('unhandledRejection', (e) => console.error(`[unhandledRejection] ${e?.stack || e}`))
@@ -1109,8 +1120,8 @@ async function start() {
   }
   await seedAndDefaults()
   // boot self-check — a missing sessionSecret would 500 every login (silently before).
-  if (!store.sessionSecret) console.error('[boot] CRITICAL: store.sessionSecret missing — logins will 500')
-  console.log(`[boot] store=${USE_PG ? 'postgres' : 'file'} users=${store.users.length} sessionSecret=${store.sessionSecret ? 'ok' : 'MISSING'}`)
+  if (!store.sessionSecret) console.error('[boot] CRITICAL: the session key is missing — every sign-in will fail until this is fixed.')
+  console.log(`[boot] Ready on the ${USE_PG ? 'Postgres' : 'file'} store with ${store.users.length} user account(s). Session key ${store.sessionSecret ? 'loaded' : 'MISSING'}.`)
   app.listen(PORT, () => console.log(`gymapp listening on :${PORT} (rpID ${RP_ID}) [${USE_PG ? 'postgres' : 'file'}, ${store.users.length} users]`))
 }
 start().catch((e) => { console.error('FATAL startup failed:', e); process.exit(1) })

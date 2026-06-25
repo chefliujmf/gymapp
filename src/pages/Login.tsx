@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Fingerprint } from 'lucide-react'
 import { authApi } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
+import PasswordInput from '../PasswordInput'
 
 type Mode = 'login' | 'forgot' | 'reset'
 
@@ -66,7 +67,7 @@ export default function Login() {
             {usePassword && (
               <>
                 <input className="search" placeholder="Username or email" value={login} autoCapitalize="none" onChange={(e) => setLogin(e.target.value)} />
-                <input className="search" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <PasswordInput value={password} onChange={setPassword} placeholder="Password" autoComplete="current-password" />
                 <button className="btn" disabled={busy || !login || !password}>Sign in</button>
                 {passkeySupported && (
                   <button type="button" className="auth-link" onClick={() => setUsePassword(false)}>Use a passkey instead</button>
@@ -90,7 +91,7 @@ export default function Login() {
           <form onSubmit={doReset} className="auth-form">
             <input className="search" placeholder="Email" value={email} autoCapitalize="none" onChange={(e) => setEmail(e.target.value)} />
             <input className="search" placeholder="6-digit code" value={code} onChange={(e) => setCode(e.target.value)} />
-            <input className="search" type="password" placeholder="New password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <PasswordInput value={password} onChange={setPassword} placeholder="New password" autoComplete="new-password" />
             <button className="btn" disabled={busy || !email || !code || !password}>Set new password</button>
             <button type="button" className="auth-link" onClick={() => setMode('login')}>Back to sign in</button>
           </form>
