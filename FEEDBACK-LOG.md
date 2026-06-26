@@ -45,7 +45,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     sheet (Week/Day), picking Gym shows just blank divider lines — no templates and no catalog gym workouts
     to pick. (Calendar.tsx AddSheet gym section — templates + workouts not rendering.) JM screenshot 2026-06-26,
     reported before.
-147. ⬜ **Post-workout feedback choices don't match intervals.icu's custom fields.** intervals has these
+147. 🧪 **Post-workout feedback choices don't match intervals.icu's custom fields.** intervals has these
     activity custom fields with FULL option lists (e.g. Legs After = strong / normal / tired OK / barely
     tired / heavy / sore — 6 opts; also Fuel/GI, Legs Before, **Life Constraint**, **Mental State**,
     Pain/Niggles). Platyplus FIELDS (PostWorkout) have fewer/different choices and is MISSING Life Constraint

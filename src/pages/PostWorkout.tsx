@@ -9,13 +9,22 @@ import { DoneStats } from '../ui'
 // Exported so Log-activity shares ONE feedback model + coach pipeline (#143).
 export const FEEL: [string, string][] = [['Strong', '😎'], ['Good', '🙂'], ['Normal', '😐'], ['Poor', '🙁'], ['Weak', '😵']]
 const RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-// Sport-dependent feedback fields.
-export const FIELDS: Record<string, [string, string[]][]> = {
-  ride: [['Legs before', ['fresh', 'normal', 'heavy']], ['Legs after', ['fresh', 'tired OK', 'cooked']], ['Fuel / GI', ['great', 'ok', 'not needed', 'issues']], ['Pain / niggles', ['none', 'knee', 'back', 'other']]],
-  run: [['Legs before', ['fresh', 'normal', 'heavy']], ['Legs after', ['fresh', 'tired OK', 'cooked']], ['Fuel / GI', ['great', 'ok', 'not needed', 'issues']], ['Pain / niggles', ['none', 'shin', 'knee', 'other']]],
-  // "How heavy" removed (#75) — it duplicated RPE 1–10. Effort = RPE; these stay distinct.
-  gym: [['Soreness / pump', ['none', 'good pump', 'already sore']], ['Form', ['clean', 'ok', 'broke down']], ['Pain / niggles', ['none', 'shoulder', 'low back', 'other']]],
-}
+// Feedback fields MIRROR the athlete's intervals.icu custom ACTIVITY_FIELDs exactly (#147) —
+// names + option lists fetched 2026-06-26 from /athlete/{id}/custom-item (type ACTIVITY_FIELD).
+// intervals' fields are GLOBAL (not sport-split), so one canonical set applies to every sport.
+// Previously Platyplus had fewer/different choices and was missing Life Constraint + Mental State.
+export const ICU_FIELDS: [string, string[]][] = [
+  ['Legs Before', ['fresh', 'normal', 'relaxed', 'heavy', 'sore', 'flat', 'tired']],
+  ['Legs After', ['strong', 'normal', 'tired OK', 'barely tired', 'heavy', 'sore', 'cooked']],
+  ['Fuel/GI', ['not needed', 'water only OK', 'carbs OK', 'underfueled', 'GI issue', 'too much fuel']],
+  ['Pain/Niggles', ['none', 'knee', 'back', 'neck/shoulder', 'foot', 'saddle', 'other']],
+  ['Life Constraint', ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other']],
+  ['Mental State', ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out']],
+]
+// intervals field CODE for each label — kept so a future write-back can POST the right custom field.
+export const ICU_FIELD_CODES: Record<string, string> = { 'Legs Before': 'LegsBefore', 'Legs After': 'LegsAfter', 'Fuel/GI': 'FuelGI', 'Pain/Niggles': 'PainNiggles', 'Life Constraint': 'LifeConstraint', 'Mental State': 'MentalState' }
+// Every sport uses the same intervals field set (matches intervals exactly).
+export const FIELDS: Record<string, [string, string[]][]> = { ride: ICU_FIELDS, run: ICU_FIELDS, gym: ICU_FIELDS }
 
 /** Post-workout feedback for a completed coach plan — sport-dependent. Coach notes
  *  up top, then the intervals "Feel" + RPE + sport fields + free text. Saved to the

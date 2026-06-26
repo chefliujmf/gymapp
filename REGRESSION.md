@@ -33,11 +33,21 @@ test, awaiting JM · ✅ JM-verified.
 **Expected:** the Add sheet opens **on Today** (you stay on Today; URL doesn't switch to Plan); adding
 an item refreshes Today; the Plan page's Add/Substitute still works exactly as before.
 
-### R4 · #147 — feedback choices don't match intervals ❌
-**Bug:** post-workout fields/choices differ from intervals.icu's custom fields (Legs After has 6 opts; Life Constraint + Mental State missing).
-**Unit test (planned):** `src/feedback.test.ts` → `FIELDS` equals the intervals field/option set.
-**You test:** open post-workout feedback for a ride.
-**Expected:** the fields + choices match what intervals shows (Legs After = strong/normal/tired OK/barely tired/heavy/sore, + Life Constraint, Mental State, …).
+### R4 · #147 — feedback choices don't match intervals 🧪
+**Bug:** post-workout fields/choices differed from intervals.icu's custom fields (Legs After was
+[fresh, tired OK, cooked]; Life Constraint + Mental State missing).
+**Fix:** I fetched the athlete's REAL custom ACTIVITY_FIELD defs live from intervals
+(`/athlete/{id}/custom-item`) and mirrored all 6 EXACTLY (names + options + codes) in
+`PostWorkout.tsx` → `ICU_FIELDS`. intervals' fields are global (not sport-split), so ride/run/gym
+now all show the same 6. (Note: that means **gym** now shows "Legs After / Fuel/GI" too — tell me if
+you'd rather gym keep a gym-specific set.)
+**Unit test:** `src/feedback.test.ts` → `npm test` (6 tests) — asserts the 6 field names in order,
+Life Constraint + Mental State present, and every option list matches the intervals defs.
+**You test:** open "✓ Done? Log how it went" for a ride/run.
+**Expected:** fields read **Legs Before · Legs After · Fuel/GI · Pain/Niggles · Life Constraint ·
+Mental State** with the exact intervals options (Legs After = strong/normal/tired OK/barely tired/
+heavy/sore/cooked). NOTE: feedback is still Platyplus-local + fed to the coach — it does NOT yet
+WRITE BACK to intervals (codes are stored for when we build that).
 
 ### R9 · #148 — "Add → Search gym" list is empty 🔍 CAN'T REPRO
 **Bug (reported):** picking Gym in the Add sheet shows blank lines, no workouts.
