@@ -152,6 +152,7 @@ export interface IcuActivity {
   average_heartrate?: number
   icu_training_load?: number // TSS
   icu_intensity?: number // IF
+  avg_lr_balance?: number // average left/right pedal balance (% on the right), when the meter records it
   trainer?: boolean
   icu_rpe?: number // 1-10
   feel?: number // 1-5
