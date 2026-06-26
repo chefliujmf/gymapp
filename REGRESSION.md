@@ -23,11 +23,15 @@ test, awaiting JM · ✅ JM-verified.
 **You test (manual):** on a **desktop** browser (no bridge), open a ride plan.
 **Expected:** no actionable "Ride now" — shows "Open on your phone"; on mobile it works normally.
 
-### R3 · #146 — Today "Add" jumps to the Calendar ❌
-**Bug:** tapping Add on Today navigates away to /plan instead of adding in place.
-**Test:** manual (navigation).
-**You test:** on the **Today** tab, tap **Add**.
-**Expected:** the Add sheet opens **on Today** (you stay on Today; URL doesn't switch to Plan).
+### R3 · #146 — Today "Add" jumps to the Calendar 🧪
+**Bug:** tapping Add on Today navigated away to /plan instead of adding in place.
+**Fix:** extracted the Add sheet into a shared `src/pages/AddSheet.tsx` (decoupled from Calendar's
+`Entry` via a `lockType` prop); Today now renders it in place (`swapOn = setSheet({date})`) instead of
+`navigate('/plan?…&add=1')`. tsc 0 · build ✓ · 9/9 unit tests (no regression to the Plan-page sheet).
+**Test:** manual (navigation) — no DOM test harness (jsdom/RTL) in the repo yet.
+**You test:** on the **Today** tab, tap **Add** (and the ＋ on a day's cards).
+**Expected:** the Add sheet opens **on Today** (you stay on Today; URL doesn't switch to Plan); adding
+an item refreshes Today; the Plan page's Add/Substitute still works exactly as before.
 
 ### R4 · #147 — feedback choices don't match intervals ❌
 **Bug:** post-workout fields/choices differ from intervals.icu's custom fields (Legs After has 6 opts; Life Constraint + Mental State missing).
@@ -35,11 +39,14 @@ test, awaiting JM · ✅ JM-verified.
 **You test:** open post-workout feedback for a ride.
 **Expected:** the fields + choices match what intervals shows (Legs After = strong/normal/tired OK/barely tired/heavy/sore, + Life Constraint, Mental State, …).
 
-### R9 · #148 — "Add → Search gym" list is empty ❌
-**Bug:** picking Gym in the Add sheet shows blank lines, no workouts.
-**Unit test (planned):** the gym-list builder returns a non-empty list for the catalog.
-**You test:** Plan → Add → **Gym**.
-**Expected:** a searchable list of gym workouts/templates.
+### R9 · #148 — "Add → Search gym" list is empty 🔍 CAN'T REPRO
+**Bug (reported):** picking Gym in the Add sheet shows blank lines, no workouts.
+**Investigation:** catalog has **139** gym workouts (local == box, byte-identical); the Add-sheet
+gym render maps them correctly (40 cards, no query); PWA is `autoUpdate`. → not explainable from
+code/data. Catalog is gitignored (restored at deploy), so a CI import-guard isn't reliable.
+**Need from JM to repro:** (a) which env — dev (localhost) / QA / prod? (b) does a **hard refresh
+(Cmd+Shift+R)** make the list appear? (c) any **browser console** errors when you open Add → Gym?
+With that I can pin it (stale bundle vs a real render bug) and add the right test.
 
 ---
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, getSetting } from '../db'
+import { db, getSetting, listTemplates, listRideTemplates, type WorkoutTemplate, type RideTemplate } from '../db'
 import { WeekStrip, MiniProfile, DoneStats } from '../ui'
 import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, fetchWellness, type IcuEvent, type IcuActivity, type IcuWellness } from '../intervals'
 
@@ -20,6 +20,7 @@ import type { Recipe } from '../types'
 import { localISO } from '../date'
 import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
+import { AddSheet } from './AddSheet'
 import { authApi, type Checkin } from '../auth/api'
 import { InfoDot } from '../charts'
 
@@ -208,6 +209,11 @@ export default function Today() {
   const [items, setItems] = useState<CalItem[]>([])
   const [added, setAdded] = useState<Record<string, boolean>>({})
   const [err, setErr] = useState<string>()
+  // #146: the Add sheet opens IN PLACE on Today (the same shared sheet the Plan page uses).
+  const [sheet, setSheet] = useState<{ date: string } | null>(null)
+  const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
+  const [rideTemplates, setRideTemplates] = useState<RideTemplate[]>([])
+  const [ftp, setFtp] = useState(260)
   const navigate = useNavigate()
 
   const load = useCallback(() => {
@@ -219,6 +225,7 @@ export default function Today() {
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [])
   useEffect(() => { load() }, [load])
+  useEffect(() => { listTemplates().then(setTemplates); listRideTemplates().then(setRideTemplates); getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }) }, [])
 
   function runPlan(p: CoachPlan) {
     if (p.sport === 'gym') { setGymSession(gymSessionFromPlan(p)); navigate('/gym-session/play') }
@@ -237,9 +244,9 @@ export default function Today() {
     await calApi.delPlan(p.id); load()
   }
   async function removeItem(it: CalItem) { await calApi.delItem(it.id); load() }
-  // Add/Substitute jump to that day's calendar AND auto-open the add sheet (add=1),
-  // so it's one tap — no landing on Plan and clicking Add again (#56/#57).
-  const swapOn = (day: string) => navigate(`/plan?d=${day}&v=day&add=1`)
+  // #146: Add/Substitute open the shared Add sheet IN PLACE on Today — no navigating
+  // away to /plan (JM disliked the jump). Adds reload via onAdd=load.
+  const swapOn = (day: string) => setSheet({ date: day })
 
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' })()
   // Merge-by-id: a coach/owned plan that's already shown as an intervals event card
@@ -384,6 +391,7 @@ export default function Today() {
         </>
       )}
 
+      {sheet && <AddSheet date={sheet.date} ftp={ftp} templates={templates} rideTemplates={rideTemplates} onClose={() => setSheet(null)} onAdd={load} />}
     </div>
   )
 }

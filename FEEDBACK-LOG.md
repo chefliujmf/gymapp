@@ -25,6 +25,18 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+151. ⬜ **VERIFY: when a workout is DONE, does it write back into Platyplus per the flows we defined?** When a planned
+    workout is completed (gym-session finish / ride-player end / "✓ Done? Log how it went" feedback), check the whole
+    write path: (a) it records a LOG/completion in Platyplus (Dexie `logs` + History), (b) it follows the agreed flows —
+    indoor ride → FIT → Strava (results flow), completed→History merge, and the ONE feedback model feeding the coach-review
+    pipeline (#76/#143). Confirm each leg actually fires (not just "marked done" visually). JM 2026-06-26.
+150. ⬜ **BUG: intervals ↔ Platyplus mismatch — items in intervals aren't "seen" in Platyplus, and vice versa.** JM
+    sees divergence both ways. Suspected causes (to confirm against code): (a) Platyplus READS intervals only within a
+    fetched date RANGE + filters some out (ATP/NOTE markers, categories), so out-of-window or filtered events don't show;
+    (b) items ADDED IN Platyplus (Add sheet → gymapp coach-plans / calendar_items in Postgres) are gymapp-LOCAL and are
+    NOT pushed back to intervals (only the coach engine dual-writes by shared ID), so they never appear in intervals;
+    (c) the reconcile/dedup (external_id `:date` suffix, day/sport/title) may hide one side. Need a screenshot + a
+    specific example (which item, which direction, which date) to pin the exact path. JM 2026-06-26.
 149. ⬜ **Strava: confirm completed activities actually reach Strava.** JM's "morning run" was in intervals
     but NOT in Strava. Likely the device→Strava sync (Garmin/Coros account config), not Platyplus — but
     confirm: (a) for DEVICE activities, Strava comes from the device's own Strava link, not us; (b) for
@@ -39,7 +51,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     Pain/Niggles). Platyplus FIELDS (PostWorkout) have fewer/different choices and is MISSING Life Constraint
     + Mental State. Since feedback syncs to those intervals fields, ALIGN the field names + choices exactly
     (ideally fetch the athlete's custom-field defs from intervals, or mirror them). JM screenshot 2026-06-26.
-146. ⬜ **BUG: Today "Add" navigates AWAY to the Plan/Calendar page (reported before).** Clicking Add on the
+146. 🧪 **BUG: Today "Add" navigates AWAY to the Plan/Calendar page (reported before).** Clicking Add on the
     Today page jumps to /plan (calendar Day view) + opens the Add sheet there, instead of opening the Add
     sheet IN PLACE on Today. JM wants to add without leaving Today. (Today.tsx swapOn → navigate; #56/#57 made
     it jump — JM dislikes that.) JM screenshot 2026-06-26.
