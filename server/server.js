@@ -330,7 +330,24 @@ function upsertCheckin(user, body) {
   return ci
 }
 const checkinsInRange = (user, from, to) => (user.checkins || []).filter((c) => (!from || c.date >= from) && (!to || c.date <= to)).sort((a, b) => (a.date < b.date ? -1 : 1))
-app.post('/auth/checkin', auth, (req, res) => { const ci = upsertCheckin(req.user, req.body || {}); save(store); res.json(ci) })
+app.post('/auth/checkin', auth, (req, res) => {
+  const ci = upsertCheckin(req.user, req.body || {})
+  save(store)
+  res.json(ci)
+  // #65: a POOR + COMPLETE check-in for TODAY → fire the coach to adapt today's plan
+  // (recovery / cut intensity / move it). Reuses runCoachTask (#76). Once per day
+  // (coachAdapted flag), only for athletes who've set up their coach.
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const complete = ci.energy != null && ci.sleep != null && ci.soreness != null
+    const poor = (ci.energy != null && ci.energy <= 2) || (ci.sleep != null && ci.sleep <= 2) || (ci.soreness != null && ci.soreness >= 4)
+    if (req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && poor && !ci.coachAdapted) {
+      ci.coachAdapted = true; save(store)
+      const msg = `The athlete just checked in for today (${today}) and it's a POOR recovery day — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore). Look at TODAY's planned session(s) with list_schedule and decide if it should be eased: cut intensity/volume, swap to recovery, or move it. If you change anything, do it with the tools and use notify to tell them what you changed and why (a line or two). If today is already easy or rest, just reassure them briefly via notify. Don't ask questions — act.`
+      runCoachTask(req.user, msg).catch((e) => console.error('[checkin-adapt] ' + (e.message || e)))
+    }
+  } catch (e) { console.error('[checkin-adapt] trigger ' + e.message) }
+})
 app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
 
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads
