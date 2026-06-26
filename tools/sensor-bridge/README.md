@@ -36,3 +36,32 @@ in-browser Web Bluetooth pairing (which is fine on Android Chrome / your phone).
 - Works for any standard BLE HR strap, smart trainer (FTMS) or power meter (CPS).
 - This is a personal-use helper; it's not deployed — you run it on the machine you
   ride from.
+
+## Menubar app (#102) — for non-technical riders
+
+Instead of running the CLI, package this as a **macOS menubar app** so a non-technical
+user just opens "Platyplus Sensor Bridge" and rides — no terminal. `main.mjs` wraps
+`startBridge()` in an Electron tray (status: HR / trainer / running).
+
+**Build it (on a Mac — the BLE native module + signing need real hardware):**
+
+```bash
+cd tools/sensor-bridge
+npm install              # installs electron + electron-builder; postinstall runs
+                         # electron-rebuild so @abandonware/noble matches Electron's ABI
+npm run app              # dev: launches the menubar app locally to test
+npm run dist             # builds a .dmg into dist/
+```
+
+**Notes / gotchas (must be done on the Mac, can't be verified in CI):**
+- **Native module:** `@abandonware/noble` is native — `electron-rebuild` (the
+  `postinstall`) recompiles it for Electron. If BLE doesn't work in the app, re-run
+  `npx electron-rebuild -f -w @abandonware/noble`.
+- **Bluetooth permission:** macOS will prompt on first run (the `NSBluetooth…` string
+  is set). Grant it.
+- **Code signing (for sharing with others, e.g. the household):** set an Apple
+  Developer ID and notarize — add to `npm run dist`:
+  `CSC_NAME="Developer ID Application: <you>" APPLE_ID=… APPLE_APP_SPECIFIC_PASSWORD=… APPLE_TEAM_ID=… npm run dist`.
+  Unsigned, it still runs on your own Mac (right-click → Open the first time).
+- The app is menubar-only (`LSUIElement`), keeps running with no window, and stops the
+  bridge cleanly on Quit.

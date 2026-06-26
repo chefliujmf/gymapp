@@ -5,6 +5,7 @@ import { authApi, type ParsedActivity } from '../auth/api'
 import { logWorkout } from '../db'
 import { fetchGymPlans, type CoachPlan } from '../plan'
 import { FEEL, FIELDS } from './PostWorkout'
+import { gymTSSfromRPE } from '../tss'
 import RouteMapLeaflet from '../RouteMapLeaflet'
 import { localISO } from '../date'
 
@@ -105,6 +106,8 @@ export default function LogActivity() {
         notes: notes.trim() || undefined, rpe: rpe || undefined, distanceKm: distanceKm ? Number(distanceKm) : undefined,
         avgHr: hr, avgPower: pw, source: fileB64 ? 'file' : 'manual', track: track.length ? track : undefined,
         planId: linked?.id,
+        // #81: gym sessions logged with an RPE get an actual-effort training load
+        tss: sport === 'gym' && rpe && dur ? gymTSSfromRPE(dur, rpe) : undefined,
       })
       // 2) fan out to intervals (match-first): raw file or a summary TCX
       await authApi.logManualActivity({

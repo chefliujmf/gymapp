@@ -159,3 +159,18 @@ When prescribing a gym session, include:
 - target effort or reps in reserve
 - what to skip if time is short
 - what would make the session too costly for cycling
+
+## Quantifying strength training load (gym TSS)
+
+Treat gym work as real training load, not "free." Platyplus scores a strength session as a
+TSS-equivalent (Joe Friel's weightlifting method): **duration × an effort-per-hour factor**.
+
+- Planned estimate, from prescribed effort: low / mobility ≈ 25 TSS/h · standard hypertrophy
+  or maintenance ≈ 45 TSS/h · heavy / high-effort ≈ 65 TSS/h.
+- Post-session, once the athlete rates it (RPE 1–10), use the ACTUAL effort:
+  **TSS/h ≈ 8 + RPE×6** (so a 50-min session at RPE 7 ≈ (50/60)×50 ≈ **42 TSS**). This replaces
+  the planned estimate with what really happened.
+
+Use this when weighing the week: a couple of heavy gym sessions can add 80–120 TSS — account
+for it before stacking bike intensity, and lean on it (not the bike) to trim load in fatigued
+weeks. When you review a logged gym session, read its RPE and reflect the real cost in your notes.
