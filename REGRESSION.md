@@ -49,7 +49,7 @@ Mental State** with the exact intervals options (Legs After = strong/normal/tire
 heavy/sore/cooked). NOTE: feedback is still Platyplus-local + fed to the coach — it does NOT yet
 WRITE BACK to intervals (codes are stored for when we build that).
 
-### R9 · #148 — "Add → Search gym" list is empty 🔍 CAN'T REPRO
+### R9 · #148 — Add sheet list invisible (cards collapsed) 🧪 FIXED (CSS)
 **Bug (reported):** picking Gym in the Add sheet shows blank lines, no workouts.
 **Investigation:** catalog has **139** gym workouts (local == box, byte-identical); the Add-sheet
 gym render maps them correctly (40 cards, no query); PWA is `autoUpdate`. → not explainable from
