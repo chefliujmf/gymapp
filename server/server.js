@@ -265,14 +265,27 @@ app.put('/auth/profile', auth, (req, res) => {
 app.post('/auth/promote-prod', auth, admin, async (req, res) => {
   const token = process.env.GH_PROMOTE_TOKEN
   if (!token) return res.status(503).json({ error: 'GH_PROMOTE_TOKEN not set on the server — add it to the deploy secrets to enable in-app promotion.' })
+  const REPO = 'chefliujmf/gymapp'
+  // Do what promote-prod.yml does, DIRECTLY: open/reuse a dev→main PR + enable
+  // auto-merge. This needs only Contents+Pull-requests:write (what the PAT has) — NOT
+  // actions:write, so it avoids the 403 the old workflow_dispatch hit (#144).
+  const gh = (path, opts = {}) => fetch(`https://api.github.com${path}`, { ...opts, headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'platyplus-server', ...(opts.headers || {}) } })
   try {
-    const r = await fetch('https://api.github.com/repos/chefliujmf/gymapp/actions/workflows/promote-prod.yml/dispatches', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'platyplus-server' },
-      body: JSON.stringify({ ref: 'main' }),
-    })
-    if (r.status === 204) return res.json({ ok: true })
-    return res.status(502).json({ error: `GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` })
+    // 1) reuse an open dev→main PR, else create one
+    let pr
+    const list = await gh(`/repos/${REPO}/pulls?base=main&head=chefliujmf:dev&state=open`)
+    const arr = list.ok ? await list.json() : []
+    if (arr.length) pr = arr[0]
+    else {
+      const cr = await gh(`/repos/${REPO}/pulls`, { method: 'POST', body: JSON.stringify({ title: 'Promote dev → main', head: 'dev', base: 'main', body: 'Promotion from the in-app button — auto-merges once `build` passes.' }) })
+      if (cr.status === 422) return res.status(409).json({ error: 'Nothing to promote — prod is already up to date with dev.' })
+      if (!cr.ok) return res.status(502).json({ error: `Create PR ${cr.status}: ${(await cr.text()).slice(0, 180)}` })
+      pr = await cr.json()
+    }
+    // 2) enable auto-merge (GraphQL) so it merges when the protected `build` check passes
+    const mm = await gh('/graphql', { method: 'POST', body: JSON.stringify({ query: 'mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:MERGE}){clientMutationId}}', variables: { id: pr.node_id } }) })
+    const mj = await mm.json().catch(() => ({}))
+    return res.json({ ok: true, pr: pr.number, autoMerge: !mj.errors, note: mj.errors ? String(mj.errors[0]?.message || '').slice(0, 140) : undefined })
   } catch (e) { return res.status(502).json({ error: String(e).slice(0, 200) }) }
 })
 

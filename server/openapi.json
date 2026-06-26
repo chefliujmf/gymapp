@@ -838,10 +838,10 @@
     },
     "/auth/promote-prod": {
       "post": {
-        "summary": "Admin: trigger the prod-promotion GitHub workflow (workflow_dispatch). Needs GH_PROMOTE_TOKEN in the server env.",
+        "summary": "Admin: promote dev → prod by opening/reusing a dev→main PR + enabling auto-merge (uses GH_PROMOTE_TOKEN; Contents+PRs write, no actions:write needed).",
         "tags": ["admin"],
         "security": [{ "cookieAuth": [] }],
-        "responses": { "200": { "description": "promotion started" }, "503": { "description": "GH_PROMOTE_TOKEN not configured" }, "502": { "description": "GitHub API error" } }
+        "responses": { "200": { "description": "PR opened/reused + auto-merge enabled (merges when the build check passes)" }, "409": { "description": "nothing to promote — prod already up to date" }, "503": { "description": "GH_PROMOTE_TOKEN not configured" }, "502": { "description": "GitHub API error" } }
       }
     },
     "/auth/checkin": {
