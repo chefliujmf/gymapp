@@ -51,7 +51,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     a "Ride from your phone" gate page. Re-enforce it (the RidePlayer gate exists for no-bridge desktop; make
     sure "Ride now" routes through it / hides on desktop). NOTE: the ride PROFILE now renders correctly
     (varied green/blue bars) — #72/#107 fix confirmed in JM's screenshot. JM 2026-06-25.
-138. ⬜ **Dev keeps "can't connect / Something went wrong" — backend not running.** Recurring: local
+138. ✅ **Dev keeps "can't connect / Something went wrong" — backend not running.** Recurring: local
     `npm run dev` stops (terminal closed / api exits) → :8088 dead → vite proxies /auth to nothing → 500.
     Mitigated: `npm run dev` self-heals (`--restart-tries 20`) + must stay in its own terminal. During a
     session, keep a persistent dev server running for JM. (See memory [[platyplus-testing-workflow]].)
