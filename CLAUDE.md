@@ -67,6 +67,12 @@ See skill `platyplus-testing` + memory `platyplus-testing-workflow`.
 | Change the build pipeline | `scripts/*` stay consistent (`build-catalog`, `fetch-missing-media`) |
 | New UX feature using the calendar | use `calApi` (`src/calendar.ts`); document new endpoints in openapi.json |
 
+## Readiness engine — our own WHOOP (since 2026-06-26)
+Platyplus auto-derives the check-in's **Sleep · Freshness · Energy** as a personal **1–5** from intervals
+wellness (CTL/ATL/Form, HRV, RHR, sleep) + the check-in; manual tap always overrides. Research + formulas +
+build plan → **`docs/readiness-scores.md`**; operational summary → the **`platyplus-readiness-scores`** skill;
+memory `platyplus-readiness-model`. Build the math as a pure, unit-tested `server/readiness.js`. (#158/#159)
+
 ## Tools / scripts (keep current)
 - `scripts/build-catalog.mjs` — builds `src/data/generated/*` from `downloaded_pages/`. Self-hosts all media + runs the independence gate.
 - `scripts/fetch-missing-media.mjs` — downloads still-images the catalog references but we don't have yet (idempotent).

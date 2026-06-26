@@ -27,6 +27,13 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+195. ⬜ **BUILD the readiness engine — our own WHOOP (Sleep·Freshness·Energy 1–5).** JM's deep-research is now in the
+    repo: **`docs/readiness-scores.md`** (verbatim + my assessment), skill `platyplus-readiness-scores`, memory
+    `platyplus-readiness-model`. We already have the data (intervals wellness: CTL/ATL/Form, HRV, RHR, sleep + the
+    check-in), so **Freshness** (ACWR=ATL/CTL + TSB) + **Energy** (0.35 HRV + 0.35 Sleep + 0.15 RHR + 0.15 subjective,
+    z-scored vs a 28–90d baseline) are buildable NOW; **Sleep** is personal (#159, hours÷need). Plan: pure
+    `server/readiness.js` (unit-tested) → wire intervals wellness → baselines → the Today check-in (auto + ⓘ + manual
+    override) + coach signals (Freshness-Energy paradox, poor-sleep-nullifies-gains, HRV-CV). Supersedes #158/#159. JM 2026-06-26.
 194. ⬜ **Stats v1 follow-ups (after #193 grouping).** v1 routes to EXISTING pages, so: (a) WELLNESS card from the
     mockup isn't in v1 — needs its own page (sleep/HRV/RestHR/weight trends from intervals + check-ins); (b) split
     `/fitness` into the GLOBAL "Training load & Form" view vs the CYCLING "power curve/FTP/VO₂max" view (today both cards
