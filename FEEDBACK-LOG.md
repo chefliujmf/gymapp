@@ -25,6 +25,28 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+149. ⬜ **Strava: confirm completed activities actually reach Strava.** JM's "morning run" was in intervals
+    but NOT in Strava. Likely the device→Strava sync (Garmin/Coros account config), not Platyplus — but
+    confirm: (a) for DEVICE activities, Strava comes from the device's own Strava link, not us; (b) for
+    PLATYPLUS-recorded/uploaded activities (#122), verify the opt-in Strava push works. JM 2026-06-25.
+148. ⬜ **BUG: "Add" sheet → "Search gym…" shows an EMPTY list (no gym workouts).** In the calendar Add
+    sheet (Week/Day), picking Gym shows just blank divider lines — no templates and no catalog gym workouts
+    to pick. (Calendar.tsx AddSheet gym section — templates + workouts not rendering.) JM screenshot 2026-06-26,
+    reported before.
+147. ⬜ **Post-workout feedback choices don't match intervals.icu's custom fields.** intervals has these
+    activity custom fields with FULL option lists (e.g. Legs After = strong / normal / tired OK / barely
+    tired / heavy / sore — 6 opts; also Fuel/GI, Legs Before, **Life Constraint**, **Mental State**,
+    Pain/Niggles). Platyplus FIELDS (PostWorkout) have fewer/different choices and is MISSING Life Constraint
+    + Mental State. Since feedback syncs to those intervals fields, ALIGN the field names + choices exactly
+    (ideally fetch the athlete's custom-field defs from intervals, or mirror them). JM screenshot 2026-06-26.
+146. ⬜ **BUG: Today "Add" navigates AWAY to the Plan/Calendar page (reported before).** Clicking Add on the
+    Today page jumps to /plan (calendar Day view) + opens the Add sheet there, instead of opening the Add
+    sheet IN PLACE on Today. JM wants to add without leaving Today. (Today.tsx swapOn → navigate; #56/#57 made
+    it jump — JM dislikes that.) JM screenshot 2026-06-26.
+145. 🔁 **REOPENED #139 — desktop CAN still start a ride; the BUTTON isn't gated.** I gated the PLAYER (and
+    RunPlayer) but the "▶ Ride now" button on the ride-detail pages (CoachPlanDetail + PlanDetail) is still
+    actionable on desktop. JM has said 2-3× you CANNOT ride from desktop. FIX: gate the BUTTON itself
+    (canPlayHere = isMobile || sensor-bridge) so it shows "Open on your phone" on a sensor-less desktop. JM 2026-06-26.
 144. 🔨 **In-app Promote button → GitHub 403 — FIXED IN CODE.** The button POSTed a workflow_dispatch,
     which needs `actions: write`; the PAT has Contents+PRs only → 403. Rather than ask JM to widen the PAT,
     rewrote `/auth/promote-prod` to open/reuse a dev→main PR + enable auto-merge directly (Contents+PRs —
@@ -118,7 +140,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 62. ⬜ **(ref) TrainerRoad in-workout + ride summary** — inspiration for the ride player + post-ride summary (#54).
 64. 🔨 **Infer Sleep from intervals wellness** — when intervals is connected, prefill the check-in Sleep from the wellness sleep score (still editable). Extends into #74.
 65. 🔨 **Check-in auto-adapts today's workout (coach)** — on a poor check-in, the coach evaluates + adjusts TODAY's plan (recovery/cut intensity) with a note. Design the trigger; pairs #76/#91.
-72. 🔨 **BUG: ride thumbnail = flat blue, doesn't match the workout** — CoachPlanCard MiniProfile from `p.segments` isn't reflecting the real structure (segments missing/flat). Fix the thumb or fall back to a sport icon. (Likely same root as #107.)
+72. 🔁 **BUG (REOPENED — still flat): ride thumbnail = flat blue, doesn't match the workout** — CoachPlanCard MiniProfile from `p.segments` isn't reflecting the real structure (segments missing/flat). Fix the thumb or fall back to a sport icon. (Likely same root as #107.)
 74. 🔨 **Check-in chips: add Sleep / HRV / Rest HR** — from intervals wellness when connected, else manual input. Extends #64; #63 chip UI is the home.
 75. 🔨 **Post-workout: trim feel/form redundancy** — RPE 1–10 DONE; still review whether "How did you feel?" vs the gym fields (Form etc.) overlap and trim.
 76. 🔨 **Coach triggers on post-workout feedback** — on feedback submit, the coach reviews + adjusts the plan (cyclingcoach engine). Pairs #65/#91; server-side trigger → coach → plan update + note.

@@ -45,3 +45,9 @@ export function wattsAt(seg: Segment, elapsedSec: number, ftp: number): number {
   const pct = seg.powerStart + (seg.powerEnd - seg.powerStart) * t
   return Math.round((pct / 100) * ftp)
 }
+
+// Mobile-first (#109/#139): a guided ride/run only starts on a touch device — OR on a
+// desktop when the sensor bridge is connected. Gate the "Ride/Run now" BUTTON with this
+// (not just the player), so you can't even try from a sensor-less desktop.
+export const isMobileDevice = () => typeof window !== 'undefined' && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || window.innerWidth < 820)
+export const canPlayHere = (hasBridge?: boolean) => isMobileDevice() || !!hasBridge
