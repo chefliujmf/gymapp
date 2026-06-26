@@ -25,11 +25,10 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
-144. 🔨 **In-app Promote button → GitHub 403 (token lacks Actions:write).** The button POSTs a
-    workflow_dispatch, which needs `actions: write`; `GH_PROMOTE_TOKEN` = `PROMOTE_TOKEN` (Contents+PRs
-    write only) → 403. FIX (JM, GitHub UI): add **Actions: Read and write** to the PROMOTE_TOKEN
-    fine-grained PAT — no redeploy needed (token string unchanged). Workaround: gh / Actions tab. See
-    skill `platyplus-ops`. JM 2026-06-25.
+144. 🔨 **In-app Promote button → GitHub 403 — FIXED IN CODE.** The button POSTed a workflow_dispatch,
+    which needs `actions: write`; the PAT has Contents+PRs only → 403. Rather than ask JM to widen the PAT,
+    rewrote `/auth/promote-prod` to open/reuse a dev→main PR + enable auto-merge directly (Contents+PRs —
+    which the token HAS). No PAT change, no actions:write. Ships in this promotion; verify the button on prod.
 143. 🔨 **Align Log-activity feedback with the post-workout feedback page.** The "How hard? (RPE)" + Notes
     in /log-activity should match the existing post-workout feedback flow (PostWorkout.tsx, `feedback/:id`) —
     same fields/component (feel/RPE/form/notes) + feed the SAME coach-review pipeline (#76) so a logged/linked
