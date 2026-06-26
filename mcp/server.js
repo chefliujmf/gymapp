@@ -179,5 +179,10 @@ server.tool('notify',
   { title: z.string().describe('one-line summary, e.g. "Updated your training plan"'), body: z.string().optional().describe('optional one-line context'), items: z.array(z.string()).optional().describe('bullet list of what changed/was reviewed') },
   wrap((a) => api('POST', '/api/notify', { title: a.title, body: a.body, items: a.items })))
 
+server.tool('save_coach_review',
+  'Save YOUR review of a COMPLETED workout so it shows in the athlete\'s Progress "Coach takeaways" + post-workout view. Call this after you assess how a session went (e.g. after they submit post-workout feedback). Give a one-line verdict, 2-4 short takeaways, and what\'s next.',
+  { date: z.string().describe('the workout date, YYYY-MM-DD'), verdict: z.string().optional().describe('one-line overall verdict, e.g. "Solid threshold work — held the watts, legs faded late."'), takeaways: z.array(z.string()).optional().describe('2-4 short bullets shown on the Progress card'), next: z.string().optional().describe('what to do next / next session focus'), sport: z.string().optional().describe('ride | run | gym'), score: z.number().optional().describe('optional 0-100 execution score'), planId: z.string().optional().describe('the planned workout id, if reviewing one') },
+  wrap((a) => api('POST', '/api/coach-review', { date: a.date, verdict: a.verdict, takeaways: a.takeaways, next: a.next, sport: a.sport, score: a.score, planId: a.planId })))
+
 await server.connect(new StdioServerTransport())
 console.error(`platyplus-mcp ready -> ${BASE}`)
