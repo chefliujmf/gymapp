@@ -25,10 +25,17 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
-155. ⬜ **A DONE workout still shows the PLAN view (power profile + "open on phone"), not a RESULTS UX.** Opening a
-    completed workout shows the planned power profile + the ride gate, instead of the post-workout STATS + GRAPHS we
-    discussed (#51 GPS map/flyby, #93 lift chart, actuals vs target, HR/power, TSS). Need: detail page branches on
-    completed → show results, not the plan/ride-now. JM screenshot 2026-06-26.
+155. ⬜ **Detail page must branch on session STATE (JM spec 2026-06-26) + unify the "use your phone" messaging.**
+    JM: "planned → you see info about the workout; done → you see STATS about the session; missed (past, not done) →
+    like planned." Today it always shows the plan (profile + ride gate) even when done. ALSO inconsistent: two "use
+    mobile" treatments — a FULL-PAGE gate ("Ride from your phone", RidePlayer) AND an inline banner ("Open Platyplus
+    on your phone to ride", my R2 fix on the detail page). PLAN:
+    • **planned / missed** → workout info (profile/exercises) + action: mobile = Ride/Run now; desktop = the INLINE
+      phone hint (non-blocking, keeps the workout visible). Reserve the FULL-PAGE gate ONLY for actually launching the
+      player on desktop. Unify copy/tone between the two.
+    • **done** → RESULTS: actual stats (duration/distance/HR/power/TSS), planned-vs-actual, HR/power graph, GPS map+
+      flyby (#51), RPE/feedback — reuse the activity-detail UI (/activity/:id, built 2026-06-25). No ride gate.
+    Done-detection: a completed activity/log matches this plan's date+sport(+title). JM screenshots 2026-06-26.
 154. ⬜ **R4 feedback fields may not be mobile-friendly — chips, consider a dropdown.** The post-workout fields render
     as chip rows; with 6 fields × 6-8 options that's a lot of chips on a phone. JM: "not sure this is mobile friendly
     (dropdown?)". Evaluate chips vs a compact native `<select>` per field on mobile. JM 2026-06-26.
