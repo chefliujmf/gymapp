@@ -3,11 +3,36 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Local BLE sensor bridge: reads HR strap + smart trainer over the Mac's native Bluetooth and streams to the Platyplus ride player over a localhost WebSocket. Sidesteps macOS Chrome's Web Bluetooth limitation.",
+  "description": "Local BLE sensor bridge: reads HR strap + smart trainer over the Mac's native Bluetooth and streams to the Platyplus ride player over a localhost WebSocket. Sidesteps macOS Chrome's Web Bluetooth limitation. Ships as a CLI and as a menubar app (#102).",
+  "main": "main.mjs",
   "bin": { "platyplus-bridge": "bridge.mjs" },
-  "scripts": { "start": "node bridge.mjs" },
+  "scripts": {
+    "start": "node bridge.mjs",
+    "app": "electron .",
+    "postinstall": "electron-rebuild -f -w @abandonware/noble || true",
+    "dist": "electron-builder --mac"
+  },
   "dependencies": {
     "@abandonware/noble": "^1.9.2-25",
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "@electron/rebuild": "^3.6.0"
+  },
+  "build": {
+    "appId": "duckdns.platyplus.bridge",
+    "productName": "Platyplus Sensor Bridge",
+    "files": ["main.mjs", "bridge.mjs"],
+    "mac": {
+      "category": "public.app-category.healthcare-fitness",
+      "target": "dmg",
+      "hardenedRuntime": true,
+      "extendInfo": {
+        "LSUIElement": true,
+        "NSBluetoothAlwaysUsageDescription": "Connects to your heart-rate strap and smart trainer over Bluetooth so your ride shows live data."
+      }
+    }
   }
 }
