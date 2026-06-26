@@ -757,38 +757,48 @@ async function findIcuEventsForPlan(user, plan) {
   } catch { return [] }
 }
 const icuToday = () => { try { return new Date().toLocaleDateString('en-CA') } catch { return new Date().toISOString().slice(0, 10) } }
-// Mirror a plan to intervals — self-healing (#150):
-//   • NEVER push a planned workout into the PAST; clean up a past event we created.
-//   • if the session is ALREADY in intervals (the other coach pushed it), adopt it + drop our dup.
-//   • `icuEventMine` tracks whether WE created the event, so we only delete/overwrite our own.
+const stripIcuInstance = (s) => String(s || '').replace(/:\d{4}-\d{2}-\d{2}$/, '')
+// Mirror a plan to intervals — self-healing, Platyplus is the MASTER (#150):
+//   • COLLAPSE duplicates: events carrying our external_id (incl. intervals' ":date" instance
+//     copy) are the same session pushed twice → keep ONE, delete the extras.
+//   • PAST: keep NO planned event in the past — delete ours; never create.
+//   • else update our event (or adopt a foreign one — the other coach's — without duplicating).
 async function pushPlanToIcu(user, plan) {
   if (!user.icuKey) return { skipped: 'no intervals key' }
   const ath = user.icuAthlete || 'i28814'
   const delEvent = async (id) => { try { await icuFetch(user, `/athlete/${ath}/events/${id}`, { method: 'DELETE' }) } catch { /* best effort */ } }
-  // (1) Past: don't push planned workouts backwards; remove a past event WE created.
+  const mineId = plan.icuEventId ? String(plan.icuEventId) : null
+
+  const matches = await findIcuEventsForPlan(user, plan)
+  // OUR events = those whose external_id (minus the ":date" instance suffix) is this plan's id.
+  let ours = matches.filter((e) => e.external_id && stripIcuInstance(e.external_id) === plan.id)
+  if (ours.length > 1) { // collapse the instance-suffix duplicate(s) → keep one
+    const keep = ours.find((e) => String(e.id) === mineId) || ours[0]
+    for (const e of ours) if (String(e.id) !== String(keep.id)) await delEvent(e.id)
+    ours = [keep]
+  }
+  const mine = ours[0] || null
+  const foreign = matches.find((e) => !ours.includes(e)) // a different event for the same session
+
+  // (1) PAST: Platyplus keeps no planned event in the past — delete ours, never create.
   if (plan.date < icuToday()) {
-    if (plan.icuEventId && plan.icuEventMine !== false) await delEvent(plan.icuEventId)
+    if (mine) await delEvent(mine.id)
     if (plan.icuEventId) { plan.icuEventId = undefined; plan.icuEventMine = undefined; save(store) }
     return { skipped: 'past' }
   }
-  const matches = await findIcuEventsForPlan(user, plan)
-  const mineId = plan.icuEventId ? String(plan.icuEventId) : null
-  const other = matches.find((e) => String(e.id) !== mineId)
-  // (2) Already in intervals via another event → don't duplicate; drop our own dup.
-  if (other) {
-    if (mineId && mineId !== String(other.id) && plan.icuEventMine !== false) await delEvent(mineId)
-    plan.icuEventId = other.id; plan.icuEventMine = false; save(store)
-    return { exists: other.id }
+  // (2) We have none of our own but the session already exists (other coach) → adopt, don't dup.
+  if (!mine && foreign) {
+    plan.icuEventId = foreign.id; plan.icuEventMine = false; save(store)
+    return { exists: foreign.id }
   }
-  // (3) No match — update OUR event (never overwrite an adopted one), else create a fresh one.
-  if (mineId && plan.icuEventMine === false) return { exists: mineId }
+  // (3) Update OUR event, else create one.
   const ev = planToIcuEvent(plan, (user.items || []).filter((it) => it.date === plan.date))
+  const targetId = mine ? String(mine.id) : null
   try {
-    if (mineId) {
-      const r = await icuFetch(user, `/athlete/${ath}/events/${mineId}`, { method: 'PUT', body: JSON.stringify(ev) })
-      if (r.ok) return { updated: mineId }
+    if (targetId) {
+      const r = await icuFetch(user, `/athlete/${ath}/events/${targetId}`, { method: 'PUT', body: JSON.stringify(ev) })
+      if (r.ok) { plan.icuEventId = targetId; plan.icuEventMine = true; save(store); return { updated: targetId } }
       if (r.status !== 404) return { error: `update ${r.status}` }
-      plan.icuEventId = undefined // tracked event vanished → create fresh
     }
     const r = await icuFetch(user, `/athlete/${ath}/events`, { method: 'POST', body: JSON.stringify(ev) })
     if (!r.ok) return { error: `create ${r.status}` }
