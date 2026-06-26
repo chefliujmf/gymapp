@@ -25,11 +25,22 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
-151. ⬜ **VERIFY: when a workout is DONE, does it write back into Platyplus per the flows we defined?** When a planned
-    workout is completed (gym-session finish / ride-player end / "✓ Done? Log how it went" feedback), check the whole
-    write path: (a) it records a LOG/completion in Platyplus (Dexie `logs` + History), (b) it follows the agreed flows —
-    indoor ride → FIT → Strava (results flow), completed→History merge, and the ONE feedback model feeding the coach-review
-    pipeline (#76/#143). Confirm each leg actually fires (not just "marked done" visually). JM 2026-06-26.
+151. 🔎 **VERIFY (done — mostly works, one gap): when a workout is DONE, does it write to Platyplus per the flows?**
+    TRACED the three finish paths (2026-06-26):
+    • **Writes to Platyplus? YES (all 3).** RidePlayer/RunPlayer/GymPlayer each call `logWorkout()` (db.ts:228),
+      which POSTs `/logs` to the SERVER first (cross-device) then mirrors to Dexie; History reads it. ✅
+    • **Indoor RIDE results flow WORKS:** records per-sec samples → `/auth/activity/complete` → **match-first**
+      (server.js:994): if a device already logged it in intervals → link (no dup), else build a **TCX** and upload to
+      **intervals** (`icuUploadTcx`). NB: real model is "→ TCX → intervals", **NOT FIT→Strava** — server comment says
+      "No Strava dependency"; Strava only gets it if the athlete has intervals→Strava forwarding. (memory note corrected.)
+    • **GYM:** `completeActivity` with empty samples → match-first only; no stream → stays local (coach reads the rich
+      set/rep log from Platyplus). ✅ by design.
+    • **GAP — RunPlayer.finish() does NOT call `completeActivity`** (RidePlayer/GymPlayer do). So a planned run done
+      in-app never match-links a device-recorded run in intervals. Small consistency fix: mirror RidePlayer's call
+      (samples empty for runs → 'no-stream', but match-first would link a Garmin/Coros run). PROPOSED, not yet done.
+    • **Coach review** fires on the FEEDBACK step ("✓ Done? Log how it went" → /auth/plan/:id/feedback → runCoachTask,
+      #76), NOT on bare finish — by design (one feedback model). ✅
+    JM 2026-06-26.
 150. ⬜ **BUG: intervals ↔ Platyplus mismatch — items in intervals aren't "seen" in Platyplus, and vice versa.** JM
     sees divergence both ways. Suspected causes (to confirm against code): (a) Platyplus READS intervals only within a
     fetched date RANGE + filters some out (ATP/NOTE markers, categories), so out-of-window or filtered events don't show;
