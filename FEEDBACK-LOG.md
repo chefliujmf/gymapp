@@ -25,6 +25,11 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+159. ⬜ **Sleep 1-5 must be PERSONAL (WHOOP-style), not fixed hour thresholds.** Today `sleepTo5` uses <5/<6/<7/<8/≥8h
+    → 1-5, but sleep NEED is individual (JM needs ~9h, others 8 or 10). "How whoop does it is how we have to do it":
+    score = **hours slept ÷ personal sleep NEED** (= sleep performance %), mapped to 1-5. Need = device sleep SCORE if
+    present (already personalized → use it), else a per-user **sleep-need setting** (default 8h; WHOOP also adds recent
+    debt + strain — phase 2). So: prefer device score; else hours/need%. JM 2026-06-26.
 158. ⬜ **Auto-derive Freshness (and maybe Energy) from data, like Sleep-from-tracker.** JM: sleep auto-fills 1-5 from
     the tracker — can freshness + energy too? FROM THE DATA WE HAVE: **Freshness** ← intervals **Form/TSB (CTL−ATL)**
     and/or **HRV vs baseline** + **RestHR vs baseline** → 1-5 (legit, objective). **Energy** is subjective (that's why
