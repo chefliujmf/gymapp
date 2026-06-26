@@ -27,6 +27,15 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+193. ⬜ **Rework the Stats page: separate SPORT-SPECIFIC vs GLOBAL metrics.** Current Stats (Progress.tsx) = Fitness&Form
+    (CTL/ATL/Form, VO₂max, power curve — cycling) · Progress (volume/PRs/est-1RM — strength) · History (global). JM:
+    "we have stats that are sports specific, others global." Rework the IA: a GLOBAL section (training load/Form, wellness
+    sleep/HRV/weight, all-sessions History) + one section PER SPORT (cycling: power curve/FTP/zones; strength: volume/PRs/
+    1RM; meditation: minutes/streak). Options + mockup → JM pick. JM 2026-06-26.
+192. ⬜ **WeekStrip: show which day is TODAY (distinct from the selected day).** The strip only highlights the SELECTED
+    day (green pill); when another day is selected there's no marker for today (Jun 26). Add a persistent "today"
+    indicator (ring/underline/dot/label) so today is always identifiable even when another day is selected. Pairs with
+    #153. JM 2026-06-26.
 160. ⬜ **Deletion model confusing: deleting a Platyplus plan's event IN intervals doesn't remove the Platyplus plan,
     and re-sync re-creates it.** QA: JM deleted today's ride; it cleared from intervals but still shows in Platyplus.
     Diagnosed: only 1 plan ("Friday Ride to Skov", `mine:true`, icuEventId 118840139); intervals now has 0 events for
