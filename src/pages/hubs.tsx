@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, TrendingUp, History, PlusCircle } from 'lucide-react'
+import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
 type Item = { label: string; sub: string; to: string; icon: ReactNode; mine?: boolean }
@@ -39,23 +39,46 @@ export function TrainHub() {
   )
 }
 
-/** Stats hub — shows only what's relevant to the user's sports. */
+/** Stats hub IA (#193) — GLOBAL (cross-sport) vs PER SPORT. Pure + testable (no JSX):
+ *  `key` maps to an icon in the component. Per-sport cards only for the sports you train. */
+type Spec = { key: string; label: string; sub: string; to: string }
+export function statsGroups(sports: string[]): { global: Spec[]; perSport: Spec[] } {
+  const has = (arr: string[]) => sports.some((s) => arr.includes(s))
+  const anySport = sports.length > 0
+  const global: Spec[] = []
+  // Training load / Form aggregates whole-body stress (intervals) — global, shown when there's an
+  // endurance sport (it's where Form comes from) or no sports set yet.
+  if (!anySport || has(ENDUR)) global.push({ key: 'form', label: 'Training load & Form', sub: 'Fitness / Fatigue / Form · readiness', to: '/fitness' })
+  global.push({ key: 'history', label: 'History', sub: 'All your logged sessions (every sport)', to: '/logs' })
+  const perSport: Spec[] = []
+  if (has(['cycling', 'triathlon'])) perSport.push({ key: 'cycling', label: 'Cycling', sub: 'Power curve · FTP · zones · VO₂max', to: '/fitness' })
+  if (has(['running', 'triathlon'])) perSport.push({ key: 'running', label: 'Running', sub: 'Pace · distance · trends', to: '/fitness' })
+  if (has(['strength'])) perSport.push({ key: 'strength', label: 'Strength', sub: 'Volume · PRs · est-1RM trends', to: '/progress' })
+  if (has(['meditation', 'yoga', 'pilates'])) perSport.push({ key: 'mind', label: 'Mind', sub: 'Minutes · sessions · streak', to: '/logs' })
+  return { global, perSport }
+}
+const STAT_ICON: Record<string, ReactNode> = {
+  form: <Activity strokeWidth={1.75} />, history: <History strokeWidth={1.75} />,
+  cycling: <Bike strokeWidth={1.75} />, running: <Footprints strokeWidth={1.75} />,
+  strength: <Dumbbell strokeWidth={1.75} />, mind: <Brain strokeWidth={1.75} />,
+}
+const toItem = (s: Spec): Item => ({ label: s.label, sub: s.sub, to: s.to, icon: STAT_ICON[s.key] })
+
+/** Stats hub — GLOBAL (cross-sport) + PER SPORT sections (#193). */
 export function StatsHub() {
   const { user } = useAuth()
   const sports = user?.sports || []
-  const has = (arr: string[]) => !sports.length || sports.some((s) => arr.includes(s))
-  // Progress now covers strength (est-1RM trends per lift), so the standalone
-  // "Strength" item is folded in — no duplicate (#110).
-  const items: Item[] = [
-    ...(has(ENDUR) ? [{ label: 'Fitness & Form', sub: 'CTL/ATL/Form, VO₂max, power curve', to: '/fitness', icon: <Activity strokeWidth={1.75} /> }] : []),
-    { label: 'Progress', sub: has(['strength']) ? 'Volume, PRs & est-1RM strength trends' : 'Trends, totals & streaks', to: '/progress', icon: <TrendingUp strokeWidth={1.75} /> },
-    { label: 'History', sub: 'Your logged sessions', to: '/logs', icon: <History strokeWidth={1.75} /> },
-  ]
+  const { global, perSport } = statsGroups(sports)
   return (
     <div>
       <div className="page-head"><h1>Stats</h1><p>{sports.length ? `For your sports: ${sports.join(', ')}` : 'Your trends & progress'}</p></div>
-      <div className="stack">{items.map((it) => <HubLink key={it.label} it={it} />)}</div>
-      {sports.length > 0 && <p className="meta" style={{ marginTop: 10 }}>Only what's relevant to your sports — <Link to="/profile" style={{ color: 'var(--accent)' }}>edit sports</Link>.</p>}
+      <div className="section-title">Global</div>
+      <div className="stack">{global.map((s) => <HubLink key={s.key} it={toItem(s)} />)}</div>
+      {perSport.length > 0 && <>
+        <div className="section-title">Per sport</div>
+        <div className="stack">{perSport.map((s) => <HubLink key={s.key} it={toItem(s)} />)}</div>
+      </>}
+      {sports.length > 0 && <p className="meta" style={{ marginTop: 14 }}>Only what's relevant to your sports — <Link to="/profile" style={{ color: 'var(--accent)' }}>edit sports</Link>.</p>}
     </div>
   )
 }

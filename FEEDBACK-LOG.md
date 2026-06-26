@@ -27,11 +27,15 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
-193. ⬜ **Rework the Stats page: separate SPORT-SPECIFIC vs GLOBAL metrics.** Current Stats (Progress.tsx) = Fitness&Form
-    (CTL/ATL/Form, VO₂max, power curve — cycling) · Progress (volume/PRs/est-1RM — strength) · History (global). JM:
-    "we have stats that are sports specific, others global." Rework the IA: a GLOBAL section (training load/Form, wellness
-    sleep/HRV/weight, all-sessions History) + one section PER SPORT (cycling: power curve/FTP/zones; strength: volume/PRs/
-    1RM; meditation: minutes/streak). Options + mockup → JM pick. JM 2026-06-26.
+194. ⬜ **Stats v1 follow-ups (after #193 grouping).** v1 routes to EXISTING pages, so: (a) WELLNESS card from the
+    mockup isn't in v1 — needs its own page (sleep/HRV/RestHR/weight trends from intervals + check-ins); (b) split
+    `/fitness` into the GLOBAL "Training load & Form" view vs the CYCLING "power curve/FTP/VO₂max" view (today both cards
+    route to /fitness); (c) a Mind/Meditation stats page (today the Mind card → /logs). JM 2026-06-26.
+193. 🧪 **Rework the Stats page: separate SPORT-SPECIFIC vs GLOBAL metrics.** DONE v1 (hub grouping): `hubs.tsx`
+    `StatsHub` now renders a **GLOBAL** section (Training load & Form → /fitness · History → /logs) + a **PER SPORT**
+    section (Cycling/Running → /fitness · Strength → /progress · Mind → /logs), gated by `statsGroups(sports)` (pure +
+    unit-tested, `src/stats-hub.test.ts`, 5 tests). Matches the approved `mockups/stats-view.html`. Routing/new-page
+    refinements → #194. JM approved the mockup 2026-06-26.
 192. ⬜ **WeekStrip: show which day is TODAY (distinct from the selected day).** The strip only highlights the SELECTED
     day (green pill); when another day is selected there's no marker for today (Jun 26). Add a persistent "today"
     indicator (ring/underline/dot/label) so today is always identifiable even when another day is selected. Pairs with
