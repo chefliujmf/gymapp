@@ -1011,7 +1011,7 @@ async function icuGet(user, path) {
 const icuDay = (n = 0) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
 
 // ---- Completed-activity capture → intervals (MATCH-FIRST, #122/#123) -------------
-// The locked data-flow model (UX-BACKLOG): intervals = read hub; Platyplus always
+// The locked data-flow model (FEEDBACK-LOG.md → 🎨 Design reference): intervals = read hub; Platyplus always
 // keeps the local copy; for in-app workouts, check intervals for a device activity
 // first (match → don't duplicate), else upload our own. No Strava dependency.
 const tcxSport = (s) => /ride|cycl|bike/i.test(s) ? 'Biking' : /run/i.test(s) ? 'Running' : 'Other'

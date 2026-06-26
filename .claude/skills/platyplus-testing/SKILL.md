@@ -1,6 +1,6 @@
 ---
 name: platyplus-testing
-description: Test + verification discipline for Platyplus — log every report first, write a test with every fix, "built ≠ done" (only JM marks ✅), keep REGRESSION.md current. Use on EVERY bug fix or feature, before claiming anything works.
+description: Test + verification discipline for Platyplus — log every report first, write a test with every fix, "built ≠ done" (only JM marks ✅), keep the 🧪 Test guide section of FEEDBACK-LOG.md current. Use on EVERY bug fix or feature, before claiming anything works.
 ---
 
 # Test & verify (Platyplus) — earn the ✅
@@ -18,10 +18,10 @@ it doesn't happen again.
    - Pure logic → a **unit test** in `src/<thing>.test.ts` (`npm test`, vitest). Extract the logic
      to a plain module (e.g. `src/zones.ts`) so it tests without React.
    - API behaviour → a row in `scripts/smoke-test.mjs` (`npm run test:smoke`).
-   - UI flow / visual → a **manual step in `REGRESSION.md`** (steps + expected). 
+   - UI flow / visual → a **manual step in the 🧪 Test guide section of `FEEDBACK-LOG.md`** (steps + expected). 
    Write it, run it GREEN, commit it. The test is the permanent regression net.
-4. **`REGRESSION.md` is the one-by-one guide** JM works through: per item = unit-test file + manual
-   steps + expected + status (❌ → 🔧 → 🧪 → ✅). Keep it current; archive ✅ items out of the active log.
+4. **The 🧪 Test guide section of `FEEDBACK-LOG.md` is the one-by-one guide** JM works through: per item =
+   unit-test file + manual steps + expected + status (❌ → 🔧 → 🧪 → ✅). Keep it current; archive ✅ items out of the active log.
 5. **Verify against reality, not the compiler:** trace what the button/flow actually does; check the
    **source of truth** (do these feedback choices match intervals? does this gate fire on desktop?).
    Mock-first for anything JM sees (`options-first`).
@@ -29,10 +29,10 @@ it doesn't happen again.
 ## How to run the net
 - `npm test` — unit (vitest, `src/*.test.ts`). First added 2026-06-26 (`src/zones.test.ts`).
 - `npm run test:smoke` — API integration against the dev API (`scripts/smoke-test.mjs`).
-- `REGRESSION.md` / `TESTING.md` — the manual rows JM eyeballs per gate.
+- The **🧪 Test guide section of `FEEDBACK-LOG.md`** / `TESTING.md` — the manual rows JM eyeballs per gate.
 
 ## The loop for each item
 log it → write a failing test that captures the bug → fix until green → commit (test + fix + the
-REGRESSION row) → hand JM the manual step → JM verifies on QA → JM marks ✅. One at a time.
+🧪 Test guide row in FEEDBACK-LOG.md) → hand JM the manual step → JM verifies on QA → JM marks ✅. One at a time.
 
 Pairs with `options-first` (mock UX first), `feedback-log-discipline`, `platyplus-ops`.
