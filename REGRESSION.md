@@ -60,13 +60,14 @@ With that I can pin it (stale bundle vs a real render bug) and add the right tes
 
 ---
 
-### Built but UNVERIFIED (I marked done without you testing — please confirm)
-| R# | What | You test | Expected |
-|---|------|----------|----------|
-| R5/#137 | Check-in only showed for today | On Today, pick a **past** day in the strip | that day's check-in shows |
-| R6/#140 | Calendar Day snapped to today | Go to another day, leave + come back | the day is preserved |
-| R7/#141 | Route had no map tiles | Import a `.fit` with GPS | route on a real OSM map |
-| R8/#142 | Imported-file fields editable | Import a file | metric fields are read-only |
+### Built + CODE-VERIFIED (I re-checked each is genuinely implemented — please confirm on QA)
+I audited the source for each (2026-06-26) so these aren't "marked done without checking":
+| R# | What | Code evidence | You test | Expected |
+|---|------|---------------|----------|----------|
+| R5/#137 | Check-in only showed for today | `Today.tsx:322` `<CheckInCard key={selDay} day={selDay}/>` → `checkins(day,day)` | On Today, pick a **past** day in the strip | that day's check-in shows |
+| R6/#140 | Calendar Day snapped to today | `Calendar.tsx:81` syncs `sel`→URL; `:44` restores `?d=` | Go to another day, leave + come back | the day is preserved |
+| R7/#141 | Route had no map tiles | `FlybyMap.tsx:20` `L.tileLayer(openstreetmap)` | Import a `.fit` with GPS | route on a real OSM map |
+| R8/#142 | Imported-file fields editable | `LogActivity.tsx:153-175` every metric `disabled={!!fileB64}` | Import a file | metric fields are read-only |
 
 > **Discipline (now permanent):** every fix lands with a test here + in `src/*.test.ts`; `🔨 built ≠ done`;
 > only JM marks ✅ after the manual step passes. See `CLAUDE.md` → Testing, skill `platyplus-testing`,
