@@ -269,6 +269,13 @@ select.search { appearance: none; -webkit-appearance: none; }
 .tl-chip b { font-size: 16px; }
 .tl-card { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 13px; padding: 8px 6px 2px; margin-bottom: 9px; }
 .tl-clabel { font-size: 11px; font-weight: 700; color: var(--text-dim); padding: 0 6px 2px; }
+/* #54 Power tab: time-in-zone bar + list */
+.zbar { display: flex; height: 16px; border-radius: 6px; overflow: hidden; margin: 4px 0 10px; background: var(--bg-soft); }
+.zlist { display: flex; flex-direction: column; gap: 3px; }
+.zrow { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.zrow b { margin-left: auto; }
+.zrow .meta { min-width: 38px; text-align: right; }
+.zdot { width: 11px; height: 11px; border-radius: 3px; flex: none; }
 /* #64/#74 check-in wellness: prefilled-Sleep hint + HRV/Rest-HR chips */
 .checkin__src { color: var(--accent); font-size: 11px; font-weight: 700; }
 .checkin__wchips { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }

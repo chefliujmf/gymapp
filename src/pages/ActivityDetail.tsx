@@ -1,8 +1,53 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { fetchActivity, fetchActivityStreams, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams } from '../intervals'
-import { TrendChart } from '../charts'
+import { TrendChart, PowerCurveChart } from '../charts'
+import { zoneColor } from '../ui'
+import { getSetting } from '../db'
 import FlybyMap from '../FlybyMap'
+
+// #54 Power tab: mean-max power curve + time-in-zone, computed from the watts stream.
+const CURVE_DURATIONS = [1, 5, 15, 30, 60, 300, 600, 1200, 1800, 3600]
+function meanMaxCurve(watts: (number | null)[]): { secs: number[]; watts: number[] } {
+  const w = watts.map((v) => (v == null ? 0 : Number(v)))
+  const n = w.length
+  const pre = [0]; for (let i = 0; i < n; i++) pre.push(pre[i] + w[i]) // prefix sums → O(1) window avg
+  const secs: number[] = [], best: number[] = []
+  for (const d of CURVE_DURATIONS) {
+    if (d > n) continue
+    let b = 0
+    for (let i = 0; i + d <= n; i++) { const avg = (pre[i + d] - pre[i]) / d; if (avg > b) b = avg }
+    secs.push(d); best.push(Math.round(b))
+  }
+  return { secs, watts: best }
+}
+const ZONES = ['Recovery', 'Endurance', 'Tempo', 'Threshold', 'VO₂max', 'Anaerobic']
+const zoneIdx = (pct: number) => (pct < 60 ? 0 : pct < 76 ? 1 : pct < 91 ? 2 : pct < 106 ? 3 : pct < 121 ? 4 : 5)
+const ZONE_PCT = [50, 68, 83, 98, 113, 130] // a representative %FTP per zone → zoneColor
+function zoneSecs(watts: (number | null)[], ftp: number): number[] {
+  const z = [0, 0, 0, 0, 0, 0]
+  for (const v of watts) { if (v == null) continue; z[zoneIdx((Number(v) / ftp) * 100)]++ }
+  return z
+}
+const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
+
+function RidePower({ streams, ftp }: { streams: ActivityStreams; ftp: number }) {
+  const watts = streams.watts || []
+  if (watts.filter((v) => v != null).length < 5) return <p className="meta">No power data for this activity.</p>
+  const curve = meanMaxCurve(watts)
+  const zsec = zoneSecs(watts, ftp)
+  const total = zsec.reduce((a, b) => a + b, 0) || 1
+  return (
+    <div>
+      <div className="tl-card"><div className="tl-clabel">POWER CURVE · best avg by duration</div><PowerCurveChart secs={curve.secs} watts={curve.watts} height={170} /></div>
+      <div className="tl-clabel" style={{ marginTop: 6 }}>TIME IN ZONE · FTP {ftp} W</div>
+      <div className="zbar">{ZONES.map((_, i) => zsec[i] > 0 && <div key={i} style={{ width: `${(zsec[i] / total) * 100}%`, background: zoneColor(ZONE_PCT[i]) }} title={`${ZONES[i]} ${mmss(zsec[i])}`} />)}</div>
+      <div className="zlist">{ZONES.map((z, i) => zsec[i] > 0 && (
+        <div key={i} className="zrow"><span className="zdot" style={{ background: zoneColor(ZONE_PCT[i]) }} />{z}<b>{mmss(zsec[i])}</b><span className="meta">{Math.round((zsec[i] / total) * 100)}%</span></div>
+      ))}</div>
+    </div>
+  )
+}
 
 const fmtTime = (s?: number) => { if (!s) return '—'; const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}:${String(m).padStart(2, '0')}` : `${m} min` }
 // downsample a stream to ~300 points so the charts stay light + cursor indices align
@@ -49,10 +94,12 @@ export default function ActivityDetail() {
   const [a, setA] = useState<IcuActivity | null>(null)
   const [streams, setStreams] = useState<ActivityStreams>({})
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'map' | 'timeline'>('map')
+  const [tab, setTab] = useState<'map' | 'timeline' | 'power'>('map')
+  const [ftp, setFtp] = useState(260)
   useEffect(() => {
     if (!id) return
     setLoading(true)
+    getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }).catch(() => {})
     Promise.all([fetchActivity(id), fetchActivityStreams(id)])
       .then(([act, s]) => { setA(act); setStreams(s) })
       .finally(() => setLoading(false))
@@ -63,6 +110,9 @@ export default function ActivityDetail() {
 
   const track = cleanLatLng(streams.latlng)
   const hasTimeline = TL_ROWS.some((r) => ((streams[r.key] as unknown[] | undefined)?.length || 0) > 1)
+  const hasPower = (streams.watts?.filter((v) => v != null).length || 0) >= 5
+  const tabs = ([track.length > 1 && 'map', hasTimeline && 'timeline', hasPower && 'power'].filter(Boolean)) as ('map' | 'timeline' | 'power')[]
+  const activeTab: 'map' | 'timeline' | 'power' = tabs.includes(tab) ? tab : (tabs[0] || 'map')
   const stats: [string, string][] = ([
     a.distance ? ['Distance', `${(a.distance / 1000).toFixed(1)} km`] : null,
     a.moving_time ? ['Time', fmtTime(a.moving_time)] : null,
@@ -82,16 +132,18 @@ export default function ActivityDetail() {
         </div>
       </div>
 
-      {(track.length > 1 || hasTimeline) && (
+      {tabs.length > 0 && (
         <div className="act-tabs">
-          {track.length > 1 && <button className={tab === 'map' ? 'on' : ''} onClick={() => setTab('map')}>Map</button>}
-          {hasTimeline && <button className={tab === 'timeline' || track.length <= 1 ? 'on' : ''} onClick={() => setTab('timeline')}>Timeline</button>}
+          {tabs.includes('map') && <button className={activeTab === 'map' ? 'on' : ''} onClick={() => setTab('map')}>Map</button>}
+          {tabs.includes('timeline') && <button className={activeTab === 'timeline' ? 'on' : ''} onClick={() => setTab('timeline')}>Timeline</button>}
+          {tabs.includes('power') && <button className={activeTab === 'power' ? 'on' : ''} onClick={() => setTab('power')}>Power</button>}
         </div>
       )}
 
-      {tab === 'map' && track.length > 1 && <div className="card" style={{ padding: 6 }}><FlybyMap track={track} /></div>}
-      {(tab === 'timeline' || track.length <= 1) && hasTimeline && <RideTimeline streams={streams} />}
-      {track.length <= 1 && !hasTimeline && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
+      {activeTab === 'map' && <div className="card" style={{ padding: 6 }}><FlybyMap track={track} /></div>}
+      {activeTab === 'timeline' && <RideTimeline streams={streams} />}
+      {activeTab === 'power' && <RidePower streams={streams} ftp={ftp} />}
+      {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
 
       <div className="actstats">{stats.map(([l, v]) => <div key={l} className="actstat"><span>{l}</span><b>{v}</b></div>)}</div>
 
