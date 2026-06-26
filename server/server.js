@@ -24,6 +24,7 @@ const USE_PG = !!process.env.DATABASE_URL
 const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
+import { eventMatchesPlan } from './icu-match.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -424,12 +425,12 @@ app.post('/auth/plans/resync', auth, async (req, res) => {
   if (!from || !to) return res.status(400).json({ error: 'from + to (YYYY-MM-DD) required' })
   if (!req.user.icuKey) return res.json({ skipped: 'no intervals key' })
   const plans = (req.user.plans || []).filter((p) => p.date >= from && p.date <= to && (p.origin || 'platyplus') === 'platyplus')
-  let created = 0, linked = 0, updated = 0, errors = 0
+  let created = 0, exists = 0, updated = 0, skipped = 0, errors = 0
   for (const p of plans) {
     const r = await pushPlanToIcu(req.user, p)
-    if (r.created) created++; else if (r.linked) linked++; else if (r.updated) updated++; else if (r.error) errors++
+    if (r.created) created++; else if (r.exists) exists++; else if (r.updated) updated++; else if (r.skipped) skipped++; else if (r.error) errors++
   }
-  res.json({ total: plans.length, created, linked, updated, errors })
+  res.json({ total: plans.length, created, exists, updated, skipped, errors })
 })
 app.delete('/auth/plans/:id', auth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
 
@@ -744,48 +745,55 @@ function planToIcuEvent(plan, items = []) {
   }
   return ev
 }
-// Find an existing intervals planned EVENT that already represents this plan, so we DON'T
-// create a duplicate when the athlete's OTHER coach already pushed the same session (#150).
-// Match by external_id (minus the ":date" instance suffix) or same day+sport+title.
-async function findIcuEventForPlan(user, plan) {
+// All intervals planned EVENTS that already represent this plan (incl. the other coach's copy,
+// whose name carries a "#Codex Coach" suffix — matched fuzzily). See server/icu-match.js (#150).
+async function findIcuEventsForPlan(user, plan) {
   const ath = user.icuAthlete || 'i28814'
-  const want = plan.sport === 'ride' ? 'Ride' : plan.sport === 'run' ? 'Run' : 'WeightTraining'
   try {
     const r = await icuFetch(user, `/athlete/${ath}/events?oldest=${plan.date}&newest=${plan.date}`)
-    if (!r.ok) return null
+    if (!r.ok) return []
     const events = await r.json()
-    const strip = (s) => String(s || '').replace(/:\d{4}-\d{2}-\d{2}$/, '')
-    const title = String(plan.title || '').trim().toLowerCase()
-    return (events || []).find((e) => {
-      if (e.category && e.category !== 'WORKOUT') return false
-      if (e.external_id && strip(e.external_id) === plan.id) return true
-      return e.type === want && String(e.name || '').trim().toLowerCase() === title
-    }) || null
-  } catch { return null }
+    return (events || []).filter((e) => eventMatchesPlan(plan, e))
+  } catch { return [] }
 }
-// Create or update the mirror event (tracked by plan.icuEventId). Dedup-aware: if we don't
-// yet track an event, adopt a matching one already in intervals instead of duplicating (#150).
+const icuToday = () => { try { return new Date().toLocaleDateString('en-CA') } catch { return new Date().toISOString().slice(0, 10) } }
+// Mirror a plan to intervals — self-healing (#150):
+//   • NEVER push a planned workout into the PAST; clean up a past event we created.
+//   • if the session is ALREADY in intervals (the other coach pushed it), adopt it + drop our dup.
+//   • `icuEventMine` tracks whether WE created the event, so we only delete/overwrite our own.
 async function pushPlanToIcu(user, plan) {
   if (!user.icuKey) return { skipped: 'no intervals key' }
   const ath = user.icuAthlete || 'i28814'
-  const dayItems = (user.items || []).filter((it) => it.date === plan.date)
-  const ev = planToIcuEvent(plan, dayItems)
+  const delEvent = async (id) => { try { await icuFetch(user, `/athlete/${ath}/events/${id}`, { method: 'DELETE' }) } catch { /* best effort */ } }
+  // (1) Past: don't push planned workouts backwards; remove a past event WE created.
+  if (plan.date < icuToday()) {
+    if (plan.icuEventId && plan.icuEventMine !== false) await delEvent(plan.icuEventId)
+    if (plan.icuEventId) { plan.icuEventId = undefined; plan.icuEventMine = undefined; save(store) }
+    return { skipped: 'past' }
+  }
+  const matches = await findIcuEventsForPlan(user, plan)
+  const mineId = plan.icuEventId ? String(plan.icuEventId) : null
+  const other = matches.find((e) => String(e.id) !== mineId)
+  // (2) Already in intervals via another event → don't duplicate; drop our own dup.
+  if (other) {
+    if (mineId && mineId !== String(other.id) && plan.icuEventMine !== false) await delEvent(mineId)
+    plan.icuEventId = other.id; plan.icuEventMine = false; save(store)
+    return { exists: other.id }
+  }
+  // (3) No match — update OUR event (never overwrite an adopted one), else create a fresh one.
+  if (mineId && plan.icuEventMine === false) return { exists: mineId }
+  const ev = planToIcuEvent(plan, (user.items || []).filter((it) => it.date === plan.date))
   try {
-    let adopted = false
-    if (!plan.icuEventId) {
-      const match = await findIcuEventForPlan(user, plan)
-      if (match) { plan.icuEventId = match.id; adopted = true; save(store) }
-    }
-    if (plan.icuEventId) {
-      const r = await icuFetch(user, `/athlete/${ath}/events/${plan.icuEventId}`, { method: 'PUT', body: JSON.stringify(ev) })
-      if (r.ok) return adopted ? { linked: plan.icuEventId } : { updated: plan.icuEventId }
+    if (mineId) {
+      const r = await icuFetch(user, `/athlete/${ath}/events/${mineId}`, { method: 'PUT', body: JSON.stringify(ev) })
+      if (r.ok) return { updated: mineId }
       if (r.status !== 404) return { error: `update ${r.status}` }
-      plan.icuEventId = undefined // the tracked event is gone → create a fresh one below
+      plan.icuEventId = undefined // tracked event vanished → create fresh
     }
     const r = await icuFetch(user, `/athlete/${ath}/events`, { method: 'POST', body: JSON.stringify(ev) })
     if (!r.ok) return { error: `create ${r.status}` }
     const created = await r.json()
-    plan.icuEventId = created.id; save(store)
+    plan.icuEventId = created.id; plan.icuEventMine = true; save(store)
     return { created: created.id }
   } catch (e) { return { error: String(e.message || e) } }
 }
