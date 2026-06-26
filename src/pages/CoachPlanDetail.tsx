@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getCoachPlan, gymSessionFromPlan, setGymSession, matchExercise } from '../plan'
 import { calApi, type CalItem } from '../calendar'
 import { SegmentProfile } from '../ui'
-import { setCurrentRide } from '../ride'
+import { setCurrentRide, canPlayHere } from '../ride'
+import { useBle } from '../BleContext'
 import { getSetting } from '../db'
 
 /** Detail view for a coach-authored Platyplus plan: the universal coaching shell
@@ -13,6 +14,7 @@ import { getSetting } from '../db'
 export default function CoachPlanDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const ble = useBle()
   const p = id ? getCoachPlan(id) : undefined
   const [items, setItems] = useState<CalItem[]>([])
   const [open, setOpen] = useState<Set<number>>(new Set())
@@ -45,7 +47,9 @@ export default function CoachPlanDetail() {
       {isEndurance && (p.segments?.length ?? 0) > 0 && (
         <>
           <div className="card" style={{ padding: 16, marginTop: 6 }}><SegmentProfile segs={p.segments!} ftp={p.ftp || ftp} /></div>
-          <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ {p.sport === 'run' ? 'Run' : 'Ride'} now</button>
+          {canPlayHere(!!ble.bridge)
+            ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ {p.sport === 'run' ? 'Run' : 'Ride'} now</button>
+            : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to {p.sport === 'run' ? 'run' : 'ride'} — that's where your sensors connect.</div>}
         </>
       )}
       {p.sport === 'gym' && (p.exercises?.length ?? 0) > 0 && (

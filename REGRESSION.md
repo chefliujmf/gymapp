@@ -17,7 +17,7 @@ test, awaiting JM · ✅ JM-verified.
 **You test (manual):** QA → Today/Plan → the "Saturday Recovery Spin" card thumbnail.
 **Expected:** thumbnail reads **blue / green / blue** (green endurance middle), same as the detail profile.
 
-### R2 · #139 — desktop can start a ride ❌
+### R2 · #139 — desktop can start a ride 🧪
 **Bug:** the "▶ Ride now" button is tappable on desktop; rides are mobile-first (or sensor-bridge).
 **Unit test (planned):** `src/ride.test.ts` → `canPlayHere(false)` is false at desktop width; `canPlayHere(true)` is true.
 **You test (manual):** on a **desktop** browser (no bridge), open a ride plan.

@@ -1057,3 +1057,6 @@ select.search { appearance: none; -webkit-appearance: none; }
 .weeknav__a:last-child, .weeknav__today { margin-left: 0; }
 /* DONE workout — obvious: green left bar + tinted border */
 .card--done { border-color: rgba(52, 224, 125, 0.55) !important; box-shadow: inset 3px 0 0 0 var(--accent, #34e07d), var(--card-shadow); }
+
+/* #139: desktop (no sensor bridge) → ride/run is mobile-only */
+.phone-gate { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 13px; padding: 12px 14px; color: var(--text-dim); font-size: 13px; line-height: 1.45; text-align: center; }

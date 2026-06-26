@@ -43,7 +43,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     Today page jumps to /plan (calendar Day view) + opens the Add sheet there, instead of opening the Add
     sheet IN PLACE on Today. JM wants to add without leaving Today. (Today.tsx swapOn → navigate; #56/#57 made
     it jump — JM dislikes that.) JM screenshot 2026-06-26.
-145. 🔁 **REOPENED #139 — desktop CAN still start a ride; the BUTTON isn't gated.** I gated the PLAYER (and
+145. 🧪 **REOPENED #139 — desktop CAN still start a ride; the BUTTON isn't gated.** I gated the PLAYER (and
     RunPlayer) but the "▶ Ride now" button on the ride-detail pages (CoachPlanDetail + PlanDetail) is still
     actionable on desktop. JM has said 2-3× you CANNOT ride from desktop. FIX: gate the BUTTON itself
     (canPlayHere = isMobile || sensor-bridge) so it shows "Open on your phone" on a sensor-less desktop. JM 2026-06-26.
