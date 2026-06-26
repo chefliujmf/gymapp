@@ -120,6 +120,7 @@ export default function ActivityDetail() {
     a.average_heartrate ? ['Avg HR', `${Math.round(a.average_heartrate)} bpm`] : null,
     a.total_elevation_gain ? ['Elevation', `${Math.round(a.total_elevation_gain)} m`] : null,
     a.icu_training_load ? ['TSS', String(a.icu_training_load)] : null,
+    a.avg_lr_balance ? ['L/R balance', `${Math.round(100 - a.avg_lr_balance)} · ${Math.round(a.avg_lr_balance)}`] : null,
   ].filter(Boolean)) as [string, string][]
 
   return (

@@ -330,7 +330,24 @@ function upsertCheckin(user, body) {
   return ci
 }
 const checkinsInRange = (user, from, to) => (user.checkins || []).filter((c) => (!from || c.date >= from) && (!to || c.date <= to)).sort((a, b) => (a.date < b.date ? -1 : 1))
-app.post('/auth/checkin', auth, (req, res) => { const ci = upsertCheckin(req.user, req.body || {}); save(store); res.json(ci) })
+app.post('/auth/checkin', auth, (req, res) => {
+  const ci = upsertCheckin(req.user, req.body || {})
+  save(store)
+  res.json(ci)
+  // #65: a POOR + COMPLETE check-in for TODAY → fire the coach to adapt today's plan
+  // (recovery / cut intensity / move it). Reuses runCoachTask (#76). Once per day
+  // (coachAdapted flag), only for athletes who've set up their coach.
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const complete = ci.energy != null && ci.sleep != null && ci.soreness != null
+    const poor = (ci.energy != null && ci.energy <= 2) || (ci.sleep != null && ci.sleep <= 2) || (ci.soreness != null && ci.soreness >= 4)
+    if (req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && poor && !ci.coachAdapted) {
+      ci.coachAdapted = true; save(store)
+      const msg = `The athlete just checked in for today (${today}) and it's a POOR recovery day — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore). Look at TODAY's planned session(s) with list_schedule and decide if it should be eased: cut intensity/volume, swap to recovery, or move it. If you change anything, do it with the tools and use notify to tell them what you changed and why (a line or two). If today is already easy or rest, just reassure them briefly via notify. Don't ask questions — act.`
+      runCoachTask(req.user, msg).catch((e) => console.error('[checkin-adapt] ' + (e.message || e)))
+    }
+  } catch (e) { console.error('[checkin-adapt] trigger ' + e.message) }
+})
 app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
 
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads
@@ -348,6 +365,16 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
   }
   save(store)
   res.json({ ok: true, feedback: plan.feedback })
+  // #76: fire an async coach review on the feedback (best-effort, non-blocking). Only
+  // for athletes who've set up their coach (skip mid-onboarding users).
+  if (req.user.coachProfile && req.user.coachProfile.trim()) {
+    try {
+      const fb = plan.feedback
+      const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
+      const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}") with a one-line verdict, 2-4 short takeaways, and what's next. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. Be concise; don't ask questions — just review and act.`
+      runCoachTask(req.user, msg).catch((e) => console.error('[coach-review] ' + (e.message || e)))
+    } catch (e) { console.error('[coach-review] trigger ' + e.message) }
+  }
 })
 
 // admin: user management
@@ -493,6 +520,34 @@ function buildSystemPrompt(user) {
     p += `\n\n# ONBOARDING — this athlete has no profile yet\nWarmly interview them to build their profile: which sport(s) they do, their goal, days/week + time available, equipment/gym access, any constraints or injuries, food preferences, and how they like to be coached. Ask a couple of questions at a time, conversationally — not a long form. As soon as you know their sport(s), call set_sports; once you have enough, call set_athlete_profile with a clean markdown profile so you remember it every session. Keep building it as you learn more. Confirm what you saved in one short line.`
   }
   return p
+}
+
+// Fire the coach NON-INTERACTIVELY for a background task (e.g. a post-workout review,
+// #76). Best-effort; drains output — the POINT is the coach's MCP side-effects (it
+// saves a review / adjusts the plan / notifies). NOT the user's chat thread (no session).
+async function runCoachTask(user, message) {
+  const systemPrompt = buildSystemPrompt(user)
+  if (CHAT_HELPER_URL) {
+    const hr = await fetch(CHAT_HELPER_URL + '/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-chat-secret': CHAT_HELPER_SECRET },
+      body: JSON.stringify({ message, token: user.apiToken, coach: user.coachName || 'Coach', systemPrompt }),
+    })
+    if (!hr.ok || !hr.body) throw new Error('coach helper ' + hr.status)
+    const reader = hr.body.getReader()
+    for (;;) { const { done } = await reader.read(); if (done) break } // drain to completion
+    return
+  }
+  await new Promise((resolve, reject) => {
+    const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: user.apiToken } } } })
+    const args = ['-p', message, '--output-format', 'stream-json', '--verbose', '--mcp-config', mcpConfig, '--allowedTools', 'mcp__platyplus', '--disallowedTools', CHAT_DENY, '--append-system-prompt', systemPrompt]
+    const proc = spawn(CLAUDE_BIN, args, { env: process.env })
+    proc.stdin?.end()
+    const killer = setTimeout(() => { proc.kill('SIGKILL'); reject(new Error('coach task timeout')) }, 180000)
+    proc.stdout.on('data', () => {}); proc.stderr.on('data', () => {}) // drain
+    proc.on('error', (e) => { clearTimeout(killer); reject(e) })
+    proc.on('close', () => { clearTimeout(killer); resolve() })
+  })
 }
 
 app.post('/auth/chat', auth, async (req, res) => {
