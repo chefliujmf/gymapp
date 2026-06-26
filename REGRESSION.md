@@ -49,14 +49,17 @@ Mental State** with the exact intervals options (Legs After = strong/normal/tire
 heavy/sore/cooked). NOTE: feedback is still Platyplus-local + fed to the coach — it does NOT yet
 WRITE BACK to intervals (codes are stored for when we build that).
 
-### R9 · #148 — Add sheet list invisible (cards collapsed) 🧪 FIXED (CSS)
-**Bug (reported):** picking Gym in the Add sheet shows blank lines, no workouts.
-**Investigation:** catalog has **139** gym workouts (local == box, byte-identical); the Add-sheet
-gym render maps them correctly (40 cards, no query); PWA is `autoUpdate`. → not explainable from
-code/data. Catalog is gitignored (restored at deploy), so a CI import-guard isn't reliable.
-**Need from JM to repro:** (a) which env — dev (localhost) / QA / prod? (b) does a **hard refresh
-(Cmd+Shift+R)** make the list appear? (c) any **browser console** errors when you open Add → Gym?
-With that I can pin it (stale bundle vs a real render bug) and add the right test.
+### R9 · #148 — Add sheet list invisible (cards collapsed, NOT empty) 🧪 FIXED (CSS)
+**Bug:** JM: "it's not empty, it's the UI — I don't see the list well." All types (gym/ride/run/meal/
+mind), all envs. The list rendered as faint thin lines, no readable cards.
+**Root cause:** the sheet card is a `<button>`; `.sheet-list .card { display: block }` + flex content
++ `overflow: hidden` collapses the button to ~0 height in WebKit → `overflow:hidden` clips the thumb +
+text, leaving only the 1px border (the "lines"). Catalog data was fine all along (139/1324/796/109).
+**Fix:** `.sheet-list .card` → `display: flex; flex-direction: column` (a flex container sizes to its
+content); `.sheet-list` gets `flex/gap`. `src/styles.css`.
+**Test:** manual (visual) — CSS, no DOM harness.
+**You test:** open **Add → any type** (gym/ride/meal/…).
+**Expected:** a real, readable, tappable list of cards (thumb + title + meta), not faint lines.
 
 ---
 

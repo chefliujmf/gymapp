@@ -25,6 +25,22 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+155. ⬜ **A DONE workout still shows the PLAN view (power profile + "open on phone"), not a RESULTS UX.** Opening a
+    completed workout shows the planned power profile + the ride gate, instead of the post-workout STATS + GRAPHS we
+    discussed (#51 GPS map/flyby, #93 lift chart, actuals vs target, HR/power, TSS). Need: detail page branches on
+    completed → show results, not the plan/ride-now. JM screenshot 2026-06-26.
+154. ⬜ **R4 feedback fields may not be mobile-friendly — chips, consider a dropdown.** The post-workout fields render
+    as chip rows; with 6 fields × 6-8 options that's a lot of chips on a phone. JM: "not sure this is mobile friendly
+    (dropdown?)". Evaluate chips vs a compact native `<select>` per field on mobile. JM 2026-06-26.
+153. ⬜ **BUG: Today week strip shows the WRONG "today" (23 highlighted on June 26).** On dev the strip green-selected
+    TUE 23 as today though it was Fri 26 (Log-activity correctly showed 26). `localISO()` uses `new Date()` (correct),
+    so a fresh load = today; likely a STALE long-open tab (selDay/WeekStrip captured `new Date()` at mount days ago and
+    never re-anchored). Fix: re-anchor "today" + selDay when the app regains focus / the date rolls over (so a PWA left
+    open across days self-heals). Confirm a hard-refresh fixes it. JM screenshot 2026-06-26.
+152. ⬜ **Gym feedback must be its OWN set, not cycling's (corrects R4/#147).** My R4 applied the 6 intervals
+    ACTIVITY_FIELDs (Legs Before/After, Fuel/GI…) to ALL sports incl. gym. JM: "gym is not the same as cycling, it's
+    own as discussed in the past." → ride/run keep the intervals 6; gym gets a gym-specific set (Soreness/pump, Form,
+    Pain/Niggles, …). JM 2026-06-26.
 151. 🔎 **VERIFY (done — mostly works, one gap): when a workout is DONE, does it write to Platyplus per the flows?**
     TRACED the three finish paths (2026-06-26):
     • **Writes to Platyplus? YES (all 3).** RidePlayer/RunPlayer/GymPlayer each call `logWorkout()` (db.ts:228),
@@ -52,7 +68,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     but NOT in Strava. Likely the device→Strava sync (Garmin/Coros account config), not Platyplus — but
     confirm: (a) for DEVICE activities, Strava comes from the device's own Strava link, not us; (b) for
     PLATYPLUS-recorded/uploaded activities (#122), verify the opt-in Strava push works. JM 2026-06-25.
-148. ⬜ **BUG: "Add" sheet → "Search gym…" shows an EMPTY list (no gym workouts).** In the calendar Add
+148. 🧪 **BUG: "Add" sheet → "Search gym…" shows an EMPTY list (no gym workouts).** In the calendar Add
     sheet (Week/Day), picking Gym shows just blank divider lines — no templates and no catalog gym workouts
     to pick. (Calendar.tsx AddSheet gym section — templates + workouts not rendering.) JM screenshot 2026-06-26,
     reported before.
