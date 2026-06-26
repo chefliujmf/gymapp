@@ -32,4 +32,6 @@ export const calApi = {
   delItem: (id: string) => j<{ ok: boolean }>(`/items/${id}`, { method: 'DELETE' }),
   savePlan: (p: Record<string, unknown>) => j<Record<string, unknown>>('/plans', { body: p }),
   delPlan: (id: string) => j<{ ok: boolean }>(`/plans/${id}`, { method: 'DELETE' }),
+  // Push every Platyplus plan in the window OUT to intervals (dedup-aware) — the re-sync button (#150).
+  resyncPlans: (from: string, to: string) => j<{ total: number; created: number; linked: number; updated: number; errors: number; skipped?: string }>('/plans/resync', { body: { from, to } }),
 }

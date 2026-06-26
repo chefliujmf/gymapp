@@ -416,6 +416,21 @@ app.post('/auth/plans/sync', auth, async (req, res) => {
   if (!from || !to) return res.status(400).json({ error: 'from + to (YYYY-MM-DD) required' })
   res.json(await reconcileFromIcu(req.user, from, to))
 })
+// PUSH every Platyplus-origin plan in a window OUT to intervals (dedup-aware) — the manual
+// "re-sync" button (#150). Recovers plans that never pushed (errored/predate the push) and
+// adopts any matching event the athlete's other coach already created (no duplicates).
+app.post('/auth/plans/resync', auth, async (req, res) => {
+  const from = req.body?.from || req.query.from, to = req.body?.to || req.query.to
+  if (!from || !to) return res.status(400).json({ error: 'from + to (YYYY-MM-DD) required' })
+  if (!req.user.icuKey) return res.json({ skipped: 'no intervals key' })
+  const plans = (req.user.plans || []).filter((p) => p.date >= from && p.date <= to && (p.origin || 'platyplus') === 'platyplus')
+  let created = 0, linked = 0, updated = 0, errors = 0
+  for (const p of plans) {
+    const r = await pushPlanToIcu(req.user, p)
+    if (r.created) created++; else if (r.linked) linked++; else if (r.updated) updated++; else if (r.error) errors++
+  }
+  res.json({ total: plans.length, created, linked, updated, errors })
+})
 app.delete('/auth/plans/:id', auth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
 
 // Non-workout calendar items (meal / mind / note) — Platyplus only, no intervals push.
@@ -729,17 +744,43 @@ function planToIcuEvent(plan, items = []) {
   }
   return ev
 }
-// Create or update the mirror event (tracked by plan.icuEventId).
+// Find an existing intervals planned EVENT that already represents this plan, so we DON'T
+// create a duplicate when the athlete's OTHER coach already pushed the same session (#150).
+// Match by external_id (minus the ":date" instance suffix) or same day+sport+title.
+async function findIcuEventForPlan(user, plan) {
+  const ath = user.icuAthlete || 'i28814'
+  const want = plan.sport === 'ride' ? 'Ride' : plan.sport === 'run' ? 'Run' : 'WeightTraining'
+  try {
+    const r = await icuFetch(user, `/athlete/${ath}/events?oldest=${plan.date}&newest=${plan.date}`)
+    if (!r.ok) return null
+    const events = await r.json()
+    const strip = (s) => String(s || '').replace(/:\d{4}-\d{2}-\d{2}$/, '')
+    const title = String(plan.title || '').trim().toLowerCase()
+    return (events || []).find((e) => {
+      if (e.category && e.category !== 'WORKOUT') return false
+      if (e.external_id && strip(e.external_id) === plan.id) return true
+      return e.type === want && String(e.name || '').trim().toLowerCase() === title
+    }) || null
+  } catch { return null }
+}
+// Create or update the mirror event (tracked by plan.icuEventId). Dedup-aware: if we don't
+// yet track an event, adopt a matching one already in intervals instead of duplicating (#150).
 async function pushPlanToIcu(user, plan) {
   if (!user.icuKey) return { skipped: 'no intervals key' }
   const ath = user.icuAthlete || 'i28814'
   const dayItems = (user.items || []).filter((it) => it.date === plan.date)
   const ev = planToIcuEvent(plan, dayItems)
   try {
+    let adopted = false
+    if (!plan.icuEventId) {
+      const match = await findIcuEventForPlan(user, plan)
+      if (match) { plan.icuEventId = match.id; adopted = true; save(store) }
+    }
     if (plan.icuEventId) {
       const r = await icuFetch(user, `/athlete/${ath}/events/${plan.icuEventId}`, { method: 'PUT', body: JSON.stringify(ev) })
-      if (r.ok) return { updated: plan.icuEventId }
+      if (r.ok) return adopted ? { linked: plan.icuEventId } : { updated: plan.icuEventId }
       if (r.status !== 404) return { error: `update ${r.status}` }
+      plan.icuEventId = undefined // the tracked event is gone → create a fresh one below
     }
     const r = await icuFetch(user, `/athlete/${ath}/events`, { method: 'POST', body: JSON.stringify(ev) })
     if (!r.ok) return { error: `create ${r.status}` }

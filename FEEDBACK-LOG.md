@@ -57,7 +57,7 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
     • **Coach review** fires on the FEEDBACK step ("✓ Done? Log how it went" → /auth/plan/:id/feedback → runCoachTask,
       #76), NOT on bare finish — by design (one feedback model). ✅
     JM 2026-06-26.
-150. ⬜ **BUG: intervals ↔ Platyplus mismatch — items in intervals aren't "seen" in Platyplus, and vice versa.** JM
+150. 🧪 **Platyplus→intervals PUSH + re-sync button (dedup-aware) — items in intervals aren't "seen" in Platyplus, and vice versa.** JM
     sees divergence both ways. Suspected causes (to confirm against code): (a) Platyplus READS intervals only within a
     fetched date RANGE + filters some out (ATP/NOTE markers, categories), so out-of-window or filtered events don't show;
     (b) items ADDED IN Platyplus (Add sheet → gymapp coach-plans / calendar_items in Postgres) are gymapp-LOCAL and are

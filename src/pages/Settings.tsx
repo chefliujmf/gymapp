@@ -6,6 +6,33 @@ import { db, getSetting, setSetting, clearLogs } from '../db'
 import AccountSection from '../auth/AccountSection'
 import { useAuth } from '../auth/AuthContext'
 import { authApi } from '../auth/api'
+import { calApi } from '../calendar'
+import { localISO } from '../date'
+
+// #150 — push every Platyplus plan in the visible window OUT to intervals (dedup-aware).
+// Recovers plans that never pushed + adopts a matching event your other coach already made.
+function ResyncToIntervals() {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string>()
+  async function run() {
+    setBusy(true); setMsg(undefined)
+    const now = new Date()
+    const from = localISO(new Date(now.getTime() - 21 * 864e5)) // ~3 weeks back …
+    const to = localISO(new Date(now.getTime() + 70 * 864e5))   // … to ~10 weeks ahead (like Today)
+    try {
+      const r = await calApi.resyncPlans(from, to)
+      if (r.skipped) setMsg('Connect intervals.icu first (above).')
+      else setMsg(`Synced ${r.total} plan${r.total === 1 ? '' : 's'} → ${r.created} new · ${r.linked} linked · ${r.updated} updated${r.errors ? ` · ${r.errors} failed` : ''}.`)
+    } catch { setMsg('Could not reach intervals — try again.') }
+    finally { setBusy(false) }
+  }
+  return (
+    <div style={{ marginTop: 12 }}>
+      <button className="btn btn--ghost" disabled={busy} onClick={run}>{busy ? 'Syncing…' : '↻ Re-sync plans to intervals'}</button>
+      <p className="meta" style={{ marginTop: 6 }}>{msg || 'Push your Platyplus plans to intervals.icu — skips any already there (no duplicates).'}</p>
+    </div>
+  )
+}
 
 // Equipment the user owns — drives the Train filters (#20) AND the coach's exercise
 // picks (#32). Stored on the profile (info.equipment) so it's server-side. Bodyweight
@@ -88,6 +115,7 @@ export default function Settings() {
 
       <Collapsible title="Connections" subtitle="intervals.icu · Strava · Coach API">
         <AccountSection only="connections" />
+        <ResyncToIntervals />
       </Collapsible>
 
       <Collapsible title="Equipment" subtitle="What you own — filters workouts & coach">

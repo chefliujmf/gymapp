@@ -381,6 +381,37 @@
         }
       }
     },
+    "/auth/plans/resync": {
+      "post": {
+        "summary": "Push every Platyplus-origin plan in a window OUT to intervals (dedup-aware re-sync button, #150)",
+        "tags": [
+          "plans"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "string", "format": "date" },
+                  "to": { "type": "string", "format": "date" }
+                },
+                "required": ["from", "to"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "{ total, created, linked, updated, errors } or { skipped }" },
+          "400": { "description": "from + to required" }
+        }
+      }
+    },
     "/auth/plans": {
       "get": {
         "summary": "List the signed-in user's workout plans (session auth)",

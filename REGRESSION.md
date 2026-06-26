@@ -61,6 +61,21 @@ content); `.sheet-list` gets `flex/gap`. `src/styles.css`.
 **You test:** open **Add → any type** (gym/ride/meal/…).
 **Expected:** a real, readable, tappable list of cards (thumb + title + meta), not faint lines.
 
+### R10 · #150 — Platyplus plans now PUSH to intervals (auto + re-sync button, dedup-aware)
+**Ask:** "what we have in Platyplus should be in intervals, and don't push twice if already there."
+**What was there:** `upsertPlan → pushPlanToIcu` already auto-pushed on every save — but with NO dedup
+against another coach's events (only its own `icuEventId`), and no recovery for plans that never pushed.
+**Built:** (a) `findIcuEventForPlan` — before creating, adopt a matching intervals event (external_id, or
+day+sport+title) so we LINK instead of duplicating; (b) `POST /auth/plans/resync` — re-push all
+Platyplus-origin plans in the window; (c) **Settings → Connections → "↻ Re-sync plans to intervals"**
+button (reports created/linked/updated/errors). Confirmed intervals had 0 events today, so your ride
+will be CREATED cleanly. tsc 0 · build ✓ · server parses · 16/16 unit tests.
+**Test:** manual (live intervals). No unit test — server↔intervals integration; the button's result
+counts are the check.
+**You test:** Settings → Connections → **Re-sync plans to intervals**. Then check intervals.icu for today.
+**Expected:** your Platyplus ride appears in intervals (result says `1 new`); click again → `1 linked/
+updated`, **NOT a second copy**. If `errors > 0`, tell me the count — that's why auto-push didn't fire.
+
 ---
 
 ### Built + CODE-VERIFIED (I re-checked each is genuinely implemented — please confirm on QA)
