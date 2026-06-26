@@ -25,7 +25,25 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+158. ⬜ **Auto-derive Freshness (and maybe Energy) from data, like Sleep-from-tracker.** JM: sleep auto-fills 1-5 from
+    the tracker — can freshness + energy too? FROM THE DATA WE HAVE: **Freshness** ← intervals **Form/TSB (CTL−ATL)**
+    and/or **HRV vs baseline** + **RestHR vs baseline** → 1-5 (legit, objective). **Energy** is subjective (that's why
+    it's a manual tap) — best proxy is a composite of HRV+RestHR+sleep, label it a soft estimate, manual tap always
+    overrides. Sleep mapping today (Today.tsx `sleepTo5`): device sleepSCORE/20→1-5, else hours <5/<6/<7/<8/≥8→1-5.
+    JM 2026-06-26.
+157. ⬜ **The workout TEXT Platyplus pushes to intervals is very different from a real planned workout's text.** JM:
+    "look at the text in intervals in a planned workout vs what Platyplus pushed — huge difference." `planToIcuEvent`
+    builds description = native "## Workout\n- 10m 50-62%" + notes + coach brief; intervals' own planned-workout text/
+    format (the structured/native workout the chart renders from) differs. Align the pushed description + workout_doc to
+    intervals' native format so the pushed event reads + charts like a proper planned workout (cf. cyclingcoach
+    instructions_intervals_icu). Pairs with #150. JM screenshot 2026-06-26.
+156. ⬜ **Missed-workout UX: red day-dot + clearly-"missed" activity.** A PAST Platyplus planned workout NOT linked to
+    a completed activity = MISSED. The WeekStrip dot for that day should be **red** (today the dots are green/neutral),
+    and the session should render as clearly "missed" (not just a faint planned card). Part of the #155 state model
+    (missed = past + not done). JM 2026-06-26.
 155. ⬜ **Detail page must branch on session STATE (JM spec 2026-06-26) + unify the "use your phone" messaging.**
+    JM update 2026-06-26: on **desktop you should NOT even have the "play" button** at all (not just gated) — the
+    full-page "Ride from your phone" gate is moot; just no play affordance on desktop, show the workout + inline hint.
     JM: "planned → you see info about the workout; done → you see STATS about the session; missed (past, not done) →
     like planned." Today it always shows the plan (profile + ride gate) even when done. ALSO inconsistent: two "use
     mobile" treatments — a FULL-PAGE gate ("Ride from your phone", RidePlayer) AND an inline banner ("Open Platyplus
