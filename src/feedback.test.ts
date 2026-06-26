@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ICU_FIELDS, ICU_FIELD_CODES, FIELDS } from './pages/PostWorkout'
+import { ICU_FIELDS, ICU_FIELD_CODES, GYM_FIELDS, FIELDS } from './pages/PostWorkout'
 
 // #147 — post-workout feedback fields must MATCH the athlete's intervals.icu custom
 // ACTIVITY_FIELDs exactly (fetched 2026-06-26 from /athlete/{id}/custom-item). This test
@@ -40,9 +40,18 @@ describe('post-workout feedback matches intervals custom fields (#147)', () => {
     expect(ICU_FIELD_CODES['Legs After']).toBe('LegsAfter')
   })
 
-  it('all sports resolve to the same full intervals set', () => {
-    for (const sport of ['ride', 'run', 'gym']) {
-      expect(FIELDS[sport]).toBe(ICU_FIELDS)
-    }
+  it('ride + run use the intervals set; GYM is its own (#152)', () => {
+    expect(FIELDS.ride).toBe(ICU_FIELDS)
+    expect(FIELDS.run).toBe(ICU_FIELDS)
+    expect(FIELDS.gym).toBe(GYM_FIELDS)
+    expect(FIELDS.gym).not.toBe(ICU_FIELDS)
+  })
+
+  it('gym has its OWN gym-specific fields, not cycling Legs/Fuel (#152)', () => {
+    const gymLabels = GYM_FIELDS.map(([l]) => l)
+    expect(gymLabels).toContain('Soreness/pump')
+    expect(gymLabels).toContain('Form')
+    expect(gymLabels).not.toContain('Legs After')
+    expect(gymLabels).not.toContain('Fuel/GI')
   })
 })

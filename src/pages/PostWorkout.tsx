@@ -9,10 +9,8 @@ import { DoneStats } from '../ui'
 // Exported so Log-activity shares ONE feedback model + coach pipeline (#143).
 export const FEEL: [string, string][] = [['Strong', '😎'], ['Good', '🙂'], ['Normal', '😐'], ['Poor', '🙁'], ['Weak', '😵']]
 const RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-// Feedback fields MIRROR the athlete's intervals.icu custom ACTIVITY_FIELDs exactly (#147) —
+// RIDE/RUN feedback MIRRORS the athlete's intervals.icu custom ACTIVITY_FIELDs exactly (#147) —
 // names + option lists fetched 2026-06-26 from /athlete/{id}/custom-item (type ACTIVITY_FIELD).
-// intervals' fields are GLOBAL (not sport-split), so one canonical set applies to every sport.
-// Previously Platyplus had fewer/different choices and was missing Life Constraint + Mental State.
 export const ICU_FIELDS: [string, string[]][] = [
   ['Legs Before', ['fresh', 'normal', 'relaxed', 'heavy', 'sore', 'flat', 'tired']],
   ['Legs After', ['strong', 'normal', 'tired OK', 'barely tired', 'heavy', 'sore', 'cooked']],
@@ -23,8 +21,17 @@ export const ICU_FIELDS: [string, string[]][] = [
 ]
 // intervals field CODE for each label — kept so a future write-back can POST the right custom field.
 export const ICU_FIELD_CODES: Record<string, string> = { 'Legs Before': 'LegsBefore', 'Legs After': 'LegsAfter', 'Fuel/GI': 'FuelGI', 'Pain/Niggles': 'PainNiggles', 'Life Constraint': 'LifeConstraint', 'Mental State': 'MentalState' }
-// Every sport uses the same intervals field set (matches intervals exactly).
-export const FIELDS: Record<string, [string, string[]][]> = { ride: ICU_FIELDS, run: ICU_FIELDS, gym: ICU_FIELDS }
+// GYM is its OWN set, NOT cycling's (#152 — "gym is not the same as cycling, as discussed"):
+// gym-specific Soreness/pump + Form, then the universal context fields (gym-relevant Pain/Niggles,
+// Life Constraint, Mental State). No Legs/Fuel — those are endurance-only.
+export const GYM_FIELDS: [string, string[]][] = [
+  ['Soreness/pump', ['none', 'light', 'good pump', 'sore', 'very sore']],
+  ['Form', ['clean', 'mostly clean', 'broke down']],
+  ['Pain/Niggles', ['none', 'shoulder', 'low back', 'knee', 'wrist', 'elbow', 'other']],
+  ['Life Constraint', ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other']],
+  ['Mental State', ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out']],
+]
+export const FIELDS: Record<string, [string, string[]][]> = { ride: ICU_FIELDS, run: ICU_FIELDS, gym: GYM_FIELDS }
 
 /** Post-workout feedback for a completed coach plan — sport-dependent. Coach notes
  *  up top, then the intervals "Feel" + RPE + sport fields + free text. Saved to the
