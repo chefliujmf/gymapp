@@ -25,6 +25,14 @@ from **#117**. Status: 🔨 building · ⬜ todo. Design detail for big items �
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+160. ⬜ **Deletion model confusing: deleting a Platyplus plan's event IN intervals doesn't remove the Platyplus plan,
+    and re-sync re-creates it.** QA: JM deleted today's ride; it cleared from intervals but still shows in Platyplus.
+    Diagnosed: only 1 plan ("Friday Ride to Skov", `mine:true`, icuEventId 118840139); intervals now has 0 events for
+    that day. So the event was deleted in INTERVALS, but Platyplus is MASTER → keeps the plan (stale icuEventId), and a
+    re-sync/save would RE-PUSH it. Right path = delete IN Platyplus (⋮ → Remove) which removes plan + event. FIX OPTIONS:
+    (a) make the in-app Remove the obvious/only path; (b) reconcile DETECTS an intervals-side deletion of a platyplus
+    plan's tracked event and prompts "remove from Platyplus too?"; (c) ensure the Platyplus Remove definitely works (if
+    JM used ⋮→Remove and it persisted = real bug in deletePlanById). JM screenshot QA 2026-06-26.
 159. ⬜ **Sleep 1-5 must be PERSONAL (WHOOP-style), not fixed hour thresholds.** Today `sleepTo5` uses <5/<6/<7/<8/≥8h
     → 1-5, but sleep NEED is individual (JM needs ~9h, others 8 or 10). "How whoop does it is how we have to do it":
     score = **hours slept ÷ personal sleep NEED** (= sleep performance %), mapped to 1-5. Need = device sleep SCORE if
