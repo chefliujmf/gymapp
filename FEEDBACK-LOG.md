@@ -36,7 +36,7 @@ test guide → the **🧪 Test guide** section below.
     section (Cycling/Running → /fitness · Strength → /progress · Mind → /logs), gated by `statsGroups(sports)` (pure +
     unit-tested, `src/stats-hub.test.ts`, 5 tests). Matches the approved `mockups/stats-view.html`. Routing/new-page
     refinements → #194. JM approved the mockup 2026-06-26.
-192. ⬜ **WeekStrip: show which day is TODAY (distinct from the selected day).** The strip only highlights the SELECTED
+192. 🧪 **WeekStrip: show which day is TODAY (distinct from the selected day).** The strip only highlights the SELECTED
     day (green pill); when another day is selected there's no marker for today (Jun 26). Add a persistent "today"
     indicator (ring/underline/dot/label) so today is always identifiable even when another day is selected. Pairs with
     #153. JM 2026-06-26.

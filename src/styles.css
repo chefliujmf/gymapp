@@ -128,6 +128,9 @@ a { color: inherit; text-decoration: none; }
 .week button.on .week__dot--on { background: var(--on-accent, #082015); }
 .week button.on { background: var(--accent-grad); border-color: transparent; box-shadow: 0 6px 16px -6px rgba(52,224,125,0.6); }
 .week button.on, .week button.on b { color: var(--on-accent); }
+/* #192: mark TODAY (accent ring + accent date) even when another day is selected. */
+.week button.today:not(.on) { border-color: var(--accent); }
+.week button.today:not(.on) b { color: var(--accent); }
 
 /* progress bar */
 .progress { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 10px 0; }

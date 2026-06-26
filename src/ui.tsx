@@ -36,9 +36,10 @@ export function WeekStrip({ selected, onSelect, marked }: { selected?: string; o
         {days.map((d) => {
           const iso = localISO(d)
           const on = selected ? iso === selected : d.toDateString() === todayKey
+          const isToday = d.toDateString() === todayKey // mark today even when another day is selected (#192)
           const hasContent = !!marked?.has(iso)
           return (
-            <button key={iso} className={on ? 'on' : ''} onClick={() => onSelect?.(iso)}>
+            <button key={iso} className={[on && 'on', isToday && 'today'].filter(Boolean).join(' ')} onClick={() => onSelect?.(iso)}>
               {DOW[d.getDay()]}
               <b>{d.getDate()}</b>
               <span className={'week__dot' + (hasContent ? ' week__dot--on' : '')} />
