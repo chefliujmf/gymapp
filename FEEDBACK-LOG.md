@@ -27,6 +27,20 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+198. ⬜ **Sports as show/hide MODULES (cycling/running/strength/yoga/pilates/meditation).** JM (2026-06-27): each
+    discipline is a "module"; make it trivial for the app to show/hide everything tied to one (nav hubs, Today
+    suggestions, Stats cards, coach gating, Add sheet). Today it keys off `user.sports`; audit that EVERY surface
+    reads one central helper (e.g. `hasModule(sport)`) so adding/removing a module flips all UI consistently. No
+    half-gated surfaces. Keep CONTENT adaptive, structure stable (memory `platyplus`/nav IA). gymapp-only.
+197. 🔨 **Friday shows "2 completed workouts" incl. a phantom "Ride to Skov" (prod).** JM (2026-06-27) did ONE ride
+    (not Ride to Skov). VERIFIED server+intervals CLEAN for 06-26: 1 plan + 1 activity + 1 event, all "Friday
+    Endurance Ride"; **0 logs**; no "Ride to Skov" anywhere. ⇒ phantom is a **stale local `db.logs` entry** on that
+    device (left from before the plan delete). `syncLogsFromServer` clears+refetches on auth load, so a full PWA
+    reload should reconcile. Diagnostic: if it survives a true reload → real bug. Suspect: `Logs.tsx` History dedup
+    (`sportBucket(l.discipline)===sport`) lets a stale/odd-discipline local log show ALONGSIDE the device activity =
+    "2". Fix path (gymapp-only): harden the device-vs-log dedup (match by day+sport more robustly / drop orphan
+    local logs not on the server). Constraint from JM: do NOT touch cyclingcoach — gymapp repo only. Also: dev can't
+    connect to intervals (separate, low-pri). **#185 reverted in cyclingcoach per JM — keep the fix gymapp-side.**
 196. 🧪 **Duplicate workout in prod (intervals sync).** RESOLVED (data): deleted the stale Platyplus plan
     `friday_ride_to_skov_2026-06-26` via the proper deletePlanById path (DELETE /api/plan → 200). Friday 06-26 now
     has ONE plan — the coach's icu "Friday Endurance Ride" (ev 118860036) — matched to the completed activity
@@ -366,13 +380,12 @@ test guide → the **🧪 Test guide** section below.
     tools so the coach picks REAL recipes + meditation/yoga/pilates classes by id, then `schedule_meal/mind(refId,
     why)`. Extend `create_ride/workout/run` + `schedule_meal/mind` with the structured fields (objective, cues[],
     success, recovery, fuel{why,supplements}, mind{why}, per-item why). (source: UX-BACKLOG plan-authoring design.)
-185. 🧪 **cyclingcoach authors INTO Platyplus (retire direct intervals publish) + `time_target`.** BUILT 2026-06-23.
-    `time_target` blocker was already cleared in `planToIcuEvent` (gymapp). cyclingcoach side (commit fc6082c):
-    `tools/publish_platyplus_plan.py` generalized to `--file <plans.json> --prune` (Coach API `POST /api/plan`);
-    SKILL.md + `codex_coach/instructions_intervals_icu.md` now say author ONLY via Platyplus (it mirrors to
-    intervals → Wahoo); `intervals_icu_workouts.py` publish/publish-week marked **retired** (reads kept); 60 tests
-    pass. So new dupes shouldn't form (root cause of the 2026-06-23 dupe). JM to verify: next coach plan publishes
-    once, no duplicate event. Still open: #157 pushed-text polish; the rich meal/mind description (#184) is separate.
+185. ⬜ **Make Platyplus robust to the coach's split publish (GYMAPP-ONLY).** `time_target` is already in
+    `planToIcuEvent`. A cyclingcoach-side fix (author only via Platyplus) was built then **REVERTED** — JM
+    2026-06-27: do NOT modify the cyclingcoach repo, solve in gymapp only. So Platyplus must tolerate the coach
+    still publishing some plans straight to intervals (different titles): dedup same day+sport on import/render
+    (Platyplus-wins), `deletePlanById` should also clear the matched device activity/local log, and make removing a
+    stale plan IN Platyplus easy. Pairs with #197. Don't rely on changing the coach.
 186. ⬜ **Monitoring routine.** Scheduled check of `docker ps` health + `docker logs` to maintain the PWAs and act
     on issues (logs already set up for this; a watchdog bot foundation exists from #126). (source: UX-BACKLOG infra.)
 187. ⬜ **Unified media manifest.** Single inventory of every self-hosted asset (images + audio + video) for
