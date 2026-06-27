@@ -390,12 +390,15 @@ test guide → the **🧪 Test guide** section below.
     tools so the coach picks REAL recipes + meditation/yoga/pilates classes by id, then `schedule_meal/mind(refId,
     why)`. Extend `create_ride/workout/run` + `schedule_meal/mind` with the structured fields (objective, cues[],
     success, recovery, fuel{why,supplements}, mind{why}, per-item why). (source: UX-BACKLOG plan-authoring design.)
-185. ⬜ **Make Platyplus robust to the coach's split publish (GYMAPP-ONLY).** `time_target` is already in
-    `planToIcuEvent`. A cyclingcoach-side fix (author only via Platyplus) was built then **REVERTED** — JM
-    2026-06-27: do NOT modify the cyclingcoach repo, solve in gymapp only. So Platyplus must tolerate the coach
-    still publishing some plans straight to intervals (different titles): dedup same day+sport on import/render
-    (Platyplus-wins), `deletePlanById` should also clear the matched device activity/local log, and make removing a
-    stale plan IN Platyplus easy. Pairs with #197. Don't rely on changing the coach.
+185. 🧪 **Make Platyplus robust to the coach's split publish (GYMAPP-ONLY).** BUILT 2026-06-27 (awaiting JM verify).
+    The coach republishing a workout under a NEW title for a slot you already have left a stale plan beside the new
+    one. Fix: pure `planDroppedByReconcile` in `server/icu-match.js` + wired into `reconcileFromIcu` — on each sync,
+    drop a plan whose intervals mirror event is GONE: icu-origin always; **platyplus-origin only when a live
+    (replacement) WORKOUT event now occupies the same day+sport** (so the stale "Friday Ride to Skov" is removed once
+    "Friday Endurance Ride" exists). A pure intervals deletion with NO replacement keeps the Platyplus plan (stays
+    master, respects #160); a never-pushed local plan is never dropped. 6 unit tests in `src/icu-dedup.test.ts` (38
+    total green). Existing dev+QA dups already cleaned. Paired with #197 (render/log dedup) + the cyclingcoach side
+    stays untouched per JM. Verify: republish a renamed workout → only the new one remains, no dup.
 186. ⬜ **Monitoring routine.** Scheduled check of `docker ps` health + `docker logs` to maintain the PWAs and act
     on issues (logs already set up for this; a watchdog bot foundation exists from #126). (source: UX-BACKLOG infra.)
 187. ⬜ **Unified media manifest.** Single inventory of every self-hosted asset (images + audio + video) for

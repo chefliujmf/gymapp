@@ -24,7 +24,7 @@ const USE_PG = !!process.env.DATABASE_URL
 const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
-import { eventMatchesPlan } from './icu-match.js'
+import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -902,15 +902,16 @@ async function reconcileFromIcu(user, from, to) {
     user.plans.push(plan); imported++
     planIds.add(plan.id); planKeys.add(planKey(plan.date, plan.sport, plan.title)) // guard against dups within this batch too
   }
-  // Deletion mirror: an intervals-ORIGIN plan whose event is gone from intervals (in
-  // this window) is dropped here too — stay mirrored. Platyplus-origin plans are NOT
-  // dropped (Platyplus owns them; deleting must happen in Platyplus).
+  // Deletion mirror (#150) + replaced-plan cleanup (#185): drop a stored plan whose
+  // intervals mirror is gone — icu-origin always, platyplus-origin ONLY when a live
+  // (replacement) WORKOUT event now occupies the same day+sport (the coach republished
+  // it under a new title). A pure intervals deletion with no replacement is kept, so
+  // Platyplus stays master for plans it solely owns. See planDroppedByReconcile.
+  const liveSlots = new Set((events || [])
+    .filter((e) => (!e.category || e.category === 'WORKOUT') && ['Ride', 'Run', 'WeightTraining'].includes(e.type))
+    .map((e) => slotKey(String(e.start_date_local || '').slice(0, 10), eventSport(e.type))))
   const before = user.plans.length
-  user.plans = user.plans.filter((p) => {
-    if (p.origin !== 'icu' || !p.icuEventId) return true
-    if (p.date < from || p.date > to) return true // only judge within the synced window
-    return liveIcuIds.has(p.icuEventId)
-  })
+  user.plans = user.plans.filter((p) => !planDroppedByReconcile(p, { liveIds: liveIcuIds, liveSlots, from, to }))
   const dropped = before - user.plans.length
   if (imported || dropped) save(store)
   return { imported, dropped, scanned: (events || []).length }

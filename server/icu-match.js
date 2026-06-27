@@ -21,3 +21,28 @@ export function eventMatchesPlan(plan, event) {
   const n = normTitle(event.name), t = normTitle(plan.title)
   return !!n && !!t && (n === t || n.startsWith(t) || t.startsWith(n))
 }
+
+// Sport bucket for an intervals event TYPE (Ride/Run/WeightTraining → ride/run/gym).
+export const eventSport = (type) => (type === 'Ride' ? 'ride' : type === 'Run' ? 'run' : 'gym')
+// A planned "slot" key — one workout per day+sport.
+export const slotKey = (date, sport) => `${String(date).slice(0, 10)}|${sport}`
+
+// Reconcile drop decision (#185, pure + tested): should a STORED plan be removed because
+// intervals no longer backs it? `ctx`:
+//   liveIds   — Set of event ids currently live in the synced window
+//   liveSlots — Set of slotKey(date,sport) that have a live WORKOUT event in the window
+//   from,to   — the synced window (only judge plans inside it)
+// Rules (Platyplus stays master for what it solely owns):
+//   • never pushed (no icuEventId) → keep (locally authored, Platyplus owns it)
+//   • outside the window → keep (we didn't look there)
+//   • its mirror event is still live → keep
+//   • mirror gone + icu-ORIGIN → drop (it only existed as a mirror)
+//   • mirror gone + platyplus-origin → drop ONLY if the slot now has a live (replacement)
+//     event; a pure intervals deletion with no replacement is kept (respects #160).
+export function planDroppedByReconcile(plan, { liveIds, liveSlots, from, to }) {
+  if (!plan || !plan.icuEventId) return false
+  if ((from && plan.date < from) || (to && plan.date > to)) return false
+  if (liveIds.has(plan.icuEventId)) return false
+  if (plan.origin === 'icu') return true
+  return liveSlots.has(slotKey(plan.date, plan.sport))
+}
