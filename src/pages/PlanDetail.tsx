@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getPlanEvent, gymSessionFromEvent, setGymSession, matchExercise } from '../plan'
 import { eventObjective, parseGymTable, parseGymWorkout, sportOf, flattenIcuSteps, type GymTableRow } from '../intervals'
 import { SegmentProfile } from '../ui'
-import { setCurrentRide } from '../ride'
+import { setCurrentRide, canPlayHere } from '../ride'
+import { useBle } from '../BleContext'
 import { getSetting } from '../db'
 import { gymTSS, rpeIntensity } from '../tss'
 
@@ -23,6 +24,7 @@ function rowsFromGymapp(description: string): GymTableRow[] {
 export default function PlanDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const ble = useBle()
   const e = id ? getPlanEvent(id) : undefined
   const [open, setOpen] = useState<Set<number>>(new Set())
   const toggle = (i: number) => setOpen((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n })
@@ -113,7 +115,9 @@ export default function PlanDetail() {
           <div className="card" style={{ padding: 16, marginTop: 6 }}>
             <SegmentProfile segs={flattenIcuSteps(e.workout_doc?.steps)} ftp={ftp} />
           </div>
-          <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ Ride now</button>
+          {canPlayHere(!!ble.bridge)
+            ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ Ride now</button>
+            : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to ride — that's where your sensors connect.</div>}
         </>
       )}
 

@@ -16,7 +16,16 @@ description: Before implementing any UX / visual / layout / interaction change, 
 ## How
 1. **Research first** — current best practice + how leading apps solve it (see the platyplus-ops skill's UX rule). Research shapes the options; cite sources.
 2. **Surface constraints** — the user holds constraints you can't infer (e.g. "the check-in can't be collapsed — I'll forget to fill it in"). Options-first flushes these out before code.
-3. **Render an HTML mockup + open it** — write a self-contained HTML file (Platyplus dark theme: `--text:#eef1f4 --text-dim:#9298a6 --accent:#34e07d --bg:#0f1216`, card gradient `#21252f→#191c24`) to `gymapp/mockups/<thing>.html` and `open` it. Put the 2-3 options (or sport variants) behind a toggle in the ONE file so JM compares live. Use `AskUserQuestion` for the actual pick (a one-line ASCII sketch in the `preview` is fine as a label, but the real visual is the opened HTML). Recommendation first.
+3. **Render an HTML mockup, OPEN it, AND show it inline** — write a self-contained HTML file (Platyplus dark theme: `--text:#eef1f4 --text-dim:#9298a6 --accent:#34e07d --bg:#0f1216`, card gradient `#21252f→#191c24`) to `gymapp/mockups/<thing>.html`. Put the 2-3 options (or sport variants) behind a toggle in the ONE file so JM compares live. Use `AskUserQuestion` for the actual pick (a one-line ASCII sketch in the `preview` is fine as a label, but the real visual is the rendered HTML). Recommendation first.
+   **Always do BOTH (don't make JM ask "where is the mockup?"):**
+   ```sh
+   open "mockups/<thing>.html"                      # opens it in the default browser
+   # AND render to PNG + Read it so JM sees it INLINE in chat:
+   CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+   "$CHROME" --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=2 \
+     --window-size=460,900 --screenshot="/tmp/mock.png" "file://$PWD/mockups/<thing>.html"
+   ```
+   then **Read `/tmp/mock.png`** to display it in the conversation. (For multi-option toggles, screenshot each state to its own PNG and Read them all.) JM should SEE the mockup in the reply, not have to open a file.
 4. **Build only the chosen option.** If the user says "other"/tweaks, fold it in and re-confirm if it's a big shift.
 
 ## Mobile hard rules (non-negotiable — JM directives)

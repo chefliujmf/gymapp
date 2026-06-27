@@ -78,4 +78,4 @@ Charts live in `src/charts.tsx` (TrendChart/BarChart/PowerCurveChart/InfoDot/Cha
 - **When working WITH JM in a session, keep a persistent dev server up for him:** start `npm run dev` as a REAL background task (`run_in_background: true`), NOT `( npm run dev ) &` inside a one-shot Bash call — that child gets reaped when the call returns, leaving the ports dead and JM unable to connect (caused repeat reports). Verify with `curl -s -o /dev/null -w '%{http_code}' localhost:5173`.
 
 ## "When you change X" (from CLAUDE.md)
-Any `server/*` change rebuilds the image (CI smoke-tests the module graph). New `/api`|`/auth` route → update `server/openapi.json`. User-facing batch → add to `src/notifications.ts`/releases. Keep `UX-BACKLOG.md` + memory current (the user stresses this).
+Any `server/*` change rebuilds the image (CI smoke-tests the module graph). New `/api`|`/auth` route → update `server/openapi.json`. User-facing batch → add to `src/notifications.ts`/releases. Keep `FEEDBACK-LOG.md` (the single backlog + 🎨 Design reference + 🧪 Test guide) + memory current (the user stresses this).

@@ -16,7 +16,7 @@
   the app; written out in full in the intervals mirror). Blocker tracked: add
   `time_target` to the Platyplus→intervals ride push for Wahoo.
 - This applies to EVERY coach instance (this engine for all users + any BYO-AI via
-  the Platyplus MCP). See gymapp memory `platyplus-coach-engine` + `gymapp/UX-BACKLOG.md`.
+  the Platyplus MCP). See gymapp memory `platyplus-coach-engine` + the 🎨 Design reference section of `gymapp/FEEDBACK-LOG.md`.
 - **Intervals duration-parse gotcha (the rendered description that gets mirrored).**
   Intervals parses duration tokens out of the description text and adds phantom steps,
   doubling the chart (a 5h ride showed as ~10h, empty front). Two rules the renderer now

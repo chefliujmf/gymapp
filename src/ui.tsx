@@ -5,6 +5,8 @@ import { Dumbbell, Flame, Activity, Flower2, StretchHorizontal, Swords, Brain, M
 import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind, EnduranceWorkout } from './types'
 import { isIndoorActivity, type IcuActivity } from './intervals'
 import { localISO } from './date'
+import { zoneColor, zoneName, segPower } from './zones'
+export { zoneColor, zoneName } // one source of truth (#72) — re-export for other modules
 
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
@@ -34,9 +36,10 @@ export function WeekStrip({ selected, onSelect, marked }: { selected?: string; o
         {days.map((d) => {
           const iso = localISO(d)
           const on = selected ? iso === selected : d.toDateString() === todayKey
+          const isToday = d.toDateString() === todayKey // mark today even when another day is selected (#192)
           const hasContent = !!marked?.has(iso)
           return (
-            <button key={iso} className={on ? 'on' : ''} onClick={() => onSelect?.(iso)}>
+            <button key={iso} className={[on && 'on', isToday && 'today'].filter(Boolean).join(' ')} onClick={() => onSelect?.(iso)}>
               {DOW[d.getDay()]}
               <b>{d.getDate()}</b>
               <span className={'week__dot' + (hasContent ? ' week__dot--on' : '')} />
@@ -173,23 +176,7 @@ export function RecipeCard({ r }: { r: Recipe }) {
 // --- Endurance (cycling / running) ----------------------------------------
 
 /** Power-zone colour for a % of FTP/threshold — mirrors JOIN's profile graph. */
-export function zoneColor(pct: number): string {
-  if (pct < 60) return '#7fd1ff'   // recovery
-  if (pct < 76) return '#43d9a3'   // endurance
-  if (pct < 91) return '#ffd23f'   // tempo
-  if (pct < 106) return '#ff9f43'  // threshold
-  if (pct < 121) return '#ff6b6b'  // vo2max
-  return '#e63946'                 // anaerobic
-}
-
-export function zoneName(pct: number): string {
-  if (pct < 60) return 'Recovery'
-  if (pct < 76) return 'Endurance'
-  if (pct < 91) return 'Tempo'
-  if (pct < 106) return 'Threshold'
-  if (pct < 121) return 'VO₂max'
-  return 'Anaerobic'
-}
+// zoneColor / zoneName now live in ./zones (re-exported above) — ONE source of truth.
 
 /** Flatten blocks (expanding numRepeats) into a single list of intervals. */
 export function flattenIntervals(w: EnduranceWorkout) {
@@ -309,7 +296,7 @@ export function MiniProfile({ segs }: { segs: { duration: number; powerStart: nu
   return (
     <div className="thumb-profile">
       {segs.map((s, i) => {
-        const p = (s.powerStart + s.powerEnd) / 2
+        const p = segPower(s) // peak, same as the detail profile — so thumbnail matches (#72)
         return <span key={i} style={{ flexGrow: s.duration / total, flexBasis: 0, height: `${Math.max(14, (p / maxP) * 100)}%`, background: zoneColor(p), borderRadius: '1.5px 1.5px 0 0' }} />
       })}
     </div>

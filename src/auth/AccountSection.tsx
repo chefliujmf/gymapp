@@ -3,6 +3,7 @@ import { Fingerprint, Trash2, Camera, Copy, RefreshCw, Eye, EyeOff } from 'lucid
 import { authApi } from './api'
 import { useAuth } from './AuthContext'
 import PasswordInput from '../PasswordInput'
+import ResyncToIntervals from '../ResyncToIntervals'
 
 /** Center-crop + resize an image file to a square data URL. */
 function resizeImage(file: File, size: number): Promise<string> {
@@ -144,6 +145,7 @@ export default function AccountSection({ only }: { only?: 'account' | 'connectio
       <input className="search" placeholder="Athlete id" value={icuAth} onChange={(e) => setIcuAth(e.target.value)} />
       <button className="btn" onClick={saveIcu} disabled={!icuKey && icuAth === user.icuAthlete}>Save to account</button>
       {icuMsg && <p className="meta" style={{ marginTop: 8 }}>{icuMsg}</p>}
+      {user.hasIcuKey && <ResyncToIntervals />}
 
       <div className="section-title">Strava</div>
       {strava?.available === false ? (

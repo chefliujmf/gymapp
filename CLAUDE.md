@@ -7,7 +7,22 @@ Read this before changing anything here. It lists the invariants and the
 **`FEEDBACK-LOG.md`** is the single, numbered, statused source of truth for what JM
 has asked for and where we're at (✅ done · 🔨 building · ⬜ todo). **Any session: read it
 first, work the OPEN queue top-down, to the T**, unless JM says otherwise. Append every new
-feedback/idea there (numbered) on receipt. Design detail for big items → `UX-BACKLOG.md`.
+feedback/idea there (numbered) on receipt. Design detail for big items → the **🎨 Design reference**
+section of `FEEDBACK-LOG.md`. (FEEDBACK-LOG.md is now the SINGLE backlog + design + test guide —
+UX-BACKLOG.md and REGRESSION.md were folded into it.)
+
+## ▶ TESTING & VERIFICATION — HARD RULE (JM directive 2026-06-26)
+JM lost trust because I shipped "built" code that didn't work. The fix is non-negotiable:
+1. **LOG FIRST.** Every report → `FEEDBACK-LOG.md` (numbered) *before* touching code. Don't fix-then-forget.
+2. **`🔨 built ≠ done`.** Compiling/deploying is NOT verified. Only **JM marks ✅** after testing on QA.
+3. **Every fix ships with a test.** A unit test in `src/*.test.ts` (`npm test`, vitest) when the logic is
+   pure; otherwise a `scripts/smoke-test.mjs` row and/or a **manual step in the 🧪 Test guide section of
+   `FEEDBACK-LOG.md`**. The test is the permanent regression net — write it, run it green, commit it.
+4. **The 🧪 Test guide section of `FEEDBACK-LOG.md`** is the live "test one-by-one" guide: per item =
+   unit test file + JM's manual steps + expected result + status. Keep it current.
+5. **Mock-first for anything JM sees** (skill `options-first`), and **trace the real flow / check the
+   source of truth** (e.g. do these choices match intervals?) — not just "does it compile?".
+See skill `platyplus-testing` + memory `platyplus-testing-workflow`.
 
 ## Architecture (how it runs)
 - One Node container (`gymapp-auth`, `server/server.js`): serves the built SPA,
@@ -51,6 +66,12 @@ feedback/idea there (numbered) on receipt. Design detail for big items → `UX-B
 | Change deploy/infra/containers | **`RESTORE.md`** and this file |
 | Change the build pipeline | `scripts/*` stay consistent (`build-catalog`, `fetch-missing-media`) |
 | New UX feature using the calendar | use `calApi` (`src/calendar.ts`); document new endpoints in openapi.json |
+
+## Readiness engine — our own WHOOP (since 2026-06-26)
+Platyplus auto-derives the check-in's **Sleep · Freshness · Energy** as a personal **1–5** from intervals
+wellness (CTL/ATL/Form, HRV, RHR, sleep) + the check-in; manual tap always overrides. Research + formulas +
+build plan → **`docs/readiness-scores.md`**; operational summary → the **`platyplus-readiness-scores`** skill;
+memory `platyplus-readiness-model`. Build the math as a pure, unit-tested `server/readiness.js`. (#158/#159)
 
 ## Tools / scripts (keep current)
 - `scripts/build-catalog.mjs` — builds `src/data/generated/*` from `downloaded_pages/`. Self-hosts all media + runs the independence gate.

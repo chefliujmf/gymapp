@@ -128,6 +128,9 @@ a { color: inherit; text-decoration: none; }
 .week button.on .week__dot--on { background: var(--on-accent, #082015); }
 .week button.on { background: var(--accent-grad); border-color: transparent; box-shadow: 0 6px 16px -6px rgba(52,224,125,0.6); }
 .week button.on, .week button.on b { color: var(--on-accent); }
+/* #192: mark TODAY (accent ring + accent date) even when another day is selected. */
+.week button.today:not(.on) { border-color: var(--accent); }
+.week button.today:not(.on) b { color: var(--accent); }
 
 /* progress bar */
 .progress { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 10px 0; }
@@ -957,8 +960,11 @@ select.search { appearance: none; -webkit-appearance: none; }
   cursor: pointer; font-weight: 600; font-size: 13px;
 }
 .sheet-type span { color: var(--text, #e7ebf0); }
-.sheet-list { max-height: 56vh; overflow-y: auto; margin-top: 10px; }
-.sheet-list .card { width: 100%; text-align: left; display: block; }
+.sheet-list { max-height: 56vh; overflow-y: auto; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+/* #148: the card is a <button>; display:block + flex content + overflow:hidden collapses it
+   to ~0 height in WebKit (you saw faint lines, not the list). flex container sizes to content. */
+.sheet-list .card { width: 100%; text-align: left; display: flex; flex-direction: column; }
+.sheet-list .card .card-row { width: 100%; }
 
 /* ---------- Coach chat ---------- */
 .chat { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
@@ -1057,3 +1063,6 @@ select.search { appearance: none; -webkit-appearance: none; }
 .weeknav__a:last-child, .weeknav__today { margin-left: 0; }
 /* DONE workout — obvious: green left bar + tinted border */
 .card--done { border-color: rgba(52, 224, 125, 0.55) !important; box-shadow: inset 3px 0 0 0 var(--accent, #34e07d), var(--card-shadow); }
+
+/* #139: desktop (no sensor bridge) → ride/run is mobile-only */
+.phone-gate { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 13px; padding: 12px 14px; color: var(--text-dim); font-size: 13px; line-height: 1.45; text-align: center; }

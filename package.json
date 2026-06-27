@@ -17,7 +17,9 @@
     "build:app": "tsc -b && vite build",
     "sync:catalog": "bash scripts/sync-catalog.sh",
     "deploy:staging": "bash scripts/deploy-staging.sh",
-    "test:smoke": "node scripts/smoke-test.mjs"
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.3.0",
@@ -38,6 +40,7 @@
     "concurrently": "^10.0.3",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
-    "vite-plugin-pwa": "^0.21.1"
+    "vite-plugin-pwa": "^0.21.1",
+    "vitest": "^4.1.9"
   }
 }

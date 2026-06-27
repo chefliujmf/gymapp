@@ -24,6 +24,7 @@ const USE_PG = !!process.env.DATABASE_URL
 const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
+import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -416,6 +417,21 @@ app.post('/auth/plans/sync', auth, async (req, res) => {
   if (!from || !to) return res.status(400).json({ error: 'from + to (YYYY-MM-DD) required' })
   res.json(await reconcileFromIcu(req.user, from, to))
 })
+// PUSH every Platyplus-origin plan in a window OUT to intervals (dedup-aware) — the manual
+// "re-sync" button (#150). Recovers plans that never pushed (errored/predate the push) and
+// adopts any matching event the athlete's other coach already created (no duplicates).
+app.post('/auth/plans/resync', auth, async (req, res) => {
+  const from = req.body?.from || req.query.from, to = req.body?.to || req.query.to
+  if (!from || !to) return res.status(400).json({ error: 'from + to (YYYY-MM-DD) required' })
+  if (!req.user.icuKey) return res.json({ skipped: 'no intervals key' })
+  const plans = (req.user.plans || []).filter((p) => p.date >= from && p.date <= to && (p.origin || 'platyplus') === 'platyplus')
+  let created = 0, exists = 0, updated = 0, skipped = 0, errors = 0
+  for (const p of plans) {
+    const r = await pushPlanToIcu(req.user, p)
+    if (r.created) created++; else if (r.exists) exists++; else if (r.updated) updated++; else if (r.skipped) skipped++; else if (r.error) errors++
+  }
+  res.json({ total: plans.length, created, exists, updated, skipped, errors })
+})
 app.delete('/auth/plans/:id', auth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
 
 // Non-workout calendar items (meal / mind / note) — Platyplus only, no intervals push.
@@ -729,22 +745,65 @@ function planToIcuEvent(plan, items = []) {
   }
   return ev
 }
-// Create or update the mirror event (tracked by plan.icuEventId).
+// All intervals planned EVENTS that already represent this plan (incl. the other coach's copy,
+// whose name carries a "#Codex Coach" suffix — matched fuzzily). See server/icu-match.js (#150).
+async function findIcuEventsForPlan(user, plan) {
+  const ath = user.icuAthlete || 'i28814'
+  try {
+    const r = await icuFetch(user, `/athlete/${ath}/events?oldest=${plan.date}&newest=${plan.date}`)
+    if (!r.ok) return []
+    const events = await r.json()
+    return (events || []).filter((e) => eventMatchesPlan(plan, e))
+  } catch { return [] }
+}
+const icuToday = () => { try { return new Date().toLocaleDateString('en-CA') } catch { return new Date().toISOString().slice(0, 10) } }
+const stripIcuInstance = (s) => String(s || '').replace(/:\d{4}-\d{2}-\d{2}$/, '')
+// Mirror a plan to intervals — self-healing, Platyplus is the MASTER (#150):
+//   • COLLAPSE duplicates: events carrying our external_id (incl. intervals' ":date" instance
+//     copy) are the same session pushed twice → keep ONE, delete the extras.
+//   • PAST: keep NO planned event in the past — delete ours; never create.
+//   • else update our event (or adopt a foreign one — the other coach's — without duplicating).
 async function pushPlanToIcu(user, plan) {
   if (!user.icuKey) return { skipped: 'no intervals key' }
   const ath = user.icuAthlete || 'i28814'
-  const dayItems = (user.items || []).filter((it) => it.date === plan.date)
-  const ev = planToIcuEvent(plan, dayItems)
+  const delEvent = async (id) => { try { await icuFetch(user, `/athlete/${ath}/events/${id}`, { method: 'DELETE' }) } catch { /* best effort */ } }
+  const mineId = plan.icuEventId ? String(plan.icuEventId) : null
+
+  const matches = await findIcuEventsForPlan(user, plan)
+  // OUR events = those whose external_id (minus the ":date" instance suffix) is this plan's id.
+  let ours = matches.filter((e) => e.external_id && stripIcuInstance(e.external_id) === plan.id)
+  if (ours.length > 1) { // collapse the instance-suffix duplicate(s) → keep one
+    const keep = ours.find((e) => String(e.id) === mineId) || ours[0]
+    for (const e of ours) if (String(e.id) !== String(keep.id)) await delEvent(e.id)
+    ours = [keep]
+  }
+  const mine = ours[0] || null
+  const foreign = matches.find((e) => !ours.includes(e)) // a different event for the same session
+
+  // (1) PAST: Platyplus keeps no planned event in the past — delete ours, never create.
+  if (plan.date < icuToday()) {
+    if (mine) await delEvent(mine.id)
+    if (plan.icuEventId) { plan.icuEventId = undefined; plan.icuEventMine = undefined; save(store) }
+    return { skipped: 'past' }
+  }
+  // (2) We have none of our own but the session already exists (other coach) → adopt, don't dup.
+  if (!mine && foreign) {
+    plan.icuEventId = foreign.id; plan.icuEventMine = false; save(store)
+    return { exists: foreign.id }
+  }
+  // (3) Update OUR event, else create one.
+  const ev = planToIcuEvent(plan, (user.items || []).filter((it) => it.date === plan.date))
+  const targetId = mine ? String(mine.id) : null
   try {
-    if (plan.icuEventId) {
-      const r = await icuFetch(user, `/athlete/${ath}/events/${plan.icuEventId}`, { method: 'PUT', body: JSON.stringify(ev) })
-      if (r.ok) return { updated: plan.icuEventId }
+    if (targetId) {
+      const r = await icuFetch(user, `/athlete/${ath}/events/${targetId}`, { method: 'PUT', body: JSON.stringify(ev) })
+      if (r.ok) { plan.icuEventId = targetId; plan.icuEventMine = true; save(store); return { updated: targetId } }
       if (r.status !== 404) return { error: `update ${r.status}` }
     }
     const r = await icuFetch(user, `/athlete/${ath}/events`, { method: 'POST', body: JSON.stringify(ev) })
     if (!r.ok) return { error: `create ${r.status}` }
     const created = await r.json()
-    plan.icuEventId = created.id; save(store)
+    plan.icuEventId = created.id; plan.icuEventMine = true; save(store)
     return { created: created.id }
   } catch (e) { return { error: String(e.message || e) } }
 }
@@ -782,7 +841,13 @@ async function upsertPlan(user, body) {
 async function deletePlanById(user, id) {
   const plan = (user.plans || []).find((x) => x.id === id)
   await deleteIcuEvent(user, plan)
-  user.plans = (user.plans || []).filter((x) => x.id !== id); save(store)
+  user.plans = (user.plans || []).filter((x) => x.id !== id)
+  // Cascade: drop any completed log tied to this plan so removing a workout can't
+  // leave a phantom "completed" session behind (#197). Match by workoutId === plan id.
+  if (Array.isArray(user.logs) && user.logs.some((l) => l.workoutId === id)) {
+    user.logs = user.logs.filter((l) => l.workoutId !== id)
+  }
+  save(store)
 }
 
 // --- intervals.icu -> Platyplus import (reconcile) -------------------------
@@ -837,15 +902,16 @@ async function reconcileFromIcu(user, from, to) {
     user.plans.push(plan); imported++
     planIds.add(plan.id); planKeys.add(planKey(plan.date, plan.sport, plan.title)) // guard against dups within this batch too
   }
-  // Deletion mirror: an intervals-ORIGIN plan whose event is gone from intervals (in
-  // this window) is dropped here too — stay mirrored. Platyplus-origin plans are NOT
-  // dropped (Platyplus owns them; deleting must happen in Platyplus).
+  // Deletion mirror (#150) + replaced-plan cleanup (#185): drop a stored plan whose
+  // intervals mirror is gone — icu-origin always, platyplus-origin ONLY when a live
+  // (replacement) WORKOUT event now occupies the same day+sport (the coach republished
+  // it under a new title). A pure intervals deletion with no replacement is kept, so
+  // Platyplus stays master for plans it solely owns. See planDroppedByReconcile.
+  const liveSlots = new Set((events || [])
+    .filter((e) => (!e.category || e.category === 'WORKOUT') && ['Ride', 'Run', 'WeightTraining'].includes(e.type))
+    .map((e) => slotKey(String(e.start_date_local || '').slice(0, 10), eventSport(e.type))))
   const before = user.plans.length
-  user.plans = user.plans.filter((p) => {
-    if (p.origin !== 'icu' || !p.icuEventId) return true
-    if (p.date < from || p.date > to) return true // only judge within the synced window
-    return liveIcuIds.has(p.icuEventId)
-  })
+  user.plans = user.plans.filter((p) => !planDroppedByReconcile(p, { liveIds: liveIcuIds, liveSlots, from, to }))
   const dropped = before - user.plans.length
   if (imported || dropped) save(store)
   return { imported, dropped, scanned: (events || []).length }
@@ -952,7 +1018,7 @@ async function icuGet(user, path) {
 const icuDay = (n = 0) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
 
 // ---- Completed-activity capture → intervals (MATCH-FIRST, #122/#123) -------------
-// The locked data-flow model (UX-BACKLOG): intervals = read hub; Platyplus always
+// The locked data-flow model (FEEDBACK-LOG.md → 🎨 Design reference): intervals = read hub; Platyplus always
 // keeps the local copy; for in-app workouts, check intervals for a device activity
 // first (match → don't duplicate), else upload our own. No Strava dependency.
 const tcxSport = (s) => /ride|cycl|bike/i.test(s) ? 'Biking' : /run/i.test(s) ? 'Running' : 'Other'
