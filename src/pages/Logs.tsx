@@ -2,18 +2,17 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Trash2 } from 'lucide-react'
-import { db, getSetting, type WorkoutLog, type SetEntry } from '../db'
+import { db, getSetting, syncLogsFromServer, type WorkoutLog, type SetEntry } from '../db'
 import { allWorkoutsById } from '../data/catalog'
 import { authApi, type Checkin } from '../auth/api'
 import { e1rm } from '../strength'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
 import { DoneStats } from '../ui'
+import { buildDayEntries } from '../logs-merge'
 
 // emoji for a discipline/sport so every History row reads at a glance
 const SPORT_EMOJI: Record<string, string> = { cycling: '🚴', ride: '🚴', running: '🏃', run: '🏃', strength: '🏋️', gym: '🏋️', swimming: '🏊', swim: '🏊', walking: '🚶', walk: '🚶', yoga: '🧘', pilates: '🧘', meditation: '🧠' }
 const emojiFor = (s?: string) => SPORT_EMOJI[String(s || '').toLowerCase()] || '✦'
-// map a log's discipline to the intervals sport bucket, for match-first dedup
-const sportBucket = (disc?: string) => { const d = String(disc || '').toLowerCase(); return /cycl|ride|bike/.test(d) ? 'ride' : /run/.test(d) ? 'run' : /strength|gym|weight/.test(d) ? 'gym' : d }
 
 // A Platyplus endurance/manual log (no sets) — compact stat line + source tag (#130).
 function ActivityLogCard({ log }: { log: WorkoutLog }) {
@@ -138,6 +137,9 @@ export default function Logs() {
   const [checkins, setCheckins] = useState<Checkin[]>([])
   const [acts, setActs] = useState<IcuActivity[]>([])
   useEffect(() => {
+    // Reconcile local logs to the server truth on open, so an orphaned local log
+    // (e.g. a deleted plan's stale completion) can't show as a phantom session (#197).
+    syncLogsFromServer()
     const to = new Date().toISOString().slice(0, 10)
     const from = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
     authApi.checkins(from, to).then(setCheckins).catch(() => setCheckins([]))
@@ -145,24 +147,9 @@ export default function Logs() {
     fetchActivities(from, to).then(setActs).catch(() => setActs([]))
   }, [])
 
-  // Group everything by DAY (#84). An entry is a Platyplus gym session, a Platyplus
-  // endurance/manual log, or a device activity from intervals (#130, deduped match-first).
-  type Entry = { kind: 'gym'; log: WorkoutLog } | { kind: 'log'; log: WorkoutLog } | { kind: 'device'; act: IcuActivity }
-  const byDay = new Map<string, { checkin?: Checkin; entries: Entry[] }>()
-  const get = (d: string) => { const x = byDay.get(d) || { entries: [] as Entry[] }; byDay.set(d, x); return x }
-  for (const l of logs || []) {
-    const hasSets = !!(l.sets && Object.keys(l.sets).length)
-    get(l.date).entries.push(hasSets ? { kind: 'gym', log: l } : { kind: 'log', log: l })
-  }
-  // device activities: skip when a local log already covers that day+sport (shown once)
-  for (const a of acts) {
-    const day = (a.start_date_local || '').slice(0, 10)
-    if (!day) continue
-    const sport = sportOfActivity(a)
-    const covered = (logs || []).some((l) => l.date === day && sportBucket(l.discipline) === sport)
-    if (!covered) get(day).entries.push({ kind: 'device', act: a })
-  }
-  for (const c of checkins) get(c.date).checkin = c
+  // Group everything by DAY (#84), collapsed to ONE entry per (day, sport) so a stale
+  // local log and the real device activity never double up (#197, logs-merge.test.ts).
+  const byDay = buildDayEntries(logs || [], acts, checkins)
   const days = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1))
 
   return (

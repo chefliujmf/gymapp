@@ -841,7 +841,13 @@ async function upsertPlan(user, body) {
 async function deletePlanById(user, id) {
   const plan = (user.plans || []).find((x) => x.id === id)
   await deleteIcuEvent(user, plan)
-  user.plans = (user.plans || []).filter((x) => x.id !== id); save(store)
+  user.plans = (user.plans || []).filter((x) => x.id !== id)
+  // Cascade: drop any completed log tied to this plan so removing a workout can't
+  // leave a phantom "completed" session behind (#197). Match by workoutId === plan id.
+  if (Array.isArray(user.logs) && user.logs.some((l) => l.workoutId === id)) {
+    user.logs = user.logs.filter((l) => l.workoutId !== id)
+  }
+  save(store)
 }
 
 // --- intervals.icu -> Platyplus import (reconcile) -------------------------

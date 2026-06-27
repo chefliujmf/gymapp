@@ -34,13 +34,14 @@ test guide → the **🧪 Test guide** section below.
     half-gated surfaces. Keep CONTENT adaptive, structure stable (memory `platyplus`/nav IA). gymapp-only.
 197. 🔨 **Friday shows "2 completed workouts" incl. a phantom "Ride to Skov" (prod).** JM (2026-06-27) did ONE ride
     (not Ride to Skov). VERIFIED server+intervals CLEAN for 06-26: 1 plan + 1 activity + 1 event, all "Friday
-    Endurance Ride"; **0 logs**; no "Ride to Skov" anywhere. ⇒ phantom is a **stale local `db.logs` entry** on that
-    device (left from before the plan delete). `syncLogsFromServer` clears+refetches on auth load, so a full PWA
-    reload should reconcile. Diagnostic: if it survives a true reload → real bug. Suspect: `Logs.tsx` History dedup
-    (`sportBucket(l.discipline)===sport`) lets a stale/odd-discipline local log show ALONGSIDE the device activity =
-    "2". Fix path (gymapp-only): harden the device-vs-log dedup (match by day+sport more robustly / drop orphan
-    local logs not on the server). Constraint from JM: do NOT touch cyclingcoach — gymapp repo only. Also: dev can't
-    connect to intervals (separate, low-pri). **#185 reverted in cyclingcoach per JM — keep the fix gymapp-side.**
+    Endurance Ride"; **0 logs**; no "Ride to Skov" anywhere. ⇒ phantom was a **stale local `db.logs` entry**.
+    **BUILT (gymapp-only, awaiting JM verify on QA/prod):** (1) History (`Logs.tsx`) calls `syncLogsFromServer()` on
+    open → reconciles local logs to the server truth so an orphan can't linger; (2) new pure `src/logs-merge.ts`
+    `buildDayEntries` collapses to ONE entry per (day, sport) — gym-with-sets > device activity > bare log — with a
+    robust `bucketSport` (no raw-string fall-through, the old dup cause), unit-tested in `src/logs-merge.test.ts`
+    (5 cases incl. the exact Friday scenario); (3) `deletePlanById` cascades — also drops the matching completed log
+    (workoutId === plan id). Constraint: cyclingcoach untouched; #185 reverted, stays gymapp-side. Open: dev can't
+    connect to intervals (separate, low-pri).
 196. 🧪 **Duplicate workout in prod (intervals sync).** RESOLVED (data): deleted the stale Platyplus plan
     `friday_ride_to_skov_2026-06-26` via the proper deletePlanById path (DELETE /api/plan → 200). Friday 06-26 now
     has ONE plan — the coach's icu "Friday Endurance Ride" (ev 118860036) — matched to the completed activity
