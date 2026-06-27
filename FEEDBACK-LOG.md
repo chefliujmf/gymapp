@@ -27,6 +27,24 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+196. 🧪 **Duplicate workout in prod (intervals sync).** RESOLVED (data): deleted the stale Platyplus plan
+    `friday_ride_to_skov_2026-06-26` via the proper deletePlanById path (DELETE /api/plan → 200). Friday 06-26 now
+    has ONE plan — the coach's icu "Friday Endurance Ride" (ev 118860036) — matched to the completed activity
+    `i160604649` of the same name = one ✓Completed card. JM: refresh the app to confirm. CLARIFIED workflow: **jmfiset
+    authors in intervals via cyclingcoach, NOT Platyplus** — Platyplus should be a pure mirror for him; "Friday Ride to
+    Skov" was a leftover that JM removed in intervals but it lingered as a Platyplus master (skill #160: must remove IN
+    Platyplus). **Durable fix = #185** (retire cyclingcoach's split publish so there's ONE author) — different-title dups
+    can't be auto-deduped by design, so until #185 the coach must not write the same session to both intervals and the
+    Platyplus API. Original report (for history):
+    JM "did a workout today, seems it's a duplicate in platyplus prod;
+    not in QA; dev can't connect" (2026-06-23). Live-store inspection: **today (06-23) is clean** — 1 plan "Tuesday
+    Endurance Rebuild" matched to the device activity "South Shore Endurance Ride" → one ✓Completed card (the plan's old
+    mirror event 118096072 is 404/already collapsed). **Real remaining dup is FRIDAY 06-26:** two plans same slot —
+    "Friday Ride to Skov" (origin=platyplus, ev 118087608) **and** "Friday Endurance Ride" (origin=icu, ev 118860036,
+    external_id `friday_classic_endurance_2026-06-26:2026-06-26`). Different TITLES → slip the day+sport+title dedup. Root
+    cause = the external **cyclingcoach publishes straight to intervals** (#185 keystone), so Platyplus imports it as a 2nd
+    plan. Fix now: remove the icu interloper for the chosen Friday plan (await JM's pick); durable fix = #185 (retire the
+    external coach's direct intervals publish so Platyplus is sole author). Also: confirm 06-23 dup was just a cached view.
 195. ⬜ **BUILD the readiness engine — our own WHOOP (Sleep·Freshness·Energy 1–5).** JM's deep-research is now in the
     repo: **`docs/readiness-scores.md`** (verbatim + my assessment), skill `platyplus-readiness-scores`, memory
     `platyplus-readiness-model`. We already have the data (intervals wellness: CTL/ATL/Form, HRV, RHR, sleep + the
@@ -348,11 +366,13 @@ test guide → the **🧪 Test guide** section below.
     tools so the coach picks REAL recipes + meditation/yoga/pilates classes by id, then `schedule_meal/mind(refId,
     why)`. Extend `create_ride/workout/run` + `schedule_meal/mind` with the structured fields (objective, cues[],
     success, recovery, fuel{why,supplements}, mind{why}, per-item why). (source: UX-BACKLOG plan-authoring design.)
-185. ⬜ **cyclingcoach authors INTO Platyplus (retire direct intervals publish) + add `time_target`.** Platyplus =
-    single MASTER for planning; migrate cyclingcoach `tools/intervals_icu_workouts.py` → a pure renderer Platyplus
-    calls (`tools/publish_platyplus_plan.py`). **Blocker:** add `time_target` to the Platyplus→intervals event
-    push so Wahoo rides are complete; until then do NOT push planned workouts from Platyplus (cyclingcoach owns
-    intervals directly — root cause of the 2026-06-23 dupe/"delete them"). Pairs with #18/#157. (source: UX-BACKLOG.)
+185. 🧪 **cyclingcoach authors INTO Platyplus (retire direct intervals publish) + `time_target`.** BUILT 2026-06-23.
+    `time_target` blocker was already cleared in `planToIcuEvent` (gymapp). cyclingcoach side (commit fc6082c):
+    `tools/publish_platyplus_plan.py` generalized to `--file <plans.json> --prune` (Coach API `POST /api/plan`);
+    SKILL.md + `codex_coach/instructions_intervals_icu.md` now say author ONLY via Platyplus (it mirrors to
+    intervals → Wahoo); `intervals_icu_workouts.py` publish/publish-week marked **retired** (reads kept); 60 tests
+    pass. So new dupes shouldn't form (root cause of the 2026-06-23 dupe). JM to verify: next coach plan publishes
+    once, no duplicate event. Still open: #157 pushed-text polish; the rich meal/mind description (#184) is separate.
 186. ⬜ **Monitoring routine.** Scheduled check of `docker ps` health + `docker logs` to maintain the PWAs and act
     on issues (logs already set up for this; a watchdog bot foundation exists from #126). (source: UX-BACKLOG infra.)
 187. ⬜ **Unified media manifest.** Single inventory of every self-hosted asset (images + audio + video) for

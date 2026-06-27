@@ -49,5 +49,9 @@ created it; `mine:false` = adopted the other coach's. Custom activity FIELDS (#1
 ## When you change the sync, also
 - Keep `server/icu-match.js` pure (no side effects) so `src/icu-dedup.test.ts` can unit-test it; add a case.
 - Any `server/` change rebuilds the image (CI smoke-tests the module graph) — `node --check` first.
-- The unbuilt keystone (#185): retire the external cyclingcoach's direct intervals publish so Platyplus
-  is the sole author — fixes dupes + the shell-less imported plans + the pushed-text mismatch (#157) at once.
+- Keystone (#185) — BUILT 2026-06-23 (cyclingcoach commit fc6082c): the external cyclingcoach no longer
+  publishes planned workouts to intervals directly. It authors ONLY into Platyplus via
+  `tools/publish_platyplus_plan.py --file <plans.json> --prune` (Coach API `POST /api/plan`); Platyplus is
+  the sole author and mirrors to intervals → Wahoo (`planToIcuEvent` emits `time_target`+`workout_doc`).
+  `intervals_icu_workouts.py` is reads-only now. So new dupes shouldn't form; if a stale plan lingers, the
+  coach's `--prune` (or removing it IN Platyplus) clears it. Still open: #157 pushed-text polish.
