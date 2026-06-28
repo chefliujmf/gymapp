@@ -3,15 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting, listTemplates, listRideTemplates, type WorkoutTemplate, type RideTemplate } from '../db'
 import { WeekStrip, MiniProfile, DoneStats } from '../ui'
-import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, fetchWellness, type IcuEvent, type IcuActivity, type IcuWellness } from '../intervals'
-
-// Map an intervals wellness day to the 1–5 check-in Sleep scale (#64): prefer a
-// device sleep SCORE (0-100), else infer from hours slept.
-function sleepTo5(w: IcuWellness): number | null {
-  if (w.sleepScore != null) return Math.max(1, Math.min(5, Math.ceil(w.sleepScore / 20)))
-  if (w.sleepHours != null) { const h = w.sleepHours; return h < 5 ? 1 : h < 6 ? 2 : h < 7 ? 3 : h < 8 ? 4 : 5 }
-  return null
-}
+import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
 import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, setCoachPlans, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
 import { calApi, type CalItem } from '../calendar'
@@ -21,7 +13,7 @@ import { localISO } from '../date'
 import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet } from './AddSheet'
-import { authApi, type Checkin } from '../auth/api'
+import { authApi, type Checkin, type Readiness } from '../auth/api'
 import { InfoDot } from '../charts'
 
 // Obvious + funny 1–5 faces (wrecked → amazing). One set for every metric since
@@ -36,26 +28,49 @@ function CheckInCard({ day }: { day: string }) {
   useEffect(() => { setLoaded(false); authApi.checkins(day, day).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [day])
   const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: day }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
   const [editing, setEditing] = useState(false)
-  // #64: when intervals is connected, prefill Sleep from that day's wellness sleep
-  // score (still editable). #74: surface HRV + resting HR as read-only chips.
-  const [icuW, setIcuW] = useState<IcuWellness | null>(null)
-  const [sleepFromIcu, setSleepFromIcu] = useState(false)
-  useEffect(() => { let live = true; setIcuW(null); fetchWellness(day, day).then((ws) => { if (live) setIcuW(ws.find((x) => x.date === day) || null) }).catch(() => {}); return () => { live = false } }, [day])
+  // #195: auto-derive Sleep·Freshness·Energy (1–5) from intervals wellness + personal baselines
+  // (server/readiness.js, WHOOP-inspired). Each unanswered row prefills from data + an ⓘ "why";
+  // tapping a face overrides. Energy is null on cold start → stays a manual tap. #74 chips below.
+  const [rdy, setRdy] = useState<Readiness | null>(null)
+  const [touched, setTouched] = useState<Set<string>>(new Set())
+  useEffect(() => { let live = true; setRdy(null); setTouched(new Set()); authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day])
+  // Per-day "why" for the ⓘ — the ACTUAL inputs behind THIS day's score (computed from the
+  // wellness data whether or not the row is answered), + the value the data suggests.
+  const sgn = (z?: number | null) => (z == null ? '?' : (z > 0 ? '+' : '') + z + 'σ')
+  const why: Partial<Record<'energy' | 'sleep' | 'soreness', string>> = {}
+  const calc: Partial<Record<'energy' | 'sleep' | 'soreness', number>> = {}
+  if (rdy?.connected) {
+    if (rdy.sleep) { calc.sleep = Math.round(rdy.sleep.score); why.sleep = rdy.sleep.sleepScore != null ? `your tracker scored this night ${rdy.sleep.sleepScore}/100` : `${rdy.sleep.sleepHours ?? '—'}h slept vs your ~${rdy.sleepNeed}h need` }
+    if (rdy.energy) { calc.energy = Math.round(rdy.energy.score); why.energy = `HRV ${sgn(rdy.energy.hrvZ)} vs your baseline, sleep ${rdy.sleep?.score ?? '—'}/5, resting HR ${sgn(rdy.energy.rhrZ)}${rdy.energy.guard ? ' (HRV high but RHR raised → eased)' : ''}` }
+    if (rdy.freshness) { calc.soreness = 6 - Math.round(rdy.freshness.score); why.soreness = `training load — Form ${rdy.freshness.tsb ?? '—'}, acute-vs-chronic ${rdy.freshness.acwr ?? '—'}` }
+  }
+  // Auto-fill any UNANSWERED row from the data-derived value; tapping a face overrides.
   useEffect(() => {
-    if (!loaded || !icuW) return
-    const s = sleepTo5(icuW)
-    if (s != null && ci?.sleep == null) { set({ sleep: s }); setSleepFromIcu(true) }
-  }, [loaded, icuW]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!loaded || !rdy?.connected) return
+    const fill: Partial<Checkin> = {}
+    for (const k of ['energy', 'sleep', 'soreness'] as const) if (ci?.[k] == null && calc[k] != null) fill[k] = calc[k]
+    if (Object.keys(fill).length) set(fill)
+  }, [loaded, rdy]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!loaded) return null
   // Emoji faces, 1–5, ALWAYS visible (JM: must not be hidden or it gets skipped).
   // Consistent direction: best feeling is always the RIGHT face. Soreness is shown
   // as "Freshness" (5 = fresh) so it reads like the others; `invert` converts to the
   // stored soreness value (5 = very sore) the coach reads — display flips, scale doesn't.
-  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; info: string; invert?: boolean }[] = [
-    { key: 'energy', label: 'Energy', info: 'How energized you feel right now, 1–5 (1 = wiped out, 5 = full of energy).' },
-    { key: 'sleep', label: 'Sleep', info: 'Last night’s sleep, 1–5 (1 = terrible, 5 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also reaches the coach automatically — this is the manual signal otherwise.' },
-    { key: 'soreness', label: 'Freshness', info: 'How fresh your legs/body feel, 1–5 (1 = wrecked / very sore, 5 = fresh & recovered). Lower tells the coach to ease off.', invert: true },
+  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; desc: string; scale: string; invert?: boolean }[] = [
+    { key: 'energy', label: 'Energy', desc: 'How ready your body is to train right now', scale: '1 = wiped out · 5 = full of energy' },
+    { key: 'sleep', label: 'Sleep', desc: 'How well last night recovered you', scale: '1 = terrible · 5 = perfect rest' },
+    { key: 'soreness', label: 'Freshness', desc: 'How recovered you are from training load', scale: '1 = wrecked / very sore · 5 = fresh & recovered', invert: true },
   ]
+  // ⓘ text: the per-day WHY (today's actual inputs) on top, then the scale. Falls back to a
+  // clear "no data yet" note so the ⓘ is never just a definition.
+  const infoFor = (r: typeof rows[number]) => {
+    const head = why[r.key]
+      ? `Why ${isToday ? 'today' : 'this day'}: ${why[r.key]}.`
+      : `No HRV/sleep synced for ${isToday ? 'today' : 'this day'} yet — this is your own read.`
+    return `${head}\n\n${r.scale}.`
+  }
+  // Show "· auto" only while the shown value still equals the data-derived value (untouched).
+  const isAuto = (r: typeof rows[number]) => !touched.has(r.key) && calc[r.key] != null && ci?.[r.key] === calc[r.key]
   const disp = (r: typeof rows[number]) => { const v = ci?.[r.key]; return v == null ? null : (r.invert ? 6 - v : v) }
   // Collapse to a one-line summary ONCE all 3 are logged (collapse-after-done is fine —
   // it's collapse-before-filling that gets skipped). Tap Edit to change; History → Logs.
@@ -77,21 +92,21 @@ function CheckInCard({ day }: { day: string }) {
       <div className="checkin__t" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>How {isToday ? 'do' : 'did'} you feel{isToday ? ' today' : ''}?{editing && <button className="checkin__edit" onClick={() => setEditing(false)}>Done ✓</button>}</div>
       {rows.map((r) => (
         <div key={r.key} className="checkin__row2">
-          <span className="checkin__lbl">{r.label} <InfoDot text={r.info} />{r.key === 'sleep' && sleepFromIcu && <span className="checkin__src"> · from tracker</span>}</span>
+          <span className="checkin__lbl">{r.label} <InfoDot text={infoFor(r)} />{isAuto(r) && <span className="checkin__src"> · auto</span>}<span className="checkin__desc">{r.desc}</span></span>
           <div className="checkin__faces">
             {[1, 2, 3, 4, 5].map((n) => {
               const stored = r.invert ? 6 - n : n, on = ci?.[r.key] === stored
-              return <button key={n} className={'checkin__face' + (on ? ' on' : '')} aria-label={`${r.label} ${n} of 5`} aria-pressed={on} onClick={() => { if (r.key === 'sleep') setSleepFromIcu(false); set({ [r.key]: stored }) }}>{CHECKIN_FACES[n - 1]}</button>
+              return <button key={n} className={'checkin__face' + (on ? ' on' : '')} aria-label={`${r.label} ${n} of 5`} aria-pressed={on} onClick={() => { setTouched((t) => new Set(t).add(r.key)); set({ [r.key]: stored }) }}>{CHECKIN_FACES[n - 1]}</button>
             })}
           </div>
         </div>
       ))}
-      {icuW && (icuW.hrv != null || icuW.restingHR != null || icuW.sleepHours != null) && (
+      {rdy?.today && (rdy.today.hrv != null || rdy.today.restingHR != null || rdy.today.sleepHours != null) && (
         <div className="checkin__wchips">
-          {icuW.sleepHours != null && <span className="wchip">😴 {icuW.sleepHours}h</span>}
-          {icuW.hrv != null && <span className="wchip">HRV {Math.round(icuW.hrv)}</span>}
-          {icuW.restingHR != null && <span className="wchip">Rest HR {Math.round(icuW.restingHR)}</span>}
-          <span className="wchip wchip--src">intervals</span>
+          {rdy.today.sleepHours != null && <span className="wchip">😴 {rdy.today.sleepHours}h</span>}
+          {rdy.today.hrv != null && <span className="wchip">HRV {Math.round(rdy.today.hrv)}</span>}
+          {rdy.today.restingHR != null && <span className="wchip">Rest HR {Math.round(rdy.today.restingHR)}</span>}
+          <span className="wchip wchip--src" title="These values come from intervals.icu"><span className="wchip__up" aria-hidden="true">↑</span> intervals</span>
         </div>
       )}
     </div>

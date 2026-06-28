@@ -64,6 +64,53 @@ Freshness and Energy are computable NOW; Sleep is computable at MVP and upgrades
 
 ---
 
+## WHOOP deep-dive — verified findings (deep-research 2026-06-28; 24 sources, 21 claims confirmed / 4 refuted)
+
+Cited synthesis of *how WHOOP actually works* + the academic evidence, and what it changes in our build.
+Confidence noted; full citations in the workflow report. **WHOOP's exact internal weights are proprietary
+and were NOT recoverable** — so our Energy weighting is a defensible engineering choice, not reverse-engineered.
+
+**Recovery (≈ our Energy).** WHOOP builds Recovery from a few nocturnal cardiac signals — **HRV (RMSSD),
+resting HR, respiratory rate** (+ newer skin-temp/SpO2) — each read against a **personal learned baseline**,
+not population norms. Exact weights undisclosed.
+- **Use lnRMSSD, z-scored — not raw RMSSD** (high conf). RMSSD is right-skewed; ln-transform first so z-scoring's
+  normality assumption holds. [PMC6175275]
+- **HRV is a TREND, never a single-night truth** (high conf). Raw RMSSD day-to-day CV ~30–40% (≈3–13% on lnRMSSD);
+  WHOOP 4.0's own HRV error is ~8% MAPE (its weakest cardiac metric, behind Oura, ahead of Garmin/Polar). ⇒ smooth
+  over a rolling baseline, dampen, and never hard-decide off one night. [PMC12300306, Dial 2025, medRxiv 2024]
+- **RHR is the hard-to-fake guard** (high conf). WHOOP 4.0 nocturnal RHR MAE ~1.78 bpm (clinically negligible).
+  Elevated RHR (5–10 bpm over baseline) flags incomplete recovery / immune activation — this is the
+  **parasympathetic-saturation guard**: when lnRMSSD is *high* but RHR is *also* elevated, don't credit the HRV. [PMC12367097]
+- **Keep a subjective term** (high conf). Higher morning lnRMSSD tracks better sleep / lower fatigue / lower stress —
+  but NOT body soreness. So HRV misses musculoskeletal load; our 1–5 check-in (soreness/Freshness, motivation) covers it. [PMC12300306]
+- **HRV volatility matters, not just level** (med conf). Sustained HRV depression *or* a rising 7-day CV signals
+  overtraining risk; endurance overreaching can paradoxically *raise* HRV (parasympathetic hyperactivity) — so treat
+  rising CV as a flag, not just direction. [Mourot 2004 + 2024-25 reviews]
+
+**Sleep.** WHOOP **Sleep Need = personal baseline need (learned from your own physiology) + sleep debt +
+strain-driven need − nap credit** → feeds Sleep Performance %. (Nap credit is NOT a literal minute-for-minute
+subtraction — refuted.) [whoop.com sleep-need, patent US12318226B2] ⇒ our Sleep should prefer a device sleep
+**score** (0–100), else **hours ÷ personal need** (per-user `sleepNeed`, default 8h, JM ~9h) — never fixed hour bins (#159).
+
+**Strain (context only, not built).** 0–21 logarithmic cardiovascular load = time in **personalized HR zones** via
+**Heart-Rate-Reserve / Karvonen** (Max HR from Gellish `207−0.7·age`, auto-raised by peak workout HR; rolling RHR). [WHOOP support, Gellish PMID 17468581]
+We don't need Strain — intervals' CTL/ATL/TSS already give us load → Freshness.
+
+**Baselines & cold start.** Personal rolling baseline is the whole game (Oura/Garmin score the same way — an 80 on
+one ≠ 80 on another). Literature canonical window for HRV = **rolling 7-day mean + CV** (Plews/Buchheit/Kiviniemi);
+our docs' 28–90d EWMA is a stable alternative. **New-user fallback:** WHOOP needs ~4 recoveries for partial, ~30 for
+full calibration. ⇒ if a user has too few valid HRV/RHR days for a baseline (target ≥14), **don't auto-derive — show
+the manual tap.** [kygo, Sensors 2026]
+
+**Not buildable today:** respiratory rate + skin temp (illness early-warning via personal z-score, ≥3 br/min) are
+validated [npj 2021] but **not intervals.icu wellness fields** we ingest — aspirational layer for the Freshness-Energy paradox.
+
+**Net:** our design holds — Freshness from ACWR/TSB; Energy = weighted **lnRMSSD-z + Sleep + RHR-z(inverse) + subjective**
+with a parasympathetic-saturation guard + trend smoothing; personalized Sleep need. Lean on HRV as a trend, label
+everything as an estimate, manual tap always wins.
+
+---
+
 ## Full research (verbatim)
 
 # Algorithmic Frameworks for Wearable Health Metrics: Computing Sleep, Freshness, and Energy Scores

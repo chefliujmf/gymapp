@@ -8,6 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false, // registered explicitly in main.tsx (update-on-focus, so an open PWA never serves a stale bundle)
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Platyplus',
@@ -26,6 +27,12 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // A new deploy must take over IMMEDIATELY — the old SW kept serving a stale
+        // bundle until every tab closed, which broke login after a deploy. Activate
+        // the new SW at once, claim open clients, and purge the previous precache.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         // Let server routes (API/Swagger, auth, intervals proxy) bypass the SPA
         // shell fallback — else navigating to /api/docs loads the app and errors.
         navigateFallbackDenylist: [/^\/api/, /^\/auth/, /^\/icu/],

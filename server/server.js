@@ -25,6 +25,7 @@ const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
+import { readiness as computeReadiness } from './readiness.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -350,6 +351,25 @@ app.post('/auth/checkin', auth, (req, res) => {
   } catch (e) { console.error('[checkin-adapt] trigger ' + e.message) }
 })
 app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
+// #195: auto-derived readiness (Sleep · Freshness · Energy 1–5) from 60d of intervals wellness +
+// personal baselines. Returns { connected:false } if intervals isn't connected; energy is null on
+// cold start (too few HRV days) so the UI keeps the manual tap. See server/readiness.js.
+app.get('/auth/readiness', auth, async (req, res) => {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : new Date().toISOString().slice(0, 10)
+  const oldest = new Date(date + 'T00:00:00Z'); oldest.setUTCDate(oldest.getUTCDate() - 60)
+  const ath = req.user.icuAthlete || 'i28814'
+  const data = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${oldest.toISOString().slice(0, 10)}&newest=${date}`)
+  if (!data) return res.json({ connected: false })
+  const rows = (Array.isArray(data) ? data : []).map((d) => ({
+    date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
+    restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null,
+    sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null,
+  }))
+  const today = rows.find((r) => r.date === date) || rows[rows.length - 1] || {}
+  const history = rows.filter((r) => r.date < date)
+  const sleepNeed = Number(req.user.sleepNeed) > 0 ? Number(req.user.sleepNeed) : 8
+  res.json({ connected: true, date, sleepNeed, today, ...computeReadiness(history, today, { sleepNeed }) })
+})
 
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads
 // it (it comes back on /api/plans). Fields are sport-specific; kept as a free object.
