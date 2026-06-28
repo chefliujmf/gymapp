@@ -48,10 +48,10 @@ function CheckInCard({ day }: { day: string }) {
   // Consistent direction: best feeling is always the RIGHT face. Soreness is shown
   // as "Freshness" (5 = fresh) so it reads like the others; `invert` converts to the
   // stored soreness value (5 = very sore) the coach reads — display flips, scale doesn't.
-  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; info: string; invert?: boolean }[] = [
-    { key: 'energy', label: 'Energy', info: 'How energized you feel right now, 1–5 (1 = wiped out, 5 = full of energy).' },
-    { key: 'sleep', label: 'Sleep', info: 'Last night’s sleep, 1–5 (1 = terrible, 5 = perfect rest). If you track sleep with a device that syncs to intervals.icu, your sleep score also reaches the coach automatically — this is the manual signal otherwise.' },
-    { key: 'soreness', label: 'Freshness', info: 'How fresh your legs/body feel, 1–5 (1 = wrecked / very sore, 5 = fresh & recovered). Lower tells the coach to ease off.', invert: true },
+  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; desc: string; info: string; invert?: boolean }[] = [
+    { key: 'energy', label: 'Energy', desc: 'How ready your body is to train right now', info: 'How energized you feel right now, 1–5 (1 = wiped out, 5 = full of energy). Auto-estimated from your HRV vs your baseline, last night’s sleep, and resting HR — tap to override.' },
+    { key: 'sleep', label: 'Sleep', desc: 'How well last night recovered you', info: 'Last night’s sleep, 1–5 (1 = terrible, 5 = perfect rest). Auto from your tracker (sleep score, or hours vs your personal sleep need) when intervals.icu is connected — tap to override.' },
+    { key: 'soreness', label: 'Freshness', desc: 'How recovered you are from training load', info: 'How fresh your legs/body feel, 1–5 (1 = wrecked / very sore, 5 = fresh & recovered). Auto from your training load (Form + acute-vs-chronic load). Lower tells the coach to ease off — tap to override.', invert: true },
   ]
   const disp = (r: typeof rows[number]) => { const v = ci?.[r.key]; return v == null ? null : (r.invert ? 6 - v : v) }
   // Collapse to a one-line summary ONCE all 3 are logged (collapse-after-done is fine —
@@ -74,7 +74,7 @@ function CheckInCard({ day }: { day: string }) {
       <div className="checkin__t" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>How {isToday ? 'do' : 'did'} you feel{isToday ? ' today' : ''}?{editing && <button className="checkin__edit" onClick={() => setEditing(false)}>Done ✓</button>}</div>
       {rows.map((r) => (
         <div key={r.key} className="checkin__row2">
-          <span className="checkin__lbl">{r.label} <InfoDot text={autoWhy[r.key] ? `${r.info}\n\n${autoWhy[r.key]}` : r.info} />{autoWhy[r.key] && <span className="checkin__src"> · auto</span>}</span>
+          <span className="checkin__lbl">{r.label} <InfoDot text={autoWhy[r.key] ? `${r.info}\n\n${autoWhy[r.key]}` : r.info} />{autoWhy[r.key] && <span className="checkin__src"> · auto</span>}<span className="checkin__desc">{r.desc}</span></span>
           <div className="checkin__faces">
             {[1, 2, 3, 4, 5].map((n) => {
               const stored = r.invert ? 6 - n : n, on = ci?.[r.key] === stored

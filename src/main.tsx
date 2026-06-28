@@ -1,7 +1,24 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { registerSW } from 'virtual:pwa-register'
 import './styles.css'
+
+// Keep the PWA fresh: registerType 'autoUpdate' reloads to the new build once a new
+// service worker activates. The gap was DETECTION — an open/installed PWA only checked
+// on first load, so after a deploy it kept running the OLD bundle (which broke login).
+// Now we also re-check whenever the app regains focus / comes online, and hourly.
+const updateSW = registerSW({
+  immediate: true,
+  onRegisteredSW(_swUrl, r) {
+    if (!r) return
+    const check = () => { r.update().catch(() => {}) }
+    setInterval(check, 60 * 60 * 1000)
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check() })
+    window.addEventListener('online', check)
+  },
+})
+void updateSW
 import App from './App'
 import Today from './pages/Today'
 import Admin from './pages/Admin'

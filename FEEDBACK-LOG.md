@@ -27,6 +27,17 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+201. 🔨 **Short plain-language description under each readiness score.** JM 2026-06-28. Added a dim one-liner under
+    each check-in row: Energy = "How ready your body is to train right now", Sleep = "How well last night recovered
+    you", Freshness = "How recovered you are from training load" (shown in the expanded card; ⓘ still has the detail).
+200. 🔨 **"Can't log in after a deploy" — PWA stale-bundle, FIXED once-and-for-all.** JM: dev/QA often won't let him log
+    in after changes. Verified the SERVER is fine (QA boot "Session key loaded", sessionSecret STABLE in Postgres
+    `a35f3a13…`, login endpoint clean 401 on wrong pw). Root cause = the **service worker served the OLD precached
+    bundle** until every tab closed (the app never registered the SW or checked for updates; workbox lacked
+    skipWaiting/clientsClaim/cleanupOutdatedCaches). Fix (gymapp-only): workbox `skipWaiting + clientsClaim +
+    cleanupOutdatedCaches`; `injectRegister:false` + explicit `registerSW` in `main.tsx` that re-checks for a new
+    build on **visibilitychange / online / hourly**, so an open or installed PWA auto-updates to the fresh bundle
+    instead of getting stuck. Build verified (dist/sw.js generates). JM verify: deploy, then reopen QA — should log in.
 199. ✅ **Check-in scale = 1–5 Energy/Sleep/Freshness (RESOLVED).** Correction: my earlier 1–10 edit (3280c8f/e54e908)
     was superseded by df54b26 ("compact 1–5") + 7a2c024 ("Soreness→Freshness"). **Current shipped state (dev/QA/prod):**
     Energy / Sleep / **Freshness** on a 1–5 face scale (💀😩😐😀🤩), Sleep AUTO-prefills from intervals wellness
