@@ -65,13 +65,15 @@ test guide → the **🧪 Test guide** section below.
     cause = the external **cyclingcoach publishes straight to intervals** (#185 keystone), so Platyplus imports it as a 2nd
     plan. Fix now: remove the icu interloper for the chosen Friday plan (await JM's pick); durable fix = #185 (retire the
     external coach's direct intervals publish so Platyplus is sole author). Also: confirm 06-23 dup was just a cached view.
-195. ⬜ **BUILD the readiness engine — our own WHOOP (Sleep·Freshness·Energy 1–5).** JM's deep-research is now in the
-    repo: **`docs/readiness-scores.md`** (verbatim + my assessment), skill `platyplus-readiness-scores`, memory
-    `platyplus-readiness-model`. We already have the data (intervals wellness: CTL/ATL/Form, HRV, RHR, sleep + the
-    check-in), so **Freshness** (ACWR=ATL/CTL + TSB) + **Energy** (0.35 HRV + 0.35 Sleep + 0.15 RHR + 0.15 subjective,
-    z-scored vs a 28–90d baseline) are buildable NOW; **Sleep** is personal (#159, hours÷need). Plan: pure
-    `server/readiness.js` (unit-tested) → wire intervals wellness → baselines → the Today check-in (auto + ⓘ + manual
-    override) + coach signals (Freshness-Energy paradox, poor-sleep-nullifies-gains, HRV-CV). Supersedes #158/#159. JM 2026-06-26.
+195. 🧪 **Readiness engine — our own WHOOP (Sleep·Freshness·Energy 1–5).** BUILT 2026-06-28 (on QA, awaiting JM verify).
+    Deep-research (24 sources, 21 verified claims) folded into **`docs/readiness-scores.md`** ("WHOOP deep-dive").
+    Pure unit-tested **`server/readiness.js`** (20 tests): lnRMSSD z-scored vs a personal baseline, RHR
+    parasympathetic-saturation guard, ACWR+TSB Freshness, personalized Sleep need, **cold-start gate** (no HRV
+    baseline → Energy null → manual tap). New **`GET /auth/readiness`** computes it from 60d intervals wellness; the
+    Today check-in auto-fills all three from one fetch, each with an ⓘ "why" (HRV ±σ, Form, sleep-need) + "· auto"
+    tag, tap overrides. Supersedes #158 (done). **Still open:** per-user `sleepNeed` setting (now defaults 8h — #159);
+    coach signals (Freshness-Energy paradox, poor-sleep-nullifies-gains, HRV-CV) not yet wired into reviews; resp-rate/
+    skin-temp illness layer not ingestable from intervals. JM verify: do the numbers match how you feel?
 194. ⬜ **Stats v1 follow-ups (after #193 grouping).** v1 routes to EXISTING pages, so: (a) WELLNESS card from the
     mockup isn't in v1 — needs its own page (sleep/HRV/RestHR/weight trends from intervals + check-ins); (b) split
     `/fitness` into the GLOBAL "Training load & Form" view vs the CYCLING "power curve/FTP/VO₂max" view (today both cards
@@ -93,12 +95,13 @@ test guide → the **🧪 Test guide** section below.
     (a) make the in-app Remove the obvious/only path; (b) reconcile DETECTS an intervals-side deletion of a platyplus
     plan's tracked event and prompts "remove from Platyplus too?"; (c) ensure the Platyplus Remove definitely works (if
     JM used ⋮→Remove and it persisted = real bug in deletePlanById). JM screenshot QA 2026-06-26.
-159. ⬜ **Sleep 1-5 must be PERSONAL (WHOOP-style), not fixed hour thresholds.** Today `sleepTo5` uses <5/<6/<7/<8/≥8h
-    → 1-5, but sleep NEED is individual (JM needs ~9h, others 8 or 10). "How whoop does it is how we have to do it":
-    score = **hours slept ÷ personal sleep NEED** (= sleep performance %), mapped to 1-5. Need = device sleep SCORE if
-    present (already personalized → use it), else a per-user **sleep-need setting** (default 8h; WHOOP also adds recent
-    debt + strain — phase 2). So: prefer device score; else hours/need%. JM 2026-06-26.
-158. ⬜ **Auto-derive Freshness (and maybe Energy) from data, like Sleep-from-tracker.** JM: sleep auto-fills 1-5 from
+159. 🔨 **Sleep 1-5 PERSONAL (WHOOP-style).** Mostly DONE in #195: `readiness.sleep` = device sleep score (0–100)→1-5
+    else **hours ÷ personal need** (replaces the old fixed `sleepTo5` hour-bins). REMAINING: expose a per-user
+    **sleep-need setting** (server reads `user.sleepNeed`, default 8h — JM needs ~9h) in Profile/Settings + a UI to set
+    it; WHOOP's debt+strain additions are phase 2. JM 2026-06-26.
+158. ✅ **Auto-derive Freshness + Energy from data (DONE in #195).** Freshness ← Form/TSB + ACWR; Energy ← lnRMSSD-z +
+    sleep + RHR-z + subjective. Auto-fill + ⓘ on the check-in. Original note:
+    JM: sleep auto-fills 1-5 from
     the tracker — can freshness + energy too? FROM THE DATA WE HAVE: **Freshness** ← intervals **Form/TSB (CTL−ATL)**
     and/or **HRV vs baseline** + **RestHR vs baseline** → 1-5 (legit, objective). **Energy** is subjective (that's why
     it's a manual tap) — best proxy is a composite of HRV+RestHR+sleep, label it a soft estimate, manual tap always
