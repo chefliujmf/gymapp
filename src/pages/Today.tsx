@@ -91,7 +91,7 @@ function CheckInCard({ day }: { day: string }) {
           {icuW.sleepHours != null && <span className="wchip">😴 {icuW.sleepHours}h</span>}
           {icuW.hrv != null && <span className="wchip">HRV {Math.round(icuW.hrv)}</span>}
           {icuW.restingHR != null && <span className="wchip">Rest HR {Math.round(icuW.restingHR)}</span>}
-          <span className="wchip wchip--src">intervals</span>
+          <span className="wchip wchip--src" title="These values come from intervals.icu"><span className="wchip__up" aria-hidden="true">↑</span> intervals</span>
         </div>
       )}
     </div>
