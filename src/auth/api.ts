@@ -4,6 +4,15 @@ export interface Passkey { id: string; label: string; createdAt: number }
 export interface CoachNotification { id: string; kind: 'coach'; date: string; at: string; title: string; body?: string; items?: string[]; read?: boolean }
 export interface CoachReview { id: string; date: string; planId?: string; activityId?: string; sport?: string; score?: number; verdict?: string; execution?: string[]; body?: string; mind?: { pattern?: string; cue?: string }; next?: string; recovery?: string; takeaways?: string[]; at: string }
 export interface Checkin { date: string; energy?: number; sleep?: number; soreness?: number; note?: string }
+export interface ReadinessScore { score: number }
+export interface Readiness {
+  connected: boolean; date?: string; sleepNeed?: number
+  sleep?: (ReadinessScore & { sleepHours?: number; sleepScore?: number }) | null
+  freshness?: (ReadinessScore & { acwr?: number | null; tsb?: number | null }) | null
+  energy?: (ReadinessScore & { hrvZ?: number | null; rhrZ?: number | null; guard?: boolean }) | null
+  baseline?: { nHrv: number; nRhr: number; hrvCV7: number | null }
+  today?: { hrv?: number | null; restingHR?: number | null; sleepHours?: number | null }
+}
 
 export interface User {
   id: string
@@ -114,6 +123,7 @@ export const authApi = {
   saveAthlete: (profile: string) => req<{ profile: string; updatedAt: number }>('/profile/athlete', { method: 'PUT', body: { profile } }),
   checkin: (data: Checkin) => req<Checkin>('/checkin', { method: 'POST', body: data }),
   checkins: (from: string, to: string) => req<Checkin[]>(`/checkins?from=${from}&to=${to}`),
+  readiness: (date: string) => req<Readiness>(`/readiness?date=${date}`),
   planFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string }) => req<{ ok: boolean }>(`/plan/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   promoteProd: () => req<{ ok: boolean }>('/promote-prod', { method: 'POST' }),
   // Fan a Platyplus-recorded workout out to intervals (match-first, server-side, #122/#123).

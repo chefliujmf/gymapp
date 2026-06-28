@@ -892,6 +892,15 @@
         "responses": { "200": { "description": "check-ins" } }
       }
     },
+    "/auth/readiness": {
+      "get": {
+        "summary": "Auto-derived readiness (Sleep/Freshness/Energy 1-5) from 60d intervals wellness + personal baselines (#195)",
+        "tags": ["checkin"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "date", "in": "query", "schema": { "type": "string", "format": "date" } }],
+        "responses": { "200": { "description": "{ connected, sleep, freshness, energy (null on cold start), baseline, today }" } }
+      }
+    },
     "/api/checkins": {
       "get": {
         "summary": "Coach reads the athlete's daily check-ins (energy/sleep/soreness) — recovery signal",
