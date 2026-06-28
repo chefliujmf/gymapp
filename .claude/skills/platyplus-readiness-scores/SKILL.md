@@ -6,8 +6,16 @@ description: Compute Platyplus's WHOOP-style 1–5 readiness — Sleep, Freshnes
 # platyplus-readiness-scores
 
 Platyplus computes its OWN 1–5 readiness (Sleep · Freshness · Energy) — "our own WHOOP." Full framework
-+ verbatim research: **`docs/readiness-scores.md`**. This skill is the operational summary. Always
-**label auto values, let the manual check-in tap override, and fall back gracefully** when a signal is missing.
++ verbatim research + the deep-research "WHOOP deep-dive": **`docs/readiness-scores.md`**. This skill is the
+operational summary. Always **label auto values, let the manual check-in tap override, and fall back gracefully**.
+
+> **BUILT 2026-06-28 (#195).** The engine is the pure, unit-tested **`server/readiness.js`** (`freshness`, `energy`,
+> `sleep`, `baselines`, `readiness`) — make changes THERE + extend `src/readiness.test.ts`. **`GET /auth/readiness`**
+> computes it from 60d intervals wellness; the Today check-in (`CheckInCard`, `src/pages/Today.tsx`) auto-fills all three
+> via `authApi.readiness(day)` with an ⓘ "why" + "· auto" tag + tap-to-override. Decisions locked by the research:
+> **z-score lnRMSSD (not raw RMSSD)**, HRV is a TREND not a single night, **RHR parasympathetic-saturation guard**
+> (high HRV + raised RHR ⇒ cap HRV credit), **cold-start gate** (no HRV baseline ≥14d → Energy null → manual tap),
+> Sleep = device score else **hours ÷ personal need**. Open: per-user `sleepNeed` setting (#159), coach signals.
 
 ## The three scores (formulas)
 - **Freshness (objective, buildable NOW)** — from intervals CTL/ATL/Form:
