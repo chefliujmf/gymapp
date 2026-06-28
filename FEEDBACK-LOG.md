@@ -27,9 +27,13 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
-201. 🔨 **Short plain-language description under each readiness score.** JM 2026-06-28. Added a dim one-liner under
-    each check-in row: Energy = "How ready your body is to train right now", Sleep = "How well last night recovered
-    you", Freshness = "How recovered you are from training load" (shown in the expanded card; ⓘ still has the detail).
+201. 🔨 **Score explanations: definition under the label, per-day WHY in the ⓘ.** JM 2026-06-28: the line under each
+    score is the *definition*; the **ⓘ should explain WHY this day's score** is what it is. Now: dim one-liner under
+    each row = definition (Energy "How ready your body is to train right now", Sleep "How well last night recovered
+    you", Freshness "How recovered you are from training load"); the **ⓘ = the day's actual inputs** ("Why today: HRV
+    +0.4σ vs your baseline, sleep 4/5, resting HR −0.2σ" / "Form 8, acute-vs-chronic 0.7") + the 1–5 scale — computed
+    from the wellness data whether or not the row is answered, with a clear "no HRV/sleep synced yet" fallback. "· auto"
+    shows only while the value still equals the data-derived one.
 200. 🔨 **"Can't log in after a deploy" — PWA stale-bundle, FIXED once-and-for-all.** JM: dev/QA often won't let him log
     in after changes. Verified the SERVER is fine (QA boot "Session key loaded", sessionSecret STABLE in Postgres
     `a35f3a13…`, login endpoint clean 401 on wrong pw). Root cause = the **service worker served the OLD precached

@@ -32,27 +32,45 @@ function CheckInCard({ day }: { day: string }) {
   // (server/readiness.js, WHOOP-inspired). Each unanswered row prefills from data + an ⓘ "why";
   // tapping a face overrides. Energy is null on cold start → stays a manual tap. #74 chips below.
   const [rdy, setRdy] = useState<Readiness | null>(null)
-  const [autoWhy, setAutoWhy] = useState<Partial<Record<'energy' | 'sleep' | 'soreness', string>>>({})
-  useEffect(() => { let live = true; setRdy(null); setAutoWhy({}); authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day])
+  const [touched, setTouched] = useState<Set<string>>(new Set())
+  useEffect(() => { let live = true; setRdy(null); setTouched(new Set()); authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day])
+  // Per-day "why" for the ⓘ — the ACTUAL inputs behind THIS day's score (computed from the
+  // wellness data whether or not the row is answered), + the value the data suggests.
+  const sgn = (z?: number | null) => (z == null ? '?' : (z > 0 ? '+' : '') + z + 'σ')
+  const why: Partial<Record<'energy' | 'sleep' | 'soreness', string>> = {}
+  const calc: Partial<Record<'energy' | 'sleep' | 'soreness', number>> = {}
+  if (rdy?.connected) {
+    if (rdy.sleep) { calc.sleep = Math.round(rdy.sleep.score); why.sleep = rdy.sleep.sleepScore != null ? `your tracker scored this night ${rdy.sleep.sleepScore}/100` : `${rdy.sleep.sleepHours ?? '—'}h slept vs your ~${rdy.sleepNeed}h need` }
+    if (rdy.energy) { calc.energy = Math.round(rdy.energy.score); why.energy = `HRV ${sgn(rdy.energy.hrvZ)} vs your baseline, sleep ${rdy.sleep?.score ?? '—'}/5, resting HR ${sgn(rdy.energy.rhrZ)}${rdy.energy.guard ? ' (HRV high but RHR raised → eased)' : ''}` }
+    if (rdy.freshness) { calc.soreness = 6 - Math.round(rdy.freshness.score); why.soreness = `training load — Form ${rdy.freshness.tsb ?? '—'}, acute-vs-chronic ${rdy.freshness.acwr ?? '—'}` }
+  }
+  // Auto-fill any UNANSWERED row from the data-derived value; tapping a face overrides.
   useEffect(() => {
     if (!loaded || !rdy?.connected) return
-    const fill: Partial<Checkin> = {}, why: typeof autoWhy = {}
-    const sgn = (z?: number | null) => (z == null ? '' : (z > 0 ? '+' : '') + z + 'σ')
-    if (ci?.sleep == null && rdy.sleep) { fill.sleep = Math.round(rdy.sleep.score); why.sleep = rdy.sleep.sleepScore != null ? `Auto from your tracker's sleep score.` : `Auto: ${rdy.sleep.sleepHours ?? '—'}h vs your ~${rdy.sleepNeed}h need.` }
-    if (ci?.energy == null && rdy.energy) { fill.energy = Math.round(rdy.energy.score); why.energy = `Auto: HRV ${sgn(rdy.energy.hrvZ)} vs your baseline, sleep ${rdy.sleep?.score ?? '—'}/5, resting HR ${sgn(rdy.energy.rhrZ)}${rdy.energy.guard ? ' — high HRV but raised RHR, so eased' : ''}.` }
-    if (ci?.soreness == null && rdy.freshness) { fill.soreness = 6 - Math.round(rdy.freshness.score); why.soreness = `Auto from training load: Form ${rdy.freshness.tsb ?? '—'}, ACWR ${rdy.freshness.acwr ?? '—'}.` }
-    if (Object.keys(fill).length) { set(fill); setAutoWhy((a) => ({ ...a, ...why })) }
+    const fill: Partial<Checkin> = {}
+    for (const k of ['energy', 'sleep', 'soreness'] as const) if (ci?.[k] == null && calc[k] != null) fill[k] = calc[k]
+    if (Object.keys(fill).length) set(fill)
   }, [loaded, rdy]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!loaded) return null
   // Emoji faces, 1–5, ALWAYS visible (JM: must not be hidden or it gets skipped).
   // Consistent direction: best feeling is always the RIGHT face. Soreness is shown
   // as "Freshness" (5 = fresh) so it reads like the others; `invert` converts to the
   // stored soreness value (5 = very sore) the coach reads — display flips, scale doesn't.
-  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; desc: string; info: string; invert?: boolean }[] = [
-    { key: 'energy', label: 'Energy', desc: 'How ready your body is to train right now', info: 'How energized you feel right now, 1–5 (1 = wiped out, 5 = full of energy). Auto-estimated from your HRV vs your baseline, last night’s sleep, and resting HR — tap to override.' },
-    { key: 'sleep', label: 'Sleep', desc: 'How well last night recovered you', info: 'Last night’s sleep, 1–5 (1 = terrible, 5 = perfect rest). Auto from your tracker (sleep score, or hours vs your personal sleep need) when intervals.icu is connected — tap to override.' },
-    { key: 'soreness', label: 'Freshness', desc: 'How recovered you are from training load', info: 'How fresh your legs/body feel, 1–5 (1 = wrecked / very sore, 5 = fresh & recovered). Auto from your training load (Form + acute-vs-chronic load). Lower tells the coach to ease off — tap to override.', invert: true },
+  const rows: { key: 'energy' | 'sleep' | 'soreness'; label: string; desc: string; scale: string; invert?: boolean }[] = [
+    { key: 'energy', label: 'Energy', desc: 'How ready your body is to train right now', scale: '1 = wiped out · 5 = full of energy' },
+    { key: 'sleep', label: 'Sleep', desc: 'How well last night recovered you', scale: '1 = terrible · 5 = perfect rest' },
+    { key: 'soreness', label: 'Freshness', desc: 'How recovered you are from training load', scale: '1 = wrecked / very sore · 5 = fresh & recovered', invert: true },
   ]
+  // ⓘ text: the per-day WHY (today's actual inputs) on top, then the scale. Falls back to a
+  // clear "no data yet" note so the ⓘ is never just a definition.
+  const infoFor = (r: typeof rows[number]) => {
+    const head = why[r.key]
+      ? `Why ${isToday ? 'today' : 'this day'}: ${why[r.key]}.`
+      : `No HRV/sleep synced for ${isToday ? 'today' : 'this day'} yet — this is your own read.`
+    return `${head}\n\n${r.scale}.`
+  }
+  // Show "· auto" only while the shown value still equals the data-derived value (untouched).
+  const isAuto = (r: typeof rows[number]) => !touched.has(r.key) && calc[r.key] != null && ci?.[r.key] === calc[r.key]
   const disp = (r: typeof rows[number]) => { const v = ci?.[r.key]; return v == null ? null : (r.invert ? 6 - v : v) }
   // Collapse to a one-line summary ONCE all 3 are logged (collapse-after-done is fine —
   // it's collapse-before-filling that gets skipped). Tap Edit to change; History → Logs.
@@ -74,11 +92,11 @@ function CheckInCard({ day }: { day: string }) {
       <div className="checkin__t" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>How {isToday ? 'do' : 'did'} you feel{isToday ? ' today' : ''}?{editing && <button className="checkin__edit" onClick={() => setEditing(false)}>Done ✓</button>}</div>
       {rows.map((r) => (
         <div key={r.key} className="checkin__row2">
-          <span className="checkin__lbl">{r.label} <InfoDot text={autoWhy[r.key] ? `${r.info}\n\n${autoWhy[r.key]}` : r.info} />{autoWhy[r.key] && <span className="checkin__src"> · auto</span>}<span className="checkin__desc">{r.desc}</span></span>
+          <span className="checkin__lbl">{r.label} <InfoDot text={infoFor(r)} />{isAuto(r) && <span className="checkin__src"> · auto</span>}<span className="checkin__desc">{r.desc}</span></span>
           <div className="checkin__faces">
             {[1, 2, 3, 4, 5].map((n) => {
               const stored = r.invert ? 6 - n : n, on = ci?.[r.key] === stored
-              return <button key={n} className={'checkin__face' + (on ? ' on' : '')} aria-label={`${r.label} ${n} of 5`} aria-pressed={on} onClick={() => { setAutoWhy((a) => ({ ...a, [r.key]: undefined })); set({ [r.key]: stored }) }}>{CHECKIN_FACES[n - 1]}</button>
+              return <button key={n} className={'checkin__face' + (on ? ' on' : '')} aria-label={`${r.label} ${n} of 5`} aria-pressed={on} onClick={() => { setTouched((t) => new Set(t).add(r.key)); set({ [r.key]: stored }) }}>{CHECKIN_FACES[n - 1]}</button>
             })}
           </div>
         </div>
