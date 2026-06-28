@@ -27,15 +27,11 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
-199. 🧪 **Check-in is now 1–10 with ⓘ legends (energy + sleep + soreness) — RECONCILE vs the 1–5 readiness scores.**
-    Done this session (commits on dev/QA): all three check-in rows became a 1–10 chip scale with a tappable legend
-    (energy 10=energized, sleep 10=rested, soreness 10=very sore); `Checkin.sleep`/`soreness` are now numbers; server
-    validation + coach descriptions (MCP get_checkins, openapi, system prompt) updated. **OPEN tension to resolve with
-    #195/#159:** the readiness engine derives Sleep·Freshness·Energy as **1–5** (WHOOP-style, auto + manual override),
-    but the manual check-in is **1–10**. Decide the canonical scale: either the manual taps feed the 1–5 readiness as a
-    normalized subjective input (10→5 mapping), or the readiness presents 1–10. Don't ship the readiness engine (#195)
-    without aligning the scales. Also: host MCP `get_checkins` text still says the old scale until the host MCP is
-    re-synced (low-pri). gymapp-only.
+199. ✅ **Check-in scale = 1–5 Energy/Sleep/Freshness (RESOLVED).** Correction: my earlier 1–10 edit (3280c8f/e54e908)
+    was superseded by df54b26 ("compact 1–5") + 7a2c024 ("Soreness→Freshness"). **Current shipped state (dev/QA/prod):**
+    Energy / Sleep / **Freshness** on a 1–5 face scale (💀😩😐😀🤩), Sleep AUTO-prefills from intervals wellness
+    (`sleepTo5`, shown "· from tracker", editable), HRV/RestHR/sleep wellness chips. Scale already matches the readiness
+    model (1–5). REMAINING work is the auto-DERIVE of Energy + Freshness → that's #195/#158 below, not a separate item.
 198. ⬜ **Sports as show/hide MODULES (cycling/running/strength/yoga/pilates/meditation).** JM (2026-06-27): each
     discipline is a "module"; make it trivial for the app to show/hide everything tied to one (nav hubs, Today
     suggestions, Stats cards, coach gating, Add sheet). Today it keys off `user.sports`; audit that EVERY surface
