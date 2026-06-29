@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { getCurrentRide } from '../ride'
 import { zoneColor, sportIcon } from '../ui'
 import { useBeeper, useNow, useWakeLock, useSpeech } from '../hooks'
-import { logWorkout } from '../db'
+import { logWorkout, getSetting } from '../db'
+import { vdotFromThresholdPace, zonePaceForPct, fmtPace } from '../running-paces'
 import { localISO } from '../date'
 import { useBle, BleDevices } from '../BleContext'
 
@@ -37,6 +39,10 @@ export default function RunPlayer() {
   const ble = useBle()
   const hr = ble.bpm
   const hrState: 'idle' | 'on' = ble.hrDev ? 'on' : 'idle'
+
+  // #209: turn each segment's "% of threshold" into a real target pace from the runner's VDOT.
+  const runTp = useLiveQuery(() => getSetting('runThresholdPace'))
+  const runVdot = runTp && Number(runTp) > 0 ? vdotFromThresholdPace(Number(runTp)) : null
 
   const total = segs.reduce((s, x) => s + x.duration, 0)
   const cur = segs[idx]
@@ -170,7 +176,7 @@ export default function RunPlayer() {
 
       <div className="rp-main">
         <div className="rp-target" style={{ color: zoneColor(pct), textTransform: 'capitalize' }}>{effort(cur.powerStart)}</div>
-        <div className="rp-sub">{pct}% threshold{cur.label ? ` · ${cur.label}` : ''}{cur.hr ? ` · aim ${cur.hr} bpm` : ''}</div>
+        <div className="rp-sub">{pct}% threshold{runVdot ? ` · ~${fmtPace(zonePaceForPct(runVdot, cur.powerStart))}/km` : ''}{cur.label ? ` · ${cur.label}` : ''}{cur.hr ? ` · aim ${cur.hr} bpm` : ''}</div>
         {hrState === 'on' && (
           <div className="rp-live"><div className="rp-stat"><b style={{ color: tgtHr && hr ? (Math.abs(hr - tgtHr) <= 5 ? 'var(--accent)' : hr > tgtHr ? '#ffb13d' : '#7fd1ff') : '#ff6b6b' }}>{hr ?? '–'}</b><small>bpm{tgtHr ? ` · tgt ${tgtHr}` : ''}</small></div></div>
         )}

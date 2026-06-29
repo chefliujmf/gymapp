@@ -26,6 +26,7 @@ import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchan
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 import { readiness as computeReadiness } from './readiness.js'
+import { fromIcuSportSettings, applyPatchToSportSettings } from './sport-settings.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -91,7 +92,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statsSyncedAt: u.statsSyncedAt || 0, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').toLowerCase(); return store.users.find((u) => u.username.toLowerCase() === l || u.email === l) }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -266,6 +267,69 @@ app.put('/auth/profile', auth, (req, res) => {
   if ('ftp' in req.body) req.user.ftp = num(req.body.ftp, 50, 600)
   if ('vo2max' in req.body) req.user.vo2max = num(req.body.vo2max, 20, 95)
   save(store); res.json(pub(req.user))
+})
+
+// #210 — per-sport athlete stats, TWO-WAY synced with intervals.icu.
+// PULL: read the athlete's intervals sportSettings[] (ftp/maxHr/lthr/threshold_pace, PER SPORT)
+// + weight, mapped to our shape, for prefilling "Your stats". Read-only.
+app.get('/auth/intervals/athlete', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ connected: false })
+  const ath = req.user.icuAthlete || 'i28814'
+  const a = await icuGet(req.user, `/athlete/${ath}`)
+  if (!a) return res.status(502).json({ connected: true, error: 'could not read intervals athlete' })
+  res.json({
+    connected: true,
+    sportSettings: fromIcuSportSettings(a.sportSettings || []),
+    weight: a.icu_weight != null ? a.icu_weight : (a.weight != null ? a.weight : null),
+    source: 'intervals',
+  })
+})
+
+// PUSH: edit a per-sport stat → persist locally AND write it back to intervals (auto-push).
+// We GET the athlete, modify ONLY the target sport-group's field in sportSettings[], and PUT
+// just { sportSettings } — every custom field (#147) and other sport is left exactly as-is.
+// VO₂max/runVdot are Platyplus-only (no intervals field) and never go to intervals.
+const GROUPS = ['cycling', 'running', 'swimming']
+app.put('/auth/sport-stat', auth, async (req, res) => {
+  const group = String(req.body?.group || '')
+  if (!GROUPS.includes(group)) return res.status(400).json({ error: 'bad group' })
+  const numOr = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.min(hi, Math.max(lo, n)) : null }
+  // build a clean patch (only the fields meaningful for this group)
+  const patch = {}
+  const b = req.body || {}
+  if (group === 'cycling' && 'ftp' in b) patch.ftp = numOr(b.ftp, 50, 600)
+  if ('maxHr' in b) patch.maxHr = numOr(b.maxHr, 120, 230)
+  if ('lthr' in b) patch.lthr = numOr(b.lthr, 90, 220)
+  if ('thresholdPace' in b) patch.thresholdPace = group === 'running' ? numOr(b.thresholdPace, 120, 900) : numOr(b.thresholdPace, 40, 300)
+
+  // persist locally on the user (source of truth Platyplus mirrors intervals)
+  req.user.sportSettings = req.user.sportSettings || {}
+  req.user.sportSettings[group] = { ...(req.user.sportSettings[group] || {}), ...patch }
+  // running VDOT (Platyplus-only, computed client-side) rides along for the coach
+  if (group === 'running' && 'runVdot' in b) req.user.runVdot = numOr(b.runVdot, 20, 95)
+  // mirror cycling FTP/maxHR onto the flat fields the coach prompt + Fitness page read
+  if (group === 'cycling') {
+    if ('ftp' in patch) req.user.ftp = patch.ftp
+    if ('maxHr' in patch) req.user.maxHR = patch.maxHr
+  }
+
+  // auto-push the synced fields back to intervals (best-effort; never blocks the local save)
+  let synced = false, pushError = null
+  if (req.user.icuKey) {
+    const ath = req.user.icuAthlete || 'i28814'
+    try {
+      const a = await icuGet(req.user, `/athlete/${ath}`)
+      const next = a ? applyPatchToSportSettings(a.sportSettings || [], group, patch) : null
+      if (next) {
+        const r = await icuFetch(req.user, `/athlete/${ath}`, { method: 'PUT', body: JSON.stringify({ sportSettings: next }) })
+        synced = r.ok
+        if (!r.ok) pushError = `intervals ${r.status}`
+        else req.user.statsSyncedAt = Date.now()
+      } else pushError = a ? `no ${group} sport in intervals` : 'could not read intervals athlete'
+    } catch (e) { pushError = String(e).slice(0, 120) }
+  }
+  save(store)
+  res.json({ ...pub(req.user), synced, pushError })
 })
 
 // Admin: trigger the prod-promotion GitHub workflow (workflow_dispatch) from the app
@@ -553,11 +617,15 @@ function buildSystemPrompt(user) {
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
   // #207 Phase 2: the athlete's own benchmarks — so the coach judges intensity FOR THEM.
   const stats = []
-  if (user.ftp) stats.push(`FTP ${user.ftp} W`)
+  if (user.ftp) stats.push(`cycling FTP ${user.ftp} W`)
   if (user.maxHR) stats.push(`max HR ${user.maxHR} bpm`)
-  if (user.vo2max) stats.push(`VO2max ${user.vo2max}`)
+  if (user.vo2max) stats.push(`cycling VO2max ${user.vo2max}`)
+  const tp = user.sportSettings?.running?.thresholdPace // sec/km
+  if (tp > 0) { const m = Math.floor(tp / 60), s = String(Math.round(tp % 60)).padStart(2, '0'); stats.push(`running threshold pace ${m}:${s}/km${user.runVdot ? ` (VDOT ${user.runVdot})` : ''}`) }
+  const rhr = user.sportSettings?.running?.maxHr
+  if (rhr && rhr !== user.maxHR) stats.push(`running max HR ${rhr} bpm`)
   if (user.sleepNeed) stats.push(`sleep need ~${user.sleepNeed} h`)
-  if (stats.length) p += `\n\n# THIS ATHLETE'S BENCHMARKS — ${stats.join(', ')}.\nJudge how hard a session is FOR THEM against these: prescribe ride/run intensities as % of THEIR FTP/threshold, set HR zones off THEIR max HR, and gym loads by reps (the app fills the weight). Their sleep NEED is ~${user.sleepNeed || 8} h — score sleep against that, not a generic 8 h.`
+  if (stats.length) p += `\n\n# THIS ATHLETE'S BENCHMARKS — ${stats.join(', ')}.\nJudge how hard a session is FOR THEM against these: prescribe ride intensities as % of THEIR FTP and RUN intensities as a pace off THEIR threshold pace (Daniels E/M/T/I/R), set HR zones off THEIR max HR, and gym loads by reps (the app fills the weight). Their sleep NEED is ~${user.sleepNeed || 8} h — score sleep against that, not a generic 8 h.`
   p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-5 (energy: 5=energized, sleep: 5=fully rested, soreness: 5=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
   const ownedEq = Array.isArray(user.info?.equipment) ? user.info.equipment.filter((e) => typeof e === 'string') : []
   if (ownedEq.length) p += `\n\n# Equipment the athlete OWNS: ${ownedEq.join(', ')}.\nWhen building gym/strength sessions, prescribe ONLY exercises that use this gear or Bodyweight — pass \`equipment="${ownedEq.join(',')}"\` to search_exercises so you never pick something they can't do. (They set this in Settings → Equipment.)`

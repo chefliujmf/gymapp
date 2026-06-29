@@ -901,6 +901,23 @@
         "responses": { "200": { "description": "{ connected, sleep, freshness, energy (null on cold start), baseline, today }" } }
       }
     },
+    "/auth/intervals/athlete": {
+      "get": {
+        "summary": "Pull the athlete's intervals.icu per-sport settings (ftp/maxHr/lthr/threshold_pace) + weight, mapped to Platyplus stats (#210)",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ connected, sportSettings:{cycling,running,swimming}, weight, source }" } }
+      }
+    },
+    "/auth/sport-stat": {
+      "put": {
+        "summary": "Set a per-sport stat and TWO-WAY sync it to intervals.icu (auto-push; modifies only that sport's sportSettings entry, custom fields untouched) (#210)",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "group": { "type": "string", "enum": ["cycling", "running", "swimming"] }, "ftp": { "type": "number" }, "maxHr": { "type": "number" }, "lthr": { "type": "number" }, "thresholdPace": { "type": "number", "description": "running sec/km, swim sec/100m" }, "runVdot": { "type": "number" } } } } } },
+        "responses": { "200": { "description": "updated public user + { synced, pushError }" } }
+      }
+    },
     "/api/checkins": {
       "get": {
         "summary": "Coach reads the athlete's daily check-ins (energy/sleep/soreness) — recovery signal",

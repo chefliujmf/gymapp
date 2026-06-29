@@ -27,6 +27,34 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+213. 🔨 **Profile's "workouts / hours trained" tiles are wrong + misplaced → belong under Stats.** JM 2026-06-29 (QA):
+    "why in qa workouts and trained in hours are just 1 and 0? why is it in profile? … this kind of stats … should be
+    accurate and probably global and by sports or activity." ROOT CAUSE: those tiles counted the **local Dexie `db.logs`**
+    (1 imported row on QA, 0 duration) — NOT real history (intervals activities + merged logs). DONE: removed the 3-tile
+    grid from Profile (FTP moved into the new per-sport Cycling card). TODO/verify: the **Stats hub (#193, global +
+    per-sport)** is the right home — confirm its workout-count + hours are accurate (merge intervals activities, not just
+    local logs); if Stats also counts only `db.logs`, fix it to use the merged history (`buildDayEntries`/intervals). gymapp-only.
+212. 🔨 **Move Diet from Settings → Profile (coaching input, not config).** JM 2026-06-29: "diet is still in settings
+    instead of profile, normal? right place? it was reported before." AGREED: diet drives meals + the coach (#40), same
+    as the **Sports** chips which already live in Profile. Units/equipment/API tokens are true config → stay in Settings;
+    Diet moves up to Profile, grouped right under "Sports you do" as a coaching preference. Server stays the same
+    (`info.diet` via saveProfile) — pure UI relocation. Folding into the #210 stats batch. gymapp-only.
+211. 🔨 **Running race predictions (Garmin/Coros-style).** JM 2026-06-29: "can you also add race predictions like in
+    Garmin or Coros for running." From the runner's **VDOT** (#209), predict finish times for **5K / 10K / Half /
+    Marathon** using Daniels' VDOT→race-time tables (same basis Garmin/Coros use). Show as a small "Race predictions"
+    block under Running in "Your stats" (and/or Fitness page): each distance → predicted time + the pace it implies.
+    Recompute whenever threshold pace / VDOT changes. Pure function `racePredictions(vdot)` in a unit-tested module.
+    Pairs with #209 (VDOT) + #210 (per-sport stats). gymapp-only.
+210. 🔨 **Per-sport athlete settings, TWO-WAY synced with intervals.** JM 2026-06-29: FTP/maxHR/thresholdHR/VO₂max/weight
+    that live in intervals must stay in sync both ends. FINDINGS (jmfiset's real athlete): intervals stores these
+    **per-sport** in a `sportSettings[]` array — Ride{ftp 260, lthr 170, max_hr 185}, Run{lthr 170, max_hr 194,
+    threshold_pace NULL, units MINS_KM}, Swim{threshold_pace .83 SECS_100M}, Weights{…}. **VO₂max is NOT an intervals
+    field** → stays Platyplus-computed/manual (can't sync). Weight syncs from Garmin (`icu_weight`). JM DECISIONS:
+    **(1) per-sport stats** (not one overall value); **(2) two-way** — pull to prefill, push overrides back to intervals.
+    BUILD: per-sport settings store mirroring `sportSettings`; `GET /auth/intervals/athlete` (pull, mapped); push via
+    `PUT /athlete/{id}` (GET→modify only sportSettings→PUT full, so custom fields #147 are untouched — be careful);
+    redesigned per-sport "Your stats" UI (mock first); pairs with #209 (run pace → VDOT/zones). Phase it: mock UI →
+    backend store+pull → push (careful) → #209 VDOT. gymapp-only.
 209. ⬜ **Running Threshold Pace (FTP-equivalent) + Daniels VDOT + running VO₂max.** JM 2026-06-29: "for running, do we
     have an estimation of paces similar to FTP?" CURRENT: VO₂max est. exists only for CYCLING (Fitness page, Coggan
     `10.8·eFTP/kg+7`); **no running VO₂max (VDOT), no first-class running threshold pace.** Run plans express intensity

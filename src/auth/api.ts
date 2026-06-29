@@ -32,6 +32,21 @@ export interface User {
   maxHR?: number | null // bpm
   ftp?: number | null // W
   vo2max?: number | null // ml/kg/min — athlete benchmarks the coach + readiness learn from (#207)
+  // #210 per-sport stats, two-way synced with intervals (ftp cycling only; thresholdPace running sec/km, swim sec/100m)
+  sportSettings?: Partial<Record<'cycling' | 'running' | 'swimming', SportStat>>
+  runVdot?: number | null // running VDOT ≈ VO₂max, derived from threshold pace (#209)
+  runThresholdPace?: number | null // sec/km
+  statsSyncedAt?: number // last successful push to intervals
+}
+
+export interface SportStat { ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null }
+export type SportGroup = 'cycling' | 'running' | 'swimming'
+export interface IcuAthletePull {
+  connected: boolean
+  sportSettings?: Partial<Record<SportGroup, SportStat>>
+  weight?: number | null
+  source?: string
+  error?: string
 }
 
 async function req<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
@@ -123,6 +138,10 @@ export const authApi = {
   forgot: (email: string) => req<{ ok: boolean; emailSent: boolean }>('/password/forgot', { body: { email } }),
   reset: (email: string, code: string, newPassword: string) => req<{ ok: boolean }>('/password/reset', { body: { email, code, newPassword } }),
   saveProfile: (info: Record<string, unknown>) => req<User>('/profile', { method: 'PUT', body: info }),
+  // #210 per-sport stats two-way sync
+  pullIcuAthlete: () => req<IcuAthletePull>('/intervals/athlete'),
+  saveSportStat: (body: { group: SportGroup; ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; runVdot?: number | null }) =>
+    req<User & { synced?: boolean; pushError?: string | null }>('/sport-stat', { method: 'PUT', body }),
   getAthlete: () => req<{ profile: string; updatedAt: number }>('/profile/athlete'),
   saveAthlete: (profile: string) => req<{ profile: string; updatedAt: number }>('/profile/athlete', { method: 'PUT', body: { profile } }),
   checkin: (data: Checkin) => req<Checkin>('/checkin', { method: 'POST', body: data }),
