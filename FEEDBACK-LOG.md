@@ -41,8 +41,13 @@ test guide → the **🧪 Test guide** section below.
     fuel/mind first; Recovery/Supplements data model next). gymapp-only.
     **Phase 1 BUILT 2026-06-28 (on QA):** Today restructured — readiness **verdict banner** on the plan (good/mixed/low
     from the check-in), meals/mind split into **🍽️ Fuel** (2-col chips: scheduled once, else carb/protein-aware
-    suggestions) + **🧠 Mind** sections, notes stay with workouts. tsc clean, build OK. Phase 2 (Recovery + Supplements
-    block types, swim/pilates body polish) next.
+    suggestions) + **🧠 Mind** sections, notes stay with workouts. tsc clean, build OK.
+    **Phase 2 BUILT 2026-06-28 (on QA):** new item types **'recovery'** + **'supplement'** (server validateItem +
+    `kind` field; CalItem type; openapi). Today renders **🛌 Recovery** section (sauna/cold/massage/mobility/foam/walk,
+    emoji + minutes + remove) and **💊 Supplements** pills under Fuel (with ×). AddSheet gains Recovery (preset list)
+    + Supplement (text + quick-chips) authoring. Coach MCP tools `schedule_recovery` + `schedule_supplement` added
+    (gymapp `mcp/server.js` — needs host MCP re-sync to reach the live coach). tsc clean, build OK. Remaining (low-pri):
+    swim/pilates body polish; algorithmic Recovery suggestion when empty.
 201. 🔨 **Score explanations: definition under the label, per-day WHY in the ⓘ.** JM 2026-06-28: the line under each
     score is the *definition*; the **ⓘ should explain WHY this day's score** is what it is. Now: dim one-liner under
     each row = definition (Energy "How ready your body is to train right now", Sleep "How well last night recovered

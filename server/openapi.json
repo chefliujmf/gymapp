@@ -227,7 +227,7 @@
     },
     "/auth/items": {
       "get": {
-        "summary": "List calendar items (meal/mind/note) for the signed-in user",
+        "summary": "List calendar items (meal/mind/note/recovery/supplement) for the signed-in user",
         "description": "Session (cookie) auth \u2014 used by the app UI, not the coach API.",
         "security": [
           {
@@ -508,7 +508,7 @@
     },
     "/api/items": {
       "get": {
-        "summary": "List calendar items (meal/mind/note) \u2014 coach API (Bearer)",
+        "summary": "List calendar items (meal/mind/note/recovery/supplement) \u2014 coach API (Bearer)",
         "security": [
           {
             "bearerAuth": []
@@ -554,7 +554,7 @@
         }
       },
       "post": {
-        "summary": "Add/update a calendar item (meal/mind/note) \u2014 coach API (Bearer)",
+        "summary": "Add/update a calendar item (meal/mind/note/recovery/supplement) \u2014 coach API (Bearer)",
         "security": [
           {
             "bearerAuth": []

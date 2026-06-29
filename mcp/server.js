@@ -166,6 +166,16 @@ server.tool('schedule_mind',
   { date: DATE, title: z.string(), minutes: z.number().optional(), refId: z.string().optional().describe('Platyplus session id from search_sessions'), why: z.string().optional().describe('why this pick'), id: z.string().optional() },
   wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'mind', title: a.title, minutes: a.minutes, refId: a.refId, why: a.why })))
 
+server.tool('schedule_recovery',
+  'Put a RECOVERY block on a day (sauna, cold plunge, massage, mobility, foam roll, easy walk). Shows in the 🛌 Recovery section. `why` = your reason for this athlete/day.',
+  { date: DATE, title: z.string().describe('e.g. "Sauna"'), kind: z.enum(['sauna', 'cold', 'massage', 'mobility', 'foam', 'walk']).optional(), minutes: z.number().optional(), why: z.string().optional(), id: z.string().optional() },
+  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'recovery', title: a.title, kind: a.kind, minutes: a.minutes, why: a.why })))
+
+server.tool('schedule_supplement',
+  "Put a SUPPLEMENT on a day (e.g. \"Creatine 5g\", \"Vitamin D\"). Shows as a pill under 🍽️ Fuel → Supplements. Include the dose in the title. `why` = your reason.",
+  { date: DATE, title: z.string().describe('name + dose, e.g. "Creatine 5g"'), why: z.string().optional(), id: z.string().optional() },
+  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'supplement', title: a.title, why: a.why })))
+
 server.tool('add_note',
   'Add a free-text note to a day (reminders, coaching cues).',
   { date: DATE, title: z.string().optional(), notes: z.string() },

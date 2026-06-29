@@ -3,10 +3,11 @@
 export interface CalItem {
   id: string
   date: string
-  type: 'meal' | 'mind' | 'note'
+  type: 'meal' | 'mind' | 'note' | 'recovery' | 'supplement'
   title: string
   refId?: string
   mealType?: string
+  kind?: string // recovery: sauna | cold | massage | mobility | foam | walk
   kcal?: number
   minutes?: number
   notes?: string

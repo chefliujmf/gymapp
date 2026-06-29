@@ -947,13 +947,13 @@ function itemsInRange(user, from, to) {
 function validateItem(b) {
   if (!b || typeof b !== 'object') return 'body must be a JSON object'
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return 'date (YYYY-MM-DD) is required'
-  if (!['meal', 'mind', 'note'].includes(b.type)) return "type must be 'meal' | 'mind' | 'note'"
+  if (!['meal', 'mind', 'note', 'recovery', 'supplement'].includes(b.type)) return "type must be 'meal' | 'mind' | 'note' | 'recovery' | 'supplement'"
   return null
 }
 function upsertItem(user, b) {
   const err = validateItem(b); if (err) return { status: 400, body: { error: err } }
   user.items = user.items || []
-  const item = { id: b.id || newId(), date: b.date, type: b.type, title: b.title || '', refId: b.refId || '', mealType: b.mealType || '', kcal: b.kcal, minutes: b.minutes, notes: b.notes || '', why: typeof b.why === 'string' ? b.why : '', updatedAt: Date.now() }
+  const item = { id: b.id || newId(), date: b.date, type: b.type, title: b.title || '', refId: b.refId || '', mealType: b.mealType || '', kind: b.kind || '', kcal: b.kcal, minutes: b.minutes, notes: b.notes || '', why: typeof b.why === 'string' ? b.why : '', updatedAt: Date.now() }
   const i = user.items.findIndex((x) => x.id === item.id)
   if (i >= 0) user.items[i] = item; else user.items.push(item)
   save(store)

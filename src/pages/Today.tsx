@@ -10,7 +10,7 @@ import { calApi, type CalItem } from '../calendar'
 import { recipes, mindSessions } from '../data/catalog'
 import type { Recipe } from '../types'
 import { localISO } from '../date'
-import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag, Trash2 } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet } from './AddSheet'
 import { authApi, type Checkin, type Readiness } from '../auth/api'
@@ -136,6 +136,7 @@ function readinessVerdict(ci: Checkin | null): { tone: 'good' | 'mixed' | 'low';
   if (avg >= 3.8 && min >= 3) return { tone: 'good', text: "You're fresh — good to train as planned." }
   return { tone: 'mixed', text: 'Moderately ready — train, but be ready to ease off.' }
 }
+const RECOVERY_EMOJI: Record<string, string> = { sauna: '🔥', cold: '🧊', massage: '💆', mobility: '🧎', foam: '🪵', walk: '🚶' }
 
 /** A coach-pushed plan that isn't mirrored by an intervals event — runs in-app. */
 function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p: CoachPlan; onRun?: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean; act?: IcuActivity }) {
@@ -292,9 +293,11 @@ export default function Today() {
   const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay)
   const dayPlans = plans.filter((p) => p.date === selDay && !planShown(p))
   const dayItems = items.filter((it) => it.date === selDay)
-  // #202: meals/mind get their own Fuel/Mind sections; notes stay with the workouts.
+  // #202: meals/mind/recovery/supplement get their own sections; notes stay with the workouts.
   const dayMeals = dayItems.filter((it) => it.type === 'meal')
   const dayMindItems = dayItems.filter((it) => it.type === 'mind')
+  const daySupps = dayItems.filter((it) => it.type === 'supplement')
+  const dayRecovery = dayItems.filter((it) => it.type === 'recovery')
   const dayNotes = dayItems.filter((it) => it.type === 'note')
   const hasWorkout = dayEvents.length > 0 || dayPlans.length > 0
   const verdict = readinessVerdict(checkin)
@@ -393,19 +396,47 @@ export default function Today() {
         <p className="meta">Nothing scheduled — tap Add, or enjoy a rest day.</p>
       ) : null}
 
-      {/* #202 Fuel — scheduled meals shown once as 2-col chips; else carb/protein-aware suggestions */}
-      {fuelChips.length > 0 && (
+      {/* #202 Fuel — scheduled meals shown once as 2-col chips; else carb/protein-aware suggestions; + supplements */}
+      {(fuelChips.length > 0 || daySupps.length > 0) && (
         <>
           <div className="section-title sec-ico">🍽️ Fuel <InfoDot text={`${fuelMsg}${dayMeals.length ? '' : ' Tap + to add a meal to your day.'}`} /></div>
-          {dayMeals.length === 0 && <p className="meta" style={{ margin: '-2px 2px 8px' }}>{fuelMsg}</p>}
-          <div className="fuel-grid">
-            {fuelChips.map((c) => (
-              <div key={c.key} className="mealchip">
-                <Link to={c.recipeId ? `/recipes/${c.recipeId}` : '#'} className="mealchip__link">
-                  <div className="mealchip__thumb">{c.thumb ? <img src={c.thumb} alt="" /> : <span>{mealEmoji[c.tag] || '🍽️'}</span>}</div>
-                  <div className="mealchip__body"><span className="mealchip__tag">{c.tag}</span><div className="mealchip__nm">{c.title}</div>{c.kcal ? <div className="mealchip__mc">{c.kcal} kcal</div> : null}</div>
-                </Link>
-                {c.sug && <button className="mealchip__add" aria-label="Add to this day" onClick={(e) => { e.preventDefault(); addMealSuggestion(c.sug!) }}>{added[c.sug.id] ? <Check size={15} /> : <Plus size={15} />}</button>}
+          {dayMeals.length === 0 && fuelChips.length > 0 && <p className="meta" style={{ margin: '-2px 2px 8px' }}>{fuelMsg}</p>}
+          {fuelChips.length > 0 && (
+            <div className="fuel-grid">
+              {fuelChips.map((c) => (
+                <div key={c.key} className="mealchip">
+                  <Link to={c.recipeId ? `/recipes/${c.recipeId}` : '#'} className="mealchip__link">
+                    <div className="mealchip__thumb">{c.thumb ? <img src={c.thumb} alt="" /> : <span>{mealEmoji[c.tag] || '🍽️'}</span>}</div>
+                    <div className="mealchip__body"><span className="mealchip__tag">{c.tag}</span><div className="mealchip__nm">{c.title}</div>{c.kcal ? <div className="mealchip__mc">{c.kcal} kcal</div> : null}</div>
+                  </Link>
+                  {c.sug && <button className="mealchip__add" aria-label="Add to this day" onClick={(e) => { e.preventDefault(); addMealSuggestion(c.sug!) }}>{added[c.sug.id] ? <Check size={15} /> : <Plus size={15} />}</button>}
+                </div>
+              ))}
+            </div>
+          )}
+          {daySupps.length > 0 && (
+            <div className="supps">
+              <span className="supps__hdr">💊 Supplements</span>
+              {daySupps.map((s) => <span key={s.id} className="suppchip">{s.title}<button className="suppchip__x" aria-label={`Remove ${s.title}`} onClick={() => removeItem(s)}>×</button></span>)}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* #202 Recovery — sauna / cold / massage / mobility (scheduled blocks) */}
+      {dayRecovery.length > 0 && (
+        <>
+          <div className="section-title sec-ico">🛌 Recovery</div>
+          <div className="stack">
+            {dayRecovery.map((r) => (
+              <div key={r.id} className="today-entry">
+                <div className="card">
+                  <div className="card-row">
+                    <div className="thumb" style={{ fontSize: 22 }}>{RECOVERY_EMOJI[r.kind || ''] || '🛌'}</div>
+                    <div className="card-body"><h3>{r.title}</h3><div className="meta"><span>{r.minutes ? `${r.minutes} min` : 'recovery'}</span>{r.kind ? <span className="dot">{r.kind}</span> : null}</div></div>
+                  </div>
+                </div>
+                <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12 }} aria-label="Remove" title="Remove" onClick={() => removeItem(r)}><Trash2 size={16} /></button>
               </div>
             ))}
           </div>
