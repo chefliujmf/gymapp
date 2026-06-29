@@ -27,6 +27,16 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+206. ⬜ **Morning readiness data + coach stick-vs-adjust decision.** JM 2026-06-29: today's HRV/sleep isn't in intervals
+    yet in the morning, so the coach can't decide. ROOT CAUSE (verified in JM's data): the lag is **Coros → intervals**,
+    not Platyplus — overnight HRV/sleep lands in intervals hours late (often afternoon/next-day; `updated` timestamps
+    show next-day 17:18–22:32; today 06-29 at 14:18 EDT still empty). Platyplus reads intervals live, so it's only as
+    fresh as intervals. Coros has no open API → only path is via intervals (memory `platyplus-readiness-model`).
+    **Always available in the morning: Freshness (CTL/ATL/Form).** So the morning flow = manual check-in (subjective) +
+    Freshness → coach decides; auto HRV/Sleep backfills on Coros sync. PROPOSED builds: (1) **re-fetch readiness on app
+    focus + a "⟳ refresh" on the wellness chips** so a Coros sync shows up without a reload; (2) a **morning coach
+    decision** (extend the existing poor-recovery→notify hook into a real stick-vs-adjust call once the check-in is in).
+    Also advise JM: open the Coros app on waking + check the intervals↔Coros pull cadence. gymapp-only.
 205. 🔨 **WeekStrip: select edge date on week change + "Today" shows whenever off-today.** JM 2026-06-29: changing
     week should move the selection — **next week → that week's Monday (first)**, **prev week → its Sunday (last)** — so
     it scrolls continuously; and the **Today** button should appear as soon as the selected date isn't today (even
