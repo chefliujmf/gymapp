@@ -27,6 +27,18 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+202. 🔨 **Today/home redesign — "your day" as a flexible typed-block stack (DESIGN LOCKED 2026-06-28, option C2).** JM
+    picked **C2** (readiness verdict as a banner ON the plan card, then 🍽️ Fuel + 🧠 Mind as their own labelled cards).
+    Mockups: `mockups/today-ux.html` (A/B/C), `today-blended.html` (C1/C2), `today-c2-sports.html` (multi-sport),
+    `today-c2-flex.html` (extensible). **LOCKED model:** Today renders an **ordered list of typed blocks** from the
+    day's data — `Workout×N` (body renderer per sport: gym sets×reps · ride/run power/pace · swim laps · pilates/yoga
+    class) · **🍽️ Fuel** (2-col meal chips + 💊 **Supplements** sub-block + ⓘ strategy) · **🧠 Mind** · **🛌 Recovery**
+    (sauna/cold/massage/mobility) · …future. Universal top = the readiness check-in (auto). Rules kept: meal chips
+    WRAP 2-col (no side-scroll); empty block → algorithmic "Suggested"; a module the user doesn't do is hidden (#198);
+    readiness banner + fuel strategy adapt to what's on (carb vs protein). **Adding a sport/section/sub-item later =
+    data + one renderer, not a redesign.** Build needs: new block types for Recovery + Supplements (item model), the
+    readiness→verdict banner, the per-sport body renderers. Phase the build (layout + readiness banner + existing
+    fuel/mind first; Recovery/Supplements data model next). gymapp-only.
 201. 🔨 **Score explanations: definition under the label, per-day WHY in the ⓘ.** JM 2026-06-28: the line under each
     score is the *definition*; the **ⓘ should explain WHY this day's score** is what it is. Now: dim one-liner under
     each row = definition (Energy "How ready your body is to train right now", Sleep "How well last night recovered
