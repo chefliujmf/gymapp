@@ -28,6 +28,10 @@ export interface User {
   hasCoachProfile?: boolean
   sports?: string[] // the sports you do (multi-select) — drives nav hubs + engine gating
   sex?: string // from intervals.icu athlete record — gates female-athlete module
+  sleepNeed?: number | null // h — personalises the Sleep readiness score (#159)
+  maxHR?: number | null // bpm
+  ftp?: number | null // W
+  vo2max?: number | null // ml/kg/min — athlete benchmarks the coach + readiness learn from (#207)
 }
 
 async function req<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {

@@ -42,6 +42,7 @@ test guide → the **🧪 Test guide** section below.
     profile) — gap is a unified per-user model. Big item; phase it (TSB personal baseline → athlete-stats store → wire
     FTP/maxHR/VO2 → coach reads it). gymapp-only.
     **Phase 1 BUILT 2026-06-29 (on QA):** Freshness now z-scores your TSB vs your rolling baseline (≥14d, sd-floored) and nudges the absolute anchor ±1 — a day unusually loaded FOR YOU reads lower, an unusually rested one higher, your typical day stays at the anchor (~4). `baselines.tsbBaseline` + `freshness({tsbBaseline})`, the ⓘ says "more loaded/fresher/about your usual". 23 tests. Phase 2 = athlete-stats store (FTP/maxHR/VO2max) + coach.
+    **Phase 2 BUILT 2026-06-29 (on QA):** per-user athlete stats — sleepNeed, maxHR, FTP, VO2max — stored on the user, exposed in pub(), settable via PUT /auth/profile (clamped). New "Your stats" section in Profile (autosave). readiness uses sleepNeed (fixes Sleep vs JM's ~9h, #159 DONE). buildSystemPrompt now gives the coach "THIS ATHLETE'S BENCHMARKS" so it judges intensity FOR THEM. Next (2b): wire FTP/maxHR into the readiness math (expected fatigue) + learn a calibration offset from systematic overrides.
 206. ⬜ **Morning readiness data + coach stick-vs-adjust decision.** JM 2026-06-29: today's HRV/sleep isn't in intervals
     yet in the morning, so the coach can't decide. ROOT CAUSE (verified in JM's data): the lag is **Coros → intervals**,
     not Platyplus — overnight HRV/sleep lands in intervals hours late (often afternoon/next-day; `updated` timestamps
@@ -172,7 +173,7 @@ test guide → the **🧪 Test guide** section below.
     (a) make the in-app Remove the obvious/only path; (b) reconcile DETECTS an intervals-side deletion of a platyplus
     plan's tracked event and prompts "remove from Platyplus too?"; (c) ensure the Platyplus Remove definitely works (if
     JM used ⋮→Remove and it persisted = real bug in deletePlanById). JM screenshot QA 2026-06-26.
-159. 🔨 **Sleep 1-5 PERSONAL (WHOOP-style).** Mostly DONE in #195: `readiness.sleep` = device sleep score (0–100)→1-5
+159. ✅ **Sleep 1-5 PERSONAL (WHOOP-style).** Mostly DONE in #195: `readiness.sleep` = device sleep score (0–100)→1-5
     else **hours ÷ personal need** (replaces the old fixed `sleepTo5` hour-bins). REMAINING: expose a per-user
     **sleep-need setting** (server reads `user.sleepNeed`, default 8h — JM needs ~9h) in Profile/Settings + a UI to set
     it; WHOOP's debt+strain additions are phase 2. JM 2026-06-26.
