@@ -27,6 +27,14 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+209. ⬜ **Running Threshold Pace (FTP-equivalent) + Daniels VDOT + running VO₂max.** JM 2026-06-29: "for running, do we
+    have an estimation of paces similar to FTP?" CURRENT: VO₂max est. exists only for CYCLING (Fitness page, Coggan
+    `10.8·eFTP/kg+7`); **no running VO₂max (VDOT), no first-class running threshold pace.** Run plans express intensity
+    as "% of threshold" but there's no stored pace anchor → no real min/km targets/zones. BUILD: add a **Threshold Pace**
+    stat to "Your stats" (running's FTP — Daniels T-pace / critical velocity / lactate-threshold pace; manual + prefill
+    from intervals' athlete pace), derive **Daniels pace zones** (E/M/T/I/R) + **VDOT → running VO₂max**, wire into the
+    RunPlayer (target paces) + coach (prescribe by pace). Pairs with #207 Phase 2 (athlete-stats) + Phase 2b (wire
+    VO₂max into readiness). gymapp-only.
 208. 🔨 **Freshness recalibration — less conservative (DONE).** JM 2026-06-29: Form −1 reading 3/5 is too conservative
     + clashed with the "You're fresh" verdict. The mapping was the research-doc table (TSB −15..0 → 3). Re-anchored to
     TrainingPeaks Form zones + ACWR sweet-spot 0.8–1.3 (low risk = good): balanced (Form ~0 / ACWR ~1) → ~4; 5 reserved
