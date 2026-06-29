@@ -32,7 +32,7 @@ test guide → the **🧪 Test guide** section below.
     TrainingPeaks Form zones + ACWR sweet-spot 0.8–1.3 (low risk = good): balanced (Form ~0 / ACWR ~1) → ~4; 5 reserved
     for tapered (Form ≥ +12); drops to 2–1 as real fatigue accumulates. JM real days: Form −1 → 3.4→**4**, normal days
     4–4.7. `server/readiness.js` + test. On QA. Supersedes the conservative table for Freshness; revisit when #207 lands.
-207. ⬜ **Personalize the WHOLE readiness model from the athlete's own stats (not just HRV).** JM 2026-06-29: "each
+207. 🔨 **Personalize the WHOLE readiness model from the athlete's own stats (not just HRV).** JM 2026-06-29: "each
     user has specificities — learn from my stats: HRV, max HR, FTP, VO2max, etc." CURRENT state: Energy HRV/RHR are
     ALREADY z-scored vs the user's rolling personal baseline (lnRMSSD, ≥14d) — not population brackets. Gaps: (a) Sleep
     need is a default 8h (→ per-user #159); (b) **Freshness 1–5 mapping is a population default** (now less conservative,
@@ -41,6 +41,7 @@ test guide → the **🧪 Test guide** section below.
     "how hard is this FOR YOU" → personal zones + expected fatigue. Data exists (intervals eFTP/maxHR/VO2 est, coach
     profile) — gap is a unified per-user model. Big item; phase it (TSB personal baseline → athlete-stats store → wire
     FTP/maxHR/VO2 → coach reads it). gymapp-only.
+    **Phase 1 BUILT 2026-06-29 (on QA):** Freshness now z-scores your TSB vs your rolling baseline (≥14d, sd-floored) and nudges the absolute anchor ±1 — a day unusually loaded FOR YOU reads lower, an unusually rested one higher, your typical day stays at the anchor (~4). `baselines.tsbBaseline` + `freshness({tsbBaseline})`, the ⓘ says "more loaded/fresher/about your usual". 23 tests. Phase 2 = athlete-stats store (FTP/maxHR/VO2max) + coach.
 206. ⬜ **Morning readiness data + coach stick-vs-adjust decision.** JM 2026-06-29: today's HRV/sleep isn't in intervals
     yet in the morning, so the coach can't decide. ROOT CAUSE (verified in JM's data): the lag is **Coros → intervals**,
     not Platyplus — overnight HRV/sleep lands in intervals hours late (often afternoon/next-day; `updated` timestamps
