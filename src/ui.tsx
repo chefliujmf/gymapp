@@ -24,13 +24,24 @@ export function WeekStrip({ selected, onSelect, marked }: { selected?: string; o
   const sunday = days[6]
   const todayKey = now.toDateString()
   const label = `${monday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${sunday.toLocaleDateString(undefined, monday.getMonth() === sunday.getMonth() ? { day: 'numeric' } : { month: 'short', day: 'numeric' })}`
+  // Changing week moves the selection to the EDGE you scroll toward (next → that week's
+  // Monday, prev → its Sunday) so it stays continuous. (#205)
+  const mondayOf = (off: number) => { const m = new Date(now); m.setDate(now.getDate() - ((now.getDay() + 6) % 7) + off * 7); return m }
+  const goWeek = (delta: number) => {
+    const newOff = offset + delta
+    setOffset(newOff)
+    const m = mondayOf(newOff)
+    onSelect?.(localISO(delta < 0 ? new Date(m.getFullYear(), m.getMonth(), m.getDate() + 6) : m))
+  }
+  // "Today" shows as soon as the selected date isn't today — even within this week. (#205)
+  const away = offset !== 0 || (!!selected && selected !== localISO(now))
   return (
     <>
       <div className="weeknav">
-        <button className="weeknav__a" onClick={() => setOffset((o) => o - 1)} aria-label="Previous week">‹</button>
+        <button className="weeknav__a" onClick={() => goWeek(-1)} aria-label="Previous week">‹</button>
         <span className="weeknav__l">{offset === 0 ? 'This week' : label}</span>
-        {offset !== 0 && <button className="weeknav__today" onClick={() => { setOffset(0); onSelect?.(localISO(now)) }}>Today</button>}
-        <button className="weeknav__a" onClick={() => setOffset((o) => o + 1)} aria-label="Next week">›</button>
+        {away && <button className="weeknav__today" onClick={() => { setOffset(0); onSelect?.(localISO(now)) }}>Today</button>}
+        <button className="weeknav__a" onClick={() => goWeek(1)} aria-label="Next week">›</button>
       </div>
       <div className="week">
         {days.map((d) => {

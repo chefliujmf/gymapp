@@ -1,0 +1,122 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Today / home — UX options</title>
+<style>
+:root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--amber:#ffcf5c;--red:#ff6b6b;--line:#2a2f3a}
+*{box-sizing:border-box;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{background:#07080a;color:var(--text);padding:22px;display:flex;flex-direction:column;align-items:center;gap:14px}
+h1.t{font-size:18px;font-weight:800}
+.sub{color:var(--text-dim);font-size:13px;max-width:980px;text-align:center;line-height:1.5}
+.row{display:flex;gap:26px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:8px;align-items:center}
+.tag{font-size:12px;font-weight:800;letter-spacing:.04em;color:var(--accent)}
+.tagdesc{font-size:11px;color:var(--text-dim);max-width:320px;text-align:center;line-height:1.4;min-height:46px}
+.phone{width:340px;background:var(--bg);border:1px solid var(--line);border-radius:26px;padding:16px 14px 18px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.h-eyebrow{font-size:11px;letter-spacing:.12em;color:var(--text-dim);font-weight:700}
+.h-title{font-size:24px;font-weight:800;margin-top:1px}
+/* week strip */
+.week{display:flex;gap:5px;margin:12px 0}
+.day{flex:1;background:#171b22;border-radius:12px;padding:7px 0;text-align:center;border:1px solid transparent}
+.day small{display:block;font-size:9px;color:var(--text-dim);font-weight:700}
+.day b{font-size:14px}
+.day.sel{background:var(--accent);color:#06210f}.day.sel small{color:#06351a}
+.day.today b{color:var(--accent)}.day.sel.today b{color:#06210f}
+.card{background:linear-gradient(#21252f,#191c24);border:1px solid var(--line);border-radius:16px;padding:13px 14px;margin-top:11px}
+.card-t{font-weight:800;font-size:15px}
+.muted{color:var(--text-dim);font-size:12px}
+/* readiness scores */
+.scores{display:flex;gap:8px;margin-top:10px}
+.score{flex:1;background:#14181f;border:1px solid var(--line);border-radius:13px;padding:9px 6px;text-align:center}
+.score .v{font-size:22px;font-weight:800;line-height:1}
+.score .l{font-size:10px;color:var(--text-dim);font-weight:700;margin-top:3px;text-transform:uppercase;letter-spacing:.03em}
+.score .d{font-size:9.5px;color:var(--text-dim);opacity:.85;margin-top:2px;line-height:1.2}
+.ring{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;margin:0 auto 4px;font-weight:800;font-size:17px}
+.faces{display:flex;justify-content:flex-end;gap:7px}
+.f{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;background:#14181f;border:1px solid var(--line);font-size:14px}
+.f.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.crow{display:flex;align-items:center;justify-content:space-between;margin:7px 0}
+.clbl{font-size:13px;color:var(--text-dim)}.clbl b{color:var(--text);font-weight:600}
+.cdesc{display:block;font-size:10px;color:var(--text-dim);opacity:.7;margin-top:1px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.chip{background:#14181f;border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:11px;color:var(--text-dim);font-weight:700}
+.chip.src{color:var(--accent);border-color:rgba(52,224,125,.3)}
+.verdict{display:flex;align-items:center;gap:9px}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.sectitle{font-weight:800;font-size:16px;margin:14px 2px 0;display:flex;justify-content:space-between;align-items:center}
+.addbtn{background:var(--accent);color:#06210f;border:none;border-radius:999px;font-weight:800;font-size:13px;padding:6px 13px}
+.plan{display:flex;gap:11px;align-items:center}
+.thumb{width:54px;height:54px;border-radius:11px;background:#11161d;display:grid;place-items:center;flex:none}
+.bar{width:26px;height:16px;border-radius:3px;background:var(--accent);opacity:.85}
+.plan .eyebrow{font-size:10px;letter-spacing:.08em;color:var(--text-dim);font-weight:800}
+.banner{border-radius:11px;padding:8px 11px;font-size:12px;font-weight:600;margin-bottom:10px;display:flex;gap:8px;align-items:center;line-height:1.35}
+.small-link{color:var(--accent);font-weight:700;font-size:12px}
+</style></head>
+<body>
+<h1 class="t">Today / home — 3 directions (same data: Energy 3 · Sleep 5 · Freshness 4)</h1>
+<p class="sub">Best practice (WHOOP/Oura/Garmin morning report): <b>lead with the readiness answer</b>, tie it to today's plan, show direction. Constraint kept in all three: the manual check-in stays <b>visible</b> (auto-filled from your data; never collapsed before it's filled).</p>
+<div class="row">
+
+  <!-- ============ OPTION A: Readiness verdict hero band ============ -->
+  <div class="col">
+    <div class="tag">A · Readiness verdict hero</div>
+    <div class="tagdesc">A bold "answer" band on top (verdict + colour + 3 score rings), then the tappable check-in stays below to review/override. Most WHOOP/Oura-like.</div>
+    <div class="phone">
+      <div class="h-eyebrow">GOOD MORNING</div><div class="h-title">Ready to train?</div>
+      <div class="week"><div class="day"><small>MON</small><b>22</b></div><div class="day"><small>TUE</small><b>23</b></div><div class="day"><small>WED</small><b>24</b></div><div class="day"><small>THU</small><b>25</b></div><div class="day"><small>FRI</small><b>26</b></div><div class="day"><small>SAT</small><b>27</b></div><div class="day sel today"><small>SUN</small><b>28</b></div></div>
+      <div class="card" style="border-color:rgba(52,224,125,.35)">
+        <div class="verdict"><span class="dot" style="background:var(--accent)"></span><div><div class="card-t">You're fresh — train as planned</div><div class="muted">Recovery's solid; the optional Z2 ride is a green light.</div></div></div>
+        <div class="scores">
+          <div class="score"><div class="ring" style="background:rgba(255,207,92,.16);color:var(--amber)">3</div><div class="l">Energy</div></div>
+          <div class="score"><div class="ring" style="background:rgba(52,224,125,.16);color:var(--accent)">5</div><div class="l">Sleep</div></div>
+          <div class="score"><div class="ring" style="background:rgba(52,224,125,.16);color:var(--accent)">4</div><div class="l">Freshness</div></div>
+        </div>
+        <div class="chips"><span class="chip">😴 9.8h</span><span class="chip">HRV 29</span><span class="chip">Rest HR 57</span><span class="chip src">↑ intervals</span></div>
+        <div class="muted" style="margin-top:9px;display:flex;justify-content:space-between"><span>Auto from your data · tap to adjust</span><span class="small-link">Adjust ▾</span></div>
+      </div>
+      <div class="sectitle">Today's plan <button class="addbtn">+ Add</button></div>
+      <div class="card plan"><div class="thumb"><div class="bar"></div></div><div><div class="eyebrow">RIDE</div><div class="card-t">Sunday Endurance at Skov</div><div class="muted">80 min · optional</div></div></div>
+    </div>
+  </div>
+
+  <!-- ============ OPTION B: Verdict header inside the check-in ============ -->
+  <div class="col">
+    <div class="tag">B · Verdict + numbers in the card</div>
+    <div class="tagdesc">Evolves today's card: a one-line verdict on top, each row shows its number + faces + the "why" inputs. Familiar tap-faces, just clearer. Lowest-risk.</div>
+    <div class="phone">
+      <div class="h-eyebrow">GOOD MORNING</div><div class="h-title">Ready to train?</div>
+      <div class="week"><div class="day"><small>MON</small><b>22</b></div><div class="day"><small>TUE</small><b>23</b></div><div class="day"><small>WED</small><b>24</b></div><div class="day"><small>THU</small><b>25</b></div><div class="day"><small>FRI</small><b>26</b></div><div class="day"><small>SAT</small><b>27</b></div><div class="day sel today"><small>SUN</small><b>28</b></div></div>
+      <div class="card">
+        <div class="verdict" style="margin-bottom:4px"><span class="dot" style="background:var(--accent)"></span><div class="card-t">Fresh — good to go</div></div>
+        <div class="crow"><span class="clbl">Energy <b>3</b><span class="cdesc">HRV −0.5σ · sleep 5 · RHR +0.7σ</span></span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f on">😐</span><span class="f">😀</span><span class="f">🤩</span></div></div>
+        <div class="crow"><span class="clbl">Sleep <b>5</b><span class="cdesc">9.8h vs your ~9h need</span></span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f">😐</span><span class="f">😀</span><span class="f on">🤩</span></div></div>
+        <div class="crow"><span class="clbl">Freshness <b>4</b><span class="cdesc">Form +6 · load 0.8</span></span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f">😐</span><span class="f on">😀</span><span class="f">🤩</span></div></div>
+        <div class="chips"><span class="chip">😴 9.8h</span><span class="chip">HRV 29</span><span class="chip">Rest HR 57</span><span class="chip src">↑ intervals</span></div>
+      </div>
+      <div class="sectitle">Today's plan <button class="addbtn">+ Add</button></div>
+      <div class="card plan"><div class="thumb"><div class="bar"></div></div><div><div class="eyebrow">RIDE</div><div class="card-t">Sunday Endurance at Skov</div><div class="muted">80 min · optional</div></div></div>
+    </div>
+  </div>
+
+  <!-- ============ OPTION C: Readiness drives the plan ============ -->
+  <div class="col">
+    <div class="tag">C · Readiness drives the plan</div>
+    <div class="tagdesc">The check-in stays compact; the readiness verdict becomes a coaching banner ON the plan card ("you're fresh → as planned" / "ease to Z2"). Closest to the app's purpose: readiness → action.</div>
+    <div class="phone">
+      <div class="h-eyebrow">GOOD MORNING</div><div class="h-title">Ready to train?</div>
+      <div class="week"><div class="day"><small>MON</small><b>22</b></div><div class="day"><small>TUE</small><b>23</b></div><div class="day"><small>WED</small><b>24</b></div><div class="day"><small>THU</small><b>25</b></div><div class="day"><small>FRI</small><b>26</b></div><div class="day"><small>SAT</small><b>27</b></div><div class="day sel today"><small>SUN</small><b>28</b></div></div>
+      <div class="card">
+        <div class="crow" style="margin:0 0 6px"><span class="card-t">How do you feel?</span><span class="muted">auto · tap to adjust</span></div>
+        <div class="crow" style="margin:4px 0"><span class="clbl">Energy</span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f on">😐</span><span class="f">😀</span><span class="f">🤩</span></div></div>
+        <div class="crow" style="margin:4px 0"><span class="clbl">Sleep</span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f">😐</span><span class="f">😀</span><span class="f on">🤩</span></div></div>
+        <div class="crow" style="margin:4px 0"><span class="clbl">Freshness</span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f">😐</span><span class="f on">😀</span><span class="f">🤩</span></div></div>
+      </div>
+      <div class="sectitle">Today's plan <button class="addbtn">+ Add</button></div>
+      <div class="card">
+        <div class="banner" style="background:rgba(52,224,125,.12);border:1px solid rgba(52,224,125,.3)"><span class="dot" style="background:var(--accent)"></span><span><b>You're fresh</b> — ride it as planned. Sleep 5/5, Freshness 4/5.</span></div>
+        <div class="plan"><div class="thumb"><div class="bar"></div></div><div><div class="eyebrow">RIDE</div><div class="card-t">Sunday Endurance at Skov</div><div class="muted">80 min · optional</div></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<p class="sub" style="margin-top:6px">My recommendation: <b>A</b> (verdict hero) for the cleanest "answer first," or <b>C</b> if you want readiness to visibly steer the plan. <b>B</b> is the safe incremental tidy-up.</p>
+</body></html>

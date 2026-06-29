@@ -1,0 +1,122 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Today — C blended with Fuel + Mind</title>
+<style>
+:root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--amber:#ffcf5c;--line:#2a2f3a}
+*{box-sizing:border-box;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{background:#07080a;color:var(--text);padding:22px;display:flex;flex-direction:column;align-items:center;gap:14px}
+h1.t{font-size:18px;font-weight:800;text-align:center}
+.sub{color:var(--text-dim);font-size:13px;max-width:920px;text-align:center;line-height:1.5}
+.row{display:flex;gap:34px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:8px;align-items:center}
+.tag{font-size:12px;font-weight:800;color:var(--accent)}
+.tagdesc{font-size:11px;color:var(--text-dim);max-width:330px;text-align:center;line-height:1.45;min-height:42px}
+.phone{width:348px;background:var(--bg);border:1px solid var(--line);border-radius:26px;padding:16px 14px 18px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.h-eyebrow{font-size:11px;letter-spacing:.12em;color:var(--text-dim);font-weight:700}
+.h-title{font-size:23px;font-weight:800;margin-top:1px}
+.week{display:flex;gap:5px;margin:11px 0}
+.day{flex:1;background:#171b22;border-radius:11px;padding:6px 0;text-align:center}
+.day small{display:block;font-size:9px;color:var(--text-dim);font-weight:700}.day b{font-size:13px}
+.day.sel{background:var(--accent);color:#06210f}.day.sel small{color:#06351a}.day.today b{color:var(--accent)}.day.sel.today b{color:#06210f}
+.card{background:linear-gradient(#21252f,#191c24);border:1px solid var(--line);border-radius:16px;padding:13px 14px;margin-top:11px}
+.card-t{font-weight:800;font-size:15px}
+.muted{color:var(--text-dim);font-size:12px}
+.crow{display:flex;align-items:center;justify-content:space-between;margin:5px 0}
+.clbl{font-size:13px;color:var(--text-dim)}
+.faces{display:flex;justify-content:flex-end;gap:6px}
+.f{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:#14181f;border:1px solid var(--line);font-size:13px}
+.f.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.sectitle{font-weight:800;font-size:16px;margin:14px 2px 2px;display:flex;justify-content:space-between;align-items:center}
+.addbtn{background:var(--accent);color:#06210f;border:none;border-radius:999px;font-weight:800;font-size:12px;padding:5px 12px}
+.banner{border-radius:11px;padding:8px 11px;font-size:12px;font-weight:600;margin-bottom:11px;display:flex;gap:8px;align-items:flex-start;line-height:1.35;background:rgba(52,224,125,.12);border:1px solid rgba(52,224,125,.3)}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;margin-top:4px;background:var(--accent)}
+.plan{display:flex;gap:11px;align-items:center}
+.thumb{width:50px;height:50px;border-radius:11px;background:#11161d;display:grid;place-items:center;flex:none;font-size:20px}
+.bar{width:24px;height:15px;border-radius:3px;background:var(--accent);opacity:.85}
+.eyebrow{font-size:10px;letter-spacing:.08em;color:var(--text-dim);font-weight:800}
+.divider{height:1px;background:var(--line);margin:12px -14px}
+.blocklbl{font-size:12px;font-weight:800;color:var(--text-dim);display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.ico{font-size:14px}
+.strategy{font-size:11px;color:var(--text-dim);margin:1px 0 8px;line-height:1.35}
+.iinfo{display:inline-grid;place-items:center;width:14px;height:14px;border:1px solid var(--text-dim);border-radius:50%;font-size:9px;color:var(--text-dim);font-style:italic}
+.meals{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.meal{background:#14181f;border:1px solid var(--line);border-radius:11px;padding:7px 8px;display:flex;gap:8px;align-items:center}
+.mthumb{width:30px;height:30px;border-radius:7px;background:#1c222b;display:grid;place-items:center;flex:none;font-size:15px}
+.meal .nm{font-size:11.5px;font-weight:700;line-height:1.15}
+.meal .mc{font-size:9.5px;color:var(--text-dim)}
+.mtag{font-size:8.5px;letter-spacing:.05em;color:var(--text-dim);font-weight:800;text-transform:uppercase}
+.mind{display:flex;gap:10px;align-items:center}
+.mind .mt{width:36px;height:36px;border-radius:9px;background:rgba(122,140,255,.14);display:grid;place-items:center;font-size:17px;flex:none}
+</style></head>
+<body>
+<h1 class="t">Today — option C (readiness drives the plan) blended with Fuel + Mind</h1>
+<p class="sub">Both keep the compact auto check-in on top + the readiness banner on the plan (C). Difference = how Fuel + Mind sit. Per the locked design: meals are <b>2-column chips</b> (no side-scroll), shown once, with a one-line strategy + ⓘ; Mind is a referenced session.</p>
+<div class="row">
+
+  <!-- ===== C1: ONE "Your day" card ===== -->
+  <div class="col">
+    <div class="tag">C1 · One "Your day" card</div>
+    <div class="tagdesc">Readiness → ride → fuel → mind all inside ONE cohesive card. Reads as a single plan for the day; tightest blend, least scrolling.</div>
+    <div class="phone">
+      <div class="h-eyebrow">GOOD MORNING</div><div class="h-title">Ready to train?</div>
+      <div class="week"><div class="day"><small>MON</small><b>22</b></div><div class="day"><small>TUE</small><b>23</b></div><div class="day"><small>WED</small><b>24</b></div><div class="day"><small>THU</small><b>25</b></div><div class="day"><small>FRI</small><b>26</b></div><div class="day"><small>SAT</small><b>27</b></div><div class="day sel today"><small>SUN</small><b>28</b></div></div>
+      <div class="card">
+        <div class="crow" style="margin:0 0 5px"><span class="card-t">How do you feel?</span><span class="muted">auto · tap to adjust</span></div>
+        <div class="crow"><span class="clbl">Energy</span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f on">😐</span><span class="f">😀</span><span class="f">🤩</span></div></div>
+        <div class="crow"><span class="clbl">Sleep</span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f">😐</span><span class="f">😀</span><span class="f on">🤩</span></div></div>
+        <div class="crow"><span class="clbl">Freshness</span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f">😐</span><span class="f on">😀</span><span class="f">🤩</span></div></div>
+      </div>
+      <div class="sectitle">Today <button class="addbtn">+ Add</button></div>
+      <div class="card">
+        <div class="banner"><span class="dot"></span><span><b>You're fresh</b> — ride it as planned. Sleep 5/5, Freshness 4/5.</span></div>
+        <div class="plan"><div class="thumb"><div class="bar"></div></div><div><div class="eyebrow">RIDE · 80 MIN</div><div class="card-t">Sunday Endurance at Skov</div><div class="muted">optional · Z2 endurance</div></div></div>
+        <div class="divider"></div>
+        <div class="blocklbl"><span class="ico">🍽️</span> Fuel <span class="iinfo">i</span></div>
+        <div class="strategy">Carb-forward to fuel & refill for the endurance ride.</div>
+        <div class="meals">
+          <div class="meal"><div class="mthumb">🥣</div><div><div class="mtag">Breakfast</div><div class="nm">Oats & berries</div><div class="mc">520 kcal · 18g P</div></div></div>
+          <div class="meal"><div class="mthumb">🥗</div><div><div class="mtag">Lunch</div><div class="nm">Chicken rice bowl</div><div class="mc">640 kcal · 42g P</div></div></div>
+          <div class="meal"><div class="mthumb">🍝</div><div><div class="mtag">Dinner</div><div class="nm">Salmon & pasta</div><div class="mc">700 kcal · 38g P</div></div></div>
+          <div class="meal"><div class="mthumb">🍌</div><div><div class="mtag">Snack</div><div class="nm">Banana + yogurt</div><div class="mc">240 kcal · 14g P</div></div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="blocklbl"><span class="ico">🧠</span> Mind <span class="iinfo">i</span></div>
+        <div class="mind"><div class="mt">🧘</div><div><div class="nm" style="font-size:13px;font-weight:700">Wind-down breathing</div><div class="muted">10 min · pre-sleep recovery</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== C2: sectioned but connected ===== -->
+  <div class="col">
+    <div class="tag">C2 · Connected sections</div>
+    <div class="tagdesc">Readiness banner on the plan card, then Fuel + Mind as their own labelled cards below (closest to today's structure). Easier to scan each block; a touch more scrolling.</div>
+    <div class="phone">
+      <div class="h-eyebrow">GOOD MORNING</div><div class="h-title">Ready to train?</div>
+      <div class="week"><div class="day"><small>MON</small><b>22</b></div><div class="day"><small>TUE</small><b>23</b></div><div class="day"><small>WED</small><b>24</b></div><div class="day"><small>THU</small><b>25</b></div><div class="day"><small>FRI</small><b>26</b></div><div class="day"><small>SAT</small><b>27</b></div><div class="day sel today"><small>SUN</small><b>28</b></div></div>
+      <div class="card">
+        <div class="crow" style="margin:0 0 5px"><span class="card-t">How do you feel?</span><span class="muted">auto · tap to adjust</span></div>
+        <div class="crow"><span class="clbl">Energy</span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f on">😐</span><span class="f">😀</span><span class="f">🤩</span></div></div>
+        <div class="crow"><span class="clbl">Sleep</span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f">😐</span><span class="f">😀</span><span class="f on">🤩</span></div></div>
+        <div class="crow"><span class="clbl">Freshness</span><div class="faces"><span class="f">💀</span><span class="f">😩</span><span class="f">😐</span><span class="f on">😀</span><span class="f">🤩</span></div></div>
+      </div>
+      <div class="sectitle">Today's plan <button class="addbtn">+ Add</button></div>
+      <div class="card">
+        <div class="banner"><span class="dot"></span><span><b>You're fresh</b> — ride it as planned.</span></div>
+        <div class="plan"><div class="thumb"><div class="bar"></div></div><div><div class="eyebrow">RIDE · 80 MIN</div><div class="card-t">Sunday Endurance at Skov</div><div class="muted">optional · Z2 endurance</div></div></div>
+      </div>
+      <div class="sectitle">🍽️ Fuel <span class="muted" style="font-weight:600">to fuel the ride</span></div>
+      <div class="card" style="padding-top:11px">
+        <div class="meals">
+          <div class="meal"><div class="mthumb">🥣</div><div><div class="mtag">Breakfast</div><div class="nm">Oats & berries</div><div class="mc">520 kcal</div></div></div>
+          <div class="meal"><div class="mthumb">🥗</div><div><div class="mtag">Lunch</div><div class="nm">Chicken bowl</div><div class="mc">640 kcal</div></div></div>
+          <div class="meal"><div class="mthumb">🍝</div><div><div class="mtag">Dinner</div><div class="nm">Salmon pasta</div><div class="mc">700 kcal</div></div></div>
+          <div class="meal"><div class="mthumb">🍌</div><div><div class="mtag">Snack</div><div class="nm">Banana yogurt</div><div class="mc">240 kcal</div></div></div>
+        </div>
+      </div>
+      <div class="sectitle">🧠 Mind</div>
+      <div class="card"><div class="mind"><div class="mt">🧘</div><div><div class="nm" style="font-size:13px;font-weight:700">Wind-down breathing</div><div class="muted">10 min · pre-sleep recovery</div></div></div></div>
+    </div>
+  </div>
+
+</div>
+<p class="sub" style="margin-top:6px">My recommendation: <b>C1</b> — one cohesive "Today" card reads as a single coach-set day (readiness → ride → fuel → mind), least scrolling, strongest blend. C2 if you prefer each block as its own scannable card.</p>
+</body></html>

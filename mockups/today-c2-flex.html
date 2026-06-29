@@ -1,0 +1,107 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>C2 — extensible (swimming · supplements · recovery/sauna)</title>
+<style>
+:root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--violet:#7a8cff;--cyan:#4fc8e6;--amber:#ffcf5c;--bg:#0f1216;--line:#2a2f3a}
+*{box-sizing:border-box;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{background:#07080a;color:var(--text);padding:22px;display:flex;flex-direction:column;align-items:center;gap:14px}
+h1.t{font-size:18px;font-weight:800;text-align:center}
+.sub{color:var(--text-dim);font-size:13px;max-width:1010px;text-align:center;line-height:1.5}
+.sub b.k{color:var(--text)}
+.row{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:7px;align-items:center}
+.tag{font-size:12px;font-weight:800;color:var(--accent)}
+.tagd{font-size:10.5px;color:var(--text-dim);max-width:300px;text-align:center;line-height:1.4;min-height:30px}
+.phone{width:312px;background:var(--bg);border:1px solid var(--line);border-radius:24px;padding:14px 12px 16px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.h-title{font-size:20px;font-weight:800}
+.chk{display:flex;gap:6px;margin:9px 0 2px}
+.scc{flex:1;background:#14181f;border:1px solid var(--line);border-radius:10px;padding:5px 0;text-align:center}
+.scc b{font-size:15px;font-weight:800}.scc small{display:block;font-size:8px;color:var(--text-dim);font-weight:700;text-transform:uppercase}
+.card{background:linear-gradient(#21252f,#191c24);border:1px solid var(--line);border-radius:15px;padding:11px 12px;margin-top:8px}
+.card-t{font-weight:800;font-size:14px}.muted{color:var(--text-dim);font-size:11px}
+.sectitle{font-weight:800;font-size:15px;margin:12px 2px 1px;display:flex;align-items:center;gap:6px}
+.sectitle .hint{font-weight:600;font-size:11px;color:var(--text-dim)}
+.banner{border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:600;margin-bottom:9px;display:flex;gap:7px;align-items:flex-start;line-height:1.3;background:rgba(52,224,125,.12);border:1px solid rgba(52,224,125,.3)}
+.banner.rest{background:rgba(122,140,255,.12);border-color:rgba(122,140,255,.3)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;margin-top:3px;background:var(--accent)}.dot.v{background:var(--violet)}
+.wk{display:flex;gap:10px;align-items:center}
+.thumb{width:44px;height:44px;border-radius:10px;background:#11161d;display:grid;place-items:center;flex:none;font-size:19px}
+.eyebrow{font-size:9px;letter-spacing:.07em;color:var(--text-dim);font-weight:800}
+.exlist{margin-top:4px;font-size:10.5px;color:var(--text-dim);line-height:1.5}.exlist b{color:var(--text);font-weight:600}
+.strategy{font-size:10px;color:var(--text-dim);margin:0 0 7px;line-height:1.3}
+.iinfo{display:inline-grid;place-items:center;width:13px;height:13px;border:1px solid var(--text-dim);border-radius:50%;font-size:8px;font-style:italic}
+.meals{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.meal{background:#14181f;border:1px solid var(--line);border-radius:9px;padding:5px 7px;display:flex;gap:6px;align-items:center}
+.mthumb{width:24px;height:24px;border-radius:6px;background:#1c222b;display:grid;place-items:center;flex:none;font-size:12px}
+.meal .nm{font-size:10px;font-weight:700;line-height:1.1}.mtag{font-size:7.5px;color:var(--text-dim);font-weight:800;text-transform:uppercase}
+.subs{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.pill{background:#14181f;border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:10px;color:var(--text-dim);font-weight:700}
+.subhdr{font-size:10px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-top:9px}
+.mind,.rec{display:flex;gap:8px;align-items:center}
+.mt{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:15px;flex:none}
+.mt.mind-i{background:rgba(122,140,255,.14)}.mt.rec-i{background:rgba(255,207,92,.15)}
+.recrow + .recrow{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)}
+.plus{margin-left:auto;background:var(--accent);color:#06210f;border:none;border-radius:999px;font-weight:800;font-size:11px;padding:4px 10px}
+.ghost{border:1px dashed var(--line);border-radius:12px;padding:8px 11px;color:var(--text-dim);font-size:11px;margin-top:8px;text-align:center}
+</style></head>
+<body>
+<h1 class="t">C2 is a flexible stack of <b class="k">typed blocks</b> — new sports / sub-items / sections just slot in</h1>
+<p class="sub">Today = an ordered list of blocks rendered from the day's data: <b class="k">Workout×N</b> (any sport) · <b class="k">🍽️ Fuel</b> (meals + supplements) · <b class="k">🧠 Mind</b> · <b class="k">🛌 Recovery</b> (sauna/cold/massage) · …future. Add a block type once → it renders everywhere. Below: 🏊 swimming (new sport), supplements under Fuel, and a Recovery/Sauna section.</p>
+<div class="row">
+
+  <!-- SWIMMING + SUPPLEMENTS -->
+  <div class="col"><div class="tag">🏊 Swimming (new sport) + Supplements</div><div class="tagd">A new sport is just another workout body. Supplements are a sub-block under Fuel.</div>
+    <div class="phone">
+      <div class="h-title">Ready to train?</div>
+      <div class="chk"><div class="scc"><b>4</b><small>Energy</small></div><div class="scc"><b>4</b><small>Sleep</small></div><div class="scc"><b>4</b><small>Fresh</small></div></div>
+      <div class="sectitle">Today's plan <button class="plus">+ Add</button></div>
+      <div class="card">
+        <div class="banner"><span class="dot"></span><span><b>Fresh</b> — hit the main set.</span></div>
+        <div class="wk"><div class="thumb">🏊</div><div><div class="eyebrow">SWIM · 45 MIN</div><div class="card-t">Threshold 100s</div><div class="exlist">400 WU · <b>8×100</b> @ T-pace / 20" · 200 CD</div></div></div>
+      </div>
+      <div class="sectitle">🍽️ Fuel <span class="hint">around the swim <span class="iinfo">i</span></span></div>
+      <div class="card">
+        <div class="meals"><div class="meal"><div class="mthumb">🥣</div><div><div class="mtag">Bfast</div><div class="nm">Oats & fruit</div></div></div><div class="meal"><div class="mthumb">🍗</div><div><div class="mtag">Lunch</div><div class="nm">Chicken bowl</div></div></div></div>
+        <div class="subhdr">💊 Supplements</div>
+        <div class="subs"><span class="pill">Creatine 5g</span><span class="pill">Vit D</span><span class="pill">Omega-3</span><span class="pill">Electrolytes</span></div>
+      </div>
+      <div class="sectitle">🧠 Mind</div>
+      <div class="card"><div class="mind"><div class="mt mind-i">🧘</div><div><div class="nm" style="font-size:12px;font-weight:700">Box breathing</div><div class="muted">8 min</div></div></div></div>
+    </div>
+  </div>
+
+  <!-- RECOVERY DAY (SAUNA) -->
+  <div class="col"><div class="tag">🛌 Recovery section (Sauna / Cold)</div><div class="tagd">A brand-new section type — sauna, cold plunge, massage, mobility — rendered like any block.</div>
+    <div class="phone">
+      <div class="h-title">Ready to train?</div>
+      <div class="chk"><div class="scc"><b>2</b><small>Energy</small></div><div class="scc"><b>2</b><small>Sleep</small></div><div class="scc"><b>2</b><small>Fresh</small></div></div>
+      <div class="sectitle">Today's plan <button class="plus">+ Add</button></div>
+      <div class="card">
+        <div class="banner rest"><span class="dot v"></span><span><b>Run-down</b> — recovery day, no hard training.</span></div>
+        <div class="wk"><div class="thumb">🚶</div><div><div class="eyebrow">EASY · 30 MIN</div><div class="card-t">Walk + mobility</div><div class="muted">optional, by feel</div></div></div>
+      </div>
+      <div class="sectitle">🛌 Recovery <span class="hint">help the rebound <span class="iinfo">i</span></span></div>
+      <div class="card">
+        <div class="recrow rec"><div class="mt rec-i">🔥</div><div><div class="nm" style="font-size:12px;font-weight:700">Sauna</div><div class="muted">15–20 min · post-walk</div></div></div>
+        <div class="recrow rec"><div class="mt rec-i">🧊</div><div><div class="nm" style="font-size:12px;font-weight:700">Cold plunge</div><div class="muted">2–3 min · finish warm</div></div></div>
+      </div>
+      <div class="sectitle">🍽️ Fuel</div>
+      <div class="card"><div class="strategy">Lighter, anti-inflammatory leaning.</div><div class="meals"><div class="meal"><div class="mthumb">🐟</div><div><div class="mtag">Dinner</div><div class="nm">Salmon & greens</div></div></div><div class="meal"><div class="mthumb">🫐</div><div><div class="mtag">Snack</div><div class="nm">Berries & yogurt</div></div></div></div></div>
+    </div>
+  </div>
+
+  <!-- ANATOMY / FLEX -->
+  <div class="col"><div class="tag">🧩 The model (why it stays flexible)</div><div class="tagd">Each row is a typed block from the day's data. Order + which blocks show is data-driven.</div>
+    <div class="phone">
+      <div class="h-title" style="font-size:16px;color:var(--text-dim)">Today = blocks[]</div>
+      <div class="card" style="margin-top:10px"><div class="card-t">🏋️/🚴/🏃/🏊/🧘 Workout</div><div class="muted">type → body renderer (sets×reps · power · pace · laps · class). N per day.</div></div>
+      <div class="card"><div class="card-t">🍽️ Fuel</div><div class="muted">meals (2-col chips) + 💊 supplements sub-block + ⓘ strategy.</div></div>
+      <div class="card"><div class="card-t">🧠 Mind</div><div class="muted">meditation / breathing session.</div></div>
+      <div class="card"><div class="card-t">🛌 Recovery</div><div class="muted">sauna · cold · massage · mobility.</div></div>
+      <div class="ghost">➕ New type later (hydration, mindset, labs…) → add a renderer once, it appears here.</div>
+      <div class="muted" style="margin-top:10px;line-height:1.4">Empty block → algorithmic "Suggested". Module a user doesn't do → hidden (#198).</div>
+    </div>
+  </div>
+
+</div>
+<p class="sub" style="margin-top:6px"><b class="k">Yes — fully flexible.</b> Swimming = a new workout body; supplements = a sub-block of Fuel; sauna = a Recovery block. The check-in/readiness stays the universal top. Adding a new section or sport later is a data + one-renderer change, not a redesign.</p>
+</body></html>

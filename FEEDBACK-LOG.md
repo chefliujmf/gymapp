@@ -27,6 +27,53 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+206. ⬜ **Morning readiness data + coach stick-vs-adjust decision.** JM 2026-06-29: today's HRV/sleep isn't in intervals
+    yet in the morning, so the coach can't decide. ROOT CAUSE (verified in JM's data): the lag is **Coros → intervals**,
+    not Platyplus — overnight HRV/sleep lands in intervals hours late (often afternoon/next-day; `updated` timestamps
+    show next-day 17:18–22:32; today 06-29 at 14:18 EDT still empty). Platyplus reads intervals live, so it's only as
+    fresh as intervals. Coros has no open API → only path is via intervals (memory `platyplus-readiness-model`).
+    **Always available in the morning: Freshness (CTL/ATL/Form).** So the morning flow = manual check-in (subjective) +
+    Freshness → coach decides; auto HRV/Sleep backfills on Coros sync. PROPOSED builds: (1) **re-fetch readiness on app
+    focus + a "⟳ refresh" on the wellness chips** so a Coros sync shows up without a reload; (2) a **morning coach
+    decision** (extend the existing poor-recovery→notify hook into a real stick-vs-adjust call once the check-in is in).
+    Also advise JM: open the Coros app on waking + check the intervals↔Coros pull cadence. gymapp-only.
+205. 🔨 **WeekStrip: select edge date on week change + "Today" shows whenever off-today.** JM 2026-06-29: changing
+    week should move the selection — **next week → that week's Monday (first)**, **prev week → its Sunday (last)** — so
+    it scrolls continuously; and the **Today** button should appear as soon as the selected date isn't today (even
+    within this week), not only on a different week. BUILT (`src/ui.tsx`): `goWeek(delta)` sets the offset + selects the
+    edge date; `away = offset!==0 || selected!==today` shows Today. tsc clean.
+204. 🔨 **Override indicator in the check-in (keep the auto trace).** JM 2026-06-28: after editing a score the "· auto"
+    tag just disappears — no sign it's a manual override + the computed value is lost. BUILT: overridden score now shows
+    **"· edited (auto N)"** (amber) in both the expanded rows and collapsed chips; the ⓘ also adds "Auto computed X · you
+    set Y". `Today.tsx`/`styles.css`. tsc clean.
+203. 🔨 **Collapsed check-in: ⓘ explanation + override transparency + coach hook.** JM 2026-06-28 (liked the auto
+    check-in). Asks: (a) in the COLLAPSED "✓ Checked in" chips, be able to tap an **ⓘ for the per-day explanation**
+    (currently only the expanded faces have it); (b) surface the **verdict / "add it to the coach (you're fresh)"** —
+    a way to see/send the readiness verdict to the coach from there; (c) when a score is **overridden**, show **what was
+    COMPUTED vs the user's input** (e.g. "Freshness 3 · auto was 4"), so the override is transparent. Mock the collapsed
+    states first (options-first). Build on the existing CheckInCard (`Today.tsx`); the per-day why already exists in the
+    expanded ⓘ — extend it to the collapsed chips + add the computed-vs-input delta.
+202. 🔨 **Today/home redesign — "your day" as a flexible typed-block stack (DESIGN LOCKED 2026-06-28, option C2).** JM
+    picked **C2** (readiness verdict as a banner ON the plan card, then 🍽️ Fuel + 🧠 Mind as their own labelled cards).
+    Mockups: `mockups/today-ux.html` (A/B/C), `today-blended.html` (C1/C2), `today-c2-sports.html` (multi-sport),
+    `today-c2-flex.html` (extensible). **LOCKED model:** Today renders an **ordered list of typed blocks** from the
+    day's data — `Workout×N` (body renderer per sport: gym sets×reps · ride/run power/pace · swim laps · pilates/yoga
+    class) · **🍽️ Fuel** (2-col meal chips + 💊 **Supplements** sub-block + ⓘ strategy) · **🧠 Mind** · **🛌 Recovery**
+    (sauna/cold/massage/mobility) · …future. Universal top = the readiness check-in (auto). Rules kept: meal chips
+    WRAP 2-col (no side-scroll); empty block → algorithmic "Suggested"; a module the user doesn't do is hidden (#198);
+    readiness banner + fuel strategy adapt to what's on (carb vs protein). **Adding a sport/section/sub-item later =
+    data + one renderer, not a redesign.** Build needs: new block types for Recovery + Supplements (item model), the
+    readiness→verdict banner, the per-sport body renderers. Phase the build (layout + readiness banner + existing
+    fuel/mind first; Recovery/Supplements data model next). gymapp-only.
+    **Phase 1 BUILT 2026-06-28 (on QA):** Today restructured — readiness **verdict banner** on the plan (good/mixed/low
+    from the check-in), meals/mind split into **🍽️ Fuel** (2-col chips: scheduled once, else carb/protein-aware
+    suggestions) + **🧠 Mind** sections, notes stay with workouts. tsc clean, build OK.
+    **Phase 2 BUILT 2026-06-28 (on QA):** new item types **'recovery'** + **'supplement'** (server validateItem +
+    `kind` field; CalItem type; openapi). Today renders **🛌 Recovery** section (sauna/cold/massage/mobility/foam/walk,
+    emoji + minutes + remove) and **💊 Supplements** pills under Fuel (with ×). AddSheet gains Recovery (preset list)
+    + Supplement (text + quick-chips) authoring. Coach MCP tools `schedule_recovery` + `schedule_supplement` added
+    (gymapp `mcp/server.js` — needs host MCP re-sync to reach the live coach). tsc clean, build OK. Remaining (low-pri):
+    swim/pilates body polish; algorithmic Recovery suggestion when empty.
 201. 🔨 **Score explanations: definition under the label, per-day WHY in the ⓘ.** JM 2026-06-28: the line under each
     score is the *definition*; the **ⓘ should explain WHY this day's score** is what it is. Now: dim one-liner under
     each row = definition (Energy "How ready your body is to train right now", Sleep "How well last night recovered

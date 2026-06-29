@@ -4,12 +4,22 @@ import { calApi, newId } from '../calendar'
 import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
 import { segmentsFromEndurance } from '../ride'
 import type { WorkoutTemplate, RideTemplate } from '../db'
-import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, X, Upload } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, X, Upload, Waves, Pill } from 'lucide-react'
 
-export type SheetType = '' | 'ride' | 'run' | 'gym' | 'meal' | 'mind' | 'note'
+export type SheetType = '' | 'ride' | 'run' | 'gym' | 'meal' | 'mind' | 'note' | 'recovery' | 'supplement'
 
-export const colorFor = (s: string) => (s === 'cycling' || s === 'ride' ? '#34e07d' : s === 'running' || s === 'run' ? '#ffb13d' : s === 'gym' ? '#7fd1ff' : s === 'meal' ? '#ff8fb1' : s === 'mind' ? '#b98cff' : '#9aa3b2')
-export const iconFor = (s: string, sz = 15) => (s === 'cycling' || s === 'ride' ? <Bike size={sz} /> : s === 'running' || s === 'run' ? <Footprints size={sz} /> : s === 'gym' ? <Dumbbell size={sz} /> : s === 'meal' ? <Salad size={sz} /> : s === 'mind' ? <Brain size={sz} /> : <StickyNote size={sz} />)
+export const colorFor = (s: string) => (s === 'cycling' || s === 'ride' ? '#34e07d' : s === 'running' || s === 'run' ? '#ffb13d' : s === 'gym' ? '#7fd1ff' : s === 'meal' ? '#ff8fb1' : s === 'mind' ? '#b98cff' : s === 'recovery' ? '#ffcf5c' : s === 'supplement' ? '#4fc8e6' : '#9aa3b2')
+export const iconFor = (s: string, sz = 15) => (s === 'cycling' || s === 'ride' ? <Bike size={sz} /> : s === 'running' || s === 'run' ? <Footprints size={sz} /> : s === 'gym' ? <Dumbbell size={sz} /> : s === 'meal' ? <Salad size={sz} /> : s === 'mind' ? <Brain size={sz} /> : s === 'recovery' ? <Waves size={sz} /> : s === 'supplement' ? <Pill size={sz} /> : <StickyNote size={sz} />)
+
+const RECOVERY = [
+  { kind: 'sauna', title: 'Sauna', minutes: 15, emoji: '🔥' },
+  { kind: 'cold', title: 'Cold plunge', minutes: 3, emoji: '🧊' },
+  { kind: 'massage', title: 'Massage', minutes: 30, emoji: '💆' },
+  { kind: 'mobility', title: 'Mobility', minutes: 10, emoji: '🧎' },
+  { kind: 'foam', title: 'Foam roll', minutes: 10, emoji: '🪵' },
+  { kind: 'walk', title: 'Easy walk', minutes: 20, emoji: '🚶' },
+]
+const SUPPS = ['Creatine 5g', 'Vitamin D', 'Omega-3', 'Electrolytes', 'Whey protein', 'Magnesium', 'Caffeine']
 
 /** The Add / Substitute bottom sheet — shared by the Calendar (Plan) page and the
  *  Today page. #146: Today's "Add" opens this IN PLACE (no navigation to /plan).
@@ -47,7 +57,7 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
         {!type && (
           <>
             <div className="sheet-types">
-              {([['ride', 'Ride', Bike], ['run', 'Run', Footprints], ['gym', 'Gym', Dumbbell], ['meal', 'Meal', Salad], ['mind', 'Mind', Brain], ['note', 'Note', StickyNote]] as const).map(([t, label, Icon]) => (
+              {([['ride', 'Ride', Bike], ['run', 'Run', Footprints], ['gym', 'Gym', Dumbbell], ['meal', 'Meal', Salad], ['mind', 'Mind', Brain], ['recovery', 'Recovery', Waves], ['supplement', 'Supplement', Pill], ['note', 'Note', StickyNote]] as const).map(([t, label, Icon]) => (
                 <button key={t} className="sheet-type" style={{ color: colorFor(t) }} onClick={() => setType(t)}><Icon size={22} /><span>{label}</span></button>
               ))}
             </div>
@@ -62,7 +72,7 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
           </>
         )}
 
-        {type && type !== 'note' && (
+        {type && type !== 'note' && type !== 'supplement' && (
           <>
             <input className="search" autoFocus placeholder={`Search ${type}…`} value={q} onChange={(e) => setQ(e.target.value)} />
             <div className="stack sheet-list">
@@ -96,8 +106,22 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
                   <div className="card-row"><div className="thumb"><Brain size={18} /></div><div className="card-body"><h3>{m.title}</h3><div className="meta">{m.kind}{m.duration ? ` · ${m.duration} min` : ''}</div></div></div>
                 </button>
               ))}
+              {type === 'recovery' && RECOVERY.filter((r) => !q || r.title.toLowerCase().includes(q.toLowerCase())).map((r) => (
+                <button key={r.kind} className="card" disabled={busy} onClick={() => add(() => calApi.saveItem({ date, type: 'recovery', title: r.title, kind: r.kind, minutes: r.minutes }))}>
+                  <div className="card-row"><div className="thumb" style={{ fontSize: 18 }}>{r.emoji}</div><div className="card-body"><h3>{r.title}</h3><div className="meta">{r.minutes} min · recovery</div></div></div>
+                </button>
+              ))}
             </div>
             {!substitute && <button className="auth-link" onClick={() => { setType(''); setQ('') }}>‹ Back</button>}
+          </>
+        )}
+
+        {type === 'supplement' && (
+          <>
+            <input className="search" autoFocus placeholder="Supplement + dose (e.g. Creatine 5g)" value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && note.trim()) add(() => calApi.saveItem({ date, type: 'supplement', title: note.trim() })) }} />
+            <div className="chips" style={{ margin: '8px 0' }}>{SUPPS.map((s) => (<button key={s} className="chip" disabled={busy} onClick={() => add(() => calApi.saveItem({ date, type: 'supplement', title: s }))}>{s}</button>))}</div>
+            <button className="btn" disabled={busy || !note.trim()} onClick={() => add(() => calApi.saveItem({ date, type: 'supplement', title: note.trim() }))}>Add supplement</button>
+            {!substitute && <button className="auth-link" onClick={() => setType('')}>‹ Back</button>}
           </>
         )}
 

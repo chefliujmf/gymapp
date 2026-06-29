@@ -286,6 +286,34 @@ select.search { appearance: none; -webkit-appearance: none; }
 .wchip--src { color: var(--accent); border-color: rgba(52, 224, 125, 0.3); }
 .wchip__up { font-weight: 900; margin-right: 1px; }
 
+/* #202 readiness verdict banner on the plan */
+.ready-banner { display: flex; align-items: flex-start; gap: 9px; border-radius: 12px; padding: 9px 12px; margin: 2px 0 10px; font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--text); }
+.ready-banner__dot { width: 9px; height: 9px; border-radius: 50%; flex: none; margin-top: 4px; }
+.ready-banner--good { background: rgba(52, 224, 125, 0.12); border: 1px solid rgba(52, 224, 125, 0.3); }
+.ready-banner--good .ready-banner__dot { background: #34e07d; }
+.ready-banner--mixed { background: rgba(255, 207, 92, 0.12); border: 1px solid rgba(255, 207, 92, 0.3); }
+.ready-banner--mixed .ready-banner__dot { background: #ffcf5c; }
+.ready-banner--low { background: rgba(122, 140, 255, 0.12); border: 1px solid rgba(122, 140, 255, 0.3); }
+.ready-banner--low .ready-banner__dot { background: #7a8cff; }
+/* #202 section title with an icon/ⓘ inline */
+.section-title.sec-ico { display: flex; align-items: center; gap: 7px; }
+/* #202 Fuel — 2-column meal chips (WRAP grid, never side-scroll) */
+.fuel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
+.mealchip { position: relative; background: linear-gradient(#21252f, #191c24); border: 1px solid var(--line); border-radius: 13px; }
+.mealchip__link { display: flex; gap: 9px; align-items: center; padding: 9px 10px; color: inherit; text-decoration: none; }
+.mealchip__thumb { width: 34px; height: 34px; border-radius: 8px; background: #14181f; display: grid; place-items: center; flex: none; font-size: 17px; overflow: hidden; }
+.mealchip__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.mealchip__body { min-width: 0; }
+.mealchip__tag { font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-dim); font-weight: 800; }
+.mealchip__nm { font-size: 12.5px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mealchip__mc { font-size: 10px; color: var(--text-dim); }
+.mealchip__add { position: absolute; top: 7px; right: 7px; width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); color: var(--text-dim); display: grid; place-items: center; }
+/* #202 supplements sub-block under Fuel */
+.supps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 9px; }
+.supps__hdr { font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 2px; }
+.suppchip { display: inline-flex; align-items: center; gap: 4px; background: #14181f; border: 1px solid var(--line); border-radius: 999px; padding: 3px 6px 3px 10px; font-size: 11.5px; color: var(--text); font-weight: 700; }
+.suppchip__x { border: none; background: none; color: var(--text-dim); font-size: 15px; line-height: 1; padding: 0 2px; cursor: pointer; }
+
 /* History: unified activity rows + source tags (#130) */
 .hist-card { padding: 12px 14px; }
 .hist-card--device { border-left: 3px solid #4aa3ff; }
@@ -1042,6 +1070,20 @@ select.search { appearance: none; -webkit-appearance: none; }
 .mchip--energy   { color: #ffd54a; background: rgba(255,213,74,.12); border-color: rgba(255,213,74,.30); }
 .mchip--sleep    { color: #7ab8ff; background: rgba(122,184,255,.12); border-color: rgba(122,184,255,.30); }
 .mchip--soreness { color: #34e07d; background: rgba(52,224,125,.12); border-color: rgba(52,224,125,.30); }
+/* #203 collapsed check-in: verdict pill + override delta + coach hook */
+.checkin__done { display: inline-flex; align-items: center; gap: 8px; }
+.checkin__verdict { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 800; text-transform: none; letter-spacing: 0; }
+.checkin__vdot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.checkin__verdict--good  { color: #34e07d; background: rgba(52,224,125,.14); border: 1px solid rgba(52,224,125,.34); }
+.checkin__verdict--mixed { color: #ffcf5c; background: rgba(255,207,92,.14); border: 1px solid rgba(255,207,92,.34); }
+.checkin__verdict--low   { color: #7a8cff; background: rgba(122,140,255,.14); border: 1px solid rgba(122,140,255,.34); }
+.mchip--over { box-shadow: inset 0 0 0 1px #ffcf5c; }
+.mchip__auto { font-size: 10px; font-weight: 700; color: #ffcf5c; opacity: .95; }
+.checkin__src--edit { color: #ffcf5c; }
+.checkin__autowas { color: var(--text-dim); font-weight: 600; }
+.checkin__coach { display: flex; align-items: center; gap: 6px; margin-top: 11px; font-size: 12px; color: var(--text-dim); }
+.checkin__coach b { color: var(--accent); }
+.checkin__coachbtn { margin-left: auto; background: #14181f; border: 1px solid rgba(52,224,125,.3); color: var(--accent); border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 700; text-decoration: none; }
 .checkin__edit { background: none; border: none; color: var(--accent, #34e07d); font-weight: 700; font-size: 13px; cursor: pointer; padding: 4px 6px; }
 /* post-workout feedback: intervals-style Feel faces + RPE + free text */
 .feelrow { display: flex; gap: 6px; }
