@@ -37,6 +37,9 @@ test guide → the **🧪 Test guide** section below.
     intervals IGNORES it; full-athlete PUT = 403. CORRECT API = `PUT /athlete/{id}/sport-settings/{entryId}` with only
     the changed field (verified: ftp 263 stuck, custom_field_values preserved). FIX: `icuPatchForGroup` + per-entry PUT;
     pull becomes canonical for display (prefer intervals values, re-pull after each edit). gymapp-only.
+    VERIFIED on QA real account: cycling 262 + running 4:15 both landed in intervals; custom fields preserved.
+    KNOWN LIMITATION: intervals ignores `null` in a PUT → you CANNOT clear a synced stat to blank via the API
+    (setting/updating a value works; clearing is Platyplus-local-only). Minor; revisit only if it bites.
 213. 🧪 **Profile's "workouts / hours trained" tiles are wrong + misplaced → belong under Stats.** JM 2026-06-29 (QA):
     "why in qa workouts and trained in hours are just 1 and 0? why is it in profile? … this kind of stats … should be
     accurate and probably global and by sports or activity." ROOT CAUSE: those tiles counted the **local Dexie `db.logs`**

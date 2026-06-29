@@ -58,12 +58,17 @@ threshold pace) sync both ways with intervals. Code: pure mapper `server/sport-s
 - **VO₂max is NOT an intervals field** → Platyplus-only (`user.vo2max`); running VDOT (`user.runVdot`,
   Daniels, from threshold pace via `src/running-paces.ts`) is also Platyplus-only. Weight comes IN from
   the device (`icu_weight`), shown read-only. Never try to push VO₂max/VDOT to intervals.
-- **PUSH is custom-field-SAFE (verified on the real account):** `PUT /athlete/{id}` with body
-  `{ sportSettings: <full modified array> }` is a **partial merge** — a no-op PUT kept all 158
-  top-level keys, zero lost. So GET the athlete → `applyPatchToSportSettings` (touches ONLY the
-  target group's entry) → PUT just `{sportSettings}`. Custom activity FIELDS (#147) live at a
-  separate `/custom-item` endpoint and are never in this body anyway. Send the WHOLE array (intervals
-  replaces the array wholesale), not one entry.
+- **PUSH uses the per-entry endpoint — NOT the athlete record.** ⚠️ `PUT /athlete/{id}` with
+  `{sportSettings}` returns **200 but is SILENTLY IGNORED** (the value never changes); a full-athlete
+  PUT is **403**. The ONLY working write is **`PUT /athlete/{id}/sport-settings/{entryId}`** with just
+  the changed field(s) — verified on the real account (ftp 263 stuck; `custom_field_values` and every
+  other field preserved). Each `sportSettings` entry carries its own `id` (e.g. Ride 172071). Code:
+  `icuPatchForGroup(list, group, patch)` → `{id, body}` → per-entry PUT. Get the list from
+  `GET /athlete/{id}/sport-settings`. (custom_field_values #147 live INSIDE each entry, so sending
+  only the changed field is what keeps them safe.)
+- **You CANNOT clear a field to blank via the API:** PUT with `threshold_pace: null` (per-entry OR
+  full-entry) returns 200 but intervals keeps the old value — null is ignored. Setting/updating a
+  real value works; clearing to empty does not propagate. Treat clear as Platyplus-local-only.
 - Debug recipe (real data): inside the QA/prod container, `loadStore()` → user's `icuKey` →
   `fetch /athlete/i28814` → `fromIcuSportSettings(a.sportSettings)`. Don't rely on
   `process.env.SEED_ICU_KEY` (may be empty in-container) — use the **user's stored key**, like the endpoint.
