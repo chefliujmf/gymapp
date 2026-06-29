@@ -39,6 +39,10 @@ test guide → the **🧪 Test guide** section below.
     data + one renderer, not a redesign.** Build needs: new block types for Recovery + Supplements (item model), the
     readiness→verdict banner, the per-sport body renderers. Phase the build (layout + readiness banner + existing
     fuel/mind first; Recovery/Supplements data model next). gymapp-only.
+    **Phase 1 BUILT 2026-06-28 (on QA):** Today restructured — readiness **verdict banner** on the plan (good/mixed/low
+    from the check-in), meals/mind split into **🍽️ Fuel** (2-col chips: scheduled once, else carb/protein-aware
+    suggestions) + **🧠 Mind** sections, notes stay with workouts. tsc clean, build OK. Phase 2 (Recovery + Supplements
+    block types, swim/pilates body polish) next.
 201. 🔨 **Score explanations: definition under the label, per-day WHY in the ⓘ.** JM 2026-06-28: the line under each
     score is the *definition*; the **ⓘ should explain WHY this day's score** is what it is. Now: dim one-liner under
     each row = definition (Energy "How ready your body is to train right now", Sleep "How well last night recovered

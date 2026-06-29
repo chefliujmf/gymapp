@@ -21,11 +21,12 @@ import { InfoDot } from '../charts'
 const CHECKIN_FACES = ['💀', '😩', '😐', '😀', '🤩']
 
 /** Quick "how do you feel" check-in (energy/sleep/soreness) — a few taps, feeds the coach. */
-function CheckInCard({ day }: { day: string }) {
+function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin | null) => void }) {
   const isToday = day === localISO()
   const [ci, setCi] = useState<Checkin | null>(null)
   const [loaded, setLoaded] = useState(false)
   useEffect(() => { setLoaded(false); authApi.checkins(day, day).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [day])
+  useEffect(() => { onChange?.(ci) }, [ci]) // keep the parent (readiness verdict banner) in sync
   const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: day }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
   const [editing, setEditing] = useState(false)
   // #195: auto-derive Sleep·Freshness·Energy (1–5) from intervals wellness + personal baselines
@@ -122,6 +123,19 @@ function pickByDate<T>(arr: T[], dateStr: string, salt = 0): T | undefined {
 }
 
 const planIcon = (s: CoachPlan['sport']) => (s === 'ride' ? <Bike strokeWidth={1.75} /> : s === 'run' ? <Footprints strokeWidth={1.75} /> : <Dumbbell strokeWidth={1.75} />)
+
+// #202: a plain-language readiness verdict from the day's check-in (Energy/Sleep/Freshness,
+// each 1–5; Freshness = 6 − soreness). Drives the banner on the plan. Null until checked in.
+function readinessVerdict(ci: Checkin | null): { tone: 'good' | 'mixed' | 'low'; text: string } | null {
+  if (!ci) return null
+  const fresh = ci.soreness != null ? 6 - ci.soreness : null
+  const vals = [ci.energy, ci.sleep, fresh].filter((x): x is number => x != null)
+  if (!vals.length) return null
+  const min = Math.min(...vals), avg = vals.reduce((a, b) => a + b, 0) / vals.length
+  if (min <= 2 || avg < 2.8) return { tone: 'low', text: 'A bit run-down — keep it easy and listen to your body today.' }
+  if (avg >= 3.8 && min >= 3) return { tone: 'good', text: "You're fresh — good to train as planned." }
+  return { tone: 'mixed', text: 'Moderately ready — train, but be ready to ease off.' }
+}
 
 /** A coach-pushed plan that isn't mirrored by an intervals event — runs in-app. */
 function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p: CoachPlan; onRun?: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean; act?: IcuActivity }) {
@@ -222,6 +236,7 @@ export default function Today() {
   const [activities, setActivities] = useState<IcuActivity[]>([])
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [items, setItems] = useState<CalItem[]>([])
+  const [checkin, setCheckin] = useState<Checkin | null>(null) // #202: drives the readiness verdict banner
   const [added, setAdded] = useState<Record<string, boolean>>({})
   const [err, setErr] = useState<string>()
   // #146: the Add sheet opens IN PLACE on Today (the same shared sheet the Plan page uses).
@@ -277,6 +292,12 @@ export default function Today() {
   const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay)
   const dayPlans = plans.filter((p) => p.date === selDay && !planShown(p))
   const dayItems = items.filter((it) => it.date === selDay)
+  // #202: meals/mind get their own Fuel/Mind sections; notes stay with the workouts.
+  const dayMeals = dayItems.filter((it) => it.type === 'meal')
+  const dayMindItems = dayItems.filter((it) => it.type === 'mind')
+  const dayNotes = dayItems.filter((it) => it.type === 'note')
+  const hasWorkout = dayEvents.length > 0 || dayPlans.length > 0
+  const verdict = readinessVerdict(checkin)
   // Days that have anything on them → a tiny dot under the WeekStrip day (#66).
   const markedDays = new Set<string>([
     ...(events ?? []).map((e) => e.start_date_local.slice(0, 10)),
@@ -325,6 +346,13 @@ export default function Today() {
   const addMealSuggestion = (r: Recipe) => add(r.id, { date: selDay, type: 'meal', title: r.title, refId: r.id, mealType: r.category, kcal: r.kcal })
   const addMindSuggestion = () => { if (meditation) add('mind:' + meditation.id, { date: selDay, type: 'mind', title: meditation.title, refId: meditation.id, minutes: meditation.duration }) }
 
+  // #202: unify scheduled meals (shown once) vs the algorithmic suggestions into 2-col fuel chips.
+  const mealEmoji: Record<string, string> = { breakfast: '🥣', lunch: '🥗', dinner: '🍝', snack: '🍌', meal: '🍽️' }
+  type FuelChip = { key: string; tag: string; title: string; kcal?: number; recipeId?: string; thumb?: string; sug?: Recipe }
+  const fuelChips: FuelChip[] = dayMeals.length
+    ? dayMeals.map((it) => ({ key: it.id, tag: it.mealType || 'meal', title: it.title, kcal: it.kcal, recipeId: it.refId }))
+    : meals.map((r) => ({ key: r.id, tag: r.category, title: r.title, kcal: r.kcal, recipeId: r.id, thumb: r.thumbnail, sug: r }))
+  const mindItem = dayMindItems[0]
   return (
     <div>
       <div className="page-head">
@@ -334,12 +362,13 @@ export default function Today() {
 
       <WeekStrip selected={selDay} onSelect={setSelDay} marked={markedDays} />
 
-      <CheckInCard key={selDay} day={selDay} />
+      <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />
 
       {todaysLogs && todaysLogs.length > 0 && (
         <Link to="/progress" style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — see history →</Link>
       )}
 
+      {/* #202 Today's plan (workouts + notes) with the readiness verdict banner */}
       <div className="cal-day-head" style={{ marginTop: 8 }}>
         <div className="section-title" style={{ margin: 0 }}>{selDay === todayISO() ? "Today's plan" : fmtDay(selDay)}</div>
         <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => swapOn(selDay)}><Plus size={16} /> Add</button>
@@ -351,56 +380,55 @@ export default function Today() {
       ) : events === null ? (
         <p className="meta">Loading your plan…</p>
       ) : null}
-      {dayEvents.length > 0 || dayPlans.length > 0 || dayItems.length > 0 ? (
+      {hasWorkout && verdict && (
+        <div className={'ready-banner ready-banner--' + verdict.tone}><span className="ready-banner__dot" />{verdict.text}</div>
+      )}
+      {hasWorkout || dayNotes.length > 0 ? (
         <div className="stack">
           {dayEvents.map((e) => <PlanCard key={e.id} e={e} act={actFor(selDay, sportOf(e))} done={doneTitles.has(e.name.toLowerCase().trim())} onSwap={() => swapOn(selDay)} onRemove={() => removeEvent(e)} />)}
           {dayPlans.map((p) => <CoachPlanCard key={p.id} p={p} act={actFor(selDay, p.sport)} done={doneTitles.has(p.title.toLowerCase().trim())} onRun={runPlan} fmtDay={fmtDay} onSwap={() => swapOn(selDay)} onRemove={() => removePlan(p)} />)}
-          {dayItems.map((it) => <ItemCard key={it.id} it={it} onSwap={() => swapOn(selDay)} onRemove={() => removeItem(it)} />)}
+          {dayNotes.map((it) => <ItemCard key={it.id} it={it} onSwap={() => swapOn(selDay)} onRemove={() => removeItem(it)} />)}
         </div>
       ) : events !== null && !err ? (
         <p className="meta">Nothing scheduled — tap Add, or enjoy a rest day.</p>
       ) : null}
 
-      {meals.length > 0 && (
+      {/* #202 Fuel — scheduled meals shown once as 2-col chips; else carb/protein-aware suggestions */}
+      {fuelChips.length > 0 && (
         <>
-          <div className="section-title">Suggested fuel</div>
-          <p className="meta" style={{ margin: '-4px 2px 8px' }}>{fuelMsg}</p>
-          <div className="stack">
-            {meals.map((r) => (
-              <div key={r.id} className="today-entry">
-                <Link to={`/recipes/${r.id}`} className="card">
-                  <div className="card-row">
-                    <div className="thumb">{r.thumbnail ? <img src={r.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : <Salad strokeWidth={1.75} />}</div>
-                    <div className="card-body">
-                      <span className="eyebrow">{r.category}</span>
-                      <h3>{r.title}</h3>
-                      <div className="meta"><span>{r.minutes} min</span><span className="dot">{r.kcal} kcal</span><span className="dot">{r.protein}g protein</span></div>
-                    </div>
-                  </div>
+          <div className="section-title sec-ico">🍽️ Fuel <InfoDot text={`${fuelMsg}${dayMeals.length ? '' : ' Tap + to add a meal to your day.'}`} /></div>
+          {dayMeals.length === 0 && <p className="meta" style={{ margin: '-2px 2px 8px' }}>{fuelMsg}</p>}
+          <div className="fuel-grid">
+            {fuelChips.map((c) => (
+              <div key={c.key} className="mealchip">
+                <Link to={c.recipeId ? `/recipes/${c.recipeId}` : '#'} className="mealchip__link">
+                  <div className="mealchip__thumb">{c.thumb ? <img src={c.thumb} alt="" /> : <span>{mealEmoji[c.tag] || '🍽️'}</span>}</div>
+                  <div className="mealchip__body"><span className="mealchip__tag">{c.tag}</span><div className="mealchip__nm">{c.title}</div>{c.kcal ? <div className="mealchip__mc">{c.kcal} kcal</div> : null}</div>
                 </Link>
-                <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12, color: added[r.id] ? 'var(--accent,#34e07d)' : undefined, borderColor: added[r.id] ? 'var(--accent,#34e07d)' : undefined }} aria-label="Add to this day" title="Add to this day" onClick={(e) => { e.preventDefault(); addMealSuggestion(r) }}>{added[r.id] ? <Check size={18} /> : <Plus size={18} />}</button>
+                {c.sug && <button className="mealchip__add" aria-label="Add to this day" onClick={(e) => { e.preventDefault(); addMealSuggestion(c.sug!) }}>{added[c.sug.id] ? <Check size={15} /> : <Plus size={15} />}</button>}
               </div>
             ))}
           </div>
         </>
       )}
 
-      {meditation && (
+      {/* #202 Mind — scheduled mind session shown once; else a suggested reset */}
+      {(mindItem || meditation) && (
         <>
-          <div className="section-title">Suggested reset</div>
+          <div className="section-title sec-ico">🧠 Mind</div>
           <div className="stack">
             <div className="today-entry">
-              <Link to={`/mind/${meditation.id}`} className="card">
+              <Link to={`/mind/${mindItem?.refId || meditation?.id}`} className="card">
                 <div className="card-row">
                   <div className="thumb"><Brain strokeWidth={1.75} /></div>
                   <div className="card-body">
-                    <span className="eyebrow">{meditation.kind}</span>
-                    <h3>{meditation.title}</h3>
-                    <div className="meta"><span>{meditation.duration ? `${meditation.duration} min` : 'audio'}</span>{meditation.coach ? <span className="dot">{meditation.coach}</span> : null}</div>
+                    <span className="eyebrow">{mindItem ? 'scheduled' : meditation?.kind}</span>
+                    <h3>{mindItem?.title || meditation?.title}</h3>
+                    <div className="meta"><span>{(mindItem?.minutes || meditation?.duration) ? `${mindItem?.minutes || meditation?.duration} min` : 'audio'}</span>{!mindItem && meditation?.coach ? <span className="dot">{meditation.coach}</span> : null}</div>
                   </div>
                 </div>
               </Link>
-              <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12, color: added['mind:' + meditation.id] ? 'var(--accent,#34e07d)' : undefined, borderColor: added['mind:' + meditation.id] ? 'var(--accent,#34e07d)' : undefined }} aria-label="Add to this day" title="Add to this day" onClick={(e) => { e.preventDefault(); addMindSuggestion() }}>{added['mind:' + meditation.id] ? <Check size={18} /> : <Plus size={18} />}</button>
+              {!mindItem && meditation && <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12, color: added['mind:' + meditation.id] ? 'var(--accent,#34e07d)' : undefined, borderColor: added['mind:' + meditation.id] ? 'var(--accent,#34e07d)' : undefined }} aria-label="Add to this day" title="Add to this day" onClick={(e) => { e.preventDefault(); addMindSuggestion() }}>{added['mind:' + meditation.id] ? <Check size={18} /> : <Plus size={18} />}</button>}
             </div>
           </div>
         </>
