@@ -313,6 +313,13 @@ select.search { appearance: none; -webkit-appearance: none; }
 .supps__hdr { font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 2px; }
 .suppchip { display: inline-flex; align-items: center; gap: 4px; background: #14181f; border: 1px solid var(--line); border-radius: 999px; padding: 3px 6px 3px 10px; font-size: 11.5px; color: var(--text); font-weight: 700; }
 .suppchip__x { border: none; background: none; color: var(--text-dim); font-size: 15px; line-height: 1; padding: 0 2px; cursor: pointer; }
+/* #207 Phase 2 athlete-stats inputs */
+.stat-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.stat-edit { display: flex; flex-direction: column; gap: 4px; background: linear-gradient(#21252f, #191c24); border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; }
+.stat-edit__l { font-size: 12px; font-weight: 700; color: var(--text-dim); }
+.stat-edit__u { font-weight: 400; opacity: 0.8; }
+.stat-edit__i { background: #14181f; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; color: var(--text); font-size: 16px; font-weight: 700; width: 100%; }
+.stat-edit__i:focus { outline: none; border-color: var(--accent, #34e07d); }
 
 /* History: unified activity rows + source tags (#130) */
 .hist-card { padding: 12px 14px; }

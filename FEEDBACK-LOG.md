@@ -27,6 +27,22 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+208. 🔨 **Freshness recalibration — less conservative (DONE).** JM 2026-06-29: Form −1 reading 3/5 is too conservative
+    + clashed with the "You're fresh" verdict. The mapping was the research-doc table (TSB −15..0 → 3). Re-anchored to
+    TrainingPeaks Form zones + ACWR sweet-spot 0.8–1.3 (low risk = good): balanced (Form ~0 / ACWR ~1) → ~4; 5 reserved
+    for tapered (Form ≥ +12); drops to 2–1 as real fatigue accumulates. JM real days: Form −1 → 3.4→**4**, normal days
+    4–4.7. `server/readiness.js` + test. On QA. Supersedes the conservative table for Freshness; revisit when #207 lands.
+207. 🔨 **Personalize the WHOLE readiness model from the athlete's own stats (not just HRV).** JM 2026-06-29: "each
+    user has specificities — learn from my stats: HRV, max HR, FTP, VO2max, etc." CURRENT state: Energy HRV/RHR are
+    ALREADY z-scored vs the user's rolling personal baseline (lnRMSSD, ≥14d) — not population brackets. Gaps: (a) Sleep
+    need is a default 8h (→ per-user #159); (b) **Freshness 1–5 mapping is a population default** (now less conservative,
+    #208) — should z-score the user's TSB/ACWR against THEIR own range like HRV; (c) **max HR / FTP / VO2max are NOT in
+    the model** — wire an athlete-stats profile (FTP, maxHR, VO2max, sleepNeed, baselines) so scores + the coach learn
+    "how hard is this FOR YOU" → personal zones + expected fatigue. Data exists (intervals eFTP/maxHR/VO2 est, coach
+    profile) — gap is a unified per-user model. Big item; phase it (TSB personal baseline → athlete-stats store → wire
+    FTP/maxHR/VO2 → coach reads it). gymapp-only.
+    **Phase 1 BUILT 2026-06-29 (on QA):** Freshness now z-scores your TSB vs your rolling baseline (≥14d, sd-floored) and nudges the absolute anchor ±1 — a day unusually loaded FOR YOU reads lower, an unusually rested one higher, your typical day stays at the anchor (~4). `baselines.tsbBaseline` + `freshness({tsbBaseline})`, the ⓘ says "more loaded/fresher/about your usual". 23 tests. Phase 2 = athlete-stats store (FTP/maxHR/VO2max) + coach.
+    **Phase 2 BUILT 2026-06-29 (on QA):** per-user athlete stats — sleepNeed, maxHR, FTP, VO2max — stored on the user, exposed in pub(), settable via PUT /auth/profile (clamped). New "Your stats" section in Profile (autosave). readiness uses sleepNeed (fixes Sleep vs JM's ~9h, #159 DONE). buildSystemPrompt now gives the coach "THIS ATHLETE'S BENCHMARKS" so it judges intensity FOR THEM. Next (2b): wire FTP/maxHR into the readiness math (expected fatigue) + learn a calibration offset from systematic overrides.
 206. ⬜ **Morning readiness data + coach stick-vs-adjust decision.** JM 2026-06-29: today's HRV/sleep isn't in intervals
     yet in the morning, so the coach can't decide. ROOT CAUSE (verified in JM's data): the lag is **Coros → intervals**,
     not Platyplus — overnight HRV/sleep lands in intervals hours late (often afternoon/next-day; `updated` timestamps
@@ -157,7 +173,7 @@ test guide → the **🧪 Test guide** section below.
     (a) make the in-app Remove the obvious/only path; (b) reconcile DETECTS an intervals-side deletion of a platyplus
     plan's tracked event and prompts "remove from Platyplus too?"; (c) ensure the Platyplus Remove definitely works (if
     JM used ⋮→Remove and it persisted = real bug in deletePlanById). JM screenshot QA 2026-06-26.
-159. 🔨 **Sleep 1-5 PERSONAL (WHOOP-style).** Mostly DONE in #195: `readiness.sleep` = device sleep score (0–100)→1-5
+159. ✅ **Sleep 1-5 PERSONAL (WHOOP-style).** Mostly DONE in #195: `readiness.sleep` = device sleep score (0–100)→1-5
     else **hours ÷ personal need** (replaces the old fixed `sleepTo5` hour-bins). REMAINING: expose a per-user
     **sleep-need setting** (server reads `user.sleepNeed`, default 8h — JM needs ~9h) in Profile/Settings + a UI to set
     it; WHOOP's debt+strain additions are phase 2. JM 2026-06-26.

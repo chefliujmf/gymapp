@@ -47,27 +47,44 @@ export const MIN_BASELINE_DAYS = 14 // below this we can't trust a personal base
 export function baselines(history = []) {
   const lnHrv = history.map((w) => lnRMSSD(w && w.hrv)).filter((x) => x != null)
   const rhr = history.map((w) => (w && w.restingHR != null ? w.restingHR : null)).filter((x) => x != null)
+  const tsb = history.map((w) => (!w ? null : w.form != null ? w.form : (w.fitness != null && w.fatigue != null ? w.fitness - w.fatigue : null))).filter((x) => x != null)
   return {
     hrvBaseline: lnHrv.length >= MIN_BASELINE_DAYS ? meanSd(lnHrv) : null,
     rhrBaseline: rhr.length >= MIN_BASELINE_DAYS ? meanSd(rhr) : null,
+    tsbBaseline: tsb.length >= MIN_BASELINE_DAYS ? meanSd(tsb) : null, // #207 personal load range
     hrvCV7: coefVar(history.slice(-7).map((w) => lnRMSSD(w && w.hrv))), // 7-day volatility (overtraining lever)
-    nHrv: lnHrv.length, nRhr: rhr.length,
+    nHrv: lnHrv.length, nRhr: rhr.length, nTsb: tsb.length,
   }
 }
 
 // --- the three scores -----------------------------------------------------
 
 // FRESHNESS (1–5) — training-load freshness from ACWR (ATL/CTL) + TSB/Form (CTL−ATL). Objective.
-export function freshness({ atl, ctl, form } = {}) {
+export function freshness({ atl, ctl, form, tsbBaseline } = {}) {
   const acwr = atl != null && ctl != null && ctl > 0 ? atl / ctl : null
   const tsb = form != null ? form : (ctl != null && atl != null ? ctl - atl : null)
-  const a = acwr == null ? null : lerpMap(acwr, [[0.8, 5], [1.0, 4], [1.3, 3], [1.5, 2], [1.8, 1]])
-  const t = tsb == null ? null : lerpMap(tsb, [[-30, 1], [-15, 2], [0, 3], [10, 4], [25, 5]])
+  // Recalibrated 2026-06-29 (JM: the research table was too conservative — it scored the normal
+  // PRODUCTIVE-training zone as the middle). Anchored to TrainingPeaks Form zones + the ACWR injury
+  // "sweet spot" 0.8–1.3 (low risk = good): a BALANCED state (Form ~0 / ACWR ~1) reads ~4 ("fresh
+  // enough"); 5 is reserved for tapered/fresh (Form ≥ +12); it only drops to 2–1 as real fatigue
+  // accumulates (Form < −10, ACWR > 1.3).
+  const a = acwr == null ? null : lerpMap(acwr, [[0.8, 5], [1.0, 4.3], [1.25, 3.5], [1.5, 2.5], [1.8, 1.5], [2.2, 1]])
+  const t = tsb == null ? null : lerpMap(tsb, [[-35, 1], [-22, 2], [-10, 3], [0, 4], [12, 5]])
   const parts = [a, t].filter((x) => x != null)
   if (!parts.length) return null
   let score = parts.reduce((s, x) => s + x, 0) / parts.length
+  // #207 PERSONALIZATION: the zone score above is the absolute anchor (keeps "positive Form = fresh"
+  // + the less-conservative neutral). On top, learn from the athlete's OWN load range — z-score today's
+  // TSB vs their rolling baseline and nudge ±1: a day that's unusually LOADED *for you* reads lower, an
+  // unusually RESTED one reads higher, while your typical day stays at the anchor (~4). sd is floored so
+  // a very steady athlete isn't over-amplified. Mirrors how Energy already personalizes HRV/RHR.
+  let personalZ = null
+  if (tsb != null && tsbBaseline && tsbBaseline.sd) {
+    personalZ = clamp(zscore(tsb, tsbBaseline.mean, Math.max(tsbBaseline.sd, 3)), -2.5, 2.5)
+    score = score + clamp(personalZ * 0.5, -1, 1)
+  }
   if (tsb != null && tsb < -30) score = Math.min(score, 1.5) // deep volume block → override down
-  return { score: clamp(round1(score), 1, 5), acwr: acwr == null ? null : round1(acwr), tsb: tsb == null ? null : round1(tsb) }
+  return { score: clamp(round1(score), 1, 5), acwr: acwr == null ? null : round1(acwr), tsb: tsb == null ? null : round1(tsb), personalZ: personalZ == null ? null : round1(personalZ) }
 }
 
 // ENERGY (1–5) — acute autonomic readiness. Minimum dataset = HRV baseline + sleep; without an HRV
@@ -105,7 +122,7 @@ export function sleep({ sleepScore, sleepHours, sleepNeed = 8 } = {}) {
 export function readiness(history = [], today = {}, { sleepNeed = 8, subjective } = {}) {
   const base = baselines(history)
   const sl = sleep({ sleepScore: today.sleepScore, sleepHours: today.sleepHours, sleepNeed })
-  const fr = freshness({ atl: today.fatigue != null ? today.fatigue : today.atl, ctl: today.fitness != null ? today.fitness : today.ctl, form: today.form })
+  const fr = freshness({ atl: today.fatigue != null ? today.fatigue : today.atl, ctl: today.fitness != null ? today.fitness : today.ctl, form: today.form, tsbBaseline: base.tsbBaseline })
   const en = energy({ hrv: today.hrv, rhr: today.restingHR, sleep: sl && sl.score, subjective, hrvBaseline: base.hrvBaseline, rhrBaseline: base.rhrBaseline })
   return { sleep: sl, freshness: fr, energy: en, baseline: { nHrv: base.nHrv, nRhr: base.nRhr, hrvCV7: base.hrvCV7 == null ? null : round1(base.hrvCV7) } }
 }

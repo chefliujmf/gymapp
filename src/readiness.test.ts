@@ -39,6 +39,10 @@ describe('freshness (ACWR + TSB)', () => {
     const f = freshness({ ctl: 60, atl: 42, form: 18 }) // ACWR 0.7, TSB +18
     expect(f.score).toBeGreaterThanOrEqual(4.5)
   })
+  it('neutral/productive training (Form ~0, ACWR ~1) reads fresh-enough (~4), not a conservative 3', () => {
+    const f = freshness({ ctl: 31, atl: 32, form: -1 }) // JM's real balanced day
+    expect(f.score).toBeGreaterThanOrEqual(3.7)
+  })
   it('fatigued: high acute load + negative form → low', () => {
     const f = freshness({ ctl: 60, atl: 90, form: -30 }) // ACWR 1.5, TSB −30
     expect(f.score).toBeLessThanOrEqual(2)
@@ -47,6 +51,21 @@ describe('freshness (ACWR + TSB)', () => {
     expect(freshness({ ctl: 60, atl: 100, form: -45 }).score).toBeLessThanOrEqual(1.5)
   })
   it('null when no load data', () => { expect(freshness({})).toBeNull() })
+
+  // #207 personalization: blend the absolute anchor with the athlete's OWN TSB range.
+  it('a day that is UNUSUALLY loaded for you reads lower than the absolute anchor', () => {
+    const args = { ctl: 50, atl: 60, form: -10 } // ACWR 1.2, TSB -10
+    const base = freshness(args).score
+    const personal = freshness({ ...args, tsbBaseline: { mean: 5, sd: 5 } }).score // today's −10 is well below your usual +5
+    expect(personal).toBeLessThan(base)
+  })
+  it('a NORMAL-for-you day stays at the (fresh-enough) anchor', () => {
+    const args = { ctl: 31, atl: 32, form: -1 }
+    const base = freshness(args).score
+    const personal = freshness({ ...args, tsbBaseline: { mean: -1, sd: 5 } }).score // today == your usual
+    expect(personal).toBeCloseTo(base, 1)
+    expect(personal).toBeGreaterThanOrEqual(3.7)
+  })
 })
 
 describe('energy (lnRMSSD-z + sleep + RHR-z + subjective)', () => {
