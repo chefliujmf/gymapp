@@ -26,7 +26,7 @@ import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchan
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 import { readiness as computeReadiness } from './readiness.js'
-import { fromIcuSportSettings, icuPatchForGroup } from './sport-settings.js'
+import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -290,6 +290,17 @@ app.get('/auth/intervals/athlete', auth, async (req, res) => {
     weight: a.icu_weight != null ? a.icu_weight : (a.weight != null ? a.weight : null),
     source: 'intervals',
   })
+})
+
+// #215 — ESTIMATE the runner's threshold pace from intervals' pace curve (Critical Speed),
+// the running analog of eFTP. A suggestion the user can apply/override; never auto-written.
+app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ available: false })
+  const ath = req.user.icuAthlete || 'i28814'
+  const pc = await icuGet(req.user, `/athlete/${ath}/pace-curves?type=Run`)
+  const est = pc ? runThresholdFromPaceCurve(pc) : null
+  if (!est) return res.json({ available: false })
+  res.json({ available: true, ...est, source: 'critical speed (your recent runs)' })
 })
 
 // PUSH: edit a per-sport stat → write it back to intervals AND mirror locally.

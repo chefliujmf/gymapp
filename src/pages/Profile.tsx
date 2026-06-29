@@ -66,10 +66,16 @@ export default function Profile() {
   const [sportSaved, setSportSaved] = useState(false)
   const [dietSaved, setDietSaved] = useState(false)
   const [pulled, setPulled] = useState<IcuAthletePull | null>(null)
+  const [runEst, setRunEst] = useState<{ available: boolean; thresholdPace?: number } | null>(null)
 
   // #210: intervals is canonical for synced stats — pull to display + re-pull after each edit.
   const pull = () => { if (user?.hasIcuKey) authApi.pullIcuAthlete().then(setPulled).catch(() => {}) }
   useEffect(() => { pull() }, [user?.hasIcuKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  // #215: estimate the running threshold pace from intervals' pace curve (Critical Speed).
+  useEffect(() => {
+    if (user?.hasIcuKey && (user?.sports || []).includes('running')) authApi.runEstimate().then(setRunEst).catch(() => {})
+    // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.hasIcuKey, (user?.sports || []).includes('running')]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sex from intervals (gates the female-athlete coaching module) — optional.
   useEffect(() => {
@@ -114,6 +120,10 @@ export default function Profile() {
   const vdot = runPace ? Math.round(vdotFromThresholdPace(runPace)) : (user?.runVdot ?? null)
   const zones = vdot ? paceZones(vdot) : null
   const preds = vdot ? racePredictions(vdot) : null
+  // #215 estimate (Critical Speed → threshold pace); only suggest when it differs from what's set
+  const estPace = runEst?.available && runEst.thresholdPace ? runEst.thresholdPace : null
+  const estVdot = estPace ? Math.round(vdotFromThresholdPace(estPace)) : null
+  const showEst = estPace != null && estPace !== runPace
 
   return (
     <div>
@@ -176,6 +186,19 @@ export default function Profile() {
             <StatCell label="Max HR" tag={icuTag(val('running', 'maxHr'))} unit="bpm" value={val('running', 'maxHr')} fmt={String} parse={num(120, 230)} onSave={(v) => saveSport('running', { maxHr: v })} />
             <StatCell label="Threshold HR" tag={icuTag(val('running', 'lthr'))} unit="bpm" value={val('running', 'lthr')} fmt={String} parse={num(90, 220)} onSave={(v) => saveSport('running', { lthr: v })} />
           </div>
+          {showEst && !runPace && (
+            <div className="est">
+              <span className="est__i">📈</span>
+              <span className="est__t">Estimated from your recent runs: <b>{fmtPace(estPace!)}/km</b> · VDOT {estVdot}<span className="sub">intervals Critical Speed · you can change it anytime</span></span>
+              <button className="est__use" onClick={() => saveRunPace(estPace!)}>Use this</button>
+            </div>
+          )}
+          {showEst && runPace && (
+            <div className="est est--mini">
+              <span className="est__t">📈 Your runs suggest <b>{fmtPace(estPace!)}/km</b> (VDOT {estVdot})</span>
+              <button className="est__use" onClick={() => saveRunPace(estPace!)}>Use</button>
+            </div>
+          )}
           {zones && (
             <>
               <div className="stat-sub">Training pace zones <span className="meta">· target min/km for each kind of run</span></div>

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { fromIcuSportSettings, icuPatchForGroup, paceFromMps, mpsFromPace } from '../server/sport-settings.js'
+import { fromIcuSportSettings, icuPatchForGroup, paceFromMps, mpsFromPace, runThresholdFromPaceCurve } from '../server/sport-settings.js'
 
 // jmfiset's real intervals athlete shape (#210 findings): per-sport settings array, each with an id.
 const REAL = [
@@ -32,6 +32,29 @@ describe('pace conversions', () => {
     expect(paceFromMps('swimming', mpsFromPace('swimming', 120))).toBe(120)
   })
   it('cycling has no pace', () => expect(paceFromMps('cycling', 5)).toBeNull())
+})
+
+describe('runThresholdFromPaceCurve (#215 estimate from Critical Speed)', () => {
+  // jmfiset's real pace curve: CS 3.1173706 m/s, r2 0.999 → 1000/3.117 ≈ 321 s/km (5:21/km)
+  const REAL_PC = { list: [{ paceModels: [{ type: 'CS', criticalSpeed: 3.1173706, dPrime: 148, r2: 0.99911654 }] }] }
+  it('derives threshold pace from Critical Speed', () => {
+    const e = runThresholdFromPaceCurve(REAL_PC)
+    expect(e!.thresholdPace).toBe(321)
+    expect(e!.criticalSpeed).toBeCloseTo(3.117, 2)
+    expect(e!.r2).toBeCloseTo(0.999, 2)
+  })
+  it('rejects a poor fit (r2 below threshold)', () => {
+    expect(runThresholdFromPaceCurve({ list: [{ paceModels: [{ type: 'CS', criticalSpeed: 3, r2: 0.4 }] }] })).toBeNull()
+  })
+  it('returns null with no CS model / empty / garbage', () => {
+    expect(runThresholdFromPaceCurve({ list: [{ paceModels: [{ type: 'PD', criticalSpeed: 0 }] }] })).toBeNull()
+    expect(runThresholdFromPaceCurve({ list: [] })).toBeNull()
+    expect(runThresholdFromPaceCurve(null)).toBeNull()
+  })
+  it('takes the first window that has a good CS fit', () => {
+    const pc = { list: [{ paceModels: [] }, { paceModels: [{ type: 'CS', criticalSpeed: 4.0, r2: 0.95 }] }] }
+    expect(runThresholdFromPaceCurve(pc)!.thresholdPace).toBe(250)
+  })
 })
 
 describe('icuPatchForGroup (push) — per-entry PUT body, only the changed field', () => {

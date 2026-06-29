@@ -76,3 +76,21 @@ export function icuPatchForGroup(sportSettings, group, patch) {
 
 /** Which Platyplus sport name (Profile chips) maps to which intervals group. */
 export const SPORT_TO_GROUP = { cycling: 'cycling', running: 'running', swimming: 'swimming' }
+
+/**
+ * #215 — estimate the runner's threshold pace from intervals' pace curve (the running analog
+ * of eFTP). intervals fits a **Critical Speed** model (`paceModels` type 'CS') to the athlete's
+ * best efforts; criticalSpeed (m/s) ≈ threshold/lactate-threshold pace. Returns
+ * { thresholdPace: sec/km, criticalSpeed, r2 } from the best-fit recent window, or null.
+ * Only trust a decent fit (r2 ≥ 0.7) so a noisy curve doesn't produce a junk estimate.
+ */
+export function runThresholdFromPaceCurve(paceCurve, minR2 = 0.7) {
+  const list = (paceCurve && paceCurve.list) || []
+  for (const c of list) {
+    const cs = ((c && c.paceModels) || []).find((m) => m.type === 'CS' && m.criticalSpeed > 0)
+    if (cs && (cs.r2 == null || cs.r2 >= minR2)) {
+      return { thresholdPace: Math.round(1000 / cs.criticalSpeed), criticalSpeed: cs.criticalSpeed, r2: cs.r2 != null ? cs.r2 : null }
+    }
+  }
+  return null
+}
