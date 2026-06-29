@@ -33,7 +33,7 @@ test guide → the **🧪 Test guide** section below.
     so it runs optimistic. Coros uses your real training load + long runs → more conservative. FIX options: (a) label
     the Marathon row "assumes marathon-specific endurance"; (b) blend a durability/long-run adjustment from intervals
     activities; (c) once #215 estimates VDOT from REAL recent efforts, the whole curve grounds itself. Pairs with #215.
-215. ⬜ **Auto-ESTIMATE running threshold pace + VDOT from recent runs (like eFTP / VO₂max).** JM 2026-06-29: "can we
+215. 🧪 **Auto-ESTIMATE running threshold pace + VDOT from recent runs (like eFTP / VO₂max).** JM 2026-06-29: "can we
     estimate those values? it's like the FTP in the end and VO2Max." Today threshold pace is MANUAL — but a too-fast
     manual guess inflates VDOT → optimistic zones/predictions (root of #216). Mirror how cycling gets eFTP + we estimate
     VO₂max: derive running threshold pace / VDOT from the athlete's **best recent efforts** (intervals activities / pace
@@ -685,10 +685,15 @@ verifies **one at a time**; only JM marks ✅.
 integration, `scripts/smoke-test.mjs`). Status: ❌ broken · 🔧 fixing · 🧪 fixed + test, awaiting JM ·
 ✅ JM-verified.
 
-### R210 · #210/#209/#211 — per-sport stats two-way synced with intervals 🧪
-**Unit tests:** `src/sport-settings.test.ts` (13 — pull/push mapping, custom-field-safe patch, pace conversions) + `src/running-paces.test.ts` (26 — VDOT↔pace vs Daniels' published VDOT-50 table, zones, race predictions, RunPlayer pace). `npm test`.
-**Verified on QA (real intervals, jmfiset):** PULL → cycling{ftp 260,maxHr 185,lthr 170} run{maxHr 194,lthr 170} swim{maxHr 194,lthr 176,pace 120s/100m}; PUSH no-op kept all 158 athlete keys (custom fields safe); run pace 4:15/km → 3.92 m/s.
-**JM manual (QA):** Profile → Your stats: (1) cards show only your sports, intervals values prefilled with green `intervals` tags; (2) set Running **Threshold pace** (e.g. 4:15) → VDOT + Daniels E/M/T/I/R zones + 5K/10K/Half/Marathon predictions appear, and the value writes back to intervals (check intervals Run settings); (3) edit cycling FTP → updates intervals Ride FTP, your custom fields unchanged; (4) RunPlayer shows "~pace/km" per segment; (5) Diet now in Profile (not Settings); (6) the old workouts/hours tiles are gone. **Expected:** edits round-trip to intervals; nothing else in your intervals profile changes.
+### R215 · #215 — estimate running threshold/VDOT from pace curve 🧪
+**Unit test:** `src/sport-settings.test.ts` → `runThresholdFromPaceCurve` (Critical Speed → sec/km, r²-gated, garbage-safe).
+**Verified on QA (real account):** `GET /auth/intervals/run-estimate` → 5:21/km (CS 3.117 m/s, r² 0.999) from jmfiset's runs.
+**JM manual (QA):** Profile → Running. Blank pace → blue "Estimated from your recent runs: 5:21/km · VDOT N [Use this]"; pace set → quiet "Your runs suggest 5:21/km [Use]". Tap **Use** → fills + syncs to intervals + zones/predictions recompute (closer to Coros). Manual entry still wins.
+
+### R210 · #210/#209/#211/#214 — per-sport stats two-way synced with intervals ✅ (JM-verified 2026-06-29)
+**Unit tests:** `src/sport-settings.test.ts` (pull/push mapping, per-entry PUT body, CS estimate) + `src/running-paces.test.ts` (VDOT↔pace vs Daniels' VDOT-50 table, zones, predictions, RunPlayer pace). `npm test`.
+**Push bug found+fixed in verify (#210b):** `PUT /athlete/{id}` {sportSettings} returns 200 but is a SILENT NO-OP; correct API = `PUT /athlete/{id}/sport-settings/{entryId}` with only the changed field (verified: ftp 262 + run pace 4:15 landed; custom fields preserved). KNOWN: intervals ignores `null` → can't clear a synced field to blank via API.
+**JM-verified on QA:** 209 ✅ 210 ✅ 211 ✅ 212 ✅ 213 ✅ 214 ✅ (per-sport sync round-trips; race predictions + legible zones; diet in Profile; bad tiles gone).
 
 ### R1 · #72 — ride thumbnail flat blue 🧪
 **Bug:** card thumbnail (MiniProfile) didn't show the green endurance middle; didn't match the detail.
