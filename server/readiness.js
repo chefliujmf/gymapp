@@ -61,8 +61,13 @@ export function baselines(history = []) {
 export function freshness({ atl, ctl, form } = {}) {
   const acwr = atl != null && ctl != null && ctl > 0 ? atl / ctl : null
   const tsb = form != null ? form : (ctl != null && atl != null ? ctl - atl : null)
-  const a = acwr == null ? null : lerpMap(acwr, [[0.8, 5], [1.0, 4], [1.3, 3], [1.5, 2], [1.8, 1]])
-  const t = tsb == null ? null : lerpMap(tsb, [[-30, 1], [-15, 2], [0, 3], [10, 4], [25, 5]])
+  // Recalibrated 2026-06-29 (JM: the research table was too conservative — it scored the normal
+  // PRODUCTIVE-training zone as the middle). Anchored to TrainingPeaks Form zones + the ACWR injury
+  // "sweet spot" 0.8–1.3 (low risk = good): a BALANCED state (Form ~0 / ACWR ~1) reads ~4 ("fresh
+  // enough"); 5 is reserved for tapered/fresh (Form ≥ +12); it only drops to 2–1 as real fatigue
+  // accumulates (Form < −10, ACWR > 1.3).
+  const a = acwr == null ? null : lerpMap(acwr, [[0.8, 5], [1.0, 4.3], [1.25, 3.5], [1.5, 2.5], [1.8, 1.5], [2.2, 1]])
+  const t = tsb == null ? null : lerpMap(tsb, [[-35, 1], [-22, 2], [-10, 3], [0, 4], [12, 5]])
   const parts = [a, t].filter((x) => x != null)
   if (!parts.length) return null
   let score = parts.reduce((s, x) => s + x, 0) / parts.length

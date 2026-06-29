@@ -39,6 +39,10 @@ describe('freshness (ACWR + TSB)', () => {
     const f = freshness({ ctl: 60, atl: 42, form: 18 }) // ACWR 0.7, TSB +18
     expect(f.score).toBeGreaterThanOrEqual(4.5)
   })
+  it('neutral/productive training (Form ~0, ACWR ~1) reads fresh-enough (~4), not a conservative 3', () => {
+    const f = freshness({ ctl: 31, atl: 32, form: -1 }) // JM's real balanced day
+    expect(f.score).toBeGreaterThanOrEqual(3.7)
+  })
   it('fatigued: high acute load + negative form → low', () => {
     const f = freshness({ ctl: 60, atl: 90, form: -30 }) // ACWR 1.5, TSB −30
     expect(f.score).toBeLessThanOrEqual(2)
