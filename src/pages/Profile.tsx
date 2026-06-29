@@ -89,7 +89,7 @@ export default function Profile() {
       <div className="stat-edit-grid">
         <StatInput label="Sleep need" unit="h" value={user?.sleepNeed} lo={4} hi={12} step={0.5} onSave={(v) => saveStat({ sleepNeed: v })} />
         <StatInput label="Max HR" unit="bpm" value={user?.maxHR} lo={120} hi={230} step={1} onSave={(v) => saveStat({ maxHR: v })} />
-        <StatInput label="FTP" unit="W" value={user?.ftp ?? (ftp != null ? Number(ftp) : null)} lo={50} hi={600} step={1} onSave={(v) => { saveStat({ ftp: v }); setSetting('ftp', v ?? 260) }} />
+        <StatInput label="FTP" unit="W" value={user?.ftp ?? (ftp != null ? Number(ftp) : null)} lo={50} hi={600} step={1} onSave={(v) => { saveStat({ ftp: v }); setSetting('ftp', String(v ?? 260)) }} />
         <StatInput label="VO₂max" value={user?.vo2max} lo={20} hi={95} step={0.1} onSave={(v) => saveStat({ vo2max: v })} />
       </div>
     </div>
