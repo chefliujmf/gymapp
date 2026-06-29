@@ -1070,6 +1070,18 @@ select.search { appearance: none; -webkit-appearance: none; }
 .mchip--energy   { color: #ffd54a; background: rgba(255,213,74,.12); border-color: rgba(255,213,74,.30); }
 .mchip--sleep    { color: #7ab8ff; background: rgba(122,184,255,.12); border-color: rgba(122,184,255,.30); }
 .mchip--soreness { color: #34e07d; background: rgba(52,224,125,.12); border-color: rgba(52,224,125,.30); }
+/* #203 collapsed check-in: verdict pill + override delta + coach hook */
+.checkin__done { display: inline-flex; align-items: center; gap: 8px; }
+.checkin__verdict { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 800; text-transform: none; letter-spacing: 0; }
+.checkin__vdot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.checkin__verdict--good  { color: #34e07d; background: rgba(52,224,125,.14); border: 1px solid rgba(52,224,125,.34); }
+.checkin__verdict--mixed { color: #ffcf5c; background: rgba(255,207,92,.14); border: 1px solid rgba(255,207,92,.34); }
+.checkin__verdict--low   { color: #7a8cff; background: rgba(122,140,255,.14); border: 1px solid rgba(122,140,255,.34); }
+.mchip--over { box-shadow: inset 0 0 0 1px #ffcf5c; }
+.mchip__auto { font-size: 10px; font-weight: 700; color: var(--text-dim); opacity: .9; }
+.checkin__coach { display: flex; align-items: center; gap: 6px; margin-top: 11px; font-size: 12px; color: var(--text-dim); }
+.checkin__coach b { color: var(--accent); }
+.checkin__coachbtn { margin-left: auto; background: #14181f; border: 1px solid rgba(52,224,125,.3); color: var(--accent); border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 700; text-decoration: none; }
 .checkin__edit { background: none; border: none; color: var(--accent, #34e07d); font-weight: 700; font-size: 13px; cursor: pointer; padding: 4px 6px; }
 /* post-workout feedback: intervals-style Feel faces + RPE + free text */
 .feelrow { display: flex; gap: 6px; }

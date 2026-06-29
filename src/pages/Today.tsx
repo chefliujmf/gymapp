@@ -64,27 +64,38 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   ]
   // ⓘ text: the per-day WHY (today's actual inputs) on top, then the scale. Falls back to a
   // clear "no data yet" note so the ⓘ is never just a definition.
+  const disp = (r: typeof rows[number]) => { const v = ci?.[r.key]; return v == null ? null : (r.invert ? 6 - v : v) }
+  // What the data computed, in DISPLAY terms (freshness flips), to compare against the user's input.
+  const autoDisp = (r: typeof rows[number]) => (calc[r.key] != null ? (r.invert ? 6 - (calc[r.key] as number) : (calc[r.key] as number)) : null)
+  const overridden = (r: typeof rows[number]) => { const a = autoDisp(r), s = disp(r); return a != null && s != null && a !== s }
   const infoFor = (r: typeof rows[number]) => {
     const head = why[r.key]
       ? `Why ${isToday ? 'today' : 'this day'}: ${why[r.key]}.`
       : `No HRV/sleep synced for ${isToday ? 'today' : 'this day'} yet — this is your own read.`
-    return `${head}\n\n${r.scale}.`
+    const delta = overridden(r) ? `\n\nAuto computed ${autoDisp(r)} · you set ${disp(r)}.` : ''
+    return `${head}${delta}\n\n${r.scale}.`
   }
   // Show "· auto" only while the shown value still equals the data-derived value (untouched).
   const isAuto = (r: typeof rows[number]) => !touched.has(r.key) && calc[r.key] != null && ci?.[r.key] === calc[r.key]
-  const disp = (r: typeof rows[number]) => { const v = ci?.[r.key]; return v == null ? null : (r.invert ? 6 - v : v) }
   // Collapse to a one-line summary ONCE all 3 are logged (collapse-after-done is fine —
   // it's collapse-before-filling that gets skipped). Tap Edit to change; History → Logs.
+  const verdict = readinessVerdict(ci)
+  const vLabel = verdict ? (verdict.tone === 'good' ? 'Fresh' : verdict.tone === 'low' ? 'Run-down' : 'Moderate') : ''
   if (rows.every((r) => ci?.[r.key] != null) && !editing) {
     return (
       <div className="card checkin checkin--mini">
         <div className="checkin__mhead">
-          <span className="checkin__done">✓ Checked in{isToday ? ' today' : ''}</span>
+          <span className="checkin__done">✓ Checked in{isToday ? ' today' : ''}{verdict && <span className={'checkin__verdict checkin__verdict--' + verdict.tone}><span className="checkin__vdot" />{vLabel}</span>}</span>
           <button className="checkin__edit" style={{ flex: 'none' }} onClick={() => setEditing(true)}>Edit</button>
         </div>
         <div className="checkin__chips">
-          {rows.map((r) => { const v = disp(r) as number; return <span key={r.key} className={`mchip mchip--${r.key}`}>{CHECKIN_FACES[v - 1]} {r.label} {v}</span> })}
+          {rows.map((r) => { const v = disp(r) as number; const a = autoDisp(r); const over = overridden(r); return (
+            <span key={r.key} className={`mchip mchip--${r.key}${over ? ' mchip--over' : ''}`}>{CHECKIN_FACES[v - 1]} {r.label} {v}{over && <span className="mchip__auto"> · auto {a}</span>} <InfoDot text={infoFor(r)} /></span>
+          ) })}
         </div>
+        {verdict && (
+          <div className="checkin__coach">💬 Coach knows you're <b>{vLabel.toLowerCase()}</b> today<Link to="/chat" className="checkin__coachbtn">Ask coach ↗</Link></div>
+        )}
       </div>
     )
   }
