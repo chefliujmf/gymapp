@@ -53,22 +53,25 @@ export function fromIcuSportSettings(sportSettings) {
 }
 
 /**
- * Apply a per-group patch onto a COPY of intervals sportSettings[], touching ONLY the
- * target group's entry (other sports + every custom field left exactly as-is). Returns
- * the full modified array to PUT back, or null if that sport-group isn't present.
+ * Build the per-entry intervals write for a group's patch. The ONLY way to change a sport
+ * setting is `PUT /athlete/{id}/sport-settings/{entryId}` with just the changed fields — a
+ * `PUT /athlete/{id}` with {sportSettings} returns 200 but is silently ignored (verified on
+ * the real account), and a full-athlete PUT is 403. Sending only the changed field means
+ * intervals leaves every other field — including custom_field_values (#147) — exactly as-is.
+ * Returns { id, body } (body in intervals field names) or null if the group isn't present.
  * patch keys: ftp (cycling only), maxHr, lthr, thresholdPace (group-native units).
  */
-export function applyPatchToSportSettings(sportSettings, group, patch) {
-  const arr = (sportSettings || []).map((s) => ({ ...s }))
-  const idx = entryIndexFor(arr, group)
+export function icuPatchForGroup(sportSettings, group, patch) {
+  const idx = entryIndexFor(sportSettings, group)
   if (idx < 0) return null
-  const e = arr[idx]
-  if (group === 'cycling' && 'ftp' in patch) e.ftp = patch.ftp
-  if ('maxHr' in patch) e.max_hr = patch.maxHr
-  if ('lthr' in patch) e.lthr = patch.lthr
-  if ('thresholdPace' in patch) e.threshold_pace = mpsFromPace(group, patch.thresholdPace)
-  arr[idx] = e
-  return arr
+  const e = sportSettings[idx]
+  if (e.id == null) return null
+  const body = {}
+  if (group === 'cycling' && 'ftp' in patch) body.ftp = patch.ftp
+  if ('maxHr' in patch) body.max_hr = patch.maxHr
+  if ('lthr' in patch) body.lthr = patch.lthr
+  if ('thresholdPace' in patch) body.threshold_pace = mpsFromPace(group, patch.thresholdPace)
+  return { id: e.id, body }
 }
 
 /** Which Platyplus sport name (Profile chips) maps to which intervals group. */

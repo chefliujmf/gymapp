@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Running zones — clearer</title>
+<style>
+:root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--line:#2a2f3a}
+*{box-sizing:border-box;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{background:#0f1216;color:var(--text);padding:18px;max-width:400px;margin:0 auto}
+.sport-card{background:linear-gradient(#21252f,#191c24);border:1px solid var(--line);border-radius:14px;padding:11px 12px}
+.sport-card__h{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.sport-card__vdot{margin-left:auto;font-size:11px;font-weight:800;color:var(--accent);background:rgba(52,224,125,.1);border:1px solid rgba(52,224,125,.28);border-radius:999px;padding:2px 8px}
+.stat-sub{font-size:12px;font-weight:800;color:var(--text);margin:12px 2px 6px}
+.stat-sub .meta{font-weight:500;color:var(--text-dim)}
+.zlist{display:flex;flex-direction:column;gap:5px}
+.zrow{display:flex;align-items:center;gap:10px;background:#14181f;border:1px solid var(--line);border-radius:9px;padding:7px 10px}
+.zbadge{flex:none;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#07080a;background:var(--accent)}
+.zname{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;font-size:13px;font-weight:700;color:var(--text)}
+.zpurpose{font-size:10px;font-weight:500;color:var(--text-dim)}
+.zpace{flex:none;font-size:15px;font-weight:800;color:var(--text);white-space:nowrap}
+.zpace .zunit{font-size:10px;font-weight:600;color:var(--text-dim);margin-left:2px}
+h3{font-size:12px;color:var(--text-dim);margin:0 0 8px;font-weight:600}
+</style></head>
+<body>
+<h3>BEFORE: cryptic one-letter chips → AFTER: spelled out + what each is for</h3>
+<div class="sport-card">
+  <div class="sport-card__h">🏃 Running <span class="sport-card__vdot">VDOT 50</span></div>
+
+  <div class="stat-sub">Training pace zones <span class="meta">· target min/km for each kind of run</span></div>
+  <div class="zlist">
+    <div class="zrow"><span class="zbadge">E</span><span class="zname">Easy<span class="zpurpose">recovery &amp; long runs</span></span><span class="zpace">4:54–5:26<span class="zunit">/km</span></span></div>
+    <div class="zrow"><span class="zbadge">M</span><span class="zname">Marathon<span class="zpurpose">steady race pace</span></span><span class="zpace">4:31<span class="zunit">/km</span></span></div>
+    <div class="zrow"><span class="zbadge">T</span><span class="zname">Threshold<span class="zpurpose">tempo — comfortably hard, ~1 h effort</span></span><span class="zpace">4:15<span class="zunit">/km</span></span></div>
+    <div class="zrow"><span class="zbadge">I</span><span class="zname">Interval<span class="zpurpose">VO₂max — 3–5 min hard reps</span></span><span class="zpace">3:50<span class="zunit">/km</span></span></div>
+    <div class="zrow"><span class="zbadge">R</span><span class="zname">Rep<span class="zpurpose">speed &amp; form — short, fast</span></span><span class="zpace">3:36<span class="zunit">/km</span></span></div>
+  </div>
+
+  <div class="stat-sub">Race predictions <span class="meta">· times your VDOT projects</span></div>
+  <div class="zlist">
+    <div class="zrow"><span class="zname">5K<span class="zpurpose">at 3:59/km</span></span><span class="zpace">19:56</span></div>
+    <div class="zrow"><span class="zname">10K<span class="zpurpose">at 4:08/km</span></span><span class="zpace">41:20</span></div>
+    <div class="zrow"><span class="zname">Half<span class="zpurpose">at 4:20/km</span></span><span class="zpace">1:31:31</span></div>
+    <div class="zrow"><span class="zname">Marathon<span class="zpurpose">at 4:31/km</span></span><span class="zpace">3:10:40</span></div>
+  </div>
+</div>
+</body></html>

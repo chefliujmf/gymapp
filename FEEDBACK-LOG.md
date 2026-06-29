@@ -27,6 +27,16 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+214. 🔨 **Daniels pace zones + race predictions are too compact / unclear.** JM 2026-06-29 (QA): "for daniels zone,
+    it's good but too compact and we don't understand what it shows clearly." The E/M/T/I/R one-letter chips don't say
+    what they are. FIX: spell out each zone (Easy / Marathon / Threshold / Interval / Rep) with a one-line purpose +
+    its pace, in a readable stacked list (not a cramped wrap row). Same for predictions (clear distance → time → pace).
+    Part of the #210/#209 stats UI. gymapp-only.
+210b. 🔨 **Two-way sync push was a silent no-op — WRONG intervals endpoint.** JM 2026-06-29 (QA): set FTP 262 / run
+    pace in Platyplus → intervals didn't change. ROOT CAUSE: `PUT /athlete/{id}` with `{sportSettings}` returns 200 but
+    intervals IGNORES it; full-athlete PUT = 403. CORRECT API = `PUT /athlete/{id}/sport-settings/{entryId}` with only
+    the changed field (verified: ftp 263 stuck, custom_field_values preserved). FIX: `icuPatchForGroup` + per-entry PUT;
+    pull becomes canonical for display (prefer intervals values, re-pull after each edit). gymapp-only.
 213. 🧪 **Profile's "workouts / hours trained" tiles are wrong + misplaced → belong under Stats.** JM 2026-06-29 (QA):
     "why in qa workouts and trained in hours are just 1 and 0? why is it in profile? … this kind of stats … should be
     accurate and probably global and by sports or activity." ROOT CAUSE: those tiles counted the **local Dexie `db.logs`**

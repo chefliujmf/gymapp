@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { fromIcuSportSettings, applyPatchToSportSettings, paceFromMps, mpsFromPace } from '../server/sport-settings.js'
+import { fromIcuSportSettings, icuPatchForGroup, paceFromMps, mpsFromPace } from '../server/sport-settings.js'
 
-// jmfiset's real intervals athlete shape (#210 findings): per-sport settings array.
+// jmfiset's real intervals athlete shape (#210 findings): per-sport settings array, each with an id.
 const REAL = [
-  { types: ['Ride', 'VirtualRide'], ftp: 260, lthr: 170, max_hr: 185, threshold_pace: null },
-  { types: ['Run', 'VirtualRun'], ftp: null, lthr: 170, max_hr: 194, threshold_pace: null, pace_units: 'MINS_KM' },
-  { types: ['Swim'], lthr: 176, max_hr: 194, threshold_pace: 0.83, pace_units: 'SECS_100M' },
-  { types: ['WeightTraining'], lthr: 170, max_hr: 194 },
+  { id: 172071, types: ['Ride', 'VirtualRide'], ftp: 260, lthr: 170, max_hr: 185, threshold_pace: null },
+  { id: 172072, types: ['Run', 'VirtualRun'], ftp: null, lthr: 170, max_hr: 194, threshold_pace: null, pace_units: 'MINS_KM' },
+  { id: 172073, types: ['Swim'], lthr: 176, max_hr: 194, threshold_pace: 0.83, pace_units: 'SECS_100M' },
+  { id: 172074, types: ['WeightTraining'], lthr: 170, max_hr: 194 },
 ]
 
 describe('fromIcuSportSettings (pull)', () => {
@@ -34,32 +34,28 @@ describe('pace conversions', () => {
   it('cycling has no pace', () => expect(paceFromMps('cycling', 5)).toBeNull())
 })
 
-describe('applyPatchToSportSettings (push) — surgical, custom-field-safe', () => {
-  it('changes ONLY the cycling FTP, leaves every other entry & field untouched', () => {
-    const out = applyPatchToSportSettings(REAL, 'cycling', { ftp: 275 })
-    expect(out[0].ftp).toBe(275)
-    expect(out[0].lthr).toBe(170) // untouched
-    expect(out[0].max_hr).toBe(185) // untouched
-    expect(out[1]).toEqual(REAL[1]) // running entry byte-for-byte
-    expect(out[3]).toEqual(REAL[3]) // weights entry untouched
-    expect(REAL[0].ftp).toBe(260) // original not mutated
+describe('icuPatchForGroup (push) — per-entry PUT body, only the changed field', () => {
+  it('targets the cycling entry id with ONLY ftp (intervals leaves all else, incl. custom_field_values)', () => {
+    const w = icuPatchForGroup(REAL, 'cycling', { ftp: 275 })
+    expect(w).toEqual({ id: 172071, body: { ftp: 275 } })
   })
-  it('writes running threshold pace back as m/s', () => {
-    const out = applyPatchToSportSettings(REAL, 'running', { thresholdPace: 255 })
-    expect(out[1].threshold_pace).toBeCloseTo(3.92, 2)
-    expect(out[1].max_hr).toBe(194) // untouched
+  it('writes running threshold pace back as m/s to the run entry id', () => {
+    const w = icuPatchForGroup(REAL, 'running', { thresholdPace: 255 })
+    expect(w!.id).toBe(172072)
+    expect(w!.body.threshold_pace).toBeCloseTo(3.92, 2)
+    expect('ftp' in w!.body).toBe(false) // running never sends ftp
   })
-  it('updates max_hr / lthr by group', () => {
-    const out = applyPatchToSportSettings(REAL, 'running', { maxHr: 196, lthr: 172 })
-    expect(out[1].max_hr).toBe(196)
-    expect(out[1].lthr).toBe(172)
+  it('maps maxHr/lthr to intervals field names', () => {
+    expect(icuPatchForGroup(REAL, 'running', { maxHr: 196, lthr: 172 })).toEqual({ id: 172072, body: { max_hr: 196, lthr: 172 } })
   })
-  it('preserves unknown/custom keys on the touched entry', () => {
-    const withCustom = [{ types: ['Ride'], ftp: 260, custom_field_x: 'keep-me', w_prime: 20000 }]
-    const out = applyPatchToSportSettings(withCustom, 'cycling', { ftp: 270 })
-    expect(out[0]).toEqual({ types: ['Ride'], ftp: 270, custom_field_x: 'keep-me', w_prime: 20000 })
+  it('ignores ftp for non-cycling groups', () => {
+    const w = icuPatchForGroup(REAL, 'running', { ftp: 300, maxHr: 190 } as { ftp: number; maxHr: number })
+    expect(w!.body).toEqual({ max_hr: 190 })
   })
   it('returns null when the group is absent (no blind PUT)', () => {
-    expect(applyPatchToSportSettings([{ types: ['Ride'] }], 'swimming', { thresholdPace: 110 })).toBeNull()
+    expect(icuPatchForGroup([{ id: 1, types: ['Ride'] }], 'swimming', { thresholdPace: 110 })).toBeNull()
+  })
+  it('returns null when the entry has no id (cannot address the per-entry endpoint)', () => {
+    expect(icuPatchForGroup([{ types: ['Ride'] }], 'cycling', { ftp: 270 })).toBeNull()
   })
 })

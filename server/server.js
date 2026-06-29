@@ -26,7 +26,7 @@ import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchan
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 import { readiness as computeReadiness } from './readiness.js'
-import { fromIcuSportSettings, applyPatchToSportSettings } from './sport-settings.js'
+import { fromIcuSportSettings, icuPatchForGroup } from './sport-settings.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -271,23 +271,31 @@ app.put('/auth/profile', auth, (req, res) => {
 
 // #210 — per-sport athlete stats, TWO-WAY synced with intervals.icu.
 // PULL: read the athlete's intervals sportSettings[] (ftp/maxHr/lthr/threshold_pace, PER SPORT)
-// + weight, mapped to our shape, for prefilling "Your stats". Read-only.
+// + weight, mapped to our shape. intervals is CANONICAL for these — we also refresh our local
+// mirror (+ flat ftp/maxHR the coach reads) so nothing drifts.
 app.get('/auth/intervals/athlete', auth, async (req, res) => {
   if (!req.user.icuKey) return res.json({ connected: false })
   const ath = req.user.icuAthlete || 'i28814'
   const a = await icuGet(req.user, `/athlete/${ath}`)
   if (!a) return res.status(502).json({ connected: true, error: 'could not read intervals athlete' })
+  const mapped = fromIcuSportSettings(a.sportSettings || [])
+  // refresh the local mirror from intervals (canonical), keeping Platyplus-only fields
+  req.user.sportSettings = { ...(req.user.sportSettings || {}), ...mapped }
+  if (mapped.cycling?.ftp != null) req.user.ftp = mapped.cycling.ftp
+  if (mapped.cycling?.maxHr != null) req.user.maxHR = mapped.cycling.maxHr
+  save(store)
   res.json({
     connected: true,
-    sportSettings: fromIcuSportSettings(a.sportSettings || []),
+    sportSettings: mapped,
     weight: a.icu_weight != null ? a.icu_weight : (a.weight != null ? a.weight : null),
     source: 'intervals',
   })
 })
 
-// PUSH: edit a per-sport stat → persist locally AND write it back to intervals (auto-push).
-// We GET the athlete, modify ONLY the target sport-group's field in sportSettings[], and PUT
-// just { sportSettings } — every custom field (#147) and other sport is left exactly as-is.
+// PUSH: edit a per-sport stat → write it back to intervals AND mirror locally.
+// The ONLY working write is PUT /athlete/{id}/sport-settings/{entryId} with just the changed
+// field (a /athlete/{id} {sportSettings} PUT returns 200 but is silently ignored; full-athlete
+// PUT is 403). Sending one field leaves custom_field_values (#147) + everything else intact.
 // VO₂max/runVdot are Platyplus-only (no intervals field) and never go to intervals.
 const GROUPS = ['cycling', 'running', 'swimming']
 app.put('/auth/sport-stat', auth, async (req, res) => {
@@ -302,7 +310,7 @@ app.put('/auth/sport-stat', auth, async (req, res) => {
   if ('lthr' in b) patch.lthr = numOr(b.lthr, 90, 220)
   if ('thresholdPace' in b) patch.thresholdPace = group === 'running' ? numOr(b.thresholdPace, 120, 900) : numOr(b.thresholdPace, 40, 300)
 
-  // persist locally on the user (source of truth Platyplus mirrors intervals)
+  // persist locally on the user (mirror of intervals)
   req.user.sportSettings = req.user.sportSettings || {}
   req.user.sportSettings[group] = { ...(req.user.sportSettings[group] || {}), ...patch }
   // running VDOT (Platyplus-only, computed client-side) rides along for the coach
@@ -313,19 +321,19 @@ app.put('/auth/sport-stat', auth, async (req, res) => {
     if ('maxHr' in patch) req.user.maxHR = patch.maxHr
   }
 
-  // auto-push the synced fields back to intervals (best-effort; never blocks the local save)
+  // auto-push the synced fields back to intervals via the per-entry endpoint (best-effort)
   let synced = false, pushError = null
   if (req.user.icuKey) {
     const ath = req.user.icuAthlete || 'i28814'
     try {
-      const a = await icuGet(req.user, `/athlete/${ath}`)
-      const next = a ? applyPatchToSportSettings(a.sportSettings || [], group, patch) : null
-      if (next) {
-        const r = await icuFetch(req.user, `/athlete/${ath}`, { method: 'PUT', body: JSON.stringify({ sportSettings: next }) })
+      const list = await icuGet(req.user, `/athlete/${ath}/sport-settings`)
+      const w = Array.isArray(list) ? icuPatchForGroup(list, group, patch) : null
+      if (w && Object.keys(w.body).length) {
+        const r = await icuFetch(req.user, `/athlete/${ath}/sport-settings/${w.id}`, { method: 'PUT', body: JSON.stringify(w.body) })
         synced = r.ok
-        if (!r.ok) pushError = `intervals ${r.status}`
+        if (!r.ok) pushError = `intervals ${r.status}: ${(await r.text().catch(() => '')).slice(0, 120)}`
         else req.user.statsSyncedAt = Date.now()
-      } else pushError = a ? `no ${group} sport in intervals` : 'could not read intervals athlete'
+      } else pushError = Array.isArray(list) ? `no ${group} sport in intervals` : 'could not read intervals sport-settings'
     } catch (e) { pushError = String(e).slice(0, 120) }
   }
   save(store)

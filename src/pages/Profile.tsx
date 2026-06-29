@@ -5,7 +5,21 @@ import { getSetting, setSetting } from '../db'
 import { authApi, type SportGroup, type SportStat, type IcuAthletePull } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import { fetchAthleteSex } from '../intervals'
-import { vdotFromThresholdPace, paceZones, racePredictions, fmtPace, fmtTime, parsePace } from '../running-paces'
+import { vdotFromThresholdPace, paceZones, racePredictions, fmtPace, fmtTime, parsePace, type PaceZones } from '../running-paces'
+
+// #214 — spell each Daniels zone out (letter + what it's for) so the paces are legible, not cryptic.
+const ZONE_META: { letter: string; name: string; purpose: string }[] = [
+  { letter: 'E', name: 'Easy', purpose: 'recovery & long runs' },
+  { letter: 'M', name: 'Marathon', purpose: 'steady race pace' },
+  { letter: 'T', name: 'Threshold', purpose: 'tempo — comfortably hard, ~1 h effort' },
+  { letter: 'I', name: 'Interval', purpose: 'VO₂max — 3–5 min hard reps' },
+  { letter: 'R', name: 'Rep', purpose: 'speed & form — short, fast' },
+]
+const zonePaceStr = (z: PaceZones, letter: string): string =>
+  letter === 'E' ? `${fmtPace(z.easy[0])}–${fmtPace(z.easy[1])}`
+    : letter === 'M' ? fmtPace(z.marathon)
+      : letter === 'T' ? fmtPace(z.threshold)
+        : letter === 'I' ? fmtPace(z.interval) : fmtPace(z.rep)
 
 const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['strength', 'Strength'], ['yoga', 'Yoga'], ['pilates', 'Pilates'], ['meditation', 'Meditation']]
 const DIETS: [string, string][] = [['vegetarian', 'vegetarian'], ['vegan', 'vegan'], ['no preference', 'no preference']]
@@ -53,10 +67,9 @@ export default function Profile() {
   const [dietSaved, setDietSaved] = useState(false)
   const [pulled, setPulled] = useState<IcuAthletePull | null>(null)
 
-  // #210: pull the athlete's intervals sport settings to PREFILL + show what's synced.
-  useEffect(() => {
-    if (user?.hasIcuKey) authApi.pullIcuAthlete().then(setPulled).catch(() => {})
-  }, [user?.hasIcuKey])
+  // #210: intervals is canonical for synced stats — pull to display + re-pull after each edit.
+  const pull = () => { if (user?.hasIcuKey) authApi.pullIcuAthlete().then(setPulled).catch(() => {}) }
+  useEffect(() => { pull() }, [user?.hasIcuKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sex from intervals (gates the female-athlete coaching module) — optional.
   useEffect(() => {
@@ -75,12 +88,14 @@ export default function Profile() {
   const connected = !!user?.hasIcuKey
   const ss = user?.sportSettings || {}
   const pss = pulled?.sportSettings || {}
-  const val = (g: SportGroup, f: keyof SportStat): number | null => (ss[g]?.[f] ?? pss[g]?.[f] ?? null)
+  // when connected, intervals is canonical → prefer the pulled value; offline → local mirror.
+  const val = (g: SportGroup, f: keyof SportStat): number | null => connected ? (pss[g]?.[f] ?? ss[g]?.[f] ?? null) : (ss[g]?.[f] ?? null)
   // green "intervals" when we have a value to sync, amber "set it" when connected but blank, nothing when not connected
   const icuTag = (v: number | null): ReactNode => connected ? <Tag label={v != null ? 'intervals' : 'set it'} kind={v != null ? 'icu' : 'unset'} /> : undefined
 
+  // save → push to intervals, then re-pull so the card shows what's actually in intervals now.
   const saveSport = (group: SportGroup, patch: Partial<SportStat> & { runVdot?: number | null }) =>
-    authApi.saveSportStat({ group, ...patch }).then(() => refresh()).catch(() => {})
+    authApi.saveSportStat({ group, ...patch }).then(() => { refresh(); pull() }).catch(() => {})
   const saveFtp = (v: number | null) => { saveSport('cycling', { ftp: clampN(v, 50, 600) }); setSetting('ftp', String(v ?? 260)) }
   const saveRunPace = (sec: number | null) => {
     const c = clampN(sec, 120, 900)
@@ -163,21 +178,28 @@ export default function Profile() {
           </div>
           {zones && (
             <>
-              <div className="stat-sub">Daniels pace zones <span className="meta">(min/km)</span></div>
-              <div className="zone-row">
-                <span className="zone"><b>E</b> {fmtPace(zones.easy[0])}–{fmtPace(zones.easy[1])}</span>
-                <span className="zone"><b>M</b> {fmtPace(zones.marathon)}</span>
-                <span className="zone"><b>T</b> {fmtPace(zones.threshold)}</span>
-                <span className="zone"><b>I</b> {fmtPace(zones.interval)}</span>
-                <span className="zone"><b>R</b> {fmtPace(zones.rep)}</span>
+              <div className="stat-sub">Training pace zones <span className="meta">· target min/km for each kind of run</span></div>
+              <div className="zlist">
+                {ZONE_META.map((z) => (
+                  <div className="zrow" key={z.letter}>
+                    <span className="zbadge">{z.letter}</span>
+                    <span className="zname">{z.name}<span className="zpurpose">{z.purpose}</span></span>
+                    <span className="zpace">{zonePaceStr(zones, z.letter)}<span className="zunit">/km</span></span>
+                  </div>
+                ))}
               </div>
             </>
           )}
           {preds && (
             <>
-              <div className="stat-sub">Race predictions <span className="meta">(from your VDOT)</span></div>
-              <div className="zone-row">
-                {preds.map((p) => <span key={p.label} className="pred"><b>{p.label}</b> {fmtTime(p.sec)} <span className="meta">{fmtPace(p.pace)}/km</span></span>)}
+              <div className="stat-sub">Race predictions <span className="meta">· times your VDOT projects</span></div>
+              <div className="zlist">
+                {preds.map((p) => (
+                  <div className="zrow" key={p.label}>
+                    <span className="zname">{p.label}<span className="zpurpose">at {fmtPace(p.pace)}/km</span></span>
+                    <span className="zpace">{fmtTime(p.sec)}</span>
+                  </div>
+                ))}
               </div>
             </>
           )}
