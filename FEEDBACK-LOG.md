@@ -27,6 +27,15 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+205. 🔨 **WeekStrip: select edge date on week change + "Today" shows whenever off-today.** JM 2026-06-29: changing
+    week should move the selection — **next week → that week's Monday (first)**, **prev week → its Sunday (last)** — so
+    it scrolls continuously; and the **Today** button should appear as soon as the selected date isn't today (even
+    within this week), not only on a different week. BUILT (`src/ui.tsx`): `goWeek(delta)` sets the offset + selects the
+    edge date; `away = offset!==0 || selected!==today` shows Today. tsc clean.
+204. 🔨 **Override indicator in the check-in (keep the auto trace).** JM 2026-06-28: after editing a score the "· auto"
+    tag just disappears — no sign it's a manual override + the computed value is lost. BUILT: overridden score now shows
+    **"· edited (auto N)"** (amber) in both the expanded rows and collapsed chips; the ⓘ also adds "Auto computed X · you
+    set Y". `Today.tsx`/`styles.css`. tsc clean.
 203. 🔨 **Collapsed check-in: ⓘ explanation + override transparency + coach hook.** JM 2026-06-28 (liked the auto
     check-in). Asks: (a) in the COLLAPSED "✓ Checked in" chips, be able to tap an **ⓘ for the per-day explanation**
     (currently only the expanded faces have it); (b) surface the **verdict / "add it to the coach (you're fresh)"** —

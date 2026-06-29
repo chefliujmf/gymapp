@@ -90,7 +90,7 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
         </div>
         <div className="checkin__chips">
           {rows.map((r) => { const v = disp(r) as number; const a = autoDisp(r); const over = overridden(r); return (
-            <span key={r.key} className={`mchip mchip--${r.key}${over ? ' mchip--over' : ''}`}>{CHECKIN_FACES[v - 1]} {r.label} {v}{over && <span className="mchip__auto"> · auto {a}</span>} <InfoDot text={infoFor(r)} /></span>
+            <span key={r.key} className={`mchip mchip--${r.key}${over ? ' mchip--over' : ''}`}>{CHECKIN_FACES[v - 1]} {r.label} {v}{over && <span className="mchip__auto"> · edited (auto {a})</span>} <InfoDot text={infoFor(r)} /></span>
           ) })}
         </div>
         {verdict && (
@@ -104,7 +104,7 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
       <div className="checkin__t" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>How {isToday ? 'do' : 'did'} you feel{isToday ? ' today' : ''}?{editing && <button className="checkin__edit" onClick={() => setEditing(false)}>Done ✓</button>}</div>
       {rows.map((r) => (
         <div key={r.key} className="checkin__row2">
-          <span className="checkin__lbl">{r.label} <InfoDot text={infoFor(r)} />{isAuto(r) && <span className="checkin__src"> · auto</span>}<span className="checkin__desc">{r.desc}</span></span>
+          <span className="checkin__lbl">{r.label} <InfoDot text={infoFor(r)} />{isAuto(r) ? <span className="checkin__src"> · auto</span> : overridden(r) ? <span className="checkin__src checkin__src--edit"> · edited <span className="checkin__autowas">(auto {autoDisp(r)})</span></span> : null}<span className="checkin__desc">{r.desc}</span></span>
           <div className="checkin__faces">
             {[1, 2, 3, 4, 5].map((n) => {
               const stored = r.invert ? 6 - n : n, on = ci?.[r.key] === stored
