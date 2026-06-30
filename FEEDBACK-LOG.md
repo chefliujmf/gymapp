@@ -22,6 +22,18 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+267. ⬜ **Intervals sync doesn't REMOVE upstream-deleted activities.** JM 2026-06-30 (QA): deleted/removed a session in
+    intervals yesterday, ran an intervals sync in Platyplus, but the stale session still shows — deletions aren't
+    reflected. Our sync likely only UPSERTS fetched activities and never prunes ones that vanished from intervals (or
+    History merges a cached copy). FIX: on activity sync, reconcile = anything previously synced from intervals that's no
+    longer in the fetched window should be removed/hidden (mirror the plan reconcile #150/#185, but for ACTIVITIES). Check
+    where History merges intervals activities (`platyplus-activity-flow`) + any local cache. gymapp-only.
+266. ⬜ **Passkey button does NOTHING on desktop (prod).** JM 2026-06-30: on desktop prod, tapping "Sign in with
+    fingerprint / passkey" → nothing happens (no dialog, no error shown). Likely an unhandled rejection / silent catch in
+    the WebAuthn flow, an RP_ID mismatch (passkeys bind to platyplus.duckdns.org), or no registered credential yet (it's a
+    SIGN-IN button, but a fresh desktop has no passkey → needs a REGISTER path). Investigate the client WebAuthn call +
+    surface errors; ensure a desktop can REGISTER a passkey (from Settings → passkeys) and that sign-in gives feedback on
+    failure instead of dying silently. gymapp-only. (Pairs the auth flow; check RP_ID/cert per CLAUDE.md.)
 265. ⬜ **Eat/Fuel: capture biological sex + compute BMR/TDEE & protein needs.** JM 2026-06-30: for fuelling we should
     capture male/female (biological sex drives BMR). Where under Profile? — add to the Profile "about you" block (already
     has weight/maxHR/sleepNeed; `sex` field already exists in `pub()` but isn't edited in the UI). Then compute:
