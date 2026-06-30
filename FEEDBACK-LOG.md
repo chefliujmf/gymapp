@@ -888,6 +888,38 @@ The honest list of things **JM reported** that are broken or unverified. Each ha
 (committed → `npm test`, the permanent regression net) and/or a **manual test** (steps + expected). JM
 verifies **one at a time**; only JM marks ✅.
 
+### ✅ QA PASS CHECKLIST — 2026-06-30 session (do top-down, tick + mark ✅ in the queue)
+**Automated net first:** `npm test` → all green (179) confirms the math (readiness, VDOT, marathon, calibration, mind-stats, modules, VO₂max). The rest is on-device QA:
+
+**Workout charts / ride**
+- [ ] **#221** Open a workout/ride with a warm-up & cool-down → segments are FLAT blocks (no slope), cooldown is NOT ramping up. Card **thumbnail** is full-size (not a tiny glyph).
+- [ ] **#217** Tomorrow's "Cottage" ride shows realistic watts (no 5 W block).
+- [ ] **#218** After this deploy, the app updates without a hard refresh (no stale bundle / login wall).
+
+**Check-in / readiness (Today)**
+- [ ] **#207/#220** Profile → Sleep need shows **8** by default; VO₂max shows an estimate (see VO₂max below).
+- [ ] **#207** Edit a check-in score the same way ~5 days → it shows **"· tuned to you"** and drifts toward you.
+- [ ] **#229** A check-in you DIDN'T edit no longer shows "edited (auto N)".
+- [ ] **#223** Select a FUTURE day → a **forecast** card (expected Freshness), no check-in / no "you're fresh" verdict. PAST day = what you logged.
+- [ ] **#206** Morning: wellness chips show a **⟳** + "HRV/sleep not synced yet"; tap ⟳ (or re-focus the app) pulls a newer sync. A complete check-in fires a coach stick/adjust note.
+
+**Stats hub + pages**
+- [ ] **#228** Stats opens with an **editable benchmarks card** on top (tap a value to edit; tags spaced). Edit also works in Profile.
+- [ ] **#234** **VO₂max reads ~52** (running, "estimated from your max & resting HR"), not 43.9. Tap it, enter **52** → becomes "you"/measured everywhere.
+- [ ] **#225** `/fitness` = **Load & Form only**. Stats → **Cycling** = power/eFTP; **Running** = pace/zones/VDOT/predictions (NOT cycling power); **Mind** = minutes/streak.
+- [ ] **#194a** Stats → **Wellness**: sleep/HRV/RHR/weight + check-in charts have **axes + 7-day avg + min–max band**; range 7/30/60d + From/To.
+- [ ] **#225/#226** Every date filter has **From/To pickers + presets that prefill** them.
+- [ ] **#216** Running → Marathon shows a **range** (potential→realistic), not one optimistic time.
+
+**History**
+- [ ] **#226** History has **search + type chips (Ride/Run/Gym/Mind) + date range + Newest/Oldest**.
+- [ ] **#227** A gym session is **collapsed** to a summary row; tap to expand the sets.
+
+**Sports modules**
+- [ ] **#198** Profile → toggle a sport off/on → it flips consistently across Train hub, Stats cards, Fitness, and the Add-sheet tabs.
+
+(Per-item detail rows below.)
+
 **How to run the automated net:** `npm test` (unit, `src/*.test.ts`) · `npm run test:smoke` (API
 integration, `scripts/smoke-test.mjs`). Status: ❌ broken · 🔧 fixing · 🧪 fixed + test, awaiting JM ·
 ✅ JM-verified.
