@@ -28,43 +28,44 @@ function movingAvg(data: (number | null)[], w = 7): (number | null)[] {
 }
 
 /** Rich trend chart — Y axis (min/mid/max), dated X axis, faint daily line, bold 7-day average,
- *  and a shaded min–max band with dashed bounds. (#194 mock B.) */
-function WTrend({ data, dates, color, unit = '', invert = false }: { data: (number | null)[]; dates: string[]; color: string; unit?: string; invert?: boolean }) {
+ *  shaded min–max band with dashed bounds. Geometry in a 0–100 stretchable SVG; ALL text is an
+ *  HTML overlay (so labels stay crisp — no font-stretch — and are placed to avoid collisions). #194 mock B. */
+function WTrend({ data, dates, color, unit = '' }: { data: (number | null)[]; dates: string[]; color: string; unit?: string }) {
   const pts = data.map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v != null)
   if (pts.length < 2) return <p className="meta" style={{ margin: '8px 2px' }}>Not enough data in this range.</p>
-  const W = 320, H = 168, L = 32, R = 10, T = 10, B = 20
-  const iw = W - L - R, ih = H - T - B
   const vals = pts.map((p) => p.v)
-  const mn = Math.min(...vals), mx = Math.max(...vals), rng = mx - mn || 1
+  const mn = Math.min(...vals), mx = Math.max(...vals), rng = mx - mn || 1, mid = round1((mn + mx) / 2)
   const n = data.length
-  const x = (i: number) => L + (n > 1 ? (i / (n - 1)) * iw : 0)
-  const y = (v: number) => T + ih - ((v - mn) / rng) * ih
-  const mav = movingAvg(data)
-  const mavPts = mav.map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v != null)
-  const line = (arr: { v: number; i: number }[]) => arr.map((p) => `${x(p.i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ')
-  const mid = round1((mn + mx) / 2)
-  // "good" end of the band for the label (RHR: lower is better → invert)
-  const hi = invert ? mn : mx, lo = invert ? mx : mn
+  const px = (i: number) => (n > 1 ? (i / (n - 1)) * 100 : 0)
+  const py = (v: number) => (1 - (v - mn) / rng) * 100 // 0 = top, 100 = bottom
+  const mavPts = movingAvg(data).map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v != null)
+  const line = (arr: { v: number; i: number }[]) => arr.map((p) => `${px(p.i).toFixed(2)},${py(p.v).toFixed(2)}`).join(' ')
   const xTicks = [0, Math.floor((n - 1) / 3), Math.floor(((n - 1) * 2) / 3), n - 1]
   return (
-    <svg className="wtrend" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img">
-      {/* min–max band */}
-      <rect x={L} y={y(mx).toFixed(1)} width={iw} height={(y(mn) - y(mx)).toFixed(1)} fill={color} fillOpacity={0.08} />
-      {[mn, mid, mx].map((v) => (
-        <g key={v}><line x1={L} y1={y(v).toFixed(1)} x2={W - R} y2={y(v).toFixed(1)} stroke="#222732" /><text x={L - 4} y={(y(v) + 3).toFixed(1)} textAnchor="end" className="wt-ax">{round1(v)}</text></g>
-      ))}
-      <line x1={L} y1={y(mx).toFixed(1)} x2={W - R} y2={y(mx).toFixed(1)} stroke={color} strokeDasharray="3 3" strokeOpacity={0.6} />
-      <line x1={L} y1={y(mn).toFixed(1)} x2={W - R} y2={y(mn).toFixed(1)} stroke={color} strokeDasharray="3 3" strokeOpacity={0.6} />
-      {xTicks.map((i) => <text key={i} x={x(i).toFixed(1)} y={H - 5} textAnchor="middle" className="wt-ax">{dates[i] || ''}</text>)}
-      <polyline points={line(pts)} fill="none" stroke={color} strokeWidth={1} strokeOpacity={0.35} vectorEffect="non-scaling-stroke" />
-      <polyline points={line(mavPts)} fill="none" stroke={color} strokeWidth={2.2} vectorEffect="non-scaling-stroke" />
-      <text x={W - R} y={(y(hi) - 3).toFixed(1)} textAnchor="end" className="wt-mm" fill={color}>max {mx}{unit}</text>
-      <text x={W - R} y={(y(lo) + 10).toFixed(1)} textAnchor="end" className="wt-mm" fill={color}>min {mn}{unit}</text>
-    </svg>
+    <div className="wt">
+      <div className="wt__plot">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="wt__svg" aria-hidden="true">
+          <rect x={0} y={0} width={100} height={100} fill={color} fillOpacity={0.07} />
+          <line x1={0} y1={py(mid)} x2={100} y2={py(mid)} stroke="#222732" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <line x1={0} y1={0} x2={100} y2={0} stroke={color} strokeDasharray="3 3" strokeOpacity={0.55} vectorEffect="non-scaling-stroke" />
+          <line x1={0} y1={100} x2={100} y2={100} stroke={color} strokeDasharray="3 3" strokeOpacity={0.55} vectorEffect="non-scaling-stroke" />
+          <polyline points={line(pts)} fill="none" stroke={color} strokeWidth={1} strokeOpacity={0.32} vectorEffect="non-scaling-stroke" />
+          <polyline points={line(mavPts)} fill="none" stroke={color} strokeWidth={2.2} vectorEffect="non-scaling-stroke" />
+        </svg>
+        {/* y-axis labels (HTML, crisp) */}
+        <span className="wt__y" style={{ top: '0%' }}>{round1(mx)}</span>
+        <span className="wt__y" style={{ top: '50%' }}>{mid}</span>
+        <span className="wt__y" style={{ top: '100%' }}>{round1(mn)}</span>
+        {/* min/max value labels, kept off the x-axis row */}
+        <span className="wt__mm wt__mm--max" style={{ color }}>max {mx}{unit}</span>
+        <span className="wt__mm wt__mm--min" style={{ color }}>min {mn}{unit}</span>
+      </div>
+      <div className="wt__x">{xTicks.map((i) => <span key={i}>{dates[i] || ''}</span>)}</div>
+    </div>
   )
 }
 
-function MetricCard({ title, data, dates, color, unit = '', invert = false }: { title: string; data: (number | null)[]; dates: string[]; color: string; unit?: string; invert?: boolean }) {
+function MetricCard({ title, data, dates, color, unit = '' }: { title: string; data: (number | null)[]; dates: string[]; color: string; unit?: string }) {
   const vals = data.filter((v): v is number => v != null)
   const now = vals.length ? vals[vals.length - 1] : null
   const avg = vals.length ? round1(vals.reduce((a, b) => a + b, 0) / vals.length) : null
@@ -72,7 +73,7 @@ function MetricCard({ title, data, dates, color, unit = '', invert = false }: { 
     <div className="card wcard">
       <div className="wcard__h"><h3>{title}</h3><span className="wcard__now">{now ?? '—'}<small>{unit}</small></span></div>
       {vals.length ? <div className="wcard__sub">avg {avg}{unit} · min {Math.min(...vals)} · max {Math.max(...vals)}</div> : null}
-      <WTrend data={data} dates={dates} color={color} unit={unit} invert={invert} />
+      <WTrend data={data} dates={dates} color={color} unit={unit} />
       <div className="wcard__leg"><span><i style={{ borderColor: color, opacity: 0.4 }} />daily</span><span><i style={{ borderColor: color }} />7-day average</span></div>
     </div>
   )
@@ -142,7 +143,7 @@ export default function Wellness() {
             <>
               <MetricCard title="😴 Sleep" data={view.sleep} dates={view.dates} color="#5ec8ff" unit="h" />
               <MetricCard title="💓 HRV" data={view.hrv} dates={view.dates} color="#34e07d" />
-              <MetricCard title="❤️ Resting HR" data={view.rhr} dates={view.dates} color="#ff8fb1" invert />
+              <MetricCard title="❤️ Resting HR" data={view.rhr} dates={view.dates} color="#ff8fb1" />
               <MetricCard title="⚖️ Weight" data={view.weight} dates={view.dates} color="#f0b145" unit="kg" />
             </>
           )}

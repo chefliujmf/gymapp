@@ -1156,9 +1156,15 @@ select.search { appearance: none; -webkit-appearance: none; }
 .wcard__now { font-size: 20px; font-weight: 800; }
 .wcard__now small { font-size: 11px; color: var(--text-dim); font-weight: 600; margin-left: 2px; }
 .wcard__sub { font-size: 11px; color: var(--text-dim); margin: 1px 0 4px; }
-.wtrend { display: block; width: 100%; height: 168px; }
-.wtrend .wt-ax { fill: var(--text-dim); font-size: 9px; }
-.wtrend .wt-mm { font-size: 9px; font-weight: 700; }
+/* chart: stretchable SVG geometry + crisp HTML text overlay (no font-stretch) */
+.wt { position: relative; padding-left: 34px; margin-top: 6px; }
+.wt__plot { position: relative; height: 150px; }
+.wt__svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.wt__y { position: absolute; right: 100%; margin-right: 5px; transform: translateY(-50%); font-size: 9px; color: var(--text-dim); white-space: nowrap; }
+.wt__mm { position: absolute; right: 4px; font-size: 9px; font-weight: 800; white-space: nowrap; }
+.wt__mm--max { top: 1px; }
+.wt__mm--min { bottom: 1px; }
+.wt__x { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-dim); margin-top: 3px; }
 .wcard__leg { display: flex; gap: 12px; font-size: 10px; color: var(--text-dim); margin-top: 4px; }
 .wcard__leg i { display: inline-block; width: 14px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 4px; }
 .checkin__coach { display: flex; align-items: center; gap: 6px; margin-top: 11px; font-size: 12px; color: var(--text-dim); }
