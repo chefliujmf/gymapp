@@ -33,12 +33,15 @@ test guide → the **🧪 Test guide** section below.
     threshold pace is set slow/stale, so VDOT + zones + predictions are all too easy while HR says he's fitter. SHIPPED a
     ⚠️ flag on the Running page ("pace may be stale, update it"). TODO: reconcile properly — prompt to update pace / use
     the **#215** estimate-from-runs so VDOT/zones/predictions match reality. Pairs #215/#216/#234. gymapp-only.
-236. ⬜ **VO₂max manual vs estimate: ANCHOR, don't freeze (JM's careful question).** JM 2026-06-30: "if I set VO₂max
-    manually, will I be overridden by the engine? or will it stop adapting? careful here." CURRENT: a manual value WINS
-    everywhere and the estimate is ignored (it freezes — never auto-overwrites you, but also never updates). DESIRED
-    (=the #234 "learn over time"): manual = a **dated high-confidence anchor**; the submax estimate keeps running in the
-    background and, if it **drifts** from the anchor over time, **nudges** "your estimate is now X — update?" (never
-    silently overwrites). Build the anchor-date + drift-nudge. Pairs #234. gymapp-only.
+236. ⬜ **Benchmarks = MANUAL vs COMPUTED, both shown, preference in Settings (JM's chosen model).** JM 2026-06-30:
+    "I prefer the option to set it manually OR estimated — have BOTH values, and in Settings decide the preference. Same
+    for FTP or other data like that. Manual-vs-computed kind of thing." THE MODEL (supersedes the earlier anchor/freeze
+    idea, unifies #231): every benchmark holds **both** a `computed` value (engine/intervals estimate) and a `manual`
+    value (user-entered); the card shows **both**; a **per-stat Settings preference** picks which one DRIVES (manual /
+    computed / maybe auto-prefer). Applies to **VO₂max, FTP (set vs eFTP), threshold pace (set vs estimated), max HR**,
+    etc. Computed keeps updating regardless; switching preference just changes which feeds readiness/coach/zones.
+    NEXT: mock the benchmark card showing both + the Settings manual-vs-computed control (per-stat, with a sensible
+    default). Pairs #231 (FTP/eFTP) + #234 (VO₂max) + #215 (estimates). gymapp-only.
 235. ⬜ **Readiness learning: confirm sleep learns + a preference to turn auto-adapt ON/OFF.** JM 2026-06-30: "for sleep
     are we learning? would like our engine to learn & adapt it — with a preference to turn on or off." CONFIRM: the
     calibration (#207 Phase 2b) DOES learn sleep + freshness + energy from your overrides (sleep NEED stays manual). ADD:
