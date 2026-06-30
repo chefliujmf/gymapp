@@ -27,8 +27,13 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
-224. ⬜ **Get morning HRV/sleep faster than the Coros→intervals lag (options/decision).** JM 2026-06-30: "Coros pushes
-    to intervals a bit late — options to get the info in the morning?" KEY CONSTRAINT: nothing is fresher than the
+224. ✅ **DECIDED — intervals stays the SINGLE hub; do NOT pull from Coros directly.** JM 2026-06-30: "the point of
+    having intervals is to not have to maintain a million integrations, so no I don't want to pull from Coros directly."
+    So the Coros→intervals morning lag is ACCEPTED and handled in-app only: lean on **Freshness/Form + the subjective
+    check-in** (always available, #206/#207) and **auto-refresh when intervals catches up** (#206 — done). No Coros Open
+    API / MCP / aggregator / unofficial pull. (Manual HRV/sleep quick-entry remains available as a no-integration
+    fallback IF ever wanted, but not requested.) Architectural rule banked in memory. Original research kept below ↓
+    ~~Get morning HRV/sleep faster than the Coros→intervals lag (options).~~ KEY CONSTRAINT: nothing is fresher than the
     WATCH→Coros-cloud sync (only on phone+Coros-app sync), so the real lag is watch→Coros then Coros→intervals; the
     options below remove the SECOND hop / nudge the first. RESEARCHED (web, 2026-06-30):
     • **Ships now (free):** manual morning quick-entry of HRV/sleep (glance at the Coros app) + we ALREADY lean on
