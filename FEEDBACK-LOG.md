@@ -22,6 +22,12 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+254. ⬜ **(NOTE) Respect the cycling coach's WEEKLY MACRO TARGET when updating/reconciling plans.** JM 2026-06-30: the
+    cycling coach was entering a weekly macro target (the week's overall load/hours/intensity goal, likely an intervals
+    TARGET event or a weekly note). When Platyplus updates/syncs/reconciles plans, it must **preserve** that macro target,
+    not clobber/delete it. VERIFY: the reconcile/dedup (#150/#185, `syncIcuPlans`/`planDroppedByReconcile`) only touches
+    Platyplus-origin WORKOUT events — TARGET/macro events should already be left alone, but CONFIRM when next touching the
+    plan-update path; and the coach engine should read the weekly macro as context. Pairs the coach loop (#18/#65/#76). gymapp-only.
 253. ⬜ **(LATER) Extract bodyweight exercises from "la méthode Lafay" — only ones NOT already in the catalog.** JM
     2026-06-30: "to be done much later." Mine the Lafay method (French bodyweight/calisthenics) for movements we lack, add
     them as catalog exercises (name, muscle group, bodyweight, equipment=none). LICENSING: facts/movement names are fine,
