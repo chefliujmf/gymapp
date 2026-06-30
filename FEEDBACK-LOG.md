@@ -27,6 +27,12 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+219. 🧪 **Workout chart must show the watt RANGE, not the max (true profile like intervals).** JM 2026-06-29 (QA):
+    "in intervals they show a range of watts and in platyplus it's the maximum watts per interval." Platyplus drew each
+    segment as a flat bar at its PEAK (`Math.max(powerStart,powerEnd)`), so a warm-up ramp looked as hard as the main
+    set. FIX (mock #3 approved): rewrote `SegmentProfile` + `MiniProfile` as a true SVG power profile — each segment
+    follows its real start→end (ramps SLOPE, steady blocks flat, step at boundaries), zone-coloured, watt-RANGE labels
+    ("130–169 W" for a ramp). Matches the intervals chart shape. gymapp-only; pairs with #217.
 218. 🧪 **Stale PWA bundle persists after deploy (the real #200 root) + icu plans never refreshed.** JM 2026-06-29 (QA):
     the #217 fix was LIVE in the deployed bundle (`index-2TODaDef.js` contained it) yet JM's app still showed the old
     5 W chart → his installed PWA was running CACHED JS. TWO gaps fixed: (1) **no reload-on-update** — skipWaiting+

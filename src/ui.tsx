@@ -213,39 +213,51 @@ export function computeTSS(w: EnduranceWorkout): number {
 }
 
 /** join.cc-style interval profile rendered from the structured data. */
-/** Profile from flat segments (intervals.icu workout_doc / ride player). */
+/** True power profile (mirrors intervals): each segment follows its real start→end, so
+ *  ramps SLOPE and steady blocks are flat — not a flat bar at the peak (#217 follow-up). */
 export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: number; powerStart: number; powerEnd: number }[]; height?: number; ftp?: number }) {
   const [sel, setSel] = useState<number | null>(null)
   if (!segs.length) return null
   const total = segs.reduce((s, i) => s + i.duration, 0) || 1
-  const maxP = Math.max(120, ...segs.map((s) => Math.max(s.powerStart, s.powerEnd)))
-  const ftpY = (100 / maxP) * 100
+  const maxP = Math.max(120, ...segs.flatMap((s) => [s.powerStart, s.powerEnd]))
   const totalMin = total / 60
-  // When FTP is known, label the actual target watts; otherwise fall back to % of FTP.
-  const val = (pct: number) => (ftp ? `${Math.round((pct / 100) * ftp)} W` : `${pct}%`)
+  // watts (or %) — a RANGE for a ramp, a single value for a steady block, like intervals.
+  const w = (pct: number) => (ftp ? Math.round((pct / 100) * ftp) : pct)
+  const unit = ftp ? ' W' : '%'
+  const range = (a: number, b: number) => { const lo = Math.min(a, b), hi = Math.max(a, b); return lo === hi ? `${w(hi)}${unit}` : `${w(lo)}–${w(hi)}${unit}` }
   const fmt = (sec: number) => { const m = Math.floor(sec / 60); const s = Math.round(sec % 60); return s ? `${m}:${String(s).padStart(2, '0')}` : `${m} min` }
-  // Time axis ticks at a tidy interval for the workout length.
   const step = totalMin <= 20 ? 5 : totalMin <= 75 ? 15 : 30
   const ticks: number[] = []
   for (let m = 0; m <= totalMin + 0.01; m += step) ticks.push(m)
   let acc = 0
   const starts = segs.map((s) => { const st = acc; acc += s.duration; return st })
+  const W = 1000 // viewBox width; SVG stretches to the container, preserveAspectRatio none
+  const x = (t: number) => (t / total) * W
+  const y = (pct: number) => height - (pct / maxP) * height
   const selSeg = sel != null ? segs[sel] : null
-  const selP = selSeg ? Math.max(selSeg.powerStart, selSeg.powerEnd) : 0
   return (
     <div>
-      <div className="profile" style={{ height, position: 'relative', display: 'flex', alignItems: 'flex-end', gap: 1, width: '100%' }}>
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: `${ftpY}%`, borderTop: '1px dashed rgba(255,255,255,.22)', pointerEvents: 'none' }} />
-        <span style={{ position: 'absolute', right: 2, bottom: `calc(${ftpY}% + 2px)`, fontSize: 9, color: 'rgba(255,255,255,.45)' }}>FTP{ftp ? ` ${ftp}W` : ''}</span>
+      <div className="profile" style={{ height, position: 'relative', width: '100%' }}>
+        <svg viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+          <line x1={0} y1={y(100)} x2={W} y2={y(100)} stroke="rgba(255,255,255,.22)" strokeDasharray="6 4" />
+          {segs.map((s, idx) => {
+            const x0 = x(starts[idx]), x1 = x(starts[idx] + s.duration)
+            const c = zoneColor(Math.max(s.powerStart, s.powerEnd))
+            return (
+              <polygon key={idx} points={`${x0},${height} ${x0},${y(s.powerStart)} ${x1},${y(s.powerEnd)} ${x1},${height}`}
+                fill={c} fillOpacity={sel === idx ? 0.95 : 0.7} stroke={c} strokeWidth={sel === idx ? 2 : 1} strokeLinejoin="round" style={{ cursor: 'pointer' }}
+                onClick={() => setSel(sel === idx ? null : idx)} />
+            )
+          })}
+        </svg>
+        <span style={{ position: 'absolute', right: 2, top: `${(1 - 100 / maxP) * 100}%`, transform: 'translateY(-100%)', fontSize: 9, color: 'rgba(255,255,255,.45)' }}>FTP{ftp ? ` ${ftp}W` : ''}</span>
+        {/* watt-range labels at each segment's peak, when it changes from the previous block */}
         {segs.map((s, idx) => {
-          const p = Math.max(s.powerStart, s.powerEnd)
-          const showVal = idx === 0 || Math.max(segs[idx - 1].powerStart, segs[idx - 1].powerEnd) !== p
-          return (
-            <div key={idx} onClick={() => setSel(sel === idx ? null : idx)} title={`${fmt(s.duration)} · ${val(p)}`}
-              style={{ position: 'relative', flexGrow: s.duration / total, flexBasis: 0, height: `${Math.max(6, (p / maxP) * 100)}%`, background: zoneColor(p), borderRadius: '2px 2px 0 0', cursor: 'pointer', outline: sel === idx ? '2px solid rgba(255,255,255,.85)' : undefined, outlineOffset: -1 }}>
-              {showVal && <span className="profile-lbl">{val(p)}</span>}
-            </div>
-          )
+          const peak = Math.max(s.powerStart, s.powerEnd)
+          const changed = idx === 0 || Math.max(segs[idx - 1].powerStart, segs[idx - 1].powerEnd) !== peak
+          if (!changed || (s.duration / total) < 0.06) return null
+          const midPct = ((starts[idx] + s.duration / 2) / total) * 100
+          return <span key={idx} className="profile-lbl" style={{ position: 'absolute', left: `${midPct}%`, top: `${(1 - peak / maxP) * 100}%`, transform: 'translate(-50%,-115%)' }}>{range(s.powerStart, s.powerEnd)}</span>
         })}
       </div>
       <div style={{ position: 'relative', height: 13, marginTop: 3 }}>
@@ -255,7 +267,7 @@ export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: 
       </div>
       {selSeg ? (
         <p className="meta" style={{ whiteSpace: 'normal', marginTop: 6 }}>
-          <b>{fmt(starts[sel!])}–{fmt(starts[sel!] + selSeg.duration)}</b> · {fmt(selSeg.duration)} · target {val(selP)}{ftp ? ` · ${selP}% FTP` : ''} · {zoneName(selP)}
+          <b>{fmt(starts[sel!])}–{fmt(starts[sel!] + selSeg.duration)}</b> · {fmt(selSeg.duration)} · {range(selSeg.powerStart, selSeg.powerEnd)}{ftp ? ` · ${Math.min(selSeg.powerStart, selSeg.powerEnd)}–${Math.max(selSeg.powerStart, selSeg.powerEnd)}% FTP` : ''} · {zoneName(Math.max(selSeg.powerStart, selSeg.powerEnd))}
         </p>
       ) : (
         <p className="meta" style={{ marginTop: 6 }}>Tap a block for its target & timing.</p>
@@ -299,18 +311,24 @@ export function DoneStats({ a }: { a: IcuActivity }) {
 // Open an external link from inside a clickable card without triggering the card.
 function openExt(e: ReactMouseEvent, url: string) { e.preventDefault(); e.stopPropagation(); window.open(url, '_blank', 'noopener,noreferrer') }
 
-/** Tiny non-interactive workout profile for card thumbnails — zone-coloured bars only. */
+/** Tiny non-interactive workout profile for card thumbnails — true shape (ramps slope),
+ *  zone-coloured, so the thumbnail matches the detail chart + intervals (#217 follow-up). */
 export function MiniProfile({ segs }: { segs: { duration: number; powerStart: number; powerEnd: number }[] }) {
   if (!segs?.length) return null
   const total = segs.reduce((s, x) => s + x.duration, 0) || 1
-  const maxP = Math.max(100, ...segs.map((s) => Math.max(s.powerStart, s.powerEnd)))
+  const maxP = Math.max(100, ...segs.flatMap((s) => [s.powerStart, s.powerEnd]))
+  const H = 40, W = 100
+  let acc = 0
+  const starts = segs.map((s) => { const st = acc; acc += s.duration; return st })
+  const x = (t: number) => (t / total) * W
+  const y = (pct: number) => H - Math.max(0.14, pct / maxP) * H
   return (
-    <div className="thumb-profile">
+    <svg className="thumb-profile" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
       {segs.map((s, i) => {
-        const p = segPower(s) // peak, same as the detail profile — so thumbnail matches (#72)
-        return <span key={i} style={{ flexGrow: s.duration / total, flexBasis: 0, height: `${Math.max(14, (p / maxP) * 100)}%`, background: zoneColor(p), borderRadius: '1.5px 1.5px 0 0' }} />
+        const x0 = x(starts[i]), x1 = x(starts[i] + s.duration), c = zoneColor(segPower(s))
+        return <polygon key={i} points={`${x0},${H} ${x0},${y(s.powerStart)} ${x1},${y(s.powerEnd)} ${x1},${H}`} fill={c} fillOpacity={0.85} />
       })}
-    </div>
+    </svg>
   )
 }
 
