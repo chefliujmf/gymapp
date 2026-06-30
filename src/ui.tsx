@@ -254,7 +254,10 @@ export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: 
         {/* watt-range labels at each segment's peak, when it changes from the previous block */}
         {segs.map((s, idx) => {
           const peak = Math.max(s.powerStart, s.powerEnd)
-          const changed = idx === 0 || Math.max(segs[idx - 1].powerStart, segs[idx - 1].powerEnd) !== peak
+          const prev = segs[idx - 1]
+          // label a block when its target differs from the previous one (so the steady main
+          // set gets its own watts even when it shares the warm-up's peak)
+          const changed = idx === 0 || !(prev && prev.powerStart === s.powerStart && prev.powerEnd === s.powerEnd)
           if (!changed || (s.duration / total) < 0.06) return null
           const midPct = ((starts[idx] + s.duration / 2) / total) * 100
           return <span key={idx} className="profile-lbl" style={{ position: 'absolute', left: `${midPct}%`, top: `${(1 - peak / maxP) * 100}%`, transform: 'translate(-50%,-115%)' }}>{range(s.powerStart, s.powerEnd)}</span>
