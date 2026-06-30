@@ -22,6 +22,25 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+271. ⬜ **Running "Your runs suggest 5:21/km (VDOT 38)" is confusing — and SLOWER than the set threshold (4:57/VDOT
+    41).** JM 2026-06-30 (dev): the #215 Critical-Speed estimate suggests a threshold SLOWER than what's set, with a bare
+    "Use" button → looks like a downgrade with no explanation. FIX: (a) clarify it's "from your recent runs" (Critical
+    Speed); (b) when the suggestion is slower than the set value, SAY so + why (recent runs likely easier/fewer; the set
+    value may be from a fitter block) and don't make "Use" look like the default — only apply if current threshold really
+    dropped; (c) if it's faster, frame as "you've gained fitness." Ties to #269 (running fitness reading low). gymapp-only.
+270. 🔨 **QA "lost my connection" to intervals (had to click sync to recreate).** JM 2026-06-30 (QA): the Today page showed
+    "Connect intervals.icu…" though he was connected; clicking sync restored it. LIKELY a transient on QA container
+    restart during a deploy (each dev push auto-redeploys QA → brief reconnect needed), NOT a data loss (Postgres pgdata
+    persists; clicking sync re-resolved via the key). TODO: confirm no code path clears icuKey; consider the client
+    auto-retrying the athlete pull / showing "reconnecting" instead of "Connect" right after a deploy. Watch for recurrence;
+    not reproduced after sync. gymapp-only.
+269. 🔨 **VO₂max too LOW / wrong again (Profile + per-sport).** JM 2026-06-30: Profile showed VO₂max 43.9 = ONLY the
+    cycling Coggan (10.8·FTP/wt+7 = 10.8·260/76+7) and ignored the HR-ratio method we built in #234 → under-rated. ROOT
+    CAUSE: Profile used the old `estimateVo2max` (Coggan + VDOT only), not `headlineVo2max` (#234, incl. HR-ratio
+    15.3·HRmax/HRrest, ranked by confidence). FIXED: Profile now fetches resting HR from wellness + uses
+    `headlineVo2max([running, cycling])` with per-sport max HR; running (medium conf, incl. HR-ratio) beats the low-conf
+    cycling Coggan, so a high HRmax/HRrest reads a believable higher value. Copy shows source + confidence; manual wins.
+    Tests: vo2max-submax (12) still green. Manual test: Profile VO₂max ≈ HR-ratio value, not 43.9. gymapp-only.
 268. ⬜ **Two-way sync the intervals Basic Settings profile fields (don't re-enter them).** JM 2026-06-30 (screenshot of
     intervals → Settings → Basic Settings): instead of capturing profile data manually, **bi-directionally sync** the
     canonical fields from intervals.icu: **Sex, Weight, Height, Date of Birth (→ age), Resting HR** (+ units already there).
