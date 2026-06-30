@@ -25,7 +25,7 @@ const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
-import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness } from './readiness.js'
+import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, estimateVo2max } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -283,13 +283,10 @@ app.get('/auth/intervals/athlete', auth, async (req, res) => {
   req.user.sportSettings = { ...(req.user.sportSettings || {}), ...mapped }
   if (mapped.cycling?.ftp != null) req.user.ftp = mapped.cycling.ftp
   if (mapped.cycling?.maxHr != null) req.user.maxHR = mapped.cycling.maxHr
+  const weight = a.icu_weight != null ? a.icu_weight : (a.weight != null ? a.weight : null)
+  if (weight != null && weight > 0) req.user.weight = weight // #207 Part 4: stash for the server-side VO₂max estimate
   save(store)
-  res.json({
-    connected: true,
-    sportSettings: mapped,
-    weight: a.icu_weight != null ? a.icu_weight : (a.weight != null ? a.weight : null),
-    source: 'intervals',
-  })
+  res.json({ connected: true, sportSettings: mapped, weight, source: 'intervals' })
 })
 
 // #215 — ESTIMATE the runner's threshold pace from intervals' pace curve (Critical Speed),
@@ -696,7 +693,9 @@ function buildSystemPrompt(user) {
   const stats = []
   if (user.ftp) stats.push(`cycling FTP ${user.ftp} W`)
   if (user.maxHR) stats.push(`max HR ${user.maxHR} bpm`)
-  if (user.vo2max) stats.push(`cycling VO2max ${user.vo2max}`)
+  // #207 Part 4: VO₂max — the athlete's manual value, else our estimate (cycling W/kg or running VDOT).
+  if (user.vo2max) stats.push(`VO2max ${user.vo2max}`)
+  else { const est = estimateVo2max({ ftp: user.ftp, weightKg: user.weight, vdot: user.runVdot }); if (est) stats.push(`VO2max ~${est.value} (est. from ${est.from})`) }
   const tp = user.sportSettings?.running?.thresholdPace // sec/km
   if (tp > 0) { const m = Math.floor(tp / 60), s = String(Math.round(tp % 60)).padStart(2, '0'); stats.push(`running threshold pace ${m}:${s}/km${user.runVdot ? ` (VDOT ${user.runVdot})` : ''}`) }
   const rhr = user.sportSettings?.running?.maxHr

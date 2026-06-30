@@ -154,6 +154,17 @@ export function learnedOffsets(checkins = []) {
 /** Apply a learned offset to a 1–5 score (clamped). Reports the nudge so the UI can say "calibrated". */
 export const applyOffset = (score, offset) => (score == null || !offset ? score : clamp(round1(score + offset), 1, 5))
 
+// #207 Part 4 — VO₂max estimate (ml/kg/min) from the best aerobic measure: cycling eFTP÷weight
+// (Coggan 10.8·W/kg+7) and/or running VDOT (a VO₂max itself). Returns the higher + its source, or
+// null. Mirrors src/running-paces.ts estimateVo2max so the COACH (server) judges intensity FOR them.
+export function estimateVo2max({ ftp, weightKg, vdot } = {}) {
+  const cands = []
+  if (ftp && weightKg && weightKg > 0) cands.push({ value: round1(10.8 * ftp / weightKg + 7), from: 'cycling power ÷ weight' })
+  if (vdot && vdot > 0) cands.push({ value: Math.round(vdot), from: 'running pace (VDOT)' })
+  if (!cands.length) return null
+  return cands.reduce((a, b) => (b.value > a.value ? b : a))
+}
+
 // --- #223: FORECAST a future day's freshness from planned load ----------------------------
 // Only FRESHNESS is forecastable ahead (it's training-load driven). Energy/Sleep depend on HRV/
 // sleep that haven't happened, so a future day shows an expected Freshness, not a live verdict.
