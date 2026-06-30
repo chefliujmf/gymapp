@@ -14,14 +14,19 @@ it doesn't happen again.
    without logging = the report gets lost. Never make JM re-report.
 2. **`🔨 built ≠ done`.** tsc/build/deploy green is NOT verified. Mark a fix **🧪 (fixed+test,
    awaiting JM)**. Only **JM** flips it to **✅** after testing on QA. I never self-certify UX.
-3. **A test ships with every fix:**
-   - Pure logic → a **unit test** in `src/<thing>.test.ts` (`npm test`, vitest). Extract the logic
-     to a plain module (e.g. `src/zones.ts`) so it tests without React.
+3. **A test ships with every fix — DEFINE a real unit test, don't hand-wave (JM 2026-06-30: "I don't see
+   you define proper unit tests").** The DEFAULT is a unit test; if the logic lives inside a component,
+   **extract the pure function** to a plain module so it CAN be tested (e.g. `vo2max-submax.ts`, `mind-stats.ts`,
+   `modules.ts`, `running-paces.ts`). Assert real values + edge cases, not just "it runs".
+   - Pure logic → **unit test** in `src/<thing>.test.ts` (`npm test`, vitest). **Then add/extend the file in the
+     🧮 UNIT TEST INVENTORY in FEEDBACK-LOG.md and bump the count** — that inventory is the logged proof.
    - API behaviour → a row in `scripts/smoke-test.mjs` (`npm run test:smoke`).
-   - UI flow / visual → a **manual step in the 🧪 Test guide section of `FEEDBACK-LOG.md`** (steps + expected). 
-   Write it, run it GREEN, commit it. The test is the permanent regression net.
-4. **The 🧪 Test guide section of `FEEDBACK-LOG.md` is the one-by-one guide** JM works through: per item =
-   unit-test file + manual steps + expected + status (❌ → 🔧 → 🧪 → ✅). Keep it current; archive ✅ items out of the active log.
+   - Pure UI/visual or a server side-effect with no pure fn → say so explicitly + a **manual step in the QA checklist**
+     (don't pretend a unit test exists; don't skip silently).
+   Write it, run it GREEN, commit it (test + fix + inventory/guide update together).
+4. **Two living lists in `FEEDBACK-LOG.md` — keep BOTH current:** the **🧮 Unit test inventory** (every test file →
+   what it proves → count) and the **🧪 Test guide / QA checklist** (per item: manual steps + expected + status
+   ❌→🔧→🧪→✅). Update them in the SAME commit as the fix. Only JM flips 🧪→✅.
 5. **Verify against reality, not the compiler:** trace what the button/flow actually does; check the
    **source of truth** (do these feedback choices match intervals? does this gate fire on desktop?).
    Mock-first for anything JM sees (`options-first`).

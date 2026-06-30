@@ -934,6 +934,22 @@ The honest list of things **JM reported** that are broken or unverified. Each ha
 (committed → `npm test`, the permanent regression net) and/or a **manual test** (steps + expected). JM
 verifies **one at a time**; only JM marks ✅.
 
+### 🧮 UNIT TEST INVENTORY (`npm test` → 182 in 13 files; keep current with every fix)
+- `readiness.test.ts` (45) — readiness math: baselines/freshness/energy/sleep, calibration, forecast, server VO₂max (#195/#207/#208/#223/#234/#236)
+- `running-paces.test.ts` (43) — VDOT↔pace, zones, race predictions, marathon realism, VO₂max est (#209/#211/#214/#216/#234)
+- `sport-settings.test.ts` (18) — intervals pull/push mapping + run-estimate (#210/#215)
+- `icu-dedup.test.ts` (12) — intervals dedup + replaced-plan cleanup (#150/#185)
+- `vo2max-submax.test.ts` (12) — submax VO₂max: HR-ratio/running/cycling/headline (#234)
+- `intervals-steps.test.ts` (10) — stepPctFtp + flatten zone→%FTP (#217)
+- `feedback.test.ts` (7) — post-workout feedback ↔ intervals fields (#147)
+- `mind-stats.test.ts` (7) — mind minutes/sessions/streak (#194c)
+- `modules.test.ts` (7) — sport modules userModules/hasModule (#198)
+- `ride.test.ts` (6) — flat segment no-ramp + mobile gate (#221/#139)
+- `logs-merge.test.ts` (5) — day-merge, no phantom dup (#197)
+- `stats-hub.test.ts` (5) — Stats global/per-sport grouping + routes (#193/#225)
+- `zones.test.ts` (5) — power zones + segment coloring (#72)
+**Rule: any pure-logic fix/feature adds (or extends) a file here + this count updates.** UI-only/server-side-effect changes (no pure fn) note "manual test" in the QA checklist instead.
+
 ### ✅ QA PASS CHECKLIST — 2026-06-30 (terse — do top-down, mark ✅ in the queue)
 Run `npm test` first (math). Then on QA:
 - [ ] #221 ✅ Ride with warmup/cooldown → flat blocks, thumbnail full-size
