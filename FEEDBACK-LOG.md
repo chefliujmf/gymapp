@@ -40,8 +40,12 @@ test guide → the **🧪 Test guide** section below.
     value (user-entered); the card shows **both**; a **per-stat Settings preference** picks which one DRIVES (manual /
     computed / maybe auto-prefer). Applies to **VO₂max, FTP (set vs eFTP), threshold pace (set vs estimated), max HR**,
     etc. Computed keeps updating regardless; switching preference just changes which feeds readiness/coach/zones.
-    NEXT: mock the benchmark card showing both + the Settings manual-vs-computed control (per-stat, with a sensible
-    default). Pairs #231 (FTP/eFTP) + #234 (VO₂max) + #215 (estimates). gymapp-only.
+    **DESIGN LOCKED 2026-06-30 (mock `mockups/manual-vs-computed.html`, option C):** grid tiles stay CLEAN (in-use value
+    + "tap to switch"); tapping a benchmark opens a **sheet** with BOTH values (computed + manual), a value **input**, and
+    a **Manual | Computed** toggle (NO Auto — JM). RULE: input is **EDITABLE only in Manual**; in **Computed** it's
+    **locked/read-only** (the live estimate drives). Switch to Manual to edit. Settings keeps a master list (mirror).
+    Applies to VO₂max, FTP (set vs eFTP), threshold pace, max HR, etc. Computed keeps updating regardless. Build the
+    {computed, manual, prefer:'manual'|'computed'} model + the sheet + Settings list. Pairs #231/#234/#215. gymapp-only.
 235. ⬜ **Readiness learning: confirm sleep learns + a preference to turn auto-adapt ON/OFF.** JM 2026-06-30: "for sleep
     are we learning? would like our engine to learn & adapt it — with a preference to turn on or off." CONFIRM: the
     calibration (#207 Phase 2b) DOES learn sleep + freshness + energy from your overrides (sleep NEED stays manual). ADD:
