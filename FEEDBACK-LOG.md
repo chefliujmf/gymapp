@@ -27,6 +27,14 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+218. 🧪 **Stale PWA bundle persists after deploy (the real #200 root) + icu plans never refreshed.** JM 2026-06-29 (QA):
+    the #217 fix was LIVE in the deployed bundle (`index-2TODaDef.js` contained it) yet JM's app still showed the old
+    5 W chart → his installed PWA was running CACHED JS. TWO gaps fixed: (1) **no reload-on-update** — skipWaiting+
+    clientsClaim activated the new SW but the open page kept old JS; added a `controllerchange` reload (guarded to fire
+    only on real UPDATES, not first install) in `src/main.tsx` + tightened the focus re-check to 30 min. (2) **reconcile
+    only ADDED missing plans, never refreshed existing icu-origin ones** → a changed intervals workout (or the #217
+    re-parse) never reached the stored `plan.segments` the ride PLAYER uses; reconcile now refreshes title/notes/segments
+    of existing icu-origin plans from the live event. Supersedes the earlier "#200 fixed" claim. gymapp-only.
 217. 🧪 **Workout power garbled — "175 W then 5 W", nothing like intervals (URGENT, FIXED).** JM 2026-06-29 (QA):
     tomorrow's "Tuesday Cottage Ride" showed an unrealistic 5 W block. ROOT CAUSE: intervals expresses some steps as
     `{units:'power_zone', value:N}` ("ride in Zone N"); `flattenIcuSteps` (+ server `icuEventToPlan`) read the zone

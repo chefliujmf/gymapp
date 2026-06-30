@@ -1021,11 +1021,22 @@ async function reconcileFromIcu(user, from, to) {
   // PLATYPLUS-WINS dedup key: same day + sport + title ⇒ it's the same session.
   const planKey = (date, sport, title) => `${date}|${sport}|${String(title || '').trim().toLowerCase()}`
   const planKeys = new Set(user.plans.map((p) => planKey(p.date, p.sport, p.title)))
-  let imported = 0
+  let imported = 0, refreshed = 0
   for (const ev of events || []) {
     if (ev.category && ev.category !== 'WORKOUT') continue
     if (!['Ride', 'Run', 'WeightTraining'].includes(ev.type)) continue
-    if (ownedIcuIds.has(ev.id)) continue // we already own this exact event
+    if (ownedIcuIds.has(ev.id)) {
+      // We already have this event as a plan — REFRESH its derived fields from intervals so
+      // edits to the workout (and the #217 power_zone fix) propagate. icu-origin ONLY:
+      // platyplus-origin plans are master and never overwritten. Completion/feedback untouched.
+      const existing = user.plans.find((p) => p.icuEventId === ev.id)
+      if (existing && existing.origin === 'icu') {
+        const fresh = icuEventToPlan(ev)
+        const sig = (p) => JSON.stringify([p.title, p.notes, p.segments])
+        if (sig(existing) !== sig(fresh)) { existing.title = fresh.title; existing.notes = fresh.notes; existing.segments = fresh.segments; existing.updatedAt = Date.now(); refreshed++ }
+      }
+      continue
+    }
     // Shares our plan id (with or without the ":date" instance suffix) → skip.
     const extId = stripInstance(ev.external_id)
     if (ev.external_id && (planIds.has(ev.external_id) || planIds.has(extId))) continue
@@ -1048,8 +1059,8 @@ async function reconcileFromIcu(user, from, to) {
   const before = user.plans.length
   user.plans = user.plans.filter((p) => !planDroppedByReconcile(p, { liveIds: liveIcuIds, liveSlots, from, to }))
   const dropped = before - user.plans.length
-  if (imported || dropped) save(store)
-  return { imported, dropped, scanned: (events || []).length }
+  if (imported || dropped || refreshed) save(store)
+  return { imported, dropped, refreshed, scanned: (events || []).length }
 }
 
 // ---- calendar items (meal/mind/note) — shared by the UI (/auth) and API (/api).
