@@ -56,8 +56,10 @@ test guide → the **🧪 Test guide** section below.
     `computed` → the server submax estimate (`bestVo2maxEstimate`: HR-ratio/VDOT/power÷weight, mirrors the app, matches
     JM's ~50.5), `manual`/default → his set value. Stashed `user.restingHR` (from /auth/readiness) so the coach's HR-ratio
     matches what the app shows. NOTE: readiness SCORES don't consume these benchmarks (HRV/sleep/Form only), so nothing to
-    wire there. REMAINING: FTP/pace/maxHr "computed" server-side (eFTP/estimate not stored server-side — coach uses the
-    synced/manual value for those); maxHr computed source. 3 server tests; 182 green.
+    wire there. **🧪 FTP + pace computed server-side BUILT 2026-06-30:** stash `user.eftp` (from /auth/readiness wellness)
+    + `user.runPaceEst` (from /auth/intervals/run-estimate); the coach now resolves **FTP** (computed→eFTP) and **threshold
+    pace** (computed→#215 estimate) by statPrefs too, labelled "(estimated)". REMAINING: maxHr computed source (no clean
+    one); statPrefs fully end-to-end otherwise. 182 green.
 235. ⬜ **Readiness learning: confirm sleep learns + a preference to turn auto-adapt ON/OFF.** JM 2026-06-30: "for sleep
     are we learning? would like our engine to learn & adapt it — with a preference to turn on or off." CONFIRM: the
     calibration (#207 Phase 2b) DOES learn sleep + freshness + energy from your overrides (sleep NEED stays manual). ADD:
@@ -108,6 +110,9 @@ test guide → the **🧪 Test guide** section below.
     crisp HTML-overlay text, an insight line, shared component, shared DateRangeFilter). RETROFIT (⬜): the activity
     **Timeline** charts (#54 power/HR/altitude/cadence — no axes/values), Mind weekly bars, Running pace trend, per-sport
     minis → all to the standard; generalise Wellness `WTrend` into one shared chart. gymapp-only.
+    **🧪 RETROFIT 1 (2026-06-30): Training load / day** (Load & Form page) was a bare bar sparkline (JM: "not up to
+    standard") → now a chart card with **axes + labels + an insight** ("~N TSS/day, peaking at M — ramping up/easing").
+    Remaining retrofits as above.
 229. 🧪 **Bugs (FIXED 2026-06-30):** (a) check-in falsely showed "edited (auto N)" when the user didn't edit — override
     detection compared the stored value to the LIVE recompute, which drifts (calibration/recalibration/new data); now it
     compares to the auto value RECORDED at fill (`ci.auto`). (b) Load & Form's lone "Training load / day" card was

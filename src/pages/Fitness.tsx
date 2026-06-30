@@ -36,6 +36,16 @@ function fitnessInsight(fitness: (number | null)[]): string {
   if (d < -1) return `📉 Fitness is sliding (${d}) — add some load to rebuild.`
   return `➡️ Fitness is steady — a maintenance block.`
 }
+function loadInsight(load: (number | null)[]): string {
+  const v = load.filter((x): x is number => x != null)
+  if (!v.length) return ''
+  const avg = Math.round(v.reduce((a, b) => a + b, 0) / v.length)
+  const recent = v.slice(-7), older = v.slice(-14, -7)
+  const ra = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 0
+  const oa = older.length ? older.reduce((a, b) => a + b, 0) / older.length : 0
+  const trend = oa && ra > oa * 1.15 ? ' — ramping up this week' : oa && ra < oa * 0.85 ? ' — easing off this week' : ''
+  return `🔥 ~${avg} TSS/day on average, peaking at ${Math.max(...v)}${trend}.`
+}
 function formInsight(form: number | null): string {
   const z = formZone(form).label
   if (z === 'Optimal') return `💪 Optimal zone — you're training productively and gaining fitness.`
@@ -125,8 +135,11 @@ export default function Fitness() {
                 <p className="fit-insight">{formInsight(last(s.form))}</p>
               </div>
 
-              <div className="fit-grid fit-grid--one">
-                <MiniCard title="Training load / day" value={last(s.load)} hint="How hard each day was (TSS — duration × intensity). Taller bar = harder day." bars={s.load} color="#9b6bff" />
+              <div className="card chart-card" style={{ padding: '12px 14px', marginTop: 12 }}>
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Training load / day', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} series={[{ label: 'Load', color: '#9b6bff', data: s.load, area: true }]} /> })}>⤢</button>
+                <div className="fit-legend"><span style={{ color: '#9b6bff' }}>● Training load / day<InfoDot text="How hard each day was — TSS (duration × intensity). Higher = harder day." /></span></div>
+                <TrendChart height={130} axes labels={dates} series={[{ label: 'Load', color: '#9b6bff', data: s.load, area: true }]} />
+                <p className="fit-insight">{loadInsight(s.load)}</p>
               </div>
               {/* sleep/HRV/resting-HR/weight moved to their own page (#194a) */}
               <Link to="/wellness" className="card hub-link" style={{ marginTop: 12 }}>

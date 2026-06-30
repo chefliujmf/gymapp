@@ -302,6 +302,7 @@ app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
   const pc = await icuGet(req.user, `/athlete/${ath}/pace-curves?type=Run`)
   const est = pc ? runThresholdFromPaceCurve(pc) : null
   if (!est) return res.json({ available: false })
+  if (est.thresholdPace > 0) { req.user.runPaceEst = Math.round(est.thresholdPace); save(store) } // #236 stash computed pace for the coach
   res.json({ available: true, ...est, source: 'critical speed (your recent runs)' })
 })
 
@@ -476,13 +477,14 @@ app.get('/auth/readiness', auth, async (req, res) => {
   if (!data) return res.json({ connected: false })
   const rows = (Array.isArray(data) ? data : []).map((d) => ({
     date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
-    restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null,
+    restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, eftp: d.eftp ?? d.icu_eftp ?? null,
     sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null,
   }))
   const today = rows.find((r) => r.date === date) || rows[rows.length - 1] || {}
   const history = rows.filter((r) => r.date < date)
-  // #236: stash the latest resting HR so the coach's computed VO₂max (HR-ratio) matches the app.
+  // #236: stash the latest resting HR + eFTP so the coach's computed VO₂max/FTP match the app.
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { req.user.restingHR = rows[i].restingHR; break }
+  for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { req.user.eftp = Math.round(rows[i].eftp); break }
   const sleepNeed = Number(req.user.sleepNeed) > 0 ? Number(req.user.sleepNeed) : 8
   // #207 Phase 2b: pass PAST check-ins (before this date) so the model calibrates to the athlete's
   // own overrides — but never the day being viewed (it'd compare a score against itself).
@@ -698,7 +700,9 @@ function buildSystemPrompt(user) {
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
   // #207 Phase 2: the athlete's own benchmarks — so the coach judges intensity FOR THEM.
   const stats = []
-  if (user.ftp) stats.push(`cycling FTP ${user.ftp} W`)
+  // #236: FTP resolves by statPrefs.ftp — computed → eFTP (estimated), else the set/synced FTP.
+  if (user.statPrefs?.ftp === 'computed' && user.eftp) stats.push(`cycling FTP ~${user.eftp} W (eFTP, estimated)`)
+  else if (user.ftp) stats.push(`cycling FTP ${user.ftp} W`)
   if (user.maxHR) stats.push(`max HR ${user.maxHR} bpm`)
   // #236: VO₂max resolves by the athlete's MANUAL-vs-COMPUTED preference (statPrefs.vo2max). Computed =
   // the submax estimate (HR-ratio / VDOT / power÷weight, matches the app); default = manual if set.
@@ -707,8 +711,10 @@ function buildSystemPrompt(user) {
   if (vo2pref === 'computed' && vo2est) stats.push(`VO2max ~${vo2est.value} (est. from ${vo2est.source})`)
   else if (user.vo2max) stats.push(`VO2max ${user.vo2max}`)
   else if (vo2est) stats.push(`VO2max ~${vo2est.value} (est. from ${vo2est.source})`)
-  const tp = user.sportSettings?.running?.thresholdPace // sec/km
-  if (tp > 0) { const m = Math.floor(tp / 60), s = String(Math.round(tp % 60)).padStart(2, '0'); stats.push(`running threshold pace ${m}:${s}/km${user.runVdot ? ` (VDOT ${user.runVdot})` : ''}`) }
+  // #236: threshold pace resolves by statPrefs.thresholdPace — computed → the #215 estimate, else the set value.
+  const tpComputed = user.statPrefs?.thresholdPace === 'computed' && user.runPaceEst > 0
+  const tp = tpComputed ? user.runPaceEst : user.sportSettings?.running?.thresholdPace // sec/km
+  if (tp > 0) { const m = Math.floor(tp / 60), s = String(Math.round(tp % 60)).padStart(2, '0'); stats.push(`running threshold pace ${m}:${s}/km${tpComputed ? ' (estimated)' : user.runVdot ? ` (VDOT ${user.runVdot})` : ''}`) }
   const rhr = user.sportSettings?.running?.maxHr
   if (rhr && rhr !== user.maxHR) stats.push(`running max HR ${rhr} bpm`)
   if (user.sleepNeed) stats.push(`sleep need ~${user.sleepNeed} h`)
