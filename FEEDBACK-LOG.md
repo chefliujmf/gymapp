@@ -271,11 +271,19 @@ test guide → the **🧪 Test guide** section below.
     Energy / Sleep / **Freshness** on a 1–5 face scale (💀😩😐😀🤩), Sleep AUTO-prefills from intervals wellness
     (`sleepTo5`, shown "· from tracker", editable), HRV/RestHR/sleep wellness chips. Scale already matches the readiness
     model (1–5). REMAINING work is the auto-DERIVE of Energy + Freshness → that's #195/#158 below, not a separate item.
-198. ⬜ **Sports as show/hide MODULES (cycling/running/strength/yoga/pilates/meditation).** JM (2026-06-27): each
+198. 🧪 **Sports as show/hide MODULES (cycling/running/strength/yoga/pilates/meditation).** JM (2026-06-27): each
     discipline is a "module"; make it trivial for the app to show/hide everything tied to one (nav hubs, Today
     suggestions, Stats cards, coach gating, Add sheet). Today it keys off `user.sports`; audit that EVERY surface
     reads one central helper (e.g. `hasModule(sport)`) so adding/removing a module flips all UI consistently. No
     half-gated surfaces. Keep CONTENT adaptive, structure stable (memory `platyplus`/nav IA). gymapp-only.
+    **🧪 BUILT 2026-06-30:** new central **`src/modules.ts`** — `MODULES`, `userModules(sports)` (triathlon→cycling+
+    running, yoga/pilates/meditation→`mind`, cycling/running→`endurance`), and `hasModule(sports, m, {emptyShowsAll})`
+    (no selection yet = shown, so the app isn't empty for a new user; `emptyShowsAll:false` for "is this MINE"). Refactored
+    the surfaces that each rolled their own logic onto it: **TrainHub** ordering, **statsGroups** (Stats cards), **Fitness**
+    (endurance/cycling sections) — killed the duplicated `ENDUR`/`ENDURANCE` consts. **AddSheet** now hides the Ride/Run/
+    Gym tabs you don't do (meal/mind/recovery/supplement/note stay universal). NOT changed: the **coach** (server JS, can't
+    import the TS helper; keeps its own sport gating + profile-text fallback — fine) and the **mind** tab is left universal
+    (open Q if JM wants it gated too). 8 new tests; existing statsGroups test still green; 160 total, tsc+build clean. gymapp-only.
 197. 🔨 **Friday shows "2 completed workouts" incl. a phantom "Ride to Skov" (prod).** JM (2026-06-27) did ONE ride
     (not Ride to Skov). VERIFIED server+intervals CLEAN for 06-26: 1 plan + 1 activity + 1 event, all "Friday
     Endurance Ride"; **0 logs**; no "Ride to Skov" anywhere. ⇒ phantom was a **stale local `db.logs` entry**.
@@ -783,6 +791,10 @@ verifies **one at a time**; only JM marks ✅.
 **How to run the automated net:** `npm test` (unit, `src/*.test.ts`) · `npm run test:smoke` (API
 integration, `scripts/smoke-test.mjs`). Status: ❌ broken · 🔧 fixing · 🧪 fixed + test, awaiting JM ·
 ✅ JM-verified.
+
+### R198 · #198 — sports as show/hide modules (one central helper) 🧪
+**Unit tests:** `src/modules.test.ts` (userModules umbrellas: triathlon→cycling+running, yoga/pilates/meditation→mind; hasModule empty-default) + existing `src/stats-hub.test.ts` still green (behavior preserved). `npm test` (160).
+**JM manual (QA):** Profile → toggle a sport on/off → it should flip consistently: the **Train hub** ordering, the **Stats** per-sport cards, the **Fitness** sections, and the **Add sheet** sport tabs (Ride/Run/Gym appear/disappear; meal/mind/recovery/supplement/note always there). New user (no sports) sees everything (not an empty app).
 
 ### R206 · #206 — morning readiness refresh + coach stick-or-adjust 🧪
 **No pure unit (UI focus-listener + a live coach side-effect).** Frontend + server change only.

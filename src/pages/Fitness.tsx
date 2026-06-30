@@ -4,8 +4,8 @@ import { localISO } from '../date'
 import { fetchWellness, fetchPowerCurve, type IcuWellness, type PowerCurve } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
 import { TrendChart, BarChart, PowerCurveChart, InfoDot, ChartModal, bestAt, type Series } from '../charts'
+import { hasModule } from '../modules'
 
-const ENDURANCE = ['cycling', 'running', 'triathlon']
 const RANGES: [string, number][] = [['6 wk', 42], ['3 mo', 90], ['6 mo', 180], ['1 yr', 365]]
 const last = (a: (number | null)[]) => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i] as number; return null }
 const fmt = (v: number | null, unit = '') => (v == null ? '—' : `${Math.round(v * 10) / 10}${unit}`)
@@ -67,8 +67,8 @@ export default function Fitness() {
   const [pc, setPc] = useState<PowerCurve | null>(null)
   const [modal, setModal] = useState<{ title: string; node: ReactNode } | null>(null)
   const sports = user?.sports || []
-  const isEndurance = !sports.length || sports.some((sp) => ENDURANCE.includes(sp))
-  const isCycling = !sports.length || sports.some((sp) => ['cycling', 'triathlon'].includes(sp))
+  const isEndurance = hasModule(sports, 'endurance') // #198 central helper (empty = show all)
+  const isCycling = hasModule(sports, 'cycling')
   const applyPreset = (d: number) => { setPreset(d); setFrom(localISO(new Date(Date.now() - d * 86400000))); setTo(localISO()) }
 
   useEffect(() => {
