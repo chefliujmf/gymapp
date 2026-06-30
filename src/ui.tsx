@@ -5,7 +5,7 @@ import { Dumbbell, Flame, Activity, Flower2, StretchHorizontal, Swords, Brain, M
 import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind, EnduranceWorkout } from './types'
 import { isIndoorActivity, type IcuActivity } from './intervals'
 import { localISO } from './date'
-import { zoneColor, zoneName, segPower } from './zones'
+import { zoneColor, zoneName } from './zones'
 export { zoneColor, zoneName } // one source of truth (#72) — re-export for other modules
 
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -219,12 +219,14 @@ export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: 
   const [sel, setSel] = useState<number | null>(null)
   if (!segs.length) return null
   const total = segs.reduce((s, i) => s + i.duration, 0) || 1
-  const maxP = Math.max(120, ...segs.flatMap((s) => [s.powerStart, s.powerEnd]))
+  // No inferred ramps (JM 2026-06-29): mirror intervals literally — each step is a FLAT block
+  // at its target %FTP (steady = its value; a {start,end} step → the mean target, NOT the peak).
+  // Ramp shape will come only when the coach explicitly defines it.
+  const p = (s: { powerStart: number; powerEnd: number }) => Math.round((s.powerStart + s.powerEnd) / 2)
+  const maxP = Math.max(120, ...segs.map(p))
   const totalMin = total / 60
-  // watts (or %) — a RANGE for a ramp, a single value for a steady block, like intervals.
   const w = (pct: number) => (ftp ? Math.round((pct / 100) * ftp) : pct)
   const unit = ftp ? ' W' : '%'
-  const range = (a: number, b: number) => { const lo = Math.min(a, b), hi = Math.max(a, b); return lo === hi ? `${w(hi)}${unit}` : `${w(lo)}–${w(hi)}${unit}` }
   const fmt = (sec: number) => { const m = Math.floor(sec / 60); const s = Math.round(sec % 60); return s ? `${m}:${String(s).padStart(2, '0')}` : `${m} min` }
   const step = totalMin <= 20 ? 5 : totalMin <= 75 ? 15 : 30
   const ticks: number[] = []
@@ -241,26 +243,24 @@ export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: 
         <svg viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
           <line x1={0} y1={y(100)} x2={W} y2={y(100)} stroke="rgba(255,255,255,.22)" strokeDasharray="6 4" />
           {segs.map((s, idx) => {
-            const x0 = x(starts[idx]), x1 = x(starts[idx] + s.duration)
-            const c = zoneColor(Math.max(s.powerStart, s.powerEnd))
+            const x0 = x(starts[idx]), x1 = x(starts[idx] + s.duration), yp = y(p(s))
+            const c = zoneColor(p(s))
             return (
-              <polygon key={idx} points={`${x0},${height} ${x0},${y(s.powerStart)} ${x1},${y(s.powerEnd)} ${x1},${height}`}
+              <polygon key={idx} points={`${x0},${height} ${x0},${yp} ${x1},${yp} ${x1},${height}`}
                 fill={c} fillOpacity={sel === idx ? 0.95 : 0.7} stroke={c} strokeWidth={sel === idx ? 2 : 1} strokeLinejoin="round" style={{ cursor: 'pointer' }}
                 onClick={() => setSel(sel === idx ? null : idx)} />
             )
           })}
         </svg>
         <span style={{ position: 'absolute', right: 2, top: `${(1 - 100 / maxP) * 100}%`, transform: 'translateY(-100%)', fontSize: 9, color: 'rgba(255,255,255,.45)' }}>FTP{ftp ? ` ${ftp}W` : ''}</span>
-        {/* watt-range labels at each segment's peak, when it changes from the previous block */}
+        {/* target label at each block, when it changes from the previous one */}
         {segs.map((s, idx) => {
-          const peak = Math.max(s.powerStart, s.powerEnd)
+          const v = p(s)
           const prev = segs[idx - 1]
-          // label a block when its target differs from the previous one (so the steady main
-          // set gets its own watts even when it shares the warm-up's peak)
-          const changed = idx === 0 || !(prev && prev.powerStart === s.powerStart && prev.powerEnd === s.powerEnd)
+          const changed = idx === 0 || !(prev && p(prev) === v)
           if (!changed || (s.duration / total) < 0.06) return null
           const midPct = ((starts[idx] + s.duration / 2) / total) * 100
-          return <span key={idx} className="profile-lbl" style={{ position: 'absolute', left: `${midPct}%`, top: `${(1 - peak / maxP) * 100}%`, transform: 'translate(-50%,-115%)' }}>{range(s.powerStart, s.powerEnd)}</span>
+          return <span key={idx} className="profile-lbl" style={{ position: 'absolute', left: `${midPct}%`, top: `${(1 - v / maxP) * 100}%`, transform: 'translate(-50%,-115%)' }}>{w(v)}{unit}</span>
         })}
       </div>
       <div style={{ position: 'relative', height: 13, marginTop: 3 }}>
@@ -270,7 +270,7 @@ export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: 
       </div>
       {selSeg ? (
         <p className="meta" style={{ whiteSpace: 'normal', marginTop: 6 }}>
-          <b>{fmt(starts[sel!])}–{fmt(starts[sel!] + selSeg.duration)}</b> · {fmt(selSeg.duration)} · {range(selSeg.powerStart, selSeg.powerEnd)}{ftp ? ` · ${Math.min(selSeg.powerStart, selSeg.powerEnd)}–${Math.max(selSeg.powerStart, selSeg.powerEnd)}% FTP` : ''} · {zoneName(Math.max(selSeg.powerStart, selSeg.powerEnd))}
+          <b>{fmt(starts[sel!])}–{fmt(starts[sel!] + selSeg.duration)}</b> · {fmt(selSeg.duration)} · {w(p(selSeg))}{unit}{ftp ? ` · ${p(selSeg)}% FTP` : ''} · {zoneName(p(selSeg))}
         </p>
       ) : (
         <p className="meta" style={{ marginTop: 6 }}>Tap a block for its target & timing.</p>
@@ -314,24 +314,20 @@ export function DoneStats({ a }: { a: IcuActivity }) {
 // Open an external link from inside a clickable card without triggering the card.
 function openExt(e: ReactMouseEvent, url: string) { e.preventDefault(); e.stopPropagation(); window.open(url, '_blank', 'noopener,noreferrer') }
 
-/** Tiny non-interactive workout profile for card thumbnails — true shape (ramps slope),
- *  zone-coloured, so the thumbnail matches the detail chart + intervals (#217 follow-up). */
+/** Tiny non-interactive workout profile for card thumbnails — FLAT blocks per step (no inferred
+ *  ramps, JM 2026-06-29), zone-coloured, mirrors the detail chart. Flex bars (not an <svg>) so it
+ *  fills the .thumb box — an <svg> here was capped to 30px by `.thumb svg` and rendered tiny. */
 export function MiniProfile({ segs }: { segs: { duration: number; powerStart: number; powerEnd: number }[] }) {
   if (!segs?.length) return null
   const total = segs.reduce((s, x) => s + x.duration, 0) || 1
-  const maxP = Math.max(100, ...segs.flatMap((s) => [s.powerStart, s.powerEnd]))
-  const H = 40, W = 100
-  let acc = 0
-  const starts = segs.map((s) => { const st = acc; acc += s.duration; return st })
-  const x = (t: number) => (t / total) * W
-  const y = (pct: number) => H - Math.max(0.14, pct / maxP) * H
+  const p = (s: { powerStart: number; powerEnd: number }) => Math.round((s.powerStart + s.powerEnd) / 2)
+  const maxP = Math.max(100, ...segs.map(p))
   return (
-    <svg className="thumb-profile" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-      {segs.map((s, i) => {
-        const x0 = x(starts[i]), x1 = x(starts[i] + s.duration), c = zoneColor(segPower(s))
-        return <polygon key={i} points={`${x0},${H} ${x0},${y(s.powerStart)} ${x1},${y(s.powerEnd)} ${x1},${H}`} fill={c} fillOpacity={0.85} />
-      })}
-    </svg>
+    <div className="thumb-profile">
+      {segs.map((s, i) => (
+        <div key={i} style={{ flexGrow: s.duration / total, flexBasis: 0, height: `${Math.max(14, (p(s) / maxP) * 100)}%`, background: zoneColor(p(s)), borderRadius: '2px 2px 0 0', opacity: 0.9 }} />
+      ))}
+    </div>
   )
 }
 

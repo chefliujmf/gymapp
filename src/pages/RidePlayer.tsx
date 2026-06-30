@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getCurrentRide, wattsAt } from '../ride'
+import { getCurrentRide, wattsAt, segPct } from '../ride'
 import { zoneColor, sportIcon } from '../ui'
 import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { logWorkout } from '../db'
@@ -144,9 +144,9 @@ export default function RidePlayer() {
   )
 
   const firstW = wattsAt(segs[0], 0, ftp)
-  // True power profile (#219): each segment follows its real start→end (ramps slope), not a
-  // flat bar at the peak — matches the plan chart + intervals. Keeps the per-segment highlight.
-  const rpMaxP = Math.max(150, ...segs.flatMap((s) => [s.powerStart, s.powerEnd]))
+  // FLAT blocks per segment (no inferred ramp, JM 2026-06-29) — mirrors the plan chart. Keeps
+  // the per-segment highlight + cursor.
+  const rpMaxP = Math.max(150, ...segs.map(segPct))
   let rpAcc = 0
   const rpStarts = segs.map((s) => { const st = rpAcc; rpAcc += s.duration; return st })
   const rpX = (t: number) => (t / total) * 1000
@@ -155,9 +155,9 @@ export default function RidePlayer() {
     <div className="rp-profile" style={{ position: 'relative' }}>
       <svg viewBox="0 0 1000 100" preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }}>
         {segs.map((s, i) => {
-          const x0 = rpX(rpStarts[i]), x1 = rpX(rpStarts[i] + s.duration), c = zoneColor(Math.max(s.powerStart, s.powerEnd))
+          const x0 = rpX(rpStarts[i]), x1 = rpX(rpStarts[i] + s.duration), yp = rpY(segPct(s)), c = zoneColor(segPct(s))
           const op = phase === 'ride' ? (i === idx ? 1 : i < idx ? 0.3 : 0.62) : 0.8
-          return <polygon key={i} points={`${x0},100 ${x0},${rpY(s.powerStart)} ${x1},${rpY(s.powerEnd)} ${x1},100`}
+          return <polygon key={i} points={`${x0},100 ${x0},${yp} ${x1},${yp} ${x1},100`}
             fill={c} fillOpacity={op} stroke={phase === 'ride' && i === idx ? '#fff' : 'none'} strokeWidth={phase === 'ride' && i === idx ? 2 : 0} />
         })}
       </svg>
@@ -232,7 +232,7 @@ export default function RidePlayer() {
   // ---- RIDE ----
   const rawWatts = wattsAt(cur, elapsedInSeg, ftp)
   const target = Math.round(rawWatts * bias)        // biased target (#105)
-  const pctNow = Math.round((cur.powerStart + (cur.powerEnd - cur.powerStart) * (cur.duration ? Math.min(1, elapsedInSeg / cur.duration) : 0)) * bias)
+  const pctNow = Math.round(segPct(cur) * bias) // flat target (no ramp)
   const next = segs[idx + 1]
   const hasLive = trState !== 'idle' && live.power != null
   const delta = hasLive ? (live.power as number) - target : undefined
@@ -269,7 +269,7 @@ export default function RidePlayer() {
           <div className="rp-live">
             {trState !== 'idle' && <div className="rp-stat"><b>{live.cadence != null ? Math.round(live.cadence) : '–'}</b><small>rpm</small></div>}
             {hrState === 'on' && <div className="rp-stat"><b style={{ color: '#ff6b6b' }}>{hr || '–'}</b><small>bpm</small></div>}
-            <div className="rp-stat"><b>{cur.powerStart === cur.powerEnd ? `Z${zoneOf(pctNow)}` : 'ramp'}</b><small>zone</small></div>
+            <div className="rp-stat"><b>Z{zoneOf(pctNow)}</b><small>zone</small></div>
           </div>
         )}
 

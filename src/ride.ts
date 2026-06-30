@@ -39,11 +39,13 @@ export function segmentsFromEndurance(w: EnduranceWorkout): Segment[] {
   return out
 }
 
-/** Watts target at a point within a segment (linear ramp), given FTP. */
-export function wattsAt(seg: Segment, elapsedSec: number, ftp: number): number {
-  const t = seg.duration ? Math.min(1, Math.max(0, elapsedSec / seg.duration)) : 0
-  const pct = seg.powerStart + (seg.powerEnd - seg.powerStart) * t
-  return Math.round((pct / 100) * ftp)
+/** Flat %FTP target for a segment — the mean of its {start,end} (NO inferred ramp, JM 2026-06-29:
+ *  "mirror intervals, no ramp for now"). Coach-defined ramps can reinstate the slope later. */
+export const segPct = (seg: { powerStart: number; powerEnd: number }) => Math.round((seg.powerStart + seg.powerEnd) / 2)
+
+/** Watts target within a segment, given FTP. Flat (no ramp): holds the segment's mean target. */
+export function wattsAt(seg: Segment, _elapsedSec: number, ftp: number): number {
+  return Math.round((segPct(seg) / 100) * ftp)
 }
 
 // Mobile-first (#109/#139): a guided ride/run only starts on a touch device — OR on a
