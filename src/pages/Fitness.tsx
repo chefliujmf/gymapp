@@ -125,7 +125,7 @@ export default function Fitness() {
                 <p className="fit-insight">{formInsight(last(s.form))}</p>
               </div>
 
-              <div className="fit-grid">
+              <div className="fit-grid fit-grid--one">
                 <MiniCard title="Training load / day" value={last(s.load)} hint="How hard each day was (TSS — duration × intensity). Taller bar = harder day." bars={s.load} color="#9b6bff" />
               </div>
               {/* sleep/HRV/resting-HR/weight moved to their own page (#194a) */}

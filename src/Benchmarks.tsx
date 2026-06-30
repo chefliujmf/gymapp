@@ -65,6 +65,7 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
         <Cell label="Weight" unit="kg" tag={connected ? { text: 'intervals', kind: 'icu' } : undefined} value={weight} fmt={String} readOnly />
         <Cell label="Sleep need" unit="h" tag={{ text: user?.sleepNeed ? 'you' : 'default', kind: 'you' }} value={user?.sleepNeed ?? 8} fmt={String} parse={(s) => { const n = Number(s); return Number.isFinite(n) && n > 0 ? clamp(n, 4, 12) : null }} onSave={(v) => saveProfile({ sleepNeed: v })} />
       </div>
+      <p className="bm-note">{user?.vo2max ? 'VO₂max is your value.' : 'VO₂max is a conservative estimate from cycling power ÷ weight (or running VDOT) — tap it to enter your watch\'s figure (Coros/Garmin read higher).'} FTP is your set threshold; the estimated eFTP trend is on the <Link to="/cycling-stats">Cycling</Link> page.</p>
       {showTrendsLink && <Link to="/stats" className="bm-trends">See trends &amp; race predictions in Stats ›</Link>}
     </div>
   )

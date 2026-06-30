@@ -85,8 +85,10 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   // ⓘ text: the per-day WHY (today's actual inputs) on top, then the scale. Falls back to a
   // clear "no data yet" note so the ⓘ is never just a definition.
   const disp = (r: typeof rows[number]) => { const v = ci?.[r.key]; return v == null ? null : (r.invert ? 6 - v : v) }
-  // What the data computed, in DISPLAY terms (freshness flips), to compare against the user's input.
-  const autoDisp = (r: typeof rows[number]) => (calc[r.key] != null ? (r.invert ? 6 - (calc[r.key] as number) : (calc[r.key] as number)) : null)
+  // The auto value RECORDED when this check-in was shown (display terms; #207 Phase 2b stores ci.auto
+  // as {energy,sleep,freshness}). Compare against THIS, not the live recompute — otherwise a later
+  // drift in the model (calibration / recalibration / new wellness data) falsely reads as "edited".
+  const autoDisp = (r: typeof rows[number]) => { const a = ci?.auto; if (!a) return null; const v = r.key === 'soreness' ? a.freshness : a[r.key]; return v ?? null }
   const overridden = (r: typeof rows[number]) => { const a = autoDisp(r), s = disp(r); return a != null && s != null && a !== s }
   // #207 Phase 2b: the learned personal-calibration offset for this row (Freshness lives on 'soreness').
   const calOff = (r: typeof rows[number]) => rdy?.calibration?.[r.key === 'soreness' ? 'freshness' : r.key] ?? 0
@@ -99,8 +101,8 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
     const tuned = off ? `\n\nTuned to you: nudged ${off > 0 ? '+' : ''}${off} because you've consistently rated this ${off > 0 ? 'higher' : 'lower'} than the model.` : ''
     return `${head}${delta}${tuned}\n\n${r.scale}.`
   }
-  // Show "· auto" only while the shown value still equals the data-derived value (untouched).
-  const isAuto = (r: typeof rows[number]) => !touched.has(r.key) && calc[r.key] != null && ci?.[r.key] === calc[r.key]
+  // "· auto" while the shown value still equals the auto value RECORDED when filled (untouched).
+  const isAuto = (r: typeof rows[number]) => !touched.has(r.key) && autoDisp(r) != null && disp(r) === autoDisp(r)
   // Collapse to a one-line summary ONCE all 3 are logged (collapse-after-done is fine —
   // it's collapse-before-filling that gets skipped). Tap Edit to change; History → Logs.
   const verdict = readinessVerdict(ci)
