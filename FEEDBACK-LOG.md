@@ -22,15 +22,16 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-234. ⬜ **VO₂max: measure it, tag confidence, learn + re-validate over time (guided field test).** JM 2026-06-30: "we
-    need to learn and see if this number is right over time — I'm willing to make a test to know for sure if we can't be
-    confident." Don't trust a typed value forever. BUILD: (1) **source + date + confidence** on VO₂max — field-test=high
-    (anchor), device=medium, cycling-W/kg estimate=low; (2) **keep estimating** from training (eFTP/VDOT) between tests +
-    **flag a re-test** when the estimate drifts from the last test or it's stale (>~3–4 mo); (3) a **guided in-app field
-    test** to anchor it accurately — options: **Cooper 12-min run** (VO₂max=(m−504.9)/44.73, uses GPS distance), **20m
-    beep/Léger shuttle** (app plays audio cadence → enter level → VO₂max; matches JM's actual test), or **cycling ramp**
-    (→eFTP→VO₂max). Trend the measured values. Pairs #231 (VO₂max) + #207 (learn) + #215 (estimate from efforts).
-    Mock the test flow first. gymapp-only.
+234. ⬜ **VO₂max: SUBMAXIMAL/passive estimate (no max effort) + confidence + learn over time.** JM 2026-06-30: "we need
+    to learn + see if this number is right over time… any way to measure WITHOUT max efforts?" Re-anchored on JM's reply:
+    the primary method is **submaximal**, the way Coros/Garmin do it — no test required. BUILD:
+    (1) **Submaximal estimate** — **HR-ratio** `VO₂max ≈ 15.3 × HRmax/HRrest` (JM: 185/~55 ≈ 51–52, matches his Léger),
+    refined per-run by extrapolating steady-run **HR↔pace** toward HRmax (run) / HR↔power (bike). Uses data already in
+    intervals (max HR, resting HR from wellness, steady efforts). Replaces the conservative Coggan W/kg as the default.
+    (2) **Source + date + confidence** — submax estimate = medium (the new default), a real field test = high (overrides),
+    cycling-W/kg = low fallback. (3) **Learn/drift** (JM confirmed) — estimate tracks training; if a one-off test exists it
+    anchors; nudge a re-check only if the estimate drifts or it's stale. (4) Max field test (Cooper/Léger/ramp) stays
+    OPTIONAL. Pure `vo2max-submax.ts` + tests. Pairs #231 / #207 / #215. gymapp-only.
 233. ⬜ **Notifications: coach updates (what changed) + new activity arrived.** JM 2026-06-30: "would be cool to know
     when the coach has updates and WHAT; and when a new activity is in there." Build two notification types: (1) **coach
     update** — when the coach adjusts the plan / posts a review, notify with a one-line "what changed" (the coach already
