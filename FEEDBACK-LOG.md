@@ -32,6 +32,11 @@ test guide → the **🧪 Test guide** section below.
     cycling-W/kg = low fallback. (3) **Learn/drift** (JM confirmed) — estimate tracks training; if a one-off test exists it
     anchors; nudge a re-check only if the estimate drifts or it's stale. (4) Max field test (Cooper/Léger/ramp) stays
     OPTIONAL. Pure `vo2max-submax.ts` + tests. Pairs #231 / #207 / #215. gymapp-only.
+    **PER-SPORT (JM 2026-06-30 "this for per sports?"):** VO₂max is one engine but reads differently by sport (running >
+    cycling typically) — like Garmin/Coros's separate running vs cycling VO₂max. So: **Running VO₂max** (=VDOT, HR↔pace)
+    on the Running page (JM ≈52), **Cycling VO₂max** (HR↔power/eFTP) on the Cycling page; HR-ratio is the sport-agnostic
+    fallback anchor; the **global benchmark snapshot shows the headline** (best/primary sport) tagged with sport +
+    confidence. Per-sport estimates + a global headline.
 233. ⬜ **Notifications: coach updates (what changed) + new activity arrived.** JM 2026-06-30: "would be cool to know
     when the coach has updates and WHAT; and when a new activity is in there." Build two notification types: (1) **coach
     update** — when the coach adjusts the plan / posts a review, notify with a one-line "what changed" (the coach already
