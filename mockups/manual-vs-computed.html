@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Platyplus · #236 manual vs computed</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--blue:#5ec8ff;--purple:#b98cff;--amber:#f0b145;--line:#2b303b;--bg:#0f1216;--card:linear-gradient(180deg,#21252f,#191c24);}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;justify-content:center;padding:16px 12px 60px}
+  .phone{width:100%;max-width:430px}
+  .tabs{display:flex;gap:6px;margin-bottom:12px;background:#161a21;border:1px solid var(--line);border-radius:999px;padding:4px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--text-dim);font-weight:700;font-size:11.5px;padding:9px 4px;border-radius:999px;cursor:pointer}
+  .tabs button.on{background:var(--accent);color:#06281a}
+  .desc{font-size:12px;color:var(--text-dim);margin:0 2px 12px;line-height:1.45}.desc b{color:var(--text)}
+  .seclbl{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--text-dim);margin:14px 2px 8px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:12px}
+  .card__h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.card__h h3{margin:0;font-size:14px}
+  .sync-pill{font-size:10px;font-weight:700;color:var(--accent);border:1px solid rgba(52,224,125,.4);border-radius:999px;padding:2px 8px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .cell{background:#14181f;border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+  .cell__l{font-size:9.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--text-dim)}
+  .cell__v{font-size:21px;font-weight:800;margin-top:2px}.cell__v small{font-size:11px;color:var(--text-dim);font-weight:600;margin-left:2px}
+  .cell__alt{font-size:10.5px;color:var(--text-dim);margin-top:2px}
+  .src{font-size:8px;font-weight:800;border-radius:999px;padding:1px 6px;border:1px solid;margin-left:5px}
+  .src--man{color:var(--purple);border-color:rgba(185,140,255,.45)}
+  .src--comp{color:var(--blue);border-color:rgba(94,200,255,.45)}
+  /* inline segmented (A) */
+  .seg{display:flex;margin-top:7px;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .seg button{flex:1;border:0;background:#0f1216;color:var(--text-dim);font-size:9.5px;font-weight:800;padding:4px 2px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#06281a}
+  /* settings list */
+  .srow{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+  .srow:first-child{border-top:0}
+  .srow .nm{flex:1;font-size:13px;font-weight:700}
+  .srow .vals{font-size:10.5px;color:var(--text-dim);font-weight:600}
+  .seg3{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+  .seg3 button{border:0;background:#0f1216;color:var(--text-dim);font-size:10px;font-weight:800;padding:6px 9px;cursor:pointer}
+  .seg3 button.on{background:var(--accent);color:#06281a}
+  .note{font-size:11px;color:var(--text-dim);margin:8px 2px 0;line-height:1.4}
+</style></head>
+<body><div class="phone">
+  <div class="tabs">
+    <button class="on" onclick="show('csheet',this)">C · tap → sheet</button>
+    <button onclick="show('b',this)">B · Settings</button>
+    <button onclick="show('a',this)">A · inline</button>
+  </div>
+  <div id="desc" class="desc"></div>
+
+  <div id="sheet" style="display:none">
+    <div class="seclbl">Tap "VO₂max" → this sheet opens</div>
+    <div class="card">
+      <div class="card__h"><h3>🫁 VO₂max</h3><span class="sync-pill" style="color:var(--text-dim);border-color:var(--line)">ml/kg/min</span></div>
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <div class="cell" style="flex:1;text-align:center"><div class="cell__l">Computed</div><div class="cell__v" style="color:var(--blue)">50.5</div><div class="cell__alt">from max & resting HR · live</div></div>
+        <div class="cell" style="flex:1;text-align:center"><div class="cell__l">Manual</div><div class="cell__v" style="color:var(--purple)">52</div><div class="cell__alt">your Léger test</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);font-weight:700;margin:2px 0 5px">Set your value</div>
+      <input value="52" style="width:100%;background:#0f1216;border:1px solid var(--accent);border-radius:8px;color:#eef1f4;font-size:18px;font-weight:800;padding:7px 10px;margin-bottom:10px"/>
+      <div style="font-size:11px;color:var(--text-dim);font-weight:700;margin-bottom:5px">Use which?</div>
+      <div class="seg3" style="display:flex;width:100%"><button style="flex:1" class="on">Manual</button><button style="flex:1">Computed</button><button style="flex:1">Auto</button></div>
+      <p class="note">One tap from the tile — see both, edit your number, pick which drives. No Settings trip, no grid clutter.</p>
+    </div>
+  </div>
+
+  <div class="seclbl">Stats · your benchmarks</div>
+  <div class="card"><div class="card__h"><h3>Your benchmarks</h3><span class="sync-pill">⇄ intervals</span></div>
+    <div class="grid" id="grid"></div>
+    <p class="note" id="cardnote"></p>
+  </div>
+
+  <div class="seclbl">Settings · which value to use</div>
+  <div class="card">
+    <div class="srow"><div><div class="nm">VO₂max</div><div class="vals">manual 52 · computed 50.5</div></div><span style="flex:1"></span><div class="seg3"><button>Manual</button><button class="on">Computed</button><button>Auto</button></div></div>
+    <div class="srow"><div><div class="nm">FTP</div><div class="vals">manual 262 · eFTP 255</div></div><span style="flex:1"></span><div class="seg3"><button class="on">Manual</button><button>Computed</button><button>Auto</button></div></div>
+    <div class="srow"><div><div class="nm">Threshold pace</div><div class="vals">manual 4:57 · estimated 4:20</div></div><span style="flex:1"></span><div class="seg3"><button class="on">Manual</button><button>Computed</button><button>Auto</button></div></div>
+    <div class="srow"><div><div class="nm">Max HR</div><div class="vals">manual 185 · computed 188</div></div><span style="flex:1"></span><div class="seg3"><button class="on">Manual</button><button>Computed</button><button>Auto</button></div></div>
+    <p class="note"><b>Manual</b> = your number. <b>Computed</b> = the live estimate (keeps updating). <b>Auto</b> = use computed until you override. This preference drives readiness, the coach & your zones.</p>
+  </div>
+</div>
+<script>
+// stat: [label, inUse, unit, manual, computed, using('man'|'comp')]
+const STATS=[
+ ['VO₂max','','',52,50.5,'comp'],
+ ['FTP','','W',262,255,'man'],
+ ['Pace','','/km','4:57','4:20','man'],
+ ['Max HR','','bpm',185,188,'man'],
+];
+function cellB(s){const [l,,u,man,comp,use]=s;const v=use==='man'?man:comp;const alt=use==='man'?`computed ${comp}`:`manual ${man}`;
+ return `<div class="cell"><div class="cell__l">${l}<span class="src src--${use==='man'?'man':'comp'}">${use==='man'?'manual':'computed'}</span></div><div class="cell__v">${v}${u?`<small>${u}</small>`:''}</div><div class="cell__alt">· ${alt}</div></div>`;}
+function cellA(s){const [l,,u,man,comp,use]=s;const v=use==='man'?man:comp;
+ return `<div class="cell"><div class="cell__l">${l}</div><div class="cell__v">${v}${u?`<small>${u}</small>`:''}</div><div class="cell__alt">man ${man} · comp ${comp}</div><div class="seg"><button class="${use==='man'?'on':''}">Manual</button><button class="${use==='comp'?'on':''}">Computed</button></div></div>`;}
+function cellC(s){const [l,,u,man,comp,use]=s;const v=use==='man'?man:comp;
+ return `<div class="cell"><div class="cell__l">${l} ›</div><div class="cell__v">${v}${u?`<small>${u}</small>`:''}</div><div class="cell__alt">${use==='man'?'manual':'computed'} · tap to switch</div></div>`;}
+const DESC={
+ csheet:'<b>C — tap a tile → an edit sheet (recommended for your concern).</b> The grid stays clean (in-use value only). Tapping a tile opens a sheet showing BOTH values, an input to set your manual number, and the Manual/Computed/Auto choice — all in one tap. No Settings trip, no grid clutter. Settings still keeps a master list.',
+ b:'<b>B — card shows both, switch in Settings.</b> Tiles show in-use + tag + the alternative; preference changes in Settings. Clean, but switching after a manual edit = a Settings trip.',
+ a:'<b>A — inline switch.</b> A Manual|Computed toggle on every tile. No trip, but clutters the grid.',
+};
+const NOTE={csheet:'Grid is clean; tap a tile to edit + choose source (sheet above).',b:'Each tile: in-use + tag + the alternative. Switch in Settings below.',a:'Toggle the source right on each tile.'};
+function show(m,btn){document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+ document.getElementById('desc').innerHTML=DESC[m];document.getElementById('cardnote').textContent=NOTE[m];
+ document.getElementById('sheet').style.display = m==='csheet'?'block':'none';
+ const f={a:cellA,b:cellB,csheet:cellC}[m];document.getElementById('grid').innerHTML=STATS.map(f).join('');}
+const init=(location.hash||'#csheet').slice(1);show(init,document.querySelectorAll('.tabs button')[{csheet:0,b:1,a:2}[init]??0]);
+</script>
+</body></html>

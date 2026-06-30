@@ -33,7 +33,7 @@ test guide → the **🧪 Test guide** section below.
     threshold pace is set slow/stale, so VDOT + zones + predictions are all too easy while HR says he's fitter. SHIPPED a
     ⚠️ flag on the Running page ("pace may be stale, update it"). TODO: reconcile properly — prompt to update pace / use
     the **#215** estimate-from-runs so VDOT/zones/predictions match reality. Pairs #215/#216/#234. gymapp-only.
-236. ⬜ **Benchmarks = MANUAL vs COMPUTED, both shown, preference in Settings (JM's chosen model).** JM 2026-06-30:
+236. 🧪 **Benchmarks = MANUAL vs COMPUTED, both shown, preference in Settings (JM's chosen model).** JM 2026-06-30:
     "I prefer the option to set it manually OR estimated — have BOTH values, and in Settings decide the preference. Same
     for FTP or other data like that. Manual-vs-computed kind of thing." THE MODEL (supersedes the earlier anchor/freeze
     idea, unifies #231): every benchmark holds **both** a `computed` value (engine/intervals estimate) and a `manual`
@@ -46,6 +46,13 @@ test guide → the **🧪 Test guide** section below.
     **locked/read-only** (the live estimate drives). Switch to Manual to edit. Settings keeps a master list (mirror).
     Applies to VO₂max, FTP (set vs eFTP), threshold pace, max HR, etc. Computed keeps updating regardless. Build the
     {computed, manual, prefer:'manual'|'computed'} model + the sheet + Settings list. Pairs #231/#234/#215. gymapp-only.
+    **🧪 BUILT 2026-06-30:** server persists `user.statPrefs` ({vo2max/ftp/thresholdPace/maxHr: manual|computed}, via
+    PUT /auth/profile, in pub()). Rewrote `src/Benchmarks.tsx`: tiles show the in-use value + a manual/computed tag +
+    "tap to switch"; tapping opens a **sheet** with BOTH values, an input **editable only in Manual** (locked on Computed),
+    a Manual|Computed toggle (Computed disabled when no estimate), Done. Computed sources: VO₂max submax, FTP→eFTP (wellness),
+    pace→#215 estimate, maxHr→manual-only for now. Saves manual via saveProfile/saveSportStat + the pref. 179 tests, tsc+
+    build clean. DEFERRED: Profile's own editors unchanged (Stats card is the new manual/computed home); server coach/
+    readiness resolve via `vo2max ?? estimate` still (statPrefs-aware server resolution = follow-on); maxHr computed source.
 235. ⬜ **Readiness learning: confirm sleep learns + a preference to turn auto-adapt ON/OFF.** JM 2026-06-30: "for sleep
     are we learning? would like our engine to learn & adapt it — with a preference to turn on or off." CONFIRM: the
     calibration (#207 Phase 2b) DOES learn sleep + freshness + energy from your overrides (sleep NEED stays manual). ADD:

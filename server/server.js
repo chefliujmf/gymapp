@@ -92,7 +92,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statsSyncedAt: u.statsSyncedAt || 0, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, statsSyncedAt: u.statsSyncedAt || 0, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').toLowerCase(); return store.users.find((u) => u.username.toLowerCase() === l || u.email === l) }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -266,6 +266,11 @@ app.put('/auth/profile', auth, (req, res) => {
   if ('maxHR' in req.body) req.user.maxHR = num(req.body.maxHR, 120, 230)
   if ('ftp' in req.body) req.user.ftp = num(req.body.ftp, 50, 600)
   if ('vo2max' in req.body) req.user.vo2max = num(req.body.vo2max, 20, 95)
+  // #236 — per-stat MANUAL vs COMPUTED preference. { vo2max:'manual'|'computed', ftp:…, thresholdPace:…, maxHr:… }
+  if (req.body.statPrefs && typeof req.body.statPrefs === 'object') {
+    req.user.statPrefs = req.user.statPrefs || {}
+    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed') && /^(vo2max|ftp|thresholdPace|maxHr)$/.test(k)) req.user.statPrefs[k] = v
+  }
   save(store); res.json(pub(req.user))
 })
 

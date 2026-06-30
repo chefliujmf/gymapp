@@ -1190,6 +1190,28 @@ select.search { appearance: none; -webkit-appearance: none; }
 .bm-cell__u { font-size: 10px; color: var(--text-dim); font-weight: 600; margin-left: 2px; }
 .bm-cell__in { width: 100%; background: #0f1216; border: 1px solid var(--accent); border-radius: 6px; color: var(--text); font-size: 16px; font-weight: 800; padding: 2px 6px; margin-top: 2px; }
 .bm-trends { display: block; text-align: right; font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 9px; }
+/* #236 tap-to-switch tile + sheet */
+.bm-cell--tap { width: 100%; text-align: left; cursor: pointer; font: inherit; }
+.bm-cell__alt { font-size: 9.5px; color: var(--text-dim); margin-top: 2px; }
+.bsheet__scrim { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; z-index: 50; }
+.bsheet { width: 100%; max-width: 430px; background: var(--bg-elev, #1c1f28); border: 1px solid var(--line); border-radius: 18px 18px 0 0; padding: 16px 16px 22px; }
+.bsheet__h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.bsheet__h h3 { margin: 0; font-size: 17px; }
+.bsheet__x { background: none; border: 0; color: var(--text-dim); font-size: 16px; cursor: pointer; }
+.bsheet__two { display: flex; gap: 10px; margin-bottom: 12px; }
+.bsheet__opt { flex: 1; text-align: center; background: #14181f; border: 1px solid var(--line); border-radius: 12px; padding: 10px 6px; opacity: .55; }
+.bsheet__opt.on { opacity: 1; border-color: var(--accent); }
+.bsheet__ol { font-size: 10px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; color: var(--text-dim); }
+.bsheet__ov { font-size: 24px; font-weight: 800; margin-top: 2px; }
+.bsheet__os { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.bsheet__lbl { font-size: 11px; font-weight: 700; color: var(--text-dim); margin: 4px 2px 5px; }
+.bsheet__in { width: 100%; background: #0f1216; border: 1px solid var(--accent); border-radius: 9px; color: var(--text); font-size: 19px; font-weight: 800; padding: 9px 11px; }
+.bsheet__in:disabled { border-color: var(--line); color: var(--text-dim); opacity: .7; }
+.bseg { display: flex; width: 100%; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.bseg button { flex: 1; border: 0; background: #0f1216; color: var(--text-dim); font-size: 13px; font-weight: 800; padding: 10px; cursor: pointer; }
+.bseg button.on { background: var(--accent); color: #06281a; }
+.bseg button:disabled { opacity: .4; cursor: default; }
+.bsheet__save { width: 100%; margin-top: 14px; border: 0; border-radius: 999px; padding: 12px; font-weight: 800; font-size: 15px; color: #06281a; background: linear-gradient(90deg,#46e08a,#34c873); cursor: pointer; }
 /* #226 — shared date-range filter (presets prefill the always-visible From/To) */
 .drf { margin-bottom: 12px; }
 .drf .chips { margin-bottom: 8px; }

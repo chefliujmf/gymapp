@@ -39,6 +39,7 @@ export interface User {
   sportSettings?: Partial<Record<'cycling' | 'running' | 'swimming', SportStat>>
   runVdot?: number | null // running VDOT ≈ VO₂max, derived from threshold pace (#209)
   runThresholdPace?: number | null // sec/km
+  statPrefs?: Partial<Record<'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr', 'manual' | 'computed'>> // #236 manual vs computed
   statsSyncedAt?: number // last successful push to intervals
 }
 
