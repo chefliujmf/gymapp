@@ -32,6 +32,6 @@ describe('Stats hub groups (#193)', () => {
     const { global, perSport } = statsGroups(['cycling', 'strength'])
     expect(global.find((s) => s.label === 'History')?.to).toBe('/logs')
     expect(perSport.find((s) => s.label === 'Strength')?.to).toBe('/progress')
-    expect(perSport.find((s) => s.label === 'Cycling')?.to).toBe('/fitness')
+    expect(perSport.find((s) => s.label === 'Cycling')?.to).toBe('/fitness?focus=power')
   })
 })

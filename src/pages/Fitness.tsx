@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { localISO } from '../date'
 import { fetchWellness, fetchPowerCurve, type IcuWellness, type PowerCurve } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
@@ -69,6 +69,13 @@ export default function Fitness() {
   const sports = user?.sports || []
   const isEndurance = hasModule(sports, 'endurance') // #198 central helper (empty = show all)
   const isCycling = hasModule(sports, 'cycling')
+  // #194b — the two Stats cards open FOCUSED views: ?focus=load (Training load & Form) vs
+  // ?focus=power (cycling power/FTP/VO₂max). No param (direct /fitness) = show both.
+  const [sp, setSp] = useSearchParams()
+  const focus = sp.get('focus') === 'power' ? 'power' : sp.get('focus') === 'load' ? 'load' : null
+  const showLoad = focus !== 'power'
+  const showPower = focus !== 'load' && isCycling
+  const setFocus = (f: 'load' | 'power') => setSp(f === 'load' ? {} : { focus: f }, { replace: true })
   const applyPreset = (d: number) => { setPreset(d); setFrom(localISO(new Date(Date.now() - d * 86400000))); setTo(localISO()) }
 
   useEffect(() => {
@@ -97,7 +104,7 @@ export default function Fitness() {
     <div>
       <div className="sub-head">
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
-        <div className="sub-head-t"><h1>Fitness</h1><p>Your form & trends, from intervals.icu</p></div>
+        <div className="sub-head-t"><h1>{focus === 'power' ? 'Power & FTP' : focus === 'load' ? 'Training load & Form' : 'Fitness'}</h1><p>{focus === 'power' ? 'Your cycling power, FTP & VO₂max' : focus === 'load' ? 'Whole-body load & freshness, from intervals.icu' : 'Your form & trends, from intervals.icu'}</p></div>
       </div>
 
       {!isEndurance ? (
@@ -117,9 +124,18 @@ export default function Fitness() {
             </div>
           )}
 
+          {/* #194b focus toggle (only cyclists have a power view to switch to) */}
+          {isCycling && (
+            <div className="chips" style={{ marginBottom: 12 }}>
+              <button className={'chip' + (focus !== 'power' ? ' chip--active' : '')} onClick={() => setFocus('load')}>Training load & Form</button>
+              <button className={'chip' + (focus === 'power' ? ' chip--active' : '')} onClick={() => setFocus('power')}>Power & FTP</button>
+            </div>
+          )}
+
           {rows === null ? <p className="meta">Loading…</p> : !rows.length ? <p className="meta">No fitness data in this range.</p> : (
             <>
               <p className="meta" style={{ margin: '0 2px 10px' }}>Showing your <b>latest</b> value on each card — tap any chart to scrub past days.</p>
+              {showLoad && (<>
               <div className="fit-head">
                 <div className="fit-head__stat"><span>Fitness<InfoDot text="Your built-up fitness — a 6-week rolling average of training load (CTL). Climbs slowly as you train consistently; higher = fitter." /></span><b style={{ color: '#4aa3ff' }}>{fmt(last(s.fitness))}</b></div>
                 <div className="fit-head__stat"><span>Fatigue<InfoDot text="Recent tiredness — your last-7-days training load (ATL). Rises fast after hard days, falls when you rest." /></span><b style={{ color: '#c061ff' }}>{fmt(last(s.fatigue))}</b></div>
@@ -144,15 +160,22 @@ export default function Fitness() {
               </div>
 
               <div className="fit-grid">
-                <MiniCard title="VO₂max (est.)" value={last(s.vo2)} hint="Aerobic engine size (ml/kg/min). Higher = fitter. Estimated from eFTP ÷ weight." series={{ label: '', color: '#34e07d', data: s.vo2, area: true }} />
-                <MiniCard title="eFTP" value={last(s.eftp)} unit=" W" hint="Estimated threshold power — watts you can hold ~1 hour. Higher = stronger." series={{ label: '', color: '#ffb020', data: s.eftp }} />
-                <MiniCard title="Weight" value={last(s.weight)} unit=" kg" hint="Body weight." series={{ label: '', color: '#e8e8ee', data: s.weight }} />
-                <MiniCard title="HRV" value={last(s.hrv)} hint="Heart-rate variability (ms). Above your usual = recovered; a drop = fatigue/stress." series={{ label: '', color: '#ff6b9d', data: s.hrv, area: true }} />
-                <MiniCard title="Resting HR" value={last(s.rhr)} unit=" bpm" hint="Resting heart rate. Lower than usual = recovered; a spike = tired/unwell." series={{ label: '', color: '#ff5d5d', data: s.rhr }} />
-                <MiniCard title="Sleep" value={last(s.sleep)} unit=" h" hint="Hours slept per night." bars={s.sleep} color="#7a8cff" />
                 <MiniCard title="Training load / day" value={last(s.load)} hint="How hard each day was (TSS — duration × intensity). Taller bar = harder day." bars={s.load} color="#9b6bff" />
               </div>
-              {isCycling && pc && (
+              {/* sleep/HRV/resting-HR/weight moved to their own page (#194a) */}
+              <Link to="/wellness" className="card hub-link" style={{ marginTop: 12 }}>
+                <span className="hub-link__ic">❤️</span>
+                <span className="hub-link__t"><h3>Wellness</h3><div className="meta">Sleep · HRV · resting HR · weight trends</div></span>
+                <span className="hub-link__ch">›</span>
+              </Link>
+              </>)}
+
+              {showPower && (<>
+              <div className="fit-grid">
+                <MiniCard title="VO₂max (est.)" value={last(s.vo2)} hint="Aerobic engine size (ml/kg/min). Higher = fitter. Estimated from eFTP ÷ weight." series={{ label: '', color: '#34e07d', data: s.vo2, area: true }} />
+                <MiniCard title="eFTP" value={last(s.eftp)} unit=" W" hint="Estimated threshold power — watts you can hold ~1 hour. Higher = stronger." series={{ label: '', color: '#ffb020', data: s.eftp }} />
+              </div>
+              {pc ? (
                 <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
                   <div className="fit-legend"><span style={{ color: '#34e07d' }}>● Power curve<InfoDot text="The most power (watts) you can hold for each duration — sprints on the left (seconds), endurance on the right (hours). Push a line up = you got stronger at that effort." /></span></div>
                   <PowerCurveChart secs={pc.secs} watts={pc.watts} />
@@ -163,7 +186,8 @@ export default function Fitness() {
                     })}
                   </div>
                 </div>
-              )}
+              ) : <p className="meta" style={{ marginTop: 10 }}>No power-curve data in this range.</p>}
+              </>)}
               <p className="meta" style={{ marginTop: 10 }}>All read live from intervals.icu — Platyplus doesn't store these. The number on each card is your most recent day.</p>
             </>
           )}

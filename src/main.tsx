@@ -62,6 +62,7 @@ import AthleteProfile from './pages/AthleteProfile'
 import Settings from './pages/Settings'
 import Fitness from './pages/Fitness'
 import Wellness from './pages/Wellness'
+import MindStats from './pages/MindStats'
 import Strength from './pages/Strength'
 import Logs from './pages/Logs'
 import LogActivity from './pages/LogActivity'
@@ -121,6 +122,7 @@ const router = createBrowserRouter([
       { path: 'settings', element: <Settings /> },
       { path: 'fitness', element: <Fitness /> },
       { path: 'wellness', element: <Wellness /> },
+      { path: 'mind-stats', element: <MindStats /> },
       { path: 'strength', element: <Strength /> },
       { path: 'logs', element: <Logs /> },
       { path: 'log-activity', element: <LogActivity /> },

@@ -1167,6 +1167,11 @@ select.search { appearance: none; -webkit-appearance: none; }
 .wt__x { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-dim); margin-top: 3px; }
 .wcard__leg { display: flex; gap: 12px; font-size: 10px; color: var(--text-dim); margin-top: 4px; }
 .wcard__leg i { display: inline-block; width: 14px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 4px; }
+/* #194c — Mind stats top row */
+.mind-stat3 { display: flex; gap: 8px; margin-bottom: 6px; }
+.mind-stat3 div { flex: 1; min-width: 0; text-align: center; background: var(--card-grad, linear-gradient(180deg,#21252f,#191c24)); border: 1px solid var(--line); border-radius: 12px; padding: 10px 4px; }
+.mind-stat3 b { display: block; font-size: 20px; font-weight: 800; }
+.mind-stat3 span { font-size: 10px; color: var(--text-dim); }
 .checkin__coach { display: flex; align-items: center; gap: 6px; margin-top: 11px; font-size: 12px; color: var(--text-dim); }
 .checkin__coach b { color: var(--accent); }
 .checkin__coachbtn { margin-left: auto; background: #14181f; border: 1px solid rgba(52,224,125,.3); color: var(--accent); border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 700; text-decoration: none; }

@@ -1,8 +1,10 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { allMindById } from '../data/catalog'
 import { mindIcon } from '../ui'
 import { useNow } from '../hooks'
+import { logWorkout } from '../db'
+import { localISO } from '../date'
 import AddToCalendar from '../AddToCalendar'
 
 function fmt(s: number) {
@@ -23,6 +25,14 @@ export default function MindDetail() {
 
   const left = endsAt ? Math.max(0, Math.round((endsAt - now) / 1000)) : m.duration * 60
   const running = endsAt !== null && left > 0
+  // #194c: log a completed session once it finishes → feeds the Mind stats page (minutes/sessions/streak).
+  const logged = useRef(false)
+  useEffect(() => {
+    if (endsAt !== null && left === 0 && !logged.current && m) {
+      logged.current = true
+      logWorkout({ workoutId: m.id, title: m.title, discipline: 'mind', duration: m.duration, date: localISO() }).catch(() => {})
+    }
+  }, [endsAt, left, m])
 
   return (
     <div>

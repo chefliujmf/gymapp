@@ -47,14 +47,14 @@ export function statsGroups(sports: string[]): { global: Spec[]; perSport: Spec[
   const global: Spec[] = []
   // Training load / Form aggregates whole-body stress (intervals) — global, shown when there's an
   // endurance sport (it's where Form comes from) OR no sports set yet (emptyShowsAll).
-  if (hasModule(sports, 'endurance', { emptyShowsAll: true })) global.push({ key: 'form', label: 'Training load & Form', sub: 'Fitness / Fatigue / Form · readiness', to: '/fitness' })
+  if (hasModule(sports, 'endurance', { emptyShowsAll: true })) global.push({ key: 'form', label: 'Training load & Form', sub: 'Fitness / Fatigue / Form · readiness', to: '/fitness?focus=load' }) // #194b focused view
   global.push({ key: 'wellness', label: 'Wellness', sub: 'Sleep · HRV · resting HR · weight trends', to: '/wellness' }) // #194a
   global.push({ key: 'history', label: 'History', sub: 'All your logged sessions (every sport)', to: '/logs' })
   const perSport: Spec[] = []
-  if (has('cycling')) perSport.push({ key: 'cycling', label: 'Cycling', sub: 'Power curve · FTP · zones · VO₂max', to: '/fitness' })
+  if (has('cycling')) perSport.push({ key: 'cycling', label: 'Cycling', sub: 'Power curve · FTP · zones · VO₂max', to: '/fitness?focus=power' }) // #194b focused view
   if (has('running')) perSport.push({ key: 'running', label: 'Running', sub: 'Pace · distance · trends', to: '/fitness' })
   if (has('strength')) perSport.push({ key: 'strength', label: 'Strength', sub: 'Volume · PRs · est-1RM trends', to: '/progress' })
-  if (has('mind')) perSport.push({ key: 'mind', label: 'Mind', sub: 'Minutes · sessions · streak', to: '/logs' })
+  if (has('mind')) perSport.push({ key: 'mind', label: 'Mind', sub: 'Minutes · sessions · streak', to: '/mind-stats' }) // #194c
   return { global, perSport }
 }
 const STAT_ICON: Record<string, ReactNode> = {

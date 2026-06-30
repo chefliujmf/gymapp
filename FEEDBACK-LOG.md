@@ -321,7 +321,7 @@ test guide → the **🧪 Test guide** section below.
     tag, tap overrides. Supersedes #158 (done). **Still open:** per-user `sleepNeed` setting (now defaults 8h — #159);
     coach signals (Freshness-Energy paradox, poor-sleep-nullifies-gains, HRV-CV) not yet wired into reviews; resp-rate/
     skin-temp illness layer not ingestable from intervals. JM verify: do the numbers match how you feel?
-194. 🔨 **Stats v1 follow-ups (after #193 grouping) — (a) BUILT, (b)/(c) pending.** v1 routes to EXISTING pages, so: (a) WELLNESS card from the
+194. 🧪 **Stats v1 follow-ups (after #193 grouping) — (a)(b)(c) ALL BUILT.** v1 routes to EXISTING pages, so: (a) WELLNESS card from the
     mockup isn't in v1 — needs its own page (sleep/HRV/RestHR/weight trends from intervals + check-ins); (b) split
     `/fitness` into the GLOBAL "Training load & Form" view vs the CYCLING "power curve/FTP/VO₂max" view (today both cards
     route to /fitness); (c) a Mind/Meditation stats page (today the Mind card → /logs). JM 2026-06-26.
@@ -331,7 +331,13 @@ test guide → the **🧪 Test guide** section below.
     **7-day moving average**, shaded **min–max band** with dashed bounds + labels (RHR inverted so "good" reads right).
     **Range filter 7d / 30d / 60d / custom** (reuses the Fitness chips + date-range). Works without intervals too (check-in
     trend still shows). statsGroups test updated (Wellness now global). 160 tests green, tsc+build clean.
-    **(b) Fitness split + (c) Mind page: mocked (round 1), NOT yet built — awaiting JM go.** gymapp-only.
+    **🧪 (b) Fitness split BUILT 2026-06-30:** the two Stats cards open FOCUSED `/fitness` views via `?focus=` —
+    `load` (Fitness/Fatigue + Form + training-load) vs `power` (VO₂max/eFTP/power-curve/W·kg). A 2-chip toggle switches
+    them (cyclists only); the title adapts; sleep/HRV/RHR/weight removed from Fitness (now on the Wellness page) → replaced
+    by a link there. **🧪 (c) Mind page BUILT 2026-06-30:** `src/pages/MindStats.tsx` + `/mind-stats` (Stats Mind card now
+    points there) — minutes/sessions/streak + an 8-week minutes bar chart + recent sessions, from logged mind sessions.
+    Mind sessions now actually LOG on completion (MindDetail → `logWorkout` discipline 'mind', which fed nothing before).
+    Pure `mind-stats.ts` (streak/weekly buckets) + 7 tests; 167 total green, tsc+build clean. #194 fully built. gymapp-only.
 193. 🧪 **Rework the Stats page: separate SPORT-SPECIFIC vs GLOBAL metrics.** DONE v1 (hub grouping): `hubs.tsx`
     `StatsHub` now renders a **GLOBAL** section (Training load & Form → /fitness · History → /logs) + a **PER SPORT**
     section (Cycling/Running → /fitness · Strength → /progress · Mind → /logs), gated by `statsGroups(sports)` (pure +
@@ -798,6 +804,10 @@ verifies **one at a time**; only JM marks ✅.
 **How to run the automated net:** `npm test` (unit, `src/*.test.ts`) · `npm run test:smoke` (API
 integration, `scripts/smoke-test.mjs`). Status: ❌ broken · 🔧 fixing · 🧪 fixed + test, awaiting JM ·
 ✅ JM-verified.
+
+### R194bc · #194 (b) Fitness split + (c) Mind page 🧪
+**Unit:** `src/mind-stats.test.ts` (month minutes/sessions, streak incl. grace + gap-break, weekly buckets) + stats-hub routes updated. `npm test` (167).
+**JM manual (QA):** (b) Stats → "Training load & Form" opens a load-only Fitness view; "Cycling" opens a power-only view; a chip toggle switches; sleep/HRV/weight now link to the Wellness page, not duplicated. (c) Finish a session in Mind (timer to 0) → it logs; Stats → "Mind" shows minutes/sessions/streak + an 8-week chart + recent sessions.
 
 ### R194a · #194a — Wellness stats page 🧪
 **Unit:** statsGroups test updated (Wellness in the global group); `WTrend`/movingAvg are render-side (no pure test). `npm test` (160).
