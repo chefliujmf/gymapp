@@ -25,10 +25,11 @@ interface StatDef {
 function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; prefer: Pref; onPref: (p: Pref) => void; onSaveManual: (v: number | null) => void; onClose: () => void }) {
   const [p, setP] = useState<Pref>(prefer)
   const [txt, setTxt] = useState(def.manual != null ? def.fmt(def.manual) : '')
-  const manualMode = p === 'manual'
   const commit = () => {
+    // #247: the input is always editable — typing saves your manual value regardless of mode; the
+    // toggle just picks which one DRIVES. (Was locked on Computed — JM wanted to type a value anytime.)
     const v = txt.trim() ? def.parse(txt.trim()) : null
-    if (manualMode && v !== def.manual) onSaveManual(v)
+    if (v !== def.manual) onSaveManual(v)
     onPref(p)
     onClose()
   }
@@ -37,11 +38,11 @@ function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; p
       <div className="bsheet" onClick={(e) => e.stopPropagation()}>
         <div className="bsheet__h"><h3>{def.label}</h3><button className="bsheet__x" onClick={onClose}>✕</button></div>
         <div className="bsheet__two">
-          <div className={'bsheet__opt' + (!manualMode ? ' on' : '')}><div className="bsheet__ol">Computed</div><div className="bsheet__ov" style={{ color: '#5ec8ff' }}>{def.computed != null ? def.fmt(def.computed) : '—'}</div><div className="bsheet__os">{def.computed != null ? def.computedSrc : 'not available yet'}</div></div>
-          <div className={'bsheet__opt' + (manualMode ? ' on' : '')}><div className="bsheet__ol">Manual</div><div className="bsheet__ov" style={{ color: '#9b8cff' }}>{def.manual != null ? def.fmt(def.manual) : '—'}</div><div className="bsheet__os">your value</div></div>
+          <div className={'bsheet__opt' + (p === 'computed' ? ' on' : '')}><div className="bsheet__ol">Computed</div><div className="bsheet__ov" style={{ color: '#5ec8ff' }}>{def.computed != null ? def.fmt(def.computed) : '—'}</div><div className="bsheet__os">{def.computed != null ? def.computedSrc : 'not available yet'}</div></div>
+          <div className={'bsheet__opt' + (p === 'manual' ? ' on' : '')}><div className="bsheet__ol">Manual</div><div className="bsheet__ov" style={{ color: '#9b8cff' }}>{def.manual != null ? def.fmt(def.manual) : '—'}</div><div className="bsheet__os">your value</div></div>
         </div>
-        <div className="bsheet__lbl">Set your value</div>
-        <input className="bsheet__in" value={txt} disabled={!manualMode} placeholder={manualMode ? def.fmt(def.computed ?? 0) : 'switch to Manual to edit'} onChange={(e) => setTxt(e.target.value)} />
+        <div className="bsheet__lbl">Set your value{p === 'computed' ? ' (saved; switch to Manual to use it)' : ''}</div>
+        <input className="bsheet__in" value={txt} placeholder={def.computed != null ? def.fmt(def.computed) : 'enter a value'} onChange={(e) => setTxt(e.target.value)} />
         <div className="bsheet__lbl">Use which?</div>
         <div className="bseg">
           <button className={p === 'manual' ? 'on' : ''} onClick={() => setP('manual')} disabled={false}>Manual</button>

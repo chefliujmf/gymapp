@@ -478,8 +478,8 @@ select.search { appearance: none; -webkit-appearance: none; }
 
 /* Segmented toggle (Exercises | Workouts) */
 .seg { display:flex; gap:4px; background:rgba(255,255,255,.06); border-radius:12px; padding:4px; margin:0 0 12px; }
-.seg__btn { flex:1; text-align:center; padding:8px; border-radius:9px; font-size:14px; font-weight:600; color:var(--muted,#666); text-decoration:none; cursor:pointer; }
-.seg__btn--active { background:#34353d; color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.seg__btn { flex:1; text-align:center; padding:8px; border-radius:9px; font-size:14px; font-weight:700; color:var(--text-dim); background:transparent; border:0; text-decoration:none; cursor:pointer; }
+.seg__btn--active { background:var(--accent); color:#06281a; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
 /* Exercise library grid */
 .ex-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
@@ -1198,8 +1198,8 @@ select.search { appearance: none; -webkit-appearance: none; }
 /* #236 tap-to-switch tile + sheet */
 .bm-cell--tap { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 .bm-cell__alt { font-size: 9.5px; color: var(--text-dim); margin-top: 2px; }
-.bsheet__scrim { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; z-index: 50; }
-.bsheet { width: 100%; max-width: 430px; background: var(--bg-elev, #1c1f28); border: 1px solid var(--line); border-radius: 18px 18px 0 0; padding: 16px 16px 22px; }
+.bsheet__scrim { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; z-index: 200; }
+.bsheet { width: 100%; max-width: 430px; background: var(--bg-elev, #1c1f28); border: 1px solid var(--line); border-radius: 18px 18px 0 0; padding: 16px 16px calc(22px + env(safe-area-inset-bottom, 0px) + 76px); max-height: 88vh; overflow-y: auto; }
 .bsheet__h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .bsheet__h h3 { margin: 0; font-size: 17px; }
 .bsheet__x { background: none; border: 0; color: var(--text-dim); font-size: 16px; cursor: pointer; }

@@ -22,9 +22,9 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-251. ⬜ **Progress: "1 session · 0h" wrong for gym.** JM 2026-06-30 (QA): a logged gym session shows 0h — the
+251. 🧪 **Progress: "1 session · 0h" wrong for gym.** JM 2026-06-30 (QA): a logged gym session shows 0h — the
     hours/volume aggregation doesn't count strength duration. Fix the Progress totals to include gym session minutes. gymapp-only.
-250. ⬜ **History rows aren't clickable → can't open the activity analysis; + no coach insights.** JM 2026-06-30: tapping
+250. 🧪 **History rows aren't clickable → can't open the activity analysis; + no coach insights.** JM 2026-06-30: tapping
     a History session should open the activity detail (#54 map/flyby/timeline analysis). Also wants coach insights surfaced
     in History (pairs #249/#54). Make rows Links to /activity/:id (device) or the right detail. gymapp-only.
 249. ⬜ **Wellness page needs COACH INSIGHTS, not just charts.** JM 2026-06-30: "wellness is nice but no insights from
@@ -34,7 +34,7 @@ test guide → the **🧪 Test guide** section below.
 248. ⬜ **Load/Form/Training-load: add avg·min·max stats + FUTURE projection from the plan.** JM 2026-06-30: training-load
     insight is there but wants explicit avg/min/max + **projected CTL/ATL/Form from planned load** (dotted future line).
     Same for Fitness & Form charts. We have `projectForm` (#223) — extend the charts with a forward projection. gymapp-only.
-247. ⬜ **VO₂max sheet: overlaps the bottom bar + let me type a manual value even in Computed mode.** JM 2026-06-30:
+247. 🧪 **VO₂max sheet: overlaps the bottom bar + let me type a manual value even in Computed mode.** JM 2026-06-30:
     (a) the manual/computed sheet overlaps the bottom nav (z-index/position). (b) REVISES the earlier "lock input on
     Computed" — the input should be EDITABLE anytime (typing sets the manual value; the toggle just picks which DRIVES).
     Unlock the field + fix the overlap. gymapp-only.
@@ -43,13 +43,13 @@ test guide → the **🧪 Test guide** section below.
     shopping horizon (e.g. today/this-week, editable). gymapp-only.
 245. ⬜ **Eat → can't build Packs / can't add new meals.** JM 2026-06-30: the Packs flow doesn't let you build/assign a
     pack; can't add a new meal. Wire pack→calendar + add-meal. gymapp-only.
-244. ⬜ **Eat → Packs/Meals/Shopping tabs don't respect the theme (light buttons).** JM 2026-06-30: the segmented tabs
+244. 🧪 **Eat → Packs/Meals/Shopping tabs don't respect the theme (light buttons).** JM 2026-06-30: the segmented tabs
     use the wrong colors (light on dark). Restyle to the dark theme like the rest. gymapp-only.
 243. ⬜ **Exercises: filter/tag by equipment (esp. "bands" — elastic/soft bands).** JM 2026-06-30: wants to see which
     exercises use bands. Add an equipment filter/tag (bands incl. soft/elastic) to the Exercises list. gymapp-only.
-242. ⬜ **Workouts: where's the exercise list?** JM 2026-06-30: in Workouts he can't find the list of exercises a workout
+242. 🔨 **Workouts: where's the exercise list?** JM 2026-06-30: in Workouts he can't find the list of exercises a workout
     contains. Surface each workout's exercises (in the card/detail). gymapp-only.
-241. ⬜ **Remove the Trainers section (Train page).** JM 2026-06-30: drop "Trainers" (Alex Rivera / Mia Chen / Dev Okafor) —
+241. 🧪 **Remove the Trainers section (Train page).** JM 2026-06-30: drop "Trainers" (Alex Rivera / Mia Chen / Dev Okafor) —
     not wanted. gymapp-only.
 240. ⬜ **Thumbnail too small AGAIN (Plan/Calendar cards).** JM 2026-06-30 ("checking the batch"): a workout card thumbnail
     is tiny again — likely the Plan/Calendar PlanCard uses a different thumbnail path than the History MiniProfile fixed in

@@ -128,7 +128,7 @@ export default function Progress() {
           <div className="chips">
             {prCount > 0 && <span className="pill pill--pr">🏆 {prCount} PR{prCount > 1 ? 's' : ''} this week</span>}
             {topMover && topMover.improve > 0 && <span className="pill">📈 {topMover.name} +{topMover.improve}%</span>}
-            <span className="pill">🎯 {count} sessions · {Math.round(totalMin / 60)}h</span>
+            <span className="pill">🎯 {count} session{count === 1 ? '' : 's'} · {totalMin < 60 ? `${totalMin} min` : `${Math.round(totalMin / 6) / 10}h`}</span>
             <span className="pill">{thisWeekN} this week</span>
           </div>
         </div>

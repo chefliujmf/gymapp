@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Trash2 } from 'lucide-react'
 import { db, getSetting, syncLogsFromServer, type WorkoutLog, type SetEntry } from '../db'
@@ -42,18 +42,22 @@ function ActivityLogCard({ log }: { log: WorkoutLog }) {
   )
 }
 
-// A device activity that lives in intervals (not done via Platyplus) — #130.
+// A device activity that lives in intervals (not done via Platyplus) — #130. Tap → analysis (#250).
 function DeviceActivityCard({ a }: { a: IcuActivity }) {
-  return (
-    <div className="card hist-card hist-card--device">
+  const inner = (
+    <>
       <div className="hist-row">
         <span className="hist-ic">{emojiFor(sportOfActivity(a))}</span>
         <div className="hist-body"><h3>{a.name || 'Activity'}</h3></div>
         <span className="src-tag src-dev">from intervals</span>
+        {a.id && <span className="hist-row__ch" aria-hidden="true">›</span>}
       </div>
       <DoneStats a={a} />
-    </div>
+    </>
   )
+  return a.id
+    ? <Link to={`/activity/${a.id}`} className="card hist-card hist-card--device" style={{ display: 'block' }}>{inner}</Link>
+    : <div className="card hist-card hist-card--device">{inner}</div>
 }
 
 const CHK_FACES = ['💀', '😩', '😐', '😀', '🤩']

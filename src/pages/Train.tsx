@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { workouts, trainers } from '../data/catalog'
-import { WorkoutCard, TrainerCard } from '../ui'
+import { workouts } from '../data/catalog'
+import { WorkoutCard } from '../ui'
 
 export default function Train() {
   const navigate = useNavigate()
@@ -9,7 +9,7 @@ export default function Train() {
       <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head">
         <h1>Gym</h1>
-        <p>Workouts and your trainers</p>
+        <p>Workouts &amp; exercises</p>
       </div>
 
       {/* #118: surface the gym builder here (parity with Ride/Run "+ Build") */}
@@ -23,13 +23,13 @@ export default function Train() {
         {workouts.slice(0, 4).map((w) => <WorkoutCard key={w.id} w={w} />)}
       </div>
 
-      <div className="section-title">
-        Trainers
-        <Link to="/trainers" className="see-all">All →</Link>
-      </div>
-      <div className="stack">
-        {trainers.map((t) => <TrainerCard key={t.id} t={t} />)}
-      </div>
+      {/* #242: quick access to the exercise library */}
+      <div className="section-title">Exercises<Link to="/exercises" className="see-all">Browse →</Link></div>
+      <Link to="/exercises" className="card hub-link">
+        <span className="hub-link__ic">🏋️</span>
+        <span className="hub-link__t"><h3>Exercise library</h3><div className="meta">Browse & filter every exercise (by equipment, muscle…)</div></span>
+        <span className="hub-link__ch">›</span>
+      </Link>
     </div>
   )
 }
