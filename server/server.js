@@ -25,7 +25,7 @@ const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
-import { readiness as computeReadiness } from './readiness.js'
+import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -483,6 +483,39 @@ app.get('/auth/readiness', auth, async (req, res) => {
   // own overrides — but never the day being viewed (it'd compare a score against itself).
   const calCheckins = (req.user.checkins || []).filter((c) => c && c.date < date)
   res.json({ connected: true, date, sleepNeed, today, ...computeReadiness(history, today, { sleepNeed, checkins: calCheckins }) })
+})
+
+// #223 — FORECAST a FUTURE day's freshness from planned load (only Freshness is knowable ahead;
+// Energy/Sleep depend on HRV/sleep that haven't happened). Projects CTL/ATL → Form over the
+// planned TSS between today and the target, then maps to an expected Freshness 1–5.
+const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
+app.get('/auth/readiness-forecast', auth, async (req, res) => {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : null
+  if (!date) return res.status(400).json({ error: 'date required' })
+  if (!req.user.icuKey) return res.json({ connected: false })
+  const today = new Date().toISOString().slice(0, 10)
+  if (date <= today) return res.json({ connected: true, future: false }) // only future days forecast
+  const ath = req.user.icuAthlete || 'i28814'
+  // current fitness state: latest wellness row with CTL+ATL, + a personal TSB baseline (60d)
+  const wOld = addDays(today, -60)
+  const wData = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${wOld}&newest=${today}`)
+  const rows = (Array.isArray(wData) ? wData : []).map((d) => ({ form: d.ctl != null && d.atl != null ? d.ctl - d.atl : null, ctl: d.ctl, atl: d.atl, date: d.id }))
+  const latest = [...rows].reverse().find((r) => r.ctl != null && r.atl != null)
+  if (!latest) return res.json({ connected: true, future: true, available: false })
+  const tsbBaseline = wellnessBaselines(rows).tsbBaseline
+  // planned TSS per day, today+1 .. target, from intervals planned events
+  const evs = await icuGet(req.user, `/athlete/${ath}/events?oldest=${today}&newest=${date}`)
+  const byDay = {}
+  for (const e of (Array.isArray(evs) ? evs : [])) {
+    const d = (e.start_date_local || '').slice(0, 10)
+    if (d <= today || d > date) continue
+    const load = e.icu_training_load || e.icu_planned_training_load || 0
+    if (load > 0) byDay[d] = (byDay[d] || 0) + load
+  }
+  const loads = []
+  for (let dd = addDays(today, 1); dd <= date; dd = addDays(dd, 1)) loads.push(byDay[dd] || 0)
+  const f = forecastFreshness({ ctl: latest.ctl, atl: latest.atl, tsbBaseline }, loads)
+  res.json({ connected: true, future: true, available: true, date, daysOut: loads.length, ...f, totalPlannedLoad: Math.round(loads.reduce((a, b) => a + b, 0)), plannedDays: Object.keys(byDay).length })
 })
 
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads

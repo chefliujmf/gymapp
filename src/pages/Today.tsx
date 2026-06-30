@@ -42,7 +42,9 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   // tapping a face overrides. Energy is null on cold start → stays a manual tap. #74 chips below.
   const [rdy, setRdy] = useState<Readiness | null>(null)
   const [touched, setTouched] = useState<Set<string>>(new Set())
-  useEffect(() => { let live = true; setRdy(null); setTouched(new Set()); authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day])
+  // #223: only the CURRENT day gets a live readiness derivation. Past days show what was LOGGED
+  // (no auto-derive); future days never mount this card (they show a forecast instead).
+  useEffect(() => { let live = true; setRdy(null); setTouched(new Set()); if (isToday) authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day, isToday])
   // Per-day "why" for the ⓘ — the ACTUAL inputs behind THIS day's score (computed from the
   // wellness data whether or not the row is answered), + the value the data suggests.
   const sgn = (z?: number | null) => (z == null ? '?' : (z > 0 ? '+' : '') + z + 'σ')
@@ -133,6 +135,35 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
           <span className="wchip wchip--src" title="These values come from intervals.icu"><span className="wchip__up" aria-hidden="true">↑</span> intervals</span>
         </div>
       )}
+    </div>
+  )
+}
+
+// #223 — FUTURE day: no check-in / no live verdict (you can't know how you'll feel). Show an
+// EXPECTED freshness forecast projected from planned load. Only Freshness is forecastable;
+// Energy & Sleep fill in from that day's check-in.
+const FORECAST_FACES = ['💀', '😖', '😐', '🙂', '😎']
+const freshLabel = (s: number) => s >= 4.3 ? 'Likely fresh' : s >= 3.4 ? 'Likely fresh enough' : s >= 2.5 ? 'Moderately recovered' : s >= 1.6 ? 'Likely fatigued' : 'Likely wrecked'
+function ForecastCard({ day, fmtDay }: { day: string; fmtDay: (s: string) => string }) {
+  const [f, setF] = useState<Awaited<ReturnType<typeof authApi.readinessForecast>> | null>(null)
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => { let live = true; setF(null); setLoaded(false); authApi.readinessForecast(day).then((r) => { if (live) setF(r) }).catch(() => {}).finally(() => { if (live) setLoaded(true) }); return () => { live = false } }, [day])
+  if (!loaded) return null
+  if (!f?.connected) return <div className="card forecast forecast--muted">📊 Connect intervals.icu to forecast how recovered you'll be on {fmtDay(day)}.</div>
+  if (!f.available || f.freshness == null) return <div className="card forecast forecast--muted">📊 Not enough training data yet to forecast {fmtDay(day)}.</div>
+  const s = f.freshness
+  const load = f.totalPlannedLoad || 0
+  const why = load > 0
+    ? `${load} TSS planned between now and then${(f.plannedDays || 0) > 0 ? ` across ${f.plannedDays} session${f.plannedDays! > 1 ? 's' : ''}` : ''} — projected Form ${f.form! > 0 ? '+' : ''}${f.form}.`
+    : `No hard sessions planned before then, so you should recover — projected Form ${f.form! > 0 ? '+' : ''}${f.form}.`
+  return (
+    <div className="card forecast">
+      <div className="forecast__h">📊 Expected · {fmtDay(day)} · forecast</div>
+      <div className="forecast__big">
+        <span className="forecast__face">{FORECAST_FACES[Math.round(s) - 1]}</span>
+        <div><div className="forecast__lbl">{freshLabel(s)}</div><div className="forecast__sub">Projected Freshness ~{Math.round(s)}/5 · Form {f.form! > 0 ? '+' : ''}{f.form}</div></div>
+      </div>
+      <div className="forecast__note"><b>Why:</b> {why} <b>Energy & Sleep aren't forecast</b> — they'll fill in from your check-in that morning.</div>
     </div>
   )
 }
@@ -323,7 +354,8 @@ export default function Today() {
   const dayRecovery = dayItems.filter((it) => it.type === 'recovery')
   const dayNotes = dayItems.filter((it) => it.type === 'note')
   const hasWorkout = dayEvents.length > 0 || dayPlans.length > 0
-  const verdict = readinessVerdict(checkin)
+  const isFuture = selDay > todayISO() // #223: future days forecast, not a live verdict
+  const verdict = isFuture ? null : readinessVerdict(checkin)
   // Days that have anything on them → a tiny dot under the WeekStrip day (#66).
   const markedDays = new Set<string>([
     ...(events ?? []).map((e) => e.start_date_local.slice(0, 10)),
@@ -388,7 +420,8 @@ export default function Today() {
 
       <WeekStrip selected={selDay} onSelect={setSelDay} marked={markedDays} />
 
-      <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />
+      {/* #223: today = check-in + live verdict; future = freshness FORECAST (no fake "fresh"); past = logged. */}
+      {isFuture ? <ForecastCard key={selDay} day={selDay} fmtDay={fmtDay} /> : <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />}
 
       {todaysLogs && todaysLogs.length > 0 && (
         <Link to="/progress" style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — see history →</Link>

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Platyplus · #223 future-day expectation</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--amber:#f0b145;--blue:#5ec8ff;--line:#2b303b;--bg:#0f1216;--card-grad:linear-gradient(180deg,#21252f,#191c24);--radius:16px;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;justify-content:center;padding:16px 12px 60px}
+  .phone{width:100%;max-width:430px}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;background:#161a21;border:1px solid var(--line);border-radius:999px;padding:4px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--text-dim);font-weight:700;font-size:11.5px;padding:9px 4px;border-radius:999px;cursor:pointer}
+  .tabs button.on{background:var(--accent);color:#06281a}
+  .desc{font-size:12px;color:var(--text-dim);margin:0 2px 12px;line-height:1.45}
+  .desc b{color:var(--text)}
+  /* week strip */
+  .week{display:flex;gap:6px;margin-bottom:14px}
+  .day{flex:1;background:#161a21;border:1px solid var(--line);border-radius:14px;padding:8px 2px 6px;text-align:center}
+  .day.sel{background:linear-gradient(180deg,#1d4a36,#15291f);border-color:var(--accent)}
+  .day .dn{font-size:10px;color:var(--text-dim);font-weight:700;letter-spacing:.4px}
+  .day.sel .dn{color:#bff5d6}
+  .day .dd{font-size:17px;font-weight:800;margin-top:2px}
+  .day .dot{width:5px;height:5px;border-radius:99px;background:var(--accent);margin:4px auto 0}
+  h2{font-size:21px;font-weight:800;margin:6px 0 10px}
+  .add{float:right;background:linear-gradient(90deg,#46e08a,#34c873);color:#06281a;border:0;border-radius:999px;font-weight:800;padding:8px 14px;font-size:14px}
+  /* plan card */
+  .plan{background:var(--card-grad);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-top:4px;display:flex;gap:12px}
+  .pthumb{width:64px;height:64px;flex:none;border-radius:12px;background:radial-gradient(120% 120% at 30% 20%,#1f6f5c,#0e2f36);display:flex;align-items:flex-end;gap:2px;padding:12px 9px}
+  .pthumb i{flex:1;border-radius:2px 2px 0 0;background:#2f9e57}
+  .pk{font-size:11px;color:var(--text-dim);font-weight:700;letter-spacing:.5px}
+  .pt{font-size:16px;font-weight:800;margin:2px 0 4px}
+  .pm{font-size:12px;color:var(--text-dim)}
+  /* TODAY check-in (reference) */
+  .ci{background:var(--card-grad);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;margin-bottom:8px}
+  .ci__t{font-weight:800;font-size:15px;margin-bottom:8px}
+  .ci__row{display:flex;align-items:center;gap:8px;padding:6px 0}
+  .ci__l{flex:1;font-size:13px;font-weight:700}
+  .ci__faces{display:flex;gap:8px}.ci__faces span{font-size:18px;opacity:.4}.ci__faces span.on{opacity:1;outline:2px solid var(--accent);border-radius:8px}
+  .verdict{display:flex;align-items:center;gap:9px;border:1px solid;border-radius:12px;padding:11px 13px;font-weight:700;font-size:14px;margin:8px 0}
+  .verdict .vd{width:9px;height:9px;border-radius:99px;flex:none}
+  .v-amber{border-color:rgba(240,177,69,.5);background:rgba(240,177,69,.08)}.v-amber .vd{background:var(--amber)}
+  /* FUTURE forecast variants */
+  .fc{border:1px solid;border-radius:var(--radius);padding:14px 15px;margin-bottom:8px}
+  .fc--card{background:linear-gradient(180deg,#1a2433,#161b26);border-color:rgba(94,200,255,.3)}
+  .fc__h{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--blue)}
+  .fc__big{display:flex;align-items:center;gap:13px;margin-top:10px}
+  .fc__face{font-size:40px;line-height:1}
+  .fc__lbl{font-size:18px;font-weight:800}
+  .fc__sub{font-size:12.5px;color:var(--text-dim);margin-top:2px;line-height:1.4}
+  .fc__note{font-size:12px;color:var(--text-dim);margin-top:11px;line-height:1.45;border-top:1px solid var(--line);padding-top:9px}
+  .fc__note b{color:var(--text)}
+  /* B sparkline */
+  .spark{display:flex;align-items:flex-end;gap:4px;height:46px;margin:12px 0 4px}
+  .spark .b{flex:1;border-radius:3px 3px 0 0;background:#2a3340;position:relative}
+  .spark .b.hot{background:var(--amber)}.spark .b.sel{background:var(--blue);box-shadow:0 0 0 2px rgba(94,200,255,.3)}
+  .spark .b small{position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--text-dim)}
+  .sparkx{display:flex;gap:4px;font-size:9px;color:var(--text-dim)}.sparkx span{flex:1;text-align:center}
+  /* C banner */
+  .fbanner{display:flex;align-items:center;gap:10px;border:1px dashed rgba(94,200,255,.45);background:rgba(94,200,255,.06);border-radius:12px;padding:11px 13px;margin:8px 0}
+  .fbanner .e{font-size:22px}.fbanner b{color:var(--text)}.fbanner .x{font-size:13px;color:var(--text-dim);line-height:1.4}
+</style></head>
+<body><div class="phone">
+
+  <div class="tabs">
+    <button class="on" onclick="show('today',this)">Reference · TODAY</button>
+    <button onclick="show('a',this)">A · Forecast card</button>
+    <button onclick="show('b',this)">B · + Form trend</button>
+    <button onclick="show('c',this)">C · Banner only</button>
+  </div>
+  <div id="desc" class="desc"></div>
+
+  <div class="week" id="week"></div>
+
+  <div id="content"></div>
+
+</div>
+<script>
+const FACES=['💀','😖','😐','🙂','😎'];
+function week(selKey){
+  const days=[['MON',29],['TUE',30],['WED',1],['THU',2],['FRI',3],['SAT',4],['SUN',5]];
+  const selDd = selKey==='today'?30:3;
+  return days.map(([n,d])=>`<div class="day${d===selDd?' sel':''}"><div class="dn">${n}</div><div class="dd">${d}</div>${[29,1,2,3,4,5].includes(d)?'<div class="dot"></div>':''}</div>`).join('');
+}
+const plan = `<h2>${'{TITLE}'}<button class="add">+ Add</button></h2>{BANNER}<div class="plan"><div class="pthumb"><i style="height:55%"></i><i style="height:80%"></i><i style="height:80%"></i><i style="height:45%"></i></div><div><div class="pk">RIDE</div><div class="pt">{WTITLE}</div><div class="pm">75 min · 50 TSS</div></div></div>`;
+
+const DESC={
+  today:'<b>Reference — TODAY (Tue 30).</b> The check-in + a live readiness verdict. This stays exactly as-is for the current day.',
+  a:'<b>A — Forecast card (recommended).</b> A future day swaps the check-in for a single <b>Freshness forecast</b> from your projected Form (only Freshness is knowable ahead — Energy/Sleep depend on HRV/sleep that haven\'t happened). Clearly a forecast, plain-language reason.',
+  b:'<b>B — Forecast + Form trend.</b> Same forecast plus a tiny Form projection across the week so you SEE the load building toward that day. More informative, a bit busier.',
+  c:'<b>C — Banner only.</b> No card — just a one-line "we expect…" banner where the verdict sits, and the check-in is hidden for future days. Lightest touch.',
+};
+
+const TODAY = `<div class="ci"><div class="ci__t">How do you feel today?</div>
+  ${['Energy','Sleep','Freshness'].map((l,i)=>`<div class="ci__row"><div class="ci__l">${l}</div><div class="ci__faces">${FACES.map((f,n)=>`<span class="${n===(i===2?2:3)?'on':''}">${f}</span>`).join('')}</div></div>`).join('')}
+  </div>`+plan.replace('{TITLE}',"Today's plan").replace('{WTITLE}','Tuesday Cottage Ride').replace('{BANNER}','<div class="verdict v-amber"><span class="vd"></span>Moderately ready — train, but be ready to ease off.</div>');
+
+const FA = `<div class="fc fc--card"><div class="fc__h">📊 Expected · Fri 3 · forecast</div>
+  <div class="fc__big"><span class="fc__face">🙂</span><div><div class="fc__lbl">Likely fresh enough</div><div class="fc__sub">Projected Freshness ~3–4 / 5 · Form ~−6</div></div></div>
+  <div class="fc__note"><b>Why:</b> Thu's intervals add load, but Wed is easy and you taper into Fri — expect to be moderately recovered. <b>Energy & Sleep aren't forecast</b> — they'll fill in from your check-in that morning.</div></div>`;
+
+const FB = `<div class="fc fc--card"><div class="fc__h">📊 Expected · Fri 3 · forecast</div>
+  <div class="fc__big"><span class="fc__face">🙂</span><div><div class="fc__lbl">Likely fresh enough</div><div class="fc__sub">Projected Freshness ~3–4 / 5</div></div></div>
+  <div class="spark">
+    ${[['Tue',60,''],['Wed',52,''],['Thu',78,'hot'],['Fri',46,'sel'],['Sat',58,''],['Sun',40,'']].map(([d,h,c])=>`<div class="b ${c}" style="height:${h}%">${c==='sel'?'<small>Form −6</small>':c==='hot'?'<small>load</small>':''}</div>`).join('')}
+  </div>
+  <div class="sparkx">${['Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<span>${d}</span>`).join('')}</div>
+  <div class="fc__note"><b>Form projected from your planned load.</b> Energy & Sleep fill in from your morning check-in.</div></div>`;
+
+const FC = plan.replace('{TITLE}',"Friday's plan").replace('{WTITLE}','Threshold intervals')
+  .replace('{BANNER}','<div class="fbanner"><span class="e">📊</span><span class="x">We <b>expect</b> you moderately fresh (Form ~−6) — Thu\'s session adds load. Energy & Sleep come from Friday\'s check-in.</span></div>');
+
+function show(mode,btn){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  document.getElementById('desc').innerHTML=DESC[mode];
+  document.getElementById('week').innerHTML=week(mode==='today'?'today':'fri');
+  const future = {a:FA,b:FB}[mode];
+  if(mode==='today') document.getElementById('content').innerHTML=TODAY;
+  else if(mode==='c') document.getElementById('content').innerHTML=FC;
+  else document.getElementById('content').innerHTML=future+plan.replace('{TITLE}',"Friday's plan").replace('{WTITLE}','Threshold intervals').replace('{BANNER}','');
+}
+const init=(location.hash||'#today').slice(1);
+const idx={today:0,a:1,b:2,c:3}[init]??0;
+show(init,document.querySelectorAll('.tabs button')[idx]);
+</script>
+</body></html>

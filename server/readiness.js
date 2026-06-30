@@ -154,6 +154,28 @@ export function learnedOffsets(checkins = []) {
 /** Apply a learned offset to a 1–5 score (clamped). Reports the nudge so the UI can say "calibrated". */
 export const applyOffset = (score, offset) => (score == null || !offset ? score : clamp(round1(score + offset), 1, 5))
 
+// --- #223: FORECAST a future day's freshness from planned load ----------------------------
+// Only FRESHNESS is forecastable ahead (it's training-load driven). Energy/Sleep depend on HRV/
+// sleep that haven't happened, so a future day shows an expected Freshness, not a live verdict.
+// Standard CTL/ATL exponential model: CTL τ=42, ATL τ=7; Form (TSB) = CTL − ATL.
+export function projectForm({ ctl = 0, atl = 0 } = {}, plannedLoads = []) {
+  let c = ctl, a = atl
+  for (const load of plannedLoads) {
+    const L = load > 0 ? load : 0
+    c = c + (L - c) / 42
+    a = a + (L - a) / 7
+  }
+  return { ctl: round1(c), atl: round1(a), form: round1(c - a) }
+}
+
+/** Expected freshness (1–5) at a future date: project Form over the planned loads, then map.
+ *  `plannedLoads` = TSS per day from the day AFTER `current` up to and including the target. */
+export function forecastFreshness({ ctl, atl, tsbBaseline } = {}, plannedLoads = []) {
+  const p = projectForm({ ctl, atl }, plannedLoads)
+  const fr = freshness({ atl: p.atl, ctl: p.ctl, form: p.form, tsbBaseline })
+  return { ...p, freshness: fr ? fr.score : null, acwr: fr ? fr.acwr : null }
+}
+
 // --- top-level ------------------------------------------------------------
 // history: wellness rows BEFORE today (for baselines). today: today's wellness row.
 // opts: { sleepNeed, subjective, checkins } (subjective = user's tap; checkins = for calibration).

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { lnRMSSD, meanSd, zTo5, score100To5, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS } from '../server/readiness.js'
+import { lnRMSSD, meanSd, zTo5, score100To5, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, forecastFreshness } from '../server/readiness.js'
 
 // #195 readiness math, grounded in docs/readiness-scores.md (WHOOP deep-dive 2026-06-28).
 
@@ -184,6 +184,37 @@ describe('readiness() applies the learned calibration', () => {
   it('no check-in history → no calibration, scores unchanged', () => {
     const r = readiness(hist, { hrv: 60, restingHR: 50, sleepHours: 8, fitness: 60, fatigue: 50, form: 10 })
     expect(r.calibration).toEqual({ energy: 0, sleep: 0, freshness: 0 })
+  })
+})
+
+// #223 — forecast a future day's freshness from planned load.
+describe('projectForm (CTL/ATL projection)', () => {
+  it('no planned load → rest days raise Form (fatigue decays faster than fitness)', () => {
+    const p = projectForm({ ctl: 50, atl: 60 }, [0, 0, 0]) // 3 rest days
+    expect(p.form).toBeGreaterThan(50 - 60) // Form rises from −10
+    expect(p.atl).toBeLessThan(60)
+  })
+  it('a hard day drops Form (ATL jumps)', () => {
+    const rest = projectForm({ ctl: 50, atl: 50 }, [0])
+    const hard = projectForm({ ctl: 50, atl: 50 }, [120])
+    expect(hard.form).toBeLessThan(rest.form)
+  })
+  it('empty plan → unchanged', () => {
+    expect(projectForm({ ctl: 50, atl: 45 }, [])).toEqual({ ctl: 50, atl: 45, form: 5 })
+  })
+})
+
+describe('forecastFreshness', () => {
+  it('returns an expected freshness 1–5 from projected Form', () => {
+    const f = forecastFreshness({ ctl: 50, atl: 50 }, [0, 0]) // tapering → fresher
+    expect(f.freshness).toBeGreaterThanOrEqual(1)
+    expect(f.freshness).toBeLessThanOrEqual(5)
+    expect(f.form).toBeGreaterThan(0)
+  })
+  it('a big planned block forecasts LOWER freshness than rest', () => {
+    const rest = forecastFreshness({ ctl: 50, atl: 50 }, [0, 0, 0])
+    const block = forecastFreshness({ ctl: 50, atl: 50 }, [110, 110, 110])
+    expect(block.freshness).toBeLessThan(rest.freshness)
   })
 })
 

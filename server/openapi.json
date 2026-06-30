@@ -901,6 +901,15 @@
         "responses": { "200": { "description": "{ connected, sleep, freshness, energy (null on cold start), calibration (learned per-dim offsets, #207 Phase 2b), baseline, today }" } }
       }
     },
+    "/auth/readiness-forecast": {
+      "get": {
+        "summary": "Forecast a FUTURE day's expected Freshness from planned load (projects CTL/ATL→Form). Only Freshness is forecastable ahead (#223)",
+        "tags": ["checkin"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "date", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } }],
+        "responses": { "200": { "description": "{ connected, future, available, date, daysOut, form, freshness (1-5), acwr, totalPlannedLoad, plannedDays }" } }
+      }
+    },
     "/auth/intervals/athlete": {
       "get": {
         "summary": "Pull the athlete's intervals.icu per-sport settings (ftp/maxHr/lthr/threshold_pace) + weight, mapped to Platyplus stats (#210)",

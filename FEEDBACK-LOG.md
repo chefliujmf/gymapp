@@ -27,7 +27,7 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
-223. ⬜ **Readiness/check-in is a TODAY concept — future days must show an EXPECTATION, not a live verdict.** JM
+223. 🧪 **Readiness/check-in is a TODAY concept — future days must show an EXPECTATION, not a live verdict.** JM
     2026-06-30: "the coach message is for today, the following days is maybe something more (we expect something) —
     saying it's fresh when I'm looking 4 days out at a workout is stupid." On a FUTURE day the Today view still shows
     "How do you feel today?" + the readiness verdict banner ("Moderately ready…") / a Freshness face — but there's no
@@ -37,6 +37,11 @@ test guide → the **🧪 Test guide** section below.
     session"), framed as a forecast ("we expect…"), not a fact; (c) PAST = what was logged. Pairs #137 (check-in
     today-only) + #206 (morning readiness) + #207/#208 (Freshness/Form math we already have to project from). Mock the
     future-day card first. gymapp-only.
+    **🧪 BUILT 2026-06-30 (mock option A approved):** the Today view now branches by date — TODAY = check-in + live
+    verdict (unchanged); FUTURE = a `ForecastCard` showing **expected Freshness** projected from planned load (no
+    check-in, no "fresh" verdict), explicit that Energy/Sleep fill in from that day's check-in; PAST = logged check-in
+    only (auto-derivation gated to today). New `GET /auth/readiness-forecast` projects CTL/ATL→Form over the planned
+    intervals TSS (`projectForm`/`forecastFreshness` in `server/readiness.js`). 11 new tests; 150 green, tsc+build clean.
 222. ⬜ **Show % and watts on the workout thumbnail (watts = % of FTP).** JM 2026-06-30: wants the mini card thumbnail
     (MiniProfile) to show the target **%FTP and the watts** it implies (W = %×FTP), not just the coloured shape. Tight
     on an 88px thumb → needs a mock-first pass (e.g. label only the main block, or %/W on tap, or a compact "91% · 237W"
@@ -755,6 +760,11 @@ verifies **one at a time**; only JM marks ✅.
 **How to run the automated net:** `npm test` (unit, `src/*.test.ts`) · `npm run test:smoke` (API
 integration, `scripts/smoke-test.mjs`). Status: ❌ broken · 🔧 fixing · 🧪 fixed + test, awaiting JM ·
 ✅ JM-verified.
+
+### R223 · #223 — future days show a freshness FORECAST, not a live verdict 🧪
+**Unit tests:** `src/readiness.test.ts` → `projectForm` (CTL τ42 / ATL τ7 → Form; rest raises Form, hard drops it) + `forecastFreshness` (a planned block forecasts lower freshness than rest). `npm test` (150 green).
+**Server:** `GET /auth/readiness-forecast?date=<future>` projects from your latest CTL/ATL over planned intervals TSS to that day. Verify on QA it returns a sane `form`/`freshness`.
+**JM manual (QA):** select a FUTURE day in the week strip → no "How do you feel" / no "you're fresh" verdict; instead a blue **"Expected · <day> · forecast"** card with a projected Freshness face + "why" (Energy/Sleep noted as not-forecastable). TODAY unchanged. A PAST day shows only what you logged.
 
 ### R207b · #207 Phase 2b / #220 — learn-from-you stats (sleep default · VO₂max estimate · calibration) 🧪
 **Unit tests:** `src/readiness.test.ts` (`calibrationOffset` gradual-drift: needs ≥5 days, median-robust to one outlier, caps ±1, ignores tiny bias; `learnedOffsets` per-dim incl. freshness=6−soreness; `readiness()` nudges the score + keeps `.raw`) + `src/running-paces.test.ts` (`estimateVo2max` Coggan/VDOT, takes the higher). `npm test` (145 green).

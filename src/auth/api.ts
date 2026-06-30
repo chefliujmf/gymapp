@@ -145,6 +145,8 @@ export const authApi = {
   pullIcuAthlete: () => req<IcuAthletePull>('/intervals/athlete'),
   runEstimate: () => req<{ available: boolean; thresholdPace?: number; criticalSpeed?: number; r2?: number | null; source?: string }>('/intervals/run-estimate'),
   runVolume: () => req<{ available: boolean; longestKm?: number; weeklyKm?: number; runs?: number; windowDays?: number }>('/intervals/run-volume'),
+  // #223 — forecast a FUTURE day's expected freshness from planned load.
+  readinessForecast: (date: string) => req<{ connected: boolean; future?: boolean; available?: boolean; date?: string; daysOut?: number; form?: number; freshness?: number | null; acwr?: number | null; totalPlannedLoad?: number; plannedDays?: number }>(`/readiness-forecast?date=${date}`),
   saveSportStat: (body: { group: SportGroup; ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; runVdot?: number | null }) =>
     req<User & { synced?: boolean; pushError?: string | null }>('/sport-stat', { method: 'PUT', body }),
   getAthlete: () => req<{ profile: string; updatedAt: number }>('/profile/athlete'),
