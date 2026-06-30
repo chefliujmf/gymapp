@@ -14,6 +14,7 @@ import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Che
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet } from './AddSheet'
 import { authApi, type Checkin, type Readiness } from '../auth/api'
+import { useAuth } from '../auth/AuthContext'
 import { InfoDot } from '../charts'
 
 // Obvious + funny 1–5 faces (wrecked → amazing). One set for every metric since
@@ -297,6 +298,11 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
 }
 
 export default function Today() {
+  const { user } = useAuth()
+  // #257: show the "meet your coach" welcome card until onboarding is finished (profile + first
+  // week). Skippable for the session; reappears next visit until the coach marks it done.
+  const [skipOnb, setSkipOnb] = useState(() => sessionStorage.getItem('onb-skip') === '1')
+  const showOnboarding = !!user && !user.onboardedAt && !skipOnb
   const [selDay, setSelDay] = useState(todayISO())
   const todaysLogs = useLiveQuery(() => db.logs.where('date').equals(todayISO()).toArray())
   const dayLogs = useLiveQuery(() => db.logs.where('date').equals(selDay).toArray(), [selDay]) ?? []
@@ -432,6 +438,20 @@ export default function Today() {
         <span className="eyebrow">{greeting}</span>
         <h1>Ready to train?</h1>
       </div>
+
+      {showOnboarding && (
+        <div className="card onb-card">
+          <div className="onb-card__ic">🦫</div>
+          <div className="onb-card__b">
+            <h3>Meet your coach</h3>
+            <p>A 2-minute chat (tap, type, or talk) and your coach builds your first week around your real life.</p>
+            <div className="onb-card__row">
+              <button className="btn" style={{ width: 'auto' }} onClick={() => navigate('/chat?onboard=1')}>Set me up →</button>
+              <button className="btn auth-link" style={{ width: 'auto' }} onClick={() => { sessionStorage.setItem('onb-skip', '1'); setSkipOnb(true) }}>Skip for now</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <WeekStrip selected={selDay} onSelect={setSelDay} marked={markedDays} />
 

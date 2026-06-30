@@ -104,7 +104,15 @@ test guide → the **🧪 Test guide** section below.
 258. 🧪 **Duplicate readiness note in TWO places (Today).** JM 2026-06-30: the collapsed check-in says "Coach knows
     you're run-down today" AND the plan banner says "A bit run-down — keep it easy…" — same insight twice. FIX: drop the
     restatement in the check-in card, keep the actionable plan banner + the "Ask coach" link. gymapp-only.
-257. ⬜ **(LATER) Onboarding flow for a new user → generate an interesting first plan.** JM 2026-06-30: build the new-user
+257. 🔨 **Onboarding flow for a new user → conversational, coach-led, generates first week.** JM 2026-06-30: chosen design —
+    **conversational** (real-coach chat, tap/type/VOICE, chips are suggestions not limits), capture profile basics+sports,
+    real-week availability, goal+experience, equipment+constraints + anything else. TRIGGER = **welcome card on Today**
+    ("Meet your coach → Set me up"); skippable for the session, reappears until done. COMPLETE = coach saved profile AND
+    drafted first week (explicit `finish_onboarding`). BUILT: Today welcome card (`onb-card`) → `/chat?onboard=1` where the
+    coach greets first + runs the interview (prompt rewritten to lead, prefill known intervals fields, save via set_sports/
+    set_athlete_profile, draft week via create_*, notify, then finish_onboarding); new MCP tool `finish_onboarding` →
+    `POST /api/onboarding/complete` sets `onboardedAt` (in pub()); Chat auto-greets in onboard mode + refreshes auth so the
+    card clears. Voice already in Chat. NEXT: verify the full loop on QA; richer first-plan quality ties to #256 port. gymapp-only.
     onboarding (structured: sports, goals, experience, equipment, constraints — STT optional, #183) and, from it, have the
     coach generate a compelling first week/plan. **Onboarding also captures the PROFILE basics** (JM 2026-06-30: sex,
     height, DOB, weight, resting HR — see #268/#265) — prefill from intervals when connected, ask for what's missing, so

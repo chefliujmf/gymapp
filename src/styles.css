@@ -840,6 +840,13 @@ select.search { appearance: none; -webkit-appearance: none; }
 }
 .auth-note { color: var(--accent, #34e07d); font-size: 13px; text-align: center; margin-top: 12px; }
 .auth-err { color: var(--danger, #ff6b6b); font-size: 13px; text-align: center; margin-top: 12px; }
+/* #257 — Today "meet your coach" onboarding card */
+.onb-card { display: flex; gap: 14px; align-items: flex-start; border: 1px solid #34e07d55; background: linear-gradient(#1a2a20, #161c22); margin: 4px 0 12px; }
+.onb-card__ic { font-size: 30px; line-height: 1; flex-shrink: 0; }
+.onb-card__b { min-width: 0; flex: 1; }
+.onb-card__b h3 { margin: 0 0 4px; font-size: 17px; }
+.onb-card__b p { margin: 0 0 12px; color: var(--text-dim, #9298a6); font-size: 13.5px; line-height: 1.45; }
+.onb-card__row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 /* #266 — set-up-a-passkey prompt (modal after login when the device has none) */
 .pk-prompt__wrap { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.62); display: flex; align-items: center; justify-content: center; padding: 22px; backdrop-filter: blur(3px); }
 .pk-prompt { width: 100%; max-width: 340px; background: linear-gradient(#21252f,#191c24); border: 1px solid #2c3340; border-radius: 20px; padding: 24px 22px; text-align: center; box-shadow: 0 16px 50px rgba(0,0,0,.5); }

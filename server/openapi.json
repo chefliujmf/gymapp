@@ -677,6 +677,16 @@
         }
       }
     },
+    "/api/onboarding/complete": {
+      "post": {
+        "summary": "Coach marks onboarding complete (Bearer)",
+        "description": "Call ONCE at the end of onboarding a new athlete, after the profile is saved and the first week is drafted. Sets onboardedAt so the app stops showing the 'set me up' prompt.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Onboarding marked complete (returns onboardedAt)" }
+        }
+      }
+    },
     "/api/coach-review": {
       "post": {
         "summary": "Coach posts a post-workout REVIEW (Bearer) \u2014 Verdict/Execution/Body/Mind/Next from the cyclingcoach engine",

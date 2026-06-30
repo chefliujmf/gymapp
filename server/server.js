@@ -92,7 +92,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, statsSyncedAt: u.statsSyncedAt || 0, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').toLowerCase(); return store.users.find((u) => u.username.toLowerCase() === l || u.email === l) }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -808,7 +808,21 @@ function buildSystemPrompt(user) {
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
   } else {
-    p += `\n\n# ONBOARDING — this athlete has no profile yet\nWarmly interview them to build their profile: which sport(s) they do, their goal, days/week + time available, equipment/gym access, any constraints or injuries, food preferences, and how they like to be coached. Ask a couple of questions at a time, conversationally — not a long form. As soon as you know their sport(s), call set_sports; once you have enough, call set_athlete_profile with a clean markdown profile so you remember it every session. Keep building it as you learn more. Confirm what you saved in one short line.`
+    const known = []
+    if (user.sex) known.push(`sex ${user.sex}`)
+    if (user.weight) known.push(`weight ${user.weight} kg`)
+    if (user.ftp) known.push(`FTP ${user.ftp} W`)
+    if (user.maxHR) known.push(`max HR ${user.maxHR} bpm`)
+    if ((user.sports || []).length) known.push(`sports ${user.sports.join(', ')}`)
+    p += `\n\n# ONBOARDING — this athlete has NO profile yet. RUN THE INTERVIEW NOW.
+You are meeting them for the FIRST time. Open with a warm one-line hello using their name if known (${user.username || 'there'}), say you're their coach and you'll get them set up in a couple of minutes, then START asking. Lead the conversation — they may reply by tapping, typing, OR voice, and may give extra detail; roll with it.
+${known.length ? `Already known from intervals.icu (CONFIRM, don't re-ask): ${known.join(', ')}. ` : ''}Cover, a couple of questions at a time, conversationally (NOT a long form):
+1) which sport(s) they do → call set_sports as soon as you know;
+2) basics for fuelling & readiness: confirm sex/height/date-of-birth/weight (prefill what's known above);
+3) their main goal + rough experience level;
+4) a REALISTIC normal week: which days they can train, typical time per session, and any hard floors (e.g. min ride length);
+5) equipment / gym access; 6) constraints or injuries; 7) food preferences; 8) anything else they want their coach to know.
+As you learn durable facts, call set_athlete_profile with the FULL clean markdown profile (rewrite it whole each time, don't append fragments). When you have enough, DRAFT THEIR FIRST WEEK with create_workout/create_ride/create_run around their availability (easy-first, one quality day, respect their time + equipment), then call notify with a short "here's your first week" summary, and FINALLY call finish_onboarding to mark setup done. Keep every message short and encouraging.`
   }
   return p
 }
@@ -1483,6 +1497,11 @@ app.put('/api/profile', apiAuth, (req, res) => {
   if (Array.isArray(req.body?.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)
   if (typeof req.body?.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
   save(store); res.json({ ok: true, sports: req.user.sports || [], coachName: req.user.coachName || '' })
+})
+// #257 — coach marks onboarding COMPLETE (after it saved the profile AND drafted the first week).
+// Sets onboardedAt so the Today welcome card stops showing. The user can still skip earlier.
+app.post('/api/onboarding/complete', apiAuth, (req, res) => {
+  req.user.onboardedAt = Date.now(); save(store); res.json({ ok: true, onboardedAt: req.user.onboardedAt })
 })
 
 // Calendar items (meal / mind / note) — Platyplus-only, no intervals push.

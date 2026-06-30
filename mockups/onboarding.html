@@ -1,0 +1,117 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=440">
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216}
+  *{box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}
+  body{background:#07090c;color:var(--text);margin:0;padding:16px;display:flex;flex-wrap:wrap;gap:18px;justify-content:center}
+  .col{width:380px}
+  .lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 4px 8px;font-weight:800}
+  .phone{border:1px solid #1c2129;border-radius:26px;overflow:hidden;background:var(--bg);height:720px;display:flex;flex-direction:column}
+  .top{height:8px;background:linear-gradient(90deg,var(--accent) 0,var(--accent) var(--p,40%),#1c2129 var(--p,40%))}
+  .body{flex:1;padding:26px 22px;overflow:auto}
+  .kick{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px}
+  h1{font-size:25px;margin:0 0 8px;line-height:1.15}
+  .sub{color:var(--text-dim);font-size:14px;line-height:1.45;margin:0 0 22px}
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 14px}
+  .chip{padding:11px 15px;border-radius:13px;border:1px solid #2a2f3a;background:#161a22;font-weight:700;font-size:14px}
+  .chip.on{background:var(--accent);color:#06210f;border-color:var(--accent)}
+  .field{background:#12151c;border:1px solid #232934;border-radius:13px;padding:12px 14px;margin-bottom:11px;display:flex;justify-content:space-between;align-items:center}
+  .field span:first-child{color:var(--text-dim);font-size:13px}.field b{font-size:16px}
+  .tag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:#34e07d22;color:var(--accent);margin-left:7px}
+  .foot{padding:16px 22px;border-top:1px solid #14181f;display:flex;gap:10px}
+  .btn{flex:1;padding:14px;border-radius:999px;border:0;background:var(--accent);color:#06210f;font-weight:800;font-size:15px;text-align:center}
+  .btn.ghost{background:transparent;color:var(--text-dim);border:1px solid #2a2f3a;flex:0 0 auto;padding:14px 18px}
+  .dots{display:flex;gap:5px;justify-content:center;margin-top:6px}
+  .dots i{width:6px;height:6px;border-radius:9px;background:#2a2f3a}.dots i.on{background:var(--accent);width:18px}
+  /* conversational */
+  .msg{max-width:80%;padding:11px 14px;border-radius:16px;margin-bottom:10px;font-size:14px;line-height:1.4}
+  .me{background:var(--accent);color:#06210f;margin-left:auto;border-bottom-right-radius:5px;font-weight:600}
+  .co{background:#161a22;border:1px solid #232934;border-bottom-left-radius:5px}
+  .ava{display:flex;gap:9px;align-items:center;margin-bottom:14px}
+  .ava .c{width:34px;height:34px;border-radius:10px;background:#34e07d22;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .quick .chip{font-size:13px;padding:9px 13px}
+</style></head><body>
+
+<!-- ===== A: WIZARD ===== -->
+<div class="col">
+  <div class="lab">A · Stepped wizard (recommended)</div>
+  <div class="phone">
+    <div class="top" style="--p:55%"></div>
+    <div class="body">
+      <div class="kick">Step 3 of 6 · About you</div>
+      <h1>A few basics so your numbers are right</h1>
+      <p class="sub">We pulled what we could from intervals.icu. Tap any to change.</p>
+      <div class="field"><span>Biological sex</span><b>Female <span class="tag">intervals</span></b></div>
+      <div class="field"><span>Height</span><b>165 cm <span class="tag">intervals</span></b></div>
+      <div class="field"><span>Date of birth</span><b>1989 · 36 yo</b></div>
+      <div class="field"><span>Weight</span><b>61 kg <span class="tag">intervals</span></b></div>
+      <p class="sub" style="margin-top:14px">Used for calories, protein &amp; readiness — never shared.</p>
+    </div>
+    <div class="foot" style="flex-direction:column;gap:10px">
+      <div style="display:flex;gap:10px;width:100%"><button class="btn ghost">Back</button><button class="btn">Continue</button></div>
+      <div class="dots"><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== A2: WIZARD goal/availability ===== -->
+<div class="col">
+  <div class="lab">A · later step (goal + availability)</div>
+  <div class="phone">
+    <div class="top" style="--p:83%"></div>
+    <div class="body">
+      <div class="kick">Step 5 of 6 · Your week</div>
+      <h1>What does a normal week look like?</h1>
+      <p class="sub">So the coach plans around your real life — not an ideal one.</p>
+      <div class="kick" style="margin-top:4px">Days you can train</div>
+      <div class="chips">
+        <span class="chip on">Mon</span><span class="chip">Tue</span><span class="chip on">Wed</span><span class="chip">Thu</span><span class="chip on">Fri</span><span class="chip on">Sat</span><span class="chip">Sun</span>
+      </div>
+      <div class="kick" style="margin-top:10px">Typical time per session</div>
+      <div class="chips"><span class="chip">30 min</span><span class="chip on">45–60 min</span><span class="chip">90 min+</span></div>
+      <div class="kick" style="margin-top:10px">Main goal</div>
+      <div class="chips"><span class="chip on">Get fitter</span><span class="chip">Lose weight</span><span class="chip">Event</span><span class="chip">Feel good</span></div>
+    </div>
+    <div class="foot" style="flex-direction:column;gap:10px">
+      <div style="display:flex;gap:10px;width:100%"><button class="btn ghost">Back</button><button class="btn">Continue</button></div>
+      <div class="dots"><i></i><i></i><i></i><i></i><i class="on"></i><i></i></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== A3: generating ===== -->
+<div class="col">
+  <div class="lab">A · final → coach builds first week</div>
+  <div class="phone">
+    <div class="top" style="--p:100%"></div>
+    <div class="body" style="display:flex;flex-direction:column;justify-content:center;text-align:center">
+      <div style="font-size:46px;margin-bottom:10px">🦫</div>
+      <h1 style="text-align:center">Building your first week…</h1>
+      <p class="sub" style="text-align:center">Your coach is using what you told us + your intervals history to draft 7 days. You can tweak anything.</p>
+      <div style="text-align:left;background:#12151c;border:1px solid #232934;border-radius:14px;padding:14px;margin-top:8px;font-size:13px;line-height:1.9;color:var(--text-dim)">
+        ✓ Read your fitness &amp; freshness<br>✓ Matched 4 days · 45–60 min<br>✓ Easy-first, one quality day<br><span style="color:var(--accent)">◐ Drafting Mon–Sun…</span>
+      </div>
+    </div>
+    <div class="foot"><button class="btn">See my week →</button></div>
+  </div>
+</div>
+
+<!-- ===== C: CONVERSATIONAL ===== -->
+<div class="col">
+  <div class="lab">C · Conversational (coach asks)</div>
+  <div class="phone">
+    <div class="top" style="--p:40%"></div>
+    <div class="body">
+      <div class="ava"><div class="c">🦫</div><div><b style="font-size:14px">Your coach</b><div style="font-size:11px;color:var(--text-dim)">setting you up</div></div></div>
+      <div class="msg co">Hi Xenia! I'll set up your plan. First — which of these do you do?</div>
+      <div class="msg me">Cycling + a bit of strength 💪</div>
+      <div class="msg co">Nice. I pulled your details from intervals (female, 61 kg, 165 cm). Look right?</div>
+      <div class="msg me">Yep</div>
+      <div class="msg co">Great. How many days a week can you realistically train, and how long?</div>
+      <div class="quick"><span class="chip">3 days</span><span class="chip on">4 days</span><span class="chip">5 days</span><span class="chip">45–60 min</span></div>
+    </div>
+    <div class="foot"><input style="flex:1;background:#12151c;border:1px solid #232934;border-radius:999px;padding:12px 16px;color:var(--text)" placeholder="Type a reply…"><button class="btn" style="flex:0 0 auto;padding:12px 18px">➤</button></div>
+  </div>
+</div>
+
+</body></html>

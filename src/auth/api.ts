@@ -42,6 +42,7 @@ export interface User {
   statPrefs?: Partial<Record<'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr', 'manual' | 'computed'>> // #236 manual vs computed
   learnReadiness?: boolean // #235 — auto-calibrate readiness from check-in overrides (default true)
   statsSyncedAt?: number // last successful push to intervals
+  onboardedAt?: number // #257 set when the coach finishes onboarding (profile + first week)
 }
 
 export interface SportStat { ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null }

@@ -194,5 +194,10 @@ server.tool('save_coach_review',
   { date: z.string().describe('the workout date, YYYY-MM-DD'), verdict: z.string().optional().describe('one-line overall verdict, e.g. "Solid threshold work — held the watts, legs faded late."'), takeaways: z.array(z.string()).optional().describe('2-4 short bullets shown on the Progress card'), next: z.string().optional().describe('what to do next / next session focus'), sport: z.string().optional().describe('ride | run | gym'), score: z.number().optional().describe('optional 0-100 execution score'), planId: z.string().optional().describe('the planned workout id, if reviewing one') },
   wrap((a) => api('POST', '/api/coach-review', { date: a.date, verdict: a.verdict, takeaways: a.takeaways, next: a.next, sport: a.sport, score: a.score, planId: a.planId })))
 
+server.tool('finish_onboarding',
+  'Call this ONCE at the END of onboarding a brand-new athlete — AFTER you have saved their profile (set_athlete_profile) AND drafted their first week. It marks setup complete so the app stops showing the "set me up" prompt. Do not call it before the first week exists.',
+  {},
+  wrap(() => api('POST', '/api/onboarding/complete', {})))
+
 await server.connect(new StdioServerTransport())
 console.error(`platyplus-mcp ready -> ${BASE}`)
