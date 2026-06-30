@@ -22,6 +22,15 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+259. ⬜ **(LATER) Free email for Add-user (account invite) + onboarding.** JM 2026-06-30: adding his wife — what's free to
+    send the welcome/temp-password email? Server has `sendMail` but SMTP is unset. OPTIONS: (a) **just skip email** — the
+    Add-user response already returns the temp password to the admin; for 1–2 users, hand it over directly (zero setup);
+    (b) **Gmail SMTP via an App Password** (free, low-volume; nodemailer smtp.gmail.com) → set SMTP_* in AUTH_ENV secrets;
+    (c) Resend/Brevo free tier (needs domain/verification — overkill for now). REC: (a) now, (b) if we want a real invite
+    email. Then → onboarding (#257). gymapp-only.
+258. 🧪 **Duplicate readiness note in TWO places (Today).** JM 2026-06-30: the collapsed check-in says "Coach knows
+    you're run-down today" AND the plan banner says "A bit run-down — keep it easy…" — same insight twice. FIX: drop the
+    restatement in the check-in card, keep the actionable plan banner + the "Ask coach" link. gymapp-only.
 257. ⬜ **(LATER) Onboarding flow for a new user → generate an interesting first plan.** JM 2026-06-30: build the new-user
     onboarding (structured: sports, goals, experience, equipment, constraints — STT optional, #183) and, from it, have the
     coach generate a compelling first week/plan. Pairs #183 (wizard) + the coach engine (#18/#65). gymapp-only.
@@ -55,7 +64,7 @@ test guide → the **🧪 Test guide** section below.
 250. 🧪 **History rows aren't clickable → can't open the activity analysis; + no coach insights.** JM 2026-06-30: tapping
     a History session should open the activity detail (#54 map/flyby/timeline analysis). Also wants coach insights surfaced
     in History (pairs #249/#54). Make rows Links to /activity/:id (device) or the right detail. gymapp-only.
-249. ⬜ **Wellness page needs COACH INSIGHTS, not just charts.** JM 2026-06-30: "wellness is nice but no insights from
+249. 🧪 **Wellness page needs COACH INSIGHTS, not just charts.** JM 2026-06-30: "wellness is nice but no insights from
     coach. Assume the user doesn't know the science — coach explains (to an ADULT, not ELI5) + tips to improve / what to
     watch." Add a coach-generated explanation + tips block on the Wellness page (HRV/sleep/RHR/weight trends → what they
     mean for THEM + actions). Pairs the coach engine + #250. gymapp-only.

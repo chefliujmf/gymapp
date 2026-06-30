@@ -5,6 +5,7 @@ import { fetchWellness, type IcuWellness } from '../intervals'
 import { authApi, type Checkin } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import { DateRangeFilter, RECOVERY_PRESETS } from '../DateRange'
+import { wellnessInsights } from '../wellness-insights'
 
 // #194a — Wellness stats page: sleep / HRV / resting-HR / weight trends from intervals + the
 // check-in trend. Charts have axes, a 7-day moving average, and a min–max band (mock B). Shared
@@ -115,6 +116,8 @@ export default function Wellness() {
   }, [rows, checkins, from, to])
 
   const anyWellness = (rows || []).some((r) => r.sleepHours != null || r.hrv != null || r.restingHR != null || r.weight != null)
+  // #249: coach-voice insights from the trends (explained for an adult + tips)
+  const insights = useMemo(() => wellnessInsights({ sleep: view.sleep, hrv: view.hrv, rhr: view.rhr, weight: view.weight, sleepNeed: user?.sleepNeed ?? undefined }), [view, user?.sleepNeed])
 
   return (
     <div>
@@ -128,6 +131,17 @@ export default function Wellness() {
       {!connected && <p className="meta" style={{ margin: '0 2px 10px' }}>Connect intervals.icu in <span style={{ color: 'var(--accent)' }}>Profile</span> for sleep / HRV / resting-HR / weight trends. Your check-in trend shows below regardless.</p>}
       {rows === null ? <p className="meta">Loading…</p> : (
         <>
+          {insights.length > 0 && (
+            <div className="card wcoach">
+              <div className="wcoach__h">💬 Coach insights</div>
+              {insights.map((i) => (
+                <div key={i.metric} className="wcoach__row">
+                  <div className="wcoach__t"><b>{i.emoji} {i.metric}.</b> {i.text}</div>
+                  {i.tip && <div className="wcoach__tip">💡 {i.tip}</div>}
+                </div>
+              ))}
+            </div>
+          )}
           {connected && anyWellness && (
             <>
               <MetricCard title="😴 Sleep" data={view.sleep} dates={view.dates} color="#5ec8ff" unit="h" />

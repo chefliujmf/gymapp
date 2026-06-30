@@ -120,7 +120,7 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
           ) })}
         </div>
         {verdict && (
-          <div className="checkin__coach">💬 Coach knows you're <b>{vLabel.toLowerCase()}</b> today<Link to="/chat" className="checkin__coachbtn">Ask coach ↗</Link></div>
+          <div className="checkin__coach">💬 Your coach has today's check-in<Link to="/chat" className="checkin__coachbtn">Ask coach ↗</Link></div>
         )}
       </div>
     )

@@ -1170,6 +1170,14 @@ select.search { appearance: none; -webkit-appearance: none; }
 .wt__x { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-dim); margin-top: 3px; }
 .wcard__leg { display: flex; gap: 12px; font-size: 10px; color: var(--text-dim); margin-top: 4px; }
 .wcard__leg i { display: inline-block; width: 14px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 4px; }
+/* #249 — wellness coach insights */
+.wcoach { padding: 13px 14px; margin-bottom: 12px; border-color: rgba(52,224,125,.28); }
+.wcoach__h { font-size: 13px; font-weight: 800; color: var(--accent); margin-bottom: 8px; }
+.wcoach__row { padding: 8px 0; border-top: 1px solid var(--line); }
+.wcoach__row:first-of-type { border-top: 0; }
+.wcoach__t { font-size: 12.5px; line-height: 1.5; color: var(--text-dim); }
+.wcoach__t b { color: var(--text); }
+.wcoach__tip { font-size: 12px; color: #f0b145; margin-top: 4px; }
 /* #194c — Mind stats top row */
 .mind-stat3 { display: flex; gap: 8px; margin-bottom: 6px; }
 .mind-stat3 div { flex: 1; min-width: 0; text-align: center; background: var(--card-grad, linear-gradient(180deg,#21252f,#191c24)); border: 1px solid var(--line); border-radius: 12px; padding: 10px 4px; }
