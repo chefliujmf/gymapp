@@ -322,6 +322,27 @@ app.get('/auth/intervals/run-volume', auth, async (req, res) => {
   res.json({ available: true, longestKm, weeklyKm, runs: runs.length, windowDays: DAYS })
 })
 
+// #230 — per-week average run pace (sec/km) for the Running pace trend chart. Weighted (total
+// time ÷ total distance per week) so a long easy run doesn't get out-weighted by a short fast one.
+app.get('/auth/intervals/run-pace-trend', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ available: false })
+  const ath = req.user.icuAthlete || 'i28814'
+  const WEEKS = 8, DAYS = WEEKS * 7
+  const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(DAYS)}&newest=${icuDay(0)}`)
+  if (!Array.isArray(acts)) return res.json({ available: false })
+  const time = Array(WEEKS).fill(0), dist = Array(WEEKS).fill(0) // bucket 0 = oldest week
+  for (const a of acts) {
+    if (!/run/i.test(a.type || '') || !(a.distance > 0) || !(a.moving_time > 0)) continue
+    const daysAgo = Math.floor((Date.now() - Date.parse(a.start_date_local || a.start_date)) / 86400000)
+    if (daysAgo < 0 || daysAgo >= DAYS) continue
+    const wk = WEEKS - 1 - Math.floor(daysAgo / 7) // newest → last bucket
+    time[wk] += a.moving_time; dist[wk] += a.distance
+  }
+  const paces = time.map((t, i) => (dist[i] > 0 ? Math.round(t / (dist[i] / 1000)) : null)) // sec/km, oldest→newest
+  if (!paces.some((p) => p != null)) return res.json({ available: false })
+  res.json({ available: true, paces, weeks: WEEKS })
+})
+
 // PUSH: edit a per-sport stat → write it back to intervals AND mirror locally.
 // The ONLY working write is PUT /athlete/{id}/sport-settings/{entryId} with just the changed
 // field (a /athlete/{id} {sportSettings} PUT returns 200 but is silently ignored; full-athlete

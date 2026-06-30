@@ -113,8 +113,10 @@ test guide → the **🧪 Test guide** section below.
     **🧪 RETROFITS (2026-06-30):** (1) **Training load / day** → chart card w/ axes + labels + insight. (2) **Activity
     Timeline** (#54 power/HR/altitude/cadence) → each chart now has a **Y axis** + a shared **TIME x-axis** (mm:ss from the
     time stream) + an **avg·max** stat in the label; synced scrub kept. (3) **Mind weekly minutes** → axes + week labels +
-    insight ("~N min/week"). REMAINING: **Running pace trend** (deferred — net-new, needs per-week avg pace from run
-    activities, a data pull); per-sport mini sparklines (small cards — acceptable per the standard's thumbnail exception).
+    insight ("~N min/week"). (4) **Running pace trend** BUILT — new `GET /auth/intervals/run-pace-trend` (per-week
+    weighted avg pace, 8 wks) → RunningStats chart card w/ axes + week labels + insight ("Xs/km faster/slower than 8
+    weeks ago"). Only the per-sport mini sparklines remain as-is (small cards = the standard's thumbnail exception).
+    **#230 effectively done.**
 229. 🧪 **Bugs (FIXED 2026-06-30):** (a) check-in falsely showed "edited (auto N)" when the user didn't edit — override
     detection compared the stored value to the LIVE recompute, which drifts (calibration/recalibration/new data); now it
     compares to the auto value RECORDED at fill (`ci.auto`). (b) Load & Form's lone "Training load / day" card was

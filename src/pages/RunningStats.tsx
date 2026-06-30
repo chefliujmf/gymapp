@@ -6,6 +6,7 @@ import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmt
 import { runningVo2max, confLabel } from '../vo2max-submax'
 import { fetchWellness } from '../intervals'
 import { authApi } from '../auth/api'
+import { TrendChart } from '../charts'
 import { MiniCard } from './Fitness' // reused card shell (no series → just the value)
 
 // #225 — Running per-sport stats: threshold pace · Daniels zones · VDOT · race predictions.
@@ -23,11 +24,13 @@ export default function RunningStats() {
   const { user } = useAuth()
   const [runVol, setRunVol] = useState<{ available: boolean; longestKm?: number; weeklyKm?: number } | null>(null)
   const [hrRest, setHrRest] = useState<number | null>(null) // #234 HR-ratio input
+  const [paceTrend, setPaceTrend] = useState<(number | null)[] | null>(null) // #230 per-week avg pace
   const isRunner = hasModule(user?.sports || [], 'running')
 
   useEffect(() => {
     if (!user?.hasIcuKey || !isRunner) return
     authApi.runVolume().then(setRunVol).catch(() => {})
+    authApi.runPaceTrend().then((r) => setPaceTrend(r.available && r.paces ? r.paces : [])).catch(() => {})
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
     fetchWellness(from, to).then((rows) => { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break } }).catch(() => {})
   }, [user?.hasIcuKey, isRunner])
@@ -90,6 +93,21 @@ export default function RunningStats() {
               </div>
             </>
           )}
+
+          {paceTrend && paceTrend.some((p) => p != null) && (() => {
+            const v = paceTrend.filter((x): x is number => x != null)
+            const first = v[0], lastV = v[v.length - 1], diff = first - lastV // + = faster (pace dropped)
+            const insight = Math.abs(diff) < 3 ? '➡️ Pace is steady over the last 8 weeks.' : diff > 0 ? `📈 ${Math.round(diff)}s/km faster than 8 weeks ago — getting quicker.` : `📉 ${Math.round(-diff)}s/km slower than 8 weeks ago.`
+            return (
+              <>
+                <div className="stat-sub">Pace trend <span className="meta">· avg min/km per week</span></div>
+                <div className="card chart-card" style={{ padding: '12px 14px' }}>
+                  <TrendChart series={[{ label: 'pace', data: paceTrend, color: '#ffb13d', area: true }]} height={110} axes fmt={fmtPace} labels={['7w', '6w', '5w', '4w', '3w', '2w', '1w', 'now']} />
+                  <p className="fit-insight">{insight}</p>
+                </div>
+              </>
+            )
+          })()}
         </>
       )}
     </div>

@@ -934,6 +934,14 @@
         "responses": { "200": { "description": "{ available, longestKm, weeklyKm, runs, windowDays }" } }
       }
     },
+    "/auth/intervals/run-pace-trend": {
+      "get": {
+        "summary": "Per-week average run pace (sec/km, last 8 wks, weighted) for the Running pace-trend chart (#230)",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ available, paces: (sec/km|null)[] oldest→newest, weeks }" } }
+      }
+    },
     "/auth/sport-stat": {
       "put": {
         "summary": "Set a per-sport stat and TWO-WAY sync it to intervals.icu (auto-push; modifies only that sport's sportSettings entry, custom fields untouched) (#210)",
