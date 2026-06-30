@@ -113,6 +113,24 @@ test guide → the **🧪 Test guide** section below.
     verify the full Platyplus coach loop end-to-end (chat + plan create/adjust + reviews + notify) so the standalone
     cyclingcoach repo can be retired. First **read cyclingcoach for interesting improvements not yet in Platyplus** (method/
     KB/prompts) and port them. Pairs #18 (coach loop verify) + #91 (real coach takeaways). gymapp-only.
+    **DIFF DONE 2026-06-30 (agent scan of /Users/jmfiset/dev/cyclingcoach):** same engine, but cyclingcoach is ENRICHED
+    with per-athlete memory + learned baselines + detailed rule-sets Platyplus lacks. Prioritized port list (ROI order):
+    (1) **Per-athlete physiology baselines** — learned HRV mean/SD, RHR, LTHR, FTP, VO₂max from the athlete's own 60–90d
+    data (gates readiness/FTP calls; Platyplus injects raw fixed values, no HRV/RHR baseline). Med. Pairs readiness engine.
+    (2) **Coach feedback MEMORY** — durable per-athlete rules of what advice worked/failed + comms prefs ("challenge me",
+    "be progressive not cautious"); Platyplus starts every session fresh. Large (needs a `coachMemory` store + read-before/
+    update-after rules). (3) **Health/overtraining/illness GATES** — neck-check illness rule, return-to-training ladder,
+    NFO tripwires (2+ of ↑RHR/↓HRV/short sleep/heavy legs/power fade/↑RPE for 3+d → mandatory downshift), heat/taper. Safety
+    guardrail Platyplus has NONE of. Med-Lg (`checkHealthGates()`). (4) **Structured athlete PROFILE** — volume band, ride
+    floor (60m), gym duration, travel/cottage pattern, communication style, public-text privacy → feeds #257 onboarding +
+    `buildSystemPrompt`. Med. (5) **Weekly-planning macrocycle rules** — availability-anchored week shapes, session-priority
+    ladder, ~10–15%/wk ramp gate, Form/CTL projection check. Med. (6) nutrition/recovery framework (quantities, carb
+    periodization, vegan B12/iron/creatine). (7) female detail (RED-S, cycle-phase, perimenopause — flesh out the
+    `coach-engine-female.md` stub). (8) strength exercise LIBRARY (curated + progressions). (9) FTP multi-method +
+    confidence. (10) coach recipe library. Also: intervals publishing rules (time_target mandatory, split >1h, workout_doc)
+    → fold into coach-engine; COACHCHECK feedback protocol/completion gate. Already in Platyplus (don't re-port): readiness
+    scores, base coach-engine/cycling module. **#4 (+#1) directly inform #257 onboarding** — capture structured profile +
+    seed baselines at signup.
 255. ⬜ **Per-exercise INSIGHTS for gym.** JM 2026-06-30: each gym exercise/lift should get its own insight — progression
     (e1RM trend up/flat/down), PRs, plateau flag, volume, and a coach-style tip ("add a set", "deload", "you've stalled 3
     weeks — vary rep range"). Extends the lift detail (#93 dated e1RM chart) + the chart-standard insight + coach insights
