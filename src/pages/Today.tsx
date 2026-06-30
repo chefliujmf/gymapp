@@ -299,10 +299,11 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
 
 export default function Today() {
   const { user } = useAuth()
-  // #257: show the "meet your coach" welcome card until onboarding is finished (profile + first
-  // week). Skippable for the session; reappears next visit until the coach marks it done.
+  // #257: show the "meet your coach" welcome card ONLY for genuinely-new users — no completed
+  // onboarding AND no coach profile yet (existing users predate `onboardedAt`, so guard on
+  // hasCoachProfile too or they'd all see it). Skippable for the session.
   const [skipOnb, setSkipOnb] = useState(() => sessionStorage.getItem('onb-skip') === '1')
-  const showOnboarding = !!user && !user.onboardedAt && !skipOnb
+  const showOnboarding = !!user && !user.onboardedAt && !user.hasCoachProfile && !skipOnb
   const [selDay, setSelDay] = useState(todayISO())
   const todaysLogs = useLiveQuery(() => db.logs.where('date').equals(todayISO()).toArray())
   const dayLogs = useLiveQuery(() => db.logs.where('date').equals(selDay).toArray(), [selDay]) ?? []
