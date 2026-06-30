@@ -977,12 +977,26 @@ async function deletePlanById(user, id) {
 // into user.plans and thereafter OWNED by Platyplus (its later edits push back
 // over intervals). This function only READS intervals and writes to our own store
 // — it never mutates the intervals calendar, so it is safe to run repeatedly.
+// Coggan power zones → representative %FTP (mirrors src/intervals.ts stepPctFtp). intervals
+// emits {units:'power_zone', value:N} ("ride in zone N") steps — without this they collapse to
+// 0 / a bogus % (the "5 W" bug: zone 2 read as 2% FTP).
+const ZONE_PCT = { 1: 50, 2: 65, 3: 83, 4: 98, 5: 113, 6: 135, 7: 160 }
+function resolveStepPct(p) {
+  if (!p) return { start: 0, end: 0 }
+  if (p.units === 'power_zone') {
+    const z = Math.round(p.value || 0)
+    const pct = ZONE_PCT[z] != null ? ZONE_PCT[z] : (p.value >= 20 ? p.value : 65)
+    return { start: pct, end: pct, label: z >= 1 && z <= 7 ? `Z${z}` : undefined }
+  }
+  return { start: (p.start != null ? p.start : p.value) || 0, end: (p.end != null ? p.end : p.value) || 0 }
+}
+
 function icuEventToPlan(ev) {
   const date = String(ev.start_date_local || '').slice(0, 10)
   const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
   const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: ev.description || '', origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
   if (sport === 'ride' || sport === 'run') {
-    plan.segments = (ev.workout_doc?.steps || []).map((s) => ({ duration: Number(s.duration) || 0, powerStart: Number(s.power?.start) || 0, powerEnd: Number(s.power?.end) || 0, ...(s.text ? { label: s.text } : {}) }))
+    plan.segments = (ev.workout_doc?.steps || []).map((s) => { const pr = resolveStepPct(s.power); return { duration: Number(s.duration) || 0, powerStart: Number(pr.start) || 0, powerEnd: Number(pr.end) || 0, ...(s.text ? { label: s.text } : pr.label ? { label: pr.label } : {}) } })
   } else {
     plan.rounds = 1; plan.exercises = [] // gym structure stays in notes; the client parses it
   }

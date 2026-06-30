@@ -346,6 +346,24 @@ export function gymTemplateId(e: IcuEvent): number | undefined {
 /** A flattened player segment: ramps from powerStart% to powerEnd% of FTP. */
 export interface Segment { duration: number; powerStart: number; powerEnd: number; label?: string; hr?: string }
 
+// Coggan power zones → representative %FTP. intervals expresses some steps as
+// `{units:'power_zone', value:N}` ("ride in zone N") — without this map, value N (e.g. 2)
+// was read as a raw % → a Zone-2 endurance block rendered as 2% FTP ≈ 5 W (the bug JM hit).
+const ZONE_PCT: Record<number, number> = { 1: 50, 2: 65, 3: 83, 4: 98, 5: 113, 6: 135, 7: 160 }
+
+/** Resolve a workout step's power to {start,end} as %FTP, handling ramps, steady %, and zones. */
+export function stepPctFtp(p?: IcuStep['power']): { start: number; end: number; label?: string } {
+  if (!p) return { start: 0, end: 0 }
+  if (p.units === 'power_zone') {
+    const z = Math.round(p.value ?? 0)
+    // known zone → its midpoint %FTP (flat block); odd value that looks like a % → use it; else endurance
+    const pct = ZONE_PCT[z] ?? (p.value && p.value >= 20 ? p.value : 65)
+    return { start: pct, end: pct, label: z >= 1 && z <= 7 ? `Z${z}` : undefined }
+  }
+  // %ftp ramp {start,end} or steady {value}; fall back to value so steady efforts aren't 0 (#72/#107)
+  return { start: p.start ?? p.value ?? 0, end: p.end ?? p.value ?? 0 }
+}
+
 /** Flatten workout_doc steps, expanding repeat blocks, into player segments. */
 export function flattenIcuSteps(steps: IcuStep[] = []): Segment[] {
   const out: Segment[] = []
@@ -355,10 +373,8 @@ export function flattenIcuSteps(steps: IcuStep[] = []): Segment[] {
     } else if (s.steps) {
       s.steps.forEach(walk)
     } else if (s.duration) {
-      // steady steps carry {value}; ramps carry {start,end}. Fall back to value so a
-      // steady effort isn't flattened to 0 (#72 flat-blue) and warmups render (#107).
-      const p = s.power
-      out.push({ duration: s.duration, powerStart: p?.start ?? p?.value ?? 0, powerEnd: p?.end ?? p?.value ?? 0 })
+      const { start, end, label } = stepPctFtp(s.power)
+      out.push({ duration: s.duration, powerStart: start, powerEnd: end, label })
     }
   }
   steps.forEach(walk)

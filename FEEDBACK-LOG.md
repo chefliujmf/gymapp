@@ -27,6 +27,13 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+217. 🧪 **Workout power garbled — "175 W then 5 W", nothing like intervals (URGENT, FIXED).** JM 2026-06-29 (QA):
+    tomorrow's "Tuesday Cottage Ride" showed an unrealistic 5 W block. ROOT CAUSE: intervals expresses some steps as
+    `{units:'power_zone', value:N}` ("ride in Zone N"); `flattenIcuSteps` (+ server `icuEventToPlan`) read the zone
+    NUMBER as a %FTP → Zone 2 = 2% × 260 FTP ≈ 5 W. FIX: `stepPctFtp` maps Coggan zones → representative %FTP
+    (Z2→65% ≈ 169 W, flat endurance block, labelled Z2); same `resolveStepPct` server-side. Frontend reads workout_doc
+    live so it's correct on deploy; server fix corrects `plan.segments` on next reconcile. Test:
+    `src/intervals-steps.test.ts` (tomorrow's exact workout + all zones). gymapp-only.
 216. ⬜ **Marathon prediction is optimistic vs Coros — realism.** JM 2026-06-29 (QA): our marathon prediction vs
     Coros's 3:56:19 differs a lot. NOT a math bug — our predictions are EXACTLY Daniels VDOT (5K/10K/Half match his
     table within ~1%). But VDOT marathon assumes you're marathon-trained; it ignores endurance/glycogen ("the wall"),
