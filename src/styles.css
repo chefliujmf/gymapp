@@ -1172,6 +1172,22 @@ select.search { appearance: none; -webkit-appearance: none; }
 .mind-stat3 div { flex: 1; min-width: 0; text-align: center; background: var(--card-grad, linear-gradient(180deg,#21252f,#191c24)); border: 1px solid var(--line); border-radius: 12px; padding: 10px 4px; }
 .mind-stat3 b { display: block; font-size: 20px; font-weight: 800; }
 .mind-stat3 span { font-size: 10px; color: var(--text-dim); }
+/* #228 — shared editable benchmark snapshot (top of Stats + Profile) */
+.bm-card { padding: 13px 14px; margin-bottom: 12px; }
+.bm-card__h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.bm-card__h h3 { margin: 0; font-size: 14px; }
+.bm-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.bm-cell { background: #14181f; border: 1px solid var(--line); border-radius: 10px; padding: 8px 9px; }
+.bm-cell__l { font-size: 9.5px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+.bm-tag { font-size: 8px; font-weight: 800; border-radius: 999px; padding: 1px 5px; border: 1px solid; }
+.bm-tag--you { color: #9b8cff; border-color: rgba(155,140,255,.4); }
+.bm-tag--icu { color: var(--accent); border-color: rgba(52,224,125,.4); }
+.bm-tag--est { color: #5ec8ff; border-color: rgba(94,200,255,.4); }
+.bm-cell__v { background: none; border: 0; color: var(--text); font-size: 18px; font-weight: 800; padding: 2px 0 0; cursor: pointer; text-align: left; }
+.bm-cell__v:disabled { cursor: default; }
+.bm-cell__u { font-size: 10px; color: var(--text-dim); font-weight: 600; margin-left: 2px; }
+.bm-cell__in { width: 100%; background: #0f1216; border: 1px solid var(--accent); border-radius: 6px; color: var(--text); font-size: 16px; font-weight: 800; padding: 2px 6px; margin-top: 2px; }
+.bm-trends { display: block; text-align: right; font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 9px; }
 /* #226 — shared date-range filter (presets prefill the always-visible From/To) */
 .drf { margin-bottom: 12px; }
 .drf .chips { margin-bottom: 8px; }

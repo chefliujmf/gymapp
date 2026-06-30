@@ -35,6 +35,10 @@ test guide → the **🧪 Test guide** section below.
     sports, diet, sleep/VO₂max/FTP/pace inputs that sync to intervals); **Stats = VIEW + TREND them**, global snapshot at
     the TOP. Decide whether benchmarks stay edit-in-Profile/view-in-Stats or move entirely. Pairs #225 (Stats IA) + #164
     (Profile vs Settings split). Part of one Stats+Profile IA pass. gymapp-only.
+    **🧪 BUILT 2026-06-30:** shared **`BenchmarksCard`** (`src/Benchmarks.tsx`) — VO₂max/FTP/pace/maxHR/weight/sleep-need,
+    each tap-to-edit (saveProfile + saveSportStat, intervals-synced), source tag spaced off the label (JM "too close" fix).
+    Placed at the **TOP of Stats** (global leads) and editable there (JM chose **edit in BOTH**); Profile keeps its editors
+    + gains a "See trends & race predictions in Stats →" link. Weight read-only (intervals). tsc+build clean.
 227. 🧪 **Gym/strength sessions in History should be COLLAPSED by default.** JM 2026-06-30: a logged strength session
     expands all exercises × sets (kg/reps spinners) → the History page gets very long. Show a compact summary row
     (title · duration · volume · TSS) collapsed by default; tap to expand the sets. Applies in History (`/logs`) at least.
@@ -44,9 +48,13 @@ test guide → the **🧪 Test guide** section below.
     to History (`/logs`): **date range**, **activity type** (ride/run/gym/mind/…), **title search**, maybe sort
     (newest/oldest). GENERAL PRINCIPLE (banked to memory): every list/history page should have top filters + sorting —
     always design them in. gymapp-only; pairs #227.
-225. ⬜ **Stats IA: GLOBAL vs PER-SPORT — get it deliberately right (the #194b toggle was the wrong model).** JM
-    [IA confirmed: global + per-sport pages, build Running page, per-context ranges — but now folded into ONE Stats+Profile
-    IA pass with #226/#227/#228 so we build once, not thrash. Mock the full hub + Profile streamline first.]
+225. 🧪 **Stats IA: GLOBAL vs PER-SPORT (the #194b toggle was the wrong model) — BUILT.** Consolidated Stats+Profile IA
+    pass (mock `mockups/stats-profile-ia.html` approved). **GLOBAL:** `/fitness` is now **Load & Form only** (toggle
+    dropped), Wellness, History. **PER-SPORT pages:** new `/cycling-stats` (power curve/eFTP/VO₂max/W·kg, moved out of
+    Fitness) + new `/running-stats` (threshold pace/Daniels zones/VDOT/race predictions — the missing one, fixes Running
+    landing on cycling power). Strength→/progress, Mind→/mind-stats. Stats hub reordered (global on top). **Shared
+    `DateRangeFilter`** (always-visible From/To, presets prefill — JM tweak) with **per-context presets** (recovery 7/30/60d,
+    training 6wk–1yr). tsc+build clean, 167 tests. gymapp-only.
     2026-06-30: "Power & FTP page is great but it's cycling-only — we still need to think carefully for global stats vs
     per-sports." PROBLEM: `/fitness` now mixes a GLOBAL view (Load & Form, all sports) with a PER-SPORT view (cycling
     power) behind a toggle, and the Stats **Running** card routes to `/fitness` → shows CYCLING power (wrong). PROPOSED IA:
@@ -833,6 +841,10 @@ verifies **one at a time**; only JM marks ✅.
 **How to run the automated net:** `npm test` (unit, `src/*.test.ts`) · `npm run test:smoke` (API
 integration, `scripts/smoke-test.mjs`). Status: ❌ broken · 🔧 fixing · 🧪 fixed + test, awaiting JM ·
 ✅ JM-verified.
+
+### R225 · #225/#226/#227/#228 — Stats + Profile IA pass 🧪
+**Unit:** stats-hub routes updated (Cycling→/cycling-stats, Load&Form global). Most is page/render work.
+**JM manual (QA):** Stats hub leads with an **editable benchmarks card** (tap a value to edit; tags spaced) → Load&Form / Wellness / History → **per-sport pages** Cycling / Running / Strength / Mind. Running opens the new pace/zones/VDOT/predictions page (not cycling power). Every date filter has **From/To pickers + presets that prefill them**. History has search + type chips + range + Newest/Oldest, and **gym sessions are collapsed** (tap to expand). Profile has a "trends in Stats →" link; benchmarks editable in both. Supersedes the #194b toggle.
 
 ### R194bc · #194 (b) Fitness split + (c) Mind page 🧪
 **Unit:** `src/mind-stats.test.ts` (month minutes/sessions, streak incl. grace + gap-break, weekly buckets) + stats-hub routes updated. `npm test` (167).

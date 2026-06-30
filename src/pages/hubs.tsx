@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle, HeartPulse } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
+import { BenchmarksCard } from '../Benchmarks'
 
 type Item = { label: string; sub: string; to: string; icon: ReactNode; mine?: boolean }
 
@@ -73,6 +74,7 @@ export function StatsHub() {
     <div>
       <div className="page-head"><h1>Stats</h1><p>{sports.length ? `For your sports: ${sports.join(', ')}` : 'Your trends & progress'}</p></div>
       <div className="section-title">Global</div>
+      <BenchmarksCard />{/* #228: global benchmarks lead Stats, editable here too */}
       <div className="stack">{global.map((s) => <HubLink key={s.key} it={toItem(s)} />)}</div>
       {perSport.length > 0 && <>
         <div className="section-title">Per sport</div>

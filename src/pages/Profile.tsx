@@ -175,6 +175,7 @@ export default function Profile() {
       <p className="meta" style={{ margin: '2px 2px 8px' }}>
         Personalises your readiness & coach. {connected ? <>Values tagged <Tag label="intervals" kind="icu" /> are pulled from your intervals profile and <strong>sync both ways</strong> — edit here, it writes back (your custom fields are untouched). </> : null}<Tag label="est." kind="pp" /> means Platyplus computes/you set it (intervals has no such field).
       </p>
+      <Link to="/stats" className="bm-trends" style={{ marginTop: 0, marginBottom: 8 }}>📈 See trends & race predictions in Stats ›</Link>{/* #228 */}
 
       {does('cycling') && (
         <div className="sport-card">
