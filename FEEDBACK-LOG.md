@@ -110,9 +110,11 @@ test guide → the **🧪 Test guide** section below.
     crisp HTML-overlay text, an insight line, shared component, shared DateRangeFilter). RETROFIT (⬜): the activity
     **Timeline** charts (#54 power/HR/altitude/cadence — no axes/values), Mind weekly bars, Running pace trend, per-sport
     minis → all to the standard; generalise Wellness `WTrend` into one shared chart. gymapp-only.
-    **🧪 RETROFIT 1 (2026-06-30): Training load / day** (Load & Form page) was a bare bar sparkline (JM: "not up to
-    standard") → now a chart card with **axes + labels + an insight** ("~N TSS/day, peaking at M — ramping up/easing").
-    Remaining retrofits as above.
+    **🧪 RETROFITS (2026-06-30):** (1) **Training load / day** → chart card w/ axes + labels + insight. (2) **Activity
+    Timeline** (#54 power/HR/altitude/cadence) → each chart now has a **Y axis** + a shared **TIME x-axis** (mm:ss from the
+    time stream) + an **avg·max** stat in the label; synced scrub kept. (3) **Mind weekly minutes** → axes + week labels +
+    insight ("~N min/week"). REMAINING: **Running pace trend** (deferred — net-new, needs per-week avg pace from run
+    activities, a data pull); per-sport mini sparklines (small cards — acceptable per the standard's thumbnail exception).
 229. 🧪 **Bugs (FIXED 2026-06-30):** (a) check-in falsely showed "edited (auto N)" when the user didn't edit — override
     detection compared the stored value to the LIVE recompute, which drifts (calibration/recalibration/new data); now it
     compares to the auto value RECORDED at fill (`ci.auto`). (b) Load & Form's lone "Training load / day" card was

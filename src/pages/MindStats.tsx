@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../db'
 import { localISO } from '../date'
-import { BarChart } from '../charts'
+import { TrendChart } from '../charts'
 import { mindStats, isMindDiscipline } from '../mind-stats'
 
 // #194c — Mind stats page: minutes / sessions / streak + weekly-minutes trend from logged sessions.
@@ -30,8 +30,9 @@ export default function MindStats() {
           </div>
 
           <div className="section-title">Minutes per week <span className="meta" style={{ fontWeight: 400 }}>· last 8 weeks</span></div>
-          <div className="card" style={{ padding: '12px 14px' }}>
-            <BarChart data={s.weeklyMinutes} color="#9b8cff" height={90} />
+          <div className="card chart-card" style={{ padding: '12px 14px' }}>
+            <TrendChart series={[{ label: 'min', data: s.weeklyMinutes, color: '#9b8cff', area: true }]} height={110} axes unit=" min" labels={['7w', '6w', '5w', '4w', '3w', '2w', '1w', 'now']} />
+            <p className="fit-insight">{(() => { const v = s.weeklyMinutes.filter((x) => x > 0); if (!v.length) return 'No sessions in the last 8 weeks.'; return `🧘 ~${Math.round(v.reduce((a, b) => a + b, 0) / v.length)} min/week on average.` })()}</p>
           </div>
 
           <div className="section-title">Recent sessions</div>

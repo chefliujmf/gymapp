@@ -65,21 +65,28 @@ const TL_ROWS = [
   { key: 'cadence', label: 'Cadence', unit: ' rpm', color: '#4aa3ff', area: false },
 ] as const
 
-// #54: stacked power/HR/altitude/cadence charts sharing ONE scrubber (synced cursor).
+// elapsed seconds → compact axis label (mm:ss, or h:mm over an hour)
+const fmtElapsed = (s: number) => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}` : `${m}:${String(ss).padStart(2, '0')}` }
+
+// #54: stacked power/HR/altitude/cadence charts sharing ONE scrubber. Each to the chart standard
+// (#230): Y axis + a shared TIME x-axis + an avg/max insight in the label.
 function RideTimeline({ streams }: { streams: ActivityStreams }) {
   const [cur, setCur] = useState<number | null>(null)
   const rows = TL_ROWS.filter((r) => ((streams[r.key] as unknown[] | undefined)?.length || 0) > 1)
   if (!rows.length) return <p className="meta">No power / HR / altitude data for this activity.</p>
   const data: Record<string, (number | null)[]> = {}
   for (const r of rows) data[r.key] = ds(streams[r.key] as (number | null)[])
+  // shared time axis (from the time stream, downsampled to the same length); fallback to none
+  const timeLabels = streams.time && streams.time.length > 1 ? ds(streams.time as number[]).map((v) => (v == null ? '' : fmtElapsed(v))) : undefined
   const at = (key: string) => { const arr = data[key]; const v = cur != null ? arr[cur] : arr[arr.length - 1]; return v == null ? null : Math.round(v) }
+  const stat = (key: string) => { const v = data[key].filter((x): x is number => x != null); if (!v.length) return ''; const avg = Math.round(v.reduce((a, b) => a + b, 0) / v.length); return ` · avg ${avg} · max ${Math.round(Math.max(...v))}` }
   return (
     <div>
       <div className="tl-chips">{rows.map((r) => <div key={r.key} className="tl-chip"><span>{r.label}</span><b>{at(r.key) != null ? at(r.key) + r.unit : '—'}</b></div>)}</div>
-      {rows.map((r) => (
+      {rows.map((r, i) => (
         <div key={r.key} className="tl-card">
-          <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}</div>
-          <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={56} cursor={cur} onHover={setCur} />
+          <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}{stat(r.key)}</div>
+          <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={64} axes unit={r.unit} labels={i === rows.length - 1 ? timeLabels : undefined} cursor={cur} onHover={setCur} />
         </div>
       ))}
       <p className="meta" style={{ textAlign: 'center', fontSize: 11 }}>drag across to scrub — all charts move together</p>
