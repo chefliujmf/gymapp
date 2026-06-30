@@ -27,6 +27,17 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+224. ⬜ **Get morning HRV/sleep faster than the Coros→intervals lag (options/decision).** JM 2026-06-30: "Coros pushes
+    to intervals a bit late — options to get the info in the morning?" KEY CONSTRAINT: nothing is fresher than the
+    WATCH→Coros-cloud sync (only on phone+Coros-app sync), so the real lag is watch→Coros then Coros→intervals; the
+    options below remove the SECOND hop / nudge the first. RESEARCHED (web, 2026-06-30):
+    • **Ships now (free):** manual morning quick-entry of HRV/sleep (glance at the Coros app) + we ALREADY lean on
+      Freshness/Form + subjective check-in (#206/#207) so the morning decision doesn't NEED HRV — likely the right
+      primary answer. • **Proper:** COROS **Open API** (partner application — sanctioned direct HRV/sleep, fresher than
+      intervals) OR the official **COROS MCP server** (exposes sleep/HRV/load to AI tools — our coach IS Claude-CLI on
+      the XPS, so it could read Coros directly; most architecture-fit). • **Avoid:** aggregators Terra/Spike (paid +
+      dependency); unofficial reverse-engineered Coros API (stores the Coros password, fragile). Sources: COROS API
+      application page, the5krunner COROS-MCP writeup, Terra/Spike Coros integrations. DECISION PENDING (JM to pick). gymapp-only.
 223. 🧪 **Readiness/check-in is a TODAY concept — future days must show an EXPECTATION, not a live verdict.** JM
     2026-06-30: "the coach message is for today, the following days is maybe something more (we expect something) —
     saying it's fresh when I'm looking 4 days out at a workout is stupid." On a FUTURE day the Today view still shows
