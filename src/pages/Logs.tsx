@@ -9,6 +9,13 @@ import { e1rm } from '../strength'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
 import { DoneStats } from '../ui'
 import { buildDayEntries } from '../logs-merge'
+import { DateRangeFilter, type RangePreset } from '../DateRange'
+import { localISO } from '../date'
+
+// #226 — History filters. Normalise an entry to a filterable type + its title.
+const HISTORY_PRESETS: RangePreset[] = [{ label: '7 d', days: 7 }, { label: '30 d', days: 30 }, { label: '3 mo', days: 90 }, { label: '1 yr', days: 365 }]
+const TYPE_FILTERS: [string, string][] = [['all', 'All'], ['ride', '🚴 Ride'], ['run', '🏃 Run'], ['gym', '🏋️ Gym'], ['mind', '🧘 Mind']]
+const normType = (d?: string) => { const s = String(d || '').toLowerCase(); return /ride|cycl/.test(s) ? 'ride' : /run/.test(s) ? 'run' : /gym|strength|weight/.test(s) ? 'gym' : /mind|yoga|pilates|medit/.test(s) ? 'mind' : 'other' }
 
 // emoji for a discipline/sport so every History row reads at a glance
 const SPORT_EMOJI: Record<string, string> = { cycling: '🚴', ride: '🚴', running: '🏃', run: '🏃', strength: '🏋️', gym: '🏋️', swimming: '🏊', swim: '🏊', walking: '🚶', walk: '🚶', yoga: '🧘', pilates: '🧘', meditation: '🧠' }
@@ -76,6 +83,7 @@ function CheckinChips({ c }: { c: Checkin }) {
 function SessionCard({ log, imp }: { log: WorkoutLog; imp: boolean }) {
   const sets = log.sets || {}
   const [saved, setSaved] = useState(false)
+  const [open, setOpen] = useState(false) // #227: gym sessions collapsed by default
   const unit = imp ? 'lb' : 'kg'
   const catEx = log.workoutId ? allWorkoutsById[log.workoutId]?.exercises : undefined
 
@@ -100,13 +108,15 @@ function SessionCard({ log, imp }: { log: WorkoutLog; imp: boolean }) {
   if (!exs.length) return null
   return (
     <div className="card" style={{ padding: '12px 14px' }}>
-      <div className="card-row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div><strong>{log.title || 'Workout'}</strong><div className="meta">{log.duration} min · {vol(sets)} {unit} volume{log.tss ? ` · ${log.tss} TSS` : ''}</div></div>
+      <div className="card-row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => setOpen((o) => !o)}>
+        <div><strong>{log.title || 'Workout'}</strong><div className="meta">{log.duration} min · {exs.length} exercise{exs.length === 1 ? '' : 's'} · {vol(sets)} {unit} volume{log.tss ? ` · ${log.tss} TSS` : ''}</div></div>
         <div className="card-row" style={{ gap: 8, flex: 'none' }}>
           {saved && <span className="meta" style={{ color: 'var(--accent)' }}>Saved ✓</span>}
-          <button className="icon-btn" aria-label="Delete session" title="Delete" onClick={del} style={{ color: 'var(--danger,#ff6b6b)' }}><Trash2 size={16} /></button>
+          <button className="icon-btn" aria-label="Delete session" title="Delete" onClick={(ev) => { ev.stopPropagation(); del() }} style={{ color: 'var(--danger,#ff6b6b)' }}><Trash2 size={16} /></button>
+          <span className="meta" aria-hidden="true" style={{ fontSize: 16 }}>{open ? '⌄' : '›'}</span>
         </div>
       </div>
+      {open && (
       <div className="stack" style={{ gap: 12, marginTop: 8 }}>
         {exs.map((e) => {
           const best = Math.max(0, ...e.arr.map((s) => (s.weight && s.reps ? e1rm(s.weight, s.reps) : 0)))
@@ -126,6 +136,7 @@ function SessionCard({ log, imp }: { log: WorkoutLog; imp: boolean }) {
           )
         })}
       </div>
+      )}
     </div>
   )
 }
@@ -136,21 +147,40 @@ export default function Logs() {
   const imp = (useLiveQuery(() => getSetting('units')) as string | undefined) === 'imperial'
   const [checkins, setCheckins] = useState<Checkin[]>([])
   const [acts, setActs] = useState<IcuActivity[]>([])
+  // #226 filters: date range, type, title search, sort
+  const [from, setFrom] = useState(localISO(new Date(Date.now() - 30 * 86400000)))
+  const [to, setTo] = useState(localISO())
+  const [type, setType] = useState('all')
+  const [q, setQ] = useState('')
+  const [newest, setNewest] = useState(true)
   useEffect(() => {
     // Reconcile local logs to the server truth on open, so an orphaned local log
     // (e.g. a deleted plan's stale completion) can't show as a phantom session (#197).
     syncLogsFromServer()
-    const to = new Date().toISOString().slice(0, 10)
-    const from = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
-    authApi.checkins(from, to).then(setCheckins).catch(() => setCheckins([]))
+    const [f, t] = from <= to ? [from, to] : [to, from]
+    authApi.checkins(f, t).then(setCheckins).catch(() => setCheckins([]))
     // #130: surface activities recorded straight to intervals (e.g. a device run) — read hub.
-    fetchActivities(from, to).then(setActs).catch(() => setActs([]))
-  }, [])
+    fetchActivities(f, t).then(setActs).catch(() => setActs([]))
+  }, [from, to])
 
   // Group everything by DAY (#84), collapsed to ONE entry per (day, sport) so a stale
   // local log and the real device activity never double up (#197, logs-merge.test.ts).
-  const byDay = buildDayEntries(logs || [], acts, checkins)
-  const days = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1))
+  const [f, t] = from <= to ? [from, to] : [to, from]
+  const logsInRange = (logs || []).filter((l) => l.date >= f && l.date <= t)
+  const byDay = buildDayEntries(logsInRange, acts, checkins)
+  // #226: filter each day's entries by type + title search; drop empty days unless there's a check-in.
+  const ql = q.trim().toLowerCase()
+  const matchEntry = (e: { kind: string; log?: WorkoutLog; act?: IcuActivity }) => {
+    const ty = e.kind === 'gym' ? 'gym' : normType(e.kind === 'log' ? e.log?.discipline : sportOfActivity(e.act!))
+    if (type !== 'all' && ty !== type) return false
+    if (ql) { const title = (e.kind === 'device' ? e.act?.name : e.log?.title) || ''; if (!title.toLowerCase().includes(ql)) return false }
+    return true
+  }
+  type DayVal = ReturnType<typeof buildDayEntries> extends Map<string, infer V> ? V : never
+  const days: [string, DayVal][] = [...byDay.entries()]
+    .map(([date, d]): [string, DayVal] => [date, { ...d, entries: d.entries.filter(matchEntry) }])
+    .filter(([, d]) => d.entries.length || (type === 'all' && !ql && !!d.checkin))
+    .sort((a, b) => (newest ? (a[0] < b[0] ? 1 : -1) : (a[0] > b[0] ? 1 : -1)))
 
   return (
     <div>
@@ -159,7 +189,17 @@ export default function Logs() {
         <div className="sub-head-t"><h1>History</h1><p>Each day's check-in & sessions — tap a number to fix it</p></div>
         <button className="btn btn-sm" onClick={() => navigate('/log-activity')} style={{ marginLeft: 'auto' }}>+ Log</button>
       </div>
-      {logs === undefined ? <p className="meta">Loading…</p> : !days.length ? <p className="meta">Nothing logged yet — your check-ins and workouts will show here by day.</p> : (
+
+      {/* #226 filter + sort bar */}
+      <input className="search" placeholder="🔍 Search by title…" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 8 }} />
+      <div className="chips" style={{ marginBottom: 8 }}>
+        {TYPE_FILTERS.map(([v, label]) => <button key={v} className={'chip' + (type === v ? ' chip--active' : '')} onClick={() => setType(v)}>{label}</button>)}
+        <span style={{ flex: 1 }} />
+        <button className="chip" onClick={() => setNewest((n) => !n)}>{newest ? '↓ Newest' : '↑ Oldest'}</button>
+      </div>
+      <DateRangeFilter presets={HISTORY_PRESETS} from={from} to={to} onChange={(nf, nt) => { setFrom(nf); setTo(nt) }} />
+
+      {logs === undefined ? <p className="meta">Loading…</p> : !days.length ? <p className="meta">{q || type !== 'all' ? 'No sessions match your filters.' : 'Nothing logged in this range — check-ins & workouts show here by day.'}</p> : (
         days.map(([date, d]) => (
           <div key={date} style={{ marginBottom: 18 }}>
             <div className="section-title">{fmtDate(date)}</div>

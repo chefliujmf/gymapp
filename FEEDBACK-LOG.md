@@ -35,11 +35,11 @@ test guide → the **🧪 Test guide** section below.
     sports, diet, sleep/VO₂max/FTP/pace inputs that sync to intervals); **Stats = VIEW + TREND them**, global snapshot at
     the TOP. Decide whether benchmarks stay edit-in-Profile/view-in-Stats or move entirely. Pairs #225 (Stats IA) + #164
     (Profile vs Settings split). Part of one Stats+Profile IA pass. gymapp-only.
-227. ⬜ **Gym/strength sessions in History should be COLLAPSED by default.** JM 2026-06-30: a logged strength session
+227. 🧪 **Gym/strength sessions in History should be COLLAPSED by default.** JM 2026-06-30: a logged strength session
     expands all exercises × sets (kg/reps spinners) → the History page gets very long. Show a compact summary row
     (title · duration · volume · TSS) collapsed by default; tap to expand the sets. Applies in History (`/logs`) at least.
     Pairs with #226 (History filters). gymapp-only.
-226. ⬜ **History needs FILTERS + SORTING at the top (and list pages generally).** JM 2026-06-30: "digging in history
+226. 🧪 **History needs FILTERS + SORTING at the top (and list pages generally).** JM 2026-06-30: "digging in history
     without dates or by activity type makes it hard to find what I'm looking for, even the title." Add a filter/sort bar
     to History (`/logs`): **date range**, **activity type** (ride/run/gym/mind/…), **title search**, maybe sort
     (newest/oldest). GENERAL PRINCIPLE (banked to memory): every list/history page should have top filters + sorting —
