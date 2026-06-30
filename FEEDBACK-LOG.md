@@ -22,7 +22,11 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-267. ⬜ **Intervals sync doesn't REMOVE upstream-deleted activities.** JM 2026-06-30 (QA): deleted/removed a session in
+267. 🔨 **Intervals sync doesn't REMOVE upstream-deleted activities.** JM confirmed: the session was CREATED in
+    intervals then DELETED there, but stayed in Platyplus → a device/intervals activity served from cache (the live fetch
+    shouldn't return a deleted one). FIXED: intervals proxy now sends `Cache-Control: no-store` + client `fetchActivities`
+    uses `cache:'no-store'`, so a deleted-upstream activity can't be served stale. Manual test: delete an activity in
+    intervals → reopen History → it's gone. JM 2026-06-30 (QA): deleted/removed a session in
     intervals yesterday, ran an intervals sync in Platyplus, but the stale session still shows — deletions aren't
     reflected. Our sync likely only UPSERTS fetched activities and never prunes ones that vanished from intervals (or
     History merges a cached copy). FIX: on activity sync, reconcile = anything previously synced from intervals that's no

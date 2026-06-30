@@ -1552,6 +1552,10 @@ app.all('/icu/*', auth, async (req, res) => {
     const r = await fetch(url, init)
     res.status(r.status)
     const ct = r.headers.get('content-type'); if (ct) res.set('content-type', ct)
+    // #267: never let the browser heuristically cache an intervals read — without this a
+    // GET (e.g. /activities) could be served stale, so an activity DELETED upstream still
+    // shows in Platyplus. Always revalidate against intervals.
+    res.set('Cache-Control', 'no-store')
     res.send(Buffer.from(await r.arrayBuffer()))
   } catch (e) { res.status(502).json({ error: 'intervals.icu proxy failed', detail: String(e.message || e) }) }
 })

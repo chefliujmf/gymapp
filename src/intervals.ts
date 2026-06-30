@@ -163,7 +163,8 @@ export async function fetchActivities(oldest: string, newest: string): Promise<I
   const { apiKey, athleteId, serverKey } = await getIcuConfig()
   if (!apiKey && !serverKey) return []
   try {
-    const res = await fetch(`${ICU}/athlete/${athleteId}/activities?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey) })
+    // #267: no-store so a deleted-upstream activity can't be served from cache.
+    const res = await fetch(`${ICU}/athlete/${athleteId}/activities?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey), cache: 'no-store' })
     return res.ok ? await res.json() : []
   } catch { return [] }
 }
