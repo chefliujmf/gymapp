@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Platyplus · Stats + Profile IA</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--blue:#5ec8ff;--purple:#b98cff;--pink:#ff8fb1;--amber:#f0b145;--line:#2b303b;--bg:#0f1216;--card:linear-gradient(180deg,#21252f,#191c24);}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;justify-content:center;padding:14px 12px 60px}
+  .phone{width:100%;max-width:430px}
+  .tabs{display:flex;gap:5px;margin-bottom:12px;background:#161a21;border:1px solid var(--line);border-radius:999px;padding:4px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--text-dim);font-weight:700;font-size:11px;padding:8px 4px;border-radius:999px;cursor:pointer}
+  .tabs button.on{background:var(--accent);color:#06281a}
+  .desc{font-size:12px;color:var(--text-dim);margin:0 2px 12px;line-height:1.45}.desc b{color:var(--text)}
+  h1{font-size:23px;margin:2px 2px 2px}.psub{margin:0 2px 12px;color:var(--text-dim);font-size:13px}
+  .seclbl{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--text-dim);margin:16px 2px 8px;display:flex;align-items:center;gap:8px}
+  .seclbl .ln{flex:1;height:1px;background:var(--line)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:10px}
+  .hub{display:flex;align-items:center;gap:12px;cursor:pointer}
+  .hub .ic{width:40px;height:40px;flex:none;border-radius:11px;background:#14181f;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .hub h3{margin:0;font-size:15px}.hub .s{font-size:12px;color:var(--text-dim)}
+  .hub .ch{color:var(--text-dim);font-size:18px}
+  .bm{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px}
+  .bm div{background:#14181f;border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
+  .bm b{display:block;font-size:17px}.bm span{font-size:9.5px;color:var(--text-dim)}
+  .bm em{font-size:8px;color:var(--accent);font-style:normal}
+  .editlink{display:block;text-align:right;font-size:11px;color:var(--accent);font-weight:700;margin-top:8px}
+  .pill{font-size:9px;font-weight:800;border-radius:999px;padding:2px 7px;border:1px solid}
+  .pill--you{color:var(--purple);border-color:rgba(185,140,255,.4)}.pill--icu{color:var(--accent);border-color:rgba(52,224,125,.4)}.pill--est{color:var(--blue);border-color:rgba(94,200,255,.4)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .chip{border:1px solid var(--line);background:#161a21;color:var(--text-dim);border-radius:999px;padding:6px 11px;font-size:12px;font-weight:700}
+  .chip.on{background:var(--accent);color:#06281a;border-color:var(--accent)}
+  .search{width:100%;background:#14181f;border:1px solid var(--line);border-radius:10px;padding:9px 11px;color:var(--text);font-size:13px;margin-bottom:8px}
+  .day{font-size:15px;font-weight:800;margin:14px 2px 7px}
+  .ses{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:8px}
+  .ses__h{display:flex;align-items:center;gap:10px}
+  .ses .th{width:34px;height:34px;flex:none;border-radius:9px;background:#14181f;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:16px}
+  .ses h4{margin:0;font-size:13.5px}.ses .m{font-size:11px;color:var(--text-dim)}
+  .ses .cx{margin-left:auto;color:var(--text-dim);font-size:13px}
+  .ci{display:flex;gap:6px;margin:6px 0 2px}
+  .ci span{font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;border:1px solid var(--line);color:var(--text-dim)}
+  .ex{font-size:11.5px;color:var(--text-dim);border-top:1px solid var(--line);padding:7px 0 0;margin-top:8px}
+  .row{display:flex;gap:10px;margin-top:10px}.row .card{flex:1;margin:0;text-align:center}.row b{font-size:18px;display:block}.row span{font-size:10px;color:var(--text-dim)}
+  .note{font-size:11px;color:var(--text-dim);margin:6px 2px 0;line-height:1.4}
+  .area{width:100%;height:70px;margin-top:8px}
+</style></head>
+<body><div class="phone">
+  <div class="tabs">
+    <button class="on" onclick="show('stats',this)">Stats hub</button>
+    <button onclick="show('profile',this)">Profile</button>
+    <button onclick="show('history',this)">History</button>
+    <button onclick="show('persport',this)">Per-sport (Run)</button>
+  </div>
+  <div id="desc" class="desc"></div>
+  <div id="c"></div>
+</div>
+<script>
+const hub=(ic,t,s)=>`<div class="card hub"><span class="ic">${ic}</span><span style="flex:1"><h3>${t}</h3><span class="s">${s}</span></span><span class="ch">›</span></div>`;
+
+const STATS=`<h1>Stats</h1><p class="psub">Your benchmarks, trends & history</p>
+<div class="seclbl">Global<span class="ln"></span></div>
+<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="margin:0;font-size:14px">Your benchmarks</h3><span class="pill pill--icu">⇄ intervals</span></div>
+  <div class="bm">
+   <div><b>50</b><span>VO₂max</span><em>est.</em></div><div><b>262</b><span>FTP W</span><em>intervals</em></div><div><b>4:15</b><span>Pace /km</span><em>intervals</em></div>
+   <div><b>185</b><span>Max HR</span><em>intervals</em></div><div><b>76</b><span>Weight kg</span><em>intervals</em></div><div><b>9</b><span>Sleep need h</span><em>you</em></div>
+  </div><a class="editlink">Edit in Profile ›</a></div>
+${hub('📈','Load & Form','Fitness / Fatigue / Form · readiness · all sports')}
+${hub('❤️','Wellness','Sleep · HRV · resting HR · weight trends')}
+${hub('🗂️','History','Every logged session · filter & search')}
+<div class="seclbl">Your sports<span class="ln"></span></div>
+${hub('🚴','Cycling','Power curve · FTP · zones · VO₂max')}
+${hub('🏃','Running','Threshold pace · Daniels zones · VDOT · race predictions')}
+${hub('🏋️','Strength','Volume · PRs · est-1RM trends')}
+${hub('🧘','Mind','Minutes · sessions · streak')}`;
+
+const PROFILE=`<h1>Profile</h1><p class="psub">You &amp; your coaching — <b style="color:var(--accent)">edit</b> here, <b style="color:var(--accent)">see trends</b> in Stats</p>
+<div class="card hub"><span class="ic">🙂</span><span style="flex:1"><h3>jmfiset</h3><span class="s">you@email · admin</span></span></div>
+<div class="seclbl">You<span class="ln"></span></div>
+<div class="card"><h3 style="margin:0 0 6px;font-size:14px">Coach · Sports · Diet</h3><span class="s" style="font-size:12px;color:var(--text-dim)">Tadej · 🚴 🏃 🏋️ 🧘 · Omnivore</span></div>
+<div class="seclbl">Your benchmarks <span class="pill pill--icu" style="text-transform:none;letter-spacing:0">⇄ intervals</span><span class="ln"></span></div>
+<div class="card"><div class="bm">
+ <div><b>9</b><span>Sleep need h</span><em>you</em></div><div><b>50</b><span>VO₂max</span><em>est.</em></div><div><b>76</b><span>Weight kg</span><em>intervals</em></div>
+</div>
+<div class="bm" style="margin-top:8px">
+ <div><b>262</b><span>FTP W</span><em>intervals</em></div><div><b>4:15</b><span>Run pace</span><em>intervals</em></div><div><b>185</b><span>Max HR</span><em>intervals</em></div>
+</div>
+<div class="note"><b style="color:var(--text)">Set here, synced to intervals.</b> VO₂max is estimated from power÷weight unless you set it. → <span style="color:var(--accent);font-weight:700">See trends &amp; race predictions in Stats</span></div></div>
+<p class="note" style="text-align:center">Units, equipment & API tokens stay in <b style="color:var(--text)">Settings</b>.</p>`;
+
+const HISTORY=`<h1>History</h1><p class="psub">Every logged session — filter, search, sort</p>
+<input class="search" placeholder="🔍 Search by title…" />
+<div class="chips"><span class="chip on">All</span><span class="chip">🚴 Ride</span><span class="chip">🏃 Run</span><span class="chip">🏋️ Gym</span><span class="chip">🧘 Mind</span></div>
+<div class="chips"><span class="chip on">30 d</span><span class="chip">3 mo</span><span class="chip">1 yr</span><span class="chip">Custom</span><span style="flex:1"></span><span class="chip">↓ Newest</span></div>
+<div class="day">Mon, Jun 29</div>
+<div class="ses"><div class="ses__h"><span class="th">🚴</span><div><h4>Hill Efforts Near the Cottage</h4><span class="m">67 min · 27.2 km · 65 TSS</span></div><span class="cx">›</span></div></div>
+<div class="day">Fri, Jun 19</div>
+<div class="ses"><div class="ses__h"><span class="th">🏋️</span><div><h4>Rainy Day Full-Body Strength</h4><span class="m">11 min · 4 exercises · 8 TSS</span></div><span class="cx">⌄</span></div>
+<div class="ex">Collapsed by default — tap to expand the exercises &amp; sets. (No more endless kg/reps spinners filling the page.)</div></div>
+<div class="ses"><div class="ses__h"><span class="th">🧘</span><div><h4>Box Breathing</h4><span class="m">8 min</span></div><span class="cx">›</span></div></div>`;
+
+const PERSPORT=`<h1>Running</h1><p class="psub">Threshold pace · zones · VDOT · race predictions</p>
+<div class="chips"><span class="chip">6 wk</span><span class="chip on">3 mo</span><span class="chip">6 mo</span><span class="chip">1 yr</span><span class="chip">Custom</span></div>
+<div class="row"><div class="card"><b>4:15</b><span>Threshold /km</span></div><div class="card"><b>50</b><span>VDOT</span></div><div class="card"><b>~50</b><span>VO₂max</span></div></div>
+<div class="card" style="margin-top:10px"><h3 style="margin:0 0 4px;font-size:14px">Daniels pace zones</h3>
+<div class="note" style="margin:0">E 5:25 · M 4:38 · T 4:15 · I 3:54 · R 3:36 /km</div></div>
+<div class="card"><h3 style="margin:0 0 4px;font-size:14px">Race predictions</h3>
+<div class="note" style="margin:0">5K 19:57 · 10K 41:21 · Half 1:31:35 · Marathon 3:10–3:25 (range)</div></div>
+<div class="card"><h3 style="margin:0 0 2px;font-size:14px">Pace trend</h3><span class="s" style="font-size:11px;color:var(--text-dim)">avg pace / week</span>
+<svg class="area" viewBox="0 0 300 70" preserveAspectRatio="none"><polyline points="0,40 50,38 100,42 150,34 200,30 250,33 300,28" fill="none" stroke="#ffb13d" stroke-width="2" vector-effect="non-scaling-stroke"/></svg></div>`;
+
+const DESC={
+ stats:'<b>Stats hub.</b> GLOBAL on top — a read-only <b>benchmarks snapshot</b> (the data buried in Profile, now leading) + Load&Form, Wellness, History. Then <b>per-sport pages</b> (Cycling/Running/Strength/Mind), only the sports you do. No load/power toggle.',
+ profile:'<b>Profile = edit your benchmarks; Stats = view/trend them.</b> Person (coach/sports/diet) + an editable benchmarks block (synced to intervals), with a link to the trends in Stats. Config (units/equipment/tokens) stays in Settings.',
+ history:'<b>History with filters.</b> Title search + type chips (ride/run/gym/mind) + date range + sort. Gym sessions are <b>collapsed</b> to a summary row (tap to expand) so the page stays short.',
+ persport:'<b>Per-sport page (Running example).</b> The missing one: threshold pace / VDOT / Daniels zones / race predictions (moved out of Profile) + pace trend. Cycling is the analogous power page. Per-context ranges (6wk…1yr for training).',
+};
+function show(m,btn){document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+ document.getElementById('desc').innerHTML=DESC[m];document.getElementById('c').innerHTML={stats:STATS,profile:PROFILE,history:HISTORY,persport:PERSPORT}[m];}
+const init=(location.hash||'#stats').slice(1);show(init,document.querySelectorAll('.tabs button')[{stats:0,profile:1,history:2,persport:3}[init]??0]);
+</script>
+</body></html>

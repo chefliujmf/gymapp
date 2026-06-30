@@ -13,13 +13,13 @@ describe('Stats hub groups (#193)', () => {
 
   it('cycling + strength + meditation: global has Form + Wellness + History; per-sport has all three', () => {
     const { global, perSport } = statsGroups(['cycling', 'strength', 'meditation'])
-    expect(labels(global)).toEqual(['Training load & Form', 'Wellness', 'History'])
+    expect(labels(global)).toEqual(['Load & Form', 'Wellness', 'History'])
     expect(labels(perSport)).toEqual(['Cycling', 'Strength', 'Mind'])
   })
 
   it('no sports set: shows Form + Wellness + History globally, no per-sport cards', () => {
     const { global, perSport } = statsGroups([])
-    expect(labels(global)).toEqual(['Training load & Form', 'Wellness', 'History'])
+    expect(labels(global)).toEqual(['Load & Form', 'Wellness', 'History'])
     expect(perSport).toHaveLength(0)
   })
 
@@ -32,6 +32,6 @@ describe('Stats hub groups (#193)', () => {
     const { global, perSport } = statsGroups(['cycling', 'strength'])
     expect(global.find((s) => s.label === 'History')?.to).toBe('/logs')
     expect(perSport.find((s) => s.label === 'Strength')?.to).toBe('/progress')
-    expect(perSport.find((s) => s.label === 'Cycling')?.to).toBe('/fitness?focus=power')
+    expect(perSport.find((s) => s.label === 'Cycling')?.to).toBe('/cycling-stats')
   })
 })

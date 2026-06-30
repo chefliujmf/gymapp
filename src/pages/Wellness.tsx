@@ -4,12 +4,12 @@ import { localISO } from '../date'
 import { fetchWellness, type IcuWellness } from '../intervals'
 import { authApi, type Checkin } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
+import { DateRangeFilter, RECOVERY_PRESETS } from '../DateRange'
 
 // #194a — Wellness stats page: sleep / HRV / resting-HR / weight trends from intervals + the
-// check-in trend, with a 7d/30d/60d/custom range filter. Charts have axes, a 7-day moving
-// average, and a min–max band (mock option B approved 2026-06-30).
+// check-in trend. Charts have axes, a 7-day moving average, and a min–max band (mock B). Shared
+// From/To date filter with recovery-horizon presets (#226 tweak).
 
-const RANGES: [string, number][] = [['7 d', 7], ['30 d', 30], ['60 d', 60]]
 const round1 = (n: number) => Math.round(n * 10) / 10
 
 /** All ISO dates from..to inclusive (so charts have a stable axis even with gaps). */
@@ -82,13 +82,11 @@ function MetricCard({ title, data, dates, color, unit = '' }: { title: string; d
 export default function Wellness() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [preset, setPreset] = useState<number | 'custom'>(30)
   const [from, setFrom] = useState(localISO(new Date(Date.now() - 30 * 86400000)))
   const [to, setTo] = useState(localISO())
   const [rows, setRows] = useState<IcuWellness[] | null>(null)
   const [checkins, setCheckins] = useState<Checkin[]>([])
   const connected = !!user?.hasIcuKey
-  const applyPreset = (d: number) => { setPreset(d); setFrom(localISO(new Date(Date.now() - d * 86400000))); setTo(localISO()) }
 
   useEffect(() => {
     if (!from || !to) return
@@ -125,16 +123,7 @@ export default function Wellness() {
         <div className="sub-head-t"><h1>Wellness</h1><p>Sleep · HRV · resting HR · weight — from intervals & your check-ins</p></div>
       </div>
 
-      <div className="chips" style={{ marginBottom: preset === 'custom' ? 8 : 12 }}>
-        {RANGES.map(([label, d]) => <button key={d} className={'chip' + (preset === d ? ' chip--active' : '')} onClick={() => applyPreset(d)}>{label}</button>)}
-        <button className={'chip' + (preset === 'custom' ? ' chip--active' : '')} onClick={() => setPreset('custom')}>Custom</button>
-      </div>
-      {preset === 'custom' && (
-        <div className="date-range">
-          <label>From<input type="date" value={from} max={localISO()} onChange={(e) => setFrom(e.target.value)} /></label>
-          <label>To<input type="date" value={to} max={localISO()} onChange={(e) => setTo(e.target.value)} /></label>
-        </div>
-      )}
+      <DateRangeFilter presets={RECOVERY_PRESETS} from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
 
       {!connected && <p className="meta" style={{ margin: '0 2px 10px' }}>Connect intervals.icu in <span style={{ color: 'var(--accent)' }}>Profile</span> for sleep / HRV / resting-HR / weight trends. Your check-in trend shows below regardless.</p>}
       {rows === null ? <p className="meta">Loading…</p> : (

@@ -1172,6 +1172,12 @@ select.search { appearance: none; -webkit-appearance: none; }
 .mind-stat3 div { flex: 1; min-width: 0; text-align: center; background: var(--card-grad, linear-gradient(180deg,#21252f,#191c24)); border: 1px solid var(--line); border-radius: 12px; padding: 10px 4px; }
 .mind-stat3 b { display: block; font-size: 20px; font-weight: 800; }
 .mind-stat3 span { font-size: 10px; color: var(--text-dim); }
+/* #226 — shared date-range filter (presets prefill the always-visible From/To) */
+.drf { margin-bottom: 12px; }
+.drf .chips { margin-bottom: 8px; }
+.drf .date-range { display: flex; gap: 10px; }
+.drf .date-range label { flex: 1; display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-dim); font-weight: 700; }
+.drf .date-range input { background: #14181f; border: 1px solid var(--line); border-radius: 9px; padding: 7px 9px; color: var(--text); font-size: 13px; }
 .checkin__coach { display: flex; align-items: center; gap: 6px; margin-top: 11px; font-size: 12px; color: var(--text-dim); }
 .checkin__coach b { color: var(--accent); }
 .checkin__coachbtn { margin-left: auto; background: #14181f; border: 1px solid rgba(52,224,125,.3); color: var(--accent); border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 700; text-decoration: none; }
