@@ -144,6 +144,20 @@ export function marathonRealism(vdot: number, volume?: RunVolume): MarathonReali
 export const runningVo2max = (vdot: number) => vdot
 
 /**
+ * #207 Phase 2b — estimate VO₂max (ml/kg/min) from the best aerobic measure we have: cycling
+ * eFTP÷weight (Coggan `10.8·W/kg + 7`) and/or running VDOT (a VO₂max itself). Returns the HIGHER
+ * (your best-trained engine reflects central capacity best) + which source, or null if no inputs.
+ * Recomputes as FTP/weight/VDOT change → it "refines over time"; manual entry always overrides.
+ */
+export function estimateVo2max({ ftp, weightKg, vdot }: { ftp?: number | null; weightKg?: number | null; vdot?: number | null }): { value: number; from: string } | null {
+  const cands: { value: number; from: string }[] = []
+  if (ftp && weightKg && weightKg > 0) cands.push({ value: Math.round((10.8 * ftp / weightKg + 7) * 10) / 10, from: 'your cycling power ÷ weight' })
+  if (vdot && vdot > 0) cands.push({ value: Math.round(vdot), from: 'your running pace (VDOT)' })
+  if (!cands.length) return null
+  return cands.reduce((a, b) => (b.value > a.value ? b : a))
+}
+
+/**
  * Target pace (sec/km) for a workout segment given as a % of threshold (the RunPlayer's
  * `powerStart`). Maps the effort band to a Daniels zone so the player's pace matches the
  * Profile's pace-zone table. <78 Easy · <88 Marathon · <100 Threshold · <110 Interval · else Rep.

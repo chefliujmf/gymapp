@@ -428,11 +428,16 @@ app.put('/auth/profile/athlete', auth, (req, res) => {
 function upsertCheckin(user, body) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(body?.date || '') ? body.date : new Date().toISOString().slice(0, 10)
   user.checkins = user.checkins || []
+  const lvl = (v) => (Number(v) >= 1 && Number(v) <= 5 ? Number(v) : undefined)
   const ci = { date,
-    energy: Number(body.energy) >= 1 && Number(body.energy) <= 5 ? Number(body.energy) : undefined,
-    sleep: Number(body.sleep) >= 1 && Number(body.sleep) <= 5 ? Number(body.sleep) : undefined,
-    soreness: Number(body.soreness) >= 1 && Number(body.soreness) <= 5 ? Number(body.soreness) : undefined,
+    energy: lvl(body.energy), sleep: lvl(body.sleep), soreness: lvl(body.soreness),
     note: typeof body.note === 'string' ? body.note.slice(0, 200) : undefined }
+  // #207 Phase 2b: record the AUTO scores the athlete was shown (display terms: energy/sleep/freshness,
+  // each 1–5) so we can later learn how their own ratings systematically differ → personal calibration.
+  if (body.auto && typeof body.auto === 'object') {
+    const a = { energy: lvl(body.auto.energy), sleep: lvl(body.auto.sleep), freshness: lvl(body.auto.freshness) }
+    if (a.energy != null || a.sleep != null || a.freshness != null) ci.auto = a
+  }
   const i = user.checkins.findIndex((x) => x.date === date)
   if (i >= 0) user.checkins[i] = { ...user.checkins[i], ...ci }; else user.checkins.push(ci)
   return ci
@@ -474,7 +479,10 @@ app.get('/auth/readiness', auth, async (req, res) => {
   const today = rows.find((r) => r.date === date) || rows[rows.length - 1] || {}
   const history = rows.filter((r) => r.date < date)
   const sleepNeed = Number(req.user.sleepNeed) > 0 ? Number(req.user.sleepNeed) : 8
-  res.json({ connected: true, date, sleepNeed, today, ...computeReadiness(history, today, { sleepNeed }) })
+  // #207 Phase 2b: pass PAST check-ins (before this date) so the model calibrates to the athlete's
+  // own overrides — but never the day being viewed (it'd compare a score against itself).
+  const calCheckins = (req.user.checkins || []).filter((c) => c && c.date < date)
+  res.json({ connected: true, date, sleepNeed, today, ...computeReadiness(history, today, { sleepNeed, checkins: calCheckins }) })
 })
 
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads

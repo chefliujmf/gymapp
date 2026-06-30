@@ -3,13 +3,16 @@ import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 export interface Passkey { id: string; label: string; createdAt: number }
 export interface CoachNotification { id: string; kind: 'coach'; date: string; at: string; title: string; body?: string; items?: string[]; read?: boolean }
 export interface CoachReview { id: string; date: string; planId?: string; activityId?: string; sport?: string; score?: number; verdict?: string; execution?: string[]; body?: string; mind?: { pattern?: string; cue?: string }; next?: string; recovery?: string; takeaways?: string[]; at: string }
-export interface Checkin { date: string; energy?: number; sleep?: number; soreness?: number; note?: string }
-export interface ReadinessScore { score: number }
+// #207 Phase 2b: `auto` records the auto scores shown (display terms) so the model can learn the
+// athlete's systematic overrides → a personal calibration.
+export interface Checkin { date: string; energy?: number; sleep?: number; soreness?: number; note?: string; auto?: { energy?: number; sleep?: number; freshness?: number } }
+export interface ReadinessScore { score: number; raw?: number }
 export interface Readiness {
   connected: boolean; date?: string; sleepNeed?: number
   sleep?: (ReadinessScore & { sleepHours?: number; sleepScore?: number }) | null
   freshness?: (ReadinessScore & { acwr?: number | null; tsb?: number | null; personalZ?: number | null }) | null
   energy?: (ReadinessScore & { hrvZ?: number | null; rhrZ?: number | null; guard?: boolean }) | null
+  calibration?: { energy: number; sleep: number; freshness: number } // #207 Phase 2b learned offsets
   baseline?: { nHrv: number; nRhr: number; hrvCV7: number | null }
   today?: { hrv?: number | null; restingHR?: number | null; sleepHours?: number | null }
 }

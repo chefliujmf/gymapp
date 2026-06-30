@@ -1135,6 +1135,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .mchip__auto { font-size: 10px; font-weight: 700; color: #ffcf5c; opacity: .95; }
 .checkin__src--edit { color: #ffcf5c; }
 .checkin__autowas { color: var(--text-dim); font-weight: 600; }
+.checkin__tuned { color: #9b8cff; font-size: 11px; font-weight: 700; } /* #207 Phase 2b personal calibration */
 .checkin__coach { display: flex; align-items: center; gap: 6px; margin-top: 11px; font-size: 12px; color: var(--text-dim); }
 .checkin__coach b { color: var(--accent); }
 .checkin__coachbtn { margin-left: auto; background: #14181f; border: 1px solid rgba(52,224,125,.3); color: var(--accent); border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 700; text-decoration: none; }

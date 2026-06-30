@@ -3,6 +3,7 @@ import {
   vdotFromThresholdPace, thresholdPaceFromVdot, paceZones,
   racePredict, racePredictions, fmtPace, fmtTime, parsePace, zonePaceForPct,
   marathonDurabilityPenalty, marathonRealism, MAX_DURABILITY_PENALTY, DEFAULT_DURABILITY_PENALTY, MARATHON_READY,
+  estimateVo2max,
 } from './running-paces'
 
 // Daniels' published VDOT 50 table values — our model should land within tolerance.
@@ -126,6 +127,27 @@ describe('marathonRealism (potential → realistic range)', () => {
     expect(m.penalty).toBeGreaterThan(0.04)
     expect(m.penalty).toBeLessThan(0.06)
     expect(Math.abs(m.realisticSec - (3 * 3600 + 20 * 60))).toBeLessThan(120) // within 2 min of 3:20
+  })
+})
+
+// #207 Phase 2b — VO₂max estimate from the best aerobic measure.
+describe('estimateVo2max', () => {
+  it('cycling: Coggan 10.8·W/kg + 7', () => {
+    const e = estimateVo2max({ ftp: 260, weightKg: 76 })
+    expect(e!.value).toBeCloseTo(10.8 * 260 / 76 + 7, 1) // ≈ 43.9
+    expect(e!.from).toMatch(/cycling/)
+  })
+  it('running VDOT is itself a VO₂max', () => {
+    expect(estimateVo2max({ vdot: 50 })!.value).toBe(50)
+  })
+  it('takes the higher of the two (best-trained engine)', () => {
+    const e = estimateVo2max({ ftp: 260, weightKg: 76, vdot: 50 }) // cycling ≈44, run 50
+    expect(e!.value).toBe(50)
+    expect(e!.from).toMatch(/running/)
+  })
+  it('null when no inputs / bad weight', () => {
+    expect(estimateVo2max({})).toBeNull()
+    expect(estimateVo2max({ ftp: 260, weightKg: 0 })).toBeNull()
   })
 })
 

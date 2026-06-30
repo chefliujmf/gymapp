@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { lnRMSSD, meanSd, zTo5, score100To5, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS } from '../server/readiness.js'
+import { lnRMSSD, meanSd, zTo5, score100To5, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS } from '../server/readiness.js'
 
 // #195 readiness math, grounded in docs/readiness-scores.md (WHOOP deep-dive 2026-06-28).
 
@@ -123,5 +123,75 @@ describe('readiness() end-to-end', () => {
     expect(r.energy).toBeNull()
     expect(r.sleep.score).toBeGreaterThan(0)
     expect(r.freshness.score).toBeGreaterThan(0)
+  })
+})
+
+// #207 Phase 2b — learn a personal calibration from systematic overrides (gradual drift).
+describe('calibrationOffset (gradual drift)', () => {
+  it('no offset until MIN_CALIBRATION_DAYS of signal', () => {
+    expect(calibrationOffset([1, 1, 1, 1])).toBe(0) // only 4 days
+    expect(MIN_CALIBRATION_DAYS).toBe(5)
+  })
+  it('consistent +1 overrides → a positive (but damped) offset', () => {
+    const off = calibrationOffset([1, 1, 1, 1, 1]) // 5 days, +1 each
+    expect(off).toBeGreaterThan(0)
+    expect(off).toBeLessThanOrEqual(1)
+  })
+  it('grows with evidence then caps at ±1', () => {
+    const few = calibrationOffset(Array(5).fill(1))
+    const many = calibrationOffset(Array(20).fill(2))
+    expect(many).toBeGreaterThan(few)
+    expect(many).toBe(1) // capped
+    expect(calibrationOffset(Array(20).fill(-2))).toBe(-1)
+  })
+  it('agreement (deltas ~0) → no drift', () => {
+    expect(calibrationOffset([0, 0, 1, -1, 0, 0])).toBe(0)
+  })
+  it('ignores a tiny systematic bias (<0.2)', () => {
+    expect(calibrationOffset(Array(10).fill(0.1))).toBe(0)
+  })
+  it('a single off day cannot swing it', () => {
+    expect(calibrationOffset([0, 0, 0, 0, 3])).toBe(0) // mean 0.6 × conf 0.5 = 0.3, but one outlier among agreement
+  })
+})
+
+describe('learnedOffsets (per dimension, freshness = 6 − soreness)', () => {
+  const mk = (auto: any, energy?: number, sleep?: number, soreness?: number) => ({ auto, energy, sleep, soreness })
+  it('learns each dimension independently', () => {
+    // user consistently feels FRESHER than computed (sets freshness high → soreness low)
+    const checkins = Array.from({ length: 8 }, () => mk({ energy: 3, sleep: 3, freshness: 3 }, 3, 3, 1)) // user freshness = 6−1 = 5, +2 vs auto 3
+    const off = learnedOffsets(checkins)
+    expect(off.freshness).toBeGreaterThan(0)
+    expect(off.energy).toBe(0) // energy matched
+    expect(off.sleep).toBe(0)
+  })
+  it('skips check-ins without a stored auto value', () => {
+    expect(learnedOffsets([{ energy: 5 }, { energy: 1 }])).toEqual({ energy: 0, sleep: 0, freshness: 0 })
+  })
+})
+
+describe('readiness() applies the learned calibration', () => {
+  const hist = Array.from({ length: 30 }, (_, i) => ({ date: `d${i}`, hrv: 45 + (i % 10), restingHR: 52 + (i % 6) }))
+  it('nudges the energy score toward what the athlete reports, keeps the raw', () => {
+    // 10 days where the athlete rated energy 2 points above the model
+    const checkins = Array.from({ length: 10 }, () => ({ auto: { energy: 2 }, energy: 4 }))
+    const plain = readiness(hist, { hrv: 60, restingHR: 50, sleepHours: 8, fitness: 60, fatigue: 50, form: 10 })
+    const cal = readiness(hist, { hrv: 60, restingHR: 50, sleepHours: 8, fitness: 60, fatigue: 50, form: 10 }, { checkins })
+    expect(cal.calibration.energy).toBeGreaterThan(0)
+    expect(cal.energy.score).toBeGreaterThan(plain.energy.score)
+    expect(cal.energy.raw).toBe(plain.energy.score) // raw preserved
+  })
+  it('no check-in history → no calibration, scores unchanged', () => {
+    const r = readiness(hist, { hrv: 60, restingHR: 50, sleepHours: 8, fitness: 60, fatigue: 50, form: 10 })
+    expect(r.calibration).toEqual({ energy: 0, sleep: 0, freshness: 0 })
+  })
+})
+
+describe('applyOffset', () => {
+  it('clamps to 1–5 and no-ops on 0/null', () => {
+    expect(applyOffset(4.5, 1)).toBe(5)
+    expect(applyOffset(1.2, -1)).toBe(1)
+    expect(applyOffset(3, 0)).toBe(3)
+    expect(applyOffset(null, 1)).toBeNull()
   })
 })

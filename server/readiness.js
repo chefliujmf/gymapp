@@ -116,13 +116,56 @@ export function sleep({ sleepScore, sleepHours, sleepNeed = 8 } = {}) {
   return null
 }
 
+// --- #207 Phase 2b: LEARN a personal calibration from the athlete's own overrides ----------
+// The auto scores are a model; the athlete is the ground truth. When they systematically edit a
+// computed score the same direction, drift the model toward them — GRADUALLY (needs ≥5 days of
+// signal, grows with evidence, capped ±1), so one off day can't swing it. As the auto score
+// converges on the athlete, the residual deltas shrink and the offset stabilises. This is the
+// "learn about ME / it changes over time" JM asked for (#207/#220).
+export const MIN_CALIBRATION_DAYS = 5
+
+const median = (xs) => { const s = [...xs].sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2 }
+
+/** Gradual-drift offset for ONE dimension from its (user − auto) deltas. 0 until enough, evidence-
+ *  weighted, bounded ±1; tiny biases (<0.2) ignored. Uses the MEDIAN so a single extreme day can't
+ *  swing it — we want the athlete's TYPICAL disagreement, not an outlier-pulled mean. */
+export function calibrationOffset(deltas = []) {
+  const v = deltas.filter((d) => d != null && Number.isFinite(d))
+  if (v.length < MIN_CALIBRATION_DAYS) return 0
+  const confidence = Math.min(1, v.length / 10) // full weight by ~10 days of signal
+  const off = clamp(round1(median(v) * confidence), -1, 1)
+  return Math.abs(off) < 0.2 ? 0 : off
+}
+
+/** Per-dimension learned offsets (sleep/freshness/energy, DISPLAY terms) from past check-ins that
+ *  recorded the auto value they were shown. Freshness in display terms = 6 − soreness tap. */
+export function learnedOffsets(checkins = []) {
+  const deltas = { energy: [], sleep: [], freshness: [] }
+  for (const c of checkins) {
+    if (!c || !c.auto) continue
+    const user = { energy: c.energy, sleep: c.sleep, freshness: c.soreness != null ? 6 - c.soreness : null }
+    for (const d of ['energy', 'sleep', 'freshness']) {
+      if (c.auto[d] != null && user[d] != null) deltas[d].push(user[d] - c.auto[d])
+    }
+  }
+  return { energy: calibrationOffset(deltas.energy), sleep: calibrationOffset(deltas.sleep), freshness: calibrationOffset(deltas.freshness) }
+}
+
+/** Apply a learned offset to a 1–5 score (clamped). Reports the nudge so the UI can say "calibrated". */
+export const applyOffset = (score, offset) => (score == null || !offset ? score : clamp(round1(score + offset), 1, 5))
+
 // --- top-level ------------------------------------------------------------
 // history: wellness rows BEFORE today (for baselines). today: today's wellness row.
-// opts: { sleepNeed, subjective } (subjective = the user's own tap 1–5, if given).
-export function readiness(history = [], today = {}, { sleepNeed = 8, subjective } = {}) {
+// opts: { sleepNeed, subjective, checkins } (subjective = user's tap; checkins = for calibration).
+export function readiness(history = [], today = {}, { sleepNeed = 8, subjective, checkins = [] } = {}) {
   const base = baselines(history)
   const sl = sleep({ sleepScore: today.sleepScore, sleepHours: today.sleepHours, sleepNeed })
   const fr = freshness({ atl: today.fatigue != null ? today.fatigue : today.atl, ctl: today.fitness != null ? today.fitness : today.ctl, form: today.form, tsbBaseline: base.tsbBaseline })
   const en = energy({ hrv: today.hrv, rhr: today.restingHR, sleep: sl && sl.score, subjective, hrvBaseline: base.hrvBaseline, rhrBaseline: base.rhrBaseline })
-  return { sleep: sl, freshness: fr, energy: en, baseline: { nHrv: base.nHrv, nRhr: base.nRhr, hrvCV7: base.hrvCV7 == null ? null : round1(base.hrvCV7) } }
+  // #207 Phase 2b: nudge each auto score toward what THIS athlete has consistently reported.
+  const off = learnedOffsets(checkins)
+  if (sl) { sl.raw = sl.score; sl.score = applyOffset(sl.score, off.sleep) }
+  if (fr) { fr.raw = fr.score; fr.score = applyOffset(fr.score, off.freshness) }
+  if (en) { en.raw = en.score; en.score = applyOffset(en.score, off.energy) }
+  return { sleep: sl, freshness: fr, energy: en, calibration: off, baseline: { nHrv: base.nHrv, nRhr: base.nRhr, hrvCV7: base.hrvCV7 == null ? null : round1(base.hrvCV7) } }
 }

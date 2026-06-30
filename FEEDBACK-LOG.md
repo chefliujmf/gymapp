@@ -27,6 +27,21 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+223. ⬜ **Readiness/check-in is a TODAY concept — future days must show an EXPECTATION, not a live verdict.** JM
+    2026-06-30: "the coach message is for today, the following days is maybe something more (we expect something) —
+    saying it's fresh when I'm looking 4 days out at a workout is stupid." On a FUTURE day the Today view still shows
+    "How do you feel today?" + the readiness verdict banner ("Moderately ready…") / a Freshness face — but there's no
+    real readiness for a day that hasn't happened. FIX: branch the Today view by date — (a) TODAY = check-in + live
+    readiness verdict (as now); (b) FUTURE = no check-in/live verdict; instead a **projected expectation** from planned
+    load (CTL/ATL/Form projection given the scheduled TSS up to that day → "expect to be fatigued/fresh after Thu's
+    session"), framed as a forecast ("we expect…"), not a fact; (c) PAST = what was logged. Pairs #137 (check-in
+    today-only) + #206 (morning readiness) + #207/#208 (Freshness/Form math we already have to project from). Mock the
+    future-day card first. gymapp-only.
+222. ⬜ **Show % and watts on the workout thumbnail (watts = % of FTP).** JM 2026-06-30: wants the mini card thumbnail
+    (MiniProfile) to show the target **%FTP and the watts** it implies (W = %×FTP), not just the coloured shape. Tight
+    on an 88px thumb → needs a mock-first pass (e.g. label only the main block, or %/W on tap, or a compact "91% · 237W"
+    on the peak block). Needs the user's FTP (we have it per-sport, #210). Mock 2-3 options before building. gymapp-only;
+    pairs with #221 (flat blocks) + #210 (FTP).
 221. 🧪 **NO inferred ramps — mirror intervals literally, flat blocks (supersedes #219's ramp rendering).** JM 2026-06-30
     (dev): "a ramp up when cooling down?! what the hell" + "let the coach define the ramp when it creates the workout,
     otherwise you mirror what you have in intervals, just fucking take what's there, no ramp for now." TWO bugs from the
@@ -39,7 +54,8 @@ test guide → the **🧪 Test guide** section below.
     preview + the LIVE target both flat (`segPct`/`wattsAt` in `src/ride.ts`, zone label always Z). Coach-defined ramps
     can reinstate the slope later. Tests: `src/ride.test.ts` (segPct mean + wattsAt flat for the backwards cooldown).
     128 tests green, tsc clean. gymapp-only; **supersedes #219** (ramp rendering reverted to flat).
-220. ⬜ **= #207 Phase 2b (NOT a new item — don't double-count).** JM 2026-06-29 (dev): "sleep and vo2max were empty
+220. 🧪 **= #207 Phase 2b (NOT a new item — don't double-count).** BUILT 2026-06-30 — see #207 Phase 2b: sleep first-guess,
+    true VO₂max estimate, and the learn-from-your-overrides calibration. Awaiting JM verify on QA. JM 2026-06-29 (dev): "sleep and vo2max were empty
     in dev… cannot have a first guess? will it change over time?" + "we said earlier we need to LEARN about the user and
     adjust those numbers." This is exactly the #207 vision (personalize + learn over time) — Phase 2 built only the
     storage; the **estimate-then-learn** part was punted to 2b and never built. Folded into #207 below; the concrete
@@ -159,6 +175,7 @@ test guide → the **🧪 Test guide** section below.
       3. **Learn a personal calibration offset from systematic overrides** (the real "learn about ME"): when JM consistently bumps a computed score the same direction, nudge the model's anchor toward his correction over time (bounded), so auto-scores drift toward what he actually reports. Persist per-user; show it's learned.
       4. **Wire FTP/maxHR into expected-fatigue** so "how hard is this FOR YOU" uses personal zones, not population.
     In dev (no intervals) VO₂max stays blank — expected. Tests for the estimate + the learning offset (pure fns). gymapp-only; pairs #215 (VDOT) / #208 (Freshness anchor).
+    **🧪 Phase 2b BUILT 2026-06-30 (on QA after push):** (1) **Sleep need** shows the 8 h first-guess (tag "default" → "you" once set) so it's never blank. (2) **VO₂max = a TRUE estimate** — `estimateVo2max` (cycling `10.8·FTP÷weight+7` or running VDOT, takes the higher) shown live in Profile with a "what it's from · updates as you train" line; manual entry overrides ("you"). (3) **Learning calibration (gradual drift)** — `calibrationOffset`/`learnedOffsets`/`applyOffset` in `server/readiness.js`: check-ins now store the auto score shown (`ci.auto`), and `/auth/readiness` drifts each auto score toward the athlete's MEDIAN override (≥5 days, evidence-weighted, ±1 cap, ignores <0.2 noise); Today shows "· tuned to you" + a why. 31 new tests (readiness + running-paces), 145 green, tsc + build clean. REMAINING (part 4, deferred): wire FTP/maxHR into the expected-fatigue math + have the coach read the VO₂max estimate server-side.
 206. ⬜ **Morning readiness data + coach stick-vs-adjust decision.** JM 2026-06-29: today's HRV/sleep isn't in intervals
     yet in the morning, so the coach can't decide. ROOT CAUSE (verified in JM's data): the lag is **Coros → intervals**,
     not Platyplus — overnight HRV/sleep lands in intervals hours late (often afternoon/next-day; `updated` timestamps
@@ -738,6 +755,10 @@ verifies **one at a time**; only JM marks ✅.
 **How to run the automated net:** `npm test` (unit, `src/*.test.ts`) · `npm run test:smoke` (API
 integration, `scripts/smoke-test.mjs`). Status: ❌ broken · 🔧 fixing · 🧪 fixed + test, awaiting JM ·
 ✅ JM-verified.
+
+### R207b · #207 Phase 2b / #220 — learn-from-you stats (sleep default · VO₂max estimate · calibration) 🧪
+**Unit tests:** `src/readiness.test.ts` (`calibrationOffset` gradual-drift: needs ≥5 days, median-robust to one outlier, caps ±1, ignores tiny bias; `learnedOffsets` per-dim incl. freshness=6−soreness; `readiness()` nudges the score + keeps `.raw`) + `src/running-paces.test.ts` (`estimateVo2max` Coggan/VDOT, takes the higher). `npm test` (145 green).
+**JM manual (QA):** (1) Profile → General: **Sleep need** shows **8** with a "default" tag until you set it; **VO₂max** shows an **est.** value from your power/pace with a "updates as you train" note (type a value → "you" overrides). (2) Today check-in: edit a score consistently the same way across several days → after ~5 days the auto value should start showing **"· tuned to you"** and drift toward your ratings (the ⓘ explains the nudge). Expected: the model learns your bias; one off day doesn't move it.
 
 ### R216 · #216 — marathon prediction realism (potential→realistic range) 🧪
 **Unit test:** `src/running-paces.test.ts` → `marathonDurabilityPenalty` + `marathonRealism` (17 cases: penalty 0 at race-ready base, max at no base, longest-run weighted > weekly volume, realistic ≥ potential, default 8% when no data, paces match times). `npm test` (39 green).

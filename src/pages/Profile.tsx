@@ -5,7 +5,7 @@ import { getSetting, setSetting } from '../db'
 import { authApi, type SportGroup, type SportStat, type IcuAthletePull } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import { fetchAthleteSex } from '../intervals'
-import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, parsePace, type PaceZones, type RunVolume } from '../running-paces'
+import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, estimateVo2max, fmtPace, fmtTime, parsePace, type PaceZones, type RunVolume } from '../running-paces'
 
 // #214 — spell each Daniels zone out (letter + what it's for) so the paces are legible, not cryptic.
 const ZONE_META: { letter: string; name: string; purpose: string }[] = [
@@ -127,6 +127,8 @@ export default function Profile() {
   // #216 marathon realism — show the marathon as a potential→realistic range (durability-adjusted).
   const runVolume: RunVolume | undefined = runVol?.available ? { longestKm: runVol.longestKm || 0, weeklyKm: runVol.weeklyKm || 0 } : undefined
   const marathon = vdot ? marathonRealism(vdot, runVolume) : null
+  // #207 Phase 2b: live VO₂max estimate from the best aerobic measure (cycling W/kg or running VDOT).
+  const vo2est = estimateVo2max({ ftp: val('cycling', 'ftp'), weightKg: pulled?.weight ?? null, vdot })
   // #215 estimate (Critical Speed → threshold pace); only suggest when it differs from what's set
   const estPace = runEst?.available && runEst.thresholdPace ? runEst.thresholdPace : null
   const estVdot = estPace ? Math.round(vdotFromThresholdPace(estPace)) : null
@@ -263,8 +265,10 @@ export default function Profile() {
       <div className="sport-card">
         <div className="sport-card__h">🌙 General</div>
         <div className="stat-cell-grid">
-          <StatCell label="Sleep need" tag={<Tag label="you" kind="pp" />} unit="h" value={user?.sleepNeed ?? null} fmt={String} parse={num(4, 12)} onSave={(v) => authApi.saveProfile({ sleepNeed: v }).then(() => refresh()).catch(() => {})} />
-          <StatCell label="VO₂max" tag={<Tag label="est." kind="pp" />} value={user?.vo2max ?? null} fmt={String} parse={num(20, 95)} onSave={(v) => authApi.saveProfile({ vo2max: v }).then(() => refresh()).catch(() => {})} />
+          {/* #207 Phase 2b: never blank — show the 8 h first-guess (what readiness already uses) until you set yours */}
+          <StatCell label="Sleep need" tag={<Tag label={user?.sleepNeed ? 'you' : 'default'} kind={user?.sleepNeed ? 'pp' : 'unset'} />} unit="h" value={user?.sleepNeed ?? 8} fmt={String} parse={num(4, 12)} onSave={(v) => authApi.saveProfile({ sleepNeed: v }).then(() => refresh()).catch(() => {})} />
+          {/* #207 Phase 2b: a TRUE estimate from your power/pace (refines as you train); manual entry wins */}
+          <StatCell label="VO₂max" tag={<Tag label={user?.vo2max ? 'you' : 'est.'} kind="pp" />} value={user?.vo2max ?? vo2est?.value ?? null} fmt={String} parse={num(20, 95)} onSave={(v) => authApi.saveProfile({ vo2max: v }).then(() => refresh()).catch(() => {})} />
           {connected && pulled?.weight != null && (
             <div className="stat-cell">
               <span className="stat-cell__l">Weight <Tag label="intervals" kind="icu" /></span>
@@ -272,7 +276,14 @@ export default function Profile() {
             </div>
           )}
         </div>
-        <p className="meta" style={{ margin: '6px 2px 0' }}>VO₂max is Platyplus's estimate (intervals stores none). Weight syncs in from your device via intervals. Leave blank to use defaults.</p>
+        <p className="meta" style={{ margin: '6px 2px 0' }}>
+          {user?.vo2max
+            ? <>VO₂max is your manual value. Clear it to use the estimate from {vo2est ? vo2est.from : 'your power/pace'}.</>
+            : vo2est
+              ? <>VO₂max estimated from {vo2est.from} — <strong>updates as you train</strong>; type your own to override.</>
+              : <>Set your FTP + weight (or threshold pace) and Platyplus estimates VO₂max. </>}
+          {' '}Sleep need defaults to 8 h until you set yours; both personalise your readiness & coach.
+        </p>
       </div>
     </div>
   )

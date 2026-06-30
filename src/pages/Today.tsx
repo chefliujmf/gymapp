@@ -27,7 +27,15 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   const [loaded, setLoaded] = useState(false)
   useEffect(() => { setLoaded(false); authApi.checkins(day, day).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [day])
   useEffect(() => { onChange?.(ci) }, [ci]) // keep the parent (readiness verdict banner) in sync
-  const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: day }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
+  const set = (patch: Partial<Checkin>) => {
+    const next = { ...(ci || { date: day }), ...patch } as Checkin
+    setCi(next)
+    // #207 Phase 2b: stamp the auto scores shown (display terms) so the model learns our overrides.
+    const auto = (calc.energy != null || calc.sleep != null || calc.soreness != null)
+      ? { energy: calc.energy, sleep: calc.sleep, freshness: calc.soreness != null ? 6 - calc.soreness : undefined }
+      : undefined
+    authApi.checkin(auto ? { ...next, auto } : next).catch(() => {})
+  }
   const [editing, setEditing] = useState(false)
   // #195: auto-derive Sleep·Freshness·Energy (1–5) from intervals wellness + personal baselines
   // (server/readiness.js, WHOOP-inspired). Each unanswered row prefills from data + an ⓘ "why";
@@ -68,12 +76,16 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   // What the data computed, in DISPLAY terms (freshness flips), to compare against the user's input.
   const autoDisp = (r: typeof rows[number]) => (calc[r.key] != null ? (r.invert ? 6 - (calc[r.key] as number) : (calc[r.key] as number)) : null)
   const overridden = (r: typeof rows[number]) => { const a = autoDisp(r), s = disp(r); return a != null && s != null && a !== s }
+  // #207 Phase 2b: the learned personal-calibration offset for this row (Freshness lives on 'soreness').
+  const calOff = (r: typeof rows[number]) => rdy?.calibration?.[r.key === 'soreness' ? 'freshness' : r.key] ?? 0
   const infoFor = (r: typeof rows[number]) => {
     const head = why[r.key]
       ? `Why ${isToday ? 'today' : 'this day'}: ${why[r.key]}.`
       : `No HRV/sleep synced for ${isToday ? 'today' : 'this day'} yet — this is your own read.`
     const delta = overridden(r) ? `\n\nAuto computed ${autoDisp(r)} · you set ${disp(r)}.` : ''
-    return `${head}${delta}\n\n${r.scale}.`
+    const off = calOff(r)
+    const tuned = off ? `\n\nTuned to you: nudged ${off > 0 ? '+' : ''}${off} because you've consistently rated this ${off > 0 ? 'higher' : 'lower'} than the model.` : ''
+    return `${head}${delta}${tuned}\n\n${r.scale}.`
   }
   // Show "· auto" only while the shown value still equals the data-derived value (untouched).
   const isAuto = (r: typeof rows[number]) => !touched.has(r.key) && calc[r.key] != null && ci?.[r.key] === calc[r.key]
@@ -104,7 +116,7 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
       <div className="checkin__t" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>How {isToday ? 'do' : 'did'} you feel{isToday ? ' today' : ''}?{editing && <button className="checkin__edit" onClick={() => setEditing(false)}>Done ✓</button>}</div>
       {rows.map((r) => (
         <div key={r.key} className="checkin__row2">
-          <span className="checkin__lbl">{r.label} <InfoDot text={infoFor(r)} />{isAuto(r) ? <span className="checkin__src"> · auto</span> : overridden(r) ? <span className="checkin__src checkin__src--edit"> · edited <span className="checkin__autowas">(auto {autoDisp(r)})</span></span> : null}<span className="checkin__desc">{r.desc}</span></span>
+          <span className="checkin__lbl">{r.label} <InfoDot text={infoFor(r)} />{isAuto(r) ? <span className="checkin__src"> · auto</span> : overridden(r) ? <span className="checkin__src checkin__src--edit"> · edited <span className="checkin__autowas">(auto {autoDisp(r)})</span></span> : null}{calOff(r) ? <span className="checkin__tuned" title="Personalised from your past ratings"> · tuned to you</span> : null}<span className="checkin__desc">{r.desc}</span></span>
           <div className="checkin__faces">
             {[1, 2, 3, 4, 5].map((n) => {
               const stored = r.invert ? 6 - n : n, on = ci?.[r.key] === stored
