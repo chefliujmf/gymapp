@@ -165,6 +165,22 @@ export function estimateVo2max({ ftp, weightKg, vdot } = {}) {
   return cands.reduce((a, b) => (b.value > a.value ? b : a))
 }
 
+// #236 — HR-ratio VO₂max (submaximal) + a best per-sport estimate, mirroring src/vo2max-submax.ts,
+// so the COACH's "computed" VO₂max matches what the athlete sees. (Coach reads statPrefs per stat.)
+export function hrRatioVo2max(hrMax, hrRest) {
+  if (!hrMax || !hrRest || hrMax <= hrRest) return null
+  return round1(15.3 * hrMax / hrRest)
+}
+export function bestVo2maxEstimate({ ftp, weightKg, vdot, hrMax, hrRest } = {}) {
+  const hr = hrRatioVo2max(hrMax, hrRest)
+  const run = vdot && hr ? Math.max(vdot, hr) : (vdot || hr || null) // running: VDOT vs HR-ratio, higher wins
+  const cyc = ftp && weightKg && weightKg > 0 ? round1(10.8 * ftp / weightKg + 7) : (hr ? round1(hr * 0.95) : null)
+  const best = Math.max(run || 0, cyc || 0)
+  if (!best) return null
+  const source = best === run ? (run === hr ? 'max & resting HR' : 'running pace') : 'power ÷ weight'
+  return { value: round1(best), source }
+}
+
 // --- #223: FORECAST a future day's freshness from planned load ----------------------------
 // Only FRESHNESS is forecastable ahead (it's training-load driven). Energy/Sleep depend on HRV/
 // sleep that haven't happened, so a future day shows an expected Freshness, not a live verdict.

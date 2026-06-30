@@ -25,7 +25,7 @@ const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
-import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, estimateVo2max } from './readiness.js'
+import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, bestVo2maxEstimate } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -481,6 +481,8 @@ app.get('/auth/readiness', auth, async (req, res) => {
   }))
   const today = rows.find((r) => r.date === date) || rows[rows.length - 1] || {}
   const history = rows.filter((r) => r.date < date)
+  // #236: stash the latest resting HR so the coach's computed VO₂max (HR-ratio) matches the app.
+  for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { req.user.restingHR = rows[i].restingHR; break }
   const sleepNeed = Number(req.user.sleepNeed) > 0 ? Number(req.user.sleepNeed) : 8
   // #207 Phase 2b: pass PAST check-ins (before this date) so the model calibrates to the athlete's
   // own overrides — but never the day being viewed (it'd compare a score against itself).
@@ -698,9 +700,13 @@ function buildSystemPrompt(user) {
   const stats = []
   if (user.ftp) stats.push(`cycling FTP ${user.ftp} W`)
   if (user.maxHR) stats.push(`max HR ${user.maxHR} bpm`)
-  // #207 Part 4: VO₂max — the athlete's manual value, else our estimate (cycling W/kg or running VDOT).
-  if (user.vo2max) stats.push(`VO2max ${user.vo2max}`)
-  else { const est = estimateVo2max({ ftp: user.ftp, weightKg: user.weight, vdot: user.runVdot }); if (est) stats.push(`VO2max ~${est.value} (est. from ${est.from})`) }
+  // #236: VO₂max resolves by the athlete's MANUAL-vs-COMPUTED preference (statPrefs.vo2max). Computed =
+  // the submax estimate (HR-ratio / VDOT / power÷weight, matches the app); default = manual if set.
+  const vo2est = bestVo2maxEstimate({ ftp: user.ftp, weightKg: user.weight, vdot: user.runVdot, hrMax: user.maxHR, hrRest: user.restingHR })
+  const vo2pref = user.statPrefs?.vo2max
+  if (vo2pref === 'computed' && vo2est) stats.push(`VO2max ~${vo2est.value} (est. from ${vo2est.source})`)
+  else if (user.vo2max) stats.push(`VO2max ${user.vo2max}`)
+  else if (vo2est) stats.push(`VO2max ~${vo2est.value} (est. from ${vo2est.source})`)
   const tp = user.sportSettings?.running?.thresholdPace // sec/km
   if (tp > 0) { const m = Math.floor(tp / 60), s = String(Math.round(tp % 60)).padStart(2, '0'); stats.push(`running threshold pace ${m}:${s}/km${user.runVdot ? ` (VDOT ${user.runVdot})` : ''}`) }
   const rhr = user.sportSettings?.running?.maxHr

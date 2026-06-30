@@ -51,8 +51,13 @@ test guide → the **🧪 Test guide** section below.
     "tap to switch"; tapping opens a **sheet** with BOTH values, an input **editable only in Manual** (locked on Computed),
     a Manual|Computed toggle (Computed disabled when no estimate), Done. Computed sources: VO₂max submax, FTP→eFTP (wellness),
     pace→#215 estimate, maxHr→manual-only for now. Saves manual via saveProfile/saveSportStat + the pref. 179 tests, tsc+
-    build clean. DEFERRED: Profile's own editors unchanged (Stats card is the new manual/computed home); server coach/
-    readiness resolve via `vo2max ?? estimate` still (statPrefs-aware server resolution = follow-on); maxHr computed source.
+    build clean. Profile's own editors unchanged (Stats card is the new manual/computed home).
+    **🧪 statPrefs-aware COACH BUILT 2026-06-30:** the coach prompt now resolves **VO₂max by `statPrefs.vo2max`** —
+    `computed` → the server submax estimate (`bestVo2maxEstimate`: HR-ratio/VDOT/power÷weight, mirrors the app, matches
+    JM's ~50.5), `manual`/default → his set value. Stashed `user.restingHR` (from /auth/readiness) so the coach's HR-ratio
+    matches what the app shows. NOTE: readiness SCORES don't consume these benchmarks (HRV/sleep/Form only), so nothing to
+    wire there. REMAINING: FTP/pace/maxHr "computed" server-side (eFTP/estimate not stored server-side — coach uses the
+    synced/manual value for those); maxHr computed source. 3 server tests; 182 green.
 235. ⬜ **Readiness learning: confirm sleep learns + a preference to turn auto-adapt ON/OFF.** JM 2026-06-30: "for sleep
     are we learning? would like our engine to learn & adapt it — with a preference to turn on or off." CONFIRM: the
     calibration (#207 Phase 2b) DOES learn sleep + freshness + energy from your overrides (sleep NEED stays manual). ADD:

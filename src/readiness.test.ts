@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { lnRMSSD, meanSd, zTo5, score100To5, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, forecastFreshness, estimateVo2max as estimateVo2maxSrv } from '../server/readiness.js'
+import { lnRMSSD, meanSd, zTo5, score100To5, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, forecastFreshness, estimateVo2max as estimateVo2maxSrv, bestVo2maxEstimate, hrRatioVo2max } from '../server/readiness.js'
 
 // #195 readiness math, grounded in docs/readiness-scores.md (WHOOP deep-dive 2026-06-28).
 
@@ -223,6 +223,19 @@ describe('estimateVo2max (server, parity with client)', () => {
   it('cycling Coggan', () => expect(estimateVo2maxSrv({ ftp: 260, weightKg: 76 }).value).toBeCloseTo(10.8 * 260 / 76 + 7, 1))
   it('takes the higher of cycling vs VDOT', () => expect(estimateVo2maxSrv({ ftp: 260, weightKg: 76, vdot: 50 }).value).toBe(50))
   it('null without inputs', () => expect(estimateVo2maxSrv({})).toBeNull())
+})
+
+// #236 — server-side best VO₂max (coach's "computed"), matches the client submax.
+describe('bestVo2maxEstimate (server)', () => {
+  it('HR-ratio (185/55) beats a slow VDOT (41) → ~50.5 from HR', () => {
+    const e = bestVo2maxEstimate({ vdot: 41, hrMax: 185, hrRest: 55 })
+    expect(e!.value).toBeGreaterThan(49)
+    expect(e!.source).toMatch(/HR/)
+  })
+  it('hrRatioVo2max matches the client formula', () => {
+    expect(hrRatioVo2max(185, 55)).toBeCloseTo(15.3 * 185 / 55, 1)
+  })
+  it('null with nothing', () => expect(bestVo2maxEstimate({})).toBeNull())
 })
 
 describe('applyOffset', () => {
