@@ -22,6 +22,19 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+274. ⬜ **"Why a beaver?" — onboarding card used 🦫 (beaver) but the brand is Platyplus (platypus).** JM 2026-06-30.
+    FIXED: the Today "Meet your coach" card now uses the real Platyplus logo (favicon.svg) like the login screen, not a
+    beaver emoji. (No platypus emoji exists → use the logo.) gymapp-only.
+273. ⬜ **Post-workout UX, tailored PER activity type.** JM 2026-06-30: wants dedicated work on the post-workout review UX
+    per sport. TODAY: one shared feedback model with sport-specific FIELDS (ride/run mirror intervals custom fields; gym
+    its own Soreness/Form set) + Feel + RPE + free text → coach review. NEXT (mock-first): richer per-type post screens —
+    RIDE: power/HR execution vs target (the planned-vs-actual shape), IF/TSS, "held the watts?"; RUN: pace/splits vs zones,
+    GAP; GYM: sets×reps logged, e1RM/PR hits, pump/form. Pairs #54 (activity analysis) + #91 (coach takeaways) + #255. gymapp-only.
+272. 🔨 **Onboarding chat ERRORED: "No conversation found with session ID …".** JM 2026-06-30 (dev test of #257): tapping
+    Set me up → coach chat died with a stale-session error. ROOT CAUSE: `/auth/chat` blindly passed `--resume
+    <user.chatSession>`, but claude's local session store had been cleared (restart/deploy) → resume hard-fails. FIXED:
+    dev path now retries ONCE with a fresh thread when resume fails ("no conversation found"); QA/prod helper path clears
+    the stale id + asks the user to resend. So onboarding (and any chat) self-heals instead of dying. gymapp-only.
 271. 🔨 **Running threshold suggestion: ASSESS confidence before suggesting (don't push a slower pace off thin data).**
     JM 2026-06-30 (dev): the #215 Critical-Speed estimate suggested a threshold SLOWER than set (5:21 vs 4:57), bare "Use"
     button → looks like an unexplained downgrade. JM: "if we're not confident because the user barely ran, we should
@@ -121,6 +134,15 @@ test guide → the **🧪 Test guide** section below.
     verify the full Platyplus coach loop end-to-end (chat + plan create/adjust + reviews + notify) so the standalone
     cyclingcoach repo can be retired. First **read cyclingcoach for interesting improvements not yet in Platyplus** (method/
     KB/prompts) and port them. Pairs #18 (coach loop verify) + #91 (real coach takeaways). gymapp-only.
+    **PORT STATUS (JM 2026-06-30: "port ALL, not just top 5"):** ✅ DONE — public-text/title-description rule (his latest
+    cyclingcoach change: center the workout, never leak cottage/home/wealth/health; syncs to Strava) → new
+    `instructions_public_text.md` in the generic engine; female module expanded from a 38-line stub to a full distilled
+    module (RED-S, fuelling, cycle-phase, perimenopause/masters, heavy-lifting, pregnancy) → recompiled (coach-engine-female
+    1514 words). ⬜ TODO knowledge: distill + wire feedback_protocol/COACHCHECK + exercise_library (token-budget aware —
+    don't dump raw 500-line KBs into every prompt). ⬜ TODO **code features** (bigger, each its own build): (1) per-athlete
+    learned baselines (HRV/RHR rolling mean±SD from wellness, injected), (2) durable coach MEMORY store (what worked/failed
+    + comms prefs, read-before/update-after), (3) ENFORCED health/overtraining gates (checkHealthGates from the now-injected
+    instructions_health_and_peaking). Confirm order with JM before the code features.
     **DIFF DONE 2026-06-30 (agent scan of /Users/jmfiset/dev/cyclingcoach):** same engine, but cyclingcoach is ENRICHED
     with per-athlete memory + learned baselines + detailed rule-sets Platyplus lacks. Prioritized port list (ROI order):
     (1) **Per-athlete physiology baselines** — learned HRV mean/SD, RHR, LTHR, FTP, VO₂max from the athlete's own 60–90d

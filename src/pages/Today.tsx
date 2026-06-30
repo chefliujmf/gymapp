@@ -441,7 +441,7 @@ export default function Today() {
 
       {showOnboarding && (
         <div className="card onb-card">
-          <div className="onb-card__ic">🦫</div>
+          <div className="onb-card__ic"><img src="/favicon.svg?v=4" alt="" style={{ width: 34, height: 34, borderRadius: 9 }} /></div>
           <div className="onb-card__b">
             <h3>Meet your coach</h3>
             <p>A 2-minute chat (tap, type, or talk) and your coach builds your first week around your real life.</p>

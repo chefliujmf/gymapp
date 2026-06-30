@@ -889,6 +889,7 @@ app.post('/auth/chat', auth, async (req, res) => {
           if (!data) continue
           let ev; try { ev = JSON.parse(data.slice(5).trim()) } catch { continue }
           if (ev.sessionId) { req.user.chatSession = ev.sessionId; save(store) } // persist, don't forward
+          else if (ev.error && /no conversation found|session id/i.test(String(ev.error))) { delete req.user.chatSession; save(store); send({ error: 'Lost the thread — tap send again to start fresh.' }) } // stale session → clear so next send is fresh
           else if (!ev.done) send(ev) // forward delta / error (our own done at the end)
         }
       }
@@ -898,7 +899,7 @@ app.post('/auth/chat', auth, async (req, res) => {
 
   // Dev: spawn claude locally.
   const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: req.user.apiToken } } } })
-  const args = [
+  const baseArgs = [
     '-p', message,
     '--output-format', 'stream-json', '--include-partial-messages', '--verbose',
     '--mcp-config', mcpConfig,
@@ -906,29 +907,43 @@ app.post('/auth/chat', auth, async (req, res) => {
     '--disallowedTools', CHAT_DENY,
     '--append-system-prompt', buildSystemPrompt(req.user),
   ]
-  if (req.user.chatSession) args.push('--resume', req.user.chatSession)
-  const proc = spawn(CLAUDE_BIN, args, { env: process.env })
-  proc.stdin?.end() // close stdin (EOF) so claude doesn't wait for piped input
-  const killer = setTimeout(() => proc.kill('SIGKILL'), 180000)
-  let buf = '', err = '', done = false
-  const end = () => { if (done) return; done = true; clearTimeout(killer); send({ done: true }); res.end() }
-  proc.stdout.on('data', (d) => {
-    buf += d
-    let nl
-    while ((nl = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1)
-      if (!line) continue
-      let ev; try { ev = JSON.parse(line) } catch { continue }
-      if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') send({ delta: ev.event.delta.text })
-      else if (ev.type === 'result' && ev.session_id) { req.user.chatSession = ev.session_id; save(store) }
-    }
-  })
-  proc.stderr.on('data', (d) => (err += d))
-  proc.on('error', (e) => { if (!done) { done = true; clearTimeout(killer); send({ error: 'coach unavailable: ' + e.message }); res.end() } })
-  proc.on('close', () => { if (err && !buf) send({ error: err.slice(0, 200) }); end() })
-  // Kill claude only if the CLIENT actually disconnects (res close) — NOT req
-  // close, which fires the moment the request body is read and would kill it early.
-  res.on('close', () => { if (!done) { clearTimeout(killer); proc.kill('SIGKILL') } })
+  let done = false
+  const end = () => { if (done) return; done = true; send({ done: true }); res.end() }
+  // Run claude; if a stored session id is STALE (claude's local session store can vanish across
+  // restarts → "No conversation found with session ID"), drop it and retry ONCE with a fresh thread.
+  const run = (resume, isRetry) => {
+    const args = resume && req.user.chatSession ? [...baseArgs, '--resume', req.user.chatSession] : baseArgs
+    const proc = spawn(CLAUDE_BIN, args, { env: process.env })
+    proc.stdin?.end() // close stdin (EOF) so claude doesn't wait for piped input
+    const killer = setTimeout(() => proc.kill('SIGKILL'), 180000)
+    let buf = '', err = '', sawOutput = false
+    proc.stdout.on('data', (d) => {
+      buf += d
+      let nl
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1)
+        if (!line) continue
+        let ev; try { ev = JSON.parse(line) } catch { continue }
+        if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') { sawOutput = true; send({ delta: ev.event.delta.text }) }
+        else if (ev.type === 'result' && ev.session_id) { req.user.chatSession = ev.session_id; save(store) }
+      }
+    })
+    proc.stderr.on('data', (d) => (err += d))
+    proc.on('error', (e) => { if (!done) { clearTimeout(killer); send({ error: 'coach unavailable: ' + e.message }); end() } })
+    proc.on('close', () => {
+      clearTimeout(killer)
+      // Stale-session recovery: clear the bad id and retry fresh, once, before surfacing anything.
+      if (!isRetry && resume && !sawOutput && /no conversation found|session id/i.test(err)) {
+        delete req.user.chatSession; save(store); return run(false, true)
+      }
+      if (err && !sawOutput) send({ error: err.slice(0, 200) })
+      end()
+    })
+    // Kill claude only if the CLIENT actually disconnects (res close) — NOT req close, which fires
+    // the moment the request body is read and would kill it early.
+    res.on('close', () => { if (!done) { clearTimeout(killer); proc.kill('SIGKILL') } })
+  }
+  run(true, false)
 })
 // Reset the per-user conversation thread.
 app.post('/auth/chat/reset', auth, (req, res) => { delete req.user.chatSession; save(store); res.json({ ok: true }) })

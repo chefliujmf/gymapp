@@ -35,6 +35,7 @@ const SHARED = [
   'codex_coach/instructions_strength.md',           // gym prescription + load coordination
   'codex_coach/instructions_health_and_peaking.md', // illness/overtraining gates, taper
   'codex_coach/instructions_sports_psychology.md',  // mental cues
+  'codex_coach/instructions_public_text.md',        // #256: title/description rules — center the workout, no private-life leaks (syncs to Strava)
 ]
 // CYCLING/endurance — gated: only for cyclists/endurance athletes.
 const CYCLING = [
