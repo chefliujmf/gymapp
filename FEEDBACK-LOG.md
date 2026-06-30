@@ -27,7 +27,26 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+228. ⬜ **Profile vs Stats streamline — global athlete data buried in Profile; global belongs at TOP of Stats.** JM
+    2026-06-30: "this Profile page has [the General/global stats] at the end of the page — reorganize so global is at the
+    top of Stats; need to think how to streamline this too." Profile's "General" (sleep need / VO₂max / weight) + the
+    per-sport "Your stats" (FTP/maxHR/threshold pace) are EDITABLE athlete inputs living in Profile, but they overlap
+    with — and should LEAD — the Stats pages. PROPOSED split: **Profile = the person + EDIT your benchmarks** (coach,
+    sports, diet, sleep/VO₂max/FTP/pace inputs that sync to intervals); **Stats = VIEW + TREND them**, global snapshot at
+    the TOP. Decide whether benchmarks stay edit-in-Profile/view-in-Stats or move entirely. Pairs #225 (Stats IA) + #164
+    (Profile vs Settings split). Part of one Stats+Profile IA pass. gymapp-only.
+227. ⬜ **Gym/strength sessions in History should be COLLAPSED by default.** JM 2026-06-30: a logged strength session
+    expands all exercises × sets (kg/reps spinners) → the History page gets very long. Show a compact summary row
+    (title · duration · volume · TSS) collapsed by default; tap to expand the sets. Applies in History (`/logs`) at least.
+    Pairs with #226 (History filters). gymapp-only.
+226. ⬜ **History needs FILTERS + SORTING at the top (and list pages generally).** JM 2026-06-30: "digging in history
+    without dates or by activity type makes it hard to find what I'm looking for, even the title." Add a filter/sort bar
+    to History (`/logs`): **date range**, **activity type** (ride/run/gym/mind/…), **title search**, maybe sort
+    (newest/oldest). GENERAL PRINCIPLE (banked to memory): every list/history page should have top filters + sorting —
+    always design them in. gymapp-only; pairs #227.
 225. ⬜ **Stats IA: GLOBAL vs PER-SPORT — get it deliberately right (the #194b toggle was the wrong model).** JM
+    [IA confirmed: global + per-sport pages, build Running page, per-context ranges — but now folded into ONE Stats+Profile
+    IA pass with #226/#227/#228 so we build once, not thrash. Mock the full hub + Profile streamline first.]
     2026-06-30: "Power & FTP page is great but it's cycling-only — we still need to think carefully for global stats vs
     per-sports." PROBLEM: `/fitness` now mixes a GLOBAL view (Load & Form, all sports) with a PER-SPORT view (cycling
     power) behind a toggle, and the Stats **Running** card routes to `/fitness` → shows CYCLING power (wrong). PROPOSED IA:
