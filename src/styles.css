@@ -1021,6 +1021,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .cal-entry { display: flex; align-items: center; padding: 10px 12px; }
 .cal-entry__main { display: flex; align-items: center; gap: 12px; flex: 1; background: none; border: none; text-align: left; cursor: pointer; color: inherit; padding: 0; }
 .cal-chip { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex: none; overflow: hidden; }
+.cal-entry .cal-chip { width: 56px; height: 56px; border-radius: 12px; } /* #240: bigger thumbnail on the Week/Day list cards (month grid stays compact) */
 /* Sport-flavoured chip: visual gradient background with the logo kept on top — matches Today. */
 .cal-chip--grad { color: #fff; }
 .cal-chip--chart { background: linear-gradient(135deg, #2a2a31, #4a4a55); }

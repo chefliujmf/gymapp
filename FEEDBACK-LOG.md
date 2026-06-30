@@ -22,6 +22,12 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+252. 🔨 **Date filter MISSING on Progress (standard on every stats page); + domain filters everywhere.** JM 2026-06-30:
+    "don't see date filters as per requirements — it's standard" + "add other filters: by exercise type, muscle group,
+    equipment, whatever." Progress is hardcoded "8 wk", no range control. FIX: add the shared `DateRangeFilter` to
+    **Progress** (audit Fitness/Wellness/per-sport already have it); add **domain filters** (type/muscle/equipment/search)
+    to **Exercises** (extends #243) + where relevant. Codified in skill `platyplus-charts` + memory
+    `list-pages-filters-sorting` (date filter = standard on every stats/trend page). gymapp-only.
 251. 🧪 **Progress: "1 session · 0h" wrong for gym.** JM 2026-06-30 (QA): a logged gym session shows 0h — the
     hours/volume aggregation doesn't count strength duration. Fix the Progress totals to include gym session minutes. gymapp-only.
 250. 🧪 **History rows aren't clickable → can't open the activity analysis; + no coach insights.** JM 2026-06-30: tapping
@@ -51,7 +57,7 @@ test guide → the **🧪 Test guide** section below.
     contains. Surface each workout's exercises (in the card/detail). gymapp-only.
 241. 🧪 **Remove the Trainers section (Train page).** JM 2026-06-30: drop "Trainers" (Alex Rivera / Mia Chen / Dev Okafor) —
     not wanted. gymapp-only.
-240. ⬜ **Thumbnail too small AGAIN (Plan/Calendar cards).** JM 2026-06-30 ("checking the batch"): a workout card thumbnail
+240. 🧪 **Thumbnail too small AGAIN (Plan/Calendar cards).** JM 2026-06-30 ("checking the batch"): a workout card thumbnail
     is tiny again — likely the Plan/Calendar PlanCard uses a different thumbnail path than the History MiniProfile fixed in
     #221. Find + fix to fill the box. gymapp-only.
 

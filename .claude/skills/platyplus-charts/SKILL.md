@@ -19,8 +19,15 @@ description: The Platyplus chart standard — EVERY graph must have X+Y axes wit
 - Use the shared **`DateRangeFilter`** (`src/DateRange.tsx`) for the range control (presets prefill the always-visible From/To). Per-context presets: recovery 7/30/60 d, training 6 wk–1 yr.
 - **Only exception:** a tiny non-interactive **card thumbnail** (e.g. the workout mini-profile) may omit axes — it's an icon, not a chart. Anything labelled/read as a chart gets the full treatment.
 
-## When adding/changing a chart — checklist
-- [ ] Y labels (min/mid/max + unit) · [ ] X labels · [ ] crisp text (HTML overlay) · [ ] insight line · [ ] reuse the shared chart + DateRangeFilter · [ ] no horizontal scroll, mobile-first.
+## Filters are STANDARD on every stats/trend page (JM 2026-06-30: "I don't see date filters as per requirements")
+- **Date range** — EVERY stats/trend page MUST have the shared **`DateRangeFilter`** (`src/DateRange.tsx`): always-visible
+  From/To + presets that prefill them. No hardcoded "8 wk". (Progress, Fitness, Wellness, per-sport, History — all of them.)
+- **Domain filters** where a list/page has dimensions — by **type / muscle group / equipment / search**, etc. (e.g. the
+  Exercises list filters by equipment incl. "bands"; History filters by sport). Add the relevant ones, don't ship a bare list.
+
+## When adding/changing a chart/stats page — checklist
+- [ ] Y labels (min/mid/max + unit) · [ ] X labels · [ ] crisp text (HTML overlay) · [ ] insight line · [ ] **DateRangeFilter** ·
+  [ ] domain filters (type/muscle/equipment/search) where relevant · [ ] reuse the shared chart · [ ] no horizontal scroll, mobile-first.
 
 ## Known retrofit debt (axis-less today — fix to this standard)
 Activity **TimelineProfile** (#54 power/HR/altitude/cadence — no axes, no values shown until scrub), Mind weekly bars, Running pace trend, per-sport mini charts. Tracked in FEEDBACK-LOG.
