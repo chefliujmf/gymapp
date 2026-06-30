@@ -179,5 +179,6 @@ export const authApi = {
   listUsers: () => req<User[]>('/users'),
   addUser: (username: string, email: string, role: 'admin' | 'user') => req<{ user: User; tempPassword: string; emailed: boolean }>('/users', { body: { username, email, role } }),
   resetUser: (id: string) => req<{ tempPassword: string; emailed: boolean }>(`/users/${id}/reset`, { method: 'POST' }),
+  setUserPassword: (id: string, password: string) => req<{ ok: boolean }>(`/users/${id}/password`, { method: 'POST', body: { password } }),
   deleteUser: (id: string) => req<{ ok: boolean }>(`/users/${id}`, { method: 'DELETE' }),
 }

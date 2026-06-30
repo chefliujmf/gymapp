@@ -66,7 +66,7 @@ export default function AccountSection({ only }: { only?: 'account' | 'connectio
 
   // coach API token
   const [token, setToken] = useState(''); const [tkMsg, setTkMsg] = useState(''); const [showToken, setShowToken] = useState(false)
-  useEffect(() => { authApi.getToken().then((r) => setToken(r.token)).catch(() => {}) }, [])
+  useEffect(() => { if (user?.role === 'admin') authApi.getToken().then((r) => setToken(r.token)).catch(() => {}) }, [user?.role])
   async function rotate() { if (!confirm('Rotate the token? Your coach must update it.')) return; try { const r = await authApi.rotateToken(); setToken(r.token); setTkMsg('✓ Rotated') } catch (e) { setTkMsg('✗ ' + (e as Error).message) } }
   function copyToken() { navigator.clipboard?.writeText(token); setTkMsg('Copied to clipboard') }
 
@@ -163,6 +163,7 @@ export default function AccountSection({ only }: { only?: 'account' | 'connectio
       )}
       {stravaMsg && <p className="meta" style={{ marginTop: 8 }}>{stravaMsg}</p>}
 
+      {user.role === 'admin' && <>
       <div className="section-title">Coach API</div>
       <p className="meta" style={{ marginTop: -4 }}>For your cyclingcoach to push plans. <a href="/api/docs" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>Open API docs ↗</a></p>
       <div style={{ position: 'relative' }}>
@@ -183,6 +184,7 @@ export default function AccountSection({ only }: { only?: 'account' | 'connectio
         <button className="btn btn--ghost" onClick={rotate} style={{ width: 'auto', padding: '8px 14px' }}><RefreshCw size={16} /> Rotate</button>
       </div>
       {tkMsg && <p className="meta" style={{ marginTop: 8 }}>{tkMsg}</p>}
+      </>}
       </>}
     </>
   )

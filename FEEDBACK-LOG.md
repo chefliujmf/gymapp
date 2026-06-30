@@ -22,6 +22,32 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+265. ⬜ **Eat/Fuel: capture biological sex + compute BMR/TDEE & protein needs.** JM 2026-06-30: for fuelling we should
+    capture male/female (biological sex drives BMR). Where under Profile? — add to the Profile "about you" block (already
+    has weight/maxHR/sleepNeed; `sex` field already exists in `pub()` but isn't edited in the UI). Then compute:
+    **BMR** (Mifflin-St Jeor: sex+weight+height+age), **TDEE** (BMR × activity, or better: BMR + intervals daily
+    calories), **protein target** (1.6–2.2 g/kg by goal), and show on Eat (daily targets vs intake). Needs new fields:
+    height, age/birth-year (sex exists). ALSO: cycle/menstrual considerations for women later (optional). Pure unit-tested
+    `nutrition.ts` (BMR/TDEE/protein). gymapp-only.
+264. 🔨 **Non-admin users must NOT have Coach API page access.** JM 2026-06-30: the Coach API token page (REST token for
+    the coach bot) should be admin-only — hide the nav entry + guard the route for `role !== 'admin'`. (Token is a
+    power-user/integration feature; a normal user like xenia shouldn't see it.) gymapp-only.
+263. 🔨 **Profile page has no back button.** JM 2026-06-30: Profile is missing the ‹ back button every other sub-page has.
+    Add the standard `sub-head` back button. gymapp-only.
+262. 🔨 **New user inherits MY info.** JM 2026-06-30 (xenia's profile shows FTP 260, coach "Tadej", sports, 1 workout).
+    ROOT CAUSE(S): (a) **server bug** — new users are seeded `icuAthlete: 'i28814'` (JM's intervals athlete ID), and ~10
+    endpoints fall back to `|| 'i28814'`; so the moment a new user connects THEIR OWN intervals key they'd read JM's
+    account. FIX: new users default to empty athlete, resolve the real athlete id from their own key (don't hardcode JM's).
+    (b) **FTP 260** is a hardcoded local default (`setSetting('ftp','260')`) shown to everyone — not JM's data, but cosmetic
+    (should be blank until set). (c) **coachName "Tadej" / "1 workout" / local logs** come from browser-local storage
+    (Dexie + localStorage) shared when both accounts are tested in the SAME browser — not a server leak, but confirm
+    per-user scoping (namespace local data by user id, or it bleeds across accounts on one device). gymapp-only.
+261. 🔨 **Admin: click a user → see + SET a specific password.** JM 2026-06-30: as admin, click a user to expand and set a
+    chosen password (not just the random reset). BUILT: `POST /auth/users/:id/password` (admin, bcrypt, min 6) +
+    `authApi.setUserPassword` + Admin.tsx expandable row (Set password / Random reset / delete). gymapp-only.
+260. 🔨 **Admin: "No users loaded (sign in as an admin)" shown during load (misleading).** JM 2026-06-30: the empty-state
+    message flashes while the list is still fetching (and the admin IS signed in). BUILT: `loaded` flag → show "Loading…"
+    until the fetch resolves, then "No users yet." if truly empty. gymapp-only.
 259. ✅ **DECIDED: hand over credentials directly (no email). Free email for Add-user (account invite) + onboarding.** JM 2026-06-30: adding his wife — what's free to
     send the welcome/temp-password email? Server has `sendMail` but SMTP is unset. OPTIONS: (a) **just skip email** — the
     Add-user response already returns the temp password to the admin; for 1–2 users, hand it over directly (zero setup);

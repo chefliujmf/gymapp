@@ -9,12 +9,15 @@ export default function Admin() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [users, setUsers] = useState<User[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [u, setU] = useState('')
   const [em, setEm] = useState('')
   const [role, setRole] = useState<'user' | 'admin'>('user')
   const [msg, setMsg] = useState('')
+  const [open, setOpen] = useState<string | null>(null) // expanded user id (#261)
+  const [pw, setPw] = useState('')
 
-  const list = async () => { try { setUsers(await authApi.listUsers()) } catch { setUsers([]) } }
+  const list = async () => { try { setUsers(await authApi.listUsers()) } finally { setLoaded(true) } }
   useEffect(() => { list() }, [])
 
   if (user && user.role !== 'admin') return <div className="empty"><div className="big">🔒</div>Admins only.</div>
@@ -29,6 +32,12 @@ export default function Admin() {
     try { const r = await authApi.resetUser(id); setMsg(`Temp password: ${r.tempPassword}${r.emailed ? ' (emailed)' : ''}`) }
     catch (e) { setMsg('✗ ' + (e as Error).message) }
   }
+  async function setPassword(id: string, name: string) {
+    if (pw.trim().length < 6) { setMsg('✗ Password must be at least 6 characters'); return }
+    try { await authApi.setUserPassword(id, pw.trim()); setMsg(`✓ Password set for ${name}`); setPw(''); setOpen(null) }
+    catch (e) { setMsg('✗ ' + (e as Error).message) }
+  }
+  function toggle(id: string) { setOpen((o) => (o === id ? null : id)); setPw(''); setMsg('') }
   async function del(id: string) { if (!confirm('Remove this user? This cannot be undone.')) return; await authApi.deleteUser(id); list() }
 
   const badge = (r: string) => ({ background: r === 'admin' ? '#b98cff22' : '#34e07d22', color: r === 'admin' ? '#b98cff' : '#34e07d', padding: '3px 9px', borderRadius: 999, fontSize: 12, fontWeight: 700 })
@@ -44,19 +53,32 @@ export default function Admin() {
       <div className="section-title">Users · {users.length}</div>
       <div className="stack">
         {users.map((x) => (
-          <div key={x.id} className="card card-row" style={{ padding: '12px 14px', justifyContent: 'space-between', gap: 8 }}>
-            <div style={{ minWidth: 0 }}>
-              <strong>{x.username}</strong>
-              <div className="meta" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.email}</div>
+          <div key={x.id} className="card" style={{ padding: 0 }}>
+            <div className="card-row" style={{ padding: '12px 14px', justifyContent: 'space-between', gap: 8, cursor: 'pointer' }} onClick={() => toggle(x.id)}>
+              <div style={{ minWidth: 0 }}>
+                <strong>{x.username}</strong>
+                <div className="meta" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.email}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                <span style={badge(x.role)}>{x.role}</span>
+                <span className="meta" style={{ fontSize: 16 }}>{open === x.id ? '⌄' : '›'}</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-              <span style={badge(x.role)}>{x.role}</span>
-              <button className="btn btn--ghost" style={{ width: 'auto', padding: '6px 10px' }} onClick={() => reset(x.id)}>Reset</button>
-              {x.id !== user?.id && <button className="icon-btn" onClick={() => del(x.id)} aria-label="Remove"><Trash2 size={16} /></button>}
-            </div>
+            {open === x.id && (
+              <div style={{ padding: '0 14px 14px', borderTop: '1px solid #ffffff14' }}>
+                <div className="meta" style={{ margin: '10px 0 6px' }}>Set a password for {x.username}</div>
+                <input className="search" type="text" placeholder="New password (min 6)" value={pw} autoCapitalize="none" autoCorrect="off" onChange={(e) => setPw(e.target.value)} />
+                <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                  <button className="btn" style={{ width: 'auto', flex: 1 }} onClick={() => setPassword(x.id, x.username)} disabled={pw.trim().length < 6}>Set password</button>
+                  <button className="btn btn--ghost" style={{ width: 'auto', padding: '6px 12px' }} onClick={() => reset(x.id)}>Random reset</button>
+                  {x.id !== user?.id && <button className="icon-btn" onClick={() => del(x.id)} aria-label="Remove"><Trash2 size={16} /></button>}
+                </div>
+              </div>
+            )}
           </div>
         ))}
-        {!users.length && <p className="meta">No users loaded (sign in as an admin).</p>}
+        {!loaded && <p className="meta">Loading…</p>}
+        {loaded && !users.length && <p className="meta">No users yet.</p>}
       </div>
 
       <div className="section-title">Add user</div>

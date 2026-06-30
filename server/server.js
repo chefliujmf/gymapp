@@ -92,7 +92,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, statsSyncedAt: u.statsSyncedAt || 0, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, statsSyncedAt: u.statsSyncedAt || 0, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').toLowerCase(); return store.users.find((u) => u.username.toLowerCase() === l || u.email === l) }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -237,9 +237,15 @@ app.delete('/auth/passkeys/:id', auth, (req, res) => {
 })
 
 // intervals.icu key, stored server-side so the plan follows the account
-app.put('/auth/icu', auth, (req, res) => {
+app.put('/auth/icu', auth, async (req, res) => {
   if (typeof req.body.icuKey === 'string') req.user.icuKey = req.body.icuKey.trim()
   if (typeof req.body.icuAthlete === 'string') req.user.icuAthlete = req.body.icuAthlete.trim()
+  // #262: if a key is set but no athlete was given, resolve THIS user's own athlete id from
+  // intervals (athlete/0 = the authenticated athlete). Never inherit JM's 'i28814'.
+  if (req.user.icuKey && !req.user.icuAthlete) {
+    const me = await icuGet(req.user, '/athlete/0').catch(() => null)
+    if (me && me.id) req.user.icuAthlete = String(me.id)
+  }
   save(store); res.json(pub(req.user))
 })
 
@@ -607,7 +613,9 @@ app.post('/auth/users', auth, admin, async (req, res) => {
   if (!username || !email.includes('@')) return res.status(400).json({ error: 'username + valid email required' })
   if (findByLogin(username) || findByLogin(email)) return res.status(409).json({ error: 'User already exists' })
   const temp = tempPassword()
-  const u = { id: newId(), username, email, role: req.body.role === 'admin' ? 'admin' : 'user', passwordHash: bcrypt.hashSync(temp, 10), passkeys: [], info: {}, icuKey: '', icuAthlete: 'i28814', apiToken: randomBytes(24).toString('base64url'), plans: [], createdAt: Date.now() }
+  // #262: new users get NO athlete id — it's resolved from THEIR OWN intervals key when they connect.
+  // (Never seed JM's 'i28814' — that pointed every new account at his intervals athlete.)
+  const u = { id: newId(), username, email, role: req.body.role === 'admin' ? 'admin' : 'user', passwordHash: bcrypt.hashSync(temp, 10), passkeys: [], info: {}, icuKey: '', icuAthlete: '', apiToken: randomBytes(24).toString('base64url'), plans: [], createdAt: Date.now() }
   store.users.push(u); save(store)
   const emailed = await sendMail(email, 'Your Platyplus account', `You've been added to Platyplus.\nUsername: ${username}\nTemporary password: ${temp}\nSign in at ${ORIGIN} and change it.`).catch(() => false)
   res.json({ user: pub(u), tempPassword: temp, emailed })
@@ -617,6 +625,13 @@ app.post('/auth/users/:id/reset', auth, admin, async (req, res) => {
   const temp = tempPassword(); u.passwordHash = bcrypt.hashSync(temp, 10); save(store)
   const emailed = await sendMail(u.email, 'Your Platyplus password was reset', `Your new temporary password is ${temp}. Sign in at ${ORIGIN} and change it.`).catch(() => false)
   res.json({ tempPassword: temp, emailed })
+})
+// #261 — admin sets a SPECIFIC password for a user (vs the random reset above).
+app.post('/auth/users/:id/password', auth, admin, (req, res) => {
+  const u = findById(req.params.id); if (!u) return res.status(404).json({ error: 'not found' })
+  const pw = String(req.body.password || '')
+  if (pw.length < 6) return res.status(400).json({ error: 'password must be at least 6 characters' })
+  u.passwordHash = bcrypt.hashSync(pw, 10); save(store); res.json({ ok: true })
 })
 app.delete('/auth/users/:id', auth, admin, (req, res) => {
   if (req.params.id === req.user.id) return res.status(400).json({ error: "You can't delete yourself" })

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getSetting, setSetting } from '../db'
 import { authApi, type SportGroup, type SportStat, type IcuAthletePull } from '../auth/api'
@@ -60,6 +60,7 @@ function StatCell({ label, tag, value, unit, placeholder, fmt, parse, onSave }: 
 }
 
 export default function Profile() {
+  const navigate = useNavigate()
   const { user, refresh } = useAuth()
   const coachName = useLiveQuery(() => getSetting('coachName'))
   const [coachSaved, setCoachSaved] = useState(false)
@@ -136,7 +137,10 @@ export default function Profile() {
 
   return (
     <div>
-      <div className="page-head"><h1>Profile</h1><p>You & your coaching</p></div>
+      <div className="sub-head">
+        <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
+        <div className="sub-head-t"><h1>Profile</h1><p>You & your coaching</p></div>
+      </div>
 
       <div className="card" style={{ padding: '12px 14px' }}>
         <div className="card-row" style={{ gap: 12, alignItems: 'center' }}>
