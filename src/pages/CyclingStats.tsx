@@ -53,6 +53,7 @@ export default function CyclingStats() {
                 <MiniCard title="VO₂max (est.)" value={last(s.vo2)} hint="Aerobic engine size (ml/kg/min). Higher = fitter. Estimated from eFTP ÷ weight." series={{ label: '', color: '#34e07d', data: s.vo2, area: true }} />
                 <MiniCard title="eFTP" value={last(s.eftp)} unit=" W" hint="Estimated threshold power — watts you can hold ~1 hour. Higher = stronger." series={{ label: '', color: '#ffb020', data: s.eftp }} />
               </div>
+              <p className="meta" style={{ margin: '-4px 2px 8px' }}>Cycling VO₂max is a <b style={{ color: '#f0b145' }}>rough estimate</b> from power ÷ weight — conservative, usually lower than running. Tap VO₂max in <a href="/stats" style={{ color: 'var(--accent)' }}>Stats</a> to enter a measured value.</p>
               {pc ? (
                 <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
                   <div className="fit-legend"><span style={{ color: '#34e07d' }}>● Power curve<InfoDot text="The most power (watts) you can hold for each duration — sprints on the left (seconds), endurance on the right (hours). Push a line up = you got stronger at that effort." /></span></div>

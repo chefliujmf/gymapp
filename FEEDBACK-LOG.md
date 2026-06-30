@@ -22,7 +22,7 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-234. ⬜ **VO₂max: SUBMAXIMAL/passive estimate (no max effort) + confidence + learn over time.** JM 2026-06-30: "we need
+234. 🧪 **VO₂max: SUBMAXIMAL/passive estimate (no max effort) + confidence + learn over time.** JM 2026-06-30: "we need
     to learn + see if this number is right over time… any way to measure WITHOUT max efforts?" Re-anchored on JM's reply:
     the primary method is **submaximal**, the way Coros/Garmin do it — no test required. BUILD:
     (1) **Submaximal estimate** — **HR-ratio** `VO₂max ≈ 15.3 × HRmax/HRrest` (JM: 185/~55 ≈ 51–52, matches his Léger),
@@ -37,6 +37,14 @@ test guide → the **🧪 Test guide** section below.
     on the Running page (JM ≈52), **Cycling VO₂max** (HR↔power/eFTP) on the Cycling page; HR-ratio is the sport-agnostic
     fallback anchor; the **global benchmark snapshot shows the headline** (best/primary sport) tagged with sport +
     confidence. Per-sport estimates + a global headline.
+    **🧪 BUILT 2026-06-30 (mock A approved; estimator + cards, no test):** pure `src/vo2max-submax.ts` — `hrRatioVo2max`
+    (15.3·HRmax/HRrest; JM 185/55 ≈ 51.5 ✓ his Léger), `runningVo2max` (VDOT vs HR-ratio, higher wins → 52 not the slow-
+    pace 43), `cyclingVo2max` (Coggan, HR-ratio×0.95 fallback), `headlineVo2max` (manual wins, else best by confidence).
+    Wired: **Benchmarks card** headline now uses the submax estimate (pulls a recent resting HR) + source/confidence note;
+    **Running page** shows VO₂max + "{estimated/measured} from {source}"; **Cycling page** notes its is a rough power-based
+    estimate. Manual = high confidence (overrides everywhere). 12 tests, 179 total green. DEFERRED: VO₂max trend chart
+    (needs stored history) + optional guided field test. MINOR: Profile's General VO₂max still shows the old Coggan until
+    set manually (Stats card is canonical). gymapp-only.
 233. ⬜ **Notifications: coach updates (what changed) + new activity arrived.** JM 2026-06-30: "would be cool to know
     when the coach has updates and WHAT; and when a new activity is in there." Build two notification types: (1) **coach
     update** — when the coach adjusts the plan / posts a review, notify with a one-line "what changed" (the coach already
