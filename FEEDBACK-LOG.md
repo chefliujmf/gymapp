@@ -22,6 +22,31 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+233. ⬜ **Notifications: coach updates (what changed) + new activity arrived.** JM 2026-06-30: "would be cool to know
+    when the coach has updates and WHAT; and when a new activity is in there." Build two notification types: (1) **coach
+    update** — when the coach adjusts the plan / posts a review, notify with a one-line "what changed" (the coach already
+    has a `notify` tool — surface those in-app + push); (2) **new activity** — when a new intervals/device activity
+    appears in History, notify. Tie into the existing notifications model + the releases/bell. gymapp-only.
+232. ⬜ **Activity + changes/audit log for investigation.** JM 2026-06-30: "have an activity and changes log too for
+    investigation." A timestamped log of what changed — plan edits, coach actions, syncs, activity ingest, stat edits —
+    queryable for debugging "why did X change?". (FEEDBACK-LOG is the human backlog; this is a runtime/audit trail.)
+    Decide scope: server-side audit table vs an in-app "recent changes" view. gymapp-only.
+231. ⬜ **Benchmark clarity: eFTP vs FTP + VO₂max reads low vs Coros.** JM 2026-06-30: "FTP intervals but don't see
+    eFTP? confusing. VO₂max so low — Coros much higher." The card shows the SET FTP (synced); eFTP (estimated) is only a
+    trend on the Cycling page. VO₂max = Coggan `10.8·FTP÷weight+7` ≈ 44, conservative vs Coros's HR-based model. SHIPPED:
+    a clarifying note + VO₂max is tap-to-edit (enter your watch's value → "you"). TODO: prefer a REAL device VO₂max if
+    intervals carries one (investigate icu fields); consider showing eFTP alongside set-FTP. gymapp-only.
+230. ⬜ **Chart standard — retrofit all axis-less graphs (codified in skill `platyplus-charts` + memory).** JM 2026-06-30:
+    "you keep creating graphs I cannot use — no X/Y axis, no insights. Make ALL graphs useful + consistent. Update skills,
+    memory, agent." DONE: skill `platyplus-charts` + memory `platyplus-chart-standard` (every chart = X+Y axes + labels,
+    crisp HTML-overlay text, an insight line, shared component, shared DateRangeFilter). RETROFIT (⬜): the activity
+    **Timeline** charts (#54 power/HR/altitude/cadence — no axes/values), Mind weekly bars, Running pace trend, per-sport
+    minis → all to the standard; generalise Wellness `WTrend` into one shared chart. gymapp-only.
+229. 🧪 **Bugs (FIXED 2026-06-30):** (a) check-in falsely showed "edited (auto N)" when the user didn't edit — override
+    detection compared the stored value to the LIVE recompute, which drifts (calibration/recalibration/new data); now it
+    compares to the auto value RECORDED at fill (`ci.auto`). (b) Load & Form's lone "Training load / day" card was
+    half-width — now full-width (`.fit-grid--one`), consistent. gymapp-only.
+
 > **✅ SHIPPED TO PROD #2 (2026-06-25, PR #38):** the WHOLE session batch is now live on prod —
 > #51/#54 activity detail+flyby+timeline, #64/#74 check-in wellness, #72/#107 profile, #93 lift chart,
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
