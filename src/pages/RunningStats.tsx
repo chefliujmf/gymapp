@@ -40,6 +40,8 @@ export default function RunningStats() {
   const marathon = vdot ? marathonRealism(vdot, volume) : null
   // #234 submaximal running VO₂max (manual wins, else VDOT vs HR-ratio higher)
   const vo2 = user?.vo2max ? { value: user.vo2max, source: 'you set it', confidence: 'high' as const } : runningVo2max({ vdot, hrMax: user?.maxHR, hrRest })
+  // #237: HR says you're fitter than your (stale) threshold pace → flag it
+  const hrRatioMismatch = !!(vo2 && vdot && !user?.vo2max && vo2.value - vdot >= 5)
   const zStr = (k: keyof ReturnType<typeof paceZones>) => { const z = zones![k]; return Array.isArray(z) ? `${fmtPace(z[1])}–${fmtPace(z[0])}` : fmtPace(z) }
 
   return (
@@ -59,8 +61,9 @@ export default function RunningStats() {
             <MiniCard title="VDOT" value={vdot} hint="Daniels' running fitness score (≈ running VO₂max)." />
             <MiniCard title="VO₂max" value={vo2 ? vo2.value : null} hint="Running VO₂max — submaximal estimate from your pace + max/resting HR; no max test needed." />
           </div>
-          {vo2 && <p className="meta" style={{ margin: '-4px 2px 6px' }}>VO₂max <b>{vo2.value}</b> · <b style={{ color: vo2.confidence === 'high' ? 'var(--accent)' : vo2.confidence === 'medium' ? '#5ec8ff' : '#f0b145' }}>{confLabel(vo2.confidence)}</b> from {vo2.source}. Tap VO₂max in <Link to="/stats" style={{ color: 'var(--accent)' }}>Stats</Link> to enter a measured value.</p>}
-          <p className="meta" style={{ margin: '0 2px 10px' }}>Threshold pace <b>{pace ? `${fmtPace(pace)}/km` : '—'}</b> · edit it in <Link to="/profile" style={{ color: 'var(--accent)' }}>Profile</Link> (syncs to intervals).</p>
+          {vo2 && <p className="meta" style={{ margin: '10px 2px 4px' }}>VO₂max <b>{vo2.value}</b> · <b style={{ color: vo2.confidence === 'high' ? 'var(--accent)' : vo2.confidence === 'medium' ? '#5ec8ff' : '#f0b145' }}>{confLabel(vo2.confidence)}</b> from {vo2.source}. Tap VO₂max in <Link to="/stats" style={{ color: 'var(--accent)' }}>Stats</Link> to enter a measured value.</p>}
+          {vo2 && hrRatioMismatch && <p className="meta" style={{ margin: '0 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
+          <p className="meta" style={{ margin: '4px 2px 10px' }}>Threshold pace <b>{pace ? `${fmtPace(pace)}/km` : '—'}</b> · edit it in <Link to="/profile" style={{ color: 'var(--accent)' }}>Profile</Link> (syncs to intervals).</p>
 
           {zones && (
             <>

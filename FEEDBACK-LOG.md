@@ -22,6 +22,28 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+239. 🧪 **White native controls on dark (number spinners, date pickers) — FIXED.** JM 2026-06-30: "bad UX, white buttons
+    with grey text" — native `<input type=number>` spinner steppers (kg/reps etc.) rendered light on the dark theme. FIX:
+    `color-scheme: dark` on `:root` → all native controls (spinners, date pickers, scrollbars) render dark. gymapp-only.
+238. ⬜ **Bottom nav bar sometimes disappears.** JM 2026-06-30: "sometimes the bar at bottom goes away, why?" The bottom
+    tab bar (Plan/Train/Eat/Stats) is intermittently gone. Investigate: scroll-hide? sub-pages (sub-head/back) dropping
+    it? keyboard/viewport? It should be consistent. gymapp-only.
+237. ⬜ **VDOT (from threshold pace) contradicts HR-ratio VO₂max → flag stale pace.** JM 2026-06-30 (QA): Running shows
+    VDOT 41 (from pace 4:57/km) but VO₂max 50.5 (HR-ratio) — VDOT ≈ running VO₂max so this is contradictory. ROOT: his
+    threshold pace is set slow/stale, so VDOT + zones + predictions are all too easy while HR says he's fitter. SHIPPED a
+    ⚠️ flag on the Running page ("pace may be stale, update it"). TODO: reconcile properly — prompt to update pace / use
+    the **#215** estimate-from-runs so VDOT/zones/predictions match reality. Pairs #215/#216/#234. gymapp-only.
+236. ⬜ **VO₂max manual vs estimate: ANCHOR, don't freeze (JM's careful question).** JM 2026-06-30: "if I set VO₂max
+    manually, will I be overridden by the engine? or will it stop adapting? careful here." CURRENT: a manual value WINS
+    everywhere and the estimate is ignored (it freezes — never auto-overwrites you, but also never updates). DESIRED
+    (=the #234 "learn over time"): manual = a **dated high-confidence anchor**; the submax estimate keeps running in the
+    background and, if it **drifts** from the anchor over time, **nudges** "your estimate is now X — update?" (never
+    silently overwrites). Build the anchor-date + drift-nudge. Pairs #234. gymapp-only.
+235. ⬜ **Readiness learning: confirm sleep learns + a preference to turn auto-adapt ON/OFF.** JM 2026-06-30: "for sleep
+    are we learning? would like our engine to learn & adapt it — with a preference to turn on or off." CONFIRM: the
+    calibration (#207 Phase 2b) DOES learn sleep + freshness + energy from your overrides (sleep NEED stays manual). ADD:
+    a **toggle** (Profile/Settings) to enable/disable the auto-calibration/adaptation, so it's opt-in/out. gymapp-only.
+
 234. 🧪 **VO₂max: SUBMAXIMAL/passive estimate (no max effort) + confidence + learn over time.** JM 2026-06-30: "we need
     to learn + see if this number is right over time… any way to measure WITHOUT max efforts?" Re-anchored on JM's reply:
     the primary method is **submaximal**, the way Coros/Garmin do it — no test required. BUILD:
@@ -93,7 +115,7 @@ test guide → the **🧪 Test guide** section below.
     expands all exercises × sets (kg/reps spinners) → the History page gets very long. Show a compact summary row
     (title · duration · volume · TSS) collapsed by default; tap to expand the sets. Applies in History (`/logs`) at least.
     Pairs with #226 (History filters). gymapp-only.
-226. 🧪 **History needs FILTERS + SORTING at the top (and list pages generally).** JM 2026-06-30: "digging in history
+226. ✅ **History needs FILTERS + SORTING at the top (and list pages generally).** (JM-verified QA 2026-06-30.) JM 2026-06-30: "digging in history
     without dates or by activity type makes it hard to find what I'm looking for, even the title." Add a filter/sort bar
     to History (`/logs`): **date range**, **activity type** (ride/run/gym/mind/…), **title search**, maybe sort
     (newest/oldest). GENERAL PRINCIPLE (banked to memory): every list/history page should have top filters + sorting —
@@ -150,7 +172,7 @@ test guide → the **🧪 Test guide** section below.
     on an 88px thumb → needs a mock-first pass (e.g. label only the main block, or %/W on tap, or a compact "91% · 237W"
     on the peak block). Needs the user's FTP (we have it per-sport, #210). Mock 2-3 options before building. gymapp-only;
     pairs with #221 (flat blocks) + #210 (FTP).
-221. 🧪 **NO inferred ramps — mirror intervals literally, flat blocks (supersedes #219's ramp rendering).** JM 2026-06-30
+221. ✅ **NO inferred ramps — mirror intervals literally, flat blocks (supersedes #219's ramp rendering).** (JM-verified QA 2026-06-30.) JM 2026-06-30
     (dev): "a ramp up when cooling down?! what the hell" + "let the coach define the ramp when it creates the workout,
     otherwise you mirror what you have in intervals, just fucking take what's there, no ramp for now." TWO bugs from the
     #219 true-shape rewrite: (1) the "Monday Cottage" **cooldown rendered ramping UP** — the stored step is ascending
@@ -177,7 +199,7 @@ test guide → the **🧪 Test guide** section below.
     **⚠️ SUPERSEDED by #221 (JM 2026-06-30):** the sloped ramps drew a cooldown backwards (ascending data → ramp UP);
     JM killed inferred ramps — now FLAT blocks at the mean %FTP everywhere. The "show the range not the max" intent
     survives via the mean (not the peak); coach-defined ramps may reinstate the slope later.
-218. 🧪 **Stale PWA bundle persists after deploy (the real #200 root) + icu plans never refreshed.** JM 2026-06-29 (QA):
+218. ✅ **Stale PWA bundle persists after deploy (the real #200 root) + icu plans never refreshed.** (JM-verified QA 2026-06-30.) JM 2026-06-29 (QA):
     the #217 fix was LIVE in the deployed bundle (`index-2TODaDef.js` contained it) yet JM's app still showed the old
     5 W chart → his installed PWA was running CACHED JS. TWO gaps fixed: (1) **no reload-on-update** — skipWaiting+
     clientsClaim activated the new SW but the open page kept old JS; added a `controllerchange` reload (guarded to fire
@@ -358,7 +380,7 @@ test guide → the **🧪 Test guide** section below.
     Energy / Sleep / **Freshness** on a 1–5 face scale (💀😩😐😀🤩), Sleep AUTO-prefills from intervals wellness
     (`sleepTo5`, shown "· from tracker", editable), HRV/RestHR/sleep wellness chips. Scale already matches the readiness
     model (1–5). REMAINING work is the auto-DERIVE of Energy + Freshness → that's #195/#158 below, not a separate item.
-198. 🧪 **Sports as show/hide MODULES (cycling/running/strength/yoga/pilates/meditation).** JM (2026-06-27): each
+198. ✅ **Sports as show/hide MODULES (cycling/running/strength/yoga/pilates/meditation).** (JM-verified QA 2026-06-30.) JM (2026-06-27): each
     discipline is a "module"; make it trivial for the app to show/hide everything tied to one (nav hubs, Today
     suggestions, Stats cards, coach gating, Add sheet). Today it keys off `user.sports`; audit that EVERY surface
     reads one central helper (e.g. `hasModule(sport)`) so adding/removing a module flips all UI consistently. No
@@ -408,7 +430,7 @@ test guide → the **🧪 Test guide** section below.
     tag, tap overrides. Supersedes #158 (done). **Still open:** per-user `sleepNeed` setting (now defaults 8h — #159);
     coach signals (Freshness-Energy paradox, poor-sleep-nullifies-gains, HRV-CV) not yet wired into reviews; resp-rate/
     skin-temp illness layer not ingestable from intervals. JM verify: do the numbers match how you feel?
-194. 🧪 **Stats v1 follow-ups (after #193 grouping) — (a)(b)(c) ALL BUILT.** v1 routes to EXISTING pages, so: (a) WELLNESS card from the
+194. ✅ **Stats v1 follow-ups (after #193 grouping) — (a)(b)(c) ALL BUILT.** (JM-verified QA 2026-06-30.) v1 routes to EXISTING pages, so: (a) WELLNESS card from the
     mockup isn't in v1 — needs its own page (sleep/HRV/RestHR/weight trends from intervals + check-ins); (b) split
     `/fitness` into the GLOBAL "Training load & Form" view vs the CYCLING "power curve/FTP/VO₂max" view (today both cards
     route to /fitness); (c) a Mind/Meditation stats page (today the Mind card → /logs). JM 2026-06-26.

@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;        /* native controls (number spinners, date pickers, scrollbars) render dark, not white */
   --bg: #14161c;            /* blue-charcoal, not pure black */
   --bg-soft: #232733;       /* inputs / chips / stats */
   --bg-elev: #1c1f28;       /* cards */
