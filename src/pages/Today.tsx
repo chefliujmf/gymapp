@@ -45,6 +45,16 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   // #223: only the CURRENT day gets a live readiness derivation. Past days show what was LOGGED
   // (no auto-derive); future days never mount this card (they show a forecast instead).
   useEffect(() => { let live = true; setRdy(null); setTouched(new Set()); if (isToday) authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day, isToday])
+  // #206: overnight HRV/sleep lands in intervals HOURS late (Coros→intervals lag), so a morning
+  // check shows none yet. Re-pull on app focus + a manual ⟳ so a later sync appears without a reload.
+  const [refreshing, setRefreshing] = useState(false)
+  const refreshRdy = () => { if (!isToday) return; setRefreshing(true); authApi.readiness(day).then(setRdy).catch(() => {}).finally(() => setRefreshing(false)) }
+  useEffect(() => {
+    if (!isToday) return
+    const onVis = () => { if (document.visibilityState === 'visible') authApi.readiness(day).then(setRdy).catch(() => {}) }
+    window.addEventListener('focus', onVis); document.addEventListener('visibilitychange', onVis)
+    return () => { window.removeEventListener('focus', onVis); document.removeEventListener('visibilitychange', onVis) }
+  }, [day, isToday])
   // Per-day "why" for the ⓘ — the ACTUAL inputs behind THIS day's score (computed from the
   // wellness data whether or not the row is answered), + the value the data suggests.
   const sgn = (z?: number | null) => (z == null ? '?' : (z > 0 ? '+' : '') + z + 'σ')
@@ -127,12 +137,15 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
           </div>
         </div>
       ))}
-      {rdy?.today && (rdy.today.hrv != null || rdy.today.restingHR != null || rdy.today.sleepHours != null) && (
+      {isToday && rdy?.connected && (
         <div className="checkin__wchips">
-          {rdy.today.sleepHours != null && <span className="wchip">😴 {rdy.today.sleepHours}h</span>}
-          {rdy.today.hrv != null && <span className="wchip">HRV {Math.round(rdy.today.hrv)}</span>}
-          {rdy.today.restingHR != null && <span className="wchip">Rest HR {Math.round(rdy.today.restingHR)}</span>}
-          <span className="wchip wchip--src" title="These values come from intervals.icu"><span className="wchip__up" aria-hidden="true">↑</span> intervals</span>
+          {rdy.today?.sleepHours != null && <span className="wchip">😴 {rdy.today.sleepHours}h</span>}
+          {rdy.today?.hrv != null && <span className="wchip">HRV {Math.round(rdy.today.hrv)}</span>}
+          {rdy.today?.restingHR != null && <span className="wchip">Rest HR {Math.round(rdy.today.restingHR)}</span>}
+          {(rdy.today?.hrv != null || rdy.today?.restingHR != null || rdy.today?.sleepHours != null)
+            ? <span className="wchip wchip--src" title="These values come from intervals.icu"><span className="wchip__up" aria-hidden="true">↑</span> intervals</span>
+            : <span className="wchip wchip--wait">HRV/sleep not synced yet</span>}
+          <button className="wchip wchip--refresh" onClick={refreshRdy} disabled={refreshing} title="Re-check intervals for a newer Coros sync">{refreshing ? '…' : '⟳'}</button>
         </div>
       )}
     </div>

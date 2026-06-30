@@ -447,19 +447,20 @@ app.post('/auth/checkin', auth, (req, res) => {
   const ci = upsertCheckin(req.user, req.body || {})
   save(store)
   res.json(ci)
-  // #65: a POOR + COMPLETE check-in for TODAY → fire the coach to adapt today's plan
-  // (recovery / cut intensity / move it). Reuses runCoachTask (#76). Once per day
-  // (coachAdapted flag), only for athletes who've set up their coach.
+  // #206: a COMPLETE check-in for TODAY → fire the coach for a real STICK-OR-ADJUST morning call
+  // (not only on poor days). Overnight HRV/sleep is usually still mid-sync from the watch this
+  // early, so the coach is told to lean on the subjective check-in + FRESHNESS/Form (always
+  // available). Once per day (coachDecided), only for athletes who've set up their coach.
   try {
     const today = new Date().toISOString().slice(0, 10)
     const complete = ci.energy != null && ci.sleep != null && ci.soreness != null
-    const poor = (ci.energy != null && ci.energy <= 2) || (ci.sleep != null && ci.sleep <= 2) || (ci.soreness != null && ci.soreness >= 4)
-    if (req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && poor && !ci.coachAdapted) {
-      ci.coachAdapted = true; save(store)
-      const msg = `The athlete just checked in for today (${today}) and it's a POOR recovery day — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore). Look at TODAY's planned session(s) with list_schedule and decide if it should be eased: cut intensity/volume, swap to recovery, or move it. If you change anything, do it with the tools and use notify to tell them what you changed and why (a line or two). If today is already easy or rest, just reassure them briefly via notify. Don't ask questions — act.`
-      runCoachTask(req.user, msg).catch((e) => console.error('[checkin-adapt] ' + (e.message || e)))
+    if (req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && !ci.coachDecided) {
+      ci.coachDecided = true; save(store)
+      const poor = ci.energy <= 2 || ci.sleep <= 2 || ci.soreness >= 4
+      const msg = `Morning check-in is in for today (${today}) — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore)${poor ? ' — this reads run-down' : ''}. IMPORTANT: overnight HRV/sleep from their watch often hasn't synced to intervals this early, so decide from (a) this subjective check-in and (b) their FRESHNESS / Form (CTL−ATL, always available — read get_wellness). Look at TODAY's planned session(s) with list_schedule and make a STICK-OR-ADJUST call: if they're ready, leave the plan and send a one-line "stick with it" via notify; if run-down (poor check-in and/or deeply negative Form), EASE today — cut intensity/volume, swap to recovery, or move it — with the tools, then notify what changed and why. If today is already rest/easy, a one-line reassurance. Be concise; don't ask questions — decide and act.`
+      runCoachTask(req.user, msg).catch((e) => console.error('[checkin-decide] ' + (e.message || e)))
     }
-  } catch (e) { console.error('[checkin-adapt] trigger ' + e.message) }
+  } catch (e) { console.error('[checkin-decide] trigger ' + e.message) }
 })
 app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
 // #195: auto-derived readiness (Sleep · Freshness · Energy 1–5) from 60d of intervals wellness +

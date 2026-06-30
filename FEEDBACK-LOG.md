@@ -42,7 +42,7 @@ test guide → the **🧪 Test guide** section below.
     check-in, no "fresh" verdict), explicit that Energy/Sleep fill in from that day's check-in; PAST = logged check-in
     only (auto-derivation gated to today). New `GET /auth/readiness-forecast` projects CTL/ATL→Form over the planned
     intervals TSS (`projectForm`/`forecastFreshness` in `server/readiness.js`). 11 new tests; 150 green, tsc+build clean.
-222. ⬜ **Show % and watts on the workout thumbnail (watts = % of FTP).** JM 2026-06-30: wants the mini card thumbnail
+222. ❌ **DROPPED (JM 2026-06-30: "forget 222").** ~~Show % and watts on the workout thumbnail (watts = % of FTP).~~ JM 2026-06-30: wants the mini card thumbnail
     (MiniProfile) to show the target **%FTP and the watts** it implies (W = %×FTP), not just the coloured shape. Tight
     on an 88px thumb → needs a mock-first pass (e.g. label only the main block, or %/W on tap, or a compact "91% · 237W"
     on the peak block). Needs the user's FTP (we have it per-sport, #210). Mock 2-3 options before building. gymapp-only;
@@ -181,7 +181,7 @@ test guide → the **🧪 Test guide** section below.
       4. **Wire FTP/maxHR into expected-fatigue** so "how hard is this FOR YOU" uses personal zones, not population.
     In dev (no intervals) VO₂max stays blank — expected. Tests for the estimate + the learning offset (pure fns). gymapp-only; pairs #215 (VDOT) / #208 (Freshness anchor).
     **🧪 Phase 2b BUILT 2026-06-30 (on QA after push):** (1) **Sleep need** shows the 8 h first-guess (tag "default" → "you" once set) so it's never blank. (2) **VO₂max = a TRUE estimate** — `estimateVo2max` (cycling `10.8·FTP÷weight+7` or running VDOT, takes the higher) shown live in Profile with a "what it's from · updates as you train" line; manual entry overrides ("you"). (3) **Learning calibration (gradual drift)** — `calibrationOffset`/`learnedOffsets`/`applyOffset` in `server/readiness.js`: check-ins now store the auto score shown (`ci.auto`), and `/auth/readiness` drifts each auto score toward the athlete's MEDIAN override (≥5 days, evidence-weighted, ±1 cap, ignores <0.2 noise); Today shows "· tuned to you" + a why. 31 new tests (readiness + running-paces), 145 green, tsc + build clean. REMAINING (part 4, deferred): wire FTP/maxHR into the expected-fatigue math + have the coach read the VO₂max estimate server-side.
-206. ⬜ **Morning readiness data + coach stick-vs-adjust decision.** JM 2026-06-29: today's HRV/sleep isn't in intervals
+206. 🧪 **Morning readiness data + coach stick-vs-adjust decision.** JM 2026-06-29: today's HRV/sleep isn't in intervals
     yet in the morning, so the coach can't decide. ROOT CAUSE (verified in JM's data): the lag is **Coros → intervals**,
     not Platyplus — overnight HRV/sleep lands in intervals hours late (often afternoon/next-day; `updated` timestamps
     show next-day 17:18–22:32; today 06-29 at 14:18 EDT still empty). Platyplus reads intervals live, so it's only as
@@ -191,6 +191,12 @@ test guide → the **🧪 Test guide** section below.
     focus + a "⟳ refresh" on the wellness chips** so a Coros sync shows up without a reload; (2) a **morning coach
     decision** (extend the existing poor-recovery→notify hook into a real stick-vs-adjust call once the check-in is in).
     Also advise JM: open the Coros app on waking + check the intervals↔Coros pull cadence. gymapp-only.
+    **🧪 BUILT 2026-06-30:** (1) **refresh** — CheckInCard re-pulls readiness on app focus/visibility + a **⟳ button**
+    on the wellness chips (today only); when HRV/sleep aren't in yet it shows "HRV/sleep not synced yet" so the ⟳ is
+    obviously useful. (2) **stick-or-adjust** — the morning coach hook now fires on ANY complete check-in for today (not
+    just poor days), once/day (`ci.coachDecided`), and is told to lean on the check-in + **Freshness/Form** since HRV/
+    sleep are usually mid-sync; it makes a STICK (one-line confirm) or ADJUST (ease + notify) call. tsc+build clean, 150
+    tests green. ADVICE for JM: open Coros on waking to push the sync sooner. gymapp-only.
 205. 🔨 **WeekStrip: select edge date on week change + "Today" shows whenever off-today.** JM 2026-06-29: changing
     week should move the selection — **next week → that week's Monday (first)**, **prev week → its Sunday (last)** — so
     it scrolls continuously; and the **Today** button should appear as soon as the selected date isn't today (even
@@ -760,6 +766,10 @@ verifies **one at a time**; only JM marks ✅.
 **How to run the automated net:** `npm test` (unit, `src/*.test.ts`) · `npm run test:smoke` (API
 integration, `scripts/smoke-test.mjs`). Status: ❌ broken · 🔧 fixing · 🧪 fixed + test, awaiting JM ·
 ✅ JM-verified.
+
+### R206 · #206 — morning readiness refresh + coach stick-or-adjust 🧪
+**No pure unit (UI focus-listener + a live coach side-effect).** Frontend + server change only.
+**JM manual (QA):** (1) Today (current day): the wellness row shows a **⟳** button; before the Coros sync it reads "HRV/sleep not synced yet" — switch away & back to the app (or tap ⟳) and a newer sync appears without a full reload. (2) Submit a complete check-in for today with a workout planned → the coach makes a **stick-or-adjust** call (notify): confirms the plan when you're ready, eases it when run-down, leaning on Freshness/Form when HRV/sleep aren't in yet. Fires once/day.
 
 ### R223 · #223 — future days show a freshness FORECAST, not a live verdict 🧪
 **Unit tests:** `src/readiness.test.ts` → `projectForm` (CTL τ42 / ATL τ7 → Form; rest raises Form, hard drops it) + `forecastFreshness` (a planned block forecasts lower freshness than rest). `npm test` (150 green).

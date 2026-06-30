@@ -285,6 +285,9 @@ select.search { appearance: none; -webkit-appearance: none; }
 .wchip { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 12px; color: var(--text-dim); font-weight: 700; }
 .wchip--src { color: var(--accent); border-color: rgba(52, 224, 125, 0.3); }
 .wchip__up { font-weight: 900; margin-right: 1px; }
+.wchip--wait { color: #9298a6; font-style: italic; font-weight: 600; } /* #206 HRV/sleep not synced yet */
+.wchip--refresh { cursor: pointer; color: var(--text); } /* #206 manual re-pull (late Coros sync) */
+.wchip--refresh:disabled { opacity: .5; cursor: default; }
 
 /* #202 readiness verdict banner on the plan */
 .ready-banner { display: flex; align-items: flex-start; gap: 9px; border-radius: 12px; padding: 9px 12px; margin: 2px 0 10px; font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--text); }
