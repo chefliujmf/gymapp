@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle } from 'lucide-react'
+import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle, HeartPulse } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 
@@ -48,6 +48,7 @@ export function statsGroups(sports: string[]): { global: Spec[]; perSport: Spec[
   // Training load / Form aggregates whole-body stress (intervals) — global, shown when there's an
   // endurance sport (it's where Form comes from) OR no sports set yet (emptyShowsAll).
   if (hasModule(sports, 'endurance', { emptyShowsAll: true })) global.push({ key: 'form', label: 'Training load & Form', sub: 'Fitness / Fatigue / Form · readiness', to: '/fitness' })
+  global.push({ key: 'wellness', label: 'Wellness', sub: 'Sleep · HRV · resting HR · weight trends', to: '/wellness' }) // #194a
   global.push({ key: 'history', label: 'History', sub: 'All your logged sessions (every sport)', to: '/logs' })
   const perSport: Spec[] = []
   if (has('cycling')) perSport.push({ key: 'cycling', label: 'Cycling', sub: 'Power curve · FTP · zones · VO₂max', to: '/fitness' })
@@ -57,7 +58,7 @@ export function statsGroups(sports: string[]): { global: Spec[]; perSport: Spec[
   return { global, perSport }
 }
 const STAT_ICON: Record<string, ReactNode> = {
-  form: <Activity strokeWidth={1.75} />, history: <History strokeWidth={1.75} />,
+  form: <Activity strokeWidth={1.75} />, history: <History strokeWidth={1.75} />, wellness: <HeartPulse strokeWidth={1.75} />,
   cycling: <Bike strokeWidth={1.75} />, running: <Footprints strokeWidth={1.75} />,
   strength: <Dumbbell strokeWidth={1.75} />, mind: <Brain strokeWidth={1.75} />,
 }

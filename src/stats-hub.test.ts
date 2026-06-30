@@ -7,19 +7,19 @@ const labels = (xs: { label: string }[]) => xs.map((x) => x.label)
 describe('Stats hub groups (#193)', () => {
   it('strength-only: no endurance Form, no cycling card; Strength under per-sport', () => {
     const { global, perSport } = statsGroups(['strength'])
-    expect(labels(global)).toEqual(['History']) // no "Training load & Form" (no endurance)
+    expect(labels(global)).toEqual(['Wellness', 'History']) // no "Training load & Form" (no endurance)
     expect(labels(perSport)).toEqual(['Strength'])
   })
 
-  it('cycling + strength + meditation: global has Form + History; per-sport has all three', () => {
+  it('cycling + strength + meditation: global has Form + Wellness + History; per-sport has all three', () => {
     const { global, perSport } = statsGroups(['cycling', 'strength', 'meditation'])
-    expect(labels(global)).toEqual(['Training load & Form', 'History'])
+    expect(labels(global)).toEqual(['Training load & Form', 'Wellness', 'History'])
     expect(labels(perSport)).toEqual(['Cycling', 'Strength', 'Mind'])
   })
 
-  it('no sports set: shows Form + History globally, no per-sport cards', () => {
+  it('no sports set: shows Form + Wellness + History globally, no per-sport cards', () => {
     const { global, perSport } = statsGroups([])
-    expect(labels(global)).toEqual(['Training load & Form', 'History'])
+    expect(labels(global)).toEqual(['Training load & Form', 'Wellness', 'History'])
     expect(perSport).toHaveLength(0)
   })
 

@@ -1149,6 +1149,18 @@ select.search { appearance: none; -webkit-appearance: none; }
 .forecast__sub { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; }
 .forecast__note { font-size: 12px; color: var(--text-dim); margin-top: 11px; line-height: 1.45; border-top: 1px solid var(--line); padding-top: 9px; }
 .forecast__note b { color: var(--text); }
+/* #194a — Wellness stats page (trend cards w/ axes + 7-day average + min–max band) */
+.wcard { padding: 13px 14px 10px; margin-bottom: 12px; }
+.wcard__h { display: flex; align-items: baseline; justify-content: space-between; }
+.wcard__h h3 { margin: 0; font-size: 14px; }
+.wcard__now { font-size: 20px; font-weight: 800; }
+.wcard__now small { font-size: 11px; color: var(--text-dim); font-weight: 600; margin-left: 2px; }
+.wcard__sub { font-size: 11px; color: var(--text-dim); margin: 1px 0 4px; }
+.wtrend { display: block; width: 100%; height: 168px; }
+.wtrend .wt-ax { fill: var(--text-dim); font-size: 9px; }
+.wtrend .wt-mm { font-size: 9px; font-weight: 700; }
+.wcard__leg { display: flex; gap: 12px; font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+.wcard__leg i { display: inline-block; width: 14px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 4px; }
 .checkin__coach { display: flex; align-items: center; gap: 6px; margin-top: 11px; font-size: 12px; color: var(--text-dim); }
 .checkin__coach b { color: var(--accent); }
 .checkin__coachbtn { margin-left: auto; background: #14181f; border: 1px solid rgba(52,224,125,.3); color: var(--accent); border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 700; text-decoration: none; }

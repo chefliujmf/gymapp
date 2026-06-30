@@ -321,10 +321,17 @@ test guide → the **🧪 Test guide** section below.
     tag, tap overrides. Supersedes #158 (done). **Still open:** per-user `sleepNeed` setting (now defaults 8h — #159);
     coach signals (Freshness-Energy paradox, poor-sleep-nullifies-gains, HRV-CV) not yet wired into reviews; resp-rate/
     skin-temp illness layer not ingestable from intervals. JM verify: do the numbers match how you feel?
-194. ⬜ **Stats v1 follow-ups (after #193 grouping).** v1 routes to EXISTING pages, so: (a) WELLNESS card from the
+194. 🔨 **Stats v1 follow-ups (after #193 grouping) — (a) BUILT, (b)/(c) pending.** v1 routes to EXISTING pages, so: (a) WELLNESS card from the
     mockup isn't in v1 — needs its own page (sleep/HRV/RestHR/weight trends from intervals + check-ins); (b) split
     `/fitness` into the GLOBAL "Training load & Form" view vs the CYCLING "power curve/FTP/VO₂max" view (today both cards
     route to /fitness); (c) a Mind/Meditation stats page (today the Mind card → /logs). JM 2026-06-26.
+    **🧪 (a) Wellness page BUILT 2026-06-30 (mock round 2, option B approved):** new `src/pages/Wellness.tsx` + `/wellness`
+    route + a "Wellness" card in the Stats hub global group. Sleep / HRV / resting-HR / weight trends from `fetchWellness`
+    + a check-in (1–5) trend, each a RICH chart (`WTrend`): Y axis (min/mid/max), dated X axis, faint daily line, bold
+    **7-day moving average**, shaded **min–max band** with dashed bounds + labels (RHR inverted so "good" reads right).
+    **Range filter 7d / 30d / 60d / custom** (reuses the Fitness chips + date-range). Works without intervals too (check-in
+    trend still shows). statsGroups test updated (Wellness now global). 160 tests green, tsc+build clean.
+    **(b) Fitness split + (c) Mind page: mocked (round 1), NOT yet built — awaiting JM go.** gymapp-only.
 193. 🧪 **Rework the Stats page: separate SPORT-SPECIFIC vs GLOBAL metrics.** DONE v1 (hub grouping): `hubs.tsx`
     `StatsHub` now renders a **GLOBAL** section (Training load & Form → /fitness · History → /logs) + a **PER SPORT**
     section (Cycling/Running → /fitness · Strength → /progress · Mind → /logs), gated by `statsGroups(sports)` (pure +
@@ -791,6 +798,10 @@ verifies **one at a time**; only JM marks ✅.
 **How to run the automated net:** `npm test` (unit, `src/*.test.ts`) · `npm run test:smoke` (API
 integration, `scripts/smoke-test.mjs`). Status: ❌ broken · 🔧 fixing · 🧪 fixed + test, awaiting JM ·
 ✅ JM-verified.
+
+### R194a · #194a — Wellness stats page 🧪
+**Unit:** statsGroups test updated (Wellness in the global group); `WTrend`/movingAvg are render-side (no pure test). `npm test` (160).
+**JM manual (QA):** Stats → **Wellness**. Range chips 7d/30d/60d/custom. Each metric (Sleep/HRV/Resting HR/Weight + Check-in) is a big chart with **axes**, a faint daily line, a bold **7-day average**, and a shaded **min–max band**. Resting-HR's "good" label is the low end. With intervals off, the check-in trend still renders.
 
 ### R198 · #198 — sports as show/hide modules (one central helper) 🧪
 **Unit tests:** `src/modules.test.ts` (userModules umbrellas: triathlon→cycling+running, yoga/pilates/meditation→mind; hasModule empty-default) + existing `src/stats-hub.test.ts` still green (behavior preserved). `npm test` (160).
