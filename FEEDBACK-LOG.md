@@ -27,6 +27,16 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+225. ⬜ **Stats IA: GLOBAL vs PER-SPORT — get it deliberately right (the #194b toggle was the wrong model).** JM
+    2026-06-30: "Power & FTP page is great but it's cycling-only — we still need to think carefully for global stats vs
+    per-sports." PROBLEM: `/fitness` now mixes a GLOBAL view (Load & Form, all sports) with a PER-SPORT view (cycling
+    power) behind a toggle, and the Stats **Running** card routes to `/fitness` → shows CYCLING power (wrong). PROPOSED IA:
+    • **GLOBAL:** Load & Form (`/fitness`, make it global-ONLY — drop the cycling toggle), Wellness (`/wellness`),
+      History (`/logs`). • **PER-SPORT (one page each):** Cycling (power/eFTP/VO₂max/W·kg — its own page), **Running (NEW —
+      threshold pace / Daniels zones / VDOT / race predictions; today this lives in Profile)**, Strength (`/progress`),
+      Mind (`/mind-stats`). Also: **range presets are inconsistent** (Fitness 6wk/3mo/6mo/1yr vs Wellness 7d/30d/60d) —
+      standardise. DECISION PENDING (JM to confirm IA + whether to build the Running stats page + range standardisation).
+      Supersedes the #194b toggle approach. gymapp-only.
 224. ✅ **DECIDED — intervals stays the SINGLE hub; do NOT pull from Coros directly.** JM 2026-06-30: "the point of
     having intervals is to not have to maintain a million integrations, so no I don't want to pull from Coros directly."
     So the Coros→intervals morning lag is ACCEPTED and handled in-app only: lean on **Freshness/Form + the subjective
