@@ -22,6 +22,11 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+253. ⬜ **(LATER) Extract bodyweight exercises from "la méthode Lafay" — only ones NOT already in the catalog.** JM
+    2026-06-30: "to be done much later." Mine the Lafay method (French bodyweight/calisthenics) for movements we lack, add
+    them as catalog exercises (name, muscle group, bodyweight, equipment=none). LICENSING: facts/movement names are fine,
+    but do NOT copy the book's descriptions/photos (media-independence + content rules, CONTENT.md) — write our own or use
+    free-licensed media. De-dup against the existing 4,500 exercises first. Parked. gymapp-only.
 252. 🔨 **Date filter MISSING on Progress (standard on every stats page); + domain filters everywhere.** JM 2026-06-30:
     "don't see date filters as per requirements — it's standard" + "add other filters: by exercise type, muscle group,
     equipment, whatever." Progress is hardcoded "8 wk", no range control. FIX: add the shared `DateRangeFilter` to
