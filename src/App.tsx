@@ -3,6 +3,7 @@ import { Home, CalendarDays, Dumbbell, BarChart3, Salad, MessageCircle } from 'l
 import AccountMenu from './auth/AccountMenu'
 import ReleaseBell from './ReleaseBell'
 import PromoteButton from './PromoteButton'
+import PasskeyPrompt from './auth/PasskeyPrompt'
 
 // 5 fixed tabs (best practice). Train & Stats are hubs whose CONTENT adapts to the
 // user's sports, so the nav stays the same for a one-sport or multi-sport athlete.
@@ -33,6 +34,7 @@ export default function App() {
       <main className="app-main">
         <Outlet />
       </main>
+      <PasskeyPrompt />{/* #266: one-time prompt to set up a passkey when the device has none */}
       {/* Coach FAB — primary assistant action, thumb-reachable bottom-right, above the tab bar (#50). */}
       {!isDetail && (
         <Link to="/chat" className="coach-fab" aria-label="Coach chat"><MessageCircle size={20} /> <span className="coach-fab__l">Coach</span></Link>

@@ -33,8 +33,14 @@ export default function Login() {
     setErr(''); setBusy(true)
     try { await apply(await authApi.passkeyLoginDiscoverable()) }
     catch (e) {
-      // No passkey on this device/account (or cancelled) → drop to the password form.
-      setErr((e as Error).message || 'No passkey here yet — use your password.')
+      // #266 (option C): give CLEAR feedback instead of looking like "nothing happened".
+      // A fresh device has no passkey to offer, or the OS dialog was cancelled → guide to
+      // password, after which we offer to set one up (PasskeyPrompt).
+      const name = (e as { name?: string }).name
+      const noCred = name === 'NotAllowedError' || name === 'AbortError' || /no passkey|not recognised|unknown|expired/i.test((e as Error).message || '')
+      setErr(noCred
+        ? 'No passkey on this device yet. Sign in with your password below — then we’ll offer to set one up.'
+        : ((e as Error).message || 'Passkey sign-in failed — use your password.'))
       setUsePassword(true)
     } finally { setBusy(false) }
   }

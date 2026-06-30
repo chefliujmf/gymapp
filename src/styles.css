@@ -840,6 +840,12 @@ select.search { appearance: none; -webkit-appearance: none; }
 }
 .auth-note { color: var(--accent, #34e07d); font-size: 13px; text-align: center; margin-top: 12px; }
 .auth-err { color: var(--danger, #ff6b6b); font-size: 13px; text-align: center; margin-top: 12px; }
+/* #266 — set-up-a-passkey prompt (modal after login when the device has none) */
+.pk-prompt__wrap { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.62); display: flex; align-items: center; justify-content: center; padding: 22px; backdrop-filter: blur(3px); }
+.pk-prompt { width: 100%; max-width: 340px; background: linear-gradient(#21252f,#191c24); border: 1px solid #2c3340; border-radius: 20px; padding: 24px 22px; text-align: center; box-shadow: 0 16px 50px rgba(0,0,0,.5); }
+.pk-prompt__ic { width: 60px; height: 60px; border-radius: 16px; background: rgba(52,224,125,.14); color: var(--accent, #34e07d); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+.pk-prompt h3 { margin: 0 0 6px; font-size: 19px; }
+.pk-prompt p { margin: 0 0 16px; color: var(--text-dim, #9298a6); font-size: 13px; line-height: 1.45; }
 .icon-btn {
   background: none; border: none; color: var(--muted, #9aa3b2); cursor: pointer;
   padding: 6px; border-radius: 8px; display: inline-flex; align-items: center;
