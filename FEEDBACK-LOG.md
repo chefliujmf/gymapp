@@ -22,6 +22,14 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+268. ⬜ **Two-way sync the intervals Basic Settings profile fields (don't re-enter them).** JM 2026-06-30 (screenshot of
+    intervals → Settings → Basic Settings): instead of capturing profile data manually, **bi-directionally sync** the
+    canonical fields from intervals.icu: **Sex, Weight, Height, Date of Birth (→ age), Resting HR** (+ units already there).
+    intervals is the hub (architecture) — extend the athlete PULL (`/auth/intervals/athlete`, `fromIcuSportSettings` /
+    the `/athlete/{id}` payload has `sex`, `height`, `weight`, `icu_resting_hr`, `date_of_birth`) to also read these into
+    the Platyplus profile, and WRITE BACK on edit (mirror #210 ftp/maxHr two-way). This FEEDS #265 (BMR/TDEE/protein need
+    sex+height+age+weight) — so #265's inputs come from intervals, edited in either place. Manual fallback for the few
+    fields intervals lacks. gymapp-only. Pairs #265 + #257 (onboarding).
 267. 🔨 **Intervals sync doesn't REMOVE upstream-deleted activities.** JM confirmed: the session was CREATED in
     intervals then DELETED there, but stayed in Platyplus → a device/intervals activity served from cache (the live fetch
     shouldn't return a deleted one). FIXED: intervals proxy now sends `Cache-Control: no-store` + client `fetchActivities`
@@ -77,7 +85,9 @@ test guide → the **🧪 Test guide** section below.
     restatement in the check-in card, keep the actionable plan banner + the "Ask coach" link. gymapp-only.
 257. ⬜ **(LATER) Onboarding flow for a new user → generate an interesting first plan.** JM 2026-06-30: build the new-user
     onboarding (structured: sports, goals, experience, equipment, constraints — STT optional, #183) and, from it, have the
-    coach generate a compelling first week/plan. Pairs #183 (wizard) + the coach engine (#18/#65). gymapp-only.
+    coach generate a compelling first week/plan. **Onboarding also captures the PROFILE basics** (JM 2026-06-30: sex,
+    height, DOB, weight, resting HR — see #268/#265) — prefill from intervals when connected, ask for what's missing, so
+    BMR/TDEE/protein + readiness work from day one. Pairs #183 (wizard) + the coach engine (#18/#65) + #268 + #265. gymapp-only.
 256. ⬜ **(LATER) Test the in-app coach so cyclingcoach can be ARCHIVED + port any missing improvements.** JM 2026-06-30:
     verify the full Platyplus coach loop end-to-end (chat + plan create/adjust + reviews + notify) so the standalone
     cyclingcoach repo can be retired. First **read cyclingcoach for interesting improvements not yet in Platyplus** (method/
