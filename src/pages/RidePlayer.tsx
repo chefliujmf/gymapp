@@ -144,17 +144,23 @@ export default function RidePlayer() {
   )
 
   const firstW = wattsAt(segs[0], 0, ftp)
+  // True power profile (#219): each segment follows its real start→end (ramps slope), not a
+  // flat bar at the peak — matches the plan chart + intervals. Keeps the per-segment highlight.
+  const rpMaxP = Math.max(150, ...segs.flatMap((s) => [s.powerStart, s.powerEnd]))
+  let rpAcc = 0
+  const rpStarts = segs.map((s) => { const st = rpAcc; rpAcc += s.duration; return st })
+  const rpX = (t: number) => (t / total) * 1000
+  const rpY = (pct: number) => 100 - (pct / rpMaxP) * 100
   const profile = (
-    <div className="rp-profile">
-      {segs.map((s, i) => (
-        <div key={i} className="rp-bar" style={{
-          flexGrow: s.duration / total,
-          height: `${Math.max(10, Math.min(100, (Math.max(s.powerStart, s.powerEnd) / 150) * 100))}%`,
-          background: zoneColor(Math.max(s.powerStart, s.powerEnd)),
-          opacity: phase === 'ride' ? (i === idx ? 1 : i < idx ? 0.3 : 0.62) : 0.8,
-          outline: phase === 'ride' && i === idx ? '1.5px solid #fff' : 'none',
-        }} />
-      ))}
+    <div className="rp-profile" style={{ position: 'relative' }}>
+      <svg viewBox="0 0 1000 100" preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }}>
+        {segs.map((s, i) => {
+          const x0 = rpX(rpStarts[i]), x1 = rpX(rpStarts[i] + s.duration), c = zoneColor(Math.max(s.powerStart, s.powerEnd))
+          const op = phase === 'ride' ? (i === idx ? 1 : i < idx ? 0.3 : 0.62) : 0.8
+          return <polygon key={i} points={`${x0},100 ${x0},${rpY(s.powerStart)} ${x1},${rpY(s.powerEnd)} ${x1},100`}
+            fill={c} fillOpacity={op} stroke={phase === 'ride' && i === idx ? '#fff' : 'none'} strokeWidth={phase === 'ride' && i === idx ? 2 : 0} />
+        })}
+      </svg>
       {phase === 'ride' && <div className="rp-cursor" style={{ left: `${(elapsedTotal / total) * 100}%` }} />}
     </div>
   )
