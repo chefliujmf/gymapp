@@ -22,7 +22,7 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-259. ⬜ **(LATER) Free email for Add-user (account invite) + onboarding.** JM 2026-06-30: adding his wife — what's free to
+259. ✅ **DECIDED: hand over credentials directly (no email). Free email for Add-user (account invite) + onboarding.** JM 2026-06-30: adding his wife — what's free to
     send the welcome/temp-password email? Server has `sendMail` but SMTP is unset. OPTIONS: (a) **just skip email** — the
     Add-user response already returns the temp password to the admin; for 1–2 users, hand it over directly (zero setup);
     (b) **Gmail SMTP via an App Password** (free, low-volume; nodemailer smtp.gmail.com) → set SMTP_* in AUTH_ENV secrets;
