@@ -303,14 +303,32 @@ app.get('/auth/intervals/athlete', auth, async (req, res) => {
 
 // #215 — ESTIMATE the runner's threshold pace from intervals' pace curve (Critical Speed),
 // the running analog of eFTP. A suggestion the user can apply/override; never auto-written.
+// #271/#272: ASSESS data sufficiency before suggesting — a Critical-Speed read off a handful of
+// easy runs is unreliable, and suggesting a (slower) threshold off thin data is misleading.
+// We gate on (a) the model fit (r2) AND (b) how much the athlete has actually run recently, and
+// return a confidence so the UI only surfaces a suggestion when we're genuinely confident.
 app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
   if (!req.user.icuKey) return res.json({ available: false })
   const ath = req.user.icuAthlete || 'i28814'
   const pc = await icuGet(req.user, `/athlete/${ath}/pace-curves?type=Run`)
   const est = pc ? runThresholdFromPaceCurve(pc) : null
-  if (!est) return res.json({ available: false })
+  if (!est) return res.json({ available: false, reason: 'no-model' })
+  // How much running is behind this estimate? Count recent runs (42d) + a hard effort.
+  const DAYS = 42
+  const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(DAYS)}&newest=${icuDay(0)}`)
+  const runs = Array.isArray(acts) ? acts.filter((a) => /run/i.test(a.type || '') && a.distance > 0) : []
+  const totalKm = runs.reduce((s, a) => s + a.distance, 0) / 1000
+  const r2 = est.r2 != null ? est.r2 : 0.7
+  // confidence: needs both a decent fit AND enough recent running to trust the curve.
+  let confidence = 'low'
+  if (runs.length >= 8 && totalKm >= 60 && r2 >= 0.85) confidence = 'high'
+  else if (runs.length >= 4 && totalKm >= 25 && r2 >= 0.7) confidence = 'medium'
+  // Not confident → assessed, but DON'T present it as a suggestion. Tell the UI why.
+  if (confidence === 'low') {
+    return res.json({ available: false, assessed: true, reason: runs.length < 4 ? 'too-few-runs' : 'low-fit', runs: runs.length, weeklyKm: +(totalKm / (DAYS / 7)).toFixed(1) })
+  }
   if (est.thresholdPace > 0) { req.user.runPaceEst = Math.round(est.thresholdPace); save(store) } // #236 stash computed pace for the coach
-  res.json({ available: true, ...est, source: 'critical speed (your recent runs)' })
+  res.json({ available: true, ...est, confidence, runs: runs.length, source: 'critical speed (your recent runs)' })
 })
 
 // #216 — running endurance base for the marathon-realism range: longest single run +

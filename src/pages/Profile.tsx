@@ -68,7 +68,7 @@ export default function Profile() {
   const [sportSaved, setSportSaved] = useState(false)
   const [dietSaved, setDietSaved] = useState(false)
   const [pulled, setPulled] = useState<IcuAthletePull | null>(null)
-  const [runEst, setRunEst] = useState<{ available: boolean; thresholdPace?: number } | null>(null)
+  const [runEst, setRunEst] = useState<Awaited<ReturnType<typeof authApi.runEstimate>> | null>(null)
   const [runVol, setRunVol] = useState<{ available: boolean; longestKm?: number; weeklyKm?: number } | null>(null)
   const [hrRest, setHrRest] = useState<number | null>(null) // #269 resting HR for the HR-ratio VO₂max
 
@@ -148,10 +148,14 @@ export default function Profile() {
     { sport: 'cycling', est: cyclingVo2max({ ftp: val('cycling', 'ftp'), weightKg: pulled?.weight ?? null, hrMax: cycHrMax, hrRest }) },
   ])
   const hrMax = runHrMax ?? cycHrMax
-  // #215 estimate (Critical Speed → threshold pace); only suggest when it differs from what's set
+  // #215/#271 estimate (Critical Speed → threshold pace). Only a CONFIDENT estimate (server gates on
+  // recent run volume + fit) is shown; a slower pace off thin data is suppressed, not pushed.
   const estPace = runEst?.available && runEst.thresholdPace ? runEst.thresholdPace : null
   const estVdot = estPace ? Math.round(vdotFromThresholdPace(estPace)) : null
   const showEst = estPace != null && estPace !== runPace
+  const estSlower = estPace != null && runPace != null && estPace > runPace // higher sec/km = slower
+  // assessed but NOT confident enough to suggest (e.g. barely ran) — a gentle nudge, no "Use".
+  const estUnsure = !!(runEst && !runEst.available && runEst.assessed && runEst.reason === 'too-few-runs')
 
   return (
     <div>
@@ -226,14 +230,25 @@ export default function Profile() {
           {showEst && !runPace && (
             <div className="est">
               <span className="est__i">📈</span>
-              <span className="est__t">Estimated from your recent runs: <b>{fmtPace(estPace!)}/km</b> · VDOT {estVdot}<span className="sub">intervals Critical Speed · you can change it anytime</span></span>
+              <span className="est__t">From your recent runs: <b>{fmtPace(estPace!)}/km</b> · VDOT {estVdot}<span className="sub">intervals Critical Speed{runEst?.confidence ? ` · ${confLabel(runEst.confidence)}` : ''} · you can change it anytime</span></span>
               <button className="est__use" onClick={() => saveRunPace(estPace!)}>Use this</button>
             </div>
           )}
-          {showEst && runPace && (
+          {showEst && runPace && !estSlower && (
             <div className="est est--mini">
-              <span className="est__t">📈 Your runs suggest <b>{fmtPace(estPace!)}/km</b> (VDOT {estVdot})</span>
+              <span className="est__t">📈 You’ve gained fitness — recent runs suggest <b>{fmtPace(estPace!)}/km</b> (VDOT {estVdot})</span>
               <button className="est__use" onClick={() => saveRunPace(estPace!)}>Use</button>
+            </div>
+          )}
+          {showEst && runPace && estSlower && (
+            <div className="est est--mini">
+              <span className="est__t" style={{ color: 'var(--text-dim)' }}>Recent runs read slower (<b>{fmtPace(estPace!)}/km</b>, VDOT {estVdot}) than your set {fmtPace(runPace)}. Only switch if your threshold has actually dropped.</span>
+              <button className="est__use" onClick={() => saveRunPace(estPace!)}>Use anyway</button>
+            </div>
+          )}
+          {!showEst && estUnsure && (
+            <div className="est est--mini">
+              <span className="est__t" style={{ color: 'var(--text-dim)' }}>Not enough recent runs to estimate your threshold yet ({runEst?.runs ?? 0} in 6 wks). Do a few runs incl. a harder effort and we’ll read it.</span>
             </div>
           )}
           {zones && (
@@ -271,7 +286,7 @@ export default function Profile() {
                 {marathon.hasVolume
                   ? <>for your current base (longest run <b>{marathon.volume!.longestKm} km</b>, ~{Math.round(marathon.volume!.weeklyKm)} km/week) — it shrinks as your long runs grow toward 30 km+.</>
                   : <>by default — {connected ? 'no recent runs to read your base from yet' : 'connect intervals'} for a personal estimate from your long runs.</>}
-                {' '}Reality lands in the band; most of any gap to Coros/Garmin is your threshold pace reading fast{estPace && estPace !== runPace ? <> — <b>use the estimate above</b></> : null}.
+                {' '}Reality lands in the band; most of any gap to Coros/Garmin is your threshold pace reading fast{estPace && estSlower ? <> — <b>your recent runs read slower (see above)</b></> : null}.
               </p>
             </>
           )}

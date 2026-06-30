@@ -22,12 +22,14 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-271. ⬜ **Running "Your runs suggest 5:21/km (VDOT 38)" is confusing — and SLOWER than the set threshold (4:57/VDOT
-    41).** JM 2026-06-30 (dev): the #215 Critical-Speed estimate suggests a threshold SLOWER than what's set, with a bare
-    "Use" button → looks like a downgrade with no explanation. FIX: (a) clarify it's "from your recent runs" (Critical
-    Speed); (b) when the suggestion is slower than the set value, SAY so + why (recent runs likely easier/fewer; the set
-    value may be from a fitter block) and don't make "Use" look like the default — only apply if current threshold really
-    dropped; (c) if it's faster, frame as "you've gained fitness." Ties to #269 (running fitness reading low). gymapp-only.
+271. 🔨 **Running threshold suggestion: ASSESS confidence before suggesting (don't push a slower pace off thin data).**
+    JM 2026-06-30 (dev): the #215 Critical-Speed estimate suggested a threshold SLOWER than set (5:21 vs 4:57), bare "Use"
+    button → looks like an unexplained downgrade. JM: "if we're not confident because the user barely ran, we should
+    assess before suggesting." FIXED: server `/run-estimate` now gates on recent run VOLUME (≥4–8 runs + km in 6 wks) AND
+    fit (r2) → returns `confidence` high/medium/low; **low = not surfaced** (returns `assessed/reason`). Profile UI: shows
+    a confident estimate only; if slower than set → muted "recent runs read slower… only switch if your threshold dropped"
+    + "Use anyway"; if faster → "you've gained fitness"; if too few runs → gentle "not enough recent runs yet" (no Use).
+    gymapp-only.
 270. 🔨 **QA "lost my connection" to intervals (had to click sync to recreate).** JM 2026-06-30 (QA): the Today page showed
     "Connect intervals.icu…" though he was connected; clicking sync restored it. LIKELY a transient on QA container
     restart during a deploy (each dev push auto-redeploys QA → brief reconnect needed), NOT a data loss (Postgres pgdata

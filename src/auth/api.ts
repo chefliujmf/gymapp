@@ -145,7 +145,7 @@ export const authApi = {
   saveProfile: (info: Record<string, unknown>) => req<User>('/profile', { method: 'PUT', body: info }),
   // #210 per-sport stats two-way sync
   pullIcuAthlete: () => req<IcuAthletePull>('/intervals/athlete'),
-  runEstimate: () => req<{ available: boolean; thresholdPace?: number; criticalSpeed?: number; r2?: number | null; source?: string }>('/intervals/run-estimate'),
+  runEstimate: () => req<{ available: boolean; thresholdPace?: number; criticalSpeed?: number; r2?: number | null; source?: string; confidence?: 'high' | 'medium' | 'low'; assessed?: boolean; reason?: string; runs?: number; weeklyKm?: number }>('/intervals/run-estimate'),
   runVolume: () => req<{ available: boolean; longestKm?: number; weeklyKm?: number; runs?: number; windowDays?: number }>('/intervals/run-volume'),
   runPaceTrend: () => req<{ available: boolean; paces?: (number | null)[]; weeks?: number }>('/intervals/run-pace-trend'), // #230 per-week avg pace
   // #223 — forecast a FUTURE day's expected freshness from planned load.
