@@ -5,7 +5,7 @@ import { getSetting, setSetting } from '../db'
 import { authApi, type SportGroup, type SportStat, type IcuAthletePull } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import { fetchAthleteSex } from '../intervals'
-import { vdotFromThresholdPace, paceZones, racePredictions, fmtPace, fmtTime, parsePace, type PaceZones } from '../running-paces'
+import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, parsePace, type PaceZones, type RunVolume } from '../running-paces'
 
 // #214 — spell each Daniels zone out (letter + what it's for) so the paces are legible, not cryptic.
 const ZONE_META: { letter: string; name: string; purpose: string }[] = [
@@ -67,13 +67,17 @@ export default function Profile() {
   const [dietSaved, setDietSaved] = useState(false)
   const [pulled, setPulled] = useState<IcuAthletePull | null>(null)
   const [runEst, setRunEst] = useState<{ available: boolean; thresholdPace?: number } | null>(null)
+  const [runVol, setRunVol] = useState<{ available: boolean; longestKm?: number; weeklyKm?: number } | null>(null)
 
   // #210: intervals is canonical for synced stats — pull to display + re-pull after each edit.
   const pull = () => { if (user?.hasIcuKey) authApi.pullIcuAthlete().then(setPulled).catch(() => {}) }
   useEffect(() => { pull() }, [user?.hasIcuKey]) // eslint-disable-line react-hooks/exhaustive-deps
   // #215: estimate the running threshold pace from intervals' pace curve (Critical Speed).
   useEffect(() => {
-    if (user?.hasIcuKey && (user?.sports || []).includes('running')) authApi.runEstimate().then(setRunEst).catch(() => {})
+    if (user?.hasIcuKey && (user?.sports || []).includes('running')) {
+      authApi.runEstimate().then(setRunEst).catch(() => {})
+      authApi.runVolume().then(setRunVol).catch(() => {}) // #216 marathon-realism durability base
+    }
     // eslint-disable-line react-hooks/exhaustive-deps
   }, [user?.hasIcuKey, (user?.sports || []).includes('running')]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -120,6 +124,9 @@ export default function Profile() {
   const vdot = runPace ? Math.round(vdotFromThresholdPace(runPace)) : (user?.runVdot ?? null)
   const zones = vdot ? paceZones(vdot) : null
   const preds = vdot ? racePredictions(vdot) : null
+  // #216 marathon realism — show the marathon as a potential→realistic range (durability-adjusted).
+  const runVolume: RunVolume | undefined = runVol?.available ? { longestKm: runVol.longestKm || 0, weeklyKm: runVol.weeklyKm || 0 } : undefined
+  const marathon = vdot ? marathonRealism(vdot, runVolume) : null
   // #215 estimate (Critical Speed → threshold pace); only suggest when it differs from what's set
   const estPace = runEst?.available && runEst.thresholdPace ? runEst.thresholdPace : null
   const estVdot = estPace ? Math.round(vdotFromThresholdPace(estPace)) : null
@@ -213,17 +220,29 @@ export default function Profile() {
               </div>
             </>
           )}
-          {preds && (
+          {preds && marathon && (
             <>
               <div className="stat-sub">Race predictions <span className="meta">· times your VDOT projects</span></div>
               <div className="zlist">
-                {preds.map((p) => (
+                {preds.filter((p) => p.label !== 'Marathon').map((p) => (
                   <div className="zrow" key={p.label}>
                     <span className="zname">{p.label}<span className="zpurpose">at {fmtPace(p.pace)}/km</span></span>
                     <span className="zpace">{fmtTime(p.sec)}</span>
                   </div>
                 ))}
+                {/* #216 — marathon as a potential→realistic range */}
+                <div className="zrow zrow--mar">
+                  <span className="zname"><span className="zname-top">Marathon <span className="range-badge">range</span></span><span className="zpurpose">potential → realistic</span></span>
+                  <span className="zpace zpace--mar">{fmtTime(marathon.potentialSec)}–{fmtTime(marathon.realisticSec)}<span className="zsub">{fmtPace(marathon.potentialPace)}–{fmtPace(marathon.realisticPace)}/km</span></span>
+                </div>
               </div>
+              <p className="pred-note">
+                Low end is your physiological <b>potential</b> (Daniels VDOT); the high end adds a <b>{Math.round(marathon.penalty * 100)}% durability penalty</b>{' '}
+                {marathon.hasVolume
+                  ? <>for your current base (longest run <b>{marathon.volume!.longestKm} km</b>, ~{Math.round(marathon.volume!.weeklyKm)} km/week) — it shrinks as your long runs grow toward 30 km+.</>
+                  : <>by default — {connected ? 'no recent runs to read your base from yet' : 'connect intervals'} for a personal estimate from your long runs.</>}
+                {' '}Reality lands in the band; most of any gap to Coros/Garmin is your threshold pace reading fast{estPace && estPace !== runPace ? <> — <b>use the estimate above</b></> : null}.
+              </p>
             </>
           )}
           {!runPace && <p className="meta" style={{ margin: '6px 2px 0' }}>Set your threshold pace (the ~1 h race pace you can hold) → unlocks Daniels zones, VDOT & race predictions, and syncs to intervals.</p>}

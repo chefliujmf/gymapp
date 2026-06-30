@@ -303,6 +303,22 @@ app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
   res.json({ available: true, ...est, source: 'critical speed (your recent runs)' })
 })
 
+// #216 — running endurance base for the marathon-realism range: longest single run +
+// average weekly volume over the recent window, from intervals run activities (km).
+app.get('/auth/intervals/run-volume', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ available: false })
+  const ath = req.user.icuAthlete || 'i28814'
+  const DAYS = 42 // ~6 weeks — enough to read a long-run + weekly-volume base
+  const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(DAYS)}&newest=${icuDay(0)}`)
+  if (!Array.isArray(acts)) return res.json({ available: false })
+  const runs = acts.filter((a) => /run/i.test(a.type || '') && a.distance > 0)
+  if (!runs.length) return res.json({ available: false })
+  const longestKm = +(Math.max(...runs.map((a) => a.distance)) / 1000).toFixed(1)
+  const totalKm = runs.reduce((s, a) => s + a.distance, 0) / 1000
+  const weeklyKm = +(totalKm / (DAYS / 7)).toFixed(1)
+  res.json({ available: true, longestKm, weeklyKm, runs: runs.length, windowDays: DAYS })
+})
+
 // PUSH: edit a per-sport stat → write it back to intervals AND mirror locally.
 // The ONLY working write is PUT /athlete/{id}/sport-settings/{entryId} with just the changed
 // field (a /athlete/{id} {sportSettings} PUT returns 200 but is silently ignored; full-athlete

@@ -76,6 +76,70 @@ export function racePredictions(vdot: number) {
   return RACE_DISTANCES.map(([label, meters]) => ({ label, meters, ...racePredict(vdot, meters) }))
 }
 
+// ── #216 — marathon realism ───────────────────────────────────────────────────
+// The Daniels VDOT marathon prediction is a *potential*: it assumes you've done the
+// marathon-specific endurance work (long runs, fueling), so it ignores "the wall" and
+// runs optimistic vs Coros/Garmin (which weight real training load). We surface the
+// marathon as a RANGE — potential → a durability-adjusted realistic time — where the
+// penalty comes from the athlete's own long-run base. NB: the penalty is modest (≤~12%);
+// the bulk of any big gap is the VDOT itself reading too fast (→ #215 grounds it).
+
+const clamp01 = (x: number) => (x > 1 ? 1 : x < 0 ? 0 : x)
+
+export interface RunVolume {
+  longestKm: number // longest single run in the recent window (km)
+  weeklyKm: number // average weekly running volume (km)
+}
+
+/** A marathon-trained base: ~32 km longest run + ~70 km/week → ~0 penalty. */
+export const MARATHON_READY = { longestKm: 32, weeklyKm: 70 }
+/** Cap on the durability penalty (fraction of the potential marathon time). */
+export const MAX_DURABILITY_PENALTY = 0.12
+/** Used when we have no volume data (intervals not connected / no recent runs). */
+export const DEFAULT_DURABILITY_PENALTY = 0.08
+
+/**
+ * Marathon durability penalty (fraction 0..MAX_DURABILITY_PENALTY) from the athlete's
+ * endurance base. Longest long-run weighted higher than weekly volume; both saturate at
+ * the marathon-ready anchors. More base → smaller penalty (closer to the Daniels potential).
+ */
+export function marathonDurabilityPenalty(v: RunVolume): number {
+  const longReady = clamp01((v.longestKm || 0) / MARATHON_READY.longestKm)
+  const volReady = clamp01((v.weeklyKm || 0) / MARATHON_READY.weeklyKm)
+  const readiness = 0.6 * longReady + 0.4 * volReady // 0 (untrained) .. 1 (race-ready)
+  return +((1 - readiness) * MAX_DURABILITY_PENALTY).toFixed(4)
+}
+
+export interface MarathonRealism {
+  potentialSec: number
+  realisticSec: number
+  potentialPace: number // sec/km
+  realisticPace: number // sec/km
+  penalty: number // fraction applied
+  hasVolume: boolean // true = penalty derived from real runs; false = default
+  volume?: RunVolume // echoed for the "why" line
+}
+
+/**
+ * Marathon potential→realistic range from VDOT. With `volume` (from intervals runs) the
+ * penalty is personal; without it we apply DEFAULT_DURABILITY_PENALTY so the band still shows.
+ */
+export function marathonRealism(vdot: number, volume?: RunVolume): MarathonRealism {
+  const pot = racePredict(vdot, 42195)
+  const hasVolume = !!volume && (volume.longestKm > 0 || volume.weeklyKm > 0)
+  const penalty = hasVolume ? marathonDurabilityPenalty(volume!) : DEFAULT_DURABILITY_PENALTY
+  const realisticSec = pot.sec * (1 + penalty)
+  return {
+    potentialSec: pot.sec,
+    realisticSec,
+    potentialPace: pot.pace,
+    realisticPace: realisticSec / 42.195,
+    penalty,
+    hasVolume,
+    volume: hasVolume ? volume : undefined,
+  }
+}
+
 /** VDOT is itself a VO₂max-equivalent (Daniels). Alias for clarity at call sites. */
 export const runningVo2max = (vdot: number) => vdot
 

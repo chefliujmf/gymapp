@@ -27,12 +27,32 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
+221. 🧪 **NO inferred ramps — mirror intervals literally, flat blocks (supersedes #219's ramp rendering).** JM 2026-06-30
+    (dev): "a ramp up when cooling down?! what the hell" + "let the coach define the ramp when it creates the workout,
+    otherwise you mirror what you have in intervals, just fucking take what's there, no ramp for now." TWO bugs from the
+    #219 true-shape rewrite: (1) the "Monday Cottage" **cooldown rendered ramping UP** — the stored step is ascending
+    (48→58%), and the sloped SVG faithfully drew the wrong direction; (2) **card thumbnail shrank to a tiny glyph** —
+    #219 changed MiniProfile from flex-divs to an `<svg>`, which `.thumb svg { width:30px }` capped to 30 px.
+    FIX (per JM's directive): **kill inferred ramps everywhere — render FLAT blocks** at each step's mean %FTP (steady
+    keeps its value; a {start,end} step → the mean, NOT the peak, so it also answers #219's original "don't show the
+    max"). `SegmentProfile` + `MiniProfile` (back to flex-divs → fills the thumb again) in `src/ui.tsx`; ride-player
+    preview + the LIVE target both flat (`segPct`/`wattsAt` in `src/ride.ts`, zone label always Z). Coach-defined ramps
+    can reinstate the slope later. Tests: `src/ride.test.ts` (segPct mean + wattsAt flat for the backwards cooldown).
+    128 tests green, tsc clean. gymapp-only; **supersedes #219** (ramp rendering reverted to flat).
+220. ⬜ **= #207 Phase 2b (NOT a new item — don't double-count).** JM 2026-06-29 (dev): "sleep and vo2max were empty
+    in dev… cannot have a first guess? will it change over time?" + "we said earlier we need to LEARN about the user and
+    adjust those numbers." This is exactly the #207 vision (personalize + learn over time) — Phase 2 built only the
+    storage; the **estimate-then-learn** part was punted to 2b and never built. Folded into #207 below; the concrete
+    asks live there. Kept as a pointer so the gap is visible. gymapp-only.
 219. 🧪 **Workout chart must show the watt RANGE, not the max (true profile like intervals).** JM 2026-06-29 (QA):
     "in intervals they show a range of watts and in platyplus it's the maximum watts per interval." Platyplus drew each
     segment as a flat bar at its PEAK (`Math.max(powerStart,powerEnd)`), so a warm-up ramp looked as hard as the main
     set. FIX (mock #3 approved): rewrote `SegmentProfile` + `MiniProfile` as a true SVG power profile — each segment
     follows its real start→end (ramps SLOPE, steady blocks flat, step at boundaries), zone-coloured, watt-RANGE labels
     ("130–169 W" for a ramp). Matches the intervals chart shape. gymapp-only; pairs with #217.
+    **⚠️ SUPERSEDED by #221 (JM 2026-06-30):** the sloped ramps drew a cooldown backwards (ascending data → ramp UP);
+    JM killed inferred ramps — now FLAT blocks at the mean %FTP everywhere. The "show the range not the max" intent
+    survives via the mean (not the peak); coach-defined ramps may reinstate the slope later.
 218. 🧪 **Stale PWA bundle persists after deploy (the real #200 root) + icu plans never refreshed.** JM 2026-06-29 (QA):
     the #217 fix was LIVE in the deployed bundle (`index-2TODaDef.js` contained it) yet JM's app still showed the old
     5 W chart → his installed PWA was running CACHED JS. TWO gaps fixed: (1) **no reload-on-update** — skipWaiting+
@@ -48,12 +68,19 @@ test guide → the **🧪 Test guide** section below.
     (Z2→65% ≈ 169 W, flat endurance block, labelled Z2); same `resolveStepPct` server-side. Frontend reads workout_doc
     live so it's correct on deploy; server fix corrects `plan.segments` on next reconcile. Test:
     `src/intervals-steps.test.ts` (tomorrow's exact workout + all zones). gymapp-only.
-216. ⬜ **Marathon prediction is optimistic vs Coros — realism.** JM 2026-06-29 (QA): our marathon prediction vs
+216. 🧪 **Marathon prediction is optimistic vs Coros — realism.** JM 2026-06-29 (QA): our marathon prediction vs
     Coros's 3:56:19 differs a lot. NOT a math bug — our predictions are EXACTLY Daniels VDOT (5K/10K/Half match his
     table within ~1%). But VDOT marathon assumes you're marathon-trained; it ignores endurance/glycogen ("the wall"),
-    so it runs optimistic. Coros uses your real training load + long runs → more conservative. FIX options: (a) label
-    the Marathon row "assumes marathon-specific endurance"; (b) blend a durability/long-run adjustment from intervals
-    activities; (c) once #215 estimates VDOT from REAL recent efforts, the whole curve grounds itself. Pairs with #215.
+    so it runs optimistic. Coros uses your real training load + long runs → more conservative.
+    **BUILT (mock option C, RANGE, approved):** the Marathon row now shows a **potential → realistic band** (e.g.
+    "3:10–3:25") instead of a single optimistic time. Low end = the pure Daniels potential; high end adds a
+    **durability penalty** (`marathonRealism`/`marathonDurabilityPenalty` in `src/running-paces.ts`, ≤12%, weighted
+    0.6 longest-run / 0.4 weekly-volume, 0 at a marathon-ready ~32 km / ~70 km-wk base). The base is pulled from
+    intervals run activities over 6 wks via new `GET /auth/intervals/run-volume` (+ `authApi.runVolume`); a "why"
+    note explains the penalty + flags that the bulk of any big gap is the VDOT reading fast (→ use #215's estimate).
+    Default 8% penalty when no run data. 17 new tests in `src/running-paces.test.ts` (39 total green). KEY FINDING:
+    a durability/Riegel correction only moves the marathon ~3–6 min — the 3:10-vs-3:56 gap is mostly VDOT too fast,
+    so #215 (auto-estimate VDOT, already 🧪) is the real lever. gymapp-only; pairs with #215.
 215. 🧪 **Auto-ESTIMATE running threshold pace + VDOT from recent runs (like eFTP / VO₂max).** JM 2026-06-29: "can we
     estimate those values? it's like the FTP in the end and VO2Max." Today threshold pace is MANUAL — but a too-fast
     manual guess inflates VDOT → optimistic zones/predictions (root of #216). Mirror how cycling gets eFTP + we estimate
@@ -126,6 +153,12 @@ test guide → the **🧪 Test guide** section below.
     FTP/maxHR/VO2 → coach reads it). gymapp-only.
     **Phase 1 BUILT 2026-06-29 (on QA):** Freshness now z-scores your TSB vs your rolling baseline (≥14d, sd-floored) and nudges the absolute anchor ±1 — a day unusually loaded FOR YOU reads lower, an unusually rested one higher, your typical day stays at the anchor (~4). `baselines.tsbBaseline` + `freshness({tsbBaseline})`, the ⓘ says "more loaded/fresher/about your usual". 23 tests. Phase 2 = athlete-stats store (FTP/maxHR/VO2max) + coach.
     **Phase 2 BUILT 2026-06-29 (on QA):** per-user athlete stats — sleepNeed, maxHR, FTP, VO2max — stored on the user, exposed in pub(), settable via PUT /auth/profile (clamped). New "Your stats" section in Profile (autosave). readiness uses sleepNeed (fixes Sleep vs JM's ~9h, #159 DONE). buildSystemPrompt now gives the coach "THIS ATHLETE'S BENCHMARKS" so it judges intensity FOR THEM. Next (2b): wire FTP/maxHR into the readiness math (expected fatigue) + learn a calibration offset from systematic overrides.
+    **🔨 Phase 2b — ACTIVE (this is what JM flagged via #220: "learn about the user + adjust those numbers / first guess / change over time").** Phase 2 stored the stats but left them blank/manual — the *estimate + learn* layer is the gap. Build:
+      1. **Seed first-guess defaults** so nothing's blank: Sleep need shows **8 h** (the value readiness already assumes) as an editable default; clearly tagged as a starting point.
+      2. **VO₂max becomes a TRUE estimate** (not a stored manual #): prefill from intervals — cycling `10.8·eFTP÷weight+7` (Coggan, already on Fitness page) and/or running VDOT (#215) — tag "est." only when computed, "you" when overridden (manual wins). Recompute when eFTP/VDOT/weight change → it **refines over time**.
+      3. **Learn a personal calibration offset from systematic overrides** (the real "learn about ME"): when JM consistently bumps a computed score the same direction, nudge the model's anchor toward his correction over time (bounded), so auto-scores drift toward what he actually reports. Persist per-user; show it's learned.
+      4. **Wire FTP/maxHR into expected-fatigue** so "how hard is this FOR YOU" uses personal zones, not population.
+    In dev (no intervals) VO₂max stays blank — expected. Tests for the estimate + the learning offset (pure fns). gymapp-only; pairs #215 (VDOT) / #208 (Freshness anchor).
 206. ⬜ **Morning readiness data + coach stick-vs-adjust decision.** JM 2026-06-29: today's HRV/sleep isn't in intervals
     yet in the morning, so the coach can't decide. ROOT CAUSE (verified in JM's data): the lag is **Coros → intervals**,
     not Platyplus — overnight HRV/sleep lands in intervals hours late (often afternoon/next-day; `updated` timestamps
@@ -705,6 +738,11 @@ verifies **one at a time**; only JM marks ✅.
 **How to run the automated net:** `npm test` (unit, `src/*.test.ts`) · `npm run test:smoke` (API
 integration, `scripts/smoke-test.mjs`). Status: ❌ broken · 🔧 fixing · 🧪 fixed + test, awaiting JM ·
 ✅ JM-verified.
+
+### R216 · #216 — marathon prediction realism (potential→realistic range) 🧪
+**Unit test:** `src/running-paces.test.ts` → `marathonDurabilityPenalty` + `marathonRealism` (17 cases: penalty 0 at race-ready base, max at no base, longest-run weighted > weekly volume, realistic ≥ potential, default 8% when no data, paces match times). `npm test` (39 green).
+**Server:** `GET /auth/intervals/run-volume` → `{ available, longestKm, weeklyKm, runs }` from intervals run activities (last 6 wks). Verify on QA real account it returns sane km.
+**JM manual (QA):** Profile → Running → Race predictions. Marathon row now reads a **range** "h:mm–h:mm" (amber, "range" badge, "potential → realistic", pace band below). The note explains the durability penalty (with your longest-run + weekly km when intervals connected) and points to the #215 estimate for the bigger gap. 5K/10K/Half unchanged. Expected: realistic (high) end sits closer to Coros than the old single optimistic time.
 
 ### R215 · #215 — estimate running threshold/VDOT from pace curve 🧪
 **Unit test:** `src/sport-settings.test.ts` → `runThresholdFromPaceCurve` (Critical Speed → sec/km, r²-gated, garbage-safe).

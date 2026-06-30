@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   vdotFromThresholdPace, thresholdPaceFromVdot, paceZones,
   racePredict, racePredictions, fmtPace, fmtTime, parsePace, zonePaceForPct,
+  marathonDurabilityPenalty, marathonRealism, MAX_DURABILITY_PENALTY, DEFAULT_DURABILITY_PENALTY, MARATHON_READY,
 } from './running-paces'
 
 // Daniels' published VDOT 50 table values — our model should land within tolerance.
@@ -61,6 +62,71 @@ describe('zonePaceForPct (RunPlayer segment → pace)', () => {
   it('interval band (105%) → interval pace', () => expect(zonePaceForPct(50, 105)).toBe(z.interval))
   it('sprint band (120%) → rep pace', () => expect(zonePaceForPct(50, 120)).toBe(z.rep))
   it('harder band → faster pace', () => expect(zonePaceForPct(50, 105)).toBeLessThan(zonePaceForPct(50, 70)))
+})
+
+// #216 — marathon realism: the durability penalty + potential→realistic range.
+describe('marathon durability penalty', () => {
+  it('a marathon-ready base → ~0 penalty', () => {
+    expect(marathonDurabilityPenalty(MARATHON_READY)).toBeCloseTo(0, 3)
+  })
+  it('a beyond-ready base is clamped to 0 (never negative)', () => {
+    expect(marathonDurabilityPenalty({ longestKm: 40, weeklyKm: 100 })).toBe(0)
+  })
+  it('no base at all → the maximum penalty', () => {
+    expect(marathonDurabilityPenalty({ longestKm: 0, weeklyKm: 0 })).toBeCloseTo(MAX_DURABILITY_PENALTY, 4)
+  })
+  it('more long-run base → smaller penalty', () => {
+    const low = marathonDurabilityPenalty({ longestKm: 12, weeklyKm: 30 })
+    const high = marathonDurabilityPenalty({ longestKm: 28, weeklyKm: 60 })
+    expect(high).toBeLessThan(low)
+  })
+  it('longest run is weighted more than weekly volume', () => {
+    // same total "readiness budget" but concentrated in the long run → smaller penalty
+    const longHeavy = marathonDurabilityPenalty({ longestKm: 32, weeklyKm: 0 }) // longReady=1
+    const volHeavy = marathonDurabilityPenalty({ longestKm: 0, weeklyKm: 70 }) // volReady=1
+    expect(longHeavy).toBeLessThan(volHeavy)
+  })
+  it('stays within [0, MAX] for a typical recreational base', () => {
+    const p = marathonDurabilityPenalty({ longestKm: 18, weeklyKm: 40 })
+    expect(p).toBeGreaterThan(0)
+    expect(p).toBeLessThanOrEqual(MAX_DURABILITY_PENALTY)
+  })
+})
+
+describe('marathonRealism (potential → realistic range)', () => {
+  it('realistic is always ≥ potential (penalty never speeds you up)', () => {
+    const m = marathonRealism(50, { longestKm: 18, weeklyKm: 40 })
+    expect(m.realisticSec).toBeGreaterThanOrEqual(m.potentialSec)
+  })
+  it('potential equals the pure Daniels marathon', () => {
+    const m = marathonRealism(50, { longestKm: 18, weeklyKm: 40 })
+    expect(m.potentialSec).toBeCloseTo(racePredict(50, 42195).sec, 5)
+  })
+  it('a marathon-ready base collapses the range (potential ≈ realistic)', () => {
+    const m = marathonRealism(50, MARATHON_READY)
+    expect(m.realisticSec).toBeCloseTo(m.potentialSec, 0)
+  })
+  it('no volume → default penalty, flagged hasVolume=false', () => {
+    const m = marathonRealism(50)
+    expect(m.hasVolume).toBe(false)
+    expect(m.penalty).toBeCloseTo(DEFAULT_DURABILITY_PENALTY, 4)
+    expect(m.realisticSec).toBeCloseTo(m.potentialSec * (1 + DEFAULT_DURABILITY_PENALTY), 0)
+  })
+  it('empty volume (no recent runs) falls back to default, not a 100% penalty', () => {
+    const m = marathonRealism(50, { longestKm: 0, weeklyKm: 0 })
+    expect(m.hasVolume).toBe(false)
+    expect(m.penalty).toBeCloseTo(DEFAULT_DURABILITY_PENALTY, 4)
+  })
+  it('paces match the times over 42.195 km', () => {
+    const m = marathonRealism(50, { longestKm: 18, weeklyKm: 40 })
+    expect(m.realisticPace).toBeCloseTo(m.realisticSec / 42.195, 5)
+  })
+  it('JM-ish case: VDOT 50, 18 km longest / 40 km wk → ~5% penalty, realistic ~3:20', () => {
+    const m = marathonRealism(50, { longestKm: 18, weeklyKm: 40 })
+    expect(m.penalty).toBeGreaterThan(0.04)
+    expect(m.penalty).toBeLessThan(0.06)
+    expect(Math.abs(m.realisticSec - (3 * 3600 + 20 * 60))).toBeLessThan(120) // within 2 min of 3:20
+  })
 })
 
 describe('formatters', () => {

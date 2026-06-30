@@ -917,6 +917,14 @@
         "responses": { "200": { "description": "{ available, thresholdPace (sec/km), criticalSpeed, r2, source }" } }
       }
     },
+    "/auth/intervals/run-volume": {
+      "get": {
+        "summary": "Running endurance base (longest run + avg weekly km, last 6 wks) for the marathon-realism durability range (#216)",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ available, longestKm, weeklyKm, runs, windowDays }" } }
+      }
+    },
     "/auth/sport-stat": {
       "put": {
         "summary": "Set a per-sport stat and TWO-WAY sync it to intervals.icu (auto-push; modifies only that sport's sportSettings entry, custom fields untouched) (#210)",

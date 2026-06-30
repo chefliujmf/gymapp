@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Platyplus · #216 marathon realism</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--amber:#f0b145;--line:#2b303b;--bg:#0f1216;--card-grad:linear-gradient(180deg,#21252f,#191c24);--radius:16px;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;justify-content:center;padding:18px 12px 60px}
+  .phone{width:100%;max-width:430px}
+  .muted{color:var(--text-dim)}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;background:#161a21;border:1px solid var(--line);border-radius:999px;padding:4px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--text-dim);font-weight:700;font-size:12px;padding:9px 6px;border-radius:999px;cursor:pointer}
+  .tabs button.on{background:var(--accent);color:#06281a}
+  .sport-card{background:var(--card-grad);border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px;margin-bottom:14px}
+  .sport-card__h{font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .vdot{font-size:11px;font-weight:700;color:var(--accent);border:1px solid rgba(52,224,125,.4);border-radius:999px;padding:2px 8px}
+  .stat-sub{font-size:13px;font-weight:700;margin:14px 0 6px;display:flex;align-items:baseline;gap:6px}
+  .stat-sub .meta{font-weight:400;font-size:11px;color:var(--text-dim)}
+  .zlist{display:flex;flex-direction:column}
+  .zrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+  .zrow:first-child{border-top:0}
+  .zname{flex:1;font-size:13.5px;font-weight:700}
+  .zpurpose{display:block;font-size:11px;font-weight:400;color:var(--text-dim);margin-top:1px}
+  .zpace{font-size:14px;font-weight:800;text-align:right}
+  .zpace .sub{display:block;font-size:10.5px;font-weight:500;color:var(--text-dim)}
+  .mar{position:relative}
+  .mar.hl{background:rgba(240,177,69,.06);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:10px}
+  .amber{color:var(--amber)}
+  .pot{color:var(--text-dim);text-decoration:line-through;font-weight:600}
+  .note{font-size:11px;color:var(--text-dim);margin:8px 2px 0;line-height:1.4}
+  .note b{color:var(--text)}
+  .info{display:inline-flex;width:15px;height:15px;border-radius:999px;border:1px solid var(--text-dim);color:var(--text-dim);font-size:10px;align-items:center;justify-content:center;font-weight:700;margin-left:5px;vertical-align:middle}
+  .coros{font-size:11px;color:var(--text-dim);margin-top:6px;padding:7px 9px;border:1px dashed var(--line);border-radius:9px}
+  .coros b{color:var(--text)}
+  .rangebadge{font-size:10px;font-weight:700;color:var(--amber);border:1px solid rgba(240,177,69,.4);border-radius:999px;padding:2px 7px;margin-left:6px}
+  h4{margin:18px 2px 6px;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim)}
+  .desc{font-size:12px;color:var(--text-dim);margin:0 2px 10px;line-height:1.45}
+</style></head>
+<body><div class="phone">
+
+  <div class="tabs">
+    <button class="on" onclick="show('a',this)">A · Honest label</button>
+    <button onclick="show('b',this)">B · Realistic number</button>
+    <button onclick="show('c',this)">C · Range</button>
+  </div>
+
+  <div id="desc" class="desc"></div>
+
+  <div class="sport-card">
+    <div class="sport-card__h">🏃 Running <span class="vdot">VDOT 50</span></div>
+
+    <div class="stat-sub">Race predictions <span class="meta">· times your VDOT projects</span></div>
+    <div class="zlist" id="preds"></div>
+
+    <div id="note"></div>
+    <div class="coros"><b>Coros says 3:56:19</b> for you — it weights your real training load &amp; long runs, so it's more conservative than a pure-physiology estimate.</div>
+  </div>
+
+</div>
+<script>
+const base=[
+  {l:'5K',t:'19:56',p:'3:59'},
+  {l:'10K',t:'41:20',p:'4:08'},
+  {l:'Half',t:'1:31:31',p:'4:20'},
+];
+const DESC={
+  a:'<b>A — Honest label (cheapest, ships now).</b> Keep the Daniels number, just be clear it’s a <i>potential</i> that assumes marathon-specific training. No new data needed, zero risk of a wrong number. Doesn’t close the gap to Coros.',
+  b:'<b>B — Realistic adjusted number.</b> Apply a durability penalty (from your longest recent long-run &amp; weekly volume) and show the realistic time; the optimistic Daniels potential shrinks to a sub-line. Needs intervals data + tuning. Note: the penalty is modest (~5–10%) — the rest of the Coros gap is VDOT being too fast (→ #215).',
+  c:'<b>C — Range (potential → realistic).</b> Show the marathon as a band: Daniels potential on the low end, durability-adjusted on the high end. Honest about the inherent uncertainty without claiming one number.',
+};
+const NOTE={
+  a:'<div class="note"><span class="amber">ⓘ</span> <b>Marathon is a <i>potential</i></b> — the VDOT marathon time assumes you’ve done the marathon-specific work (long runs, fueling, race-day pacing). Without it, expect slower. Tap ⓘ for why.</div>',
+  b:'<div class="note"><b>Realistic 3:25</b> = your potential 3:10 + an 8% durability penalty (longest recent long run <b>18 km</b>, ~40 km/week). Build your long runs toward 30 km+ and the penalty shrinks. Most of the remaining gap to Coros is your threshold pace reading fast — <b>use the estimate from your runs (#215)</b>.</div>',
+  c:'<div class="note">The low end is your physiological <b>potential</b> (Daniels VDOT); the high end adds a <b>durability penalty</b> for current long-run volume (18 km longest, ~40 km/week). Reality usually lands in the band — it tightens as your endurance base grows.</div>',
+};
+function rows(mode){
+  let h='';
+  for(const r of base) h+=`<div class="zrow"><span class="zname">${r.l}<span class="zpurpose">at ${r.p}/km</span></span><span class="zpace">${r.t}</span></div>`;
+  if(mode==='a') h+=`<div class="zrow mar hl"><span class="zname">Marathon <span class="amber">ⓘ</span><span class="zpurpose">at 4:31/km · potential</span></span><span class="zpace">3:10:40</span></div>`;
+  if(mode==='b') h+=`<div class="zrow mar hl"><span class="zname amber">Marathon · realistic<span class="zpurpose">durability-adjusted for your base</span></span><span class="zpace amber">3:25:04<span class="sub">potential <span class="pot">3:10</span></span></span></div>`;
+  if(mode==='c') h+=`<div class="zrow mar hl"><span class="zname">Marathon <span class="rangebadge">range</span><span class="zpurpose">potential → realistic</span></span><span class="zpace amber">3:10–3:25<span class="sub">4:31–4:52/km</span></span></div>`;
+  return h;
+}
+function show(mode,btn){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('preds').innerHTML=rows(mode);
+  document.getElementById('note').innerHTML=NOTE[mode];
+  document.getElementById('desc').innerHTML=DESC[mode];
+}
+const init=(location.hash||'#a').slice(1);
+const idx={a:0,b:1,c:2}[init]??0;
+show(init,document.querySelectorAll('.tabs button')[idx]);
+</script>
+</body></html>

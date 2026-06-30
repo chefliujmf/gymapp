@@ -141,6 +141,7 @@ export const authApi = {
   // #210 per-sport stats two-way sync
   pullIcuAthlete: () => req<IcuAthletePull>('/intervals/athlete'),
   runEstimate: () => req<{ available: boolean; thresholdPace?: number; criticalSpeed?: number; r2?: number | null; source?: string }>('/intervals/run-estimate'),
+  runVolume: () => req<{ available: boolean; longestKm?: number; weeklyKm?: number; runs?: number; windowDays?: number }>('/intervals/run-volume'),
   saveSportStat: (body: { group: SportGroup; ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; runVdot?: number | null }) =>
     req<User & { synced?: boolean; pushError?: string | null }>('/sport-stat', { method: 'PUT', body }),
   getAthlete: () => req<{ profile: string; updatedAt: number }>('/profile/athlete'),
