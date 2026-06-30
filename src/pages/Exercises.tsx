@@ -50,7 +50,8 @@ export default function Exercises() {
         ))}
       </div>
 
-      <div className="chips chips--scroll">
+      {/* #243/#252: wrap (no horizontal scroll) so every kit — incl. Bands — and muscle is visible */}
+      <div className="chips">
         <button className={'chip' + (ownedOnly ? ' chip--active' : '')} onClick={() => setOwnedOnly((v) => !v)}>{ownedOnly ? '✓ ' : ''}My gear</button>
         <button className={'chip' + (sortAz ? ' chip--active' : '')} onClick={() => setSortAz((v) => !v)}>↕ A–Z</button>
         <button className={'chip' + (equip === 'all' ? ' chip--active' : '')} onClick={() => setEquip('all')}>Any kit</button>
@@ -59,7 +60,7 @@ export default function Exercises() {
         ))}
       </div>
 
-      <div className="chips chips--scroll">
+      <div className="chips">
         <button className={'chip' + (muscle === 'all' ? ' chip--active' : '')} onClick={() => setMuscle('all')}>Any muscle</button>
         {exerciseMuscles.map((m) => (
           <button key={m} className={'chip' + (muscle === m ? ' chip--active' : '')} onClick={() => setMuscle(m)}>{m}</button>

@@ -37,7 +37,7 @@ test guide → the **🧪 Test guide** section below.
     them as catalog exercises (name, muscle group, bodyweight, equipment=none). LICENSING: facts/movement names are fine,
     but do NOT copy the book's descriptions/photos (media-independence + content rules, CONTENT.md) — write our own or use
     free-licensed media. De-dup against the existing 4,500 exercises first. Parked. gymapp-only.
-252. 🔨 **Date filter MISSING on Progress (standard on every stats page); + domain filters everywhere.** JM 2026-06-30:
+252. 🧪 **Date filter MISSING on Progress (standard on every stats page); + domain filters everywhere.** JM 2026-06-30:
     "don't see date filters as per requirements — it's standard" + "add other filters: by exercise type, muscle group,
     equipment, whatever." Progress is hardcoded "8 wk", no range control. FIX: add the shared `DateRangeFilter` to
     **Progress** (audit Fitness/Wellness/per-sport already have it); add **domain filters** (type/muscle/equipment/search)
@@ -66,7 +66,7 @@ test guide → the **🧪 Test guide** section below.
     pack; can't add a new meal. Wire pack→calendar + add-meal. gymapp-only.
 244. 🧪 **Eat → Packs/Meals/Shopping tabs don't respect the theme (light buttons).** JM 2026-06-30: the segmented tabs
     use the wrong colors (light on dark). Restyle to the dark theme like the rest. gymapp-only.
-243. ⬜ **Exercises: filter/tag by equipment (esp. "bands" — elastic/soft bands).** JM 2026-06-30: wants to see which
+243. 🧪 **Exercises: filter/tag by equipment (esp. "bands" — elastic/soft bands).** JM 2026-06-30: wants to see which
     exercises use bands. Add an equipment filter/tag (bands incl. soft/elastic) to the Exercises list. gymapp-only.
 242. 🔨 **Workouts: where's the exercise list?** JM 2026-06-30: in Workouts he can't find the list of exercises a workout
     contains. Surface each workout's exercises (in the card/detail). gymapp-only.
