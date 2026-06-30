@@ -198,7 +198,8 @@ export function projectForm({ ctl = 0, atl = 0 } = {}, plannedLoads = []) {
 /** Per-day CTL/ATL/Form projection over planned loads (for the Fitness/Form forward-projection chart, #248). */
 export function projectFormSeries({ ctl = 0, atl = 0 } = {}, plannedLoads = []) {
   let c = ctl, a = atl
-  return plannedLoads.map((load) => { const L = load > 0 ? load : 0; c = c + (L - c) / 42; a = a + (L - a) / 7; return { ctl: round1(c), atl: round1(a), form: round1(c - a) } })
+  // form derives from the ROUNDED ctl/atl so it always equals what's displayed (ctl − atl).
+  return plannedLoads.map((load) => { const L = load > 0 ? load : 0; c = c + (L - c) / 42; a = a + (L - a) / 7; const rc = round1(c), ra = round1(a); return { ctl: rc, atl: ra, form: round1(rc - ra) } })
 }
 
 /** Expected freshness (1–5) at a future date: project Form over the planned loads, then map.

@@ -2,12 +2,31 @@ import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
-import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, type RunVolume } from '../running-paces'
+import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, parsePace, type RunVolume } from '../running-paces'
 import { runningVo2max, confLabel } from '../vo2max-submax'
 import { fetchWellness } from '../intervals'
+import { setSetting } from '../db'
 import { authApi } from '../auth/api'
-import { TrendChart } from '../charts'
+import { TrendChart, InfoDot } from '../charts'
 import { MiniCard } from './Fitness' // reused card shell (no series → just the value)
+
+// #275 — editable threshold-pace cell (tap to edit here, syncs to intervals like Profile does).
+function ThresholdCell({ pace, onSave }: { pace: number | null; onSave: (sec: number | null) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [txt, setTxt] = useState('')
+  const commit = () => { onSave(txt.trim() ? parsePace(txt.trim()) : null); setEditing(false) }
+  return (
+    <div className="fit-mini" style={{ cursor: 'pointer' }} onClick={() => { if (!editing) { setTxt(pace ? fmtPace(pace) : ''); setEditing(true) } }}>
+      <div className="fit-mini__head">
+        <span>Threshold <InfoDot text="Your ~1 h race pace (lactate threshold). Tap to edit — syncs to intervals." /></span>
+        {editing
+          ? <input autoFocus value={txt} placeholder="m:ss" inputMode="numeric" onChange={(e) => setTxt(e.target.value)} onBlur={commit} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Enter') commit() }} style={{ width: 60, textAlign: 'right', background: 'transparent', border: 0, borderBottom: '1px solid var(--accent)', color: 'var(--accent)', fontWeight: 800, fontSize: 18 }} />
+          : <b>{pace ? fmtPace(pace) : '—'}</b>}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{pace ? '/km · tap to edit' : 'tap to set'}</div>
+    </div>
+  )
+}
 
 // #225 — Running per-sport stats: threshold pace · Daniels zones · VDOT · race predictions.
 // Pulls the running benchmarks (today shown in Profile too — edit in either, #228).
@@ -21,7 +40,7 @@ const ZONES: [keyof ReturnType<typeof paceZones>, string, string][] = [
 
 export default function RunningStats() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, refresh } = useAuth()
   const [runVol, setRunVol] = useState<{ available: boolean; longestKm?: number; weeklyKm?: number } | null>(null)
   const [hrRest, setHrRest] = useState<number | null>(null) // #234 HR-ratio input
   const [paceTrend, setPaceTrend] = useState<(number | null)[] | null>(null) // #230 per-week avg pace
@@ -36,6 +55,12 @@ export default function RunningStats() {
   }, [user?.hasIcuKey, isRunner])
 
   const pace = user?.runThresholdPace ?? null // sec/km
+  // #275: save the threshold pace from here (mirrors Profile.saveRunPace → syncs to intervals).
+  const saveRunPace = (sec: number | null) => {
+    const c = sec && sec > 0 ? sec : null
+    authApi.saveSportStat({ group: 'running', thresholdPace: c, runVdot: c ? Math.round(vdotFromThresholdPace(c)) : null }).then(() => refresh()).catch(() => {})
+    setSetting('runThresholdPace', c ? String(c) : '')
+  }
   const vdot = pace ? Math.round(vdotFromThresholdPace(pace)) : (user?.runVdot ?? null)
   const zones = vdot ? paceZones(vdot) : null
   const preds = vdot ? racePredictions(vdot) : null
@@ -60,7 +85,7 @@ export default function RunningStats() {
       ) : (
         <>
           <div className="fit-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
-            <MiniCard title="Threshold" value={null} hint="Your ~1 h race pace (lactate threshold)." />
+            <ThresholdCell pace={pace} onSave={saveRunPace} />
             <MiniCard title="VDOT" value={vdot} hint="Daniels' running fitness score (≈ running VO₂max)." />
             <MiniCard title="VO₂max" value={vo2 ? vo2.value : null} hint="Running VO₂max — submaximal estimate from your pace + max/resting HR; no max test needed." />
           </div>

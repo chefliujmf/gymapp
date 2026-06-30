@@ -531,6 +531,11 @@ app.get('/auth/readiness', auth, async (req, res) => {
   // #236: stash the latest resting HR + eFTP so the coach's computed VO₂max/FTP match the app.
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { req.user.restingHR = rows[i].restingHR; break }
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { req.user.eftp = Math.round(rows[i].eftp); break }
+  // #256 port (per-athlete LEARNED baselines): stash this athlete's own 60-day HRV/RHR norm so the
+  // COACH interprets today's reading as a deviation from THEIR baseline, not textbook absolutes.
+  const bl = wellnessBaselines(rows)
+  if (bl.rhrBaseline) req.user.rhrBaseline = { mean: Math.round(bl.rhrBaseline.mean), sd: Math.round(bl.rhrBaseline.sd * 10) / 10, n: bl.nRhr }
+  if (bl.hrvBaseline) req.user.hrvBaseline = { mean: Math.round(Math.exp(bl.hrvBaseline.mean)), cv7: bl.hrvCV7 != null ? Math.round(bl.hrvCV7 * 1000) / 10 : null, n: bl.nHrv } // exp(ln-mean) → raw rmssd ms
   const sleepNeed = Number(req.user.sleepNeed) > 0 ? Number(req.user.sleepNeed) : 8
   // #207 Phase 2b: pass PAST check-ins (before this date) so the model calibrates to the athlete's
   // own overrides — but never the day being viewed. #235: skip entirely if learning is turned OFF.
@@ -798,6 +803,12 @@ function buildSystemPrompt(user) {
   const rhr = user.sportSettings?.running?.maxHr
   if (rhr && rhr !== user.maxHR) stats.push(`running max HR ${rhr} bpm`)
   if (user.sleepNeed) stats.push(`sleep need ~${user.sleepNeed} h`)
+  // #256 port — per-athlete LEARNED baselines (their own 60d norm). Interpret a reading as a
+  // DEVIATION from these, not against textbook absolutes. (Stashed by /auth/readiness.)
+  const bl2 = []
+  if (user.hrvBaseline?.mean) bl2.push(`HRV baseline ~${user.hrvBaseline.mean} ms${user.hrvBaseline.cv7 != null ? ` (7-day variability ${user.hrvBaseline.cv7}%)` : ''}`)
+  if (user.rhrBaseline?.mean) bl2.push(`resting HR baseline ~${user.rhrBaseline.mean}±${user.rhrBaseline.sd} bpm`)
+  if (bl2.length) p += `\n\n# THIS ATHLETE'S LEARNED BASELINES (their OWN ~60-day norm) — ${bl2.join(', ')}.\nInterpret today's HRV/resting-HR as a DEVIATION from these, never as textbook absolutes: a clear HRV drop or resting-HR rise vs baseline (beyond ~1 SD, especially multi-day) signals accumulating fatigue, poor sleep, or oncoming illness → ease off; within the normal band → train as planned. Rising 7-day HRV variability is itself a fatigue flag. Always cross-check with their check-in and Form before deciding.`
   if (stats.length) p += `\n\n# THIS ATHLETE'S BENCHMARKS — ${stats.join(', ')}.\nJudge how hard a session is FOR THEM against these: prescribe ride intensities as % of THEIR FTP and RUN intensities as a pace off THEIR threshold pace (Daniels E/M/T/I/R), set HR zones off THEIR max HR, and gym loads by reps (the app fills the weight). Their sleep NEED is ~${user.sleepNeed || 8} h — score sleep against that, not a generic 8 h.`
   p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-5 (energy: 5=energized, sleep: 5=fully rested, soreness: 5=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
   const ownedEq = Array.isArray(user.info?.equipment) ? user.info.equipment.filter((e) => typeof e === 'string') : []

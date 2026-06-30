@@ -208,7 +208,7 @@ describe('projectFormSeries (#248 per-day projection)', () => {
   it('one entry per planned day, Form = CTL−ATL', () => {
     const s = projectFormSeries({ ctl: 50, atl: 50 }, [0, 0, 100])
     expect(s).toHaveLength(3)
-    expect(s[0].form).toBe(s[0].ctl - s[0].atl)
+    expect(s[0].form).toBeCloseTo(s[0].ctl - s[0].atl, 5)
     expect(s[2].atl).toBeGreaterThan(s[1].atl) // the 100-TSS day raises ATL
   })
   it('rest days raise Form over time', () => {
