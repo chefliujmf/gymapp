@@ -35,7 +35,9 @@ test guide → the **🧪 Test guide** section below.
     eFTP? confusing. VO₂max so low — Coros much higher." The card shows the SET FTP (synced); eFTP (estimated) is only a
     trend on the Cycling page. VO₂max = Coggan `10.8·FTP÷weight+7` ≈ 44, conservative vs Coros's HR-based model. SHIPPED:
     a clarifying note + VO₂max is tap-to-edit (enter your watch's value → "you"). TODO: prefer a REAL device VO₂max if
-    intervals carries one (investigate icu fields); consider showing eFTP alongside set-FTP. gymapp-only.
+    intervals carries one (investigate icu fields); consider showing eFTP alongside set-FTP. NOTE: JM's **Léger-Boucher
+    test ≈ 52** (a direct maximal running test) — that's the true value, far better than our 43.9 cycling proxy; he should
+    set it manually (and it confirms the cycling W/kg estimate reads low for runners). gymapp-only.
 230. ⬜ **Chart standard — retrofit all axis-less graphs (codified in skill `platyplus-charts` + memory).** JM 2026-06-30:
     "you keep creating graphs I cannot use — no X/Y axis, no insights. Make ALL graphs useful + consistent. Update skills,
     memory, agent." DONE: skill `platyplus-charts` + memory `platyplus-chart-standard` (every chart = X+Y axes + labels,
