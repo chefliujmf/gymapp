@@ -163,7 +163,7 @@ function ForecastCard({ day, fmtDay }: { day: string; fmtDay: (s: string) => str
         <span className="forecast__face">{FORECAST_FACES[Math.round(s) - 1]}</span>
         <div><div className="forecast__lbl">{freshLabel(s)}</div><div className="forecast__sub">Projected Freshness ~{Math.round(s)}/5 · Form {f.form! > 0 ? '+' : ''}{f.form}</div></div>
       </div>
-      <div className="forecast__note"><b>Why:</b> {why} <b>Energy & Sleep aren't forecast</b> — they'll fill in from your check-in that morning.</div>
+      <div className="forecast__note"><b>Why:</b> {why}</div>
     </div>
   )
 }
