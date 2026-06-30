@@ -40,6 +40,7 @@ export interface User {
   runVdot?: number | null // running VDOT ≈ VO₂max, derived from threshold pace (#209)
   runThresholdPace?: number | null // sec/km
   statPrefs?: Partial<Record<'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr', 'manual' | 'computed'>> // #236 manual vs computed
+  learnReadiness?: boolean // #235 — auto-calibrate readiness from check-in overrides (default true)
   statsSyncedAt?: number // last successful push to intervals
 }
 

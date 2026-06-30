@@ -60,10 +60,12 @@ test guide → the **🧪 Test guide** section below.
     + `user.runPaceEst` (from /auth/intervals/run-estimate); the coach now resolves **FTP** (computed→eFTP) and **threshold
     pace** (computed→#215 estimate) by statPrefs too, labelled "(estimated)". REMAINING: maxHr computed source (no clean
     one); statPrefs fully end-to-end otherwise. 182 green.
-235. ⬜ **Readiness learning: confirm sleep learns + a preference to turn auto-adapt ON/OFF.** JM 2026-06-30: "for sleep
-    are we learning? would like our engine to learn & adapt it — with a preference to turn on or off." CONFIRM: the
-    calibration (#207 Phase 2b) DOES learn sleep + freshness + energy from your overrides (sleep NEED stays manual). ADD:
-    a **toggle** (Profile/Settings) to enable/disable the auto-calibration/adaptation, so it's opt-in/out. gymapp-only.
+235. 🧪 **Readiness learning: confirm sleep learns + a preference to turn auto-adapt ON/OFF.** JM 2026-06-30: "for sleep
+    are we learning? would like our engine to learn & adapt it — with a preference to turn on or off." CONFIRMED: the
+    calibration (#207 Phase 2b) DOES learn sleep + freshness + energy from your overrides (sleep NEED stays manual).
+    **🧪 BUILT 2026-06-30:** a **"Learn from my check-ins"** toggle in Profile (under Your stats) → `user.learnReadiness`
+    (default ON, via PUT /auth/profile + pub()). When OFF, `/auth/readiness` skips the calibration entirely (no offsets,
+    no "tuned to you"); ON = adapts as before. tsc+build clean, 182 tests. gymapp-only.
 
 234. 🧪 **VO₂max: SUBMAXIMAL/passive estimate (no max effort) + confidence + learn over time.** JM 2026-06-30: "we need
     to learn + see if this number is right over time… any way to measure WITHOUT max efforts?" Re-anchored on JM's reply:
