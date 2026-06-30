@@ -910,6 +910,15 @@
         "responses": { "200": { "description": "{ connected, future, available, date, daysOut, form, freshness (1-5), acwr, totalPlannedLoad, plannedDays }" } }
       }
     },
+    "/auth/readiness-projection": {
+      "get": {
+        "summary": "Per-day CTL/ATL/Form projection for the next N days from planned load — forward line on the Load & Form charts (#248)",
+        "tags": ["checkin"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "days", "in": "query", "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "{ connected, available, dates[], loads[], ctl[], atl[], form[] }" } }
+      }
+    },
     "/auth/intervals/athlete": {
       "get": {
         "summary": "Pull the athlete's intervals.icu per-sport settings (ftp/maxHr/lthr/threshold_pace) + weight, mapped to Platyplus stats (#210)",

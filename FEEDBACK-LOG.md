@@ -22,6 +22,13 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+257. ⬜ **(LATER) Onboarding flow for a new user → generate an interesting first plan.** JM 2026-06-30: build the new-user
+    onboarding (structured: sports, goals, experience, equipment, constraints — STT optional, #183) and, from it, have the
+    coach generate a compelling first week/plan. Pairs #183 (wizard) + the coach engine (#18/#65). gymapp-only.
+256. ⬜ **(LATER) Test the in-app coach so cyclingcoach can be ARCHIVED + port any missing improvements.** JM 2026-06-30:
+    verify the full Platyplus coach loop end-to-end (chat + plan create/adjust + reviews + notify) so the standalone
+    cyclingcoach repo can be retired. First **read cyclingcoach for interesting improvements not yet in Platyplus** (method/
+    KB/prompts) and port them. Pairs #18 (coach loop verify) + #91 (real coach takeaways). gymapp-only.
 255. ⬜ **Per-exercise INSIGHTS for gym.** JM 2026-06-30: each gym exercise/lift should get its own insight — progression
     (e1RM trend up/flat/down), PRs, plateau flag, volume, and a coach-style tip ("add a set", "deload", "you've stalled 3
     weeks — vary rep range"). Extends the lift detail (#93 dated e1RM chart) + the chart-standard insight + coach insights
@@ -52,7 +59,7 @@ test guide → the **🧪 Test guide** section below.
     coach. Assume the user doesn't know the science — coach explains (to an ADULT, not ELI5) + tips to improve / what to
     watch." Add a coach-generated explanation + tips block on the Wellness page (HRV/sleep/RHR/weight trends → what they
     mean for THEM + actions). Pairs the coach engine + #250. gymapp-only.
-248. ⬜ **Load/Form/Training-load: add avg·min·max stats + FUTURE projection from the plan.** JM 2026-06-30: training-load
+248. 🧪 **Load/Form/Training-load: add avg·min·max stats + FUTURE projection from the plan.** JM 2026-06-30: training-load
     insight is there but wants explicit avg/min/max + **projected CTL/ATL/Form from planned load** (dotted future line).
     Same for Fitness & Form charts. We have `projectForm` (#223) — extend the charts with a forward projection. gymapp-only.
 247. 🧪 **VO₂max sheet: overlaps the bottom bar + let me type a manual value even in Computed mode.** JM 2026-06-30:

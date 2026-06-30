@@ -6,6 +6,10 @@ import { useAuth } from '../auth/AuthContext'
 import { TrendChart, BarChart, InfoDot, ChartModal, type Series } from '../charts'
 import { hasModule } from '../modules'
 import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
+import { authApi } from '../auth/api'
+
+// #248 — small avg·min·max line for a chart series
+const statLine = (a: (number | null)[]): string => { const v = a.filter((x): x is number => x != null); return v.length ? `avg ${Math.round(v.reduce((s, b) => s + b, 0) / v.length)} · min ${Math.round(Math.min(...v))} · max ${Math.round(Math.max(...v))}` : '' }
 
 export const last = (a: (number | null)[]) => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i] as number; return null }
 const fmt = (v: number | null, unit = '') => (v == null ? '—' : `${Math.round(v * 10) / 10}${unit}`)
@@ -73,6 +77,7 @@ export default function Fitness() {
   const [from, setFrom] = useState(localISO(new Date(Date.now() - 90 * 86400000)))
   const [to, setTo] = useState(localISO())
   const [rows, setRows] = useState<IcuWellness[] | null>(null)
+  const [proj, setProj] = useState<Awaited<ReturnType<typeof authApi.readinessProjection>> | null>(null) // #248
   const [modal, setModal] = useState<{ title: string; node: ReactNode } | null>(null)
   const sports = user?.sports || []
   const isEndurance = hasModule(sports, 'endurance') // #198 central helper (empty = show all)
@@ -84,6 +89,7 @@ export default function Fitness() {
     fetchWellness(f, t).then(setRows).catch(() => setRows([]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to])
+  useEffect(() => { if (isEndurance && user?.hasIcuKey) authApi.readinessProjection(14).then(setProj).catch(() => {}) }, [isEndurance, user?.hasIcuKey])
 
   const s = useMemo(() => {
     const r = rows || []
@@ -92,7 +98,13 @@ export default function Fitness() {
   }, [rows])
 
   const fz = formZone(last(s.form))
-  const dates = (rows || []).map((d) => new Date(d.date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))
+  const pastDates = (rows || []).map((d) => new Date(d.date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))
+  // #248: append a dashed forward PROJECTION (from planned load) to the Fitness/Fatigue + Form charts.
+  const projOn = !!(proj?.available && proj.ctl?.length)
+  const fut = projOn ? proj!.dates!.map((d) => new Date(d + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })) : []
+  const dates = [...pastDates, ...fut]
+  const pad = (a: (number | null)[]) => projOn ? [...a, ...Array(fut.length).fill(null)] : a
+  const projLine = (a: (number | null)[], p?: number[]) => projOn && p ? [...Array(Math.max(0, pastDates.length - 1)).fill(null), last(a), ...p] : []
 
   return (
     <div>
@@ -119,20 +131,21 @@ export default function Fitness() {
               </div>
 
               <div className="card chart-card" style={{ padding: '12px 14px' }}>
-                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Fitness & Fatigue', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} series={[{ label: 'Fitness', color: '#4aa3ff', data: s.fitness, area: true }, { label: 'Fatigue', color: '#c061ff', data: s.fatigue }]} /> })}>⤢</button>
-                <div className="fit-legend"><span style={{ color: '#4aa3ff' }}>● Fitness</span><span style={{ color: '#c061ff' }}>● Fatigue</span></div>
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Fitness & Fatigue', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} series={[{ label: 'Fitness', color: '#4aa3ff', data: pad(s.fitness), area: true }, { label: 'Fatigue', color: '#c061ff', data: pad(s.fatigue) }, ...(projOn ? [{ label: 'Fitness·proj', color: '#4aa3ff', data: projLine(s.fitness, proj!.ctl), dash: true }, { label: 'Fatigue·proj', color: '#c061ff', data: projLine(s.fatigue, proj!.atl), dash: true }] : [])]} /> })}>⤢</button>
+                <div className="fit-legend"><span style={{ color: '#4aa3ff' }}>● Fitness</span><span style={{ color: '#c061ff' }}>● Fatigue</span>{projOn && <span className="meta">- - projected</span>}</div>
                 <TrendChart height={170} axes labels={dates} series={[
-                  { label: 'Fitness', color: '#4aa3ff', data: s.fitness, area: true },
-                  { label: 'Fatigue', color: '#c061ff', data: s.fatigue },
+                  { label: 'Fitness', color: '#4aa3ff', data: pad(s.fitness), area: true },
+                  { label: 'Fatigue', color: '#c061ff', data: pad(s.fatigue) },
+                  ...(projOn ? [{ label: 'Fitness·proj', color: '#4aa3ff', data: projLine(s.fitness, proj!.ctl), dash: true }, { label: 'Fatigue·proj', color: '#c061ff', data: projLine(s.fatigue, proj!.atl), dash: true }] : []),
                 ]} />
-                <p className="fit-insight">{fitnessInsight(s.fitness)}</p>
+                <p className="fit-insight">{fitnessInsight(s.fitness)} <span className="meta">· Fitness {statLine(s.fitness)}</span></p>
               </div>
 
               <div className="card chart-card" style={{ padding: '12px 14px', marginTop: 12 }}>
-                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Form', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: s.form }]} /> })}>⤢</button>
-                <div className="fit-legend"><span style={{ color: fz.color }}>● Form</span><span style={{ color: '#34e07d' }}>● optimal zone (−10…−30)</span></div>
-                <TrendChart height={130} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: s.form }]} />
-                <p className="fit-insight">{formInsight(last(s.form))}</p>
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Form', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: pad(s.form) }, ...(projOn ? [{ label: 'Form·proj', color: fz.color, data: projLine(s.form, proj!.form), dash: true }] : [])]} /> })}>⤢</button>
+                <div className="fit-legend"><span style={{ color: fz.color }}>● Form</span><span style={{ color: '#34e07d' }}>● optimal zone</span>{projOn && <span className="meta">- - projected</span>}</div>
+                <TrendChart height={130} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: pad(s.form) }, ...(projOn ? [{ label: 'Form·proj', color: fz.color, data: projLine(s.form, proj!.form), dash: true }] : [])]} />
+                <p className="fit-insight">{formInsight(last(s.form))} <span className="meta">· Form {statLine(s.form)}</span>{projOn && proj!.form!.length ? <span className="meta"> · projected → {proj!.form![proj!.form!.length - 1]} in {fut.length}d</span> : null}</p>
               </div>
 
               <div className="card chart-card" style={{ padding: '12px 14px', marginTop: 12 }}>

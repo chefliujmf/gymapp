@@ -25,7 +25,7 @@ const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
-import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, bestVo2maxEstimate } from './readiness.js'
+import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -545,6 +545,31 @@ app.get('/auth/readiness-forecast', auth, async (req, res) => {
   for (let dd = addDays(today, 1); dd <= date; dd = addDays(dd, 1)) loads.push(byDay[dd] || 0)
   const f = forecastFreshness({ ctl: latest.ctl, atl: latest.atl, tsbBaseline }, loads)
   res.json({ connected: true, future: true, available: true, date, daysOut: loads.length, ...f, totalPlannedLoad: Math.round(loads.reduce((a, b) => a + b, 0)), plannedDays: Object.keys(byDay).length })
+})
+
+// #248 — per-day CTL/ATL/Form PROJECTION for the next N days (forward line on the Load & Form charts).
+app.get('/auth/readiness-projection', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ connected: false })
+  const days = Math.min(28, Math.max(1, Number(req.query.days) || 14))
+  const ath = req.user.icuAthlete || 'i28814'
+  const today = new Date().toISOString().slice(0, 10)
+  const wData = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${addDays(today, -30)}&newest=${today}`)
+  const rows = (Array.isArray(wData) ? wData : []).map((d) => ({ ctl: d.ctl, atl: d.atl }))
+  const latest = [...rows].reverse().find((r) => r.ctl != null && r.atl != null)
+  if (!latest) return res.json({ connected: true, available: false })
+  const end = addDays(today, days)
+  const evs = await icuGet(req.user, `/athlete/${ath}/events?oldest=${today}&newest=${end}`)
+  const byDay = {}
+  for (const e of (Array.isArray(evs) ? evs : [])) {
+    const d = (e.start_date_local || '').slice(0, 10)
+    if (d <= today || d > end) continue
+    const load = e.icu_training_load || e.icu_planned_training_load || 0
+    if (load > 0) byDay[d] = (byDay[d] || 0) + load
+  }
+  const dates = [], loads = []
+  for (let dd = addDays(today, 1); dd <= end; dd = addDays(dd, 1)) { dates.push(dd); loads.push(byDay[dd] || 0) }
+  const series = projectFormSeries({ ctl: latest.ctl, atl: latest.atl }, loads)
+  res.json({ connected: true, available: true, dates, loads, ctl: series.map((s) => s.ctl), atl: series.map((s) => s.atl), form: series.map((s) => s.form) })
 })
 
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads
