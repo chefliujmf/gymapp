@@ -163,10 +163,28 @@ export interface IcuActivity {
   avg_lr_balance?: number // average left/right pedal balance (% on the right), when the meter records it
   trainer?: boolean
   icu_rpe?: number // 1-10
-  feel?: number // 1-5
+  feel?: number // 1-5 (intervals: 1=Strong … 5=Weak)
   strava_id?: number | string // set when the activity is linked to Strava
   device_name?: string // e.g. Garmin/Coros/Wahoo — the source that uploaded to intervals
   source?: string
+  description?: string // the athlete's / coach's activity notes (public-ish text)
+  // #273 — intervals custom ACTIVITY_FIELDs (private feedback), returned as top-level keys by code.
+  LegsBefore?: string; LegsAfter?: string; FuelGI?: string; PainNiggles?: string; LifeConstraint?: string; MentalState?: string
+}
+
+// intervals feel (1..5) → our label (Strong/Good/Normal/Poor/Weak).
+const ICU_FEEL = ['Strong', 'Good', 'Normal', 'Poor', 'Weak']
+/** Read feedback the athlete/coach ALREADY logged on an intervals activity (feel · RPE · custom
+ *  fields), so Platyplus shows it instead of asking again. Returns null when nothing is present. */
+export function readIcuFeedback(a?: IcuActivity | null): { feel?: string; rpe?: number; fields: Record<string, string> } | null {
+  if (!a) return null
+  const fields: Record<string, string> = {}
+  const map: [keyof IcuActivity, string][] = [['LegsBefore', 'Legs before'], ['LegsAfter', 'Legs after'], ['FuelGI', 'Fuel / GI'], ['PainNiggles', 'Pain / niggles'], ['LifeConstraint', 'Life constraint'], ['MentalState', 'Mental state']]
+  for (const [k, label] of map) { const v = a[k]; if (typeof v === 'string' && v.trim()) fields[label] = v }
+  const feel = a.feel && a.feel >= 1 && a.feel <= 5 ? ICU_FEEL[a.feel - 1] : undefined
+  const rpe = a.icu_rpe && a.icu_rpe >= 1 && a.icu_rpe <= 10 ? a.icu_rpe : undefined
+  if (!feel && !rpe && Object.keys(fields).length === 0) return null
+  return { feel, rpe, fields }
 }
 /** Completed activities in a window (read-only). Empty on no key / error. */
 export async function fetchActivities(oldest: string, newest: string): Promise<IcuActivity[]> {

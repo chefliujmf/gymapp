@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { fetchActivity, fetchActivityStreams, fetchActivityIntervals, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type ActivityInterval } from '../intervals'
+import { fetchActivity, fetchActivityStreams, fetchActivityIntervals, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type ActivityInterval } from '../intervals'
 import { powerZone } from '../workout-summary'
 import { TrendChart, PowerCurveChart } from '../charts'
 import { zoneColor } from '../ui'
@@ -162,9 +162,15 @@ export default function ActivityDetail() {
         </div>
       </div>
 
-      {!review && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} />}
+      {!review && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} />}
 
       {review && <CoachVerdict review={review} />}
+      {a.description && a.description.trim() && (
+        <div className="card" style={{ padding: '11px 14px' }}>
+          <div className="section-title" style={{ marginTop: 0 }}>Notes <span className="meta" style={{ fontWeight: 400 }}>· from intervals</span></div>
+          <p className="plan-desc" style={{ whiteSpace: 'pre-wrap' }}>{a.description.replace(/\s*(#{1,3})\s*/g, '\n\n').replace(/\*\*/g, '').trim()}</p>
+        </div>
+      )}
 
       <div className="actstats">{stats.map(([l, v]) => <div key={l} className="actstat"><span>{l}</span><b>{v}</b></div>)}</div>
 
@@ -199,7 +205,7 @@ export default function ActivityDetail() {
         </>
       )}
 
-      {review && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} />}
+      {review && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} />}
 
       <div className="links" style={{ marginTop: 12 }}>
         {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}

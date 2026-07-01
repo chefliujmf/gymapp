@@ -234,7 +234,7 @@ function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p
   const isDone = done || !!act
   return (
     <div className="today-entry">
-      <button className={'card' + (isDone ? ' card--done' : '')} style={{ textAlign: 'left', width: '100%' }} onClick={() => nav('/coach/' + p.id)}>
+      <button className={'card' + (isDone ? ' card--done' : '')} style={{ textAlign: 'left', width: '100%' }} onClick={() => nav(act ? '/activity/' + act.id : '/coach/' + p.id)}>
         <div className="card-row">
           {segs.length
             ? <div className="thumb"><MiniProfile segs={segs} /></div>

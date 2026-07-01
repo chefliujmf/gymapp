@@ -10,7 +10,7 @@ import { getSetting, db } from '../db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
 import { InfoDot } from '../charts'
-import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
+import { fetchActivities, sportOfActivity, readIcuFeedback, type IcuActivity } from '../intervals'
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
 import CoachVerdict from '../CoachVerdict'
@@ -72,7 +72,7 @@ export default function CoachPlanDetail() {
           <div className="done-badge" style={{ position: 'static', display: 'inline-block', marginBottom: 8 }}>✓ Completed</div>
           {review && <CoachVerdict review={review} />}
           {doneAct && <Link to={`/activity/${doneAct.id}`} className="btn btn--ghost" style={{ marginBottom: 8 }}>📊 See full analysis →</Link>}
-          <ActivityFeedback id={doneAct ? String(doneAct.id) : `plan-${p.id}`} sport={p.sport} date={p.date} />
+          <ActivityFeedback id={doneAct ? String(doneAct.id) : `plan-${p.id}`} sport={p.sport} date={p.date} icuExisting={readIcuFeedback(doneAct)} />
         </>
       )}
 
