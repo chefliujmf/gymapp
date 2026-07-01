@@ -1709,7 +1709,13 @@ app.all('/icu/*', auth, async (req, res) => {
     // GET (e.g. /activities) could be served stale, so an activity DELETED upstream still
     // shows in Platyplus. Always revalidate against intervals.
     res.set('Cache-Control', 'no-store')
-    res.send(Buffer.from(await r.arrayBuffer()))
+    const buf = Buffer.from(await r.arrayBuffer())
+    // TEMP DEBUG (#273 bi-dir feedback) — log the field KEYS of a single-activity fetch so we learn
+    // the exact intervals custom-field property names. Remove after mapping is fixed.
+    if (/\/activity\/[^/]+(\?|$)/.test(req.originalUrl) && !/streams|intervals/.test(req.originalUrl) && (ct || '').includes('json')) {
+      try { const j = JSON.parse(buf.toString()); console.log('[icu-activity-keys]', JSON.stringify(Object.keys(j).filter((k) => /leg|fuel|pain|niggle|life|mental|feel|rpe|note|descr|constraint/i.test(k)))) } catch { /* */ }
+    }
+    res.send(buf)
   } catch (e) { res.status(502).json({ error: 'intervals.icu proxy failed', detail: String(e.message || e) }) }
 })
 
