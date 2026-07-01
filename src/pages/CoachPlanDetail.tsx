@@ -10,6 +10,10 @@ import { getSetting, db } from '../db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
 import { InfoDot } from '../charts'
+import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
+import { authApi, type CoachReview } from '../auth/api'
+import ActivityFeedback from '../ActivityFeedback'
+import CoachVerdict from '../CoachVerdict'
 import { useAuth } from '../auth/AuthContext'
 
 /** Detail view for a coach-authored Platyplus plan: the universal coaching shell
@@ -29,8 +33,18 @@ export default function CoachPlanDetail() {
   const [open, setOpen] = useState<Set<number>>(new Set())
   const [sheet, setSheet] = useState<{ title: string; body: string } | null>(null)
   const [ftp, setFtp] = useState<number>()
+  // #285 — if this planned workout is DONE (a completed activity exists for its day+sport), show the
+  // post-workout stuff: coach verdict + feedback + a link to the full analysis. Turns the planned view
+  // into the post view once completed, instead of a bare notes dump.
+  const [doneAct, setDoneAct] = useState<IcuActivity | null>(null)
+  const [review, setReview] = useState<CoachReview | null>(null)
   useEffect(() => { if (p) calApi.items(p.date, p.date).then(setItems).catch(() => {}) }, [p?.date])
   useEffect(() => { getSetting('ftp').then((v) => setFtp(Number(v) || undefined)) }, [])
+  useEffect(() => {
+    if (!p) return
+    fetchActivities(p.date, p.date).then((a) => setDoneAct(a.find((x) => sportOfActivity(x) === p.sport) || null)).catch(() => {})
+    authApi.coachReviews().then((r) => setReview(r.find((x) => x.planId === p.id) || r.find((x) => x.date === p.date && (x.sport === p.sport || !x.sport)) || null)).catch(() => {})
+  }, [p?.id, p?.date, p?.sport])
 
   if (!p) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button><h1>Plan not found</h1><p className="meta">Open it from Today so it can load.</p></div>
 
@@ -51,6 +65,16 @@ export default function CoachPlanDetail() {
         <span className="eyebrow">{p.sport === 'gym' ? 'Gym' : p.sport === 'run' ? 'Run' : 'Ride'} · {dateLabel}{mins ? ` · ${mins} min` : p.sport === 'gym' && p.exercises ? ` · ${p.exercises.length} exercises` : ''}</span>
         <h1>{p.title}</h1>
       </div>
+
+      {/* #285 — completed: coach verdict + feedback + link to the full analysis */}
+      {(doneAct || review) && (
+        <>
+          <div className="done-badge" style={{ position: 'static', display: 'inline-block', marginBottom: 8 }}>✓ Completed</div>
+          {review && <CoachVerdict review={review} />}
+          {doneAct && <Link to={`/activity/${doneAct.id}`} className="btn btn--ghost" style={{ marginBottom: 8 }}>📊 See full analysis →</Link>}
+          <ActivityFeedback id={doneAct ? String(doneAct.id) : `plan-${p.id}`} sport={p.sport} date={p.date} />
+        </>
+      )}
 
       {/* sport body */}
       {isEndurance && (p.segments?.length ?? 0) > 0 && (() => {
