@@ -2,6 +2,7 @@
 // app can execute it. Read-only. Dev uses the /icu vite proxy; production will
 // use a serverless function so the key stays server-side.
 import { getSetting, setSetting } from './db'
+import { ICU_FIELDS, ICU_FIELD_CODES, FEEL_LABELS } from './icu-fields'
 
 const ICU = '/icu/api/v1'
 const DEFAULT_ATHLETE = 'i28814'
@@ -172,17 +173,21 @@ export interface IcuActivity {
   LegsBefore?: string; LegsAfter?: string; FuelGI?: string; PainNiggles?: string; LifeConstraint?: string; MentalState?: string
 }
 
-// intervals feel (1..5) → our label (Strong/Good/Normal/Poor/Weak).
-const ICU_FEEL = ['Strong', 'Good', 'Normal', 'Poor', 'Weak']
 /** Read feedback the athlete/coach ALREADY logged on an intervals activity (feel · RPE · custom
- *  fields), so Platyplus shows it instead of asking again. Returns null when nothing is present. */
+ *  fields), so Platyplus shows it instead of asking again. intervals stores these as 1-BASED number
+ *  indices into the option lists (verified 2026-07-01). Returns null when nothing is present. */
 export function readIcuFeedback(a?: IcuActivity | null): { feel?: string; rpe?: number; fields: Record<string, string> } | null {
   if (!a) return null
   const fields: Record<string, string> = {}
-  const map: [keyof IcuActivity, string][] = [['LegsBefore', 'Legs before'], ['LegsAfter', 'Legs after'], ['FuelGI', 'Fuel / GI'], ['PainNiggles', 'Pain / niggles'], ['LifeConstraint', 'Life constraint'], ['MentalState', 'Mental state']]
-  for (const [k, label] of map) { const v = a[k]; if (typeof v === 'string' && v.trim()) fields[label] = v }
-  const feel = a.feel && a.feel >= 1 && a.feel <= 5 ? ICU_FEEL[a.feel - 1] : undefined
-  const rpe = a.icu_rpe && a.icu_rpe >= 1 && a.icu_rpe <= 10 ? a.icu_rpe : undefined
+  for (const [label, opts] of ICU_FIELDS) {
+    const code = ICU_FIELD_CODES[label]
+    const raw = code ? (a as unknown as Record<string, unknown>)[code] : undefined
+    const idx = typeof raw === 'number' ? raw : (typeof raw === 'string' && /^\d+$/.test(raw) ? Number(raw) : NaN)
+    if (idx >= 1 && idx <= opts.length) fields[label] = opts[idx - 1]      // 1-based index → label
+    else if (typeof raw === 'string' && raw.trim() && opts.includes(raw)) fields[label] = raw // (defensive: label form)
+  }
+  const feel = a.feel && a.feel >= 1 && a.feel <= FEEL_LABELS.length ? FEEL_LABELS[a.feel - 1] : undefined
+  const rpe = a.icu_rpe && a.icu_rpe >= 1 && a.icu_rpe <= 10 ? Math.round(a.icu_rpe) : undefined
   if (!feel && !rpe && Object.keys(fields).length === 0) return null
   return { feel, rpe, fields }
 }

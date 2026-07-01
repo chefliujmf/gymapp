@@ -635,6 +635,17 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
 // #273 — post-workout feedback for a COMPLETED intervals ACTIVITY (device rides/runs that have no
 // Platyplus plan). Stored per-user keyed by activity id; triggers an async coach review (activityId).
 app.get('/auth/activity/:id/feedback', auth, (req, res) => res.json((req.user.activityFeedback || {})[String(req.params.id)] || null))
+// #273 — intervals feel scale + custom ACTIVITY_FIELD options (label → 1-based index intervals stores).
+// Keep in sync with src/icu-fields.ts.
+const ICU_FEEL_LABELS = ['Strong', 'Good', 'Normal', 'Poor', 'Weak']
+const ICU_FB_FIELDS = {
+  'Legs Before': { code: 'LegsBefore', opts: ['fresh', 'normal', 'relaxed', 'heavy', 'sore', 'flat', 'tired'] },
+  'Legs After': { code: 'LegsAfter', opts: ['strong', 'normal', 'tired OK', 'barely tired', 'heavy', 'sore', 'cooked'] },
+  'Fuel/GI': { code: 'FuelGI', opts: ['not needed', 'water only OK', 'carbs OK', 'underfueled', 'GI issue', 'too much fuel'] },
+  'Pain/Niggles': { code: 'PainNiggles', opts: ['none', 'knee', 'back', 'neck/shoulder', 'foot', 'saddle', 'other'] },
+  'Life Constraint': { code: 'LifeConstraint', opts: ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other'] },
+  'Mental State': { code: 'MentalState', opts: ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out'] },
+}
 app.post('/auth/activity/:id/feedback', auth, (req, res) => {
   const id = String(req.params.id)
   const b = req.body || {}
@@ -651,6 +662,15 @@ app.post('/auth/activity/:id/feedback', auth, (req, res) => {
   req.user.activityFeedback[id] = fb
   save(store)
   res.json({ ok: true, feedback: fb })
+  // #273 BI-DIRECTIONAL: write feel/RPE + custom fields BACK to the intervals activity (as the
+  // 1-based indices intervals stores), so it shows up in intervals too. Only for real intervals ids.
+  if (req.user.icuKey && /^i?\d+$/.test(id)) {
+    const payload = {}
+    const fi = ICU_FEEL_LABELS.indexOf(fb.feel); if (fi >= 0) payload.feel = fi + 1
+    if (fb.rpe) payload.icu_rpe = fb.rpe
+    for (const [label, val] of Object.entries(fb.fields || {})) { const def = ICU_FB_FIELDS[label]; if (def) { const i = def.opts.indexOf(val); if (i >= 0) payload[def.code] = i + 1 } }
+    if (Object.keys(payload).length) icuFetch(req.user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify(payload) }).catch((e) => console.error('[icu-feedback-write] ' + (e.message || e)))
+  }
   // async coach review referencing the activity (best-effort; only once the coach is set up).
   if (req.user.coachProfile && req.user.coachProfile.trim()) {
     try {
@@ -1709,13 +1729,7 @@ app.all('/icu/*', auth, async (req, res) => {
     // GET (e.g. /activities) could be served stale, so an activity DELETED upstream still
     // shows in Platyplus. Always revalidate against intervals.
     res.set('Cache-Control', 'no-store')
-    const buf = Buffer.from(await r.arrayBuffer())
-    // TEMP DEBUG (#273 bi-dir feedback) — log the field KEYS of a single-activity fetch so we learn
-    // the exact intervals custom-field property names. Remove after mapping is fixed.
-    if (/\/activity\/[^/]+(\?|$)/.test(req.originalUrl) && !/streams|intervals/.test(req.originalUrl) && (ct || '').includes('json')) {
-      try { const j = JSON.parse(buf.toString()); console.log('[icu-activity-keys]', JSON.stringify(Object.keys(j).filter((k) => /leg|fuel|pain|niggle|life|mental|feel|rpe|note|descr|constraint/i.test(k)))) } catch { /* */ }
-    }
-    res.send(buf)
+    res.send(Buffer.from(await r.arrayBuffer()))
   } catch (e) { res.status(502).json({ error: 'intervals.icu proxy failed', detail: String(e.message || e) }) }
 })
 

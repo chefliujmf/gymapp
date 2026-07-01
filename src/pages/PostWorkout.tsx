@@ -5,33 +5,9 @@ import { authApi } from '../auth/api'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
 import { DoneStats } from '../ui'
 
-// Intervals.icu "Feel" scale (Strong/Good/Normal/Poor/Weak), mirrored backend-side.
-// Exported so Log-activity shares ONE feedback model + coach pipeline (#143).
-export const FEEL: [string, string][] = [['Strong', '😎'], ['Good', '🙂'], ['Normal', '😐'], ['Poor', '🙁'], ['Weak', '😵']]
-export const RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-// RIDE/RUN feedback MIRRORS the athlete's intervals.icu custom ACTIVITY_FIELDs exactly (#147) —
-// names + option lists fetched 2026-06-26 from /athlete/{id}/custom-item (type ACTIVITY_FIELD).
-export const ICU_FIELDS: [string, string[]][] = [
-  ['Legs Before', ['fresh', 'normal', 'relaxed', 'heavy', 'sore', 'flat', 'tired']],
-  ['Legs After', ['strong', 'normal', 'tired OK', 'barely tired', 'heavy', 'sore', 'cooked']],
-  ['Fuel/GI', ['not needed', 'water only OK', 'carbs OK', 'underfueled', 'GI issue', 'too much fuel']],
-  ['Pain/Niggles', ['none', 'knee', 'back', 'neck/shoulder', 'foot', 'saddle', 'other']],
-  ['Life Constraint', ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other']],
-  ['Mental State', ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out']],
-]
-// intervals field CODE for each label — kept so a future write-back can POST the right custom field.
-export const ICU_FIELD_CODES: Record<string, string> = { 'Legs Before': 'LegsBefore', 'Legs After': 'LegsAfter', 'Fuel/GI': 'FuelGI', 'Pain/Niggles': 'PainNiggles', 'Life Constraint': 'LifeConstraint', 'Mental State': 'MentalState' }
-// GYM is its OWN set, NOT cycling's (#152 — "gym is not the same as cycling, as discussed"):
-// gym-specific Soreness/pump + Form, then the universal context fields (gym-relevant Pain/Niggles,
-// Life Constraint, Mental State). No Legs/Fuel — those are endurance-only.
-export const GYM_FIELDS: [string, string[]][] = [
-  ['Soreness/pump', ['none', 'light', 'good pump', 'sore', 'very sore']],
-  ['Form', ['clean', 'mostly clean', 'broke down']],
-  ['Pain/Niggles', ['none', 'shoulder', 'low back', 'knee', 'wrist', 'elbow', 'other']],
-  ['Life Constraint', ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other']],
-  ['Mental State', ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out']],
-]
-export const FIELDS: Record<string, [string, string[]][]> = { ride: ICU_FIELDS, run: ICU_FIELDS, gym: GYM_FIELDS }
+// Feedback field defs now live in the shared, React-free module (used by the intervals reader too).
+export { FEEL, RPE, ICU_FIELDS, ICU_FIELD_CODES, GYM_FIELDS, FIELDS } from '../icu-fields'
+import { FEEL, RPE, FIELDS } from '../icu-fields'
 
 /** Post-workout feedback for a completed coach plan — sport-dependent. Coach notes
  *  up top, then the intervals "Feel" + RPE + sport fields + free text. Saved to the
