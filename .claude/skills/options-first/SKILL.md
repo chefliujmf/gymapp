@@ -38,4 +38,12 @@ Any change to layout, components, controls, copy hierarchy, spacing, color/contr
 ## Mockup format
 **Rendered HTML, opened in the browser** — faithful to the real Platyplus look (phone-width ~430px, the dark theme + green accent), interactive where it clarifies (tap-to-reveal, a sport toggle). Show the DEFAULT state and (if relevant) the after-action state; keep footprint honest so size trade-offs are visible. Reference: `gymapp/mockups/plan-view.html`. ASCII is a fallback only for tiny choices not worth a file.
 
+## ⛔ DEFINITION OF DONE — validate against the mock YOURSELF before saying it's done (JM directive 2026-07-01)
+**JM must NEVER have to re-open a mockup and compare it to half-built UX.** He was burned by exactly this — increments shipped and implied to match the mock while missing feedback, coach cards, etc. Before reporting any mocked UX as built (🔨) or done:
+1. **Turn the mock into a checklist** — EVERY element + state: sections, cards, chips, charts (axes + insight line per the chart standard), score chip, coach text, tips, empty/loading states, and every variant (pre/post, indoor/outdoor, per activity type ride/run/gym/yoga/meditation).
+2. **Verify each item against the ACTUAL build** — present? wired to REAL data (not a stub)? on EVERY entry point the user can reach it (planned detail AND player; a device activity AND a gym completion; coach-plan AND ad-hoc)? Read/grep the component; if you can render it, screenshot and eyeball vs the mock.
+3. **DONE only when the checklist is 100% green on all entry points.** If any element/variant is missing, it is NOT done — say so and list the residual gaps. "Increment N of M" is fine, but name exactly which mock elements are missing and on which screens.
+4. **Never imply parity you haven't verified.**
+Non-negotiable — do the comparison so JM doesn't have to. See memory `definition-of-done-validate`.
+
 Companion memory: `show-options-and-mockups-first`. Pairs with the "always research best practice first" UX rule in the platyplus-ops skill.
