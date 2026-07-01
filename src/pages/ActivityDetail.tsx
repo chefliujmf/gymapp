@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { fetchActivity, fetchActivityStreams, fetchActivityIntervals, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type ActivityInterval } from '../intervals'
-import { powerZone } from '../workout-summary'
+import { fetchActivity, fetchActivityStreams, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams } from '../intervals'
 import { TrendChart, PowerCurveChart } from '../charts'
 import { zoneColor } from '../ui'
 import { getSetting } from '../db'
@@ -87,10 +86,10 @@ function RideTimeline({ streams }: { streams: ActivityStreams }) {
   return (
     <div>
       <div className="tl-chips">{rows.map((r) => <div key={r.key} className="tl-chip"><span>{r.label}</span><b>{at(r.key) != null ? at(r.key) + r.unit : '—'}</b></div>)}</div>
-      {rows.map((r, i) => (
+      {rows.map((r) => (
         <div key={r.key} className="tl-card">
           <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}{stat(r.key)}</div>
-          <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={64} axes unit={r.unit} labels={i === rows.length - 1 ? timeLabels : undefined} cursor={cur} onHover={setCur} />
+          <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={90} axes unit={r.unit} labels={timeLabels} cursor={cur} onHover={setCur} />
         </div>
       ))}
       <p className="meta" style={{ textAlign: 'center', fontSize: 11 }}>drag across to scrub — all charts move together</p>
@@ -108,12 +107,10 @@ export default function ActivityDetail() {
   const [tab, setTab] = useState<'map' | 'timeline' | 'power'>('map')
   const [ftp, setFtp] = useState(260)
   const [review, setReview] = useState<CoachReview | null>(null)
-  const [intervals, setIntervals] = useState<ActivityInterval[]>([])
   useEffect(() => {
     if (!id) return
     setLoading(true)
     getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }).catch(() => {})
-    fetchActivityIntervals(id).then(setIntervals).catch(() => {})
     Promise.all([fetchActivity(id), fetchActivityStreams(id)])
       .then(([act, s]) => {
         setA(act); setStreams(s)
@@ -183,24 +180,6 @@ export default function ActivityDetail() {
       {activeTab === 'timeline' && <RideTimeline streams={streams} />}
       {activeTab === 'power' && <RidePower streams={streams} ftp={ftp} />}
       {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
-
-      {intervals.length > 1 && (
-        <>
-          <div className="section-title" style={{ marginTop: 14 }}>Intervals</div>
-          <div className="stack" style={{ gap: 6 }}>
-            {intervals.map((iv, i) => {
-              const zone = iv.watts && ftp ? powerZone((iv.watts / ftp) * 100) : null
-              return (
-                <div key={i} className="pw-ivrow">
-                  {zone ? <span className="pw-zt">{zone}</span> : <span />}
-                  <span>{iv.label} · {mmss(iv.durationSec)}</span>
-                  <b>{iv.watts ? `${iv.watts} W` : iv.pace ? `${mmss(iv.pace)}/km` : ''}{iv.hr ? ` · ${iv.hr}♥` : ''}</b>
-                </div>
-              )
-            })}
-          </div>
-        </>
-      )}
 
       {review && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} />}
 

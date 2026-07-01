@@ -151,15 +151,20 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
   const y = (v: number) => padT + (1 - v / vMax) * (H - padT - padB)
   const ticks = DUR_TICKS.filter(([s]) => s >= sMin && s <= sMax)
   const d = 'M' + pts0.map((p) => `${lx(p[0])},${y(p[1])}`).join(' L')
+  // chart-standard Y axis: max / mid / 0 watts on the left (readable HTML overlay).
+  const yLabels = [vMax, Math.round(vMax / 2), 0]
   return (
-    <div>
-      <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
-        {ticks.map(([s]) => <line key={s} x1={lx(s)} x2={lx(s)} y1={padT} y2={H - padB} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
-        <defs><linearGradient id="pc-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.25" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
-        <path d={`${d} L${lx(pts0[pts0.length - 1][0])},${H - padB} L${lx(pts0[0][0])},${H - padB} Z`} fill="url(#pc-fill)" />
-        <path className="trend-line" pathLength={1} d={d} fill="none" stroke={color} strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-      </svg>
-      <div className="curve-axis">{ticks.map(([s, label]) => <span key={s} style={{ left: `${(lx(s) / VW) * 100}%` }}>{label}</span>)}</div>
+    <div className="chart2">
+      <div className="chart2__y">{yLabels.map((v, i) => <span key={i} style={{ top: `${(1 - v / vMax) * 100}%` }}>{Math.round(v)} W</span>)}</div>
+      <div className="chart2__plot">
+        <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
+          {ticks.map(([s]) => <line key={s} x1={lx(s)} x2={lx(s)} y1={padT} y2={H - padB} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
+          <defs><linearGradient id="pc-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.25" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
+          <path d={`${d} L${lx(pts0[pts0.length - 1][0])},${H - padB} L${lx(pts0[0][0])},${H - padB} Z`} fill="url(#pc-fill)" />
+          <path className="trend-line" pathLength={1} d={d} fill="none" stroke={color} strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+      </div>
+      <div className="chart2__x">{ticks.map(([s, label]) => <span key={s}>{label}</span>)}</div>
     </div>
   )
 }
