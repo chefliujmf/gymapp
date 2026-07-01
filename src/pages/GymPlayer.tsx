@@ -6,6 +6,7 @@ import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { db, getSetting, setSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
 import { e1rm, weightForReps, roundLoad, bestE1rmByExercise } from '../strength'
 import { getGymSession } from '../plan'
+import ActivityFeedback from '../ActivityFeedback'
 import { authApi } from '../auth/api'
 import { localISO } from '../date'
 import { gymTSS, type GymIntensity } from '../tss'
@@ -333,6 +334,10 @@ export default function GymPlayer() {
             {muscles.length > 0 && <div className="gp2-hl">🎯 <span><b>Muscles hit:</b> <span className="checkin__chips" style={{ display: 'inline-flex', marginLeft: 4 }}>{muscles.slice(0, 6).map((m) => <span key={m} className="mchip mchip--soreness">{m}</span>)}</span></span></div>}
             <div className="gp2-hl">🧑‍🏫 <span>{coachTip}</span></div>
           </div>
+
+          {/* #285 — feedback capture (feel/RPE/gym fields) → triggers a coach review */}
+          <div className="section-title" style={{ marginTop: 18 }}>How did it feel?</div>
+          <ActivityFeedback id={`gym-${localISO()}-${w.workoutId}`} sport="gym" date={localISO()} heading="How did it feel?" />
 
           <button className="btn" style={{ marginTop: 18 }} onClick={() => navigate('/progress')}>View progress</button>
           <button className="btn btn--ghost" onClick={() => navigate('/exercises')}>Done</button>
