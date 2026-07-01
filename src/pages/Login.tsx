@@ -74,6 +74,7 @@ export default function Login() {
               <>
                 <input className="search" placeholder="Username or email" value={login} autoCapitalize="none" onChange={(e) => setLogin(e.target.value)} />
                 <PasswordInput value={password} onChange={setPassword} placeholder="Password" autoComplete="current-password" />
+                <p className="meta" style={{ margin: '-2px 2px 0', fontSize: 12 }}>Username &amp; email aren’t case-sensitive — your <b>password is</b>.</p>
                 <button className="btn" disabled={busy || !login || !password}>Sign in</button>
                 {passkeySupported && (
                   <button type="button" className="auth-link" onClick={() => setUsePassword(false)}>Use a passkey instead</button>
