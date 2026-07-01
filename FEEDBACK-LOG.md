@@ -155,10 +155,13 @@ test guide → the **🧪 Test guide** section below.
     `instructions_public_text.md` in the generic engine; female module expanded from a 38-line stub to a full distilled
     module (RED-S, fuelling, cycle-phase, perimenopause/masters, heavy-lifting, pregnancy) → recompiled (coach-engine-female
     1514 words). ⬜ TODO knowledge: distill + wire feedback_protocol/COACHCHECK + exercise_library (token-budget aware —
-    don't dump raw 500-line KBs into every prompt). ⬜ TODO **code features** (bigger, each its own build): (1) per-athlete
-    learned baselines (HRV/RHR rolling mean±SD from wellness, injected), (2) durable coach MEMORY store (what worked/failed
-    + comms prefs, read-before/update-after), (3) ENFORCED health/overtraining gates (checkHealthGates from the now-injected
-    instructions_health_and_peaking). Confirm order with JM before the code features.
+    don't dump raw 500-line KBs into every prompt). ⬜ TODO **code features**: ✅ (1) per-athlete learned baselines
+    (HRV/RHR rolling mean±SD from wellness → stashed + injected). ✅ (2) durable coach MEMORY — `coachMemory` field +
+    GET `/auth/coach-memory` (review) + PUT `/api/coach-memory` (coach writes) + MCP `save_coach_memory` + prompt injects
+    it every session with read-before/update-after instructions (separate from the athlete profile). ⬜ (3) ENFORCED
+    health/overtraining gates — the KNOWLEDGE is injected (instructions_health_and_peaking); a code `checkHealthGates()`
+    that hard-flags NFO clusters (↑RHR/↓HRV/short sleep/heavy legs/RPE for 3+d) is the remaining piece. ⬜ small: a read-only
+    "Coach memory" view in-app (endpoint exists) for transparency; distill feedback_protocol/exercise_library (token-aware).
     **DIFF DONE 2026-06-30 (agent scan of /Users/jmfiset/dev/cyclingcoach):** same engine, but cyclingcoach is ENRICHED
     with per-athlete memory + learned baselines + detailed rule-sets Platyplus lacks. Prioritized port list (ROI order):
     (1) **Per-athlete physiology baselines** — learned HRV mean/SD, RHR, LTHR, FTP, VO₂max from the athlete's own 60–90d

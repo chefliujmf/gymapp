@@ -677,6 +677,18 @@
         }
       }
     },
+    "/api/coach-memory": {
+      "put": {
+        "summary": "Coach saves its durable memory for the athlete (Bearer)",
+        "description": "What the coach has learned works/fails + how the athlete likes to be coached. Read every session, updated after. Separate from the athlete profile.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["memory"], "properties": { "memory": { "type": "string", "description": "full coach memory as markdown" } } } } }
+        },
+        "responses": { "200": { "description": "Saved" }, "413": { "description": "memory too long" } }
+      }
+    },
     "/api/onboarding/complete": {
       "post": {
         "summary": "Coach marks onboarding complete (Bearer)",

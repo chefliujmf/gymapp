@@ -471,6 +471,10 @@ app.put('/auth/profile/athlete', auth, (req, res) => {
   req.user.coachProfile = p; req.user.coachProfileAt = Date.now(); save(store)
   res.json({ profile: req.user.coachProfile, updatedAt: req.user.coachProfileAt })
 })
+// #256 port — durable COACH MEMORY: what the coach has learned works/fails for THIS athlete +
+// how they like to be coached (rules with status). Separate from the athlete profile; the coach
+// reads it every session and updates it after. Reviewable in-app (read) so nothing is hidden.
+app.get('/auth/coach-memory', auth, (req, res) => res.json({ memory: req.user.coachMemory || '', updatedAt: req.user.coachMemoryAt || 0 }))
 
 // Daily check-in (how the athlete feels) — Platyplus-collected signal the coach reads,
 // so it has something to adapt to even without intervals.icu. Light: a few taps.
@@ -815,6 +819,12 @@ function buildSystemPrompt(user) {
   const diet = String(user.info?.diet || '').toLowerCase()
   if (diet === 'vegetarian' || diet === 'vegan') p += `\n\n# DIET: the athlete is ${diet.toUpperCase()}.\nEVERY meal you pick or suggest MUST be ${diet}. search_recipes already returns ONLY ${diet}-compatible recipes for this athlete, so pick from those — never recommend a meal outside their diet, and don't suggest meat${diet === 'vegan' ? ', fish, dairy, eggs, or honey' : ' or fish'}. (They set this in Settings → Preferences.)`
   p += '\n\n' + APP_HELP
+  // #256 port — durable COACH MEMORY: consult it EVERY session, then keep it current.
+  if (user.coachMemory && user.coachMemory.trim()) {
+    p += `\n\n# YOUR COACH MEMORY for this athlete (what you've LEARNED works/fails + how they like to be coached — apply it, don't repeat past mistakes)\n${user.coachMemory.trim()}\n\nWhen you learn something durable (a rule that worked or failed, a preference they state, a constraint, an adjustment that paid off), UPDATE this with save_coach_memory (rewrite the full memory, keep it tight — dated bullets, mark rules active/retired). This is separate from their profile: the profile is WHO they are, the memory is HOW to coach THEM.`
+  } else {
+    p += `\n\n# COACH MEMORY — you have none for this athlete yet. As you learn what works/fails and how they like to be coached, start one with save_coach_memory (tight dated bullets) so you improve every session instead of starting fresh.`
+  }
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
   } else {
@@ -1517,6 +1527,13 @@ app.put('/api/profile/athlete', apiAuth, (req, res) => {
   if (p.length > 60000) return res.status(413).json({ error: 'profile too long' })
   req.user.coachProfile = p; req.user.coachProfileAt = Date.now(); save(store)
   res.json({ ok: true, length: p.length })
+})
+// #256 port — coach WRITES its durable memory (learnings + coaching rules for this athlete).
+app.put('/api/coach-memory', apiAuth, (req, res) => {
+  const m = String(req.body?.memory ?? '')
+  if (m.length > 40000) return res.status(413).json({ error: 'memory too long' })
+  req.user.coachMemory = m; req.user.coachMemoryAt = Date.now(); save(store)
+  res.json({ ok: true, length: m.length })
 })
 app.put('/api/profile', apiAuth, (req, res) => {
   if (Array.isArray(req.body?.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)

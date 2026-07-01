@@ -85,6 +85,11 @@ server.tool('set_athlete_profile',
   { profile: z.string().describe('the full athlete profile as markdown') },
   wrap((a) => api('PUT', '/api/profile/athlete', { profile: a.profile })))
 
+server.tool('save_coach_memory',
+  "Save/replace YOUR durable coaching memory for this athlete — what you've learned WORKS or FAILS for them, adjustments that paid off, and how they like to be coached (tone, cadence, preferences, constraints). Separate from set_athlete_profile (that's WHO they are; this is HOW to coach them). Read it every session and keep it current: write the FULL updated memory as tight dated bullets, marking rules active/retired. Use when they give feedback, when an approach works/flops, or when they state a preference.",
+  { memory: z.string().describe('the full coach memory as markdown (dated bullets, active/retired)') },
+  wrap((a) => api('PUT', '/api/coach-memory', { memory: a.memory })))
+
 server.tool('set_sports',
   'Set the athlete\'s sports (drives the app navigation + which coaching modules apply). Allowed: cycling, running, strength, yoga, pilates, meditation.',
   { sports: z.array(z.string()).describe('e.g. ["cycling","strength"]') },
