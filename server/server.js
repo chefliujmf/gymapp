@@ -845,6 +845,8 @@ function buildSystemPrompt(user) {
   p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-5 (energy: 5=energized, sleep: 5=fully rested, soreness: 5=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
   const ownedEq = Array.isArray(user.info?.equipment) ? user.info.equipment.filter((e) => typeof e === 'string') : []
   if (ownedEq.length) p += `\n\n# Equipment the athlete OWNS: ${ownedEq.join(', ')}.\nWhen building gym/strength sessions, prescribe ONLY exercises that use this gear or Bodyweight — pass \`equipment="${ownedEq.join(',')}"\` to search_exercises so you never pick something they can't do. (They set this in Settings → Equipment.)`
+  // #284 — gym prescription depth: tempo (time-under-tension) + per-lift + session tips.
+  p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): for each lift set sets×reps and, where it helps the goal, a TEMPO — 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower · 1s pause · 1s lift · 0s top (a slower eccentric ⇒ more time-under-tension ⇒ hypertrophy/control; faster ⇒ power). Add a one-line FORM tip per lift, and ONE whole-session \`tip\` (e.g. rest guidance). Don't set weight — the app fills it from the athlete's e1RM. Keep tips short and practical.`
   const diet = String(user.info?.diet || '').toLowerCase()
   if (diet === 'vegetarian' || diet === 'vegan') p += `\n\n# DIET: the athlete is ${diet.toUpperCase()}.\nEVERY meal you pick or suggest MUST be ${diet}. search_recipes already returns ONLY ${diet}-compatible recipes for this athlete, so pick from those — never recommend a meal outside their diet, and don't suggest meat${diet === 'vegan' ? ', fish, dairy, eggs, or honey' : ' or fish'}. (They set this in Settings → Preferences.)`
   p += '\n\n' + APP_HELP
@@ -1192,6 +1194,7 @@ async function upsertPlan(user, body) {
     // strategy + cues. The plan view joins the day's items by date.
     objective: typeof body.objective === 'string' ? body.objective : '',
     cues: Array.isArray(body.cues) ? body.cues.filter((c) => typeof c === 'string') : [],
+    tip: typeof body.tip === 'string' ? body.tip.slice(0, 400) : '', // #284 session-level tip (e.g. tempo/rest focus)
     success: typeof body.success === 'string' ? body.success : '',
     recovery: typeof body.recovery === 'string' ? body.recovery : '',
     fuel: body.fuel && typeof body.fuel === 'object' ? { why: String(body.fuel.why || ''), supplements: String(body.fuel.supplements || '') } : undefined,

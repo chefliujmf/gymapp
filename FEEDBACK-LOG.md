@@ -22,7 +22,7 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-284. ⬜ **Gym UX: per-exercise TIPS + TEMPO (time-under-tension, e.g. 3-0-1-0) + a full-WORKOUT tip.** JM 2026-07-01:
+284. 🔨 **Gym UX: per-exercise TIPS + TEMPO (time-under-tension, e.g. 3-0-1-0) + a full-WORKOUT tip.** JM 2026-07-01:
     tips are good per-exercise (form cues) AND for the whole session; add a **tempo/TUT** prescription per lift
     (eccentric-pause-concentric-pause seconds → ~TUT/set). Data model: gym exercise gains `tempo` + `tip`; plan gains a
     session-level `tip`/focus. Coach prescribes them (update the coach prompt + create_workout tool). Show on the exercise
