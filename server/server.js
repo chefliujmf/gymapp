@@ -785,19 +785,18 @@ function buildSystemPrompt(user) {
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
   // #207 Phase 2: the athlete's own benchmarks — so the coach judges intensity FOR THEM.
   const stats = []
-  // #236: FTP resolves by statPrefs.ftp — computed → eFTP (estimated), else the set/synced FTP.
-  if (user.statPrefs?.ftp === 'computed' && user.eftp) stats.push(`cycling FTP ~${user.eftp} W (eFTP, estimated)`)
+  // #236/#277: FTP resolves by statPrefs.ftp — computed/AUTO prefer eFTP when available, else the set FTP.
+  const wantsComputed = (k) => user.statPrefs?.[k] === 'computed' || (user.statPrefs?.[k] ?? 'auto') === 'auto'
+  if (wantsComputed('ftp') && user.eftp) stats.push(`cycling FTP ~${user.eftp} W (eFTP, estimated)`)
   else if (user.ftp) stats.push(`cycling FTP ${user.ftp} W`)
   if (user.maxHR) stats.push(`max HR ${user.maxHR} bpm`)
-  // #236: VO₂max resolves by the athlete's MANUAL-vs-COMPUTED preference (statPrefs.vo2max). Computed =
-  // the submax estimate (HR-ratio / VDOT / power÷weight, matches the app); default = manual if set.
+  // #236/#277: VO₂max — computed/AUTO prefer the submax estimate; else the manual value.
   const vo2est = bestVo2maxEstimate({ ftp: user.ftp, weightKg: user.weight, vdot: user.runVdot, hrMax: user.maxHR, hrRest: user.restingHR })
-  const vo2pref = user.statPrefs?.vo2max
-  if (vo2pref === 'computed' && vo2est) stats.push(`VO2max ~${vo2est.value} (est. from ${vo2est.source})`)
+  if (wantsComputed('vo2max') && vo2est) stats.push(`VO2max ~${vo2est.value} (est. from ${vo2est.source})`)
   else if (user.vo2max) stats.push(`VO2max ${user.vo2max}`)
   else if (vo2est) stats.push(`VO2max ~${vo2est.value} (est. from ${vo2est.source})`)
-  // #236: threshold pace resolves by statPrefs.thresholdPace — computed → the #215 estimate, else the set value.
-  const tpComputed = user.statPrefs?.thresholdPace === 'computed' && user.runPaceEst > 0
+  // #236/#277: threshold pace — computed/AUTO prefer the #215 estimate when ready, else the set value.
+  const tpComputed = wantsComputed('thresholdPace') && user.runPaceEst > 0
   const tp = tpComputed ? user.runPaceEst : user.sportSettings?.running?.thresholdPace // sec/km
   if (tp > 0) { const m = Math.floor(tp / 60), s = String(Math.round(tp % 60)).padStart(2, '0'); stats.push(`running threshold pace ${m}:${s}/km${tpComputed ? ' (estimated)' : user.runVdot ? ` (VDOT ${user.runVdot})` : ''}`) }
   const rhr = user.sportSettings?.running?.maxHr

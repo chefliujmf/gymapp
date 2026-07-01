@@ -22,6 +22,21 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+277. 🔨 **Manual/Computed flow: add AUTO (computed-when-ready, manual until then).** JM 2026-06-30: when computed isn't
+    ready he has to remember to switch to computed later — wants to "select computed but use manual until we learn enough."
+    BUILT: statPrefs gains `auto` (now the DEFAULT). Benchmarks sheet = 3-way Manual / Auto / Computed with a hint
+    explaining auto; the tag shows "auto · computed" or "auto · manual" so it's clear what's driving. Resolution: auto/
+    computed prefer the computed value when available, fall back to manual. Server buildSystemPrompt honours auto too
+    (`wantsComputed` helper) so the coach uses the estimate once ready. gymapp-only.
+276. ⬜ **Workout power shows % on dev but WATTS on QA — JM wants WATTS.** JM 2026-06-30: the same workout renders power as
+    % of FTP on dev, watts on QA (likely the dev test user has no FTP → the chart falls back to %). Make the workout/ride
+    power display ALWAYS watts when an FTP is resolvable (use the athlete's FTP, or a sensible default), not %. Check the
+    workout-detail / ride chart power formatting (#217/#219 were the read-side fixes). gymapp-only.
+275. 🔨 **Running "Threshold" stat cell was EMPTY + not editable there.** JM 2026-06-30: the Threshold MiniCard on the
+    Running stats page was hardcoded `null` (showed "—") though a threshold pace exists, and he wanted to edit it there,
+    not only in Profile. FIXED: RunningStats Threshold cell now shows the pace and is tap-to-edit inline (parses m:ss,
+    saves via saveSportStat → syncs to intervals + updates VDOT). (Also confirms #269 VO₂max fix: now reads 50.5 from HR,
+    not 43.9.) gymapp-only.
 274. ⬜ **"Why a beaver?" — onboarding card used 🦫 (beaver) but the brand is Platyplus (platypus).** JM 2026-06-30.
     FIXED: the Today "Meet your coach" card now uses the real Platyplus logo (favicon.svg) like the login screen, not a
     beaver emoji. (No platypus emoji exists → use the logo.) gymapp-only.

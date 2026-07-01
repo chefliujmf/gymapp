@@ -9,7 +9,7 @@ import { headlineVo2max, runningVo2max, cyclingVo2max, confLabel } from './vo2ma
 // #236 — benchmarks = MANUAL vs COMPUTED. Tiles show the in-use value; tap → a sheet with BOTH values,
 // an input (editable only in Manual), and a Manual|Computed toggle. A per-stat preference (user.statPrefs)
 // decides which drives; the computed value keeps updating regardless. Used in Stats + Profile.
-type Pref = 'manual' | 'computed'
+type Pref = 'manual' | 'computed' | 'auto' // #277 auto = use computed once it's ready, manual until then
 type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr'
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n))
 const numParse = (lo: number, hi: number) => (s: string) => { const n = Number(s); return Number.isFinite(n) && n > 0 ? clamp(n, lo, hi) : null }
@@ -41,12 +41,18 @@ function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; p
           <div className={'bsheet__opt' + (p === 'computed' ? ' on' : '')}><div className="bsheet__ol">Computed</div><div className="bsheet__ov" style={{ color: '#5ec8ff' }}>{def.computed != null ? def.fmt(def.computed) : '—'}</div><div className="bsheet__os">{def.computed != null ? def.computedSrc : 'not available yet'}</div></div>
           <div className={'bsheet__opt' + (p === 'manual' ? ' on' : '')}><div className="bsheet__ol">Manual</div><div className="bsheet__ov" style={{ color: '#9b8cff' }}>{def.manual != null ? def.fmt(def.manual) : '—'}</div><div className="bsheet__os">your value</div></div>
         </div>
-        <div className="bsheet__lbl">Set your value{p === 'computed' ? ' (saved; switch to Manual to use it)' : ''}</div>
+        <div className="bsheet__lbl">Your value</div>
         <input className="bsheet__in" value={txt} placeholder={def.computed != null ? def.fmt(def.computed) : 'enter a value'} onChange={(e) => setTxt(e.target.value)} />
         <div className="bsheet__lbl">Use which?</div>
-        <div className="bseg">
-          <button className={p === 'manual' ? 'on' : ''} onClick={() => setP('manual')} disabled={false}>Manual</button>
+        <div className="bseg bseg--3">
+          <button className={p === 'manual' ? 'on' : ''} onClick={() => setP('manual')}>Manual</button>
+          <button className={p === 'auto' ? 'on' : ''} onClick={() => setP('auto')}>Auto</button>
           <button className={p === 'computed' ? 'on' : ''} onClick={() => setP('computed')} disabled={def.computed == null}>Computed</button>
+        </div>
+        <div className="bsheet__hint">
+          {p === 'auto' ? (def.computed != null ? 'Auto: using the computed estimate now that it’s ready — your manual value is the fallback.' : 'Auto: using your manual value until the computed estimate is ready, then it switches automatically.')
+            : p === 'computed' ? 'Always use the computed estimate (falls back to manual if it’s ever unavailable).'
+            : 'Always use the value you typed.'}
         </div>
         <button className="bsheet__save" onClick={commit}>Done</button>
       </div>
@@ -93,8 +99,11 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
     { key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceEst, computedSrc: 'from your recent runs', manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }) },
     { key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: null, computedSrc: '', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }) },
   ]
-  const prefOf = (d: StatDef): Pref => user?.statPrefs?.[d.key] ?? (d.manual != null ? 'manual' : 'computed')
-  const inUse = (d: StatDef): number | null => { const p = prefOf(d); return (p === 'computed' && d.computed != null) ? d.computed : d.manual ?? d.computed }
+  // #277: default is AUTO — prefer the computed estimate once it's ready, manual until then.
+  const prefOf = (d: StatDef): Pref => user?.statPrefs?.[d.key] ?? 'auto'
+  const inUse = (d: StatDef): number | null => { const p = prefOf(d); return p === 'manual' ? (d.manual ?? d.computed) : (d.computed ?? d.manual) } // computed/auto prefer computed, fall back to manual
+  // what's ACTUALLY driving right now (for the tag): auto resolves to computed-or-manual.
+  const activeSrc = (d: StatDef): 'manual' | 'computed' => { const p = prefOf(d); if (p === 'manual') return 'manual'; if (p === 'computed') return 'computed'; return d.computed != null ? 'computed' : 'manual' }
   const openDef = defs.find((d) => d.key === open)
 
   return (
@@ -102,10 +111,11 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
       <div className="bm-card__h"><h3>Your benchmarks</h3>{connected && <span className="sync-pill">⇄ intervals</span>}</div>
       <div className="bm-grid">
         {defs.map((d) => {
-          const v = inUse(d), p = prefOf(d)
+          const v = inUse(d), p = prefOf(d), src = activeSrc(d)
+          const tag = p === 'auto' ? `auto · ${src}` : p
           return (
             <button key={d.key} className="bm-cell bm-cell--tap" onClick={() => setOpen(d.key)}>
-              <div className="bm-cell__l">{d.label}<span className={`bm-tag bm-tag--${p === 'manual' ? 'you' : 'icu'}`}>{p === 'manual' ? 'manual' : 'computed'}</span></div>
+              <div className="bm-cell__l">{d.label}<span className={`bm-tag bm-tag--${src === 'manual' ? 'you' : 'icu'}`}>{tag}</span></div>
               <div className="bm-cell__v">{v != null ? d.fmt(v) : '—'}{v != null && d.unit ? <span className="bm-cell__u">{d.unit}</span> : null}</div>
               <div className="bm-cell__alt">tap to switch</div>
             </button>
