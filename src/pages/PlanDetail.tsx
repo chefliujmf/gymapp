@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getPlanEvent, gymSessionFromEvent, setGymSession, matchExercise } from '../plan'
 import { eventObjective, parseGymTable, parseGymWorkout, sportOf, flattenIcuSteps, type GymTableRow } from '../intervals'
 import { SegmentProfile } from '../ui'
+import { workoutSummary, structureRows } from '../workout-summary'
 import { setCurrentRide, canPlayHere } from '../ride'
 import { useBle } from '../BleContext'
 import { getSetting } from '../db'
@@ -112,16 +113,41 @@ export default function PlanDetail() {
         </>
       )}
 
-      {isRide && (
+      {isRide && (() => {
+        const segs = flattenIcuSteps(e.workout_doc?.steps)
+        const rFtp = ftp || user?.ftp || 200
+        const rEst = !(ftp || user?.ftp)
+        const sum = workoutSummary(segs, rFtp)
+        const rows = structureRows(segs, rFtp)
+        const fmtDur = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${s}s`)
+        return (
         <>
+          {sum && (
+            <div className="pw-expect">
+              <div className="pw-e"><b>{sum.mainWatts ? `${sum.mainWatts}` : `${sum.mainPct}%`}<small>{sum.mainWatts ? 'W' : ''}</small></b><span>Target{rEst ? ' (est)' : ''}</span></div>
+              <div className="pw-e"><b>{sum.mainZone}</b><span>Zone</span></div>
+              <div className="pw-e"><b>{sum.durationMin}<small>m</small></b><span>Duration</span></div>
+            </div>
+          )}
           <div className="card" style={{ padding: 16, marginTop: 6 }}>
-            <SegmentProfile segs={flattenIcuSteps(e.workout_doc?.steps)} ftp={ftp || user?.ftp || 200} ftpEstimated={!(ftp || user?.ftp)} />
+            <SegmentProfile segs={segs} ftp={rFtp} ftpEstimated={rEst} />
           </div>
+          {rows.length > 1 && (
+            <>
+              <div className="section-title">Structure</div>
+              <div className="stack" style={{ gap: 6 }}>
+                {rows.map((r, i) => (
+                  <div key={i} className="pw-ivrow"><span className="pw-zt">{r.zone}</span><span>{r.count > 1 ? `${r.count}× ` : ''}{r.label} · {fmtDur(r.durationSec)}</span><b>{r.watts ? `${r.watts} W` : `${r.pct}%`}</b></div>
+                ))}
+              </div>
+            </>
+          )}
           {canPlayHere(!!ble.bridge)
             ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ Ride now</button>
             : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to ride — that's where your sensors connect.</div>}
         </>
-      )}
+        )
+      })()}
 
       {/* The full coach narrative (fueling, recovery, mental focus) stays in
           intervals.icu — gymapp shows only what you need to execute. */}
