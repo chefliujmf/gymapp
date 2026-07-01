@@ -905,6 +905,8 @@ select.search { appearance: none; -webkit-appearance: none; }
  * longer a direct .stack flex child once wrapped here). */
 /* Plan card description — full text, readable contrast (#73, not dark-grey-on-black). */
 .plan-desc { display: block; white-space: normal; font-size: 12.5px; line-height: 1.45; color: #c2c9d4; margin-top: 4px; }
+/* On a compact CARD, never dump the full coach notes — clamp to 2 lines (full text is in the detail). */
+.card .plan-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 /* ---------- Progress (#87) ---------- */
 .prog-hero { display: flex; gap: 10px; margin-bottom: 10px; }
 .prog-hero__big { flex: 1; background: linear-gradient(135deg, rgba(52,224,125,.16), rgba(52,224,125,.05)); border: 1px solid rgba(52,224,125,.3); border-radius: 14px; padding: 12px 14px; }

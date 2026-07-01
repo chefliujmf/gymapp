@@ -216,6 +216,16 @@ function readinessVerdict(ci: Checkin | null): { tone: 'good' | 'mixed' | 'low';
 }
 const RECOVERY_EMOJI: Record<string, string> = { sauna: '🔥', cold: '🧊', massage: '💆', mobility: '🧎', foam: '🪵', walk: '🚶' }
 
+/** A clean one-liner for a plan CARD — prefer the structured objective; else strip markdown/headers
+ *  from the free-text notes and take the opening (the full text lives in the detail). */
+function planCardDesc(p: CoachPlan): string {
+  if (p.objective && p.objective.trim()) return p.objective.trim()
+  const raw = (p.notes || '').replace(/^#+\s*/, '').replace(new RegExp(`^${p.title}\\s*`, 'i'), '') // drop leading "# Title"
+  const clean = raw.replace(/#+/g, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim()
+  const afterObj = clean.match(/objective:\s*(.+)/i)?.[1] ?? clean
+  return afterObj.slice(0, 160)
+}
+
 /** A coach-pushed plan that isn't mirrored by an intervals event — runs in-app. */
 function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p: CoachPlan; onRun?: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean; act?: IcuActivity }) {
   const nav = useNavigate()
@@ -232,7 +242,7 @@ function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p
           <div className="card-body">
             <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}</span>
             <h3 style={isDone ? { opacity: 0.6 } : undefined}>{p.title}</h3>
-            {p.notes && <div className="plan-desc">{p.notes}</div>}
+            {(p.objective || p.notes) && <div className="plan-desc">{planCardDesc(p)}</div>}
             {act ? <DoneStats a={act} /> : <div className="meta">{mins ? <span>{mins} min</span> : <span>{(p.exercises || []).length} exercises{p.rounds && p.rounds > 1 ? ` · ${p.rounds} rounds` : ''}</span>}{!done && <span className="dot">▶ start</span>}</div>}
           </div>
         </div>
@@ -364,18 +374,19 @@ export default function Today() {
   const swapOn = (day: string) => setSheet({ date: day })
 
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' })()
-  // Dedup a coach/owned plan against its intervals mirror. PREFER the coach plan card (→ the RICH
-  // CoachPlanDetail: aim · cues · tempo · what-to-expect · structure), and HIDE the duplicate raw
-  // intervals event card (→ the lighter PlanDetail). Pure intervals events (no coach plan) still
-  // render as event cards. (Was the reverse, which hid all the coaching detail — JM 2026-07-01.)
-  const planIds = new Set(plans.map((p) => p.id))
-  const planEventIds = new Set(plans.map((p) => p.icuEventId).filter(Boolean).map(String))
+  // Dedup a coach/owned plan against its intervals mirror, DATA-AWARE (JM 2026-07-01): show whichever
+  // side has real STRUCTURE. A coach plan with segments/exercises/objective → its rich CoachPlanDetail
+  // (aim · tempo · what-to-expect · structure). A bare text-blob plan whose intervals event carries the
+  // workout_doc → the event card → PlanDetail (which parses the shape). Never show both.
   const eventKey = (e: IcuEvent) => `${e.start_date_local.slice(0, 10)}|${sportOf(e)}|${String(e.name || '').trim().toLowerCase()}`
   const planKey = (p: CoachPlan) => `${p.date}|${p.sport === 'ride' ? 'cycling' : p.sport}|${String(p.title || '').trim().toLowerCase()}`
-  const planKeys = new Set(plans.map(planKey))
-  const eventShownAsPlan = (e: IcuEvent) => (!!e.external_id && planIds.has(e.external_id)) || planEventIds.has(String(e.id)) || planKeys.has(eventKey(e))
-  const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay && !eventShownAsPlan(e))
-  const dayPlans = plans.filter((p) => p.date === selDay)
+  const eventForPlan = (p: CoachPlan) => (events ?? []).find((e) => (!!e.external_id && e.external_id === p.id) || (p.icuEventId != null && String(p.icuEventId) === String(e.id)) || eventKey(e) === planKey(p))
+  const planHasStructure = (p: CoachPlan) => (p.sport === 'gym' ? (p.exercises?.length ?? 0) > 0 : (p.segments?.length ?? 0) > 0) || !!(p.objective && p.objective.trim())
+  const showPlan = (p: CoachPlan) => planHasStructure(p) || !eventForPlan(p) // structured → coach card; else defer to the event
+  const dayPlans = plans.filter((p) => p.date === selDay && showPlan(p))
+  const hiddenEventIds = new Set(plans.filter(showPlan).map((p) => eventForPlan(p)?.id).filter(Boolean).map(String))
+  const hiddenEventKeys = new Set(plans.filter(showPlan).map((p) => eventForPlan(p) ? eventKey(eventForPlan(p)!) : '').filter(Boolean))
+  const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay && !hiddenEventIds.has(String(e.id)) && !hiddenEventKeys.has(eventKey(e)))
   const dayItems = items.filter((it) => it.date === selDay)
   // #202: meals/mind/recovery/supplement get their own sections; notes stay with the workouts.
   const dayMeals = dayItems.filter((it) => it.type === 'meal')
