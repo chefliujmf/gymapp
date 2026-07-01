@@ -1,0 +1,56 @@
+<!doctype html><html><head><meta charset="utf8"><style>
+:root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216}
+body{background:#0f1216;color:var(--text);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:16px;max-width:430px}
+.card{background:linear-gradient(#21252f,#191c24);border:1px solid #ffffff14;border-radius:14px;padding:14px;margin:8px 0}
+.pw-verdict{border:1px solid #34e07d55;background:linear-gradient(#1a2a20,#161c22);margin:8px 0 10px}
+.pw-vtop{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.pw-vh{font-weight:800;font-size:14px}
+.pw-score{background:#34e07d22;color:var(--accent);border:1px solid #34e07d55;font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.pw-vp{margin:0 0 8px;font-size:13px;line-height:1.45;color:#dfe4ea}
+.pw-vli{font-size:12.5px;color:var(--text-dim);line-height:1.5;margin:2px 0}
+.pw-vli b{color:var(--text)}
+.pw-more{margin-top:8px;border-top:1px solid #ffffff14;padding-top:6px}
+.pw-more>summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--accent);list-style:none;padding:2px 0}
+.pw-more>summary::after{content:' ▾';opacity:.7}
+.pw-more[open]>summary::after{content:' ▴'}
+.pw-msec{margin-top:8px}
+.pw-mst{font-size:12px;font-weight:800;color:var(--text);margin-bottom:2px}
+.pw-fbsum{font-size:12.5px;color:var(--text-dim);margin:8px 0;padding:10px 14px}
+.pw-fbsum__top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pw-fbsum__h{font-weight:700;color:var(--text);min-width:0}
+.pw-fbsum__hl{margin-top:4px;font-size:14px;font-weight:700;color:var(--text)}
+.pw-fbsum__tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pw-tag{font-size:11px;padding:2px 9px;border-radius:999px;background:#ffffff10;border:1px solid #ffffff1c;color:var(--text-dim)}
+.pw-fbsum__note{margin:8px 0 0;font-style:italic;color:var(--text-dim);line-height:1.45}
+.auth-link{background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer}
+.meta{color:var(--text-dim);font-size:12px}
+</style></head><body>
+
+<!-- Coach verdict, from intervals note (Monday, real data) -->
+<div class="card pw-verdict">
+  <div class="pw-vtop"><span class="pw-vh">💬 Your coach</span><span class="pw-score">Score 8/10</span></div>
+  <p class="pw-vp">Real quality pushed in hard conditions - NP 198, three efforts on punchy terrain, in heavy heat, on a self-described off day. Good work.</p>
+  <div class="pw-vli">• 66 min, IF 76%, avg HR 151. Decoupling 4.8% and the high HR-for-power are the heat, not fitness - expected until you acclimatize (about 1-2 weeks).</div>
+  <div class="pw-vli">• No new issue flagged; cadence dropped to 82 grinding the climbs - normal for that terrain.</div>
+  <div class="pw-vli">• Honest and tough-minded: you pushed in brutal heat on a bad-feeling day and still logged it "happy." Effort over ego - exactly right.</div>
+  <div class="pw-vli">📈 <b>Next:</b> Tue: the planned cottage ride + your KOM attempt - send it, then ride the rest steady. Saturday is the real FTP test on flat roads.</div>
+  <details class="pw-more" open>
+    <summary>Recovery &amp; full note</summary>
+    <div class="pw-msec"><div class="pw-mst">Nutrition</div><div class="pw-vli">• Heat day: rehydrate aggressively tonight - fluids plus electrolytes (sodium). Carb-forward dinner with 25-35g protein.</div></div>
+    <div class="pw-msec"><div class="pw-mst">Recovery</div><div class="pw-vli">• HRV rose to 34 today (above your 32.5 baseline), RHR 56 - you are absorbing well. Sleep short (7.3h); prioritize it.</div></div>
+    <div class="pw-msec"><div class="pw-mst">Daily baseline</div><div class="pw-vli">• Unchanged: creatine 3-5g, B12, omega-3, vitamin D, protein powder, glycine/magnesium only if it helps sleep.</div></div>
+    <div class="pw-msec"><div class="pw-mst">Skip today</div><div class="pw-vli">• EAA: skip; normal protein covers it. L-glutamine: skip. Taurine: skip. Collagen: skip.</div></div>
+  </details>
+</div>
+
+<p class="meta" style="margin:2px 2px 10px">Three strong ten-minute efforts on the rolling backroad climbs, sweet spot to threshold.</p>
+
+<!-- Athlete feedback summary, read from intervals (compact) -->
+<div class="card pw-fbsum">
+  <div class="pw-fbsum__top"><span class="pw-fbsum__h">✅ Your feedback · from intervals</span><button class="auth-link">Edit</button></div>
+  <div class="pw-fbsum__hl">😐 Normal · RPE 5</div>
+  <div class="pw-fbsum__tags"><span class="pw-tag">not needed</span><span class="pw-tag">normal</span><span class="pw-tag">tired OK</span><span class="pw-tag">focused</span><span class="pw-tag">none</span><span class="pw-tag">time cap</span></div>
+  <p class="pw-fbsum__note">“good session, not easy to do intervals in eastern township… very hot and humid. Overall I'm happy.”</p>
+</div>
+
+</body></html>

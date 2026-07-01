@@ -226,25 +226,48 @@ export async function fetchActivityStreams(id: string | number, types: string[] 
     return out as ActivityStreams
   } catch { return {} }
 }
-/** intervals' own interval/lap breakdown for an activity → the post-workout interval cards (#273). */
-export interface ActivityInterval { label: string; durationSec: number; watts: number | null; hr: number | null; pace: number | null; type: string }
-export async function fetchActivityIntervals(id: string | number): Promise<ActivityInterval[]> {
+// #273 — the coach's post-workout review lives as intervals activity MESSAGES (a comment
+// thread). The coach posts via the athlete's own key, so author name can't distinguish
+// coach from athlete — we recognise coach messages by their template (a "Coach note …"
+// header, a "Score: N/10", or the "Recovery / Supplements" companion). readIcuFeedback
+// reads the athlete's fields; this reads the COACH's words so we can show them (#273 mock).
+export interface CoachSection { title: string; lines: string[] }
+export interface CoachNote { score?: number; title?: string; sections: CoachSection[] }
+const COACH_HDR = /^(Coach note|Recovery\s*\/\s*Supplements)\b/i
+const isCoachMsg = (content: string) => {
+  const first = (content || '').trim().split('\n')[0] || ''
+  return COACH_HDR.test(first) || /\bScore:\s*\d+\s*\/\s*10\b/i.test(content)
+}
+/** Parse the coach's message(s) into score + titled sections (pure — unit-tested). */
+export function parseCoachNote(contents: string[]): CoachNote {
+  const sections: CoachSection[] = []
+  let title: string | undefined, score: number | undefined, cur: CoachSection | null = null
+  for (const content of contents) for (const raw of (content || '').split('\n')) {
+    const line = raw.trim()
+    if (!line) continue
+    const sm = line.match(/Score:\s*(\d+)\s*\/\s*10/i); if (sm && score == null) score = Number(sm[1])
+    const cn = line.match(/^Coach note\s*[-–—:]\s*(.+)$/i); if (cn) { title = cn[1].trim(); continue }
+    if (/^[-•*]\s+/.test(line)) { if (!cur) { cur = { title: '', lines: [] }; sections.push(cur) } cur.lines.push(line.replace(/^[-•*]\s+/, '').trim()) }
+    else { cur = { title: line, lines: [] }; sections.push(cur) }
+  }
+  return { score, title, sections: sections.filter((s) => s.lines.length) }
+}
+/** The intervals message thread for an activity, split into the coach's parsed review and the
+ *  athlete's own free-text comment(s) (#273 — "my comments" must show, not just the coach's). */
+export interface IcuThread { coach: CoachNote | null; comment?: string }
+export async function fetchActivityThread(id: string | number): Promise<IcuThread> {
   const { apiKey, serverKey } = await getIcuConfig()
-  if (!apiKey && !serverKey) return []
+  if (!apiKey && !serverKey) return { coach: null }
   try {
-    const res = await fetch(`${ICU}/activity/${id}/intervals`, { headers: icuHeaders(apiKey) })
-    if (!res.ok) return []
-    const j = await res.json()
-    const list = (j?.icu_intervals || j?.intervals || []) as Record<string, number | string>[]
-    return list.map((iv) => ({
-      label: String(iv.label || iv.type || 'Interval'),
-      durationSec: Number(iv.moving_time || iv.elapsed_time || iv.duration || 0),
-      watts: iv.average_watts != null ? Math.round(Number(iv.average_watts)) : null,
-      hr: iv.average_heartrate != null ? Math.round(Number(iv.average_heartrate)) : null,
-      pace: iv.average_pace != null ? Number(iv.average_pace) : (iv.gap != null ? Number(iv.gap) : null), // sec/km when present
-      type: String(iv.type || ''),
-    })).filter((iv) => iv.durationSec > 0)
-  } catch { return [] }
+    const res = await fetch(`${ICU}/activity/${id}/messages`, { headers: icuHeaders(apiKey), cache: 'no-store' })
+    if (!res.ok) return { coach: null }
+    const msgs = (await res.json()) as { content?: string }[]
+    const list = Array.isArray(msgs) ? msgs.filter((m) => m && typeof m.content === 'string') : []
+    const coachMsgs = list.filter((m) => isCoachMsg(m.content!))
+    const mine = list.filter((m) => !isCoachMsg(m.content!)).map((m) => m.content!.trim()).filter(Boolean)
+    const note = coachMsgs.length ? parseCoachNote(coachMsgs.map((m) => m.content!)) : null
+    return { coach: note && note.sections.length ? note : null, comment: mine.join('\n\n') || undefined }
+  } catch { return { coach: null } }
 }
 export const cleanLatLng = (t?: [number, number][]) => (t || []).filter((p) => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
 export const sportOfActivity = (a: IcuActivity) => (/run/i.test(a.type) ? 'run' : /ride|cycl/i.test(a.type) ? 'ride' : 'gym')

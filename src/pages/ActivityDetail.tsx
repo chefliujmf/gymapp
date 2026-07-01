@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { fetchActivity, fetchActivityStreams, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams } from '../intervals'
+import { fetchActivity, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
 import { TrendChart, PowerCurveChart } from '../charts'
 import { zoneColor } from '../ui'
 import { getSetting } from '../db'
@@ -107,14 +107,18 @@ export default function ActivityDetail() {
   const [tab, setTab] = useState<'map' | 'timeline' | 'power'>('map')
   const [ftp, setFtp] = useState(260)
   const [review, setReview] = useState<CoachReview | null>(null)
+  const [note, setNote] = useState<CoachNote | null>(null)
+  const [icuComment, setIcuComment] = useState<string>()
   useEffect(() => {
     if (!id) return
     setLoading(true)
     getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }).catch(() => {})
+    // #273: the coach's verdict + the athlete's own comment come from intervals messages.
+    fetchActivityThread(id).then((t) => { setNote(t.coach); setIcuComment(t.comment) }).catch(() => {})
     Promise.all([fetchActivity(id), fetchActivityStreams(id)])
       .then(([act, s]) => {
         setA(act); setStreams(s)
-        // #273: show the coach's verdict for this activity (matched by id, else same-day).
+        // …or an in-app review if the coach wrote one here (matched by id, else same-day).
         const day = (act?.start_date_local || '').slice(0, 10)
         if (day) authApi.coachReviews().then((rv) => setReview(rv.find((r) => r.activityId === id) || rv.find((r) => r.date === day) || null)).catch(() => {})
       })
@@ -148,6 +152,7 @@ export default function ActivityDetail() {
     a.avg_lr_balance ? ['L/R balance', `${Math.round(100 - a.avg_lr_balance)} · ${Math.round(a.avg_lr_balance)}`] : null,
   ].filter(Boolean)) as [string, string][]
   const device = a.device_name || a.source
+  const hasVerdict = !!review || !!note
 
   return (
     <div>
@@ -159,9 +164,9 @@ export default function ActivityDetail() {
         </div>
       </div>
 
-      {!review && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} />}
+      {!hasVerdict && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} />}
 
-      {review && <CoachVerdict review={review} />}
+      <CoachVerdict review={review} note={note} />
       {a.description && a.description.trim() && (
         <p className="meta" style={{ margin: '2px 2px 10px', whiteSpace: 'normal' }}>{a.description.replace(/\s*(#{1,3})\s*/g, ' ').replace(/\*\*/g, '').trim()}</p>
       )}
@@ -181,7 +186,7 @@ export default function ActivityDetail() {
       {activeTab === 'power' && <RidePower streams={streams} ftp={ftp} />}
       {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
 
-      {review && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} />}
+      {hasVerdict && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} />}
 
       <div className="links" style={{ marginTop: 12 }}>
         {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}

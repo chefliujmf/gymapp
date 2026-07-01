@@ -5,7 +5,7 @@ import { FEEL, RPE, FIELDS } from './pages/PostWorkout'
 // #273/#285 — post-workout feedback capture for ANY completed session (device activity or gym),
 // keyed by an id. Feedback-first when unsubmitted; collapses to a one-line summary after. Saving
 // persists + triggers a coach review (server). Reuses the shared feel/RPE/fields model (#143).
-export default function ActivityFeedback({ id, sport, date, heading = 'How did it go?', icuExisting }: { id: string; sport: string; date: string; heading?: string; icuExisting?: { feel?: string; rpe?: number; fields: Record<string, string> } | null }) {
+export default function ActivityFeedback({ id, sport, date, heading = 'How did it go?', icuExisting, icuNote }: { id: string; sport: string; date: string; heading?: string; icuExisting?: { feel?: string; rpe?: number; fields: Record<string, string> } | null; icuNote?: string }) {
   const [feel, setFeel] = useState<string | undefined>()
   const [rpe, setRpe] = useState<number | undefined>()
   const [fields, setFields] = useState<Record<string, string>>({})
@@ -17,19 +17,26 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
   useEffect(() => {
     authApi.getActivityFeedback(id).then((f) => {
       if (f) { setFeel(f.feel); setRpe(f.rpe); setFields(f.fields || {}); setNote(f.note || ''); setSaved(true) }
-      else if (icuExisting) { setFeel(icuExisting.feel); setRpe(icuExisting.rpe); setFields(icuExisting.fields || {}); setSaved(true); setFromIcu(true) } // already logged in intervals — show it, don't ask again
+      else if (icuExisting || icuNote) { setFeel(icuExisting?.feel); setRpe(icuExisting?.rpe); setFields(icuExisting?.fields || {}); if (icuNote) setNote(icuNote); setSaved(true); setFromIcu(true) } // already logged in intervals — show it, don't ask again
     }).catch(() => {}).finally(() => setLoaded(true))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, icuExisting])
+  }, [id, icuExisting, icuNote])
   const sportFields = FIELDS[sport] || FIELDS.gym
   async function save() { await authApi.activityFeedback(id, { feel, rpe, fields, note, sport, date }).catch(() => {}); setSaved(true); setEditing(false) }
   if (!loaded) return null
   if (saved && !editing) {
-    const summary = [feel, rpe ? `RPE ${rpe}` : null, ...Object.values(fields)].filter(Boolean).join(' · ')
+    const feelF = FEEL.find(([l]) => l === feel)?.[1]
+    const headline = [feelF ? `${feelF} ${feel}` : feel, rpe ? `RPE ${rpe}` : null].filter(Boolean).join(' · ')
+    const tags = Object.values(fields).filter(Boolean)
     return (
       <div className="card pw-fbsum">
-        <span>✅ Your feedback{fromIcu ? ' (from intervals)' : ''}: {summary || '—'}</span>
-        <button className="auth-link" style={{ width: 'auto', padding: 0 }} onClick={() => setEditing(true)}>Edit</button>
+        <div className="pw-fbsum__top">
+          <span className="pw-fbsum__h">✅ Your feedback{fromIcu ? ' · from intervals' : ''}</span>
+          <button className="auth-link" style={{ width: 'auto', padding: 0 }} onClick={() => setEditing(true)}>Edit</button>
+        </div>
+        <div className="pw-fbsum__hl">{headline || '—'}</div>
+        {tags.length > 0 && <div className="pw-fbsum__tags">{tags.map((t, i) => <span key={i} className="pw-tag">{t}</span>)}</div>}
+        {note && <p className="pw-fbsum__note">“{note}”</p>}
       </div>
     )
   }

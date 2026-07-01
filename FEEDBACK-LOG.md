@@ -22,6 +22,27 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+286. 🔨 **Monday post-workout round — bi-directional feedback + coach text + charts to standard (a #273 re-report).**
+    JM 2026-07-01 testing "Monday" (completed ride i161348698): (a) "most feedback from intervals were NOT collected = no
+    bi-directional sync" — his feel/RPE/fields didn't show; (b) "anything else should have my comments, it's empty" — his
+    free-text comment didn't show; (c) "notes contain the description, it's wrong and not the coach feedback" — the plain
+    workout description was shown as if it were coach notes; (d) "too bulky the fields with data"; (e) "our graphs are not
+    following standards" — Y axis too compact, X axis not on every track; (f) "powercurve also without proper axis"; (g)
+    "how are the intervals below defined? intervals isn't good at creating this → remove"; (h) "no coach feedback as per
+    mockups… disappointed how far it is vs mockups". ROOT CAUSE (verified by SSH-inspecting the real intervals activity):
+    the athlete's feel/fields are stored as **1-based number indices** (not strings); the **coach's review + the athlete's
+    own comment live as intervals MESSAGES** (a comment thread), not in the activity description. FIXED:
+    • `readIcuFeedback` maps numeric indices→labels (feel/RPE/6 custom fields) so his feedback shows read-only ("from
+      intervals"), Edit to change — a→resolved.
+    • New `fetchActivityThread(id)` reads the message thread → parses the **coach note** (score chip + verdict + takeaways +
+      Next + a "Recovery & full note" expander for nutrition/supplements) AND the **athlete's own comment**; both shown.
+      Coach review recognised by template (a "Coach note …" header / "Score: N/10" / "Recovery / Supplements"). c/h→resolved.
+    • Feedback summary compacted: feel·RPE headline + small field pills + the comment in italics (was one long joined line). d→.
+    • Charts to standard: PowerCurve gained a **Y axis (W) + X duration ticks**; timeline tracks taller (90px) so Y
+      min/mid/max is readable + **X (time) on every track**; **removed the interval breakdown list** (intervals' auto-detect
+      unreliable). e/f/g→resolved. Unit test `src/coach-note.test.ts` (parseCoachNote on the real Monday text).
+    Self-validated vs mock (`mockups/monday-validate.html`) before flagging for JM test. gymapp-only. **JM to verify on QA.**
+
 284. 🔨 **Gym UX: per-exercise TIPS + TEMPO (time-under-tension, e.g. 3-0-1-0) + a full-WORKOUT tip.** JM 2026-07-01:
     tips are good per-exercise (form cues) AND for the whole session; add a **tempo/TUT** prescription per lift
     (eccentric-pause-concentric-pause seconds → ~TUT/set). Data model: gym exercise gains `tempo` + `tip`; plan gains a

@@ -10,7 +10,7 @@ import { getSetting, db } from '../db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
 import { InfoDot } from '../charts'
-import { fetchActivities, sportOfActivity, readIcuFeedback, type IcuActivity } from '../intervals'
+import { fetchActivities, fetchActivityThread, sportOfActivity, readIcuFeedback, type IcuActivity, type CoachNote } from '../intervals'
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
 import CoachVerdict from '../CoachVerdict'
@@ -38,11 +38,17 @@ export default function CoachPlanDetail() {
   // into the post view once completed, instead of a bare notes dump.
   const [doneAct, setDoneAct] = useState<IcuActivity | null>(null)
   const [review, setReview] = useState<CoachReview | null>(null)
+  const [note, setNote] = useState<CoachNote | null>(null)
+  const [icuComment, setIcuComment] = useState<string>()
   useEffect(() => { if (p) calApi.items(p.date, p.date).then(setItems).catch(() => {}) }, [p?.date])
   useEffect(() => { getSetting('ftp').then((v) => setFtp(Number(v) || undefined)) }, [])
   useEffect(() => {
     if (!p) return
-    fetchActivities(p.date, p.date).then((a) => setDoneAct(a.find((x) => sportOfActivity(x) === p.sport) || null)).catch(() => {})
+    fetchActivities(p.date, p.date).then((a) => {
+      const done = a.find((x) => sportOfActivity(x) === p.sport) || null
+      setDoneAct(done)
+      if (done) fetchActivityThread(done.id).then((t) => { setNote(t.coach); setIcuComment(t.comment) }).catch(() => {}) // #273 coach review + my comment live in intervals
+    }).catch(() => {})
     authApi.coachReviews().then((r) => setReview(r.find((x) => x.planId === p.id) || r.find((x) => x.date === p.date && (x.sport === p.sport || !x.sport)) || null)).catch(() => {})
   }, [p?.id, p?.date, p?.sport])
 
@@ -70,9 +76,9 @@ export default function CoachPlanDetail() {
       {(doneAct || review) && (
         <>
           <div className="done-badge" style={{ position: 'static', display: 'inline-block', marginBottom: 8 }}>✓ Completed</div>
-          {review && <CoachVerdict review={review} />}
+          <CoachVerdict review={review} note={note} />
           {doneAct && <Link to={`/activity/${doneAct.id}`} className="btn btn--ghost" style={{ marginBottom: 8 }}>📊 See full analysis →</Link>}
-          <ActivityFeedback id={doneAct ? String(doneAct.id) : `plan-${p.id}`} sport={p.sport} date={p.date} icuExisting={readIcuFeedback(doneAct)} />
+          <ActivityFeedback id={doneAct ? String(doneAct.id) : `plan-${p.id}`} sport={p.sport} date={p.date} icuExisting={readIcuFeedback(doneAct)} icuNote={icuComment} />
         </>
       )}
 
