@@ -136,7 +136,7 @@ export default function ActivityDetail() {
   const stats: [string, string][] = ([
     a.moving_time ? ['Time', fmtTime(a.moving_time)] : null,
     a.distance ? ['Distance', `${(a.distance / 1000).toFixed(1)} km`] : null,
-    a.icu_intensity ? ['Intensity', `${Math.round(a.icu_intensity * 100)}%`] : null,
+    a.icu_intensity ? ['Intensity', `${Math.round(a.icu_intensity <= 1.5 ? a.icu_intensity * 100 : a.icu_intensity)}%`] : null,
     a.icu_training_load ? ['Load (TSS)', String(a.icu_training_load)] : null,
     a.icu_weighted_avg_watts ? ['Norm power', `${Math.round(a.icu_weighted_avg_watts)} W`] : null,
     a.icu_average_watts ? ['Avg power', `${Math.round(a.icu_average_watts)} W`] : null,
@@ -166,10 +166,7 @@ export default function ActivityDetail() {
 
       {review && <CoachVerdict review={review} />}
       {a.description && a.description.trim() && (
-        <div className="card" style={{ padding: '11px 14px' }}>
-          <div className="section-title" style={{ marginTop: 0 }}>Notes <span className="meta" style={{ fontWeight: 400 }}>· from intervals</span></div>
-          <p className="plan-desc" style={{ whiteSpace: 'pre-wrap' }}>{a.description.replace(/\s*(#{1,3})\s*/g, '\n\n').replace(/\*\*/g, '').trim()}</p>
-        </div>
+        <p className="meta" style={{ margin: '2px 2px 10px', whiteSpace: 'normal' }}>{a.description.replace(/\s*(#{1,3})\s*/g, ' ').replace(/\*\*/g, '').trim()}</p>
       )}
 
       <div className="actstats">{stats.map(([l, v]) => <div key={l} className="actstat"><span>{l}</span><b>{v}</b></div>)}</div>
