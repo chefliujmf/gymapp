@@ -151,6 +151,11 @@ export default function CoachPlanDetail() {
 
       {/* coaching shell */}
       {p.objective && <div className="plansec"><span className="plansec__k">🎯 Objective</span><p className="plansec__v">{p.objective}</p></div>}
+      {/* Fallback: unstructured plans keep everything in `notes` — show it formatted so the detail
+          is never empty (structured plans use the fields above/below instead). */}
+      {!p.objective && !p.cues?.length && p.notes && p.notes.trim() && (
+        <div className="plansec"><span className="plansec__k">📋 Plan</span><p className="plansec__v" style={{ whiteSpace: 'pre-wrap' }}>{p.notes.replace(/\s*(#{1,3})\s*/g, '\n\n').replace(/\*\*/g, '').replace(/^\n+/, '').trim()}</p></div>
+      )}
 
       {(p.fuel?.why || p.fuel?.supplements || meals.length > 0) && (
         <div className="plansec">
