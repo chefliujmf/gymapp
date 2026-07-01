@@ -31,11 +31,19 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   const set = (patch: Partial<Checkin>) => {
     const next = { ...(ci || { date: day }), ...patch } as Checkin
     setCi(next)
-    // #207 Phase 2b: stamp the auto scores shown (display terms) so the model learns our overrides.
-    const auto = (calc.energy != null || calc.sleep != null || calc.soreness != null)
-      ? { energy: calc.energy, sleep: calc.sleep, freshness: calc.soreness != null ? 6 - calc.soreness : undefined }
-      : undefined
-    authApi.checkin(auto ? { ...next, auto } : next).catch(() => {})
+    // #207 Phase 2b: stamp the auto score shown (display terms) so a real override reads as "edited".
+    // PRESERVE each row's existing stamp — only fill a MISSING one from the current derive. Re-stamping
+    // every row on each save made an unedited row falsely read "edited" when its auto-derive later
+    // drifted (e.g. Freshness 3→5 after the baselines change). JM 2026-07-01.
+    const prev = ci?.auto || {}
+    const freshNow = calc.soreness != null ? 6 - calc.soreness : undefined
+    const auto = {
+      energy: prev.energy ?? calc.energy,
+      sleep: prev.sleep ?? calc.sleep,
+      freshness: prev.freshness ?? freshNow,
+    }
+    const hasAuto = auto.energy != null || auto.sleep != null || auto.freshness != null
+    authApi.checkin(hasAuto ? { ...next, auto } : next).catch(() => {})
   }
   const [editing, setEditing] = useState(false)
   // #195: auto-derive Sleep·Freshness·Energy (1–5) from intervals wellness + personal baselines
