@@ -22,6 +22,17 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+284. ⬜ **Gym UX: per-exercise TIPS + TEMPO (time-under-tension, e.g. 3-0-1-0) + a full-WORKOUT tip.** JM 2026-07-01:
+    tips are good per-exercise (form cues) AND for the whole session; add a **tempo/TUT** prescription per lift
+    (eccentric-pause-concentric-pause seconds → ~TUT/set). Data model: gym exercise gains `tempo` + `tip`; plan gains a
+    session-level `tip`/focus. Coach prescribes them (update the coach prompt + create_workout tool). Show on the exercise
+    card (planned/player/completed) + a workout tip banner. Pairs #242 (exercise list) + #255 (per-exercise insights) +
+    the gym post-workout rework. Mock-first. gymapp-only.
+285. ⬜ **Gym COMPLETED view still the OLD form (PostWorkout /feedback/:id) — doesnt match #273 mock.** JM 2026-07-01
+    ("not much like the mockups"). #273 rich view is on ActivityDetail (device rides/runs); coach-plan + GYM completions go
+    through PostWorkout, which is the old feel/RPE form. Rework the completed-workout path (esp. gym) to the #273 mock:
+    verdict + sets/PR + feedback collapse. Unify onto one component with ActivityDetail. gymapp-only.
+
 283. 🔨 **Remove direct Platyplus↔Strava connect (use intervals as the hub).** JM 2026-07-01: his wife hit Strava 403
     "limit of connected athletes exceeded" — Strava caps an API app at 1 athlete until reviewed, and it's redundant since
     intervals already aggregates Strava/Garmin/Coros/Wahoo. REMOVED: the "Connect with Strava" UI in AccountSection + the
