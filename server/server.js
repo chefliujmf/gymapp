@@ -760,7 +760,7 @@ const coachIdentity = (name) => `You are ${name}, a personal training & nutritio
 const APP_HELP = `# Helping with Platyplus (configuration & usage)
 You can also help the user set up and use the app — guide them in plain steps:
 - intervals.icu: Profile → Athlete/Connections → intervals.icu. They paste their Athlete ID and an API key (from intervals.icu → Settings → "Developer settings" → API key). Once connected, planned and completed rides sync into their calendar.
-- Strava: Profile → "Connect Strava" (one tap, OAuth). After connecting, recent activities show up and they can opt in to share sessions to Strava.
+- Strava/Garmin/Coros/Wahoo: DON'T connect these to Platyplus directly — connect them INSIDE intervals.icu (intervals → Settings → connections). Platyplus reads everything through intervals, so their activities + wellness flow in automatically.
 - Athlete profile: Profile → Athlete. This is the profile YOU read — goals, sport, weekly hours, FTP/maxes, equipment, constraints, injuries, preferences. Encourage them to keep it current; the more accurate it is, the better you plan.
 - Features: Today/Calendar (the plan), Train (gym, ride, run), Eat (recipes & meals), Mind (meditation/yoga/pilates), Stats (Fitness/Strength/Progress), and this Coach chat.
 - Strength prescription: when you schedule a gym workout, prescribe each lift as sets × TARGET REPS (e.g. 4×4 for power, 3×8 for hypertrophy). The app auto-fills the suggested WEIGHT from the athlete's estimated 1RM (logged history) — you do NOT need to specify kg unless they ask. After they log, their e1RM updates and you adjust next time.
@@ -846,7 +846,7 @@ Platyplus↔service status right now: intervals.icu ${icuOn ? 'CONNECTED ✅' : 
 - **intervals.icu is the data hub** — fitness/fatigue/Form, HRV, sleep, resting HR, FTP/threshold/max-HR and past activities all come from it. Without it you're planning half-blind.
 ${icuOn ? '- intervals is linked — call check_connections; if activities/wellness are flowing, pull their benchmarks + recent training to ground the plan.' : `- intervals is NOT linked. Walk them through it: **Profile → Connect intervals.icu**, paste their intervals API key (from intervals.icu → Settings → Developer). Explain plainly why. You can't do it for them — guide, then re-check.`}
 - **Match device to data flow**: ask what watch/head-unit they use (Garmin, Coros, Wahoo, Suunto, Polar, Apple Watch…), then use check_connections to see if that source is actually syncing into intervals. If it isn't, tell them EXACTLY what to fix: connect that device (and Strava) INSIDE intervals.icu (intervals → Settings → connections) so every ride/run + overnight HRV/sleep flows in automatically. Confirm ("your Coros runs are flowing ✅" / "I don't see any Coros data yet — connect it in intervals").
-- Strava (optional) is for sharing completed activities — offer **Profile → Connect Strava** if they want that.
+- Sharing to Strava: they connect Strava INSIDE intervals.icu (not Platyplus) — then completed activities land on Strava automatically.
 
 ## Interview — a couple of questions at a time, conversational (NOT a long form)
 1) which sport(s) they do → call set_sports as soon as you know;

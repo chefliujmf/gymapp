@@ -22,6 +22,13 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+283. 🔨 **Remove direct Platyplus↔Strava connect (use intervals as the hub).** JM 2026-07-01: his wife hit Strava 403
+    "limit of connected athletes exceeded" — Strava caps an API app at 1 athlete until reviewed, and it's redundant since
+    intervals already aggregates Strava/Garmin/Coros/Wahoo. REMOVED: the "Connect with Strava" UI in AccountSection + the
+    coach's Platyplus-Strava guidance; onboarding + APP_HELP now say connect Strava/device INSIDE intervals.icu. KEPT:
+    "view on Strava ↗" activity deep-links (via strava_id intervals fills in). `/auth/strava/*` + server/strava.js left
+    dormant (gated) — removable later. Updated memory (platyplus-integrations, MEMORY index) + skill (platyplus-ops). gymapp-only.
+
 282. ⬜ **(POST-LAUNCH) i18n — French & English, switchable in Settings.** JM 2026-07-01: after launch, support FR + EN
     with a language toggle in preferences/settings (default to device locale). Externalize UI strings (a lightweight i18n
     layer / string catalog), translate app copy + coach-facing labels; the COACH itself can already reply in the user's

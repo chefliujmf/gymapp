@@ -70,21 +70,8 @@ export default function AccountSection({ only }: { only?: 'account' | 'connectio
   async function rotate() { if (!confirm('Rotate the token? Your coach must update it.')) return; try { const r = await authApi.rotateToken(); setToken(r.token); setTkMsg('✓ Rotated') } catch (e) { setTkMsg('✗ ' + (e as Error).message) } }
   function copyToken() { navigator.clipboard?.writeText(token); setTkMsg('Copied to clipboard') }
 
-  // Strava — per-user OAuth "Connect with Strava" (no API key for the user).
-  const [strava, setStrava] = useState<{ available?: boolean; connected?: boolean; scope?: string } | null>(null)
-  const [stravaMsg, setStravaMsg] = useState('')
-  useEffect(() => {
-    fetch('/auth/strava/status', { credentials: 'same-origin' }).then((r) => r.json()).then(setStrava).catch(() => {})
-    const p = new URLSearchParams(location.search).get('strava')
-    if (p === 'connected') setStravaMsg('✓ Strava connected')
-    else if (p === 'denied') setStravaMsg('Connection cancelled')
-    else if (p === 'error') setStravaMsg('✗ Connection failed — try again')
-  }, [])
-  async function disconnectStrava() {
-    if (!confirm('Disconnect Strava?')) return
-    await fetch('/auth/strava/disconnect', { method: 'POST', credentials: 'same-origin' })
-    setStrava((s) => ({ ...s, connected: false })); setStravaMsg('Disconnected')
-  }
+  // Strava connect removed — intervals.icu is the hub; connect Strava/device INSIDE intervals and
+  // Platyplus reads everything from there. (Direct Strava app-connect hit Strava's per-app athlete cap.)
 
   const avatarNode = user.avatar ? <img src={user.avatar} alt="" /> : user.username.slice(0, 2).toUpperCase()
 
@@ -146,22 +133,6 @@ export default function AccountSection({ only }: { only?: 'account' | 'connectio
       <button className="btn" onClick={saveIcu} disabled={!icuKey && icuAth === user.icuAthlete}>Save to account</button>
       {icuMsg && <p className="meta" style={{ marginTop: 8 }}>{icuMsg}</p>}
       {user.hasIcuKey && <ResyncToIntervals />}
-
-      <div className="section-title">Strava</div>
-      {strava?.available === false ? (
-        <p className="meta" style={{ marginTop: -4 }}>Strava isn't set up on this server yet.</p>
-      ) : strava?.connected ? (
-        <>
-          <p className="meta" style={{ marginTop: -4 }}>✓ Connected{strava.scope ? ` · ${strava.scope}` : ''}</p>
-          <button className="btn btn--ghost" onClick={disconnectStrava}>Disconnect Strava</button>
-        </>
-      ) : (
-        <>
-          <p className="meta" style={{ marginTop: -4 }}>One tap — no API key needed.</p>
-          <a className="btn" href="/auth/strava/connect" style={{ background: '#fc4c02', color: '#fff' }}>Connect with Strava</a>
-        </>
-      )}
-      {stravaMsg && <p className="meta" style={{ marginTop: 8 }}>{stravaMsg}</p>}
 
       {user.role === 'admin' && <>
       <div className="section-title">Coach API</div>
