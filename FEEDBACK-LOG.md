@@ -22,6 +22,14 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+278. ⬜ **BYO-AI coach: support Gemini / Codex / Claude via the user's SUBSCRIPTION (no API), for QA.** JM 2026-07-01:
+    build the coach runner to work with the user's own **subscription-logged CLI** (`claude`, `codex`, `gemini`) — NOT API
+    keys — limited to these three for now (QA/testing, nothing else). Requires abstracting the coach invocation (today
+    hardcoded `claude -p`) into a **runner interface** `(systemPrompt, message, tools, session) → stream + tool calls` with
+    a per-provider adapter: each CLI in headless mode, MCP config for the platyplus tools, system-prompt injection, stream
+    parsing, session handling (Claude `--resume`; others manage history ourselves). The coach IP (prompt/tools/
+    coachProfile/coachMemory) is provider-agnostic — only the runner changes. Note: consumer-subscription hosting has ToS
+    friction (see design analysis) — this is for QA/self-host, provider-selectable per user. gymapp-only.
 277. 🔨 **Manual/Computed flow: add AUTO (computed-when-ready, manual until then).** JM 2026-06-30: when computed isn't
     ready he has to remember to switch to computed later — wants to "select computed but use manual until we learn enough."
     BUILT: statPrefs gains `auto` (now the DEFAULT). Benchmarks sheet = 3-way Manual / Auto / Computed with a hint
@@ -41,11 +49,27 @@ test guide → the **🧪 Test guide** section below.
 274. ⬜ **"Why a beaver?" — onboarding card used 🦫 (beaver) but the brand is Platyplus (platypus).** JM 2026-06-30.
     FIXED: the Today "Meet your coach" card now uses the real Platyplus logo (favicon.svg) like the login screen, not a
     beaver emoji. (No platypus emoji exists → use the logo.) gymapp-only.
-273. ⬜ **Post-workout UX, tailored PER activity type.** JM 2026-06-30: wants dedicated work on the post-workout review UX
-    per sport. TODAY: one shared feedback model with sport-specific FIELDS (ride/run mirror intervals custom fields; gym
-    its own Soreness/Form set) + Feel + RPE + free text → coach review. NEXT (mock-first): richer per-type post screens —
-    RIDE: power/HR execution vs target (the planned-vs-actual shape), IF/TSS, "held the watts?"; RUN: pace/splits vs zones,
-    GAP; GYM: sets×reps logged, e1RM/PR hits, pump/form. Pairs #54 (activity analysis) + #91 (coach takeaways) + #255. gymapp-only.
+273. 🔨 **Post-workout UX, per activity type — intervals.icu-style analysis + coach text. MOCK LOCKED (5 rounds).**
+    JM 2026-06-30/07-01. Mock: `mockups/post-workout-insights.html` (toggles: pre/post review, indoor/outdoor; tabs
+    ride/run/gym/mind). LOCKED SPEC to build:
+    • **Feedback-first flow**: before a review exists → header + "log how it went" + the FULL feedback form FIRST, stats
+      below (no scrolling past stats to input). After submit + coach review → verdict on top, and the feedback **COLLAPSES
+      to a one-line summary** ("🙂 Good · RPE 5 · legs normal→tired OK · focused") with tap-to-edit.
+    • **Coach verdict** = existing `save_coach_review` (verdict/takeaways/next); EXECUTION SCORE shown as a **chip**, text is
+      pure pro-coach voice (what's good/not, 💡 tip, 📈 progression, 🔥 motivation) — NO score in prose.
+    • **Stats**: intervals-style metric GRID (Intensity, Load, NP, Avg P, VI, Act.eFTP, Avg/Max HR %, TRIMP, cadence, work,
+      Form→) + **route map** (Leaflet, reuse #141/#51) + **stacked multi-track timeline** Power(vs planned band)/HR/Cadence/
+      Altitude sharing an x-axis + per-interval CARDS (zone tag · dur · watts|pace · HR) + time-in-zone. Run mirrors it
+      (pace/GAP/stride). **Charts MUST follow the chart standard** (Y min/mid/max, X labels, crisp non-overlapping text,
+      insight line, not cramped — skill `platyplus-charts`).
+    • **Indoor vs outdoor** = ride/run ONLY: indoor hides route + altitude, keeps sensor tracks. Gym/mind ignore venue.
+    • **Gym**: each lift row links to its progress (e1RM/#255) + PR badge; no perf timeline.
+    • **Mind (yoga/pilates/meditation)**: LIGHT — no perf charts; consistency/streak card + simple after-session check
+      (calmer? looser?) + note; coach frames as recovery not PRs.
+    • **Platform links**: Strava / intervals.icu / Garmin / Coros / Wahoo — only those the activity was actually pushed to.
+    • **TRIMP**: surface in stats + use as the LOAD driver when no power (HR-only runs/indoor).
+    Build: charts from activity streams (fetchActivityStreams #51); pre/post keyed on whether a coach-review exists.
+    Pairs #54 + #91 + #255. gymapp-only.
 272. 🔨 **Onboarding chat ERRORED: "No conversation found with session ID …".** JM 2026-06-30 (dev test of #257): tapping
     Set me up → coach chat died with a stale-session error. ROOT CAUSE: `/auth/chat` blindly passed `--resume
     <user.chatSession>`, but claude's local session store had been cleared (restart/deploy) → resume hard-fails. FIXED:
