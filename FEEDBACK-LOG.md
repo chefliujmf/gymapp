@@ -22,6 +22,14 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+280. ⬜ **PRE-workout UX rework (the PLANNED-workout view, before you do it).** JM 2026-07-01: rework the planned-workout
+    detail to match the polish of the post-workout view (#273). Screens: `PlanDetail` (intervals-sourced) + `CoachPlanDetail`
+    (coach-authored). TARGET (mock-first, mirror #273 components): a clean header (sport · date · duration · target TSS/IF),
+    the **coach shell** (objective · cues · success · fuel · mind · recovery — already partly there), the **planned power/
+    pace SHAPE** chart (watts via #276, chart-standard axes/labels, indoor/outdoor aware), a **"what to expect"** line
+    (target zones, key set), gym = the exercise list (#242) with links, and a clear **Start/Play** CTA (or "open on phone"
+    for rides). Pairs #273 (shared SegmentProfile/shape + coach text), #157 (intervals text parity), #242 (exercise list),
+    #167 (gym-player pre-workout time estimate). Build alongside #273 to reuse components. gymapp-only.
 279. 🔨 **Missing-data handling: graceful degrade + "unlock" nudge + label estimates (don't fabricate).** JM 2026-07-01
     ("what happens if we don't collect data needed for coach calls / estimates?"). AUDIT: pure calcs already return null →
     UI shows "set X"/manual fallback; readiness gated on 14-day baseline (cold-start null); VO₂max/BMR null when inputs
