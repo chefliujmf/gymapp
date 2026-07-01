@@ -22,6 +22,11 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+282. ⬜ **(POST-LAUNCH) i18n — French & English, switchable in Settings.** JM 2026-07-01: after launch, support FR + EN
+    with a language toggle in preferences/settings (default to device locale). Externalize UI strings (a lightweight i18n
+    layer / string catalog), translate app copy + coach-facing labels; the COACH itself can already reply in the user's
+    language via the prompt. Sizeable (touches most components) — do it as one pass post-launch. gymapp-only.
+
 281. 🔨 **Login by EMAIL (not just username).** JM 2026-07-01: allow email as the credential. Client already offered
     "Username or email"; server `findByLogin` compared the raw stored email so it broke on any uppercase. FIXED: normalize
     both sides to lowercase (+ trim). Email or username both work now. gymapp-only.
