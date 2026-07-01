@@ -115,7 +115,7 @@ export default function PlanDetail() {
       {isRide && (
         <>
           <div className="card" style={{ padding: 16, marginTop: 6 }}>
-            <SegmentProfile segs={flattenIcuSteps(e.workout_doc?.steps)} ftp={ftp || user?.ftp || 200} />
+            <SegmentProfile segs={flattenIcuSteps(e.workout_doc?.steps)} ftp={ftp || user?.ftp || 200} ftpEstimated={!(ftp || user?.ftp)} />
           </div>
           {canPlayHere(!!ble.bridge)
             ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ Ride now</button>

@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthContext'
 import { fetchAthleteSex, fetchWellness } from '../intervals'
 import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, parsePace, type PaceZones, type RunVolume } from '../running-paces'
 import { runningVo2max, cyclingVo2max, headlineVo2max, confLabel } from '../vo2max-submax'
+import { dataGaps } from '../dataGaps'
 
 // #214 — spell each Daniels zone out (letter + what it's for) so the paces are legible, not cryptic.
 const ZONE_META: { letter: string; name: string; purpose: string }[] = [
@@ -63,6 +64,7 @@ function StatCell({ label, tag, value, unit, placeholder, fmt, parse, onSave }: 
 export default function Profile() {
   const navigate = useNavigate()
   const { user, refresh } = useAuth()
+  const gaps = dataGaps(user)
   const coachName = useLiveQuery(() => getSetting('coachName'))
   const [coachSaved, setCoachSaved] = useState(false)
   const [sportSaved, setSportSaved] = useState(false)
@@ -170,6 +172,17 @@ export default function Profile() {
           <div style={{ flex: 1 }}><strong>{user?.username}</strong><div className="meta">{user?.email} · {user?.role}</div></div>
         </div>
       </div>
+
+      {/* Unlock nudge — turn missing-data dead-ends into a clear to-do (dataGaps.ts) */}
+      {gaps.length > 0 && (
+        <div className="card gapcard">
+          <div className="gapcard__h">⚡ Unlock more from your data</div>
+          {gaps.map((g) => (
+            <div key={g.key} className="gapcard__row"><b>{g.label}</b><span> → {g.unlocks}</span></div>
+          ))}
+          <div className="gapcard__hint">Set these below{!user?.hasIcuKey ? ' — connecting intervals.icu fills most of them automatically' : ''}.</div>
+        </div>
+      )}
 
       <div className="section-title">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <input

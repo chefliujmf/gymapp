@@ -215,7 +215,7 @@ export function computeTSS(w: EnduranceWorkout): number {
 /** join.cc-style interval profile rendered from the structured data. */
 /** True power profile (mirrors intervals): each segment follows its real start→end, so
  *  ramps SLOPE and steady blocks are flat — not a flat bar at the peak (#217 follow-up). */
-export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: number; powerStart: number; powerEnd: number }[]; height?: number; ftp?: number }) {
+export function SegmentProfile({ segs, height = 110, ftp, ftpEstimated }: { segs: { duration: number; powerStart: number; powerEnd: number }[]; height?: number; ftp?: number; ftpEstimated?: boolean }) {
   const [sel, setSel] = useState<number | null>(null)
   if (!segs.length) return null
   const total = segs.reduce((s, i) => s + i.duration, 0) || 1
@@ -252,7 +252,7 @@ export function SegmentProfile({ segs, height = 110, ftp }: { segs: { duration: 
             )
           })}
         </svg>
-        <span style={{ position: 'absolute', right: 2, top: `${(1 - 100 / maxP) * 100}%`, transform: 'translateY(-100%)', fontSize: 9, color: 'rgba(255,255,255,.45)' }}>FTP{ftp ? ` ${ftp}W` : ''}</span>
+        <span style={{ position: 'absolute', right: 2, top: `${(1 - 100 / maxP) * 100}%`, transform: 'translateY(-100%)', fontSize: 9, color: 'rgba(255,255,255,.45)' }}>FTP{ftp ? ` ${ftp}W${ftpEstimated ? ' · est — set yours' : ''}` : ''}</span>
         {/* target label at each block, when it changes from the previous one */}
         {segs.map((s, idx) => {
           const v = p(s)

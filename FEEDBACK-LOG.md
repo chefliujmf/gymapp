@@ -22,6 +22,14 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+279. 🔨 **Missing-data handling: graceful degrade + "unlock" nudge + label estimates (don't fabricate).** JM 2026-07-01
+    ("what happens if we don't collect data needed for coach calls / estimates?"). AUDIT: pure calcs already return null →
+    UI shows "set X"/manual fallback; readiness gated on 14-day baseline (cold-start null); VO₂max/BMR null when inputs
+    missing; coach told "adapt, don't invent" + onboarding data-readiness gate. RISK found: workout chart showed watts off a
+    default FTP with no label. BUILT: (a) pure `dataGaps(user)` (+6 tests) → what's missing + what it unlocks (intervals /
+    FTP / threshold pace / max HR / sleep need, sport-aware); (b) "⚡ Unlock more from your data" nudge card on Profile;
+    (c) SegmentProfile FTP label now shows "· est — set yours" when using the fallback FTP (PlanDetail/CoachPlanDetail pass
+    `ftpEstimated`). TODO later: extend to fuel targets once height/DOB collected (#265/#268). gymapp-only.
 278. ⬜ **BYO-AI coach: support Gemini / Codex / Claude via the user's SUBSCRIPTION (no API), for QA.** JM 2026-07-01:
     build the coach runner to work with the user's own **subscription-logged CLI** (`claude`, `codex`, `gemini`) — NOT API
     keys — limited to these three for now (QA/testing, nothing else). Requires abstracting the coach invocation (today

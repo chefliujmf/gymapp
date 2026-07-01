@@ -48,7 +48,7 @@ export default function CoachPlanDetail() {
       {/* sport body */}
       {isEndurance && (p.segments?.length ?? 0) > 0 && (
         <>
-          <div className="card" style={{ padding: 16, marginTop: 6 }}><SegmentProfile segs={p.segments!} ftp={p.ftp || ftp || user?.ftp || 200} /></div>
+          <div className="card" style={{ padding: 16, marginTop: 6 }}><SegmentProfile segs={p.segments!} ftp={p.ftp || ftp || user?.ftp || 200} ftpEstimated={!(p.ftp || ftp || user?.ftp)} /></div>
           {canPlayHere(!!ble.bridge)
             ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ {p.sport === 'run' ? 'Run' : 'Ride'} now</button>
             : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to {p.sport === 'run' ? 'run' : 'ride'} — that's where your sensors connect.</div>}
