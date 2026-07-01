@@ -6,7 +6,9 @@ import { SegmentProfile } from '../ui'
 import { workoutSummary, structureRows } from '../workout-summary'
 import { setCurrentRide, canPlayHere } from '../ride'
 import { useBle } from '../BleContext'
-import { getSetting } from '../db'
+import { getSetting, db } from '../db'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
 import { useAuth } from '../auth/AuthContext'
 
 /** Detail view for a coach-authored Platyplus plan: the universal coaching shell
@@ -18,6 +20,9 @@ export default function CoachPlanDetail() {
   const navigate = useNavigate()
   const ble = useBle()
   const { user } = useAuth()
+  const logs = useLiveQuery(() => db.logs.toArray())
+  const e1rmMap = bestE1rmByExercise(logs || [])
+  const e1rmFor = (name: string) => e1rmMap.get(name) || [...e1rmMap.entries()].find(([k]) => k.toLowerCase() === name.toLowerCase())?.[1]
   const p = id ? getCoachPlan(id) : undefined
   const [items, setItems] = useState<CalItem[]>([])
   const [open, setOpen] = useState<Set<number>>(new Set())
@@ -99,7 +104,7 @@ export default function CoachPlanDetail() {
                     <div className="ex-thumb-sm" style={demo?.image ? { backgroundImage: `url(${demo.image})` } : undefined}>{!demo?.image && '🏋️'}{demo?.video && <span className="ex-play-sm">▶</span>}</div>
                     <div className="ex-row-text" style={{ flex: 1 }}>
                       <h4>{x.name}</h4>
-                      <div className="meta" style={{ marginTop: 2 }}><span><b>{(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}</b></span>{x.rest ? <span className="dot">rest {x.rest}s</span> : null}</div>
+                      <div className="meta" style={{ marginTop: 2 }}><span><b>{(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}</b></span>{x.rest ? <span className="dot">rest {x.rest}s</span> : null}{(() => { const e = (x.mode || 'reps') !== 'timed' ? e1rmFor(x.name) : undefined; const t = e ? roundLoad(weightForReps(e.e1rm, x.reps || 10)) : null; return t ? <span className="dot">target ~{t} kg</span> : null })()}</div>
                     </div>
                     <span style={{ opacity: 0.4, padding: '2px 4px' }}>{isOpen ? '▾' : '›'}</span>
                   </div>

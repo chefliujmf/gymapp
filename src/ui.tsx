@@ -253,6 +253,9 @@ export function SegmentProfile({ segs, height = 110, ftp, ftpEstimated }: { segs
           })}
         </svg>
         <span style={{ position: 'absolute', right: 2, top: `${(1 - 100 / maxP) * 100}%`, transform: 'translateY(-100%)', fontSize: 9, color: 'rgba(255,255,255,.45)' }}>FTP{ftp ? ` ${ftp}W${ftpEstimated ? ' · est — set yours' : ''}` : ''}</span>
+        {/* Y axis (chart standard): max + 0 on the left edge */}
+        <span style={{ position: 'absolute', left: 3, top: 0, fontSize: 9, color: 'rgba(255,255,255,.4)' }}>{w(maxP)}{unit}</span>
+        <span style={{ position: 'absolute', left: 3, bottom: 1, fontSize: 9, color: 'rgba(255,255,255,.4)' }}>0</span>
         {/* target label at each block, when it changes from the previous one */}
         {segs.map((s, idx) => {
           const v = p(s)
