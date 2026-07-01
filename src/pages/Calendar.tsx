@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchEvents, deleteEvent, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
 import { MiniProfile, DoneStats } from '../ui'
-import { fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
-import { setCurrentRide } from '../ride'
+import { fetchGymPlans, syncIcuPlans, setCoachPlans, type CoachPlan } from '../plan'
 import { calApi, type CalItem } from '../calendar'
 import { recipes } from '../data/catalog'
 import { listTemplates, listRideTemplates, getSetting, setSetting, type WorkoutTemplate, type RideTemplate } from '../db'
@@ -67,7 +66,7 @@ export default function Calendar() {
     const [a, b] = range
     fetchEvents(a, b).then(setEvents).catch(() => setEvents([]))
     fetchActivities(a, b).then(setActivities).catch(() => setActivities([]))
-    syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then(setPlans).catch(() => setPlans([])))
+    syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then((pl) => { setPlans(pl); setCoachPlans(pl) }).catch(() => setPlans([])))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [range])
   useEffect(() => { reload() }, [reload])
@@ -92,10 +91,6 @@ export default function Calendar() {
   // intervals.icu Annual-Training-Plan phase markers ("ATP W06 - …") aren't actual workouts.
   const isAtp = (e: Entry) => e.k === 'event' && (/^ATP\b/i.test(e.ev.name) || e.ev.category === 'NOTE')
 
-  function runPlan(p: CoachPlan) {
-    if (p.sport === 'gym') { setGymSession(gymSessionFromPlan(p)); navigate('/gym-session/play') }
-    else { setCurrentRide({ title: p.title, sport: p.sport === 'ride' ? 'cycling' : 'running', segments: p.segments || [], ftp: p.ftp || ftp, source: p.id }); navigate(p.sport === 'ride' ? '/ride-player' : '/run-player') }
-  }
   async function delEntry(e: Entry, confirmEvent = true) {
     if (e.k === 'plan') await calApi.delPlan(e.plan.id)
     else if (e.k === 'item') await calApi.delItem(e.item.id)
@@ -107,7 +102,7 @@ export default function Calendar() {
     reload()
   }
   function openEntry(e: Entry) {
-    if (e.k === 'plan') runPlan(e.plan)
+    if (e.k === 'plan') navigate(`/coach/${e.plan.id}`) // open the rich detail (aim/tempo/structure); Start is in there
     else if (e.k === 'event') navigate(`/plan/${e.ev.id}`)
     else if (e.k === 'item' && e.item.type === 'meal' && e.item.refId) navigate(`/recipes/${e.item.refId}`)
     else if (e.k === 'item' && e.item.type === 'mind' && e.item.refId) navigate(`/mind/${e.item.refId}`)

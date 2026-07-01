@@ -356,18 +356,18 @@ export default function Today() {
   const swapOn = (day: string) => setSheet({ date: day })
 
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' })()
-  // Merge-by-id: a coach/owned plan that's already shown as an intervals event card
-  // (matched by external_id OR by the mirror icuEventId) is hidden so there's no dupe.
-  const linkedIds = new Set((events ?? []).map((e) => e.external_id).filter(Boolean))
-  const shownEventIds = new Set((events ?? []).map((e) => String(e.id)))
-  // Also dedup an UNLINKED Platyplus plan against an intervals event that's the SAME
-  // planned workout (same day + sport + title) — e.g. the coach published straight to
-  // intervals and a separate Platyplus plan exists. Show one (the intervals event), hide the plan.
-  const shownEventKeys = new Set((events ?? []).map((e) => `${e.start_date_local.slice(0, 10)}|${sportOf(e)}|${String(e.name || '').trim().toLowerCase()}`))
+  // Dedup a coach/owned plan against its intervals mirror. PREFER the coach plan card (→ the RICH
+  // CoachPlanDetail: aim · cues · tempo · what-to-expect · structure), and HIDE the duplicate raw
+  // intervals event card (→ the lighter PlanDetail). Pure intervals events (no coach plan) still
+  // render as event cards. (Was the reverse, which hid all the coaching detail — JM 2026-07-01.)
+  const planIds = new Set(plans.map((p) => p.id))
+  const planEventIds = new Set(plans.map((p) => p.icuEventId).filter(Boolean).map(String))
+  const eventKey = (e: IcuEvent) => `${e.start_date_local.slice(0, 10)}|${sportOf(e)}|${String(e.name || '').trim().toLowerCase()}`
   const planKey = (p: CoachPlan) => `${p.date}|${p.sport === 'ride' ? 'cycling' : p.sport}|${String(p.title || '').trim().toLowerCase()}`
-  const planShown = (p: CoachPlan) => linkedIds.has(p.id) || (p.icuEventId != null && shownEventIds.has(String(p.icuEventId))) || shownEventKeys.has(planKey(p))
-  const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay)
-  const dayPlans = plans.filter((p) => p.date === selDay && !planShown(p))
+  const planKeys = new Set(plans.map(planKey))
+  const eventShownAsPlan = (e: IcuEvent) => (!!e.external_id && planIds.has(e.external_id)) || planEventIds.has(String(e.id)) || planKeys.has(eventKey(e))
+  const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay && !eventShownAsPlan(e))
+  const dayPlans = plans.filter((p) => p.date === selDay)
   const dayItems = items.filter((it) => it.date === selDay)
   // #202: meals/mind/recovery/supplement get their own sections; notes stay with the workouts.
   const dayMeals = dayItems.filter((it) => it.type === 'meal')
