@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { fetchActivity, fetchActivityStreams, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams } from '../intervals'
+import { fetchActivity, fetchActivityStreams, fetchActivityIntervals, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type ActivityInterval } from '../intervals'
+import { powerZone } from '../workout-summary'
 import { TrendChart, PowerCurveChart } from '../charts'
 import { zoneColor } from '../ui'
 import { getSetting } from '../db'
@@ -105,10 +106,12 @@ export default function ActivityDetail() {
   const [tab, setTab] = useState<'map' | 'timeline' | 'power'>('map')
   const [ftp, setFtp] = useState(260)
   const [review, setReview] = useState<CoachReview | null>(null)
+  const [intervals, setIntervals] = useState<ActivityInterval[]>([])
   useEffect(() => {
     if (!id) return
     setLoading(true)
     getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }).catch(() => {})
+    fetchActivityIntervals(id).then(setIntervals).catch(() => {})
     Promise.all([fetchActivity(id), fetchActivityStreams(id)])
       .then(([act, s]) => {
         setA(act); setStreams(s)
@@ -180,6 +183,24 @@ export default function ActivityDetail() {
       {activeTab === 'timeline' && <RideTimeline streams={streams} />}
       {activeTab === 'power' && <RidePower streams={streams} ftp={ftp} />}
       {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
+
+      {intervals.length > 1 && (
+        <>
+          <div className="section-title" style={{ marginTop: 14 }}>Intervals</div>
+          <div className="stack" style={{ gap: 6 }}>
+            {intervals.map((iv, i) => {
+              const zone = iv.watts && ftp ? powerZone((iv.watts / ftp) * 100) : null
+              return (
+                <div key={i} className="pw-ivrow">
+                  {zone ? <span className="pw-zt">{zone}</span> : <span />}
+                  <span>{iv.label} · {mmss(iv.durationSec)}</span>
+                  <b>{iv.watts ? `${iv.watts} W` : iv.pace ? `${mmss(iv.pace)}/km` : ''}{iv.hr ? ` · ${iv.hr}♥` : ''}</b>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
 
       <div className="links" style={{ marginTop: 12 }}>
         {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}

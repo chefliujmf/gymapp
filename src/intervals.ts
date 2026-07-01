@@ -203,6 +203,26 @@ export async function fetchActivityStreams(id: string | number, types: string[] 
     return out as ActivityStreams
   } catch { return {} }
 }
+/** intervals' own interval/lap breakdown for an activity → the post-workout interval cards (#273). */
+export interface ActivityInterval { label: string; durationSec: number; watts: number | null; hr: number | null; pace: number | null; type: string }
+export async function fetchActivityIntervals(id: string | number): Promise<ActivityInterval[]> {
+  const { apiKey, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return []
+  try {
+    const res = await fetch(`${ICU}/activity/${id}/intervals`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return []
+    const j = await res.json()
+    const list = (j?.icu_intervals || j?.intervals || []) as Record<string, number | string>[]
+    return list.map((iv) => ({
+      label: String(iv.label || iv.type || 'Interval'),
+      durationSec: Number(iv.moving_time || iv.elapsed_time || iv.duration || 0),
+      watts: iv.average_watts != null ? Math.round(Number(iv.average_watts)) : null,
+      hr: iv.average_heartrate != null ? Math.round(Number(iv.average_heartrate)) : null,
+      pace: iv.average_pace != null ? Number(iv.average_pace) : (iv.gap != null ? Number(iv.gap) : null), // sec/km when present
+      type: String(iv.type || ''),
+    })).filter((iv) => iv.durationSec > 0)
+  } catch { return [] }
+}
 export const cleanLatLng = (t?: [number, number][]) => (t || []).filter((p) => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
 export const sportOfActivity = (a: IcuActivity) => (/run/i.test(a.type) ? 'run' : /ride|cycl/i.test(a.type) ? 'ride' : 'gym')
 /** Indoor = trainer/virtual; otherwise outdoor (only meaningful for ride/run). */
