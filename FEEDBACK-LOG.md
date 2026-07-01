@@ -80,8 +80,10 @@ test guide → the **🧪 Test guide** section below.
       insight line, not cramped — skill `platyplus-charts`).
     • **Indoor vs outdoor** = ride/run ONLY: indoor hides route + altitude, keeps sensor tracks. Gym/mind ignore venue.
     • **Gym**: each lift row links to its progress (e1RM/#255) + PR badge; no perf timeline.
-    • **Mind (yoga/pilates/meditation)**: LIGHT — no perf charts; consistency/streak card + simple after-session check
-      (calmer? looser?) + note; coach frames as recovery not PRs.
+    • **Activity-type buckets** (JM 2026-07-01): Ride · Run · Gym · **Yoga/Pilates** (mobility) · **Meditation** (= "Mind").
+      Yoga/Pilates and Meditation are SEPARATE (not grouped) — both LIGHT (no perf charts; consistency/streak + a simple
+      after-session check: yoga/pilates = "looser?/body", meditation = "calmer?/stress"). NO swimming (dropped). A generic
+      **"Other / imported"** fallback (hike/walk/row/etc., render whatever streams exist) = POST-LAUNCH, later.
     • **Platform links**: Strava / intervals.icu / Garmin / Coros / Wahoo — only those the activity was actually pushed to.
     • **TRIMP**: surface in stats + use as the LOAD driver when no power (HR-only runs/indoor).
     Build: charts from activity streams (fetchActivityStreams #51); pre/post keyed on whether a coach-review exists.
