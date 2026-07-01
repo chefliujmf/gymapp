@@ -28,10 +28,11 @@ test guide → the **🧪 Test guide** section below.
     explaining auto; the tag shows "auto · computed" or "auto · manual" so it's clear what's driving. Resolution: auto/
     computed prefer the computed value when available, fall back to manual. Server buildSystemPrompt honours auto too
     (`wantsComputed` helper) so the coach uses the estimate once ready. gymapp-only.
-276. ⬜ **Workout power shows % on dev but WATTS on QA — JM wants WATTS.** JM 2026-06-30: the same workout renders power as
-    % of FTP on dev, watts on QA (likely the dev test user has no FTP → the chart falls back to %). Make the workout/ride
-    power display ALWAYS watts when an FTP is resolvable (use the athlete's FTP, or a sensible default), not %. Check the
-    workout-detail / ride chart power formatting (#217/#219 were the read-side fixes). gymapp-only.
+276. 🔨 **Workout power shows % on dev but WATTS on QA — JM wants WATTS.** JM 2026-06-30: same workout rendered % of FTP on
+    dev, watts on QA — `SegmentProfile` shows watts only when an `ftp` prop is passed, and the detail pages sourced it from
+    the local `getSetting('ftp')` which the dev test user lacked. FIXED: PlanDetail + CoachPlanDetail now resolve
+    `ftp = plan.ftp || localFtp || user.ftp || 200`, so the chart always renders watts (real FTP when known, 200 W
+    fallback otherwise). gymapp-only.
 275. 🔨 **Running "Threshold" stat cell was EMPTY + not editable there.** JM 2026-06-30: the Threshold MiniCard on the
     Running stats page was hardcoded `null` (showed "—") though a threshold pace exists, and he wanted to edit it there,
     not only in Profile. FIXED: RunningStats Threshold cell now shows the pace and is tap-to-edit inline (parses m:ss,

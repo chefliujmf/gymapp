@@ -6,6 +6,7 @@ import { SegmentProfile } from '../ui'
 import { setCurrentRide, canPlayHere } from '../ride'
 import { useBle } from '../BleContext'
 import { getSetting } from '../db'
+import { useAuth } from '../auth/AuthContext'
 import { gymTSS, rpeIntensity } from '../tss'
 
 /** Render the [gymapp] inline/bullet format as the same rows the table path uses. */
@@ -25,6 +26,7 @@ export default function PlanDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const ble = useBle()
+  const { user } = useAuth()
   const e = id ? getPlanEvent(id) : undefined
   const [open, setOpen] = useState<Set<number>>(new Set())
   const toggle = (i: number) => setOpen((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n })
@@ -113,7 +115,7 @@ export default function PlanDetail() {
       {isRide && (
         <>
           <div className="card" style={{ padding: 16, marginTop: 6 }}>
-            <SegmentProfile segs={flattenIcuSteps(e.workout_doc?.steps)} ftp={ftp} />
+            <SegmentProfile segs={flattenIcuSteps(e.workout_doc?.steps)} ftp={ftp || user?.ftp || 200} />
           </div>
           {canPlayHere(!!ble.bridge)
             ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ Ride now</button>
