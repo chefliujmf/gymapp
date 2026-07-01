@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getCoachPlan, gymSessionFromPlan, setGymSession, matchExercise } from '../plan'
 import { calApi, type CalItem } from '../calendar'
 import { SegmentProfile } from '../ui'
+import { workoutSummary, structureRows } from '../workout-summary'
 import { setCurrentRide, canPlayHere } from '../ride'
 import { useBle } from '../BleContext'
 import { getSetting } from '../db'
@@ -46,14 +47,44 @@ export default function CoachPlanDetail() {
       </div>
 
       {/* sport body */}
-      {isEndurance && (p.segments?.length ?? 0) > 0 && (
+      {isEndurance && (p.segments?.length ?? 0) > 0 && (() => {
+        const rFtp = p.ftp || ftp || user?.ftp || 200
+        const rEst = !(p.ftp || ftp || user?.ftp)
+        const sum = workoutSummary(p.segments!, rFtp)
+        const rows = structureRows(p.segments!, rFtp)
+        const fmtDur = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${s}s`)
+        return (
         <>
-          <div className="card" style={{ padding: 16, marginTop: 6 }}><SegmentProfile segs={p.segments!} ftp={p.ftp || ftp || user?.ftp || 200} ftpEstimated={!(p.ftp || ftp || user?.ftp)} /></div>
+          {/* #280 what to expect */}
+          {sum && (
+            <div className="pw-expect">
+              <div className="pw-e"><b>{sum.mainWatts ? `${sum.mainWatts}` : `${sum.mainPct}%`}<small>{sum.mainWatts ? 'W' : ''}</small></b><span>Target{rEst ? ' (est)' : ''}</span></div>
+              <div className="pw-e"><b>{sum.mainZone}</b><span>Zone</span></div>
+              <div className="pw-e"><b>{sum.durationMin}<small>m</small></b><span>Duration</span></div>
+            </div>
+          )}
+          <div className="card" style={{ padding: 16, marginTop: 6 }}><SegmentProfile segs={p.segments!} ftp={rFtp} ftpEstimated={rEst} /></div>
+          {/* #280 structure */}
+          {rows.length > 1 && (
+            <>
+              <div className="section-title">Structure</div>
+              <div className="stack" style={{ gap: 6 }}>
+                {rows.map((r, i) => (
+                  <div key={i} className="pw-ivrow">
+                    <span className="pw-zt">{r.zone}</span>
+                    <span>{r.count > 1 ? `${r.count}× ` : ''}{r.label} · {fmtDur(r.durationSec)}</span>
+                    <b>{r.watts ? `${r.watts} W` : `${r.pct}%`}</b>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
           {canPlayHere(!!ble.bridge)
             ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ {p.sport === 'run' ? 'Run' : 'Ride'} now</button>
             : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to {p.sport === 'run' ? 'run' : 'ride'} — that's where your sensors connect.</div>}
         </>
-      )}
+        )
+      })()}
       {p.sport === 'gym' && (p.exercises?.length ?? 0) > 0 && (
         <>
           <button className="btn" onClick={startGym}>▶ Start workout</button>

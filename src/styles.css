@@ -840,6 +840,14 @@ select.search { appearance: none; -webkit-appearance: none; }
 }
 .auth-note { color: var(--accent, #34e07d); font-size: 13px; text-align: center; margin-top: 12px; }
 .auth-err { color: var(--danger, #ff6b6b); font-size: 13px; text-align: center; margin-top: 12px; }
+/* #280 pre-workout: what-to-expect tiles + structure rows */
+.pw-expect { display: flex; gap: 8px; margin: 10px 0 2px; }
+.pw-e { flex: 1; background: var(--card, #171b22); border: 1px solid var(--line, #242a34); border-radius: 12px; padding: 9px; text-align: center; }
+.pw-e b { font-size: 17px; } .pw-e small { font-size: 10px; }
+.pw-e span { display: block; font-size: 10px; color: var(--text-dim, #9298a6); text-transform: uppercase; letter-spacing: .03em; margin-top: 1px; }
+.pw-ivrow { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; background: var(--card, #171b22); border: 1px solid var(--line, #242a34); border-radius: 10px; padding: 9px 12px; font-size: 13px; }
+.pw-ivrow .pw-zt { font-size: 10px; font-weight: 800; color: var(--accent, #34e07d); background: #34e07d1c; border-radius: 999px; padding: 2px 0; text-align: center; }
+.pw-ivrow b { font-weight: 800; }
 /* Unlock nudge — missing-data → what it unlocks (dataGaps) */
 .gapcard { border: 1px solid #5ec8ff44; background: linear-gradient(#16212b, #141a22); margin: 4px 0 12px; }
 .gapcard__h { font-weight: 800; font-size: 14px; margin-bottom: 8px; }
