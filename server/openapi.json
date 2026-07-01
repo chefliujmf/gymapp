@@ -689,6 +689,14 @@
         "responses": { "200": { "description": "Saved" }, "413": { "description": "memory too long" } }
       }
     },
+    "/api/connections": {
+      "get": {
+        "summary": "Coach checks connections + data flow (Bearer)",
+        "description": "Returns whether intervals.icu/Strava are linked and whether data is actually flowing into intervals: recent activity count, latest activity (date/type/source), device sources feeding intervals, and whether HRV/sleep/resting-HR wellness is present. Used in onboarding to tell the athlete exactly what to connect.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Connection + data-flow status" } }
+      }
+    },
     "/api/onboarding/complete": {
       "post": {
         "summary": "Coach marks onboarding complete (Bearer)",

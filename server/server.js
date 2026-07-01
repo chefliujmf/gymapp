@@ -834,15 +834,31 @@ function buildSystemPrompt(user) {
     if (user.ftp) known.push(`FTP ${user.ftp} W`)
     if (user.maxHR) known.push(`max HR ${user.maxHR} bpm`)
     if ((user.sports || []).length) known.push(`sports ${user.sports.join(', ')}`)
-    p += `\n\n# ONBOARDING — this athlete has NO profile yet. RUN THE INTERVIEW NOW.
+    const icuOn = !!user.icuKey
+    const stravaOn = userStravaConnected(user)
+    p += `\n\n# ONBOARDING — this athlete has NO profile yet. RUN THE INTERVIEW NOW, and GET THEIR DATA CONNECTED.
 You are meeting them for the FIRST time. Open with a warm one-line hello using their name if known (${user.username || 'there'}), say you're their coach and you'll get them set up in a couple of minutes, then START asking. Lead the conversation — they may reply by tapping, typing, OR voice, and may give extra detail; roll with it.
-${known.length ? `Already known from intervals.icu (CONFIRM, don't re-ask): ${known.join(', ')}. ` : ''}Cover, a couple of questions at a time, conversationally (NOT a long form):
+${known.length ? `Already known from intervals.icu (CONFIRM, don't re-ask): ${known.join(', ')}. ` : ''}
+
+## Connections — do this EARLY, it's what makes the plan good
+Platyplus↔service status right now: intervals.icu ${icuOn ? 'CONNECTED ✅' : 'NOT connected ❌'} · Strava ${stravaOn ? 'connected ✅' : 'not connected'}.
+- **CALL check_connections** to see the TRUTH — not just whether intervals is linked, but whether their data is actually FLOWING in: recent synced activities (+ the source device), and whether HRV/sleep/resting-HR are present. Do this early, and again after you learn what device they use.
+- **intervals.icu is the data hub** — fitness/fatigue/Form, HRV, sleep, resting HR, FTP/threshold/max-HR and past activities all come from it. Without it you're planning half-blind.
+${icuOn ? '- intervals is linked — call check_connections; if activities/wellness are flowing, pull their benchmarks + recent training to ground the plan.' : `- intervals is NOT linked. Walk them through it: **Profile → Connect intervals.icu**, paste their intervals API key (from intervals.icu → Settings → Developer). Explain plainly why. You can't do it for them — guide, then re-check.`}
+- **Match device to data flow**: ask what watch/head-unit they use (Garmin, Coros, Wahoo, Suunto, Polar, Apple Watch…), then use check_connections to see if that source is actually syncing into intervals. If it isn't, tell them EXACTLY what to fix: connect that device (and Strava) INSIDE intervals.icu (intervals → Settings → connections) so every ride/run + overnight HRV/sleep flows in automatically. Confirm ("your Coros runs are flowing ✅" / "I don't see any Coros data yet — connect it in intervals").
+- Strava (optional) is for sharing completed activities — offer **Profile → Connect Strava** if they want that.
+
+## Interview — a couple of questions at a time, conversational (NOT a long form)
 1) which sport(s) they do → call set_sports as soon as you know;
-2) basics for fuelling & readiness: confirm sex/height/date-of-birth/weight (prefill what's known above);
+2) basics for fuelling & readiness: sex / height / date-of-birth / weight (prefill what's known above);
 3) their main goal + rough experience level;
-4) a REALISTIC normal week: which days they can train, typical time per session, and any hard floors (e.g. min ride length);
+4) a REALISTIC normal week: which days they can train, typical time per session, any hard floors (e.g. min ride length);
 5) equipment / gym access; 6) constraints or injuries; 7) food preferences; 8) anything else they want their coach to know.
-As you learn durable facts, call set_athlete_profile with the FULL clean markdown profile (rewrite it whole each time, don't append fragments). When you have enough, DRAFT THEIR FIRST WEEK with create_workout/create_ride/create_run around their availability (easy-first, one quality day, respect their time + equipment), then call notify with a short "here's your first week" summary, and FINALLY call finish_onboarding to mark setup done. Keep every message short and encouraging.`
+As you learn durable facts, call set_athlete_profile with the FULL clean markdown profile (rewrite it whole each time).
+
+## DATA-READINESS GATE — do NOT draft the plan until you have what you need
+Before generating the week, make sure you actually have: sport(s) · goal · experience · weekly availability + session length · equipment · constraints, PLUS the fitness anchors — for endurance: FTP or threshold pace (+ max HR, weight), ideally pulled from intervals; for strength: experience/main lifts. If intervals is connected, use their real benchmarks + recent training. If a key anchor is missing, ASK for it (or a best estimate) — don't invent numbers. If intervals still isn't connected, you MAY draft a sensible STARTER week from what they told you, but say clearly it'll sharpen once intervals is connected and their data syncs.
+Then DRAFT THEIR FIRST WEEK with create_workout/create_ride/create_run around their availability (easy-first, one quality day, respect time + equipment), call notify with a short "here's your first week" summary, and FINALLY call finish_onboarding. Keep every message short and encouraging.`
   }
   return p
 }
@@ -1544,6 +1560,32 @@ app.put('/api/profile', apiAuth, (req, res) => {
 // Sets onboardedAt so the Today welcome card stops showing. The user can still skip earlier.
 app.post('/api/onboarding/complete', apiAuth, (req, res) => {
   req.user.onboardedAt = Date.now(); save(store); res.json({ ok: true, onboardedAt: req.user.onboardedAt })
+})
+// #257 — the coach VERIFIES connections & data flow (so it can tell the user exactly what to connect).
+// Reports Platyplus↔intervals/Strava links AND whether data is actually flowing INTO intervals
+// (recent activities + their source device, and whether HRV/sleep/RHR wellness is present).
+app.get('/api/connections', apiAuth, async (req, res) => {
+  const intervals = !!req.user.icuKey
+  const strava = userStravaConnected(req.user)
+  let recentActivities = 0, lastActivity = null, wellness = { hrv: false, sleep: false, restingHR: false }
+  const sources = []
+  if (intervals) {
+    const ath = req.user.icuAthlete || 'i28814'
+    const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(21)}&newest=${icuDay(0)}`).catch(() => null)
+    if (Array.isArray(acts)) {
+      recentActivities = acts.length
+      const sorted = acts.filter((a) => a.start_date_local).sort((a, b) => (a.start_date_local < b.start_date_local ? 1 : -1))
+      if (sorted[0]) lastActivity = { date: sorted[0].start_date_local.slice(0, 10), type: sorted[0].type || null, source: sorted[0].source || sorted[0].device_name || null }
+      for (const a of acts) { const s = a.source || a.device_name; if (s && !sources.includes(s)) sources.push(s) }
+    }
+    const well = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${icuDay(14)}&newest=${icuDay(0)}`).catch(() => null)
+    if (Array.isArray(well)) wellness = {
+      hrv: well.some((w) => w.hrv != null || w.hrvSDNN != null),
+      sleep: well.some((w) => w.sleepSecs != null || w.sleepScore != null),
+      restingHR: well.some((w) => w.restingHR != null),
+    }
+  }
+  res.json({ intervals, strava, recentActivities, lastActivity, deviceSources: sources.slice(0, 6), wellness })
 })
 
 // Calendar items (meal / mind / note) — Platyplus-only, no intervals push.

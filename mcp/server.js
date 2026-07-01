@@ -85,6 +85,11 @@ server.tool('set_athlete_profile',
   { profile: z.string().describe('the full athlete profile as markdown') },
   wrap((a) => api('PUT', '/api/profile/athlete', { profile: a.profile })))
 
+server.tool('check_connections',
+  "Check what's connected + whether the athlete's data is actually flowing into intervals.icu. Returns: intervals linked?, Strava linked?, how many activities synced in the last 3 weeks (+ the latest one's date/type/source device), which device sources are feeding intervals (e.g. Garmin/Coros/Wahoo/Strava), and whether HRV/sleep/resting-HR wellness is present. Use during onboarding (and anytime data looks missing) to tell the athlete EXACTLY what to connect — e.g. if they said they use a Coros but no activities are syncing, tell them to connect Coros inside intervals.icu.",
+  {},
+  wrap(() => api('GET', '/api/connections')))
+
 server.tool('save_coach_memory',
   "Save/replace YOUR durable coaching memory for this athlete — what you've learned WORKS or FAILS for them, adjustments that paid off, and how they like to be coached (tone, cadence, preferences, constraints). Separate from set_athlete_profile (that's WHO they are; this is HOW to coach them). Read it every session and keep it current: write the FULL updated memory as tight dated bullets, marking rules active/retired. Use when they give feedback, when an approach works/flops, or when they state a preference.",
   { memory: z.string().describe('the full coach memory as markdown (dated bullets, active/retired)') },
