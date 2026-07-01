@@ -161,6 +161,9 @@ export const authApi = {
   checkins: (from: string, to: string) => req<Checkin[]>(`/checkins?from=${from}&to=${to}`),
   readiness: (date: string) => req<Readiness>(`/readiness?date=${date}`),
   planFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string }) => req<{ ok: boolean }>(`/plan/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
+  // #273 feedback on a completed device activity (no plan)
+  getActivityFeedback: (id: string) => req<{ feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; at?: number } | null>(`/activity/${encodeURIComponent(id)}/feedback`),
+  activityFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; sport?: string; date?: string }) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   promoteProd: () => req<{ ok: boolean }>('/promote-prod', { method: 'POST' }),
   // Fan a Platyplus-recorded workout out to intervals (match-first, server-side, #122/#123).
   completeActivity: (a: { sport: string; title: string; date: string; startIso: string; durationSec: number; samples: { t: number; power?: number; cadence?: number; hr?: number }[] }) =>

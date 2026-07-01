@@ -8,7 +8,7 @@ import { DoneStats } from '../ui'
 // Intervals.icu "Feel" scale (Strong/Good/Normal/Poor/Weak), mirrored backend-side.
 // Exported so Log-activity shares ONE feedback model + coach pipeline (#143).
 export const FEEL: [string, string][] = [['Strong', '😎'], ['Good', '🙂'], ['Normal', '😐'], ['Poor', '🙁'], ['Weak', '😵']]
-const RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+export const RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 // RIDE/RUN feedback MIRRORS the athlete's intervals.icu custom ACTIVITY_FIELDs exactly (#147) —
 // names + option lists fetched 2026-06-26 from /athlete/{id}/custom-item (type ACTIVITY_FIELD).
 export const ICU_FIELDS: [string, string[]][] = [

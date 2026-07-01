@@ -632,6 +632,35 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
   }
 })
 
+// #273 — post-workout feedback for a COMPLETED intervals ACTIVITY (device rides/runs that have no
+// Platyplus plan). Stored per-user keyed by activity id; triggers an async coach review (activityId).
+app.get('/auth/activity/:id/feedback', auth, (req, res) => res.json((req.user.activityFeedback || {})[String(req.params.id)] || null))
+app.post('/auth/activity/:id/feedback', auth, (req, res) => {
+  const id = String(req.params.id)
+  const b = req.body || {}
+  const fb = {
+    feel: typeof b.feel === 'string' ? b.feel : undefined,
+    rpe: Number(b.rpe) >= 1 && Number(b.rpe) <= 10 ? Number(b.rpe) : undefined,
+    fields: (b.fields && typeof b.fields === 'object') ? Object.fromEntries(Object.entries(b.fields).filter(([, v]) => typeof v === 'string').slice(0, 12)) : {},
+    note: typeof b.note === 'string' ? b.note.slice(0, 1000) : '',
+    sport: typeof b.sport === 'string' ? b.sport.slice(0, 20) : undefined,
+    date: typeof b.date === 'string' ? b.date.slice(0, 10) : undefined,
+    at: Date.now(),
+  }
+  if (!req.user.activityFeedback) req.user.activityFeedback = {}
+  req.user.activityFeedback[id] = fb
+  save(store)
+  res.json({ ok: true, feedback: fb })
+  // async coach review referencing the activity (best-effort; only once the coach is set up).
+  if (req.user.coachProfile && req.user.coachProfile.trim()) {
+    try {
+      const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
+      const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${id}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${id}") with a one-line verdict, 2-4 short takeaways, and what's next. If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. Be concise; decide and act.`
+      runCoachTask(req.user, msg).catch((e) => console.error('[activity-review] ' + (e.message || e)))
+    } catch (e) { console.error('[activity-review] trigger ' + e.message) }
+  }
+})
+
 // admin: user management
 app.get('/auth/users', auth, admin, (req, res) => res.json(store.users.map(pub)))
 app.post('/auth/users', auth, admin, async (req, res) => {

@@ -840,6 +840,9 @@ select.search { appearance: none; -webkit-appearance: none; }
 }
 .auth-note { color: var(--accent, #34e07d); font-size: 13px; text-align: center; margin-top: 12px; }
 .auth-err { color: var(--danger, #ff6b6b); font-size: 13px; text-align: center; margin-top: 12px; }
+/* #273 post-workout: collapsed feedback summary */
+.pw-fbsum { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text-dim, #9298a6); margin: 8px 0; }
+.pw-fbsum span { min-width: 0; }
 /* #273 post-workout: coach verdict card */
 .pw-verdict { border: 1px solid #34e07d55; background: linear-gradient(#1a2a20, #161c22); margin: 8px 0 10px; }
 .pw-vtop { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }

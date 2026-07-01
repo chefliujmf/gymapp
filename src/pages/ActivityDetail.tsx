@@ -6,7 +6,53 @@ import { TrendChart, PowerCurveChart } from '../charts'
 import { zoneColor } from '../ui'
 import { getSetting } from '../db'
 import { authApi, type CoachReview } from '../auth/api'
+import { FEEL, RPE, FIELDS } from './PostWorkout'
 import FlybyMap from '../FlybyMap'
+
+// #273 — feedback capture for a completed device activity (no plan). Feedback-first when unreviewed;
+// collapses to a one-line summary once submitted/reviewed. Reuses the shared feedback model (#143).
+function ActivityFeedback({ id, sport, date }: { id: string; sport: string; date: string }) {
+  const [feel, setFeel] = useState<string | undefined>()
+  const [rpe, setRpe] = useState<number | undefined>()
+  const [fields, setFields] = useState<Record<string, string>>({})
+  const [note, setNote] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    authApi.getActivityFeedback(id).then((f) => { if (f) { setFeel(f.feel); setRpe(f.rpe); setFields(f.fields || {}); setNote(f.note || ''); setSaved(true) } }).catch(() => {}).finally(() => setLoaded(true))
+  }, [id])
+  const sportFields = FIELDS[sport] || FIELDS.gym
+  async function save() { await authApi.activityFeedback(id, { feel, rpe, fields, note, sport, date }).catch(() => {}); setSaved(true); setEditing(false) }
+  if (!loaded) return null
+  if (saved && !editing) {
+    const summary = [feel, rpe ? `RPE ${rpe}` : null, ...Object.values(fields)].filter(Boolean).join(' · ')
+    return (
+      <div className="card pw-fbsum">
+        <span>✅ Your feedback: {summary || '—'}</span>
+        <button className="auth-link" style={{ width: 'auto', padding: 0 }} onClick={() => setEditing(true)}>Edit</button>
+      </div>
+    )
+  }
+  return (
+    <div className="card" style={{ padding: '4px 14px 16px' }}>
+      <div className="section-title">How did it go?</div>
+      <p className="meta" style={{ margin: '-4px 0 8px' }}>Log it — your coach reviews it right after you submit.</p>
+      <div className="feelrow">{FEEL.map(([l, f]) => <button key={l} className={'feel' + (feel === l ? ' on' : '')} onClick={() => setFeel(l)}><span className="feel__f">{f}</span><span className="feel__l">{l}</span></button>)}</div>
+      <div className="section-title">Effort (RPE)</div>
+      <div className="rpe">{RPE.map((n) => <button key={n} className={'rpe__b' + (rpe === n ? ' on' : '')} onClick={() => setRpe(n)}>{n}</button>)}</div>
+      {sportFields.map(([label, opts]) => (
+        <div key={label}>
+          <div className="section-title">{label}</div>
+          <div className="chips">{opts.map((o) => <button key={o} className={'chip' + (fields[label] === o ? ' chip--active' : '')} onClick={() => setFields((f) => ({ ...f, [label]: o }))}>{o}</button>)}</div>
+        </div>
+      ))}
+      <div className="section-title">Anything else?</div>
+      <textarea className="fb-ta" value={note} onChange={(e) => setNote(e.target.value)} placeholder="How the body felt, life context, niggles…" />
+      <button className="btn" style={{ marginTop: 14 }} onClick={save} disabled={!feel && !rpe}>Save &amp; get coach review</button>
+    </div>
+  )
+}
 
 // #54 Power tab: mean-max power curve + time-in-zone, computed from the watts stream.
 const CURVE_DURATIONS = [1, 5, 15, 30, 60, 300, 600, 1200, 1800, 3600]
@@ -160,6 +206,8 @@ export default function ActivityDetail() {
         </div>
       </div>
 
+      {!review && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} />}
+
       {review && (review.verdict || review.takeaways?.length || review.execution?.length || review.next) && (
         <div className="card pw-verdict">
           <div className="pw-vtop"><span className="pw-vh">💬 Your coach</span>{review.score != null && <span className="pw-score">Score {review.score}/10</span>}</div>
@@ -201,6 +249,8 @@ export default function ActivityDetail() {
           </div>
         </>
       )}
+
+      {review && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} />}
 
       <div className="links" style={{ marginTop: 12 }}>
         {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}
