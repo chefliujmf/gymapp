@@ -55,6 +55,7 @@ export function gymSessionFromPlan(p: CoachPlan): AdHocSession {
         name: x.name, exId: lib?.id, image: lib?.image, video: lib?.video, imageFemale: lib?.imageFemale, videoFemale: lib?.videoFemale,
         mode: x.mode || 'reps', seconds: x.seconds || 0, rest: x.rest || 0, sets: x.sets || 3, reps: x.reps || 10,
         note: (x.mode || 'reps') === 'reps' ? `${x.sets || 3}×${x.reps || 10}` : undefined,
+        tempo: x.tempo, tip: x.tip,
       })
     }
   return { workoutId: 'plan-' + p.id, title: p.title, exercises }
@@ -74,6 +75,7 @@ export function getCoachPlan(id: string): CoachPlan | undefined {
 export interface AdHocEx {
   name: string; exId?: string; image?: string; video?: string; imageFemale?: string; videoFemale?: string
   mode: 'timed' | 'reps'; seconds: number; rest: number; sets: number; reps: number; note?: string
+  tempo?: string; tip?: string // #284
 }
 export interface AdHocSession { workoutId: string; title: string; exercises: AdHocEx[]; intensity?: 'low' | 'moderate' | 'high' }
 
