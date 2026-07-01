@@ -120,15 +120,25 @@ export default function ActivityDetail() {
   const hasPower = (streams.watts?.filter((v) => v != null).length || 0) >= 5
   const tabs = ([track.length > 1 && 'map', hasTimeline && 'timeline', hasPower && 'power'].filter(Boolean)) as ('map' | 'timeline' | 'power')[]
   const activeTab: 'map' | 'timeline' | 'power' = tabs.includes(tab) ? tab : (tabs[0] || 'map')
+  // #273 — intervals-style metric grid (only what this activity actually has).
   const stats: [string, string][] = ([
-    a.distance ? ['Distance', `${(a.distance / 1000).toFixed(1)} km`] : null,
     a.moving_time ? ['Time', fmtTime(a.moving_time)] : null,
+    a.distance ? ['Distance', `${(a.distance / 1000).toFixed(1)} km`] : null,
+    a.icu_intensity ? ['Intensity', `${Math.round(a.icu_intensity * 100)}%`] : null,
+    a.icu_training_load ? ['Load (TSS)', String(a.icu_training_load)] : null,
+    a.icu_weighted_avg_watts ? ['Norm power', `${Math.round(a.icu_weighted_avg_watts)} W`] : null,
     a.icu_average_watts ? ['Avg power', `${Math.round(a.icu_average_watts)} W`] : null,
+    a.icu_variability_index ? ['Variability', a.icu_variability_index.toFixed(2)] : null,
+    a.icu_eftp ? ['Act. eFTP', `${Math.round(a.icu_eftp)} W`] : null,
     a.average_heartrate ? ['Avg HR', `${Math.round(a.average_heartrate)} bpm`] : null,
+    a.max_heartrate ? ['Max HR', `${Math.round(a.max_heartrate)} bpm`] : null,
+    a.trimp ? ['TRIMP', String(Math.round(a.trimp))] : null,
+    a.average_cadence ? ['Cadence', String(Math.round(a.average_cadence))] : null,
     a.total_elevation_gain ? ['Elevation', `${Math.round(a.total_elevation_gain)} m`] : null,
-    a.icu_training_load ? ['TSS', String(a.icu_training_load)] : null,
+    a.calories ? ['Calories', String(Math.round(a.calories))] : null,
     a.avg_lr_balance ? ['L/R balance', `${Math.round(100 - a.avg_lr_balance)} · ${Math.round(a.avg_lr_balance)}`] : null,
   ].filter(Boolean)) as [string, string][]
+  const device = a.device_name || a.source
 
   return (
     <div>
@@ -139,6 +149,8 @@ export default function ActivityDetail() {
           <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Activity'}</h1>
         </div>
       </div>
+
+      <div className="actstats">{stats.map(([l, v]) => <div key={l} className="actstat"><span>{l}</span><b>{v}</b></div>)}</div>
 
       {tabs.length > 0 && (
         <div className="act-tabs">
@@ -153,11 +165,10 @@ export default function ActivityDetail() {
       {activeTab === 'power' && <RidePower streams={streams} ftp={ftp} />}
       {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
 
-      <div className="actstats">{stats.map(([l, v]) => <div key={l} className="actstat"><span>{l}</span><b>{v}</b></div>)}</div>
-
       <div className="links" style={{ marginTop: 12 }}>
         {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}
         {a.strava_id && <a className="done-link" href={`https://www.strava.com/activities/${a.strava_id}`} target="_blank" rel="noreferrer">Strava ↗</a>}
+        {device && <span className="done-link" style={{ opacity: 0.7 }}>from {device}</span>}
       </div>
     </div>
   )

@@ -149,14 +149,24 @@ export interface IcuActivity {
   distance?: number // metres
   total_elevation_gain?: number // metres climbed
   icu_average_watts?: number
+  icu_weighted_avg_watts?: number // Normalized Power
+  icu_variability_index?: number
+  icu_efficiency_factor?: number
+  icu_eftp?: number // estimated FTP from this activity
   average_heartrate?: number
+  max_heartrate?: number
+  average_cadence?: number
+  calories?: number
   icu_training_load?: number // TSS
   icu_intensity?: number // IF
+  trimp?: number // HR-based load
   avg_lr_balance?: number // average left/right pedal balance (% on the right), when the meter records it
   trainer?: boolean
   icu_rpe?: number // 1-10
   feel?: number // 1-5
   strava_id?: number | string // set when the activity is linked to Strava
+  device_name?: string // e.g. Garmin/Coros/Wahoo — the source that uploaded to intervals
+  source?: string
 }
 /** Completed activities in a window (read-only). Empty on no key / error. */
 export async function fetchActivities(oldest: string, newest: string): Promise<IcuActivity[]> {
