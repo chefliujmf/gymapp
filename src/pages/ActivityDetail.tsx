@@ -7,6 +7,7 @@ import { zoneColor } from '../ui'
 import { getSetting } from '../db'
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
+import CoachVerdict from '../CoachVerdict'
 import FlybyMap from '../FlybyMap'
 
 // #54 Power tab: mean-max power curve + time-in-zone, computed from the watts stream.
@@ -163,14 +164,7 @@ export default function ActivityDetail() {
 
       {!review && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} />}
 
-      {review && (review.verdict || review.takeaways?.length || review.execution?.length || review.next) && (
-        <div className="card pw-verdict">
-          <div className="pw-vtop"><span className="pw-vh">💬 Your coach</span>{review.score != null && <span className="pw-score">Score {review.score}/10</span>}</div>
-          {review.verdict && <p className="pw-vp">{review.verdict}</p>}
-          {(review.takeaways || review.execution || []).slice(0, 4).map((t, i) => <div key={i} className="pw-vli">• {t}</div>)}
-          {review.next && <div className="pw-vli">📈 <b>Next:</b> {review.next}</div>}
-        </div>
-      )}
+      {review && <CoachVerdict review={review} />}
 
       <div className="actstats">{stats.map(([l, v]) => <div key={l} className="actstat"><span>{l}</span><b>{v}</b></div>)}</div>
 

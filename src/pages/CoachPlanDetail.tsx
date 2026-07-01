@@ -70,6 +70,7 @@ export default function CoachPlanDetail() {
             </div>
           )}
           <div className="card" style={{ padding: 16, marginTop: 6 }}><SegmentProfile segs={p.segments!} ftp={rFtp} ftpEstimated={rEst} /></div>
+          <p className="meta" style={{ margin: '6px 2px 0', whiteSpace: 'normal' }}>💡 {p.cues?.[0] || (sum && sum.mainPct >= 91 ? 'Warm up fully — the first hard effort should feel controlled, not a shock; keep recoveries easy and let HR drop.' : 'Hold steady targets — smooth and repeatable beats spiky.')}</p>
           {/* #280 structure */}
           {rows.length > 1 && (
             <>

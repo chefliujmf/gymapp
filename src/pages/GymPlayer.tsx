@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { db, getSetting, setSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
 import { e1rm, weightForReps, roundLoad, bestE1rmByExercise } from '../strength'
 import { getGymSession } from '../plan'
+import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
-import { authApi } from '../auth/api'
+import CoachVerdict from '../CoachVerdict'
 import { localISO } from '../date'
 import { gymTSS, type GymIntensity } from '../tss'
 
@@ -79,6 +80,8 @@ export default function GymPlayer() {
   const isTemplate = path.includes('/template/')
   const isSession = path.includes('/gym-session')
   const beep = useBeeper()
+  const [review, setReview] = useState<CoachReview | null>(null) // #285 coach verdict for today's gym (async)
+  useEffect(() => { authApi.coachReviews().then((r) => { const t = localISO(); setReview(r.find((x) => x.date === t && (x.sport === 'gym' || !x.sport)) || null) }).catch(() => {}) }, [])
   const gender = (useLiveQuery(() => getSetting('gender')) as 'male' | 'female' | undefined) ?? 'male'
   const female = gender === 'female'
 
@@ -302,6 +305,8 @@ export default function GymPlayer() {
             <p style={{ color: 'var(--text-dim,#888)', margin: 0 }}>{w.title}</p>
           </div>
 
+          {review && <div style={{ marginTop: 16 }}><CoachVerdict review={review} /></div>}
+
           {/* A — summary totals */}
           <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginTop: 16 }}>
             <div className="stat"><div className="v">{totVol > 0 ? totVol.toLocaleString() : totalEx}<small>{totVol > 0 ? ' kg' : ''}</small></div><div className="k">{totVol > 0 ? 'Volume' : 'Exercises'}</div></div>
@@ -312,17 +317,17 @@ export default function GymPlayer() {
 
           {/* B — by exercise */}
           {byEx.length > 0 && <>
-            <div className="section-title" style={{ marginTop: 18 }}>By exercise</div>
+            <div className="section-title" style={{ marginTop: 18 }}>By exercise <span className="meta" style={{ fontWeight: 400 }}>· tap for progress</span></div>
             <div className="stack" style={{ gap: 8 }}>
               {byEx.map((e, i) => (
-                <div key={i} className="card" style={{ padding: '11px 13px' }}>
+                <Link key={i} to="/progress" className="card" style={{ padding: '11px 13px', display: 'block', textDecoration: 'none', color: 'inherit' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <strong style={{ fontSize: 14 }}>{e.name}</strong>
+                    <strong style={{ fontSize: 14 }}>{e.name} <span className="chev" style={{ color: 'var(--accent)' }}>›</span></strong>
                     {e.est > 0 && <span className="meta" style={{ flex: 'none' }}>est 1RM {e.est} kg</span>}
                   </div>
                   <div className="plan-desc" style={{ marginTop: 2 }}>{e.sets.map((s) => `${s.weight || 0}×${s.reps || 0}`).join(' · ')}{e.vol > 0 ? ` — ${e.vol.toLocaleString()} kg` : ''}</div>
                   <div className="gymbar"><i style={{ width: `${Math.round((e.vol / maxVol) * 100)}%` }} /></div>
-                </div>
+                </Link>
               ))}
             </div>
           </>}
