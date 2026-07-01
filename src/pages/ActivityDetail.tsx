@@ -4,6 +4,7 @@ import { fetchActivity, fetchActivityStreams, cleanLatLng, sportOfActivity, isIn
 import { TrendChart, PowerCurveChart } from '../charts'
 import { zoneColor } from '../ui'
 import { getSetting } from '../db'
+import { authApi, type CoachReview } from '../auth/api'
 import FlybyMap from '../FlybyMap'
 
 // #54 Power tab: mean-max power curve + time-in-zone, computed from the watts stream.
@@ -103,12 +104,18 @@ export default function ActivityDetail() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'map' | 'timeline' | 'power'>('map')
   const [ftp, setFtp] = useState(260)
+  const [review, setReview] = useState<CoachReview | null>(null)
   useEffect(() => {
     if (!id) return
     setLoading(true)
     getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }).catch(() => {})
     Promise.all([fetchActivity(id), fetchActivityStreams(id)])
-      .then(([act, s]) => { setA(act); setStreams(s) })
+      .then(([act, s]) => {
+        setA(act); setStreams(s)
+        // #273: show the coach's verdict for this activity (matched by id, else same-day).
+        const day = (act?.start_date_local || '').slice(0, 10)
+        if (day) authApi.coachReviews().then((rv) => setReview(rv.find((r) => r.activityId === id) || rv.find((r) => r.date === day) || null)).catch(() => {})
+      })
       .finally(() => setLoading(false))
   }, [id])
 
@@ -149,6 +156,15 @@ export default function ActivityDetail() {
           <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Activity'}</h1>
         </div>
       </div>
+
+      {review && (review.verdict || review.takeaways?.length || review.execution?.length || review.next) && (
+        <div className="card pw-verdict">
+          <div className="pw-vtop"><span className="pw-vh">💬 Your coach</span>{review.score != null && <span className="pw-score">Score {review.score}/10</span>}</div>
+          {review.verdict && <p className="pw-vp">{review.verdict}</p>}
+          {(review.takeaways || review.execution || []).slice(0, 4).map((t, i) => <div key={i} className="pw-vli">• {t}</div>)}
+          {review.next && <div className="pw-vli">📈 <b>Next:</b> {review.next}</div>}
+        </div>
+      )}
 
       <div className="actstats">{stats.map(([l, v]) => <div key={l} className="actstat"><span>{l}</span><b>{v}</b></div>)}</div>
 

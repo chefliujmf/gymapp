@@ -840,6 +840,14 @@ select.search { appearance: none; -webkit-appearance: none; }
 }
 .auth-note { color: var(--accent, #34e07d); font-size: 13px; text-align: center; margin-top: 12px; }
 .auth-err { color: var(--danger, #ff6b6b); font-size: 13px; text-align: center; margin-top: 12px; }
+/* #273 post-workout: coach verdict card */
+.pw-verdict { border: 1px solid #34e07d55; background: linear-gradient(#1a2a20, #161c22); margin: 8px 0 10px; }
+.pw-vtop { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.pw-vh { font-weight: 800; font-size: 14px; }
+.pw-score { background: #34e07d22; color: var(--accent, #34e07d); border: 1px solid #34e07d55; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.pw-vp { margin: 0 0 8px; font-size: 13px; line-height: 1.45; color: #dfe4ea; }
+.pw-vli { font-size: 12.5px; color: var(--text-dim, #9298a6); line-height: 1.5; margin: 2px 0; }
+.pw-vli b { color: var(--text, #eef1f4); }
 /* #280 pre-workout: what-to-expect tiles + structure rows */
 .pw-expect { display: flex; gap: 8px; margin: 10px 0 2px; }
 .pw-e { flex: 1; background: var(--card, #171b22); border: 1px solid var(--line, #242a34); border-radius: 12px; padding: 9px; text-align: center; }
