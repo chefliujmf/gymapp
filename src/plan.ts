@@ -96,7 +96,9 @@ const firstNum = (s?: string) => { const m = (s || '').match(/\d+/); return m ? 
 const lastNum = (s?: string) => { const m = (s || '').match(/\d+/g); return m ? Number(m[m.length - 1]) : 60 }
 
 const STOP = new Set(['or', 'plus', 'and', 'the', 'a', 'an', 'with', 'to', 'of', 'for', 'machine', 'seated', 'standing'])
-const toks = (s: string) => norm(s).split(' ').filter((w) => w && !STOP.has(w))
+// #296: fold common singular/plural gym terms so "Biceps curl" matches "Bicep Curl" video entries.
+const STEM: Record<string, string> = { biceps: 'bicep', triceps: 'tricep', abs: 'ab', calves: 'calf', flyes: 'fly', flies: 'fly', curls: 'curl', rows: 'row', raises: 'raise', presses: 'press', squats: 'squat', lunges: 'lunge', dips: 'dip', extensions: 'extension' }
+const toks = (s: string) => norm(s).split(' ').filter((w) => w && !STOP.has(w)).map((w) => STEM[w] || w)
 
 /** Match a coach exercise label ("Dumbbell bench press or machine chest press")
  * to the best library demo by significant-word overlap. */
