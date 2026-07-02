@@ -350,6 +350,13 @@ export default function Today() {
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [])
   useEffect(() => { load() }, [load])
+  // #293 one-time: re-reconcile a WIDE window (past 45d → future 30d) so EXISTING plans pick up the
+  // corrected segment flattening (repeat blocks were collapsed to a flat 0-W block). Runs once/client.
+  useEffect(() => {
+    if (localStorage.getItem('plansResync293')) return
+    const d = (off: number) => { const x = new Date(); x.setDate(x.getDate() + off); return x.toISOString().slice(0, 10) }
+    syncIcuPlans(d(-45), d(30)).then(() => { localStorage.setItem('plansResync293', '1'); load() }).catch(() => {})
+  }, [load])
   useEffect(() => { listTemplates().then(setTemplates); listRideTemplates().then(setRideTemplates); getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }) }, [])
 
   function runPlan(p: CoachPlan) {
