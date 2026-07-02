@@ -920,6 +920,11 @@ function buildSystemPrompt(user) {
     const wk = DOW.reduce((s, [k]) => s + (Number(av[k]) || 0), 0)
     if (wk > 0) p += `\n\n# WEEKLY AVAILABILITY (hours/day the athlete can train): ${line} (${wk}h/wk total). RESPECT IT — fit each session inside that day's window (no ${'`'}2h+${'`'} ride on a 30-min day), place the long ride on the biggest day, and don't schedule anything on a 0h/rest day. If the week's target needs more time than available, say so rather than overbooking.`
   }
+  // #316 — desired training FREQUENCY. Plan exactly this many COMMITTED sessions/week; if they want more,
+  // an EXTRA session is a clearly-labelled OPTIONAL/BONUS (title it "(optional)" and note it's a bonus),
+  // never part of the base load.
+  const freq = Number(user.info?.trainingDays) || 0
+  if (freq > 0) p += `\n\n# TRAINING FREQUENCY: the athlete wants ~${freq} training days/week. Plan exactly ${freq} COMMITTED sessions. If they ask for more (a bonus day), add ONE OPTIONAL session — prefix its title with "(optional)" and say it's a bonus they can skip — don't inflate the base week.`
   // #284 — gym prescription depth: tempo (time-under-tension) + per-lift + session tips.
   p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): for each lift set sets×reps and ALWAYS set a TEMPO on strength lifts — 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower · 1s pause · 1s lift · 0s top (slower eccentric ⇒ more time-under-tension ⇒ hypertrophy/control; faster ⇒ power). Default to "3-1-1-0" for main + accessory strength work; only omit tempo for pure mobility/holds/plyometrics. This is REQUIRED, not optional — the app shows it as a chip. Add a one-line FORM tip per lift, and ONE whole-session \`tip\`. Don't set weight — the app fills it from the athlete's e1RM. Keep tips short and practical.`
   const diet = String(user.info?.diet || '').toLowerCase()

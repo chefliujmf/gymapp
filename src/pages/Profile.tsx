@@ -221,7 +221,7 @@ export default function Profile() {
         ? <p className="meta" style={{ margin: '6px 2px 4px', color: 'var(--accent)' }}>💚 Coaching adjusted for female physiology — cycle-aware fuelling, recovery & load.</p>
         : <p className="meta" style={{ margin: '6px 2px 4px' }}>Tunes fuelling & recovery.{connected ? ' Prefilled from intervals.' : ''}</p>}
 
-      <div id="ob-avail"><Availability /></div>
+      <Availability />{/* #ob-avail anchor is on Availability's own section-title */}
 
       {/* #320 — equipment is a coaching input (like sports/diet), so it lives here on Profile, not Settings. */}
       <EquipmentPicker />
