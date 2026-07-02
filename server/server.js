@@ -1297,12 +1297,25 @@ function resolveStepPct(p) {
   return { start: (p.start != null ? p.start : p.value) || 0, end: (p.end != null ? p.end : p.value) || 0 }
 }
 
+// #293: EXPAND nested repeat blocks ({reps, steps:[…]}) into individual segments — mirrors the
+// client flattenIcuSteps. Without this, a 3× interval set collapsed into ONE flat 0-W segment
+// (the outer repeat step has a duration but no power), so the thumbnail rendered blocks+gap.
+function flattenIcuStepsSrv(steps = []) {
+  const out = []
+  const walk = (s) => {
+    if (s.steps && s.reps) { for (let i = 0; i < s.reps; i++) s.steps.forEach(walk) }
+    else if (s.steps) { s.steps.forEach(walk) }
+    else if (s.duration) { const pr = resolveStepPct(s.power); out.push({ duration: Number(s.duration) || 0, powerStart: Number(pr.start) || 0, powerEnd: Number(pr.end) || 0, ...(s.text ? { label: s.text } : pr.label ? { label: pr.label } : {}) }) }
+  }
+  for (const s of steps) walk(s)
+  return out
+}
 function icuEventToPlan(ev) {
   const date = String(ev.start_date_local || '').slice(0, 10)
   const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
   const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: ev.description || '', origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
   if (sport === 'ride' || sport === 'run') {
-    plan.segments = (ev.workout_doc?.steps || []).map((s) => { const pr = resolveStepPct(s.power); return { duration: Number(s.duration) || 0, powerStart: Number(pr.start) || 0, powerEnd: Number(pr.end) || 0, ...(s.text ? { label: s.text } : pr.label ? { label: pr.label } : {}) } })
+    plan.segments = flattenIcuStepsSrv(ev.workout_doc?.steps || [])
   } else {
     plan.rounds = 1; plan.exercises = [] // gym structure stays in notes; the client parses it
   }

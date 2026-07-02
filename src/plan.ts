@@ -71,6 +71,13 @@ export function setCoachPlans(plans: CoachPlan[]) { try { sessionStorage.setItem
 export function getCoachPlan(id: string): CoachPlan | undefined {
   try { return (JSON.parse(sessionStorage.getItem('coachPlans') || '[]') as CoachPlan[]).find((p) => p.id === id) } catch { return undefined }
 }
+/** #293 — the coach plan a completed activity fulfilled (match day, then sport) → link back to it. */
+export function findCoachPlan(date: string, sport: string): CoachPlan | undefined {
+  try {
+    const plans = JSON.parse(sessionStorage.getItem('coachPlans') || '[]') as CoachPlan[]
+    return plans.find((p) => p.date === date && p.sport === sport) || plans.find((p) => p.date === date)
+  } catch { return undefined }
+}
 
 export interface AdHocEx {
   name: string; exId?: string; image?: string; video?: string; imageFemale?: string; videoFemale?: string

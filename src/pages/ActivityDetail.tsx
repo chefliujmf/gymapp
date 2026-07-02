@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchActivity, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
 import { TrendChart, PowerCurveChart, PowerBlocks, minuteTicks } from '../charts'
 import { zoneColor } from '../ui'
+import { findCoachPlan } from '../plan'
 import { getSetting } from '../db'
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
@@ -155,6 +156,8 @@ export default function ActivityDetail() {
   if (!a) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button><h1>Activity not found</h1><p className="meta">It may not be on intervals, or you're not connected.</p></div>
 
   const track = cleanLatLng(streams.latlng)
+  // #293 — link back to the coach plan this activity fulfilled (match day + sport).
+  const plan = findCoachPlan((a.start_date_local || '').slice(0, 10), sportOfActivity(a))
   const hasTimeline = TL_ROWS.some((r) => ((streams[r.key] as unknown[] | undefined)?.length || 0) > 1)
   const hasPower = (streams.watts?.filter((v) => v != null).length || 0) >= 5
   const tabs = ([track.length > 1 && 'map', hasTimeline && 'timeline', hasPower && 'power'].filter(Boolean)) as ('map' | 'timeline' | 'power')[]
@@ -223,6 +226,7 @@ export default function ActivityDetail() {
       {hasVerdict && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} />}
 
       <div className="links" style={{ marginTop: 12 }}>
+        {plan && <Link className="done-link done-link--map" to={`/coach/${plan.id}`}>📋 Planned workout →</Link>}
         {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}
         {a.strava_id && <a className="done-link" href={`https://www.strava.com/activities/${a.strava_id}`} target="_blank" rel="noreferrer">Strava ↗</a>}
         {device && <span className="done-link" style={{ opacity: 0.7 }}>from {device}</span>}
