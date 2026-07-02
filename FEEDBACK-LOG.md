@@ -26,7 +26,7 @@ test guide → the **🧪 Test guide** section below.
     can work out (Mon 1h, Tue 2h, …), make it nice. Feeds the coach's planning (respect availability when placing sessions).
     Store on the profile; coach reads it. Mock-first (nice weekly grid). gymapp-only.
 
-302. ⬜ **Flag incomplete onboarding / minimal setup.** JM 2026-07-02: if onboarding is unfinished or config incomplete,
+302. 🔨 **Flag incomplete onboarding / minimal setup.** JM 2026-07-02: if onboarding is unfinished or config incomplete,
     flag it. MUST-HAVES: intervals.icu connected (account + key); Strava connected INSIDE intervals; coach set up
     (coachProfile); sport/FTP/equipment set. Show a setup checklist / banner with what's missing + how to fix. gymapp-only.
 
