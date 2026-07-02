@@ -22,13 +22,49 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-310. ⬜ **Onboarding is OVERWHELMING — redesign to a guided page-wizard, not a chat interrogation.** JM 2026-07-02
-    (watching wife onboard): "you ask too many questions + a wall of text… maybe for onboarding the coach switches to a
-    PAGE to let the user PICK the values, then comes back to the chat when one page's input is done — that chat flow is
-    overwhelming." DIRECTION: coach bookends a **structured wizard** — welcome → hand off to one pick-page at a time
-    (sex, sport(s), equipment, availability, thresholds/FTP/pace — prefill from intervals) → return to chat after each →
-    coach analyzes intervals FIRST + asks only what's missing → builds week. Absorbs #306(e-g). **Mock-first** (wizard
-    flow). gymapp-only.
+317. ⬜ **No TIME estimate on the gym workout in prod (for her).** JM 2026-07-02 (wife): her gym session shows no duration/
+    time estimate. Gym plans should show an estimated duration (from sets × reps × tempo + rest, per exercise → total),
+    like rides show time. Check why it's blank for her plan (missing tempo/rest? not computed on coach-authored plans?) +
+    render a time estimate on the gym workout header/card. Add a test for the estimator. gymapp-only.
+316. ⬜ **Also ask how many times/week she WANTS to train (frequency), not just hours/day.** JM 2026-07-02: availability
+    captures hours per day, but we should also ask desired training FREQUENCY (sessions/week) — a preference distinct from
+    raw availability. Add to the availability step/page (e.g. "How many days/week do you want to train? 3·4·5·6") → store
+    on profile → coach respects it when placing sessions. Ties #303/#310. gymapp-only.
+315. ⬜ **Wife's ENERGY (readiness) isn't being calculated despite HR/HRV present.** JM 2026-07-02: she has HR, HRV, etc.
+    but Energy shows uncalculated. Readiness engine (server/readiness.js, #158/#159) auto-derives Sleep·Freshness·Energy
+    1–5 from intervals wellness (CTL/ATL/Form, HRV, RHR, sleep) + check-in. DEBUG for xenia (i628280): is wellness
+    actually flowing in (HRV/RHR/sleep present)? is the engine running on her account / gated on something she lacks
+    (e.g. needs a baseline / N days)? Fix so Energy computes from the data we have; if it needs more history, show the
+    "need ~X more days" state (#304) instead of blank. Verify on her account. gymapp-only.
+314. ⬜ **Coach-authored RUN in intervals is TEXT-ONLY — won't push to her Garmin as a structured workout.** JM
+    2026-07-02 (wife): the run event in intervals has only a text description, no structured steps → Garmin Connect won't
+    get a real workout to follow. Runs (like rides, #293) must be authored as STRUCTURED intervals steps (warmup / reps /
+    cooldown with PACE or HR targets, not watts — see #312) so intervals → Garmin sync gives a followable workout. Audit
+    create_run / planToIcuEvent run branch: emit structured steps + pace targets. Test. Ties #312. gymapp-only.
+313. ⬜ **User may not know their threshold pace/FTP — ESTIMATE + advise from intervals (Strava history).** JM 2026-07-02:
+    don't force the number; after intervals connects there's ~3mo of Strava history — estimate threshold pace/FTP from it
+    and tell the user (with a "use this" like Profile already does for pace via Critical Speed, #215/#271). ONBOARDING:
+    the "your numbers" step is OPTIONAL (never blocks the build); the coach analyses intervals FIRST and proposes values.
+    Extend the same estimate to FTP if not already. Folds into #310 numbers step + #306(f). gymapp-only.
+312. ⬜ **A RUN shows WATTS instead of pace.** JM 2026-07-02 (wife): today's run displays power (W) — a run must show
+    PACE (min/km), not watts. Likely the same class as #217 (power_zone steps mis-read) but for run activities/plan
+    rendering, or a run planned/imported with a power target. FIND where run sessions pick their target metric + force
+    pace for runs (watts only for ride). Add a test. gymapp-only.
+311. ⬜ **Passkey registration is confusing on Samsung/Android — user got pushed to a Samsung-account/password flow she
+    didn't know.** JM 2026-07-02 (wife): on Samsung the passkey prompt jumped to "connect to Samsung [Pass/account]" +
+    asked for a password she doesn't know. IMPROVE registration: (a) make passkey OPTIONAL/skippable during onboarding —
+    password login must be enough to finish; (b) clearer copy on what a passkey is + that she can use the phone's
+    fingerprint/PIN (platform authenticator) instead of a Samsung account; (c) offer "not now" + let her add it later from
+    Settings; (d) check `authenticatorSelection`/`residentKey` hints so Android offers the on-device passkey, not Samsung
+    Pass. gymapp-only. Research WebAuthn UX on Samsung/Android first.
+310. 🔨 **Onboarding is OVERWHELMING (wall of text, too much typing) — CHOSEN: Option C (coach opens the existing pages).**
+    JM 2026-07-02 (watching wife onboard): "you ask too many questions + a wall of text… maybe the coach switches to a PAGE
+    to let the user PICK the values, then comes back to chat — that chat flow is overwhelming." Picked C from the mock:
+    "easier to maintain, not additional UX, we reuse what we have." BUILD: coach chats in-thread, hands off to the EXISTING
+    page for each value (Profile: sport/sex/thresholds/body · Settings: equipment · Availability page), user sets it →
+    "✓ Done, back to coach" → coach acks + advances → coach analyzes intervals FIRST + builds week. Client-driven scripted
+    step order (NOT LLM-ordered) for reliability; coach LLM bookends (welcome + build). Absorbs #306(e-g) + #308 (sex is a
+    visible step). Mock approved: mockups/onboarding-wizard.html?opt=C. gymapp-only.
 309. ⬜ **An exercise STILL showed with no picture AND no video — hard rule violated.** JM 2026-07-02: "one exercise did
     not have picture or video, I was very clear not to use those." FIX: at RENDER, if an exercise resolves to no image AND
     no video (after female-variant + #300 backfill), never display it bare — drop it or swap to a matched media-having

@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown } from 'lucide-react'
 import { db, getSetting, setSetting, clearLogs } from '../db'
 import AccountSection from '../auth/AccountSection'
+import OnboardReturnBar from '../OnboardReturnBar'
 import { useAuth } from '../auth/AuthContext'
 import { authApi } from '../auth/api'
 
@@ -46,10 +47,10 @@ function ChipSetting({ title, hint, value, options, onPick }: {
 }
 
 /** A collapsible settings category — scan the headers, expand only what you need. */
-function Collapsible({ title, subtitle, defaultOpen = false, children }: { title: string; subtitle?: string; defaultOpen?: boolean; children: ReactNode }) {
+function Collapsible({ title, subtitle, defaultOpen = false, id, children }: { title: string; subtitle?: string; defaultOpen?: boolean; id?: string; children: ReactNode }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="settings-group">
+    <div className="settings-group" id={id}>
       <button className="settings-group__head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="settings-group__t"><strong>{title}</strong>{subtitle && <span className="meta">{subtitle}</span>}</span>
         <ChevronDown size={18} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s', flex: 'none' }} />
@@ -61,6 +62,9 @@ function Collapsible({ title, subtitle, defaultOpen = false, children }: { title
 
 export default function Settings() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  // #310 onboarding: coach deep-links here (?onboard=1#ob-…) — open the group it sent you to.
+  const obHash = params.get('onboard') ? window.location.hash.replace('#', '') : ''
   // Diet moved to Profile (#212) — it's a coaching input alongside Sports, not app config.
   const units = useLiveQuery(() => getSetting('units'))
   const calView = useLiveQuery(() => getSetting('calView'))
@@ -74,20 +78,21 @@ export default function Settings() {
 
   return (
     <div>
+      <OnboardReturnBar />
       <div className="sub-head">
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
         <div className="sub-head-t"><h1>Settings</h1><p>Account, connections & app preferences</p></div>
       </div>
 
-      <Collapsible title="Account & security" subtitle="Photo, password, passkeys">
+      <Collapsible title="Account & security" subtitle="Photo, password, passkeys" id="ob-account" defaultOpen={obHash === 'ob-account'}>
         <AccountSection only="account" />
       </Collapsible>
 
-      <Collapsible title="Connections" subtitle="intervals.icu · Strava · Coach API">
+      <Collapsible title="Connections" subtitle="intervals.icu · Strava · Coach API" id="ob-connect" defaultOpen={obHash === 'ob-connect'}>
         <AccountSection only="connections" />
       </Collapsible>
 
-      <Collapsible title="Equipment" subtitle="What you own — filters workouts & coach">
+      <Collapsible title="Equipment" subtitle="What you own — filters workouts & coach" id="ob-equipment" defaultOpen={obHash === 'ob-equipment'}>
         <EquipmentSetting />
       </Collapsible>
 
