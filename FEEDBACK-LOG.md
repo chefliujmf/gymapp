@@ -123,7 +123,7 @@ test guide → the **🧪 Test guide** section below.
     "Username or email"; server `findByLogin` compared the raw stored email so it broke on any uppercase. FIXED: normalize
     both sides to lowercase (+ trim). Email or username both work now. gymapp-only.
 
-280. ⬜ **PRE-workout UX rework — KEEP THE SAME SPIRIT as the post-workout view (#286).** JM 2026-07-01: "let's keep the
+280. 🔨 **PRE-workout UX rework — KEEP THE SAME SPIRIT as the post-workout view (#286).** JM 2026-07-01: "let's keep the
     same spirit for pre-workout." Mirror the LOCKED post-workout look on PlanDetail + CoachPlanDetail: **planned
     SegmentProfile thumbnail** (same clean treatment as PowerBlocks), **hero+chips** target summary (target TSS/IF/
     duration/zones), a **coach insight/tip line under EVERY section** (what to expect, key set, cues), and the planned
@@ -136,6 +136,11 @@ test guide → the **🧪 Test guide** section below.
     pace SHAPE** chart (watts via #276, chart-standard axes/labels, indoor/outdoor aware), a **"what to expect"** line
     (target zones, key set), gym = the exercise list (#242) with links, and a clear **Start/Play** CTA (or "open on phone"
     for rides). Pairs #273 (shared SegmentProfile/shape + coach text), #157 (intervals text parity), #242 (exercise list),
+    (…original detail…) 🔨 BUILT 2026-07-02 (mock `mockups/pre-workout.html`, approved): CoachPlanDetail + PlanDetail ride
+    views now have the MiniProfile header thumbnail, hero+chips of planned TARGETS (TSS/IF/Duration/Key-set + chips), the
+    dense PLANNED POWER shape chart (TrendChart + round-minute x-ticks + gridlines) with a coach insight, a "what to expect"
+    line, + the existing structure list + coach shell. New pure helpers `plannedSeries`/`plannedLoad` (IF/TSS) + tests.
+    Gym plans keep the exercise list (#242/#284). **JM to verify on QA.**
     #167 (gym-player pre-workout time estimate). Build alongside #273 to reuse components. gymapp-only.
 279. 🔨 **Missing-data handling: graceful degrade + "unlock" nudge + label estimates (don't fabricate).** JM 2026-07-01
     ("what happens if we don't collect data needed for coach calls / estimates?"). AUDIT: pure calcs already return null →
