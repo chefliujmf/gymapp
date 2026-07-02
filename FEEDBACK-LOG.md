@@ -363,7 +363,11 @@ test guide → the **🧪 Test guide** section below.
     → fold into coach-engine; COACHCHECK feedback protocol/completion gate. Already in Platyplus (don't re-port): readiness
     scores, base coach-engine/cycling module. **#4 (+#1) directly inform #257 onboarding** — capture structured profile +
     seed baselines at signup.
-255. ⬜ **Per-exercise INSIGHTS for gym.** JM 2026-06-30: each gym exercise/lift should get its own insight — progression
+255. 🔨 **Per-exercise INSIGHTS for gym.** 🔨 BUILT 2026-07-02: pure `exerciseInsight(pts, fmt)` in strength.ts →
+    tone (pr/up/stall/flat/new) + a coach-style line from the dated e1RM history (on-form/PR, trending up, stalled ~N wk
+    off peak → vary reps/deload, holding → push top set). Unit-tested (6 cases). Rendered in the Progress lift modal (💡
+    Coach line under the e1RM chart), unit-aware. Fits the insights-everywhere directive. **JM to verify on QA.** Original:
+    JM 2026-06-30: each gym exercise/lift should get its own insight — progression
     (e1RM trend up/flat/down), PRs, plateau flag, volume, and a coach-style tip ("add a set", "deload", "you've stalled 3
     weeks — vary rep range"). Extends the lift detail (#93 dated e1RM chart) + the chart-standard insight + coach insights
     (#249) to the per-exercise level. Pure insight fn (unit-tested) feeding the Progress lift modal / a per-exercise view. gymapp-only.

@@ -7,7 +7,7 @@ import { localISO } from '../date'
 import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { matchExercise } from '../plan'
 import { TrendChart, ChartModal } from '../charts'
-import { e1rm } from '../strength'
+import { e1rm, exerciseInsight } from '../strength'
 import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
 
 const LB = 2.2046226
@@ -213,6 +213,7 @@ export default function Progress() {
           <TrendChart axes height={220} unit={` ${unit}`}
             series={[{ label: 'e1RM', data: liftModal.pts.map((p) => Math.round(conv(p.e1rm))), color: '#34e07d', area: true }]}
             labels={liftModal.pts.map((p) => new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} />
+          {(() => { const ins = exerciseInsight(liftModal.pts, (kg) => `${Math.round(conv(kg))} ${unit}`); return ins ? <div className="act-ins" style={{ marginTop: 10 }}><span className="tag">Coach</span>{ins.text}</div> : null })()}
           <div className="chips" style={{ marginTop: 12 }}>
             <span className="pill">Best {liftModal.peak} {unit}</span>
             <span className="pill">{liftModal.improve > 0 ? '+' : ''}{liftModal.improve}% · {liftModal.n} sessions</span>
