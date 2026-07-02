@@ -22,6 +22,12 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+298. 🔨 **Tag band exercises + make "Bands" a filter/equipment.** JM 2026-07-02: "identify and tag the ones with small
+    band and make this available as a filter and equipment." FOUND: equipment "Bands" already exists (203 exercises) + the
+    equipment filter is data-driven, so a Bands chip already showed — BUT ~25 band-ASSISTED moves (e.g. "Barbell Banded
+    Squat", "Deadlift with Bands") were tagged by primary kit (Barbell/Dumbbell) so they were missed. FIXED: catalog.ts
+    derives a `band` flag (equipment 'Bands' OR band in name) → 228 flagged; the "Bands" filter chip now matches the flag
+    (catches band-assisted too); "Bands" always present in the equipment list. gymapp-only. **JM to verify on QA.**
 297. ⬜ **Tempo chip (#284) not showing in dev.** JM 2026-07-02: "I don't see the tempo chip we agreed on." Verify the
     per-exercise tempo pill (e.g. 3-1-1-0) renders on the gym exercise cards (CoachPlanDetail + player). Likely a data
     issue (coach not setting `tempo`) or a render regression. gymapp-only.

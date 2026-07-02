@@ -19,9 +19,10 @@ export default function Exercises() {
     const needle = q.trim().toLowerCase()
     const out = exercises.filter(
       (e) => (cat === 'all' || e.category === cat)
-        && (equip === 'all' || e.equipment === equip)
+        // #298: the "Bands" chip matches the derived band flag (incl. band-assisted barbell/dumbbell)
+        && (equip === 'all' || (equip === 'Bands' ? e.band : e.equipment === equip))
         && (muscle === 'all' || e.muscle === muscle)
-        && (!ownedOnly || !e.equipment || owned.has(e.equipment))
+        && (!ownedOnly || (equip === 'Bands' ? owned.has('Bands') : (!e.equipment || owned.has(e.equipment))))
         && (!needle || e.name.toLowerCase().includes(needle) || (e.muscle || '').toLowerCase().includes(needle)),
     )
     return sortAz ? [...out].sort((a, b) => a.name.localeCompare(b.name)) : out

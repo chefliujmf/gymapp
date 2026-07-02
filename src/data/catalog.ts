@@ -12,11 +12,15 @@ import enduranceData from './generated/endurance.json'
 import exercisesData from './generated/exercises.json'
 
 export const workouts = workoutsData as unknown as Workout[]
+// #298 — derive a `band` flag: pure band exercises (equipment 'Bands') PLUS band-assisted moves whose
+// name says so (e.g. "Barbell Banded Squat", "Deadlift with Bands"). Lets the Bands filter catch them
+// all, even when their primary equipment is Barbell/Dumbbell.
+const BAND_RE = /\bband(ed|s)?\b|with bands?\b/i
 /** The exercise library — the gym building blocks. */
-export const exercises = exercisesData as unknown as LibExercise[]
+export const exercises = (exercisesData as unknown as LibExercise[]).map((e) => ({ ...e, band: e.equipment === 'Bands' || BAND_RE.test(e.name) }))
 export const exerciseCategories = ['Legs', 'Push', 'Pull', 'Core', 'Cardio', 'Mobility', 'Full body', 'Yoga', 'Pilates'] as const
-/** Equipment types present in the library (mostly from MuscleWiki). */
-export const exerciseEquipment = [...new Set(exercises.map((e) => e.equipment).filter(Boolean) as string[])].sort()
+/** Equipment types present in the library (mostly from MuscleWiki) + 'Bands' always (the band filter). */
+export const exerciseEquipment = [...new Set([...(exercises.map((e) => e.equipment).filter(Boolean) as string[]), 'Bands'])].sort()
 /** Muscle groups present in the library, ordered by how many exercises hit them. */
 export const exerciseMuscles = (() => {
   const count = new Map<string, number>()
