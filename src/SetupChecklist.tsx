@@ -8,7 +8,7 @@ import { useAuth } from './auth/AuthContext'
 const ackKey = (k: string) => 'setup:ack:' + k
 const getAck = (k: string) => { try { return localStorage.getItem(ackKey(k)) === '1' } catch { return false } }
 
-interface Item { key: string; label: string; hint: string; done: boolean; to?: string; ext?: string; manual?: boolean }
+interface Item { key: string; label: string; hint: string; done: boolean; to?: string; ext?: string; manual?: boolean; cta?: string }
 
 export default function SetupChecklist() {
   const { user } = useAuth()
@@ -18,7 +18,7 @@ export default function SetupChecklist() {
   const items: Item[] = [
     { key: 'intervals', label: 'Connect intervals.icu', hint: 'Your data hub — HRV, activities, plans.', done: !!user.hasIcuKey, to: '/settings' },
     { key: 'strava', label: 'Connect Strava — inside intervals', hint: 'So your rides & runs flow in (not in Platyplus — in intervals).', done: getAck('strava'), ext: 'https://intervals.icu/settings', manual: true },
-    { key: 'coach', label: 'Set up your coach', hint: 'A few questions so it can plan for you.', done: !!user.hasCoachProfile, to: '/chat?onboard=1' },
+    { key: 'coach', label: 'Meet your coach', hint: 'A 2-minute chat (tap, type, or talk) and it builds your first week around your real life.', done: !!user.hasCoachProfile, to: '/chat?onboard=1', cta: 'Set me up →' },
     { key: 'sport', label: 'Pick your sport(s)', hint: 'Tunes your plan & navigation.', done: (user.sports || []).length > 0, to: '/profile' },
     { key: 'equipment', label: 'Set your equipment', hint: 'The coach only picks gear you have.', done: Array.isArray(info.equipment) && info.equipment.length > 0, to: '/profile' },
     { key: 'availability', label: 'Set weekly availability', hint: 'Hours/day you can train.', done: !!info.availability, to: '/profile' },
@@ -45,7 +45,7 @@ export default function SetupChecklist() {
               </div>
               {!it.done && (it.manual
                 ? <button className="setup-fix" onClick={(e) => { e.preventDefault(); ackDone(it.key) }}>Done</button>
-                : <span className="setup-fix">Fix ›</span>)}
+                : <span className={'setup-fix' + (it.cta ? ' setup-fix--cta' : '')}>{it.cta || 'Fix ›'}</span>)}
             </>
           )
           if (it.done) return <div key={it.key} className="setup-row">{inner}</div>
