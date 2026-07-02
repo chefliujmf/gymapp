@@ -11,11 +11,15 @@ export default function Chat() {
   const onboarding = params.get('onboard') === '1' // #257: coach greets + interviews first
   const kickedOff = useRef(false)
   const { refresh } = useAuth()
-  const [msgs, setMsgs] = useState<Msg[]>([])
+  // #306(a): persist the conversation so navigating away (e.g. to ADD) + back doesn't wipe it and
+  // re-fire the onboarding opener (which reset the whole interview).
+  const [msgs, setMsgs] = useState<Msg[]>(() => { try { return JSON.parse(sessionStorage.getItem('chatMsgs') || '[]') } catch { return [] } })
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [waitedLong, setWaitedLong] = useState(false) // #306(c): show "still working…" after a few s
   const [coach, setCoach] = useState('Coach')
   const [listening, setListening] = useState(false)
+  useEffect(() => { try { sessionStorage.setItem('chatMsgs', JSON.stringify(msgs)) } catch { /* quota */ } }, [msgs])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null)
   const endRef = useRef<HTMLDivElement>(null)
@@ -28,9 +32,11 @@ export default function Chat() {
     if (listening) { recRef.current?.stop(); return }
     const rec = new SR()
     rec.lang = navigator.language || 'en-US'
-    rec.interimResults = false
+    // #306(d): keep listening (don't stop after the first pause) until the user taps ⏹.
+    rec.continuous = true
+    rec.interimResults = true
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (e: any) => { const t = e.results[e.results.length - 1][0].transcript; setInput((p) => (p ? p + ' ' : '') + t) }
+    rec.onresult = (e: any) => { let final = ''; for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) final += e.results[i][0].transcript; if (final.trim()) setInput((p) => (p ? p + ' ' : '') + final.trim()) }
     rec.onerror = () => setListening(false)
     rec.onend = () => setListening(false)
     recRef.current = rec; setListening(true); rec.start()
@@ -40,17 +46,23 @@ export default function Chat() {
 
   // #257 onboarding: the coach speaks FIRST — auto-send an opener so it greets + starts the interview.
   useEffect(() => {
-    if (onboarding && !kickedOff.current) { kickedOff.current = true; send("Hi! I'm new here — please set me up and build my first week.") }
+    // #306(a): only auto-open the interview if there's NO conversation yet (fresh onboarding), so a
+    // remount (nav away + back) resumes instead of restarting.
+    if (onboarding && !kickedOff.current && msgs.length === 0) { kickedOff.current = true; send("Hi! I'm new here — please set me up and build my first week.") }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onboarding])
 
   async function send(textArg?: string) {
     const text = (textArg ?? input).trim()
     if (!text || busy) return
-    setInput(''); setMsgs((m) => [...m, { role: 'user', text }, { role: 'coach', text: '' }]); setBusy(true)
+    setInput(''); setMsgs((m) => [...m, { role: 'user', text }, { role: 'coach', text: '' }]); setBusy(true); setWaitedLong(false)
     const appendDelta = (d: string) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { role: 'coach', text: c[c.length - 1].text + d }; return c })
+    // #306(b): never lock the input forever — abort a stalled/too-long coach turn so busy resets.
+    const ctrl = new AbortController()
+    const longTimer = setTimeout(() => setWaitedLong(true), 8000)
+    const killTimer = setTimeout(() => ctrl.abort(), 180000)
     try {
-      const res = await fetch('/auth/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: text }) })
+      const res = await fetch('/auth/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: text }), signal: ctrl.signal })
       if (!res.ok || !res.body) throw new Error('HTTP ' + res.status)
       const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = ''
       for (;;) {
@@ -69,13 +81,14 @@ export default function Chat() {
         }
       }
     } catch (e) {
-      setMsgs((m) => { const c = [...m]; const last = c[c.length - 1]; if (last?.role === 'coach' && !last.text) c[c.length - 1] = { role: 'coach', text: '⚠️ ' + ((e as Error).message || 'Coach unavailable') }; return c })
-    } finally { setBusy(false); if (onboarding) refresh().catch(() => {}) } // #257 pick up onboardedAt once the coach finishes
+      const msg = (e as Error).name === 'AbortError' ? 'That took too long — tap send to try again.' : ((e as Error).message || 'Coach unavailable — tap send to retry.')
+      setMsgs((m) => { const c = [...m]; const last = c[c.length - 1]; if (last?.role === 'coach' && !last.text) c[c.length - 1] = { role: 'coach', text: '⚠️ ' + msg }; return c })
+    } finally { clearTimeout(longTimer); clearTimeout(killTimer); setBusy(false); setWaitedLong(false); if (onboarding) refresh().catch(() => {}) } // #257 pick up onboardedAt once the coach finishes
   }
   async function reset() {
     if (!confirm('Start a new conversation?')) return
     await authApi.chatReset().catch(() => {})
-    setMsgs([])
+    setMsgs([]); try { sessionStorage.removeItem('chatMsgs') } catch { /* ignore */ }
   }
 
   return (
@@ -102,7 +115,7 @@ export default function Chat() {
           const thinking = m.role === 'coach' && !m.text && i === msgs.length - 1 && busy
           return (
             <div key={i} className={'chat-msg chat-msg--' + m.role + (thinking ? ' chat-msg--typing' : '')}>
-              {m.text || (thinking ? `${coach} is thinking…` : '')}
+              {m.text || (thinking ? `${coach} is ${waitedLong ? 'still working — this can take a moment…' : 'thinking…'}` : '')}
             </div>
           )
         })}
