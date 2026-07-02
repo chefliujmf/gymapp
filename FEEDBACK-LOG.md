@@ -22,6 +22,10 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+302. ⬜ **Flag incomplete onboarding / minimal setup.** JM 2026-07-02: if onboarding is unfinished or config incomplete,
+    flag it. MUST-HAVES: intervals.icu connected (account + key); Strava connected INSIDE intervals; coach set up
+    (coachProfile); sport/FTP/equipment set. Show a setup checklist / banner with what's missing + how to fix. gymapp-only.
+
 301. ⬜ **Bi-directional EXERCISE sync intervals ↔ Platyplus.** JM 2026-07-02: changes to an exercise in intervals should
     mirror to Platyplus, and coach/athlete changes in Platyplus should reflect in intervals — both ways. STATUS: rides now
     round-trip (segments, #293). Gym exercises live in the plan NOTES (markdown table) → text syncs both ways, but STRUCTURED
