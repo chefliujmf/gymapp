@@ -71,7 +71,9 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   const calc: Partial<Record<'energy' | 'sleep' | 'soreness', number>> = {}
   if (rdy?.connected) {
     if (rdy.sleep) { calc.sleep = Math.round(rdy.sleep.score); why.sleep = rdy.sleep.sleepScore != null ? `your tracker scored this night ${rdy.sleep.sleepScore}/100` : `${rdy.sleep.sleepHours ?? '—'}h slept vs your ~${rdy.sleepNeed}h need` }
-    if (rdy.energy) { calc.energy = Math.round(rdy.energy.score); why.energy = `HRV ${sgn(rdy.energy.hrvZ)} vs your baseline, sleep ${rdy.sleep?.score ?? '—'}/5, resting HR ${sgn(rdy.energy.rhrZ)}${rdy.energy.guard ? ' (HRV high but RHR raised → eased)' : ''}` }
+    if (rdy.energy) { calc.energy = Math.round(rdy.energy.score); why.energy = rdy.energy.provisional
+      ? `first estimate from today's HRV, sleep ${rdy.sleep?.score ?? '—'}/5 & resting HR — I'm still learning your personal baseline (~${rdy.energy.needDays ?? 14} more nights to personalise)`
+      : `HRV ${sgn(rdy.energy.hrvZ)} vs your baseline, sleep ${rdy.sleep?.score ?? '—'}/5, resting HR ${sgn(rdy.energy.rhrZ)}${rdy.energy.guard ? ' (HRV high but RHR raised → eased)' : ''}` }
     if (rdy.freshness) { calc.soreness = 6 - Math.round(rdy.freshness.score); const pz = rdy.freshness.personalZ; const vsYou = pz == null ? '' : `, ${pz < -0.5 ? 'more loaded than your usual' : pz > 0.5 ? 'fresher than your usual' : 'about your usual'}`; why.soreness = `training load — Form ${rdy.freshness.tsb ?? '—'}, acute-vs-chronic ${rdy.freshness.acwr ?? '—'}${vsYou}` }
   }
   // Auto-fill any UNANSWERED row from the data-derived value; tapping a face overrides.

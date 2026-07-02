@@ -87,8 +87,22 @@ describe('energy (lnRMSSD-z + sleep + RHR-z + subjective)', () => {
     expect(sat.guard).toBe(true)
     expect(sat.score).toBeLessThan(free.score)
   })
-  it('cold start (no HRV baseline) → null so the UI keeps the manual tap', () => {
-    expect(energy({ hrv: 50, rhr: 55, sleep: 4, hrvBaseline: null })).toBeNull()
+  // #315 — a NEW athlete (HRV present, no 14-day personal baseline yet) gets a PROVISIONAL Energy
+  // from population norms instead of a blank; it flags provisional so the UI says "building".
+  it('new athlete with HRV but no baseline → provisional score (not null)', () => {
+    const e = energy({ hrv: 50, rhr: 55, sleep: 4, hrvBaseline: null })
+    expect(e).not.toBeNull()
+    expect(e!.provisional).toBe(true)
+    expect(e!.score).toBeGreaterThanOrEqual(1)
+    expect(e!.score).toBeLessThanOrEqual(5)
+  })
+  it('no HRV at all → null so the UI keeps the manual tap', () => {
+    expect(energy({ hrv: null, rhr: 55, sleep: 4, hrvBaseline: null })).toBeNull()
+  })
+  it('readiness() surfaces needDays while provisional (#315/#319)', () => {
+    const r = readiness([{ date: '2026-07-01', hrv: null, restingHR: 59 }], { hrv: 46, restingHR: 59, sleepHours: 8, ctl: 11, atl: 12 }, { sleepNeed: 8 })
+    expect(r.energy?.provisional).toBe(true)
+    expect(r.energy?.needDays).toBeGreaterThan(0)
   })
   it('uses the subjective tap as a weighted input', () => {
     expect(hrvBaseline.mean).toBeCloseTo(Math.log(50), 5) // sanity
@@ -118,9 +132,11 @@ describe('readiness() end-to-end', () => {
     expect(r.energy.score).toBeGreaterThan(0)
     expect(r.baseline.nHrv).toBe(30)
   })
-  it('cold start: no history → energy null, but sleep + freshness still compute', () => {
+  it('cold start with HRV: energy is PROVISIONAL (not blank), sleep + freshness compute (#315)', () => {
     const r = readiness([], { hrv: 60, restingHR: 50, sleepHours: 8, fitness: 60, fatigue: 50, form: 10 })
-    expect(r.energy).toBeNull()
+    expect(r.energy).not.toBeNull()
+    expect(r.energy.provisional).toBe(true)
+    expect(r.energy.needDays).toBeGreaterThan(0)
     expect(r.sleep.score).toBeGreaterThan(0)
     expect(r.freshness.score).toBeGreaterThan(0)
   })

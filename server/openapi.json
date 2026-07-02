@@ -698,6 +698,15 @@
         "responses": { "201": { "description": "target stored" }, "400": { "description": "weekStart required" } }
       }
     },
+    "/api/sport-stat": {
+      "put": {
+        "summary": "Coach saves the athlete's threshold benchmarks (Bearer, #313)",
+        "description": "Persists FTP / threshold pace / max-HR / LTHR (estimated from intervals history) so run %pace / ride %ftp targets resolve on the device. Mirrors to intervals.icu sport-settings.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["group"], "properties": { "group": { "type": "string", "enum": ["cycling", "running"] }, "ftp": { "type": "number", "description": "cycling FTP (W)" }, "thresholdPace": { "type": "number", "description": "running threshold pace, seconds/km" }, "maxHr": { "type": "number" }, "lthr": { "type": "number" } } } } } },
+        "responses": { "200": { "description": "saved (+ synced flag)" }, "400": { "description": "bad group" } }
+      }
+    },
     "/api/coach-memory": {
       "put": {
         "summary": "Coach saves its durable memory for the athlete (Bearer)",

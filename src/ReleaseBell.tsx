@@ -46,7 +46,7 @@ export default function ReleaseBell() {
         {unread && <span className="bell-dot" />}
       </button>
       {open && (
-        <div className="acct__menu" role="menu" style={{ width: 320, maxHeight: 440, overflowY: 'auto' }}>
+        <div className="acct__menu notif-menu" role="menu">
           <div className="acct__head"><strong>Notifications</strong></div>
           {NOTES.length === 0 && <div style={{ padding: '10px 14px', color: 'var(--text-dim)', fontSize: 13 }}>Nothing yet.</div>}
           {NOTES.map((n) => {

@@ -309,10 +309,16 @@ select.search { appearance: none; -webkit-appearance: none; }
 .avail-total b { font-size: 22px; font-weight: 800; }
 .avail-total b small { font-size: 13px; color: var(--text-dim); font-weight: 600; }
 .avail-total .lab { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); font-weight: 700; }
-.avail-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
 .avail-dname { width: 40px; font-weight: 800; font-size: 14px; flex: none; }
-.avail-chip { font-size: 12px; padding: 5px 10px; }
-.avail-chip.rest.chip--active { background: #ffffff14; border-color: #ffffff40; color: var(--text); }
+/* #322 dense — one slider row per day (was 7 rows × 8 big chips = a whole screen) */
+.avail-sliders { margin-top: 10px; }
+.avail-srow { display: flex; align-items: center; gap: 12px; padding: 7px 2px; border-top: 1px solid var(--line); }
+.avail-srow:first-child { border-top: none; }
+.avail-slider { flex: 1; min-width: 0; height: 4px; -webkit-appearance: none; appearance: none; background: #2a2f3a; border-radius: 3px; outline: none; }
+.avail-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--accent); cursor: pointer; }
+.avail-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); cursor: pointer; }
+.avail-val { flex: none; width: 44px; text-align: right; font-weight: 800; font-size: 13px; color: var(--accent); }
+.avail-val.rest { color: var(--text-dim); }
 /* #302 setup checklist */
 .setup-card { border: 1px solid #34e07d40; padding: 14px; margin: 10px 0; }
 .setup-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
@@ -1148,6 +1154,10 @@ select.search { appearance: none; -webkit-appearance: none; }
 .acct__head { padding: 8px 10px 10px; border-bottom: 1px solid var(--border, #2a2e38); margin-bottom: 4px; display: flex; flex-direction: column; }
 .acct__head strong { font-size: 14px; }
 .acct__head span { font-size: 12px; color: var(--muted, #9aa3b2); }
+/* #318 — the notification panel is wide (320px); anchored right:0 of the bell it ran off the LEFT
+   edge on narrow phones. Pin it to the viewport's right with a width clamped to fit the screen. */
+.notif-menu { position: fixed; top: calc(env(safe-area-inset-top) + 52px); right: 10px; left: auto;
+  width: min(340px, calc(100vw - 20px)); min-width: 0; max-height: 70vh; overflow-y: auto; }
 .acct__item {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   padding: 10px 10px; border: none; background: none; cursor: pointer;

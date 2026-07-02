@@ -11,7 +11,7 @@ export interface Readiness {
   connected: boolean; date?: string; sleepNeed?: number
   sleep?: (ReadinessScore & { sleepHours?: number; sleepScore?: number }) | null
   freshness?: (ReadinessScore & { acwr?: number | null; tsb?: number | null; personalZ?: number | null }) | null
-  energy?: (ReadinessScore & { hrvZ?: number | null; rhrZ?: number | null; guard?: boolean }) | null
+  energy?: (ReadinessScore & { hrvZ?: number | null; rhrZ?: number | null; guard?: boolean; provisional?: boolean; needDays?: number }) | null
   calibration?: { energy: number; sleep: number; freshness: number } // #207 Phase 2b learned offsets
   baseline?: { nHrv: number; nRhr: number; hrvCV7: number | null }
   today?: { hrv?: number | null; restingHR?: number | null; sleepHours?: number | null }

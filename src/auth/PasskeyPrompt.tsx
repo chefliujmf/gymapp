@@ -3,9 +3,13 @@ import { Fingerprint } from 'lucide-react'
 import { authApi } from './api'
 import { useAuth } from './AuthContext'
 
-// #266 (option A) — one-time, dismissible prompt to set up a passkey right after the user
-// is in. Shows only when WebAuthn is supported AND the account has NO passkey on this device
-// (a passkey login would already have one), and only until added or dismissed on this device.
+// #266 (option A) — one-time, dismissible prompt to set up a passkey right after the user is in.
+// Shows only when WebAuthn is supported AND the account has NO passkey on this device.
+// #311 — do NOT interrupt ONBOARDING with it (JM: "don't ask for a passkey if there isn't one yet"):
+// a new user on Samsung got shoved into a confusing Samsung-account flow mid-setup. Password login is
+// enough to finish; the passkey is a nice-to-have they can add later from Settings. So we hold the
+// prompt until onboarding is done, and the copy makes clear it's their phone's fingerprint/PIN
+// (a platform passkey), fully optional.
 const DISMISS_KEY = 'pk-prompt-dismissed'
 
 export default function PasskeyPrompt() {
@@ -15,7 +19,9 @@ export default function PasskeyPrompt() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
-  if (!supported || !user || (user.passkeys?.length ?? 0) > 0 || dismissed) return null
+  // #311: never during onboarding — only once the coach has finished setting them up.
+  const onboarded = !!user?.onboardedAt
+  if (!supported || !user || !onboarded || (user.passkeys?.length ?? 0) > 0 || dismissed) return null
 
   function close() { localStorage.setItem(DISMISS_KEY, '1'); setDismissed(true) }
   async function add() {
@@ -28,11 +34,11 @@ export default function PasskeyPrompt() {
     <div className="pk-prompt__wrap" role="dialog" aria-modal="true" aria-label="Set up a passkey">
       <div className="pk-prompt">
         <div className="pk-prompt__ic"><Fingerprint size={30} /></div>
-        <h3>Faster sign-in next time?</h3>
-        <p>Add a passkey on this device — then sign in with your fingerprint / Face ID, no password to type.</p>
+        <h3>Faster sign-in next time? <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: 13 }}>(optional)</span></h3>
+        <p>Use your phone's <b>fingerprint / Face / PIN</b> to sign in — no password to type. It stays on this device; you don't need any extra account.</p>
         {err && <p className="auth-err" style={{ margin: '0 0 10px' }}>{err}</p>}
-        <button className="btn" disabled={busy} onClick={add}>{busy ? 'Adding…' : 'Add a passkey'}</button>
-        <button className="btn auth-link" style={{ marginTop: 8 }} onClick={close}>Not now</button>
+        <button className="btn" disabled={busy} onClick={add}>{busy ? 'Adding…' : 'Use fingerprint / Face'}</button>
+        <button className="btn auth-link" style={{ marginTop: 8 }} onClick={close}>Not now — keep my password</button>
       </div>
     </div>
   )

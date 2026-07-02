@@ -6,6 +6,7 @@ import { authApi, type SportGroup, type SportStat, type IcuAthletePull } from '.
 import { useAuth } from '../auth/AuthContext'
 import Availability from '../Availability'
 import EquipmentPicker from '../EquipmentPicker'
+import GoalsPicker from '../GoalsPicker'
 import OnboardReturnBar from '../OnboardReturnBar'
 import SleepNeed from '../SleepNeed'
 import { fetchAthleteSex, fetchWellness } from '../intervals'
@@ -192,7 +193,7 @@ export default function Profile() {
       <div className="section-title">Sleep</div>
       <SleepNeed />
 
-      <div className="section-title">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
+      <div className="section-title" id="ob-coach">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <input
         className="search" placeholder="e.g. Tadej" value={coachName ?? ''}
         onChange={(e) => { setSetting('coachName', e.target.value); setCoachSaved(false) }}
@@ -221,7 +222,10 @@ export default function Profile() {
         ? <p className="meta" style={{ margin: '6px 2px 4px', color: 'var(--accent)' }}>💚 Coaching adjusted for female physiology — cycle-aware fuelling, recovery & load.</p>
         : <p className="meta" style={{ margin: '6px 2px 4px' }}>Tunes fuelling & recovery.{connected ? ' Prefilled from intervals.' : ''}</p>}
 
-      <div id="ob-avail"><Availability /></div>
+      {/* #323 — rich goals/identity capture (what makes coaching personal) */}
+      <GoalsPicker />
+
+      <Availability />{/* #ob-avail anchor is on Availability's own section-title */}
 
       {/* #320 — equipment is a coaching input (like sports/diet), so it lives here on Profile, not Settings. */}
       <EquipmentPicker />
@@ -239,7 +243,8 @@ export default function Profile() {
       <p className="meta" style={{ margin: '2px 2px 8px' }}>
         Personalises your readiness & coach. {connected ? <>Values tagged <Tag label="intervals" kind="icu" /> are pulled from your intervals profile and <strong>sync both ways</strong> — edit here, it writes back (your custom fields are untouched). </> : null}<Tag label="est." kind="pp" /> means Platyplus computes/you set it (intervals has no such field).
       </p>
-      <Link to="/stats" className="bm-trends" style={{ marginTop: 0, marginBottom: 8 }}>📈 See trends & race predictions in Stats ›</Link>{/* #228 */}
+      {/* #321 — go STRAIGHT to the user's own trend page (was a generic hub → "I don't get it"). */}
+      <Link to={does('running') ? '/running-stats' : does('cycling') ? '/cycling-stats' : '/stats'} className="bm-trends" style={{ marginTop: 0, marginBottom: 8 }}>📈 See your {does('running') ? 'running' : does('cycling') ? 'cycling' : ''} trends & predictions ›</Link>{/* #228 */}
       {/* #235 — turn the readiness self-learning on/off */}
       <label className="toggle-row">
         <span className="toggle-row__t"><b>Learn from my check-ins</b><span className="meta">Auto-adapt your Sleep/Freshness/Energy scores toward how you actually rate them over time.</span></span>

@@ -100,6 +100,19 @@ server.tool('set_sports',
   { sports: z.array(z.string()).describe('e.g. ["cycling","strength"]') },
   wrap((a) => api('PUT', '/api/profile', { sports: a.sports })))
 
+// #313 — SAVE the athlete's threshold stats. CRUCIAL for runs/rides: without a threshold pace / FTP
+// set, %pace / %ftp workout targets have nothing to resolve against on their watch. If a value is
+// missing, ESTIMATE it from get_recent_activities / get_wellness (recent hard efforts, eFTP, best
+// 20-min power, threshold runs) and set it here, then TELL the athlete your estimate + that it'll refine.
+server.tool('set_thresholds',
+  'Save the athlete\'s threshold benchmarks so workout targets resolve on their device + Platyplus. Mirrors to intervals.icu. Set what you know/estimated; omit the rest. thresholdPace is running seconds-per-km (e.g. 300 = 5:00/km).',
+  { group: z.enum(['cycling', 'running']).describe('which sport these belong to'),
+    ftp: z.number().optional().describe('cycling FTP in watts'),
+    thresholdPace: z.number().optional().describe('running threshold pace, SECONDS per km (e.g. 5:00/km = 300)'),
+    maxHr: z.number().optional().describe('max heart rate, bpm'),
+    lthr: z.number().optional().describe('lactate-threshold HR, bpm') },
+  wrap((a) => api('PUT', '/api/sport-stat', { group: a.group, ftp: a.ftp, thresholdPace: a.thresholdPace, maxHr: a.maxHr, lthr: a.lthr })))
+
 // --- training -------------------------------------------------------------
 // Structured coaching the app renders as the plan SHELL (Platyplus is master; this
 // also mirrors into the intervals description). The meals/sessions themselves are
