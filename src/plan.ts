@@ -104,16 +104,43 @@ export function matchExercise(name: string) { return findLib(name) }
 function findLib(name: string) {
   const want = toks(name)
   if (!want.length) return undefined
+  const wantSet = new Set(want)
+  const nn = norm(name)
+  // #296: PASS 1 — find the correct movement. Old code gated on score>=2, so single-word lifts
+  // (Squat, Deadlift, Plank, Pull-up) could never match → no demo at all. Score by token overlap
+  // with a tightness guard so "squat" doesn't grab a 5-word combo on one shared word.
   let best: (typeof library)[number] | undefined
-  let bestScore = 0
+  let bestKey = -1
   for (const e of library) {
-    const lt = new Set(toks(e.name))
-    let sc = 0
-    for (const w of want) if (lt.has(w)) sc++
-    // Prefer higher overlap; tie-break to the more specific (shorter) name.
-    if (sc > bestScore || (sc === bestScore && sc > 0 && best && e.name.length < best.name.length)) { best = e; bestScore = sc }
+    const et = toks(e.name)
+    let overlap = 0
+    for (const w of et) if (wantSet.has(w)) overlap++
+    if (overlap < 1) continue
+    const coverWant = overlap / want.length      // how much of what the coach asked for is present
+    const coverName = overlap / (et.length || 1)  // how tight the entry is (not padded with other moves)
+    if (want.length === 1 ? coverName < 0.5 : coverWant < 0.5) continue
+    const exact = norm(e.name) === nn ? 1 : 0
+    const key = exact * 1e6 + overlap * 1000 + (coverWant + coverName) * 100 + (e.video ? 15 : 0) - et.length
+    if (key > bestKey) { best = e; bestKey = key }
   }
-  return bestScore >= 2 ? best : undefined
+  if (!best) return undefined
+  // PASS 2 — prefer a VIDEO demo (JM: "make sure all exercises have a video"). If the correct match
+  // is image-only, swap to the TIGHTEST video entry that fully CONTAINS the query (a qualified
+  // variation of the SAME movement, e.g. "Romanian Deadlift" → "Band Romanian Deadlift").
+  if (!best.video) {
+    let vBest: (typeof library)[number] | undefined
+    let vKey = -Infinity
+    for (const e of library) {
+      if (!e.video) continue
+      const et = toks(e.name)
+      if (!want.every((w) => et.includes(w))) continue // want ⊆ entry tokens
+      // exact name, else fewest extra words; avoid COMPOUND/combo clips (a poor single-move demo)
+      const key = (norm(e.name) === nn ? 1000 : 0) - et.length - (/[+/]|combo|complex|into|thru/i.test(e.name) ? 50 : 0)
+      if (key > vKey) { vBest = e; vKey = key }
+    }
+    if (vBest) return vBest
+  }
+  return best
 }
 
 /** Build a playable gym session from a coach WeightTraining event.
