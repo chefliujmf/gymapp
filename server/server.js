@@ -660,8 +660,9 @@ async function syncActivityNote(user, id, content) {
 // #288 — a NEW user's intervals account has none of our custom feedback fields, so the 1-based
 // values we write have nowhere to land. Create the six ACTIVITY_FIELDs (idempotent — skip any that
 // already exist by code). Called on connect/onboarding. Best-effort; never throws to the caller.
-async function ensureIcuFields(user) {
+async function ensureIcuFields(user, { force = false } = {}) {
   if (!user || !user.icuKey) return
+  if (!force && user.icuFieldsAt) return // already ensured (flag) — skip the round-trip
   const ath = user.icuAthlete || 'i28814'
   try {
     const cur = await icuFetch(user, `/athlete/${ath}/custom-item`).then((r) => (r.ok ? r.json() : [])).catch(() => [])
@@ -675,6 +676,7 @@ async function ensureIcuFields(user) {
       }
       await icuFetch(user, `/athlete/${ath}/custom-item`, { method: 'POST', body: JSON.stringify(item) }).catch((e) => console.error('[icu-field-create ' + def.code + '] ' + (e.message || e)))
     }
+    user.icuFieldsAt = Date.now(); save(store) // mark done so we don't re-check every time
   } catch (e) { console.error('[ensureIcuFields] ' + (e.message || e)) }
 }
 
@@ -697,6 +699,9 @@ app.post('/auth/activity/:id/feedback', auth, (req, res) => {
   // #273 BI-DIRECTIONAL: write feel/RPE + custom fields BACK to the intervals activity (as the
   // 1-based indices intervals stores), so it shows up in intervals too. Only for real intervals ids.
   if (req.user.icuKey && /^i?\d+$/.test(id)) {
+    // #288 — make sure the custom fields exist BEFORE writing values (guarded flag → runs once); covers
+    // athletes who connected before #288 so the 1-based values have somewhere to land.
+    if (!req.user.icuFieldsAt) ensureIcuFields(req.user).catch(() => {})
     const payload = {}
     const fi = ICU_FEEL_LABELS.indexOf(fb.feel); if (fi >= 0) payload.feel = fi + 1
     if (fb.rpe) payload.icu_rpe = fb.rpe
@@ -1684,6 +1689,9 @@ app.put('/api/profile', apiAuth, (req, res) => {
 // Sets onboardedAt so the Today welcome card stops showing. The user can still skip earlier.
 app.post('/api/onboarding/complete', apiAuth, (req, res) => {
   req.user.onboardedAt = Date.now(); save(store); res.json({ ok: true, onboardedAt: req.user.onboardedAt })
+  // #288 — make sure the athlete's intervals has our custom feedback fields by the end of onboarding
+  // (covers users who connected their key BEFORE #288 shipped, so /auth/icu never fired for them).
+  if (req.user.icuKey) ensureIcuFields(req.user).catch(() => {})
 })
 // #257 — the coach VERIFIES connections & data flow (so it can tell the user exactly what to connect).
 // Reports Platyplus↔intervals/Strava links AND whether data is actually flowing INTO intervals
