@@ -22,6 +22,14 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+325. ⬜ **Onboarding forgot to ask the COACH's NAME.** JM 2026-07-02: Option C flow dropped naming the coach (was in the
+    old chat interview; stored as `coachName`, set on Profile "Your coach"). ADD a step (or fold into About/goals #323) to
+    let the user name their coach — it personalises every chat + insight. Prefill "Coach". gymapp-only.
+324. ⬜ **Stats page doesn't fit the screen — too "big", parts can't be seen (horizontal overflow).** JM 2026-07-02:
+    content wider than the viewport → clipped, some parts unreachable. Violates the NO-horizontal-scroll mobile rule. FIND
+    the overflow source on /stats (+ detail pages CyclingStats/RunningStats/Strength/MindStats): fixed widths, `nowrap`,
+    wide numbers/tables (e.g. race-prediction range "3:45:00–4:03:00"), non-wrapping grids, oversized fonts. Fix so it
+    fits ≤430px with padding, wraps, no clip. Check every stats subpage. gymapp-only.
 323. ⬜ **Onboarding must capture the RICH profile + OBJECTIVES/identity, not just discrete values (like JM's own).** JM
     2026-07-02: "I don't think onboarding is good enough to capture a full profile + objectives like I did for myself." The
     structured pages (C, #310) get sport/sex/equipment/availability/numbers — but MISS the qualitative goal & identity that

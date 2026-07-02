@@ -39,6 +39,9 @@ a { color: inherit; text-decoration: none; }
 .app-main {
   flex: 1; width: 100%; max-width: var(--maxw); margin: 0 auto;
   padding: calc(env(safe-area-inset-top) + 14px) 16px calc(var(--tab-h) + env(safe-area-inset-bottom) + 24px);
+  /* #324 mobile hard-rule: the page NEVER scrolls/clips sideways — a lone wide child (a race-time
+     range, a 3-col stat grid) can't push content off-screen. Children shrink/wrap instead. */
+  overflow-x: hidden;
 }
 
 /* ---------- Tab bar ---------- */
@@ -442,7 +445,9 @@ select.search { appearance: none; -webkit-appearance: none; }
 .sport-card__h { font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
 .sport-card__vdot { margin-left: auto; font-size: 11px; font-weight: 800; color: var(--accent); background: rgba(52,224,125,.1); border: 1px solid rgba(52,224,125,.28); border-radius: 999px; padding: 2px 8px; }
 .stat-cell-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.stat-cell { display: flex; flex-direction: column; gap: 4px; background: #14181f; border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; }
+/* #324 — grid tracks must be allowed to shrink below their content (default min-width:auto overflows) */
+.stat-cell-grid > *, .bm-grid > *, .fit-grid > * { min-width: 0; }
+.stat-cell { display: flex; flex-direction: column; gap: 4px; background: #14181f; border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; min-width: 0; }
 .stat-cell__l { font-size: 10px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .03em; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .stat-cell__in { display: flex; align-items: baseline; gap: 5px; }
 .stat-cell__i { background: transparent; border: none; color: var(--text); font-size: 17px; font-weight: 800; width: 100%; min-width: 0; padding: 1px 0; }
@@ -468,7 +473,9 @@ select.search { appearance: none; -webkit-appearance: none; }
 .zrow--mar { border-color: rgba(240,177,69,.4); background: rgba(240,177,69,.06); }
 .zname-top { display: flex; align-items: center; gap: 6px; }
 .range-badge { font-size: 9px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; color: var(--warn, #f0b145); border: 1px solid rgba(240,177,69,.45); border-radius: 999px; padding: 1px 6px; }
-.zpace--mar { color: var(--warn, #f0b145); text-align: right; }
+/* #324 — the range value ("3:45:00–4:03:00") is the one wide token here; let it wrap rather than
+   force the row wider than the screen. */
+.zpace--mar { color: var(--warn, #f0b145); text-align: right; white-space: normal; }
 .zpace--mar .zsub { display: block; font-size: 10px; font-weight: 600; color: var(--text-dim); }
 .pred-note { font-size: 11px; line-height: 1.45; color: var(--text-dim); margin: 8px 2px 0; }
 .pred-note b { color: var(--text); font-weight: 700; }
