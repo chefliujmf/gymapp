@@ -4,13 +4,14 @@ import { useAuth } from './auth/AuthContext'
 import { authApi, type IcuAthletePull } from './auth/api'
 import { fmtPace, parsePace } from './running-paces'
 import { fetchWellness } from './intervals'
+import { estimateSleepNeed } from './sleep'
 import { headlineVo2max, runningVo2max, cyclingVo2max, confLabel } from './vo2max-submax'
 
 // #236 — benchmarks = MANUAL vs COMPUTED. Tiles show the in-use value; tap → a sheet with BOTH values,
 // an input (editable only in Manual), and a Manual|Computed toggle. A per-stat preference (user.statPrefs)
 // decides which drives; the computed value keeps updating regardless. Used in Stats + Profile.
 type Pref = 'manual' | 'computed' | 'auto' // #277 auto = use computed once it's ready, manual until then
-type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr'
+type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed' // #337 sleep joins the picker
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n))
 const numParse = (lo: number, hi: number) => (s: string) => { const n = Number(s); return Number.isFinite(n) && n > 0 ? clamp(n, lo, hi) : null }
 
@@ -66,6 +67,11 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
   const [hrRest, setHrRest] = useState<number | null>(null)
   const [eftp, setEftp] = useState<number | null>(null)
   const [paceEst, setPaceEst] = useState<number | null>(null)
+  const [map5, setMap5] = useState<number | null>(null) // #337 best 5-min power (MAP)
+  const [pbWeight, setPbWeight] = useState<number | null>(null)
+  const [runsRecent, setRunsRecent] = useState<number | null>(null)
+  const [sleepEst, setSleepEst] = useState<number | null>(null) // computed sleep need (null until learned)
+  const [sleepMore, setSleepMore] = useState<number | null>(null) // nights still needed
   const [open, setOpen] = useState<Key | null>(null)
   const connected = !!user?.hasIcuKey
 
@@ -73,10 +79,12 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
     if (!connected) return
     authApi.pullIcuAthlete().then(setPull).catch(() => {})
     authApi.runEstimate().then((r) => { if (r.available && r.thresholdPace) setPaceEst(r.thresholdPace) }).catch(() => {})
+    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null) } setRunsRecent(p.runsRecent ?? null) }).catch(() => {}) // #337
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)
     fetchWellness(from, to).then((rows) => {
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break }
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { setEftp(rows[i].eftp as number); break }
+      const se = estimateSleepNeed(rows); setSleepEst(se.suggested); setSleepMore(se.needMore || null) // #337 sleep learning state
     }).catch(() => {})
   }, [connected])
 
@@ -84,13 +92,16 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
   const ftpManual = ss.cycling?.ftp ?? user?.ftp ?? null
   const maxHr = ss.cycling?.maxHr ?? user?.maxHR ?? null
   const paceManual = ss.running?.thresholdPace ?? user?.runThresholdPace ?? null
-  const weight = pull?.weight ?? null
+  const weight = pbWeight ?? pull?.weight ?? null
   const vdot = user?.runVdot ?? null
-  // computed VO₂max (best per-sport submax estimate; pass null manual so we get the pure estimate)
-  const vo2head = headlineVo2max(null, [
-    { sport: 'running', est: runningVo2max({ vdot, hrMax: maxHr, hrRest }) },
-    { sport: 'cycling', est: cyclingVo2max({ ftp: ftpManual, weightKg: weight, hrMax: maxHr, hrRest }) },
-  ])
+  // #337 computed VO₂max — cycling from 5-min MAP (not FTP), running suppressed when run volume is thin,
+  // ordered by the sport the athlete actually does (so a cyclist's number comes from cycling).
+  const estBySport: Record<'running' | 'cycling', ReturnType<typeof cyclingVo2max>> = {
+    running: runningVo2max({ vdot, hrMax: maxHr, hrRest, runsRecent }),
+    cycling: cyclingVo2max({ ftp: ftpManual, weightKg: weight, hrMax: maxHr, hrRest, map5min: map5 }),
+  }
+  const vo2Order = [...(user?.sports || []).filter((s): s is 'running' | 'cycling' => s === 'running' || s === 'cycling'), 'cycling', 'running'].filter((s, i, a) => a.indexOf(s) === i) as ('running' | 'cycling')[]
+  const vo2head = headlineVo2max(null, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
 
   const saveSport = (group: 'cycling' | 'running', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
   const defs: StatDef[] = [
@@ -98,6 +109,9 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
     { key: 'ftp', label: 'FTP', unit: 'W', computed: eftp, computedSrc: 'eFTP from your power', manual: ftpManual, fmt: String, parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }) },
     { key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceEst, computedSrc: 'from your recent runs', manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }) },
     { key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: null, computedSrc: '', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }) },
+    // #337 — sleep need joins the SAME picker (was a bespoke card). Computed = learned from best-recovery
+    // nights (null until ready → the cell shows "learning · N more nights").
+    { key: 'sleepNeed', label: 'Sleep need', unit: 'h', computed: sleepEst, computedSrc: sleepMore ? `learning · ~${sleepMore} more nights` : 'from your best-recovery nights', manual: user?.sleepNeed ?? null, fmt: String, parse: numParse(4, 12), save: (v) => authApi.saveProfile({ sleepNeed: v }).then(() => refresh()) },
   ]
   // #277: default is AUTO — prefer the computed estimate once it's ready, manual until then.
   const prefOf = (d: StatDef): Pref => user?.statPrefs?.[d.key] ?? 'auto'
@@ -117,7 +131,9 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
             <button key={d.key} className="bm-cell bm-cell--tap" onClick={() => setOpen(d.key)}>
               <div className="bm-cell__l">{d.label}<span className={`bm-tag bm-tag--${src === 'manual' ? 'you' : 'icu'}`}>{tag}</span></div>
               <div className="bm-cell__v">{v != null ? d.fmt(v) : '—'}{v != null && d.unit ? <span className="bm-cell__u">{d.unit}</span> : null}</div>
-              <div className="bm-cell__alt">tap to switch</div>
+              {/* #337 — show the LEARNING state when the estimate isn't ready yet (e.g. "learning · N more
+                  nights"); otherwise the tap affordance. Makes "what's estimated / still learning" visible. */}
+              <div className="bm-cell__alt">{d.computed == null && d.computedSrc ? d.computedSrc : 'tap to switch'}</div>
             </button>
           )
         })}

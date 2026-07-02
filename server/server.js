@@ -282,7 +282,7 @@ app.put('/auth/profile', auth, (req, res) => {
   // #236 — per-stat MANUAL vs COMPUTED preference. { vo2max:'manual'|'computed', ftp:…, thresholdPace:…, maxHr:… }
   if (req.body.statPrefs && typeof req.body.statPrefs === 'object') {
     req.user.statPrefs = req.user.statPrefs || {}
-    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed') && /^(vo2max|ftp|thresholdPace|maxHr)$/.test(k)) req.user.statPrefs[k] = v
+    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed' || v === 'auto') && /^(vo2max|ftp|thresholdPace|maxHr|sleepNeed)$/.test(k)) req.user.statPrefs[k] = v
   }
   save(store); res.json(pub(req.user))
 })
@@ -335,6 +335,25 @@ app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
   }
   if (est.thresholdPace > 0) { req.user.runPaceEst = Math.round(est.thresholdPace); save(store) } // #236 stash computed pace for the coach
   res.json({ available: true, ...est, confidence, runs: runs.length, source: 'critical speed (your recent runs)' })
+})
+
+// #337 — cycling power benchmarks for a PROPER VO₂max: best 5-min power (≈ maximal aerobic power, MAP)
+// + best 20-min + weight, over 90 days. MAP is the right VO₂max input (FTP under-reads badly). Also the
+// recent run count so we can suppress a running VO₂max off almost no running.
+app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ available: false })
+  const ath = req.user.icuAthlete || 'i28814'
+  const pc = await icuGet(req.user, `/athlete/${ath}/power-curves?type=Ride&start=${icuDay(90)}&end=${icuDay(0)}`)
+  const curve = pc && Array.isArray(pc.list) ? pc.list[0] : null
+  let map5 = null, ftp20 = null, weight = null
+  if (curve && Array.isArray(curve.secs)) {
+    const vals = curve.values || curve.watts || curve.best || []
+    const at = (t) => { for (let i = 0; i < curve.secs.length; i++) if (curve.secs[i] >= t) return Number(vals[i]) || null; return null }
+    map5 = at(300); ftp20 = at(1200); weight = curve.weight || null
+  }
+  const runs = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(90)}&newest=${icuDay(0)}`)
+  const runsRecent = Array.isArray(runs) ? runs.filter((a) => /run/i.test(a.type || '') && a.distance > 800).length : null
+  res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent })
 })
 
 // #216 — running endurance base for the marathon-realism range: longest single run +

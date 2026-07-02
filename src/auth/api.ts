@@ -39,7 +39,7 @@ export interface User {
   sportSettings?: Partial<Record<'cycling' | 'running' | 'swimming', SportStat>>
   runVdot?: number | null // running VDOT ≈ VO₂max, derived from threshold pace (#209)
   runThresholdPace?: number | null // sec/km
-  statPrefs?: Partial<Record<'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr', 'manual' | 'computed' | 'auto'>> // #236 manual vs computed; #277 auto = computed-when-ready, manual until then
+  statPrefs?: Partial<Record<'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed', 'manual' | 'computed' | 'auto'>> // #236 manual vs computed; #277 auto; #337 sleepNeed
   learnReadiness?: boolean // #235 — auto-calibrate readiness from check-in overrides (default true)
   statsSyncedAt?: number // last successful push to intervals
   onboardedAt?: number // #257 set when the coach finishes onboarding (profile + first week)
@@ -147,6 +147,7 @@ export const authApi = {
   // #210 per-sport stats two-way sync
   pullIcuAthlete: () => req<IcuAthletePull>('/intervals/athlete'),
   runEstimate: () => req<{ available: boolean; thresholdPace?: number; criticalSpeed?: number; r2?: number | null; source?: string; confidence?: 'high' | 'medium' | 'low'; assessed?: boolean; reason?: string; runs?: number; weeklyKm?: number }>('/intervals/run-estimate'),
+  powerBenchmarks: () => req<{ available: boolean; map5min?: number | null; ftp20?: number | null; weight?: number | null; runsRecent?: number | null }>('/intervals/power-benchmarks'), // #337
   runVolume: () => req<{ available: boolean; longestKm?: number; weeklyKm?: number; runs?: number; windowDays?: number }>('/intervals/run-volume'),
   runPaceTrend: () => req<{ available: boolean; paces?: (number | null)[]; weeks?: number }>('/intervals/run-pace-trend'), // #230 per-week avg pace
   // #223 — forecast a FUTURE day's expected freshness from planned load.
