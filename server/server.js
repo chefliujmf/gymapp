@@ -380,46 +380,46 @@ app.get('/auth/intervals/run-pace-trend', auth, async (req, res) => {
 // PUT is 403). Sending one field leaves custom_field_values (#147) + everything else intact.
 // VO₂max/runVdot are Platyplus-only (no intervals field) and never go to intervals.
 const GROUPS = ['cycling', 'running', 'swimming']
-app.put('/auth/sport-stat', auth, async (req, res) => {
-  const group = String(req.body?.group || '')
-  if (!GROUPS.includes(group)) return res.status(400).json({ error: 'bad group' })
+// Save one sport's threshold stats on the user (mirror of intervals) + push them back to intervals.
+// Shared by the UI (/auth/sport-stat) and the COACH (/api/sport-stat → set_thresholds, #313) so the
+// coach's estimate PERSISTS and anchors run %pace / ride %ftp on the device.
+async function applySportStat(user, body = {}) {
+  const group = String(body.group || '')
+  if (!GROUPS.includes(group)) return { status: 400, body: { error: 'bad group' } }
   const numOr = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.min(hi, Math.max(lo, n)) : null }
-  // build a clean patch (only the fields meaningful for this group)
   const patch = {}
-  const b = req.body || {}
-  if (group === 'cycling' && 'ftp' in b) patch.ftp = numOr(b.ftp, 50, 600)
-  if ('maxHr' in b) patch.maxHr = numOr(b.maxHr, 120, 230)
-  if ('lthr' in b) patch.lthr = numOr(b.lthr, 90, 220)
-  if ('thresholdPace' in b) patch.thresholdPace = group === 'running' ? numOr(b.thresholdPace, 120, 900) : numOr(b.thresholdPace, 40, 300)
+  if (group === 'cycling' && 'ftp' in body) patch.ftp = numOr(body.ftp, 50, 600)
+  if ('maxHr' in body) patch.maxHr = numOr(body.maxHr, 120, 230)
+  if ('lthr' in body) patch.lthr = numOr(body.lthr, 90, 220)
+  if ('thresholdPace' in body) patch.thresholdPace = group === 'running' ? numOr(body.thresholdPace, 120, 900) : numOr(body.thresholdPace, 40, 300)
 
-  // persist locally on the user (mirror of intervals)
-  req.user.sportSettings = req.user.sportSettings || {}
-  req.user.sportSettings[group] = { ...(req.user.sportSettings[group] || {}), ...patch }
-  // running VDOT (Platyplus-only, computed client-side) rides along for the coach
-  if (group === 'running' && 'runVdot' in b) req.user.runVdot = numOr(b.runVdot, 20, 95)
-  // mirror cycling FTP/maxHR onto the flat fields the coach prompt + Fitness page read
+  user.sportSettings = user.sportSettings || {}
+  user.sportSettings[group] = { ...(user.sportSettings[group] || {}), ...patch }
+  if (group === 'running' && 'runVdot' in body) user.runVdot = numOr(body.runVdot, 20, 95)
   if (group === 'cycling') {
-    if ('ftp' in patch) req.user.ftp = patch.ftp
-    if ('maxHr' in patch) req.user.maxHR = patch.maxHr
+    if ('ftp' in patch) user.ftp = patch.ftp
+    if ('maxHr' in patch) user.maxHR = patch.maxHr
   }
 
-  // auto-push the synced fields back to intervals via the per-entry endpoint (best-effort)
   let synced = false, pushError = null
-  if (req.user.icuKey) {
-    const ath = req.user.icuAthlete || 'i28814'
+  if (user.icuKey) {
+    const ath = user.icuAthlete || 'i28814'
     try {
-      const list = await icuGet(req.user, `/athlete/${ath}/sport-settings`)
+      const list = await icuGet(user, `/athlete/${ath}/sport-settings`)
       const w = Array.isArray(list) ? icuPatchForGroup(list, group, patch) : null
       if (w && Object.keys(w.body).length) {
-        const r = await icuFetch(req.user, `/athlete/${ath}/sport-settings/${w.id}`, { method: 'PUT', body: JSON.stringify(w.body) })
+        const r = await icuFetch(user, `/athlete/${ath}/sport-settings/${w.id}`, { method: 'PUT', body: JSON.stringify(w.body) })
         synced = r.ok
         if (!r.ok) pushError = `intervals ${r.status}: ${(await r.text().catch(() => '')).slice(0, 120)}`
-        else req.user.statsSyncedAt = Date.now()
+        else user.statsSyncedAt = Date.now()
       } else pushError = Array.isArray(list) ? `no ${group} sport in intervals` : 'could not read intervals sport-settings'
     } catch (e) { pushError = String(e).slice(0, 120) }
   }
   save(store)
-  res.json({ ...pub(req.user), synced, pushError })
+  return { status: 200, body: { ...pub(user), synced, pushError } }
+}
+app.put('/auth/sport-stat', auth, async (req, res) => {
+  const r = await applySportStat(req.user, req.body || {}); res.status(r.status).json(r.body)
 })
 
 // Admin: trigger the prod-promotion GitHub workflow (workflow_dispatch) from the app
@@ -964,8 +964,9 @@ truly critical anchor is missing (e.g. main goal, or a hard injury). Keep every 
 - **Call check_connections + pull their recent training** (last ~3 months, incl. Strava history synced into intervals)
   BEFORE drafting. Ground the plan in real data, not assumptions.
 - **They may not know their numbers.** If FTP / threshold pace is blank, ESTIMATE it from their intervals history (recent
-  hard efforts, Critical Power/Speed, best 20-min power, threshold runs) and TELL them your estimate + that they can adjust
-  it. Don't block on it and don't invent a number with no data — reason from what's actually there.
+  hard efforts, Critical Power/Speed, best 20-min power, threshold runs), **call set_thresholds to SAVE it** (so run %pace /
+  ride %ftp targets actually resolve on their watch — a run with no threshold pace is useless), and TELL them your estimate
+  + that it'll refine. Don't block on it and don't invent a number with no data — reason from what's actually there.
 - Runs use PACE (min/km) or HR, never watts. Author every ride AND run as STRUCTURED steps (warmup / work / cooldown with
   targets) so intervals → Garmin gives a followable workout — not a text-only description (#312/#314).
 - As you learn durable facts, call set_athlete_profile with the FULL clean markdown profile (rewrite it whole each time).
@@ -1664,6 +1665,12 @@ app.put('/api/profile', apiAuth, (req, res) => {
   if (Array.isArray(req.body?.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)
   if (typeof req.body?.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
   save(store); res.json({ ok: true, sports: req.user.sports || [], coachName: req.user.coachName || '' })
+})
+// #313 — coach SAVES the athlete's threshold stats (FTP / threshold pace / max-HR / LTHR) it estimated
+// from their intervals history, so they PERSIST and anchor run %pace / ride %ftp on the device.
+app.put('/api/sport-stat', apiAuth, async (req, res) => {
+  const r = await applySportStat(req.user, req.body || {})
+  res.status(r.status).json(r.status === 200 ? { ok: true, synced: r.body.synced, pushError: r.body.pushError, sportSettings: req.user.sportSettings } : r.body)
 })
 // #257 — coach marks onboarding COMPLETE (after it saved the profile AND drafted the first week).
 // Sets onboardedAt so the Today welcome card stops showing. The user can still skip earlier.
