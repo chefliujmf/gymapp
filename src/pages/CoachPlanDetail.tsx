@@ -103,7 +103,9 @@ export default function CoachPlanDetail() {
         const thrPace = (user?.runThresholdPace || (user?.sportSettings as { running?: { thresholdPace?: number } } | undefined)?.running?.thresholdPace) || null
         const pctPace = (pct: number) => (thrPace && pct > 0 ? Math.round(thrPace * 100 / pct) : null)
         const tgt = (pct: number, watts?: number | null) => isRun ? (pctPace(pct) ? `${fmtPace(pctPace(pct)!)}/km` : `${pct}%`) : (watts ? `${watts} W` : `${pct}%`)
-        const paceSeries = () => plannedSeries(p.segments!, 100).map((pct) => (thrPace && pct > 0 ? Math.round(thrPace * 100 / pct) : (thrPace || 0)))
+        // #331 — plot the EFFORT shape (harder = up, exactly like the cycling power chart) but LABEL the
+        // axis in min/km via fmt, so a run chart looks like cycling, just in pace. fmt maps %→pace.
+        const runFmt = (v: number) => (thrPace && v > 0 ? `${fmtPace(Math.round(thrPace * 100 / v))}` : `${Math.round(v)}%`)
         // #280 hero (4 headline targets) + chips (JM pick B, same spirit as post-workout)
         const hero: [string, string][] = [
           load ? ['Target TSS', String(load.tss)] : null,
@@ -126,7 +128,7 @@ export default function CoachPlanDetail() {
           <div className="tl-card" style={{ marginTop: 8 }}>
             {/* #331 — a RUN never shows watts: pace curve if we have a threshold pace, else the % shape. */}
             <div className="tl-clabel">{isRun ? (thrPace ? 'PLANNED PACE · min/km · target shape' : 'PLANNED EFFORT · % of threshold · target shape') : 'PLANNED POWER · W · target shape'}</div>
-            <TrendChart series={[{ label: 'Target', data: isRun ? (thrPace ? paceSeries() : plannedSeries(p.segments!, 100)) : plannedSeries(p.segments!, rFtp), color: '#34e07d', area: true }]} height={150} axes unit={isRun ? (thrPace ? '/km' : '%') : ' W'} fmt={isRun && thrPace ? fmtPace : undefined} xTicks={minuteTicks(totalSec)} />
+            <TrendChart series={[{ label: 'Target', data: isRun ? plannedSeries(p.segments!, 100) : plannedSeries(p.segments!, rFtp), color: '#34e07d', area: true }]} height={150} axes unit={isRun ? (thrPace ? '/km' : '%') : ' W'} fmt={isRun ? runFmt : undefined} xTicks={minuteTicks(totalSec)} />
             {isRun && !thrPace && <div className="act-ins"><span className="tag">⚙</span>Set your <Link to="/profile?onboard=1#ob-numbers" style={{ color: 'var(--accent)' }}>threshold pace</Link> so these show as min/km.</div>}
             <div className="act-ins"><span className="tag">💡</span>{p.cues?.[0] || (sum && sum.mainPct >= 91 ? 'Warm up fully — the first hard effort should feel controlled, not a shock; keep recoveries easy and let HR drop.' : 'Hold steady targets — smooth and repeatable beats spiky.')}</div>
           </div>
