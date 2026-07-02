@@ -22,6 +22,19 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+301. ⬜ **Bi-directional EXERCISE sync intervals ↔ Platyplus.** JM 2026-07-02: changes to an exercise in intervals should
+    mirror to Platyplus, and coach/athlete changes in Platyplus should reflect in intervals — both ways. STATUS: rides now
+    round-trip (segments, #293). Gym exercises live in the plan NOTES (markdown table) → text syncs both ways, but STRUCTURED
+    gym fields (tempo/sets/reps as data) don't round-trip because intervals has no gym-exercise structure. Architecture
+    decision needed (canonical structured store + reconcile). gymapp-only.
+300. ⬜ **No-video exercises — remove from the library OR source free/open-source videos.** JM 2026-07-02. Library: 3102
+    video · 1379 image-only (Centr .jpg) · 49 no-media. Matcher now PREFERS video (#296) so prescribed exercises resolve to
+    video ~93%+. Options: (a) drop the 49 no-media + hide image-only from browse; (b) source video for image-only from OPEN/
+    FREE libs (wger, free-exercise-db, exercisedb). JM prefers videos. Decision needed before deleting 1379 entries.
+299. ⬜ **Auto-trigger coach review on activity completed + feedback — EXISTS, verify.** JM 2026-07-02. Already wired:
+    `/auth/activity/:id/feedback` → `runCoachTask` reviews the activity → `save_coach_review` (→ intervals Notes #290 + bell
+    notification #233) + `set_activity_text` (#289). Gated on `coachProfile` (set for JM). Verify end-to-end on QA/prod.
+
 298. 🔨 **Tag band exercises + make "Bands" a filter/equipment.** JM 2026-07-02: "identify and tag the ones with small
     band and make this available as a filter and equipment." FOUND: equipment "Bands" already exists (203 exercises) + the
     equipment filter is data-driven, so a Bands chip already showed — BUT ~25 band-ASSISTED moves (e.g. "Barbell Banded
