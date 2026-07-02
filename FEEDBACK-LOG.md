@@ -22,6 +22,38 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+310. ⬜ **Onboarding is OVERWHELMING — redesign to a guided page-wizard, not a chat interrogation.** JM 2026-07-02
+    (watching wife onboard): "you ask too many questions + a wall of text… maybe for onboarding the coach switches to a
+    PAGE to let the user PICK the values, then comes back to the chat when one page's input is done — that chat flow is
+    overwhelming." DIRECTION: coach bookends a **structured wizard** — welcome → hand off to one pick-page at a time
+    (sex, sport(s), equipment, availability, thresholds/FTP/pace — prefill from intervals) → return to chat after each →
+    coach analyzes intervals FIRST + asks only what's missing → builds week. Absorbs #306(e-g). **Mock-first** (wizard
+    flow). gymapp-only.
+309. ⬜ **An exercise STILL showed with no picture AND no video — hard rule violated.** JM 2026-07-02: "one exercise did
+    not have picture or video, I was very clear not to use those." FIX: at RENDER, if an exercise resolves to no image AND
+    no video (after female-variant + #300 backfill), never display it bare — drop it or swap to a matched media-having
+    alternative same movement/muscle. Find the specific one (today's plan) + add a guard/test. Relates #300. gymapp-only.
+308. ⬜ **Onboarding must VISIBLY capture/confirm biological SEX so the user trusts the plan is women-adjusted.** JM
+    2026-07-02: "are we confident workouts are adjusted for women? I saw no sex input in onboarding — incomplete + not
+    usable." STATUS (verified): machinery works — sex syncs from intervals → `coach-engine-female.md` (RED-S/fuelling/
+    cycle-aware) injects when `user.sex==='female'`; xenia's sex IS female (i628280) so it DOES fire. GAP: it's invisible —
+    nothing shows sex was captured or the plan is female-adjusted, and there's no manual set if intervals lacks it. FIX:
+    surface sex as a confirmed step in the wizard (#310) + a visible "coaching adjusted for female physiology" signal +
+    manual fallback. gymapp-only.
+307. 🔨 **Setup checklist: equipment item links to /profile but equipment is set in Settings, + stays "not done" after
+    setting it.** JM 2026-07-02 (wife). FIX: point the equipment item at the right place (Settings equipment) and read the
+    same source it's saved to so it clears once set. Same for any other mis-targeted checklist item. gymapp-only.
+306. 🔨 **Onboarding chat — wife's first real test surfaced blockers (CRITICAL for launch).** JM 2026-07-02:
+    (a) **nav reset/lockout** — opened another screen (ADD) + back → Chat remounted, lost msgs, re-fired the opener → full
+    onboarding RESET. FIX: persist chat msgs (sessionStorage) + only auto-kick with no prior msgs.
+    (b) **send button unavailable / can't input** — `busy` got stuck (long/stalled coach stream, no timeout). FIX:
+    AbortController timeout resets busy + shows an error; never lock permanently.
+    (c) **"thinking for a long time, user couldn't know"** — obvious thinking indicator + "still working…" after a few s.
+    (d) **voice stops too quickly** — SpeechRecognition wasn't continuous. FIX: continuous + interim results.
+    (e) **too much typing → let her PRESS/select preferences** (quick-reply chips) instead of typing.
+    (f) **analyze intervals FIRST before asking** (e.g. pace) — after Strava-in-intervals there's 3-month history.
+    (g) **too many questions + wall of text** — ask few, be terse. (a-d client; e-g coach onboarding prompt.) gymapp-only.
+
 305. 🔨 **Create the intervals custom fields for NEW users + TELL them.** JM 2026-07-02: important we create the fields AND
     inform the user. STATUS: creation handled (#288 on /auth/icu connect + onboarding-complete + feedback path, guarded).
     ADD: tell the user — `ensureIcuFields` now pushes a bell notification when it actually CREATES fields ("Added N private
