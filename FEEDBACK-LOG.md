@@ -22,6 +22,11 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+292. 🔨 **Power-curve chart missing the hover scrubber the timeline has — standardize.** JM 2026-07-02 (DEV): the timeline
+    charts show a vertical line + tooltip with the value at a point on hover; the POWER CURVE doesn't. "Standardize those
+    graphs to be consistent." FIXED: `PowerCurveChart` now has the same hover scrubber — snaps to the nearest curve point,
+    draws the vertical line + highlighted dot, and a `.chart-tip` tooltip ("20m · 179 W"). Same interaction/classes as the
+    timeline TrendChart. gymapp-only. **JM to verify on QA.**
 291. ⬜ **Replicate cyclingcoach "brian" logic + adapt to Platyplus — the engine port is INCOMPLETE.** JM 2026-07-01:
     "we need to replicate cycling coach brian and logic and adapt it to platyplus" + "other files like that you missed?"
     AUDIT: `sync-coach-engine.mjs` bundles only 11 of ~45 codex_coach files. MISSED behaviour files that matter:

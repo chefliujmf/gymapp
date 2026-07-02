@@ -176,11 +176,13 @@ const DUR_TICKS: [number, string][] = [[1, '1s'], [5, '5s'], [15, '15s'], [60, '
 /** Mean-max curve on a LOG duration axis (power-duration curve). Tick labels render as
  * HTML below (avoids text distortion from the stretch-to-width SVG). */
 export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)', height = 200 }: { secs: number[]; watts: number[]; color?: string; height?: number }) {
+  const [hi, setHi] = useState<number | null>(null) // #292: hover scrubber, consistent with the timeline
   const pts0 = secs.map((s, i) => [s, watts[i]] as [number, number]).filter(([s, w]) => s > 0 && w != null)
   if (pts0.length < 2) return <div className="chart-empty">No power curve yet</div>
   const sMin = Math.min(...pts0.map((p) => p[0])), sMax = Math.max(...pts0.map((p) => p[0]))
   const vMax = Math.max(...pts0.map((p) => p[1]))
   const H = height, padT = 8, padB = 6, pad = 6
+  const fmtS = (s: number) => (s < 60 ? `${s}s` : s < 3600 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`)
   // chart-standard Y axis, dense (#286): ~6 clean watt gridlines; scale the path to the nice top.
   const yt = niceTicks(0, vMax, Math.max(4, Math.min(8, Math.round(H / 26))))
   const vTop = Math.max(vMax, yt.max)
@@ -189,17 +191,36 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
   const y = (v: number) => padT + (1 - v / vTop) * (H - padT - padB)
   const ticks = DUR_TICKS.filter(([s]) => s >= sMin && s <= sMax)
   const d = 'M' + pts0.map((p) => `${lx(p[0])},${y(p[1])}`).join(' L')
+  // #292: snap to the nearest curve point under the pointer (consistent with the timeline scrubber)
+  const onMove = (ev: React.PointerEvent) => {
+    const rect = ev.currentTarget.getBoundingClientRect()
+    const xPx = ((ev.clientX - rect.left) / rect.width) * VW
+    let bi = 0, bd = Infinity
+    for (let i = 0; i < pts0.length; i++) { const dd = Math.abs(lx(pts0[i][0]) - xPx); if (dd < bd) { bd = dd; bi = i } }
+    setHi(bi)
+  }
+  const hpx = hi != null ? (lx(pts0[hi][0]) / VW) * 100 : 0
   return (
     <div className="chart2">
       <div className="chart2__y">{yLabels.map((v, i) => <span key={i} style={{ top: `${(1 - v / vTop) * 100}%` }}>{Math.round(v)} W</span>)}</div>
-      <div className="chart2__plot">
+      <div className="chart2__plot" style={{ position: 'relative' }} onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHi(null)}>
         <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
           {yLabels.map((v, i) => <line key={'h' + i} x1={0} x2={VW} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeWidth="0.5" opacity="0.35" />)}
           {ticks.map(([s]) => <line key={s} x1={lx(s)} x2={lx(s)} y1={padT} y2={H - padB} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
           <defs><linearGradient id="pc-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.25" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
           <path d={`${d} L${lx(pts0[pts0.length - 1][0])},${H - padB} L${lx(pts0[0][0])},${H - padB} Z`} fill="url(#pc-fill)" />
           <path className="trend-line" pathLength={1} d={d} fill="none" stroke={color} strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          {hi != null && <>
+            <line x1={lx(pts0[hi][0])} x2={lx(pts0[hi][0])} y1={0} y2={H} stroke="var(--text-dim)" strokeWidth="0.75" opacity="0.6" vectorEffect="non-scaling-stroke" />
+            <circle cx={lx(pts0[hi][0])} cy={y(pts0[hi][1])} r="3.5" fill={color} stroke="var(--bg)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+          </>}
         </svg>
+        {hi != null && (
+          <div className="chart-tip" style={{ left: `${Math.max(13, Math.min(87, hpx))}%` }}>
+            <span className="chart-tip__d">{fmtS(pts0[hi][0])}</span>
+            <span style={{ color }}>{Math.round(pts0[hi][1])} W</span>
+          </div>
+        )}
       </div>
       <div className="chart2__x">{ticks.map(([s, label]) => <span key={s}>{label}</span>)}</div>
     </div>
