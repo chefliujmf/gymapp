@@ -6,6 +6,7 @@ import { authApi, type SportGroup, type SportStat, type IcuAthletePull } from '.
 import { useAuth } from '../auth/AuthContext'
 import Availability from '../Availability'
 import EquipmentPicker from '../EquipmentPicker'
+import GoalsPicker from '../GoalsPicker'
 import OnboardReturnBar from '../OnboardReturnBar'
 import SleepNeed from '../SleepNeed'
 import { fetchAthleteSex, fetchWellness } from '../intervals'
@@ -192,7 +193,7 @@ export default function Profile() {
       <div className="section-title">Sleep</div>
       <SleepNeed />
 
-      <div className="section-title">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
+      <div className="section-title" id="ob-coach">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <input
         className="search" placeholder="e.g. Tadej" value={coachName ?? ''}
         onChange={(e) => { setSetting('coachName', e.target.value); setCoachSaved(false) }}
@@ -220,6 +221,9 @@ export default function Profile() {
       {user?.sex === 'female'
         ? <p className="meta" style={{ margin: '6px 2px 4px', color: 'var(--accent)' }}>💚 Coaching adjusted for female physiology — cycle-aware fuelling, recovery & load.</p>
         : <p className="meta" style={{ margin: '6px 2px 4px' }}>Tunes fuelling & recovery.{connected ? ' Prefilled from intervals.' : ''}</p>}
+
+      {/* #323 — rich goals/identity capture (what makes coaching personal) */}
+      <GoalsPicker />
 
       <Availability />{/* #ob-avail anchor is on Availability's own section-title */}
 

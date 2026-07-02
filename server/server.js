@@ -925,6 +925,12 @@ function buildSystemPrompt(user) {
   // never part of the base load.
   const freq = Number(user.info?.trainingDays) || 0
   if (freq > 0) p += `\n\n# TRAINING FREQUENCY: the athlete wants ~${freq} training days/week. Plan exactly ${freq} COMMITTED sessions. If they ask for more (a bonus day), add ONE OPTIONAL session — prefix its title with "(optional)" and say it's a bonus they can skip — don't inflate the base week.`
+  // #323 — the athlete's OWN goal & identity. This is what makes the plan theirs; center on it and
+  // let it OVERRIDE generic defaults (e.g. "tone, don't bulk" ⇒ not a hypertrophy block).
+  const goals = user.info?.goals
+  if (goals && ((Array.isArray(goals.focus) && goals.focus.length) || (goals.notes && String(goals.notes).trim()))) {
+    p += `\n\n# ATHLETE GOALS — CENTER THE PLAN ON THIS: ${Array.isArray(goals.focus) && goals.focus.length ? `focus = ${goals.focus.join(', ')}. ` : ''}${goals.notes ? `In their words: "${String(goals.notes).trim().slice(0, 600)}". ` : ''}Honor it exactly — someone who wants to "stay fit & consistent, NOT bulk up" gets a very different plan than someone chasing a 300 W FTP. When their goal conflicts with a default, follow THEIR goal, and fold it into set_athlete_profile.`
+  }
   // #284 — gym prescription depth: tempo (time-under-tension) + per-lift + session tips.
   p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): for each lift set sets×reps and ALWAYS set a TEMPO on strength lifts — 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower · 1s pause · 1s lift · 0s top (slower eccentric ⇒ more time-under-tension ⇒ hypertrophy/control; faster ⇒ power). Default to "3-1-1-0" for main + accessory strength work; only omit tempo for pure mobility/holds/plyometrics. This is REQUIRED, not optional — the app shows it as a chip. Add a one-line FORM tip per lift, and ONE whole-session \`tip\`. Don't set weight — the app fills it from the athlete's e1RM. Keep tips short and practical.`
   const diet = String(user.info?.diet || '').toLowerCase()
