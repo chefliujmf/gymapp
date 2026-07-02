@@ -5,6 +5,7 @@ import { getSetting, setSetting } from '../db'
 import { authApi, type SportGroup, type SportStat, type IcuAthletePull } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import Availability from '../Availability'
+import EquipmentPicker from '../EquipmentPicker'
 import OnboardReturnBar from '../OnboardReturnBar'
 import SleepNeed from '../SleepNeed'
 import { fetchAthleteSex, fetchWellness } from '../intervals'
@@ -221,6 +222,9 @@ export default function Profile() {
         : <p className="meta" style={{ margin: '6px 2px 4px' }}>Tunes fuelling & recovery.{connected ? ' Prefilled from intervals.' : ''}</p>}
 
       <div id="ob-avail"><Availability /></div>
+
+      {/* #320 — equipment is a coaching input (like sports/diet), so it lives here on Profile, not Settings. */}
+      <EquipmentPicker />
 
       <div className="section-title">Diet {dietSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <div className="chips">

@@ -25,4 +25,15 @@ describe('matchExercise (#296)', () => {
       expect(matchExercise(n)?.video, n).toBeTruthy()
     }
   })
+  // #309 HARD RULE — a matched exercise must NEVER be picture-less AND video-less (a blank tile reads
+  // as broken). The matcher swaps a media-less row for a same-movement entry that has media.
+  it('never resolves a common lift to a media-less entry', () => {
+    const hasMedia = (e?: { image?: string; video?: string; imageFemale?: string; videoFemale?: string }) =>
+      !!(e && (e.video || e.image || e.videoFemale || e.imageFemale))
+    for (const n of [...COMMON, 'Biceps curl', 'Calf raises', 'Face pull', 'Glute bridge']) {
+      const m = matchExercise(n)
+      expect(m, n).toBeTruthy()
+      expect(hasMedia(m), `${n} → ${m?.name} has no media`).toBe(true)
+    }
+  })
 })

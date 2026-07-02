@@ -19,7 +19,7 @@ const STEPS: Step[] = [
   { key: 'sport', label: 'Your sport(s)', line: 'Which sports do you do? Tap all that apply — it tunes your plan and app.', to: '/profile?onboard=1#ob-sport', done: (u) => (u.sports || []).length > 0 },
   { key: 'about', label: 'About you', line: 'Confirm your biological sex — it tunes fuelling & recovery, and turns on women-specific coaching where it matters.', to: '/profile?onboard=1#ob-about', done: (u) => !!u.sex },
   { key: 'numbers', label: 'Your numbers (optional)', line: "Set FTP / threshold pace if you know them. Don't worry if not — I'll estimate from your intervals history and suggest values.", to: '/profile?onboard=1#ob-numbers', done: (u) => hasThreshold(u), when: isEndurance, optional: true },
-  { key: 'equipment', label: 'Your equipment', line: "What gear do you have? I only pick exercises you can actually do.", to: '/settings?onboard=1#ob-equipment', done: (u) => { const e = (u.info as { equipment?: unknown[] }).equipment; return Array.isArray(e) && e.length > 0 } },
+  { key: 'equipment', label: 'Your equipment', line: "What gear do you have? I only pick exercises you can actually do.", to: '/profile?onboard=1#ob-equipment', done: (u) => { const e = (u.info as { equipment?: unknown[] }).equipment; return Array.isArray(e) && e.length > 0 } },
   { key: 'avail', label: 'Weekly availability', line: 'How long can you train each day? I fit sessions around your real week.', to: '/profile?onboard=1#ob-avail', done: (u) => !!(u.info as { availability?: unknown }).availability },
 ]
 

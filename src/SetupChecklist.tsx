@@ -20,7 +20,7 @@ export default function SetupChecklist() {
     { key: 'strava', label: 'Connect Strava — inside intervals', hint: 'So your rides & runs flow in (not in Platyplus — in intervals).', done: getAck('strava'), ext: 'https://intervals.icu/settings', manual: true },
     { key: 'coach', label: 'Meet your coach', hint: 'A 2-minute chat (tap, type, or talk) and it builds your first week around your real life.', done: !!user.hasCoachProfile, to: '/chat?onboard=1', cta: 'Set me up →' },
     { key: 'sport', label: 'Pick your sport(s)', hint: 'Tunes your plan & navigation.', done: (user.sports || []).length > 0, to: '/profile' },
-    { key: 'equipment', label: 'Set your equipment', hint: 'The coach only picks gear you have.', done: Array.isArray(info.equipment) && info.equipment.length > 0, to: '/settings' },
+    { key: 'equipment', label: 'Set your equipment', hint: 'The coach only picks gear you have.', done: Array.isArray(info.equipment) && info.equipment.length > 0, to: '/profile' },
     { key: 'availability', label: 'Set weekly availability', hint: 'Hours/day you can train.', done: !!info.availability, to: '/profile' },
   ]
   void tick
