@@ -489,7 +489,7 @@ test guide → the **🧪 Test guide** section below.
     estimate. Manual = high confidence (overrides everywhere). 12 tests, 179 total green. DEFERRED: VO₂max trend chart
     (needs stored history) + optional guided field test. MINOR: Profile's General VO₂max still shows the old Coggan until
     set manually (Stats card is canonical). gymapp-only.
-233. ⬜ **Notifications: coach updates (what changed) + new activity arrived.** JM 2026-06-30: "would be cool to know
+233. 🔨 **Notifications: coach updates (what changed) + new activity arrived.** JM 2026-06-30: "would be cool to know
     when the coach has updates and WHAT; and when a new activity is in there." Build two notification types: (1) **coach
     update** — when the coach adjusts the plan / posts a review, notify with a one-line "what changed" (the coach already
     has a `notify` tool — surface those in-app + push); (2) **new activity** — when a new intervals/device activity
