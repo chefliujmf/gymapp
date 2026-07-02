@@ -124,8 +124,10 @@ export default function CoachPlanDetail() {
           {chips.length > 0 && <div className="act-chips">{chips.map(([l, v]) => <span key={l} className="act-chip"><b>{v}</b><span>{l}</span></span>)}</div>}
           {/* #280 planned power SHAPE — dense chart standard */}
           <div className="tl-card" style={{ marginTop: 8 }}>
-            <div className="tl-clabel">{isRun && thrPace ? 'PLANNED PACE · min/km · target shape' : 'PLANNED POWER · W · target shape'}</div>
-            <TrendChart series={[{ label: 'Target', data: isRun && thrPace ? paceSeries() : plannedSeries(p.segments!, rFtp), color: '#34e07d', area: true }]} height={150} axes unit={isRun && thrPace ? '/km' : ' W'} fmt={isRun && thrPace ? fmtPace : undefined} xTicks={minuteTicks(totalSec)} />
+            {/* #331 — a RUN never shows watts: pace curve if we have a threshold pace, else the % shape. */}
+            <div className="tl-clabel">{isRun ? (thrPace ? 'PLANNED PACE · min/km · target shape' : 'PLANNED EFFORT · % of threshold · target shape') : 'PLANNED POWER · W · target shape'}</div>
+            <TrendChart series={[{ label: 'Target', data: isRun ? (thrPace ? paceSeries() : plannedSeries(p.segments!, 100)) : plannedSeries(p.segments!, rFtp), color: '#34e07d', area: true }]} height={150} axes unit={isRun ? (thrPace ? '/km' : '%') : ' W'} fmt={isRun && thrPace ? fmtPace : undefined} xTicks={minuteTicks(totalSec)} />
+            {isRun && !thrPace && <div className="act-ins"><span className="tag">⚙</span>Set your <Link to="/profile?onboard=1#ob-numbers" style={{ color: 'var(--accent)' }}>threshold pace</Link> so these show as min/km.</div>}
             <div className="act-ins"><span className="tag">💡</span>{p.cues?.[0] || (sum && sum.mainPct >= 91 ? 'Warm up fully — the first hard effort should feel controlled, not a shock; keep recoveries easy and let HR drop.' : 'Hold steady targets — smooth and repeatable beats spiky.')}</div>
           </div>
           {/* #280 structure */}
