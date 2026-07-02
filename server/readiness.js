@@ -89,10 +89,19 @@ export function freshness({ atl, ctl, form, tsbBaseline } = {}) {
 
 // ENERGY (1–5) — acute autonomic readiness. Minimum dataset = HRV baseline + sleep; without an HRV
 // baseline we return null (cold start) so the UI keeps the manual tap.
+// #315 — population fallback baselines so a NEW athlete (no 14-day personal baseline yet) still gets
+// an Energy estimate from today's HRV/RHR instead of a blank. ln(rmssd) ≈ ln(45 ms); RHR ≈ 60 bpm.
+// Flagged `provisional` until the personal baseline takes over (it self-personalises as data accrues).
+export const POP_HRV_BASELINE = { mean: Math.log(45), sd: 0.45 }
+export const POP_RHR_BASELINE = { mean: 60, sd: 9 }
 export function energy({ hrv, rhr, sleep, subjective, hrvBaseline, rhrBaseline } = {}) {
-  const lnz = hrv != null && hrvBaseline && hrvBaseline.sd ? clamp(zscore(lnRMSSD(hrv), hrvBaseline.mean, hrvBaseline.sd), -2.5, 2.5) : null
-  if (lnz == null) return null // no trustworthy HRV trend → don't fake Energy
-  const rz = rhr != null && rhrBaseline && rhrBaseline.sd ? clamp(zscore(rhr, rhrBaseline.mean, rhrBaseline.sd), -2.5, 2.5) : null
+  // Prefer the athlete's OWN baseline; fall back to population norms so we compute SOMETHING (#315).
+  const hb = hrvBaseline && hrvBaseline.sd ? hrvBaseline : (hrv != null ? POP_HRV_BASELINE : null)
+  const provisional = !(hrvBaseline && hrvBaseline.sd) && !!hb
+  const lnz = hrv != null && hb && hb.sd ? clamp(zscore(lnRMSSD(hrv), hb.mean, hb.sd), -2.5, 2.5) : null
+  if (lnz == null) return null // truly no HRV at all → keep the manual tap
+  const rb = rhrBaseline && rhrBaseline.sd ? rhrBaseline : (rhr != null ? POP_RHR_BASELINE : null)
+  const rz = rhr != null && rb && rb.sd ? clamp(zscore(rhr, rb.mean, rb.sd), -2.5, 2.5) : null
   let hrvSub = zTo5(lnz, +1)
   const rhrSub = rz == null ? null : zTo5(rz, -1) // inverse: high RHR = worse
   // Parasympathetic-saturation guard: high HRV AND elevated RHR ⇒ suspect (fatigue masquerading), cap HRV's credit.
@@ -102,7 +111,7 @@ export function energy({ hrv, rhr, sleep, subjective, hrvBaseline, rhrBaseline }
   const add = (v, w) => { if (v != null) { comps.push(v * w); weights.push(w) } }
   add(hrvSub, 0.35); add(sleep, 0.35); add(rhrSub, 0.15); add(subjective, 0.15)
   const score = comps.reduce((a, b) => a + b, 0) / weights.reduce((a, b) => a + b, 0)
-  return { score: clamp(round1(score), 1, 5), hrvZ: round1(lnz), rhrZ: rz == null ? null : round1(rz), guard }
+  return { score: clamp(round1(score), 1, 5), hrvZ: round1(lnz), rhrZ: rz == null ? null : round1(rz), guard, provisional }
 }
 
 // SLEEP (1–5) — prefer a device sleep score (0–100); else hours ÷ PERSONAL need (default 8h).
@@ -222,6 +231,11 @@ export function readiness(history = [], today = {}, { sleepNeed = 8, subjective,
   const off = learnedOffsets(checkins)
   if (sl) { sl.raw = sl.score; sl.score = applyOffset(sl.score, off.sleep) }
   if (fr) { fr.raw = fr.score; fr.score = applyOffset(fr.score, off.freshness) }
-  if (en) { en.raw = en.score; en.score = applyOffset(en.score, off.energy) }
+  if (en) {
+    en.raw = en.score; en.score = applyOffset(en.score, off.energy)
+    // #315/#319 — while on population norms, tell the UI how many more HRV nights until Energy is
+    // personalised (so it shows "building · N more nights", not a blank).
+    if (en.provisional) en.needDays = Math.max(1, MIN_BASELINE_DAYS - base.nHrv)
+  }
   return { sleep: sl, freshness: fr, energy: en, calibration: off, baseline: { nHrv: base.nHrv, nRhr: base.nRhr, hrvCV7: base.hrvCV7 == null ? null : round1(base.hrvCV7) } }
 }
