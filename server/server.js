@@ -27,6 +27,7 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
+import { encodeStep, flattenIcuStepsSrv } from './icu-steps.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -1153,22 +1154,8 @@ function renderCoachBrief(plan, items = []) {
   return L.length ? L.join('\n') + '\n\n— authored in Platyplus' : ''
 }
 // intervals/Wahoo won't render a single step longer than this — split + interpolate.
-const MAX_DOC_STEP_SECONDS = 3600
-function splitWorkoutStep(s) {
-  const dur = Number(s.duration) || 0, ps = Number(s.powerStart) || 0, pe = Number(s.powerEnd) || 0
-  const mk = (d, a, b, withText) => ({ duration: d, power: { start: Math.round(a), end: Math.round(b), units: '%ftp' }, ...(s.label && withText ? { text: s.label } : {}) })
-  if (dur <= MAX_DOC_STEP_SECONDS) return [mk(dur, ps, pe, true)]
-  const n = Math.ceil(dur / MAX_DOC_STEP_SECONDS), size = Math.round(dur / n)
-  const chunks = []; let elapsed = 0
-  for (let i = 0; i < n; i++) {
-    const d = i === n - 1 ? dur - elapsed : size
-    chunks.push(mk(d, ps + (pe - ps) * (elapsed / dur), ps + (pe - ps) * ((elapsed + d) / dur), i === 0))
-    elapsed += d
-  }
-  return chunks
-}
-// Map a plan to an intervals calendar event. Rides/runs carry a structured
-// workout_doc (power steps) so intervals pushes a real interval workout to Wahoo.
+// Map a plan to an intervals calendar event. Rides carry POWER (%ftp) steps, runs carry PACE
+// (%pace) steps (#312) so intervals pushes a real interval workout to the head unit / Garmin.
 function planToIcuEvent(plan, items = []) {
   const brief = renderCoachBrief(plan, items)
   const ev = { start_date_local: plan.date + 'T00:00:00', category: 'WORKOUT', name: plan.title, external_id: plan.id, description: '' }
@@ -1183,12 +1170,15 @@ function planToIcuEvent(plan, items = []) {
     ev.time_target = ev.moving_time
     // Split any step > MAX (3600s) into interpolated chunks — a single over-long step makes the
     // intervals workout render EMPTY (matches cyclingcoach split_long_doc_step).
-    if (segs.length) ev.workout_doc = { steps: segs.flatMap((s) => splitWorkoutStep(s)) }
-    // ALSO emit readable native workout text alongside workout_doc — intervals needs it
-    // to render the power chart / readable structure (workout_doc stays authoritative for
-    // duration so moving_time isn't doubled). Format: "- 10m 50-62%".
+    const isRun = plan.sport === 'run'
+    if (segs.length) ev.workout_doc = { steps: segs.flatMap((s) => encodeStep(s, isRun)) }
+    // ALSO emit readable native workout text alongside workout_doc — intervals needs it to render
+    // the power chart / readable structure (workout_doc stays authoritative for duration so
+    // moving_time isn't doubled). Format: "- 10m 50-62%". RIDES ONLY: intervals parses bare "%" in
+    // native text as %FTP → WATTS, which would re-introduce power on a RUN (#312). Runs rely on the
+    // pace workout_doc alone; their native text is pace-annotated so it's never read as power.
     const native = segs.length
-      ? '## Workout\n' + segs.map((s) => { const m = Math.round((Number(s.duration) || 0) / 60); const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; return `- ${m}m ${a === b ? a + '%' : a + '-' + b + '%'}${s.label ? ' ' + s.label : ''}` }).join('\n')
+      ? '## Workout\n' + segs.map((s) => { const m = Math.round((Number(s.duration) || 0) / 60); const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; const pct = a === b ? a + '%' : a + '-' + b + '%'; return `- ${m}m ${pct}${isRun ? ' pace' : ''}${s.label ? ' ' + s.label : ''}` }).join('\n')
       : ''
     ev.description = [native, plan.notes, brief].filter(Boolean).join('\n\n')
   } else {
@@ -1326,33 +1316,7 @@ async function deletePlanById(user, id) {
 // into user.plans and thereafter OWNED by Platyplus (its later edits push back
 // over intervals). This function only READS intervals and writes to our own store
 // — it never mutates the intervals calendar, so it is safe to run repeatedly.
-// Coggan power zones → representative %FTP (mirrors src/intervals.ts stepPctFtp). intervals
-// emits {units:'power_zone', value:N} ("ride in zone N") steps — without this they collapse to
-// 0 / a bogus % (the "5 W" bug: zone 2 read as 2% FTP).
-const ZONE_PCT = { 1: 50, 2: 65, 3: 83, 4: 98, 5: 113, 6: 135, 7: 160 }
-function resolveStepPct(p) {
-  if (!p) return { start: 0, end: 0 }
-  if (p.units === 'power_zone') {
-    const z = Math.round(p.value || 0)
-    const pct = ZONE_PCT[z] != null ? ZONE_PCT[z] : (p.value >= 20 ? p.value : 65)
-    return { start: pct, end: pct, label: z >= 1 && z <= 7 ? `Z${z}` : undefined }
-  }
-  return { start: (p.start != null ? p.start : p.value) || 0, end: (p.end != null ? p.end : p.value) || 0 }
-}
-
-// #293: EXPAND nested repeat blocks ({reps, steps:[…]}) into individual segments — mirrors the
-// client flattenIcuSteps. Without this, a 3× interval set collapsed into ONE flat 0-W segment
-// (the outer repeat step has a duration but no power), so the thumbnail rendered blocks+gap.
-function flattenIcuStepsSrv(steps = []) {
-  const out = []
-  const walk = (s) => {
-    if (s.steps && s.reps) { for (let i = 0; i < s.reps; i++) s.steps.forEach(walk) }
-    else if (s.steps) { s.steps.forEach(walk) }
-    else if (s.duration) { const pr = resolveStepPct(s.power); out.push({ duration: Number(s.duration) || 0, powerStart: Number(pr.start) || 0, powerEnd: Number(pr.end) || 0, ...(s.text ? { label: s.text } : pr.label ? { label: pr.label } : {}) }) }
-  }
-  for (const s of steps) walk(s)
-  return out
-}
+// (Step resolve/flatten — incl. the "5 W" power_zone fix + #312 pace read — live in ./icu-steps.js.)
 function icuEventToPlan(ev) {
   const date = String(ev.start_date_local || '').slice(0, 10)
   const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'

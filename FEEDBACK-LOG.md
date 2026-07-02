@@ -22,6 +22,30 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+322. ⬜ **Availability page is TOO BULKY — make it dense.** JM 2026-07-02 (screenshot): 7 day-rows × 8 big circular chips
+    (Rest/30m/…/3h+) eats the whole screen "bulky for nothing." Redesign denser — e.g. a compact per-day segmented
+    control or a slider/stepper, fit the week in ~1 screen. Also add the frequency question (#316) without adding bulk.
+    **Mock-first** (2-3 dense layouts). Ties #303/#316. gymapp-only.
+321. ⬜ **"See trends" link is confusing — dumps you on the Stats HUB, not the trend.** JM 2026-07-02 (screenshot of the
+    Stats hub: Wellness/History/Per-sport). Clicking Profile's "📈 See trends & race predictions in Stats ›" lands on a
+    generic hub — unexpected/"I don't get it." FIX: either take them straight to the RELEVANT trend (the stat they came
+    from), or make the destination obviously the trends page (clearer heading/why-am-I-here), or drop the confusing link.
+    gymapp-only.
+320. ⬜ **Equipment should live on PROFILE, not Settings.** JM 2026-07-02: "equipment is not a profile thing?" — right,
+    it's a coaching input like sports/diet/availability (all on Profile), not app config. MOVE the equipment picker to
+    Profile (near Sports/Availability); update the onboarding step (#310) + setup checklist (#307) to point at Profile;
+    keep a redirect/or remove from Settings. Reverses #307's Settings target. gymapp-only.
+319. ⬜ **Generalize "set a default, LEARN from data over time" to EVERY learned stat (not just sleep).** JM 2026-07-02
+    (frustrated I scoped it to sleep): the #304 concept — we SET a starting value but LEARN the real one from data, showing
+    "need ~X more days" while collecting + suggesting the data-driven value with a manual override — must apply to ALL
+    learned stats: VO₂max, threshold pace, FTP, maxHR, LTHR, weight, etc. Each shows: current value + source (est/manual/
+    intervals) + a learning state (collecting → "N more days", or "data suggests X — use it?"). Unifies with
+    [[benchmarks-manual-vs-computed]] + readiness learning ([[platyplus-readiness-model]]). Systemic — one shared "learned
+    stat" pattern reused everywhere. Mock-first for the card. gymapp-only.
+318. ⬜ **Notification panel overflows off the LEFT edge — can't see it (going too far left).** JM 2026-07-02: the
+    notifications dropdown/popover is positioned so it runs past the left screen edge, clipping content. FIX its CSS
+    positioning — anchor within the viewport (right-align under the bell, `max-width`/`left` clamp, no negative offset /
+    off-screen translate). Mobile-first: must fit ≤430px with padding, no horizontal clip. gymapp-only.
 317. ⬜ **No TIME estimate on the gym workout in prod (for her).** JM 2026-07-02 (wife): her gym session shows no duration/
     time estimate. Gym plans should show an estimated duration (from sets × reps × tempo + rest, per exercise → total),
     like rides show time. Check why it's blank for her plan (missing tempo/rest? not computed on coach-authored plans?) +
@@ -48,7 +72,7 @@ test guide → the **🧪 Test guide** section below.
     and tell the user (with a "use this" like Profile already does for pace via Critical Speed, #215/#271). ONBOARDING:
     the "your numbers" step is OPTIONAL (never blocks the build); the coach analyses intervals FIRST and proposes values.
     Extend the same estimate to FTP if not already. Folds into #310 numbers step + #306(f). gymapp-only.
-312. ⬜ **A RUN shows WATTS instead of pace.** JM 2026-07-02 (wife): today's run displays power (W) — a run must show
+312. 🔨 **A RUN shows WATTS instead of pace.** JM 2026-07-02 (wife): today's run displays power (W) — a run must show
     PACE (min/km), not watts. Likely the same class as #217 (power_zone steps mis-read) but for run activities/plan
     rendering, or a run planned/imported with a power target. FIND where run sessions pick their target metric + force
     pace for runs (watts only for ride). Add a test. gymapp-only.
@@ -71,7 +95,7 @@ test guide → the **🧪 Test guide** section below.
     not have picture or video, I was very clear not to use those." FIX: at RENDER, if an exercise resolves to no image AND
     no video (after female-variant + #300 backfill), never display it bare — drop it or swap to a matched media-having
     alternative same movement/muscle. Find the specific one (today's plan) + add a guard/test. Relates #300. gymapp-only.
-308. ⬜ **Onboarding must VISIBLY capture/confirm biological SEX so the user trusts the plan is women-adjusted.** JM
+308. 🔨 **Onboarding must VISIBLY capture/confirm biological SEX so the user trusts the plan is women-adjusted.** JM
     2026-07-02: "are we confident workouts are adjusted for women? I saw no sex input in onboarding — incomplete + not
     usable." STATUS (verified): machinery works — sex syncs from intervals → `coach-engine-female.md` (RED-S/fuelling/
     cycle-aware) injects when `user.sex==='female'`; xenia's sex IS female (i628280) so it DOES fire. GAP: it's invisible —
