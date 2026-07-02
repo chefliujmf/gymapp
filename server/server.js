@@ -901,7 +901,7 @@ function buildSystemPrompt(user) {
   const ownedEq = Array.isArray(user.info?.equipment) ? user.info.equipment.filter((e) => typeof e === 'string') : []
   if (ownedEq.length) p += `\n\n# Equipment the athlete OWNS: ${ownedEq.join(', ')}.\nWhen building gym/strength sessions, prescribe ONLY exercises that use this gear or Bodyweight — pass \`equipment="${ownedEq.join(',')}"\` to search_exercises so you never pick something they can't do. (They set this in Settings → Equipment.)`
   // #284 — gym prescription depth: tempo (time-under-tension) + per-lift + session tips.
-  p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): for each lift set sets×reps and, where it helps the goal, a TEMPO — 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower · 1s pause · 1s lift · 0s top (a slower eccentric ⇒ more time-under-tension ⇒ hypertrophy/control; faster ⇒ power). Add a one-line FORM tip per lift, and ONE whole-session \`tip\` (e.g. rest guidance). Don't set weight — the app fills it from the athlete's e1RM. Keep tips short and practical.`
+  p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): for each lift set sets×reps and ALWAYS set a TEMPO on strength lifts — 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower · 1s pause · 1s lift · 0s top (slower eccentric ⇒ more time-under-tension ⇒ hypertrophy/control; faster ⇒ power). Default to "3-1-1-0" for main + accessory strength work; only omit tempo for pure mobility/holds/plyometrics. This is REQUIRED, not optional — the app shows it as a chip. Add a one-line FORM tip per lift, and ONE whole-session \`tip\`. Don't set weight — the app fills it from the athlete's e1RM. Keep tips short and practical.`
   const diet = String(user.info?.diet || '').toLowerCase()
   if (diet === 'vegetarian' || diet === 'vegan') p += `\n\n# DIET: the athlete is ${diet.toUpperCase()}.\nEVERY meal you pick or suggest MUST be ${diet}. search_recipes already returns ONLY ${diet}-compatible recipes for this athlete, so pick from those — never recommend a meal outside their diet, and don't suggest meat${diet === 'vegan' ? ', fish, dairy, eggs, or honey' : ' or fish'}. (They set this in Settings → Preferences.)`
   p += '\n\n' + APP_HELP
@@ -1166,8 +1166,11 @@ function planToIcuEvent(plan, items = []) {
     ev.description = [native, plan.notes, brief].filter(Boolean).join('\n\n')
   } else {
     ev.type = 'WeightTraining'
-    const gym = `[gymapp] ${plan.rounds || 1} rounds\n` + (plan.exercises || []).map((x) => `• ${x.name}${x.exId ? ` [${x.exId}]` : ''} — ${(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}`).join('\n')
-    ev.description = [gym, plan.notes, brief].filter(Boolean).join('\n\n')
+    // #301 — DON'T mirror gym structure as text (tempo/sets can't round-trip through intervals, which
+    // has no gym model). Platyplus is the canonical home for the structured workout; intervals just gets
+    // a deep LINK to open it in Platyplus, plus the coach's human notes.
+    const link = `${ORIGIN}/coach/${encodeURIComponent(plan.id)}`
+    ev.description = [`🏋️ Open workout in Platyplus → ${link}`, plan.notes, brief].filter(Boolean).join('\n\n')
   }
   return ev
 }
@@ -1237,6 +1240,13 @@ async function deleteIcuEvent(user, plan) {
   if (!user.icuKey || !plan?.icuEventId) return
   try { await icuFetch(user, `/athlete/${user.icuAthlete || 'i28814'}/events/${plan.icuEventId}`, { method: 'DELETE' }) } catch { /* best effort */ }
 }
+// #297 — guarantee a TEMPO on strength lifts (default 3-1-1-0) so the chip always shows, even when
+// the coach LLM omits it. Only reps-mode (loaded) lifts; timed/mobility holds keep no tempo.
+function withDefaultTempo(x) {
+  if (!x || typeof x !== 'object') return x
+  if ((x.mode || 'reps') === 'reps' && (!x.tempo || !String(x.tempo).trim())) return { ...x, tempo: '3-1-1-0' }
+  return x
+}
 // Shared upsert/delete for workout plans (used by both the coach API and the UI).
 async function upsertPlan(user, body) {
   const err = validatePlan(body); if (err) return { status: 400, body: { error: err } }
@@ -1257,7 +1267,7 @@ async function upsertPlan(user, body) {
     origin: i >= 0 ? (user.plans[i].origin || 'platyplus') : 'platyplus',
     icuEventId: i >= 0 ? user.plans[i].icuEventId : undefined,
     ...(body.sport === 'gym'
-      ? { rounds: Number(body.rounds) || 1, exercises: Array.isArray(body.exercises) ? body.exercises : [] }
+      ? { rounds: Number(body.rounds) || 1, exercises: (Array.isArray(body.exercises) ? body.exercises : []).map(withDefaultTempo) }
       : { ftp: Number(body.ftp) || undefined, segments: Array.isArray(body.segments) ? body.segments : [] }),
   }
   if (i >= 0) user.plans[i] = plan; else user.plans.push(plan)
@@ -1723,6 +1733,41 @@ app.post('/api/notify', apiAuth, (req, res) => {
   const n = pushNotification(req.user, req.body || {})
   if (!n) return res.status(400).json({ error: 'title is required' })
   save(store); res.status(201).json(n)
+})
+
+// On-demand coach trigger: run a coach task with a custom instruction (e.g. "re-author this week as
+// structured workouts with tempo"). Fires the same locked-down coach as the auto-triggers. Async.
+app.post('/api/coach/run', apiAuth, (req, res) => {
+  const message = String((req.body || {}).message || '').trim().slice(0, 4000)
+  if (!message) return res.status(400).json({ error: 'message is required' })
+  if (!req.user.coachProfile || !req.user.coachProfile.trim()) return res.status(400).json({ error: 'coach not set up (no coachProfile)' })
+  runCoachTask(req.user, message).catch((e) => console.error('[coach-run] ' + (e.message || e)))
+  res.status(202).json({ ok: true, running: true })
+})
+
+// #254 — weekly macro TARGET (cyclingcoach parity): the coach sets the week's load/hours/focus goal
+// as an intervals TARGET event (the athlete's weekly context), stored + mirrored. Best-effort mirror.
+app.post('/api/weekly-target', apiAuth, async (req, res) => {
+  const b = req.body || {}
+  const weekStart = String(b.weekStart || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) return res.status(400).json({ error: 'weekStart (YYYY-MM-DD, a Monday) required' })
+  const target = {
+    weekStart,
+    load: Number(b.load) || undefined, hours: Number(b.hours) || undefined,
+    focus: typeof b.focus === 'string' ? b.focus.slice(0, 300) : undefined,
+    note: typeof b.note === 'string' ? b.note.slice(0, 800) : undefined,
+    at: Date.now(),
+  }
+  if (!req.user.weeklyTargets) req.user.weeklyTargets = []
+  req.user.weeklyTargets = [target, ...req.user.weeklyTargets.filter((t) => t.weekStart !== weekStart)].slice(0, 26)
+  save(store); res.status(201).json(target)
+  // mirror to intervals as a TARGET event (best-effort)
+  if (req.user.icuKey) {
+    const ath = req.user.icuAthlete || 'i28814'
+    const name = `Weekly target${target.hours ? ` · ${target.hours}h` : ''}${target.load ? ` · ${target.load} load` : ''}`
+    const desc = [target.focus, target.note].filter(Boolean).join('\n\n')
+    icuFetch(req.user, `/athlete/${ath}/events`, { method: 'POST', body: JSON.stringify({ category: 'TARGET', start_date_local: `${weekStart}T00:00:00`, name, description: desc }) }).catch((e) => console.error('[weekly-target-mirror] ' + (e.message || e)))
+  }
 })
 
 // Coach post-workout REVIEW (#91): the cyclingcoach engine writes its existing

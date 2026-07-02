@@ -212,6 +212,11 @@ server.tool('set_activity_text',
   { activityId: z.string().describe('the intervals activity id (e.g. i161879537)'), name: z.string().describe('public title, concise + human'), description: z.string().optional().describe('public-safe ride/run description') },
   wrap((a) => api('PUT', `/api/activity/${a.activityId}/public-text`, { name: a.name, description: a.description })))
 
+server.tool('set_weekly_target',
+  "Set the week's MACRO TARGET (cyclingcoach parity) — the overall load/hours/focus goal for the week, stored + mirrored to intervals as a TARGET event. Set it when you plan or adjust a week, then build the individual sessions to hit it.",
+  { weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("the week's Monday, YYYY-MM-DD"), hours: z.number().optional().describe('target ride/training hours'), load: z.number().optional().describe('target weekly training load (TSS)'), focus: z.string().optional().describe('the week\'s focus, e.g. "sweet-spot durability + one VO2 touch, long aerobic Saturday"'), note: z.string().optional() },
+  wrap((a) => api('POST', '/api/weekly-target', { weekStart: a.weekStart, hours: a.hours, load: a.load, focus: a.focus, note: a.note })))
+
 server.tool('finish_onboarding',
   'Call this ONCE at the END of onboarding a brand-new athlete — AFTER you have saved their profile (set_athlete_profile) AND drafted their first week. It marks setup complete so the app stops showing the "set me up" prompt. Do not call it before the first week exists.',
   {},
