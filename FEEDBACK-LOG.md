@@ -22,6 +22,15 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+323. ⬜ **Onboarding must capture the RICH profile + OBJECTIVES/identity, not just discrete values (like JM's own).** JM
+    2026-07-02: "I don't think onboarding is good enough to capture a full profile + objectives like I did for myself." The
+    structured pages (C, #310) get sport/sex/equipment/availability/numbers — but MISS the qualitative goal & identity that
+    make coaching personal: e.g. **wife = "be fit, be consistent, NOT gain muscle"** vs **JM = "300 FTP, be a diesel
+    engine."** "VERY important to capture this kind of thing." DIRECTION (hybrid, don't lose the coach's conversational
+    strength): keep C's pages for values, ADD a SHORT, focused **goals conversation** step — primary goal, what success
+    looks like, motivation/identity, hard limits, what they DON'T want — with guided prompts/quick-picks so it's not a wall
+    of text, feeding `set_athlete_profile` (the markdown the coach plans from). The coach should also PROBE from intervals
+    history ("you've been riding ~Xh/wk — aiming to build that?"). Mock-first (the goals step). Ties #310/#313. gymapp-only.
 322. ⬜ **Availability page is TOO BULKY — make it dense.** JM 2026-07-02 (screenshot): 7 day-rows × 8 big circular chips
     (Rest/30m/…/3h+) eats the whole screen "bulky for nothing." Redesign denser — e.g. a compact per-day segmented
     control or a slider/stepper, fit the week in ~1 screen. Also add the frequency question (#316) without adding bulk.
