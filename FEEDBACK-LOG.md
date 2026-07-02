@@ -26,7 +26,7 @@ test guide → the **🧪 Test guide** section below.
     inform the user. STATUS: creation handled (#288 on /auth/icu connect + onboarding-complete + feedback path, guarded).
     ADD: tell the user — `ensureIcuFields` now pushes a bell notification when it actually CREATES fields ("Added N private
     feedback fields to your intervals for coach analysis"). gymapp-only.
-304. ⬜ **Sleep need (+ all learned stats): default→CONFIRM UX + learn from data over time + "X more days" mention.**
+304. 🔨 **Sleep need (+ all learned stats): default→CONFIRM UX + learn from data over time + "X more days" mention.**
     JM 2026-07-02 (cramped "⚡ Unlock more…/Set your sleep need" gapcard). (a) UX — make clear there IS a default (8h) but
     the user should CONFIRM it; give it room. (b) LEARN over time — sleepNeed improves from data: correlate actual sleep vs
     recovery/HRV/load → suggest the real need (input 8h, data shows 9h esp. if training often + sleeping short); manual

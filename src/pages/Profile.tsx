@@ -5,6 +5,7 @@ import { getSetting, setSetting } from '../db'
 import { authApi, type SportGroup, type SportStat, type IcuAthletePull } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import Availability from '../Availability'
+import SleepNeed from '../SleepNeed'
 import { fetchAthleteSex, fetchWellness } from '../intervals'
 import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, parsePace, type PaceZones, type RunVolume } from '../running-paces'
 import { runningVo2max, cyclingVo2max, headlineVo2max, confLabel } from '../vo2max-submax'
@@ -185,6 +186,9 @@ export default function Profile() {
         </div>
       )}
 
+      <div className="section-title">Sleep</div>
+      <SleepNeed />
+
       <div className="section-title">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <input
         className="search" placeholder="e.g. Tadej" value={coachName ?? ''}
@@ -324,8 +328,7 @@ export default function Profile() {
       <div className="sport-card">
         <div className="sport-card__h">🌙 General</div>
         <div className="stat-cell-grid">
-          {/* #207 Phase 2b: never blank — show the 8 h first-guess (what readiness already uses) until you set yours */}
-          <StatCell label="Sleep need" tag={<Tag label={user?.sleepNeed ? 'you' : 'default'} kind={user?.sleepNeed ? 'pp' : 'unset'} />} unit="h" value={user?.sleepNeed ?? 8} fmt={String} parse={num(4, 12)} onSave={(v) => authApi.saveProfile({ sleepNeed: v }).then(() => refresh()).catch(() => {})} />
+          {/* #304: sleep need moved to its own SleepNeed card (default→confirm + learns from data). */}
           {/* #207 Phase 2b: a TRUE estimate from your power/pace (refines as you train); manual entry wins */}
           <StatCell label="VO₂max" tag={<Tag label={user?.vo2max ? 'you' : 'est.'} kind="pp" />} value={user?.vo2max ?? vo2?.value ?? null} fmt={String} parse={num(20, 95)} onSave={(v) => authApi.saveProfile({ vo2max: v }).then(() => refresh()).catch(() => {})} />
           {connected && pulled?.weight != null && (

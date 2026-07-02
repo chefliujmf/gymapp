@@ -5,10 +5,10 @@ import type { User } from './auth/api'
 const base = (o: Partial<User> = {}): User => ({ id: '1', username: 'x', email: 'x@x.com', role: 'user', sports: [], ...o } as User)
 
 describe('dataGaps', () => {
-  it('flags intervals + sleep need for a bare account', () => {
+  it('flags intervals for a bare account (sleep need is now its own SleepNeed card, #304)', () => {
     const keys = dataGaps(base()).map((g) => g.key)
     expect(keys).toContain('intervals')
-    expect(keys).toContain('sleepNeed')
+    expect(keys).not.toContain('sleepNeed')
   })
   it('cyclist with no FTP → ftp gap; runner with no pace → thresholdPace gap', () => {
     expect(dataGaps(base({ sports: ['cycling'] })).map((g) => g.key)).toContain('ftp')
