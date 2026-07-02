@@ -34,6 +34,15 @@ test guide → the **🧪 Test guide** section below.
     PLAN: (1) port the missing knowledge into the engine (adapt API-direct → Platyplus-tool language); (2) give the coach
     the ACTIONS it's missing (#289 title/description, #290 review→Notes); (3) full behaviour audit brian↔Platyplus + close
     remaining gaps. Big — phase it. gymapp-only.
+    🔨 DONE (2026-07-02): full triage of ~45 codex_coach files. PORTED (adapt): `coach_feedback_format.md` +
+    `coach_action_feedback.md` + `weekly_checkin.md` → SHARED; `workout_analysis_template.md` + `training_zones.md` (canonical
+    %FTP zones) → CYCLING; + the OUTPUT-ROUTING block (#289/#290). Engine now 8 generic / 7 cycling files. SKIPPED w/ reason:
+    `gym_execution_options.md` (Centr-specific — Platyplus uses its own catalog + search_exercises); `instructions_intervals_icu.md`
+    + `feedback_protocol.md` (CLI/API-direct — principles already ported via OUTPUT-ROUTING + coach_feedback_format);
+    book source-notes (roar/next-level/boyle/plant-based — reference KNOWLEDGE, would bloat the prompt, not runtime method);
+    Centr/cookbook nutrition-catalog files (Platyplus recipes + schedule_meal cover them); `athlete_profile.md`/`coach_feedback_memory.md`
+    (per-USER, injected separately, not generic engine). Remaining phase: verify the ported behaviour on QA + fold learned public-text
+    prefs into per-user memory. gymapp-only. **JM to verify coach behaviour on QA.**
 290. 🔨 **Coach review/comments show in Platyplus but DON'T sync to intervals Notes.** JM 2026-07-01: "coach comments do
     not appear in the notes section (see it in platyplus but not sync)." ROOT CAUSE: `/api/coach-review` saves to
     `coachReviews` (Platyplus store) only — nothing is posted to the intervals activity message/comment thread. FIX: after
