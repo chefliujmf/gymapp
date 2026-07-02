@@ -5,7 +5,7 @@ import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { db, getSetting, setSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
 import { e1rm, weightForReps, roundLoad, bestE1rmByExercise } from '../strength'
-import { getGymSession } from '../plan'
+import { getGymSession, matchExercise } from '../plan'
 import { authApi, type CoachReview } from '../auth/api'
 import GymSummary from '../GymSummary'
 import { localISO } from '../date'
@@ -31,8 +31,11 @@ type Step =
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, Math.floor(s % 60))).padStart(2, '0')}`
 
 function enrich(name: string, exId: string | undefined, img?: string, vid?: string) {
-  const lib = exId ? allExercisesById[exId] : undefined
-  return { name, exId, image: lib?.image ?? img, video: lib?.video ?? vid, imageFemale: lib?.imageFemale, videoFemale: lib?.videoFemale }
+  const byId = exId ? allExercisesById[exId] : undefined
+  // #296: if the pinned entry (or passed media) has no VIDEO, fall back to a video-having match of
+  // the same movement so the demo isn't a static image / blank (e.g. an image-only "Bicep Curl").
+  const lib = (byId?.video || vid) ? byId : (matchExercise(name) || byId)
+  return { name, exId: lib?.id ?? exId, image: lib?.image ?? img, video: lib?.video ?? vid, imageFemale: lib?.imageFemale, videoFemale: lib?.videoFemale }
 }
 
 const DEFAULT_REST = 75   // seconds of rest between sets when the coach didn't specify one
@@ -140,7 +143,7 @@ export default function GymPlayer() {
     if (!w) return
     setOrder(w.exercises)
     setSteps(buildSteps(w.exercises))
-    const saved = sessionStorage.getItem('gp:' + w.workoutId)
+    const saved = sessionStorage.getItem('gpv2:' + w.workoutId)
     if (saved) {
       // resume an in-progress session — skip the preview
       try { const s = JSON.parse(saved); setIdx(s.idx ?? 0); setLog(s.log ?? {}); setStartedAt(s.startedAt ?? Date.now()); setSegStart(Date.now()); setStarted(true); return } catch { /* fall through */ }
@@ -157,8 +160,11 @@ export default function GymPlayer() {
   function startWorkout() { setSteps(buildSteps(order)); setIdx(0); setSegStart(Date.now()); setStartedAt(Date.now()); setStarted(true) }
 
   useEffect(() => {
-    if (w && !done) sessionStorage.setItem('gp:' + w.workoutId, JSON.stringify({ idx, log, startedAt }))
-  }, [idx, log, startedAt, w, done])
+    // #294: only persist a RESUME snapshot once actually STARTED — otherwise opening the pre-start
+    // preview (reorder + insights) and leaving would resume past it on the next open. Key bumped to
+    // gpv2 so pre-fix preview snapshots are ignored.
+    if (w && started && !done) sessionStorage.setItem('gpv2:' + w.workoutId, JSON.stringify({ idx, log, startedAt }))
+  }, [idx, log, startedAt, w, started, done])
 
   const now = useNow(250)
   useWakeLock(true)
@@ -232,7 +238,7 @@ export default function GymPlayer() {
     if (!w) { setDone(true); return }
     const actualMin = Math.max(1, Math.round((Date.now() - startedAt) / 60000))   // REAL elapsed, not the estimate
     setFinalMin(actualMin); setDone(true)
-    sessionStorage.removeItem('gp:' + w.workoutId)
+    sessionStorage.removeItem('gpv2:' + w.workoutId)
     const flat = Object.values(log).flat()
     const setsCompleted = flat.filter((s) => s?.done).length
     const volume = flat.reduce((v, s) => v + (s?.done ? (s.weight || 0) * (s.reps || 0) : 0), 0)
