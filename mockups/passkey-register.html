@@ -1,0 +1,89 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=430">
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216}
+  *{box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}
+  body{background:var(--bg);color:var(--text);margin:0;padding:18px;max-width:430px;margin:0 auto}
+  .toggle{display:flex;gap:6px;margin-bottom:18px}
+  .toggle button{flex:1;padding:8px;border-radius:10px;border:1px solid #2a2f3a;background:#181c24;color:var(--text-dim);font-weight:700;font-size:13px;cursor:pointer}
+  .toggle button.on{background:var(--accent);color:#06210f;border-color:var(--accent)}
+  .view{display:none}.view.on{display:block}
+  .phone{border:1px solid #222732;border-radius:22px;overflow:hidden;background:#0b0e12;min-height:560px;position:relative}
+  .bar{height:30px;background:#0b0e12}
+  .head{padding:16px 18px 6px}.head h1{margin:0;font-size:26px}.head p{margin:2px 0 0;color:var(--text-dim);font-size:13px}
+  .card{background:linear-gradient(#21252f,#191c24);border:1px solid #262b35;border-radius:16px;padding:14px;margin:12px 18px}
+  .row{display:flex;gap:12px;align-items:center}
+  .stat{display:flex;gap:8px;margin:0 18px}.stat .c{flex:1;background:linear-gradient(#21252f,#191c24);border:1px solid #262b35;border-radius:14px;padding:12px;text-align:center}
+  .stat .c b{font-size:20px}.stat .c span{display:block;color:var(--text-dim);font-size:11px;letter-spacing:.06em}
+  .btn{display:block;width:100%;padding:13px;border-radius:999px;border:0;background:var(--accent);color:#06210f;font-weight:800;font-size:15px;cursor:pointer;text-align:center}
+  .btn.ghost{background:transparent;color:var(--text-dim);font-weight:600}
+  .pk{display:flex;gap:12px;align-items:flex-start}
+  .pk .ic{width:42px;height:42px;border-radius:12px;background:#34e07d22;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+  .pk h3{margin:0 0 3px;font-size:16px}.pk p{margin:0;color:var(--text-dim);font-size:13px;line-height:1.4}
+  .modalwrap{position:absolute;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;padding:22px}
+  .modal{background:linear-gradient(#21252f,#191c24);border:1px solid #2c3340;border-radius:20px;padding:22px;width:100%;text-align:center}
+  .modal .ic{width:60px;height:60px;border-radius:16px;background:#34e07d22;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 12px}
+  .modal h3{margin:0 0 6px;font-size:19px}.modal p{margin:0 0 16px;color:var(--text-dim);font-size:13px;line-height:1.45}
+  .err{margin:10px 18px;padding:11px 13px;border-radius:12px;background:#ff5a6022;border:1px solid #ff5a6055;color:#ffb3b8;font-size:13px;display:flex;gap:9px;align-items:flex-start}
+  .skel{height:13px;background:#222732;border-radius:5px;margin:7px 0}
+  .nav{position:absolute;bottom:0;left:0;right:0;height:54px;background:#0b0e12;border-top:1px solid #1c2129;display:flex;align-items:center;justify-content:space-around;color:var(--text-dim);font-size:11px}
+  .lab{font-size:11px;color:var(--text-dim);margin:14px 18px 4px;letter-spacing:.05em;text-transform:uppercase}
+</style></head><body>
+<div class="toggle">
+  <button class="on" onclick="show('A',this)">A · Modal after login</button>
+  <button onclick="show('B',this)">B · Banner on Today</button>
+  <button onclick="show('C',this)">C · Login error feedback</button>
+</div>
+
+<div id="A" class="view on">
+  <div class="lab">Right after password sign-in (one-time, dismissible)</div>
+  <div class="phone"><div class="bar"></div>
+    <div class="head"><h1>Today</h1><p>Tuesday · let's move</p></div>
+    <div class="skel" style="margin:12px 18px;width:60%"></div>
+    <div class="card"><div class="skel" style="width:80%"></div><div class="skel" style="width:50%"></div></div>
+    <div class="modalwrap"><div class="modal">
+      <div class="ic">👆</div>
+      <h3>Faster sign-in next time?</h3>
+      <p>Add a passkey on this device — then sign in with Touch ID / Face ID, no password to type.</p>
+      <button class="btn">Add a passkey</button>
+      <button class="btn ghost" style="margin-top:8px">Not now</button>
+    </div></div>
+  </div>
+</div>
+
+<div id="B" class="view">
+  <div class="lab">Non-blocking banner at the top of Today (until dismissed/added)</div>
+  <div class="phone"><div class="bar"></div>
+    <div class="head"><h1>Today</h1><p>Tuesday · let's move</p></div>
+    <div class="card" style="border-color:#34e07d55">
+      <div class="pk">
+        <div class="ic">👆</div>
+        <div style="flex:1">
+          <h3>Set up a passkey</h3>
+          <p>Sign in with Touch ID / Face ID on this device — no password to type.</p>
+          <div style="display:flex;gap:8px;margin-top:11px">
+            <button class="btn" style="width:auto;padding:9px 16px;font-size:13px">Add a passkey</button>
+            <button class="btn ghost" style="width:auto;padding:9px 12px;font-size:13px">Dismiss</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stat"><div class="c"><b>1</b><span>WORKOUTS</span></div><div class="c"><b>4.2</b><span>READINESS</span></div><div class="c"><b>260</b><span>FTP</span></div></div>
+    <div class="nav"><span>Today</span><span>Plan</span><span>Train</span><span>Eat</span><span>You</span></div>
+  </div>
+</div>
+
+<div id="C" class="view">
+  <div class="lab">Login screen — clear feedback when the passkey button can't proceed</div>
+  <div class="phone" style="display:flex;align-items:center;justify-content:center"><div class="bar"></div>
+    <div class="card" style="margin:0 22px;width:100%">
+      <div style="text-align:center;font-size:24px;font-weight:800;color:var(--accent);margin-bottom:16px">🦫 Platyplus</div>
+      <button class="btn">👆 Sign in with fingerprint / passkey</button>
+      <div class="err" style="margin:12px 0 0"><span>ⓘ</span><span>No passkey on this device yet. Sign in with your password below, then we'll offer to set one up.</span></div>
+      <button class="btn ghost" style="margin-top:12px">Use password instead</button>
+      <button class="btn ghost">Forgot password?</button>
+    </div>
+  </div>
+</div>
+
+<script>function show(id,b){document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('.toggle button').forEach(x=>x.classList.remove('on'));b.classList.add('on')}</script>
+</body></html>

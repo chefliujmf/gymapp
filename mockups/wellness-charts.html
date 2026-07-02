@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Platyplus · #194 Wellness charts v2</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--blue:#5ec8ff;--pink:#ff8fb1;--amber:#f0b145;--line:#2b303b;--grid:#222732;--bg:#0f1216;--card-grad:linear-gradient(180deg,#21252f,#191c24);}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;justify-content:center;padding:16px 12px 60px}
+  .phone{width:100%;max-width:430px}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;background:#161a21;border:1px solid var(--line);border-radius:999px;padding:4px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--text-dim);font-weight:700;font-size:12px;padding:9px 6px;border-radius:999px;cursor:pointer}
+  .tabs button.on{background:var(--accent);color:#06281a}
+  .desc{font-size:12px;color:var(--text-dim);margin:0 2px 12px;line-height:1.45}.desc b{color:var(--text)}
+  .head{margin:4px 2px 12px}.head h1{font-size:23px;margin:0 0 2px}.head p{margin:0;color:var(--text-dim);font-size:13px}
+  .card{background:var(--card-grad);border:1px solid var(--line);border-radius:16px;padding:13px 14px 10px;margin-bottom:12px}
+  .ch{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px}
+  .ch h3{margin:0;font-size:14px}
+  .now{font-size:20px;font-weight:800}.now small{font-size:11px;color:var(--text-dim);font-weight:600;margin-left:2px}
+  .sub{font-size:11px;color:var(--text-dim);margin-bottom:6px}
+  .legend{display:flex;gap:12px;font-size:10px;color:var(--text-dim);margin-top:4px}
+  .legend i{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
+  svg{display:block;width:100%;height:170px}
+  text{fill:#9298a6;font-size:9px;font-family:inherit}
+  .axis{stroke:var(--grid);stroke-width:1}
+</style></head>
+<body><div class="phone">
+  <div class="tabs">
+    <button class="on" onclick="show('a',this)">A · min/max points</button>
+    <button onclick="show('b',this)">B · min–max band</button>
+  </div>
+  <div id="desc" class="desc"></div>
+  <div class="head"><h1>Wellness</h1><p>Last 30 days · from intervals & your check-ins</p></div>
+  <div id="content"></div>
+</div>
+<script>
+// ---- demo data (30 days) ----
+const DAYS=30;
+function series(base,amp,noise,seed){const a=[];let s=seed;for(let i=0;i<DAYS;i++){s=(s*9301+49297)%233280;const r=s/233280;a.push(Math.round((base+Math.sin(i/4)*amp+(r-0.5)*noise)*10)/10);}return a;}
+const sleep=series(7.4,0.6,1.0,11), hrv=series(60,6,8,7), rhr=series(49,2,3,5), weight=series(76,0.4,0.5,3);
+const ma=(a,w=7)=>a.map((_,i)=>{const s=a.slice(Math.max(0,i-w+1),i+1);return Math.round(s.reduce((x,y)=>x+y,0)/s.length*10)/10;});
+const dates=Array.from({length:DAYS},(_,i)=>{const d=20+i;return d>30?`${d-30}`:`${d}`;}); // mock day numbers
+
+function chart(data,color,unit,mode){
+  const W=300,H=170,L=30,R=8,T=10,B=20; // padding
+  const iw=W-L-R, ih=H-T-B;
+  const mn=Math.min(...data),mx=Math.max(...data),rng=(mx-mn)||1;
+  const x=i=>L+(i/(data.length-1))*iw, y=v=>T+ih-((v-mn)/rng)*ih;
+  const mav=ma(data);
+  const minI=data.indexOf(mn),maxI=data.indexOf(mx);
+  // y gridlines: min, mid, max
+  const ys=[mn,Math.round((mn+mx)/2*10)/10,mx];
+  let g='';
+  for(const v of ys){const yy=y(v).toFixed(1);g+=`<line class="axis" x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}"/><text x="${L-4}" y="${(+yy+3).toFixed(1)}" text-anchor="end">${v}</text>`;}
+  // x labels (~4)
+  let xl='';[0,Math.floor((DAYS-1)/3),Math.floor((DAYS-1)*2/3),DAYS-1].forEach(i=>{xl+=`<text x="${x(i).toFixed(1)}" y="${H-6}" text-anchor="middle">${dates[i]}</text>`;});
+  // min–max band (mode B)
+  let band='';
+  if(mode==='b'){band=`<rect x="${L}" y="${y(mx).toFixed(1)}" width="${iw}" height="${(y(mn)-y(mx)).toFixed(1)}" fill="${color}11"/>`+
+    `<line x1="${L}" y1="${y(mx).toFixed(1)}" x2="${W-R}" y2="${y(mx).toFixed(1)}" stroke="${color}" stroke-dasharray="3 3" stroke-width="1" opacity=".6"/>`+
+    `<line x1="${L}" y1="${y(mn).toFixed(1)}" x2="${W-R}" y2="${y(mn).toFixed(1)}" stroke="${color}" stroke-dasharray="3 3" stroke-width="1" opacity=".6"/>`+
+    `<text x="${W-R}" y="${(y(mx)-3).toFixed(1)}" text-anchor="end" fill="${color}">max ${mx}${unit}</text>`+
+    `<text x="${W-R}" y="${(y(mn)+10).toFixed(1)}" text-anchor="end" fill="${color}">min ${mn}${unit}</text>`;}
+  // raw daily line (faint) + moving average (bold)
+  const raw=data.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const mline=mav.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  let pts='';
+  if(mode==='a'){pts=`<circle cx="${x(maxI).toFixed(1)}" cy="${y(mx).toFixed(1)}" r="3" fill="${color}"/><text x="${x(maxI).toFixed(1)}" y="${(y(mx)-5).toFixed(1)}" text-anchor="middle" fill="${color}">max ${mx}</text>`+
+    `<circle cx="${x(minI).toFixed(1)}" cy="${y(mn).toFixed(1)}" r="3" fill="${color}"/><text x="${x(minI).toFixed(1)}" y="${(y(mn)+12).toFixed(1)}" text-anchor="middle" fill="${color}">min ${mn}</text>`;}
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${g}${band}${xl}`+
+    `<polyline points="${raw}" fill="none" stroke="${color}" stroke-width="1" opacity=".35" vector-effect="non-scaling-stroke"/>`+
+    `<polyline points="${mline}" fill="none" stroke="${color}" stroke-width="2.2" vector-effect="non-scaling-stroke"/>${pts}</svg>`;
+}
+const card=(title,data,color,unit,mode)=>{const now=data[data.length-1];const avg=Math.round(data.reduce((a,b)=>a+b,0)/data.length*10)/10;
+  return `<div class="card"><div class="ch"><h3>${title}</h3><span class="now">${now}<small>${unit}</small></span></div>
+  <div class="sub">30-day avg ${avg}${unit} · min ${Math.min(...data)} · max ${Math.max(...data)}</div>
+  ${chart(data,color,unit,mode)}
+  <div class="legend"><span><i style="border-color:${color};opacity:.4"></i>daily</span><span><i style="border-color:${color}"></i>7-day average</span></div></div>`;}
+
+const DESC={a:'<b>A — min/max marked on the line.</b> Bigger chart with a Y axis (min/mid/max) + dated X axis, the faint daily line, a bold 7-day moving average, and the min & max days marked with their values.',
+ b:'<b>B — min–max band.</b> Same axes + daily + 7-day average, but the range is shown as a shaded min–max band with dashed bounds (good for "am I in my normal range?").'};
+function show(m,btn){document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+ document.getElementById('desc').innerHTML=DESC[m];
+ document.getElementById('content').innerHTML=card('😴 Sleep',sleep,'#5ec8ff','h',m)+card('💓 HRV',hrv,'#34e07d','',m)+card('❤️ Resting HR',rhr,'#ff8fb1','',m)+card('⚖️ Weight',weight,'#f0b145','',m);}
+const init=(location.hash||'#a').slice(1);show(init,document.querySelectorAll('.tabs button')[{a:0,b:1}[init]??0]);
+</script>
+</body></html>

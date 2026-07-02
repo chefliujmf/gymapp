@@ -25,7 +25,8 @@ const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
-import { readiness as computeReadiness } from './readiness.js'
+import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate } from './readiness.js'
+import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -91,9 +92,9 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || 'i28814', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
-const findByLogin = (login) => { const l = String(login || '').toLowerCase(); return store.users.find((u) => u.username.toLowerCase() === l || u.email === l) }
+const findByLogin = (login) => { const l = String(login || '').trim().toLowerCase(); return l ? store.users.find((u) => (u.username || '').toLowerCase() === l || (u.email || '').toLowerCase() === l) : undefined }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
 
 function setSession(res, user) {
@@ -236,10 +237,19 @@ app.delete('/auth/passkeys/:id', auth, (req, res) => {
 })
 
 // intervals.icu key, stored server-side so the plan follows the account
-app.put('/auth/icu', auth, (req, res) => {
+app.put('/auth/icu', auth, async (req, res) => {
   if (typeof req.body.icuKey === 'string') req.user.icuKey = req.body.icuKey.trim()
   if (typeof req.body.icuAthlete === 'string') req.user.icuAthlete = req.body.icuAthlete.trim()
+  // #262: if a key is set but no athlete was given, resolve THIS user's own athlete id from
+  // intervals (athlete/0 = the authenticated athlete). Never inherit JM's 'i28814'.
+  if (req.user.icuKey && !req.user.icuAthlete) {
+    const me = await icuGet(req.user, '/athlete/0').catch(() => null)
+    if (me && me.id) req.user.icuAthlete = String(me.id)
+  }
   save(store); res.json(pub(req.user))
+  // #288: make sure this athlete has our custom feedback fields in intervals (new accounts don't),
+  // so bi-directional feedback has somewhere to write. Idempotent + best-effort.
+  if (req.user.icuKey) ensureIcuFields(req.user).catch(() => {})
 })
 
 // profile picture — small client-resized data URL stored on the account
@@ -265,7 +275,148 @@ app.put('/auth/profile', auth, (req, res) => {
   if ('maxHR' in req.body) req.user.maxHR = num(req.body.maxHR, 120, 230)
   if ('ftp' in req.body) req.user.ftp = num(req.body.ftp, 50, 600)
   if ('vo2max' in req.body) req.user.vo2max = num(req.body.vo2max, 20, 95)
+  if ('learnReadiness' in req.body) req.user.learnReadiness = req.body.learnReadiness !== false // #235 calibration on/off
+  // #236 — per-stat MANUAL vs COMPUTED preference. { vo2max:'manual'|'computed', ftp:…, thresholdPace:…, maxHr:… }
+  if (req.body.statPrefs && typeof req.body.statPrefs === 'object') {
+    req.user.statPrefs = req.user.statPrefs || {}
+    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed') && /^(vo2max|ftp|thresholdPace|maxHr)$/.test(k)) req.user.statPrefs[k] = v
+  }
   save(store); res.json(pub(req.user))
+})
+
+// #210 — per-sport athlete stats, TWO-WAY synced with intervals.icu.
+// PULL: read the athlete's intervals sportSettings[] (ftp/maxHr/lthr/threshold_pace, PER SPORT)
+// + weight, mapped to our shape. intervals is CANONICAL for these — we also refresh our local
+// mirror (+ flat ftp/maxHR the coach reads) so nothing drifts.
+app.get('/auth/intervals/athlete', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ connected: false })
+  const ath = req.user.icuAthlete || 'i28814'
+  const a = await icuGet(req.user, `/athlete/${ath}`)
+  if (!a) return res.status(502).json({ connected: true, error: 'could not read intervals athlete' })
+  const mapped = fromIcuSportSettings(a.sportSettings || [])
+  // refresh the local mirror from intervals (canonical), keeping Platyplus-only fields
+  req.user.sportSettings = { ...(req.user.sportSettings || {}), ...mapped }
+  if (mapped.cycling?.ftp != null) req.user.ftp = mapped.cycling.ftp
+  if (mapped.cycling?.maxHr != null) req.user.maxHR = mapped.cycling.maxHr
+  const weight = a.icu_weight != null ? a.icu_weight : (a.weight != null ? a.weight : null)
+  if (weight != null && weight > 0) req.user.weight = weight // #207 Part 4: stash for the server-side VO₂max estimate
+  save(store)
+  res.json({ connected: true, sportSettings: mapped, weight, source: 'intervals' })
+})
+
+// #215 — ESTIMATE the runner's threshold pace from intervals' pace curve (Critical Speed),
+// the running analog of eFTP. A suggestion the user can apply/override; never auto-written.
+// #271/#272: ASSESS data sufficiency before suggesting — a Critical-Speed read off a handful of
+// easy runs is unreliable, and suggesting a (slower) threshold off thin data is misleading.
+// We gate on (a) the model fit (r2) AND (b) how much the athlete has actually run recently, and
+// return a confidence so the UI only surfaces a suggestion when we're genuinely confident.
+app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ available: false })
+  const ath = req.user.icuAthlete || 'i28814'
+  const pc = await icuGet(req.user, `/athlete/${ath}/pace-curves?type=Run`)
+  const est = pc ? runThresholdFromPaceCurve(pc) : null
+  if (!est) return res.json({ available: false, reason: 'no-model' })
+  // How much running is behind this estimate? Count recent runs (42d) + a hard effort.
+  const DAYS = 42
+  const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(DAYS)}&newest=${icuDay(0)}`)
+  const runs = Array.isArray(acts) ? acts.filter((a) => /run/i.test(a.type || '') && a.distance > 0) : []
+  const totalKm = runs.reduce((s, a) => s + a.distance, 0) / 1000
+  const r2 = est.r2 != null ? est.r2 : 0.7
+  // confidence: needs both a decent fit AND enough recent running to trust the curve.
+  let confidence = 'low'
+  if (runs.length >= 8 && totalKm >= 60 && r2 >= 0.85) confidence = 'high'
+  else if (runs.length >= 4 && totalKm >= 25 && r2 >= 0.7) confidence = 'medium'
+  // Not confident → assessed, but DON'T present it as a suggestion. Tell the UI why.
+  if (confidence === 'low') {
+    return res.json({ available: false, assessed: true, reason: runs.length < 4 ? 'too-few-runs' : 'low-fit', runs: runs.length, weeklyKm: +(totalKm / (DAYS / 7)).toFixed(1) })
+  }
+  if (est.thresholdPace > 0) { req.user.runPaceEst = Math.round(est.thresholdPace); save(store) } // #236 stash computed pace for the coach
+  res.json({ available: true, ...est, confidence, runs: runs.length, source: 'critical speed (your recent runs)' })
+})
+
+// #216 — running endurance base for the marathon-realism range: longest single run +
+// average weekly volume over the recent window, from intervals run activities (km).
+app.get('/auth/intervals/run-volume', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ available: false })
+  const ath = req.user.icuAthlete || 'i28814'
+  const DAYS = 42 // ~6 weeks — enough to read a long-run + weekly-volume base
+  const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(DAYS)}&newest=${icuDay(0)}`)
+  if (!Array.isArray(acts)) return res.json({ available: false })
+  const runs = acts.filter((a) => /run/i.test(a.type || '') && a.distance > 0)
+  if (!runs.length) return res.json({ available: false })
+  const longestKm = +(Math.max(...runs.map((a) => a.distance)) / 1000).toFixed(1)
+  const totalKm = runs.reduce((s, a) => s + a.distance, 0) / 1000
+  const weeklyKm = +(totalKm / (DAYS / 7)).toFixed(1)
+  res.json({ available: true, longestKm, weeklyKm, runs: runs.length, windowDays: DAYS })
+})
+
+// #230 — per-week average run pace (sec/km) for the Running pace trend chart. Weighted (total
+// time ÷ total distance per week) so a long easy run doesn't get out-weighted by a short fast one.
+app.get('/auth/intervals/run-pace-trend', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ available: false })
+  const ath = req.user.icuAthlete || 'i28814'
+  const WEEKS = 8, DAYS = WEEKS * 7
+  const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(DAYS)}&newest=${icuDay(0)}`)
+  if (!Array.isArray(acts)) return res.json({ available: false })
+  const time = Array(WEEKS).fill(0), dist = Array(WEEKS).fill(0) // bucket 0 = oldest week
+  for (const a of acts) {
+    if (!/run/i.test(a.type || '') || !(a.distance > 0) || !(a.moving_time > 0)) continue
+    const daysAgo = Math.floor((Date.now() - Date.parse(a.start_date_local || a.start_date)) / 86400000)
+    if (daysAgo < 0 || daysAgo >= DAYS) continue
+    const wk = WEEKS - 1 - Math.floor(daysAgo / 7) // newest → last bucket
+    time[wk] += a.moving_time; dist[wk] += a.distance
+  }
+  const paces = time.map((t, i) => (dist[i] > 0 ? Math.round(t / (dist[i] / 1000)) : null)) // sec/km, oldest→newest
+  if (!paces.some((p) => p != null)) return res.json({ available: false })
+  res.json({ available: true, paces, weeks: WEEKS })
+})
+
+// PUSH: edit a per-sport stat → write it back to intervals AND mirror locally.
+// The ONLY working write is PUT /athlete/{id}/sport-settings/{entryId} with just the changed
+// field (a /athlete/{id} {sportSettings} PUT returns 200 but is silently ignored; full-athlete
+// PUT is 403). Sending one field leaves custom_field_values (#147) + everything else intact.
+// VO₂max/runVdot are Platyplus-only (no intervals field) and never go to intervals.
+const GROUPS = ['cycling', 'running', 'swimming']
+app.put('/auth/sport-stat', auth, async (req, res) => {
+  const group = String(req.body?.group || '')
+  if (!GROUPS.includes(group)) return res.status(400).json({ error: 'bad group' })
+  const numOr = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.min(hi, Math.max(lo, n)) : null }
+  // build a clean patch (only the fields meaningful for this group)
+  const patch = {}
+  const b = req.body || {}
+  if (group === 'cycling' && 'ftp' in b) patch.ftp = numOr(b.ftp, 50, 600)
+  if ('maxHr' in b) patch.maxHr = numOr(b.maxHr, 120, 230)
+  if ('lthr' in b) patch.lthr = numOr(b.lthr, 90, 220)
+  if ('thresholdPace' in b) patch.thresholdPace = group === 'running' ? numOr(b.thresholdPace, 120, 900) : numOr(b.thresholdPace, 40, 300)
+
+  // persist locally on the user (mirror of intervals)
+  req.user.sportSettings = req.user.sportSettings || {}
+  req.user.sportSettings[group] = { ...(req.user.sportSettings[group] || {}), ...patch }
+  // running VDOT (Platyplus-only, computed client-side) rides along for the coach
+  if (group === 'running' && 'runVdot' in b) req.user.runVdot = numOr(b.runVdot, 20, 95)
+  // mirror cycling FTP/maxHR onto the flat fields the coach prompt + Fitness page read
+  if (group === 'cycling') {
+    if ('ftp' in patch) req.user.ftp = patch.ftp
+    if ('maxHr' in patch) req.user.maxHR = patch.maxHr
+  }
+
+  // auto-push the synced fields back to intervals via the per-entry endpoint (best-effort)
+  let synced = false, pushError = null
+  if (req.user.icuKey) {
+    const ath = req.user.icuAthlete || 'i28814'
+    try {
+      const list = await icuGet(req.user, `/athlete/${ath}/sport-settings`)
+      const w = Array.isArray(list) ? icuPatchForGroup(list, group, patch) : null
+      if (w && Object.keys(w.body).length) {
+        const r = await icuFetch(req.user, `/athlete/${ath}/sport-settings/${w.id}`, { method: 'PUT', body: JSON.stringify(w.body) })
+        synced = r.ok
+        if (!r.ok) pushError = `intervals ${r.status}: ${(await r.text().catch(() => '')).slice(0, 120)}`
+        else req.user.statsSyncedAt = Date.now()
+      } else pushError = Array.isArray(list) ? `no ${group} sport in intervals` : 'could not read intervals sport-settings'
+    } catch (e) { pushError = String(e).slice(0, 120) }
+  }
+  save(store)
+  res.json({ ...pub(req.user), synced, pushError })
 })
 
 // Admin: trigger the prod-promotion GitHub workflow (workflow_dispatch) from the app
@@ -323,17 +474,26 @@ app.put('/auth/profile/athlete', auth, (req, res) => {
   req.user.coachProfile = p; req.user.coachProfileAt = Date.now(); save(store)
   res.json({ profile: req.user.coachProfile, updatedAt: req.user.coachProfileAt })
 })
+// #256 port — durable COACH MEMORY: what the coach has learned works/fails for THIS athlete +
+// how they like to be coached (rules with status). Separate from the athlete profile; the coach
+// reads it every session and updates it after. Reviewable in-app (read) so nothing is hidden.
+app.get('/auth/coach-memory', auth, (req, res) => res.json({ memory: req.user.coachMemory || '', updatedAt: req.user.coachMemoryAt || 0 }))
 
 // Daily check-in (how the athlete feels) — Platyplus-collected signal the coach reads,
 // so it has something to adapt to even without intervals.icu. Light: a few taps.
 function upsertCheckin(user, body) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(body?.date || '') ? body.date : new Date().toISOString().slice(0, 10)
   user.checkins = user.checkins || []
+  const lvl = (v) => (Number(v) >= 1 && Number(v) <= 5 ? Number(v) : undefined)
   const ci = { date,
-    energy: Number(body.energy) >= 1 && Number(body.energy) <= 5 ? Number(body.energy) : undefined,
-    sleep: Number(body.sleep) >= 1 && Number(body.sleep) <= 5 ? Number(body.sleep) : undefined,
-    soreness: Number(body.soreness) >= 1 && Number(body.soreness) <= 5 ? Number(body.soreness) : undefined,
+    energy: lvl(body.energy), sleep: lvl(body.sleep), soreness: lvl(body.soreness),
     note: typeof body.note === 'string' ? body.note.slice(0, 200) : undefined }
+  // #207 Phase 2b: record the AUTO scores the athlete was shown (display terms: energy/sleep/freshness,
+  // each 1–5) so we can later learn how their own ratings systematically differ → personal calibration.
+  if (body.auto && typeof body.auto === 'object') {
+    const a = { energy: lvl(body.auto.energy), sleep: lvl(body.auto.sleep), freshness: lvl(body.auto.freshness) }
+    if (a.energy != null || a.sleep != null || a.freshness != null) ci.auto = a
+  }
   const i = user.checkins.findIndex((x) => x.date === date)
   if (i >= 0) user.checkins[i] = { ...user.checkins[i], ...ci }; else user.checkins.push(ci)
   return ci
@@ -343,19 +503,20 @@ app.post('/auth/checkin', auth, (req, res) => {
   const ci = upsertCheckin(req.user, req.body || {})
   save(store)
   res.json(ci)
-  // #65: a POOR + COMPLETE check-in for TODAY → fire the coach to adapt today's plan
-  // (recovery / cut intensity / move it). Reuses runCoachTask (#76). Once per day
-  // (coachAdapted flag), only for athletes who've set up their coach.
+  // #206: a COMPLETE check-in for TODAY → fire the coach for a real STICK-OR-ADJUST morning call
+  // (not only on poor days). Overnight HRV/sleep is usually still mid-sync from the watch this
+  // early, so the coach is told to lean on the subjective check-in + FRESHNESS/Form (always
+  // available). Once per day (coachDecided), only for athletes who've set up their coach.
   try {
     const today = new Date().toISOString().slice(0, 10)
     const complete = ci.energy != null && ci.sleep != null && ci.soreness != null
-    const poor = (ci.energy != null && ci.energy <= 2) || (ci.sleep != null && ci.sleep <= 2) || (ci.soreness != null && ci.soreness >= 4)
-    if (req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && poor && !ci.coachAdapted) {
-      ci.coachAdapted = true; save(store)
-      const msg = `The athlete just checked in for today (${today}) and it's a POOR recovery day — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore). Look at TODAY's planned session(s) with list_schedule and decide if it should be eased: cut intensity/volume, swap to recovery, or move it. If you change anything, do it with the tools and use notify to tell them what you changed and why (a line or two). If today is already easy or rest, just reassure them briefly via notify. Don't ask questions — act.`
-      runCoachTask(req.user, msg).catch((e) => console.error('[checkin-adapt] ' + (e.message || e)))
+    if (req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && !ci.coachDecided) {
+      ci.coachDecided = true; save(store)
+      const poor = ci.energy <= 2 || ci.sleep <= 2 || ci.soreness >= 4
+      const msg = `Morning check-in is in for today (${today}) — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore)${poor ? ' — this reads run-down' : ''}. IMPORTANT: overnight HRV/sleep from their watch often hasn't synced to intervals this early, so decide from (a) this subjective check-in and (b) their FRESHNESS / Form (CTL−ATL, always available — read get_wellness). Look at TODAY's planned session(s) with list_schedule and make a STICK-OR-ADJUST call: if they're ready, leave the plan and send a one-line "stick with it" via notify; if run-down (poor check-in and/or deeply negative Form), EASE today — cut intensity/volume, swap to recovery, or move it — with the tools, then notify what changed and why. If today is already rest/easy, a one-line reassurance. Be concise; don't ask questions — decide and act.`
+      runCoachTask(req.user, msg).catch((e) => console.error('[checkin-decide] ' + (e.message || e)))
     }
-  } catch (e) { console.error('[checkin-adapt] trigger ' + e.message) }
+  } catch (e) { console.error('[checkin-decide] trigger ' + e.message) }
 })
 app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
 // #195: auto-derived readiness (Sleep · Freshness · Energy 1–5) from 60d of intervals wellness +
@@ -369,13 +530,82 @@ app.get('/auth/readiness', auth, async (req, res) => {
   if (!data) return res.json({ connected: false })
   const rows = (Array.isArray(data) ? data : []).map((d) => ({
     date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
-    restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null,
+    restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, eftp: d.eftp ?? d.icu_eftp ?? null,
     sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null,
   }))
   const today = rows.find((r) => r.date === date) || rows[rows.length - 1] || {}
   const history = rows.filter((r) => r.date < date)
+  // #236: stash the latest resting HR + eFTP so the coach's computed VO₂max/FTP match the app.
+  for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { req.user.restingHR = rows[i].restingHR; break }
+  for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { req.user.eftp = Math.round(rows[i].eftp); break }
+  // #256 port (per-athlete LEARNED baselines): stash this athlete's own 60-day HRV/RHR norm so the
+  // COACH interprets today's reading as a deviation from THEIR baseline, not textbook absolutes.
+  const bl = wellnessBaselines(rows)
+  if (bl.rhrBaseline) req.user.rhrBaseline = { mean: Math.round(bl.rhrBaseline.mean), sd: Math.round(bl.rhrBaseline.sd * 10) / 10, n: bl.nRhr }
+  if (bl.hrvBaseline) req.user.hrvBaseline = { mean: Math.round(Math.exp(bl.hrvBaseline.mean)), cv7: bl.hrvCV7 != null ? Math.round(bl.hrvCV7 * 1000) / 10 : null, n: bl.nHrv } // exp(ln-mean) → raw rmssd ms
   const sleepNeed = Number(req.user.sleepNeed) > 0 ? Number(req.user.sleepNeed) : 8
-  res.json({ connected: true, date, sleepNeed, today, ...computeReadiness(history, today, { sleepNeed }) })
+  // #207 Phase 2b: pass PAST check-ins (before this date) so the model calibrates to the athlete's
+  // own overrides — but never the day being viewed. #235: skip entirely if learning is turned OFF.
+  const calCheckins = req.user.learnReadiness === false ? [] : (req.user.checkins || []).filter((c) => c && c.date < date)
+  res.json({ connected: true, date, sleepNeed, today, ...computeReadiness(history, today, { sleepNeed, checkins: calCheckins }) })
+})
+
+// #223 — FORECAST a FUTURE day's freshness from planned load (only Freshness is knowable ahead;
+// Energy/Sleep depend on HRV/sleep that haven't happened). Projects CTL/ATL → Form over the
+// planned TSS between today and the target, then maps to an expected Freshness 1–5.
+const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
+app.get('/auth/readiness-forecast', auth, async (req, res) => {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : null
+  if (!date) return res.status(400).json({ error: 'date required' })
+  if (!req.user.icuKey) return res.json({ connected: false })
+  const today = new Date().toISOString().slice(0, 10)
+  if (date <= today) return res.json({ connected: true, future: false }) // only future days forecast
+  const ath = req.user.icuAthlete || 'i28814'
+  // current fitness state: latest wellness row with CTL+ATL, + a personal TSB baseline (60d)
+  const wOld = addDays(today, -60)
+  const wData = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${wOld}&newest=${today}`)
+  const rows = (Array.isArray(wData) ? wData : []).map((d) => ({ form: d.ctl != null && d.atl != null ? d.ctl - d.atl : null, ctl: d.ctl, atl: d.atl, date: d.id }))
+  const latest = [...rows].reverse().find((r) => r.ctl != null && r.atl != null)
+  if (!latest) return res.json({ connected: true, future: true, available: false })
+  const tsbBaseline = wellnessBaselines(rows).tsbBaseline
+  // planned TSS per day, today+1 .. target, from intervals planned events
+  const evs = await icuGet(req.user, `/athlete/${ath}/events?oldest=${today}&newest=${date}`)
+  const byDay = {}
+  for (const e of (Array.isArray(evs) ? evs : [])) {
+    const d = (e.start_date_local || '').slice(0, 10)
+    if (d <= today || d > date) continue
+    const load = e.icu_training_load || e.icu_planned_training_load || 0
+    if (load > 0) byDay[d] = (byDay[d] || 0) + load
+  }
+  const loads = []
+  for (let dd = addDays(today, 1); dd <= date; dd = addDays(dd, 1)) loads.push(byDay[dd] || 0)
+  const f = forecastFreshness({ ctl: latest.ctl, atl: latest.atl, tsbBaseline }, loads)
+  res.json({ connected: true, future: true, available: true, date, daysOut: loads.length, ...f, totalPlannedLoad: Math.round(loads.reduce((a, b) => a + b, 0)), plannedDays: Object.keys(byDay).length })
+})
+
+// #248 — per-day CTL/ATL/Form PROJECTION for the next N days (forward line on the Load & Form charts).
+app.get('/auth/readiness-projection', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ connected: false })
+  const days = Math.min(28, Math.max(1, Number(req.query.days) || 14))
+  const ath = req.user.icuAthlete || 'i28814'
+  const today = new Date().toISOString().slice(0, 10)
+  const wData = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${addDays(today, -30)}&newest=${today}`)
+  const rows = (Array.isArray(wData) ? wData : []).map((d) => ({ ctl: d.ctl, atl: d.atl }))
+  const latest = [...rows].reverse().find((r) => r.ctl != null && r.atl != null)
+  if (!latest) return res.json({ connected: true, available: false })
+  const end = addDays(today, days)
+  const evs = await icuGet(req.user, `/athlete/${ath}/events?oldest=${today}&newest=${end}`)
+  const byDay = {}
+  for (const e of (Array.isArray(evs) ? evs : [])) {
+    const d = (e.start_date_local || '').slice(0, 10)
+    if (d <= today || d > end) continue
+    const load = e.icu_training_load || e.icu_planned_training_load || 0
+    if (load > 0) byDay[d] = (byDay[d] || 0) + load
+  }
+  const dates = [], loads = []
+  for (let dd = addDays(today, 1); dd <= end; dd = addDays(dd, 1)) { dates.push(dd); loads.push(byDay[dd] || 0) }
+  const series = projectFormSeries({ ctl: latest.ctl, atl: latest.atl }, loads)
+  res.json({ connected: true, available: true, dates, loads, ctl: series.map((s) => s.ctl), atl: series.map((s) => s.atl), form: series.map((s) => s.form) })
 })
 
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads
@@ -399,9 +629,90 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
     try {
       const fb = plan.feedback
       const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
-      const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}") with a one-line verdict, 2-4 short takeaways, and what's next. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. Be concise; don't ask questions — just review and act.`
+      const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}", and activityId if it matched a device activity) with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). If it matched a device activity, ALSO set a PUBLIC-safe title + description with set_activity_text (activity id from get_recent_activities) — workout/route/effort only, NO health/score/plan. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. Be concise; don't ask questions — just review and act.`
       runCoachTask(req.user, msg).catch((e) => console.error('[coach-review] ' + (e.message || e)))
     } catch (e) { console.error('[coach-review] trigger ' + e.message) }
+  }
+})
+
+// #273 — post-workout feedback for a COMPLETED intervals ACTIVITY (device rides/runs that have no
+// Platyplus plan). Stored per-user keyed by activity id; triggers an async coach review (activityId).
+app.get('/auth/activity/:id/feedback', auth, (req, res) => res.json((req.user.activityFeedback || {})[String(req.params.id)] || null))
+// #273 — intervals feel scale + custom ACTIVITY_FIELD options (label → 1-based index intervals stores).
+// Keep in sync with src/icu-fields.ts.
+const ICU_FEEL_LABELS = ['Strong', 'Good', 'Normal', 'Poor', 'Weak']
+const ICU_FB_FIELDS = {
+  'Legs Before': { code: 'LegsBefore', opts: ['fresh', 'normal', 'relaxed', 'heavy', 'sore', 'flat', 'tired'] },
+  'Legs After': { code: 'LegsAfter', opts: ['strong', 'normal', 'tired OK', 'barely tired', 'heavy', 'sore', 'cooked'] },
+  'Fuel/GI': { code: 'FuelGI', opts: ['not needed', 'water only OK', 'carbs OK', 'underfueled', 'GI issue', 'too much fuel'] },
+  'Pain/Niggles': { code: 'PainNiggles', opts: ['none', 'knee', 'back', 'neck/shoulder', 'foot', 'saddle', 'other'] },
+  'Life Constraint': { code: 'LifeConstraint', opts: ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other'] },
+  'Mental State': { code: 'MentalState', opts: ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out'] },
+}
+// #287 — post the athlete's free-text comment to the intervals activity MESSAGE thread (deduped:
+// skip if an identical comment already exists, so re-saving feedback doesn't spam duplicates).
+async function syncActivityNote(user, id, content) {
+  const existing = await icuFetch(user, `/activity/${id}/messages`).then((r) => (r.ok ? r.json() : [])).catch(() => [])
+  if (Array.isArray(existing) && existing.some((m) => m && typeof m.content === 'string' && m.content.trim() === content)) return
+  await icuFetch(user, `/activity/${id}/messages`, { method: 'POST', body: JSON.stringify({ content }) })
+}
+
+// #288 — a NEW user's intervals account has none of our custom feedback fields, so the 1-based
+// values we write have nowhere to land. Create the six ACTIVITY_FIELDs (idempotent — skip any that
+// already exist by code). Called on connect/onboarding. Best-effort; never throws to the caller.
+async function ensureIcuFields(user) {
+  if (!user || !user.icuKey) return
+  const ath = user.icuAthlete || 'i28814'
+  try {
+    const cur = await icuFetch(user, `/athlete/${ath}/custom-item`).then((r) => (r.ok ? r.json() : [])).catch(() => [])
+    const have = new Set((Array.isArray(cur) ? cur : []).filter((it) => it && it.content && it.content.code).map((it) => it.content.code))
+    for (const [name, def] of Object.entries(ICU_FB_FIELDS)) {
+      if (have.has(def.code)) continue
+      const item = {
+        type: 'ACTIVITY_FIELD', visibility: 'PRIVATE', name,
+        description: 'Private athlete feedback field for coach analysis (Platyplus).',
+        content: { code: def.code, type: 'select', gauge: true, example: def.opts[0], options: def.opts.map((text, i) => ({ text, value: i + 1 })) },
+      }
+      await icuFetch(user, `/athlete/${ath}/custom-item`, { method: 'POST', body: JSON.stringify(item) }).catch((e) => console.error('[icu-field-create ' + def.code + '] ' + (e.message || e)))
+    }
+  } catch (e) { console.error('[ensureIcuFields] ' + (e.message || e)) }
+}
+
+app.post('/auth/activity/:id/feedback', auth, (req, res) => {
+  const id = String(req.params.id)
+  const b = req.body || {}
+  const fb = {
+    feel: typeof b.feel === 'string' ? b.feel : undefined,
+    rpe: Number(b.rpe) >= 1 && Number(b.rpe) <= 10 ? Number(b.rpe) : undefined,
+    fields: (b.fields && typeof b.fields === 'object') ? Object.fromEntries(Object.entries(b.fields).filter(([, v]) => typeof v === 'string').slice(0, 12)) : {},
+    note: typeof b.note === 'string' ? b.note.slice(0, 1000) : '',
+    sport: typeof b.sport === 'string' ? b.sport.slice(0, 20) : undefined,
+    date: typeof b.date === 'string' ? b.date.slice(0, 10) : undefined,
+    at: Date.now(),
+  }
+  if (!req.user.activityFeedback) req.user.activityFeedback = {}
+  req.user.activityFeedback[id] = fb
+  save(store)
+  res.json({ ok: true, feedback: fb })
+  // #273 BI-DIRECTIONAL: write feel/RPE + custom fields BACK to the intervals activity (as the
+  // 1-based indices intervals stores), so it shows up in intervals too. Only for real intervals ids.
+  if (req.user.icuKey && /^i?\d+$/.test(id)) {
+    const payload = {}
+    const fi = ICU_FEEL_LABELS.indexOf(fb.feel); if (fi >= 0) payload.feel = fi + 1
+    if (fb.rpe) payload.icu_rpe = fb.rpe
+    for (const [label, val] of Object.entries(fb.fields || {})) { const def = ICU_FB_FIELDS[label]; if (def) { const i = def.opts.indexOf(val); if (i >= 0) payload[def.code] = i + 1 } }
+    if (Object.keys(payload).length) icuFetch(req.user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify(payload) }).catch((e) => console.error('[icu-feedback-write] ' + (e.message || e)))
+    // #287: the free-text comment isn't a field — it lives in the intervals MESSAGE thread. Post it
+    // there (deduped) so "Anything else?" shows up in intervals too, not just Platyplus.
+    if (fb.note && fb.note.trim()) syncActivityNote(req.user, id, fb.note.trim()).catch((e) => console.error('[icu-note-write] ' + (e.message || e)))
+  }
+  // async coach review referencing the activity (best-effort; only once the coach is set up).
+  if (req.user.coachProfile && req.user.coachProfile.trim()) {
+    try {
+      const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
+      const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${id}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${id}") with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${id}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. Be concise; decide and act.`
+      runCoachTask(req.user, msg).catch((e) => console.error('[activity-review] ' + (e.message || e)))
+    } catch (e) { console.error('[activity-review] trigger ' + e.message) }
   }
 })
 
@@ -413,7 +724,9 @@ app.post('/auth/users', auth, admin, async (req, res) => {
   if (!username || !email.includes('@')) return res.status(400).json({ error: 'username + valid email required' })
   if (findByLogin(username) || findByLogin(email)) return res.status(409).json({ error: 'User already exists' })
   const temp = tempPassword()
-  const u = { id: newId(), username, email, role: req.body.role === 'admin' ? 'admin' : 'user', passwordHash: bcrypt.hashSync(temp, 10), passkeys: [], info: {}, icuKey: '', icuAthlete: 'i28814', apiToken: randomBytes(24).toString('base64url'), plans: [], createdAt: Date.now() }
+  // #262: new users get NO athlete id — it's resolved from THEIR OWN intervals key when they connect.
+  // (Never seed JM's 'i28814' — that pointed every new account at his intervals athlete.)
+  const u = { id: newId(), username, email, role: req.body.role === 'admin' ? 'admin' : 'user', passwordHash: bcrypt.hashSync(temp, 10), passkeys: [], info: {}, icuKey: '', icuAthlete: '', apiToken: randomBytes(24).toString('base64url'), plans: [], createdAt: Date.now() }
   store.users.push(u); save(store)
   const emailed = await sendMail(email, 'Your Platyplus account', `You've been added to Platyplus.\nUsername: ${username}\nTemporary password: ${temp}\nSign in at ${ORIGIN} and change it.`).catch(() => false)
   res.json({ user: pub(u), tempPassword: temp, emailed })
@@ -423,6 +736,13 @@ app.post('/auth/users/:id/reset', auth, admin, async (req, res) => {
   const temp = tempPassword(); u.passwordHash = bcrypt.hashSync(temp, 10); save(store)
   const emailed = await sendMail(u.email, 'Your Platyplus password was reset', `Your new temporary password is ${temp}. Sign in at ${ORIGIN} and change it.`).catch(() => false)
   res.json({ tempPassword: temp, emailed })
+})
+// #261 — admin sets a SPECIFIC password for a user (vs the random reset above).
+app.post('/auth/users/:id/password', auth, admin, (req, res) => {
+  const u = findById(req.params.id); if (!u) return res.status(404).json({ error: 'not found' })
+  const pw = String(req.body.password || '')
+  if (pw.length < 6) return res.status(400).json({ error: 'password must be at least 6 characters' })
+  u.passwordHash = bcrypt.hashSync(pw, 10); save(store); res.json({ ok: true })
 })
 app.delete('/auth/users/:id', auth, admin, (req, res) => {
   if (req.params.id === req.user.id) return res.status(400).json({ error: "You can't delete yourself" })
@@ -524,7 +844,7 @@ const coachIdentity = (name) => `You are ${name}, a personal training & nutritio
 const APP_HELP = `# Helping with Platyplus (configuration & usage)
 You can also help the user set up and use the app — guide them in plain steps:
 - intervals.icu: Profile → Athlete/Connections → intervals.icu. They paste their Athlete ID and an API key (from intervals.icu → Settings → "Developer settings" → API key). Once connected, planned and completed rides sync into their calendar.
-- Strava: Profile → "Connect Strava" (one tap, OAuth). After connecting, recent activities show up and they can opt in to share sessions to Strava.
+- Strava/Garmin/Coros/Wahoo: DON'T connect these to Platyplus directly — connect them INSIDE intervals.icu (intervals → Settings → connections). Platyplus reads everything through intervals, so their activities + wellness flow in automatically.
 - Athlete profile: Profile → Athlete. This is the profile YOU read — goals, sport, weekly hours, FTP/maxes, equipment, constraints, injuries, preferences. Encourage them to keep it current; the more accurate it is, the better you plan.
 - Features: Today/Calendar (the plan), Train (gym, ride, run), Eat (recipes & meals), Mind (meditation/yoga/pilates), Stats (Fitness/Strength/Progress), and this Coach chat.
 - Strength prescription: when you schedule a gym workout, prescribe each lift as sets × TARGET REPS (e.g. 4×4 for power, 3×8 for hypertrophy). The app auto-fills the suggested WEIGHT from the athlete's estimated 1RM (logged history) — you do NOT need to specify kg unless they ask. After they log, their e1RM updates and you adjust next time.
@@ -553,21 +873,78 @@ function buildSystemPrompt(user) {
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
   // #207 Phase 2: the athlete's own benchmarks — so the coach judges intensity FOR THEM.
   const stats = []
-  if (user.ftp) stats.push(`FTP ${user.ftp} W`)
+  // #236/#277: FTP resolves by statPrefs.ftp — computed/AUTO prefer eFTP when available, else the set FTP.
+  const wantsComputed = (k) => user.statPrefs?.[k] === 'computed' || (user.statPrefs?.[k] ?? 'auto') === 'auto'
+  if (wantsComputed('ftp') && user.eftp) stats.push(`cycling FTP ~${user.eftp} W (eFTP, estimated)`)
+  else if (user.ftp) stats.push(`cycling FTP ${user.ftp} W`)
   if (user.maxHR) stats.push(`max HR ${user.maxHR} bpm`)
-  if (user.vo2max) stats.push(`VO2max ${user.vo2max}`)
+  // #236/#277: VO₂max — computed/AUTO prefer the submax estimate; else the manual value.
+  const vo2est = bestVo2maxEstimate({ ftp: user.ftp, weightKg: user.weight, vdot: user.runVdot, hrMax: user.maxHR, hrRest: user.restingHR })
+  if (wantsComputed('vo2max') && vo2est) stats.push(`VO2max ~${vo2est.value} (est. from ${vo2est.source})`)
+  else if (user.vo2max) stats.push(`VO2max ${user.vo2max}`)
+  else if (vo2est) stats.push(`VO2max ~${vo2est.value} (est. from ${vo2est.source})`)
+  // #236/#277: threshold pace — computed/AUTO prefer the #215 estimate when ready, else the set value.
+  const tpComputed = wantsComputed('thresholdPace') && user.runPaceEst > 0
+  const tp = tpComputed ? user.runPaceEst : user.sportSettings?.running?.thresholdPace // sec/km
+  if (tp > 0) { const m = Math.floor(tp / 60), s = String(Math.round(tp % 60)).padStart(2, '0'); stats.push(`running threshold pace ${m}:${s}/km${tpComputed ? ' (estimated)' : user.runVdot ? ` (VDOT ${user.runVdot})` : ''}`) }
+  const rhr = user.sportSettings?.running?.maxHr
+  if (rhr && rhr !== user.maxHR) stats.push(`running max HR ${rhr} bpm`)
   if (user.sleepNeed) stats.push(`sleep need ~${user.sleepNeed} h`)
-  if (stats.length) p += `\n\n# THIS ATHLETE'S BENCHMARKS — ${stats.join(', ')}.\nJudge how hard a session is FOR THEM against these: prescribe ride/run intensities as % of THEIR FTP/threshold, set HR zones off THEIR max HR, and gym loads by reps (the app fills the weight). Their sleep NEED is ~${user.sleepNeed || 8} h — score sleep against that, not a generic 8 h.`
+  // #256 port — per-athlete LEARNED baselines (their own 60d norm). Interpret a reading as a
+  // DEVIATION from these, not against textbook absolutes. (Stashed by /auth/readiness.)
+  const bl2 = []
+  if (user.hrvBaseline?.mean) bl2.push(`HRV baseline ~${user.hrvBaseline.mean} ms${user.hrvBaseline.cv7 != null ? ` (7-day variability ${user.hrvBaseline.cv7}%)` : ''}`)
+  if (user.rhrBaseline?.mean) bl2.push(`resting HR baseline ~${user.rhrBaseline.mean}±${user.rhrBaseline.sd} bpm`)
+  if (bl2.length) p += `\n\n# THIS ATHLETE'S LEARNED BASELINES (their OWN ~60-day norm) — ${bl2.join(', ')}.\nInterpret today's HRV/resting-HR as a DEVIATION from these, never as textbook absolutes: a clear HRV drop or resting-HR rise vs baseline (beyond ~1 SD, especially multi-day) signals accumulating fatigue, poor sleep, or oncoming illness → ease off; within the normal band → train as planned. Rising 7-day HRV variability is itself a fatigue flag. Always cross-check with their check-in and Form before deciding.`
+  if (stats.length) p += `\n\n# THIS ATHLETE'S BENCHMARKS — ${stats.join(', ')}.\nJudge how hard a session is FOR THEM against these: prescribe ride intensities as % of THEIR FTP and RUN intensities as a pace off THEIR threshold pace (Daniels E/M/T/I/R), set HR zones off THEIR max HR, and gym loads by reps (the app fills the weight). Their sleep NEED is ~${user.sleepNeed || 8} h — score sleep against that, not a generic 8 h.`
   p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-5 (energy: 5=energized, sleep: 5=fully rested, soreness: 5=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
   const ownedEq = Array.isArray(user.info?.equipment) ? user.info.equipment.filter((e) => typeof e === 'string') : []
   if (ownedEq.length) p += `\n\n# Equipment the athlete OWNS: ${ownedEq.join(', ')}.\nWhen building gym/strength sessions, prescribe ONLY exercises that use this gear or Bodyweight — pass \`equipment="${ownedEq.join(',')}"\` to search_exercises so you never pick something they can't do. (They set this in Settings → Equipment.)`
+  // #284 — gym prescription depth: tempo (time-under-tension) + per-lift + session tips.
+  p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): for each lift set sets×reps and, where it helps the goal, a TEMPO — 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower · 1s pause · 1s lift · 0s top (a slower eccentric ⇒ more time-under-tension ⇒ hypertrophy/control; faster ⇒ power). Add a one-line FORM tip per lift, and ONE whole-session \`tip\` (e.g. rest guidance). Don't set weight — the app fills it from the athlete's e1RM. Keep tips short and practical.`
   const diet = String(user.info?.diet || '').toLowerCase()
   if (diet === 'vegetarian' || diet === 'vegan') p += `\n\n# DIET: the athlete is ${diet.toUpperCase()}.\nEVERY meal you pick or suggest MUST be ${diet}. search_recipes already returns ONLY ${diet}-compatible recipes for this athlete, so pick from those — never recommend a meal outside their diet, and don't suggest meat${diet === 'vegan' ? ', fish, dairy, eggs, or honey' : ' or fish'}. (They set this in Settings → Preferences.)`
   p += '\n\n' + APP_HELP
+  // #256 port — durable COACH MEMORY: consult it EVERY session, then keep it current.
+  if (user.coachMemory && user.coachMemory.trim()) {
+    p += `\n\n# YOUR COACH MEMORY for this athlete (what you've LEARNED works/fails + how they like to be coached — apply it, don't repeat past mistakes)\n${user.coachMemory.trim()}\n\nWhen you learn something durable (a rule that worked or failed, a preference they state, a constraint, an adjustment that paid off), UPDATE this with save_coach_memory (rewrite the full memory, keep it tight — dated bullets, mark rules active/retired). This is separate from their profile: the profile is WHO they are, the memory is HOW to coach THEM.`
+  } else {
+    p += `\n\n# COACH MEMORY — you have none for this athlete yet. As you learn what works/fails and how they like to be coached, start one with save_coach_memory (tight dated bullets) so you improve every session instead of starting fresh.`
+  }
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
   } else {
-    p += `\n\n# ONBOARDING — this athlete has no profile yet\nWarmly interview them to build their profile: which sport(s) they do, their goal, days/week + time available, equipment/gym access, any constraints or injuries, food preferences, and how they like to be coached. Ask a couple of questions at a time, conversationally — not a long form. As soon as you know their sport(s), call set_sports; once you have enough, call set_athlete_profile with a clean markdown profile so you remember it every session. Keep building it as you learn more. Confirm what you saved in one short line.`
+    const known = []
+    if (user.sex) known.push(`sex ${user.sex}`)
+    if (user.weight) known.push(`weight ${user.weight} kg`)
+    if (user.ftp) known.push(`FTP ${user.ftp} W`)
+    if (user.maxHR) known.push(`max HR ${user.maxHR} bpm`)
+    if ((user.sports || []).length) known.push(`sports ${user.sports.join(', ')}`)
+    const icuOn = !!user.icuKey
+    const stravaOn = userStravaConnected(user)
+    p += `\n\n# ONBOARDING — this athlete has NO profile yet. RUN THE INTERVIEW NOW, and GET THEIR DATA CONNECTED.
+You are meeting them for the FIRST time. Open with a warm one-line hello using their name if known (${user.username || 'there'}), say you're their coach and you'll get them set up in a couple of minutes, then START asking. Lead the conversation — they may reply by tapping, typing, OR voice, and may give extra detail; roll with it.
+${known.length ? `Already known from intervals.icu (CONFIRM, don't re-ask): ${known.join(', ')}. ` : ''}
+
+## Connections — do this EARLY, it's what makes the plan good
+Platyplus↔service status right now: intervals.icu ${icuOn ? 'CONNECTED ✅' : 'NOT connected ❌'} · Strava ${stravaOn ? 'connected ✅' : 'not connected'}.
+- **CALL check_connections** to see the TRUTH — not just whether intervals is linked, but whether their data is actually FLOWING in: recent synced activities (+ the source device), and whether HRV/sleep/resting-HR are present. Do this early, and again after you learn what device they use.
+- **intervals.icu is the data hub** — fitness/fatigue/Form, HRV, sleep, resting HR, FTP/threshold/max-HR and past activities all come from it. Without it you're planning half-blind.
+${icuOn ? '- intervals is linked — call check_connections; if activities/wellness are flowing, pull their benchmarks + recent training to ground the plan.' : `- intervals is NOT linked. Walk them through it: **Profile → Connect intervals.icu**, paste their intervals API key (from intervals.icu → Settings → Developer). Explain plainly why. You can't do it for them — guide, then re-check.`}
+- **Match device to data flow**: ask what watch/head-unit they use (Garmin, Coros, Wahoo, Suunto, Polar, Apple Watch…), then use check_connections to see if that source is actually syncing into intervals. If it isn't, tell them EXACTLY what to fix: connect that device (and Strava) INSIDE intervals.icu (intervals → Settings → connections) so every ride/run + overnight HRV/sleep flows in automatically. Confirm ("your Coros runs are flowing ✅" / "I don't see any Coros data yet — connect it in intervals").
+- Sharing to Strava: they connect Strava INSIDE intervals.icu (not Platyplus) — then completed activities land on Strava automatically.
+
+## Interview — a couple of questions at a time, conversational (NOT a long form)
+1) which sport(s) they do → call set_sports as soon as you know;
+2) basics for fuelling & readiness: sex / height / date-of-birth / weight (prefill what's known above);
+3) their main goal + rough experience level;
+4) a REALISTIC normal week: which days they can train, typical time per session, any hard floors (e.g. min ride length);
+5) equipment / gym access; 6) constraints or injuries; 7) food preferences; 8) anything else they want their coach to know.
+As you learn durable facts, call set_athlete_profile with the FULL clean markdown profile (rewrite it whole each time).
+
+## DATA-READINESS GATE — do NOT draft the plan until you have what you need
+Before generating the week, make sure you actually have: sport(s) · goal · experience · weekly availability + session length · equipment · constraints, PLUS the fitness anchors — for endurance: FTP or threshold pace (+ max HR, weight), ideally pulled from intervals; for strength: experience/main lifts. If intervals is connected, use their real benchmarks + recent training. If a key anchor is missing, ASK for it (or a best estimate) — don't invent numbers. If intervals still isn't connected, you MAY draft a sensible STARTER week from what they told you, but say clearly it'll sharpen once intervals is connected and their data syncs.
+Then DRAFT THEIR FIRST WEEK with create_workout/create_ride/create_run around their availability (easy-first, one quality day, respect time + equipment), call notify with a short "here's your first week" summary, and FINALLY call finish_onboarding. Keep every message short and encouraging.`
   }
   return p
 }
@@ -634,6 +1011,7 @@ app.post('/auth/chat', auth, async (req, res) => {
           if (!data) continue
           let ev; try { ev = JSON.parse(data.slice(5).trim()) } catch { continue }
           if (ev.sessionId) { req.user.chatSession = ev.sessionId; save(store) } // persist, don't forward
+          else if (ev.error && /no conversation found|session id/i.test(String(ev.error))) { delete req.user.chatSession; save(store); send({ error: 'Lost the thread — tap send again to start fresh.' }) } // stale session → clear so next send is fresh
           else if (!ev.done) send(ev) // forward delta / error (our own done at the end)
         }
       }
@@ -643,7 +1021,7 @@ app.post('/auth/chat', auth, async (req, res) => {
 
   // Dev: spawn claude locally.
   const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: req.user.apiToken } } } })
-  const args = [
+  const baseArgs = [
     '-p', message,
     '--output-format', 'stream-json', '--include-partial-messages', '--verbose',
     '--mcp-config', mcpConfig,
@@ -651,29 +1029,43 @@ app.post('/auth/chat', auth, async (req, res) => {
     '--disallowedTools', CHAT_DENY,
     '--append-system-prompt', buildSystemPrompt(req.user),
   ]
-  if (req.user.chatSession) args.push('--resume', req.user.chatSession)
-  const proc = spawn(CLAUDE_BIN, args, { env: process.env })
-  proc.stdin?.end() // close stdin (EOF) so claude doesn't wait for piped input
-  const killer = setTimeout(() => proc.kill('SIGKILL'), 180000)
-  let buf = '', err = '', done = false
-  const end = () => { if (done) return; done = true; clearTimeout(killer); send({ done: true }); res.end() }
-  proc.stdout.on('data', (d) => {
-    buf += d
-    let nl
-    while ((nl = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1)
-      if (!line) continue
-      let ev; try { ev = JSON.parse(line) } catch { continue }
-      if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') send({ delta: ev.event.delta.text })
-      else if (ev.type === 'result' && ev.session_id) { req.user.chatSession = ev.session_id; save(store) }
-    }
-  })
-  proc.stderr.on('data', (d) => (err += d))
-  proc.on('error', (e) => { if (!done) { done = true; clearTimeout(killer); send({ error: 'coach unavailable: ' + e.message }); res.end() } })
-  proc.on('close', () => { if (err && !buf) send({ error: err.slice(0, 200) }); end() })
-  // Kill claude only if the CLIENT actually disconnects (res close) — NOT req
-  // close, which fires the moment the request body is read and would kill it early.
-  res.on('close', () => { if (!done) { clearTimeout(killer); proc.kill('SIGKILL') } })
+  let done = false
+  const end = () => { if (done) return; done = true; send({ done: true }); res.end() }
+  // Run claude; if a stored session id is STALE (claude's local session store can vanish across
+  // restarts → "No conversation found with session ID"), drop it and retry ONCE with a fresh thread.
+  const run = (resume, isRetry) => {
+    const args = resume && req.user.chatSession ? [...baseArgs, '--resume', req.user.chatSession] : baseArgs
+    const proc = spawn(CLAUDE_BIN, args, { env: process.env })
+    proc.stdin?.end() // close stdin (EOF) so claude doesn't wait for piped input
+    const killer = setTimeout(() => proc.kill('SIGKILL'), 180000)
+    let buf = '', err = '', sawOutput = false
+    proc.stdout.on('data', (d) => {
+      buf += d
+      let nl
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1)
+        if (!line) continue
+        let ev; try { ev = JSON.parse(line) } catch { continue }
+        if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') { sawOutput = true; send({ delta: ev.event.delta.text }) }
+        else if (ev.type === 'result' && ev.session_id) { req.user.chatSession = ev.session_id; save(store) }
+      }
+    })
+    proc.stderr.on('data', (d) => (err += d))
+    proc.on('error', (e) => { if (!done) { clearTimeout(killer); send({ error: 'coach unavailable: ' + e.message }); end() } })
+    proc.on('close', () => {
+      clearTimeout(killer)
+      // Stale-session recovery: clear the bad id and retry fresh, once, before surfacing anything.
+      if (!isRetry && resume && !sawOutput && /no conversation found|session id/i.test(err)) {
+        delete req.user.chatSession; save(store); return run(false, true)
+      }
+      if (err && !sawOutput) send({ error: err.slice(0, 200) })
+      end()
+    })
+    // Kill claude only if the CLIENT actually disconnects (res close) — NOT req close, which fires
+    // the moment the request body is read and would kill it early.
+    res.on('close', () => { if (!done) { clearTimeout(killer); proc.kill('SIGKILL') } })
+  }
+  run(true, false)
 })
 // Reset the per-user conversation thread.
 app.post('/auth/chat/reset', auth, (req, res) => { delete req.user.chatSession; save(store); res.json({ ok: true }) })
@@ -857,6 +1249,7 @@ async function upsertPlan(user, body) {
     // strategy + cues. The plan view joins the day's items by date.
     objective: typeof body.objective === 'string' ? body.objective : '',
     cues: Array.isArray(body.cues) ? body.cues.filter((c) => typeof c === 'string') : [],
+    tip: typeof body.tip === 'string' ? body.tip.slice(0, 400) : '', // #284 session-level tip (e.g. tempo/rest focus)
     success: typeof body.success === 'string' ? body.success : '',
     recovery: typeof body.recovery === 'string' ? body.recovery : '',
     fuel: body.fuel && typeof body.fuel === 'object' ? { why: String(body.fuel.why || ''), supplements: String(body.fuel.supplements || '') } : undefined,
@@ -890,12 +1283,39 @@ async function deletePlanById(user, id) {
 // into user.plans and thereafter OWNED by Platyplus (its later edits push back
 // over intervals). This function only READS intervals and writes to our own store
 // — it never mutates the intervals calendar, so it is safe to run repeatedly.
+// Coggan power zones → representative %FTP (mirrors src/intervals.ts stepPctFtp). intervals
+// emits {units:'power_zone', value:N} ("ride in zone N") steps — without this they collapse to
+// 0 / a bogus % (the "5 W" bug: zone 2 read as 2% FTP).
+const ZONE_PCT = { 1: 50, 2: 65, 3: 83, 4: 98, 5: 113, 6: 135, 7: 160 }
+function resolveStepPct(p) {
+  if (!p) return { start: 0, end: 0 }
+  if (p.units === 'power_zone') {
+    const z = Math.round(p.value || 0)
+    const pct = ZONE_PCT[z] != null ? ZONE_PCT[z] : (p.value >= 20 ? p.value : 65)
+    return { start: pct, end: pct, label: z >= 1 && z <= 7 ? `Z${z}` : undefined }
+  }
+  return { start: (p.start != null ? p.start : p.value) || 0, end: (p.end != null ? p.end : p.value) || 0 }
+}
+
+// #293: EXPAND nested repeat blocks ({reps, steps:[…]}) into individual segments — mirrors the
+// client flattenIcuSteps. Without this, a 3× interval set collapsed into ONE flat 0-W segment
+// (the outer repeat step has a duration but no power), so the thumbnail rendered blocks+gap.
+function flattenIcuStepsSrv(steps = []) {
+  const out = []
+  const walk = (s) => {
+    if (s.steps && s.reps) { for (let i = 0; i < s.reps; i++) s.steps.forEach(walk) }
+    else if (s.steps) { s.steps.forEach(walk) }
+    else if (s.duration) { const pr = resolveStepPct(s.power); out.push({ duration: Number(s.duration) || 0, powerStart: Number(pr.start) || 0, powerEnd: Number(pr.end) || 0, ...(s.text ? { label: s.text } : pr.label ? { label: pr.label } : {}) }) }
+  }
+  for (const s of steps) walk(s)
+  return out
+}
 function icuEventToPlan(ev) {
   const date = String(ev.start_date_local || '').slice(0, 10)
   const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
   const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: ev.description || '', origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
   if (sport === 'ride' || sport === 'run') {
-    plan.segments = (ev.workout_doc?.steps || []).map((s) => ({ duration: Number(s.duration) || 0, powerStart: Number(s.power?.start) || 0, powerEnd: Number(s.power?.end) || 0, ...(s.text ? { label: s.text } : {}) }))
+    plan.segments = flattenIcuStepsSrv(ev.workout_doc?.steps || [])
   } else {
     plan.rounds = 1; plan.exercises = [] // gym structure stays in notes; the client parses it
   }
@@ -920,11 +1340,22 @@ async function reconcileFromIcu(user, from, to) {
   // PLATYPLUS-WINS dedup key: same day + sport + title ⇒ it's the same session.
   const planKey = (date, sport, title) => `${date}|${sport}|${String(title || '').trim().toLowerCase()}`
   const planKeys = new Set(user.plans.map((p) => planKey(p.date, p.sport, p.title)))
-  let imported = 0
+  let imported = 0, refreshed = 0
   for (const ev of events || []) {
     if (ev.category && ev.category !== 'WORKOUT') continue
     if (!['Ride', 'Run', 'WeightTraining'].includes(ev.type)) continue
-    if (ownedIcuIds.has(ev.id)) continue // we already own this exact event
+    if (ownedIcuIds.has(ev.id)) {
+      // We already have this event as a plan — REFRESH its derived fields from intervals so
+      // edits to the workout (and the #217 power_zone fix) propagate. icu-origin ONLY:
+      // platyplus-origin plans are master and never overwritten. Completion/feedback untouched.
+      const existing = user.plans.find((p) => p.icuEventId === ev.id)
+      if (existing && existing.origin === 'icu') {
+        const fresh = icuEventToPlan(ev)
+        const sig = (p) => JSON.stringify([p.title, p.notes, p.segments])
+        if (sig(existing) !== sig(fresh)) { existing.title = fresh.title; existing.notes = fresh.notes; existing.segments = fresh.segments; existing.updatedAt = Date.now(); refreshed++ }
+      }
+      continue
+    }
     // Shares our plan id (with or without the ":date" instance suffix) → skip.
     const extId = stripInstance(ev.external_id)
     if (ev.external_id && (planIds.has(ev.external_id) || planIds.has(extId))) continue
@@ -947,8 +1378,8 @@ async function reconcileFromIcu(user, from, to) {
   const before = user.plans.length
   user.plans = user.plans.filter((p) => !planDroppedByReconcile(p, { liveIds: liveIcuIds, liveSlots, from, to }))
   const dropped = before - user.plans.length
-  if (imported || dropped) save(store)
-  return { imported, dropped, scanned: (events || []).length }
+  if (imported || dropped || refreshed) save(store)
+  return { imported, dropped, refreshed, scanned: (events || []).length }
 }
 
 // ---- calendar items (meal/mind/note) — shared by the UI (/auth) and API (/api).
@@ -1213,10 +1644,48 @@ app.put('/api/profile/athlete', apiAuth, (req, res) => {
   req.user.coachProfile = p; req.user.coachProfileAt = Date.now(); save(store)
   res.json({ ok: true, length: p.length })
 })
+// #256 port — coach WRITES its durable memory (learnings + coaching rules for this athlete).
+app.put('/api/coach-memory', apiAuth, (req, res) => {
+  const m = String(req.body?.memory ?? '')
+  if (m.length > 40000) return res.status(413).json({ error: 'memory too long' })
+  req.user.coachMemory = m; req.user.coachMemoryAt = Date.now(); save(store)
+  res.json({ ok: true, length: m.length })
+})
 app.put('/api/profile', apiAuth, (req, res) => {
   if (Array.isArray(req.body?.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)
   if (typeof req.body?.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
   save(store); res.json({ ok: true, sports: req.user.sports || [], coachName: req.user.coachName || '' })
+})
+// #257 — coach marks onboarding COMPLETE (after it saved the profile AND drafted the first week).
+// Sets onboardedAt so the Today welcome card stops showing. The user can still skip earlier.
+app.post('/api/onboarding/complete', apiAuth, (req, res) => {
+  req.user.onboardedAt = Date.now(); save(store); res.json({ ok: true, onboardedAt: req.user.onboardedAt })
+})
+// #257 — the coach VERIFIES connections & data flow (so it can tell the user exactly what to connect).
+// Reports Platyplus↔intervals/Strava links AND whether data is actually flowing INTO intervals
+// (recent activities + their source device, and whether HRV/sleep/RHR wellness is present).
+app.get('/api/connections', apiAuth, async (req, res) => {
+  const intervals = !!req.user.icuKey
+  const strava = userStravaConnected(req.user)
+  let recentActivities = 0, lastActivity = null, wellness = { hrv: false, sleep: false, restingHR: false }
+  const sources = []
+  if (intervals) {
+    const ath = req.user.icuAthlete || 'i28814'
+    const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(21)}&newest=${icuDay(0)}`).catch(() => null)
+    if (Array.isArray(acts)) {
+      recentActivities = acts.length
+      const sorted = acts.filter((a) => a.start_date_local).sort((a, b) => (a.start_date_local < b.start_date_local ? 1 : -1))
+      if (sorted[0]) lastActivity = { date: sorted[0].start_date_local.slice(0, 10), type: sorted[0].type || null, source: sorted[0].source || sorted[0].device_name || null }
+      for (const a of acts) { const s = a.source || a.device_name; if (s && !sources.includes(s)) sources.push(s) }
+    }
+    const well = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${icuDay(14)}&newest=${icuDay(0)}`).catch(() => null)
+    if (Array.isArray(well)) wellness = {
+      hrv: well.some((w) => w.hrv != null || w.hrvSDNN != null),
+      sleep: well.some((w) => w.sleepSecs != null || w.sleepScore != null),
+      restingHR: well.some((w) => w.restingHR != null),
+    }
+  }
+  res.json({ intervals, strava, recentActivities, lastActivity, deviceSources: sources.slice(0, 6), wellness })
 })
 
 // Calendar items (meal / mind / note) — Platyplus-only, no intervals push.
@@ -1227,20 +1696,25 @@ app.delete('/api/items/:id', apiAuth, (req, res) => { deleteItemById(req.user, r
 // Exercise catalog search — resolve a name to a real exId (with demo media).
 // Coach-activity notification: the coach posts a short note of what it just did
 // (created/adjusted the plan, reviewed a workout). Surfaces in the user's bell.
-function pushNotification(u, { title, body, items }) {
+function pushNotification(u, { title, body, items, subkind, link, score, id }) {
   if (!u.notifications) u.notifications = []
   const t = String(title || '').trim().slice(0, 120)
   if (!t) return null
   const n = {
-    id: 'coach-' + randomBytes(6).toString('base64url'),
+    id: id || ('coach-' + randomBytes(6).toString('base64url')),
     kind: 'coach',
+    subkind: subkind === 'review' ? 'review' : undefined, // #233 distinguishes review vs update in the bell
     date: new Date().toISOString().slice(0, 10),
     at: new Date().toISOString(),
     title: t,
     body: typeof body === 'string' ? body.trim().slice(0, 600) : undefined,
     items: Array.isArray(items) ? items.filter((x) => typeof x === 'string').map((x) => x.trim().slice(0, 200)).slice(0, 12) : undefined,
+    link: typeof link === 'string' ? link.slice(0, 200) : undefined,
+    score: typeof score === 'number' ? score : undefined,
     read: false,
   }
+  // dedup by id (re-reviews replace the prior notification for that review)
+  u.notifications = (u.notifications || []).filter((x) => x.id !== n.id)
   u.notifications.unshift(n)
   u.notifications = u.notifications.slice(0, 50) // cap
   return n
@@ -1277,8 +1751,57 @@ app.post('/api/coach-review', apiAuth, (req, res) => {
     at: new Date().toISOString(),
   }
   req.user.coachReviews = [review, ...req.user.coachReviews.filter((r) => r.id !== review.id)].slice(0, 200)
+  // #233 — notify the athlete their session was reviewed (tappable → the activity / plan).
+  const score10 = review.score == null ? null : (review.score > 10 ? Math.round(review.score / 10) : review.score)
+  pushNotification(req.user, {
+    id: 'review-' + review.id, subkind: 'review',
+    title: `Coach reviewed your ${review.sport || 'workout'}`,
+    body: review.verdict || (review.takeaways && review.takeaways[0]) || undefined,
+    score: score10 != null ? score10 : undefined,
+    link: review.activityId ? `/activity/${review.activityId}` : (review.planId ? `/coach/${review.planId}` : undefined),
+  })
   save(store); res.status(201).json(review)
+  // #290: the coach note belongs in the intervals Notes/comment thread too (not just Platyplus), in
+  // the standard "Coach note" format so #286 reads it back. Private-safe context lives HERE, never in
+  // the public description (#289 set_activity_text). Best-effort, deduped.
+  if (review.activityId && req.user.icuKey && /^i?\d+$/.test(review.activityId)) {
+    postCoachNote(req.user, review.activityId, review).catch((e) => console.error('[coach-note-write] ' + (e.message || e)))
+  }
 })
+
+// #289 — the coach sets the PUBLIC title + description on a completed activity (syncs to Strava).
+// Public-safe ONLY (the coach engine enforces: workout/route/effort, no health/score/plan leaks).
+app.put('/api/activity/:id/public-text', apiAuth, async (req, res) => {
+  const id = String(req.params.id)
+  if (!/^i?\d+$/.test(id)) return res.status(400).json({ error: 'expected an intervals activity id' })
+  if (!req.user.icuKey) return res.status(400).json({ error: 'no intervals connection' })
+  const payload = {}
+  if (typeof req.body.name === 'string' && req.body.name.trim()) payload.name = req.body.name.trim().slice(0, 200)
+  if (typeof req.body.description === 'string') payload.description = req.body.description.slice(0, 4000)
+  if (!Object.keys(payload).length) return res.status(400).json({ error: 'name or description required' })
+  try {
+    const r = await icuFetch(req.user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+    if (!r.ok) return res.status(502).json({ error: 'intervals rejected the update', status: r.status })
+    res.json({ ok: true, ...payload })
+  } catch (e) { res.status(502).json({ error: String(e.message || e) }) }
+})
+
+// #290 — format a saved coach review into the standard "Coach note" (+ Recovery/Supplements) blocks
+// and post them to the intervals activity message thread. Matches coach_feedback_format.md so #286's
+// parseCoachNote reads it back into the verdict card + expander.
+async function postCoachNote(user, id, r) {
+  const score = r.score == null ? null : (r.score > 10 ? Math.round(r.score / 10) : r.score) // normalize 0-100 → /10
+  const bullets = (r.takeaways && r.takeaways.length ? r.takeaways : r.execution) || []
+  const lines = [`Coach note - ${(r.sport || 'workout')} ${r.date}`, '', 'Verdict']
+  lines.push(`- ${score != null ? `Score: ${score}/10. ` : ''}${r.verdict || ''}`.trimEnd())
+  if (r.execution && r.execution.length && bullets !== r.execution) { lines.push('', 'Execution'); for (const t of r.execution) lines.push(`- ${t}`) }
+  else if (bullets.length) { for (const t of bullets) lines.push(`- ${t}`) }
+  if (r.body) { lines.push('', 'Body / Recovery Exercises', `- ${r.body}`) }
+  if (r.mind && (r.mind.pattern || r.mind.cue)) { lines.push('', 'Mind'); if (r.mind.pattern) lines.push(`- ${r.mind.pattern}`); if (r.mind.cue) lines.push(`- ${r.mind.cue}`) }
+  if (r.next) { lines.push('', 'Next', `- ${r.next}`) }
+  await syncActivityNote(user, id, lines.join('\n').trim())
+  if (r.recovery && r.recovery.trim()) await syncActivityNote(user, id, `Recovery / Supplements\n\n${r.recovery.trim()}`)
+}
 app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit, req.query.equipment)))
 // Recipe + session catalog search — the coach picks a real id for fuel meals / mind sessions.
 app.get('/api/recipes', apiAuth, (req, res) => res.json(searchRecipes(req.query.q, req.query.limit, req.query.category, req.query.diet || req.user.info?.diet)))
@@ -1304,6 +1827,10 @@ app.all('/icu/*', auth, async (req, res) => {
     const r = await fetch(url, init)
     res.status(r.status)
     const ct = r.headers.get('content-type'); if (ct) res.set('content-type', ct)
+    // #267: never let the browser heuristically cache an intervals read — without this a
+    // GET (e.g. /activities) could be served stale, so an activity DELETED upstream still
+    // shows in Platyplus. Always revalidate against intervals.
+    res.set('Cache-Control', 'no-store')
     res.send(Buffer.from(await r.arrayBuffer()))
   } catch (e) { res.status(502).json({ error: 'intervals.icu proxy failed', detail: String(e.message || e) }) }
 })

@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle } from 'lucide-react'
+import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle, HeartPulse } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
+import { hasModule } from '../modules'
+import { BenchmarksCard } from '../Benchmarks'
 
 type Item = { label: string; sub: string; to: string; icon: ReactNode; mine?: boolean }
 
@@ -15,18 +17,16 @@ function HubLink({ it }: { it: Item }) {
   )
 }
 
-const ENDUR = ['cycling', 'running', 'triathlon']
-
-/** Train hub — every discipline, the ones you do listed first. */
+/** Train hub — every discipline, the ones you do listed first (central hasModule, #198). */
 export function TrainHub() {
   const { user } = useAuth()
   const sports = user?.sports || []
-  const mine = (s: string[]) => s.some((x) => sports.includes(x))
+  const mine = (m: string) => hasModule(sports, m, { emptyShowsAll: false }) // "is this MINE" → no empty-fallback
   const disc: Item[] = [
-    { label: 'Ride', sub: 'Cycling workouts & builder', to: '/cycle', icon: <Bike strokeWidth={1.75} />, mine: mine(['cycling', 'triathlon']) },
-    { label: 'Run', sub: 'Runs & pace work', to: '/run', icon: <Footprints strokeWidth={1.75} />, mine: mine(['running', 'triathlon']) },
-    { label: 'Gym', sub: 'Strength programs & workouts', to: '/gym', icon: <Dumbbell strokeWidth={1.75} />, mine: mine(['strength']) },
-    { label: 'Mind', sub: 'Yoga, pilates, meditation', to: '/mind', icon: <Brain strokeWidth={1.75} />, mine: mine(['yoga', 'pilates', 'meditation']) },
+    { label: 'Ride', sub: 'Cycling workouts & builder', to: '/cycle', icon: <Bike strokeWidth={1.75} />, mine: mine('cycling') },
+    { label: 'Run', sub: 'Runs & pace work', to: '/run', icon: <Footprints strokeWidth={1.75} />, mine: mine('running') },
+    { label: 'Gym', sub: 'Strength programs & workouts', to: '/gym', icon: <Dumbbell strokeWidth={1.75} />, mine: mine('strength') },
+    { label: 'Mind', sub: 'Yoga, pilates, meditation', to: '/mind', icon: <Brain strokeWidth={1.75} />, mine: mine('mind') },
   ].sort((a, b) => Number(b.mine) - Number(a.mine))
   return (
     <div>
@@ -43,22 +43,23 @@ export function TrainHub() {
  *  `key` maps to an icon in the component. Per-sport cards only for the sports you train. */
 type Spec = { key: string; label: string; sub: string; to: string }
 export function statsGroups(sports: string[]): { global: Spec[]; perSport: Spec[] } {
-  const has = (arr: string[]) => sports.some((s) => arr.includes(s))
-  const anySport = sports.length > 0
+  // central module helper (#198); "is this MINE" semantics for per-sport cards (no empty-fallback).
+  const has = (m: string) => hasModule(sports, m, { emptyShowsAll: false })
   const global: Spec[] = []
   // Training load / Form aggregates whole-body stress (intervals) — global, shown when there's an
-  // endurance sport (it's where Form comes from) or no sports set yet.
-  if (!anySport || has(ENDUR)) global.push({ key: 'form', label: 'Training load & Form', sub: 'Fitness / Fatigue / Form · readiness', to: '/fitness' })
+  // endurance sport (it's where Form comes from) OR no sports set yet (emptyShowsAll).
+  if (hasModule(sports, 'endurance', { emptyShowsAll: true })) global.push({ key: 'form', label: 'Load & Form', sub: 'Fitness / Fatigue / Form · readiness · all sports', to: '/fitness' }) // #225 global
+  global.push({ key: 'wellness', label: 'Wellness', sub: 'Sleep · HRV · resting HR · weight trends', to: '/wellness' }) // #194a
   global.push({ key: 'history', label: 'History', sub: 'All your logged sessions (every sport)', to: '/logs' })
   const perSport: Spec[] = []
-  if (has(['cycling', 'triathlon'])) perSport.push({ key: 'cycling', label: 'Cycling', sub: 'Power curve · FTP · zones · VO₂max', to: '/fitness' })
-  if (has(['running', 'triathlon'])) perSport.push({ key: 'running', label: 'Running', sub: 'Pace · distance · trends', to: '/fitness' })
-  if (has(['strength'])) perSport.push({ key: 'strength', label: 'Strength', sub: 'Volume · PRs · est-1RM trends', to: '/progress' })
-  if (has(['meditation', 'yoga', 'pilates'])) perSport.push({ key: 'mind', label: 'Mind', sub: 'Minutes · sessions · streak', to: '/logs' })
+  if (has('cycling')) perSport.push({ key: 'cycling', label: 'Cycling', sub: 'Power curve · eFTP · VO₂max · W/kg', to: '/cycling-stats' }) // #225 per-sport page
+  if (has('running')) perSport.push({ key: 'running', label: 'Running', sub: 'Threshold pace · zones · VDOT · race predictions', to: '/running-stats' }) // #225 per-sport page
+  if (has('strength')) perSport.push({ key: 'strength', label: 'Strength', sub: 'Volume · PRs · est-1RM trends', to: '/progress' })
+  if (has('mind')) perSport.push({ key: 'mind', label: 'Mind', sub: 'Minutes · sessions · streak', to: '/mind-stats' }) // #194c
   return { global, perSport }
 }
 const STAT_ICON: Record<string, ReactNode> = {
-  form: <Activity strokeWidth={1.75} />, history: <History strokeWidth={1.75} />,
+  form: <Activity strokeWidth={1.75} />, history: <History strokeWidth={1.75} />, wellness: <HeartPulse strokeWidth={1.75} />,
   cycling: <Bike strokeWidth={1.75} />, running: <Footprints strokeWidth={1.75} />,
   strength: <Dumbbell strokeWidth={1.75} />, mind: <Brain strokeWidth={1.75} />,
 }
@@ -73,6 +74,7 @@ export function StatsHub() {
     <div>
       <div className="page-head"><h1>Stats</h1><p>{sports.length ? `For your sports: ${sports.join(', ')}` : 'Your trends & progress'}</p></div>
       <div className="section-title">Global</div>
+      <BenchmarksCard />{/* #228: global benchmarks lead Stats, editable here too */}
       <div className="stack">{global.map((s) => <HubLink key={s.key} it={toItem(s)} />)}</div>
       {perSport.length > 0 && <>
         <div className="section-title">Per sport</div>

@@ -61,10 +61,7 @@ function Collapsible({ title, subtitle, defaultOpen = false, children }: { title
 
 export default function Settings() {
   const navigate = useNavigate()
-  const { user, refresh } = useAuth()
-  // Diet is server-side (info.diet) so the coach honors it (#40); mirror locally for offline reads.
-  const diet = (user?.info as { diet?: string } | undefined)?.diet
-  const setDiet = (v: string) => { setSetting('diet', v); authApi.saveProfile({ diet: v }).then(() => refresh()).catch(() => {}) }
+  // Diet moved to Profile (#212) — it's a coaching input alongside Sports, not app config.
   const units = useLiveQuery(() => getSetting('units'))
   const calView = useLiveQuery(() => getSetting('calView'))
   const stills = useLiveQuery(() => getSetting('exerciseStills'))
@@ -94,10 +91,7 @@ export default function Settings() {
         <EquipmentSetting />
       </Collapsible>
 
-      <Collapsible title="Preferences" subtitle="Diet, units, calendar, demos" defaultOpen>
-        <ChipSetting title="Diet" value={diet ?? 'no preference'} onPick={setDiet}
-          hint="Your coach picks ONLY meals that match — vegetarian shows veg + vegan; vegan shows vegan only."
-          options={[['vegetarian', 'vegetarian'], ['vegan', 'vegan'], ['no preference', 'no preference']]} />
+      <Collapsible title="Preferences" subtitle="Units, calendar, demos" defaultOpen>
         <ChipSetting title="Units" value={units ?? 'metric'} onPick={(v) => setSetting('units', v)}
           options={[['metric', 'metric'], ['imperial', 'imperial']]} />
         <ChipSetting title="Calendar starts on" value={calView ?? 'month'} onPick={setCalView}

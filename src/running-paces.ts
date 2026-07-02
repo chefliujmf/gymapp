@@ -1,0 +1,193 @@
+// Daniels/Gilbert VDOT running model — the runner's equivalent of cycling FTP.
+// Pure functions, unit-tested in src/running-paces.test.ts. Same basis Garmin/Coros
+// use for race predictions. #209 (threshold pace → VDOT/zones) + #211 (race predictions).
+
+// Oxygen cost of running at velocity v (m/min), in ml/kg/min (Daniels & Gilbert).
+const vo2 = (v: number) => -4.6 + 0.182258 * v + 0.000104 * v * v
+// Fraction of VO₂max sustainable for a race of t minutes (the aerobic-drift curve).
+const pctMax = (t: number) => 0.8 + 0.1894393 * Math.exp(-0.012778 * t) + 0.2989558 * Math.exp(-0.1932605 * t)
+// Invert vo2(): velocity (m/min) that costs a given amount of oxygen.
+const velForVo2 = (o2: number) => {
+  const a = 0.000104, b = 0.182258, c = -(o2 + 4.6)
+  return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a)
+}
+
+// Daniels Threshold pace sits at ~88% VO₂max (≈ the pace you can hold ~1 h).
+export const T_PCT = 0.88
+
+/** Threshold pace (sec/km) → VDOT (≈ running VO₂max). */
+export function vdotFromThresholdPace(secPerKm: number): number {
+  if (!(secPerKm > 0)) return NaN
+  const v = 60000 / secPerKm // m/min
+  return vo2(v) / T_PCT
+}
+
+/** VDOT → Threshold pace (sec/km). */
+export function thresholdPaceFromVdot(vdot: number): number {
+  return 60000 / velForVo2(vdot * T_PCT)
+}
+
+/** Pace (sec/km) at a target fraction of VO₂max. */
+function paceForPct(vdot: number, pct: number): number {
+  return 60000 / velForVo2(vdot * pct)
+}
+
+export interface PaceZones {
+  easy: [number, number] // [fast, slow] sec/km
+  marathon: number
+  threshold: number
+  interval: number
+  rep: number
+}
+
+/** Daniels training-pace zones (sec/km) from VDOT. E is a range; M = marathon race pace. */
+export function paceZones(vdot: number): PaceZones {
+  return {
+    easy: [paceForPct(vdot, 0.74), paceForPct(vdot, 0.65)],
+    marathon: racePredict(vdot, 42195).pace,
+    threshold: paceForPct(vdot, T_PCT),
+    interval: paceForPct(vdot, 1.0), // velocity at VO₂max
+    rep: paceForPct(vdot, 1.08), // faster than interval (anaerobic)
+  }
+}
+
+/** Predict finish time (sec) + pace (sec/km) for a race distance (m) from VDOT. */
+export function racePredict(vdot: number, meters: number): { sec: number; pace: number } {
+  // Bisect race time t (min): f(t) = vo2(velocity) − VDOT·pctMax(t) is decreasing in t.
+  let lo = 1, hi = 1000
+  for (let i = 0; i < 60; i++) {
+    const t = (lo + hi) / 2
+    const f = vo2(meters / t) - vdot * pctMax(t)
+    if (f > 0) lo = t; else hi = t
+  }
+  const sec = ((lo + hi) / 2) * 60
+  return { sec, pace: sec / (meters / 1000) }
+}
+
+export const RACE_DISTANCES: [string, number][] = [
+  ['5K', 5000],
+  ['10K', 10000],
+  ['Half', 21097.5],
+  ['Marathon', 42195],
+]
+
+/** 5K / 10K / Half / Marathon predictions (Garmin/Coros-style) from VDOT. */
+export function racePredictions(vdot: number) {
+  return RACE_DISTANCES.map(([label, meters]) => ({ label, meters, ...racePredict(vdot, meters) }))
+}
+
+// ── #216 — marathon realism ───────────────────────────────────────────────────
+// The Daniels VDOT marathon prediction is a *potential*: it assumes you've done the
+// marathon-specific endurance work (long runs, fueling), so it ignores "the wall" and
+// runs optimistic vs Coros/Garmin (which weight real training load). We surface the
+// marathon as a RANGE — potential → a durability-adjusted realistic time — where the
+// penalty comes from the athlete's own long-run base. NB: the penalty is modest (≤~12%);
+// the bulk of any big gap is the VDOT itself reading too fast (→ #215 grounds it).
+
+const clamp01 = (x: number) => (x > 1 ? 1 : x < 0 ? 0 : x)
+
+export interface RunVolume {
+  longestKm: number // longest single run in the recent window (km)
+  weeklyKm: number // average weekly running volume (km)
+}
+
+/** A marathon-trained base: ~32 km longest run + ~70 km/week → ~0 penalty. */
+export const MARATHON_READY = { longestKm: 32, weeklyKm: 70 }
+/** Cap on the durability penalty (fraction of the potential marathon time). */
+export const MAX_DURABILITY_PENALTY = 0.12
+/** Used when we have no volume data (intervals not connected / no recent runs). */
+export const DEFAULT_DURABILITY_PENALTY = 0.08
+
+/**
+ * Marathon durability penalty (fraction 0..MAX_DURABILITY_PENALTY) from the athlete's
+ * endurance base. Longest long-run weighted higher than weekly volume; both saturate at
+ * the marathon-ready anchors. More base → smaller penalty (closer to the Daniels potential).
+ */
+export function marathonDurabilityPenalty(v: RunVolume): number {
+  const longReady = clamp01((v.longestKm || 0) / MARATHON_READY.longestKm)
+  const volReady = clamp01((v.weeklyKm || 0) / MARATHON_READY.weeklyKm)
+  const readiness = 0.6 * longReady + 0.4 * volReady // 0 (untrained) .. 1 (race-ready)
+  return +((1 - readiness) * MAX_DURABILITY_PENALTY).toFixed(4)
+}
+
+export interface MarathonRealism {
+  potentialSec: number
+  realisticSec: number
+  potentialPace: number // sec/km
+  realisticPace: number // sec/km
+  penalty: number // fraction applied
+  hasVolume: boolean // true = penalty derived from real runs; false = default
+  volume?: RunVolume // echoed for the "why" line
+}
+
+/**
+ * Marathon potential→realistic range from VDOT. With `volume` (from intervals runs) the
+ * penalty is personal; without it we apply DEFAULT_DURABILITY_PENALTY so the band still shows.
+ */
+export function marathonRealism(vdot: number, volume?: RunVolume): MarathonRealism {
+  const pot = racePredict(vdot, 42195)
+  const hasVolume = !!volume && (volume.longestKm > 0 || volume.weeklyKm > 0)
+  const penalty = hasVolume ? marathonDurabilityPenalty(volume!) : DEFAULT_DURABILITY_PENALTY
+  const realisticSec = pot.sec * (1 + penalty)
+  return {
+    potentialSec: pot.sec,
+    realisticSec,
+    potentialPace: pot.pace,
+    realisticPace: realisticSec / 42.195,
+    penalty,
+    hasVolume,
+    volume: hasVolume ? volume : undefined,
+  }
+}
+
+/** VDOT is itself a VO₂max-equivalent (Daniels). Alias for clarity at call sites. */
+export const runningVo2max = (vdot: number) => vdot
+
+/**
+ * #207 Phase 2b — estimate VO₂max (ml/kg/min) from the best aerobic measure we have: cycling
+ * eFTP÷weight (Coggan `10.8·W/kg + 7`) and/or running VDOT (a VO₂max itself). Returns the HIGHER
+ * (your best-trained engine reflects central capacity best) + which source, or null if no inputs.
+ * Recomputes as FTP/weight/VDOT change → it "refines over time"; manual entry always overrides.
+ */
+export function estimateVo2max({ ftp, weightKg, vdot }: { ftp?: number | null; weightKg?: number | null; vdot?: number | null }): { value: number; from: string } | null {
+  const cands: { value: number; from: string }[] = []
+  if (ftp && weightKg && weightKg > 0) cands.push({ value: Math.round((10.8 * ftp / weightKg + 7) * 10) / 10, from: 'your cycling power ÷ weight' })
+  if (vdot && vdot > 0) cands.push({ value: Math.round(vdot), from: 'your running pace (VDOT)' })
+  if (!cands.length) return null
+  return cands.reduce((a, b) => (b.value > a.value ? b : a))
+}
+
+/**
+ * Target pace (sec/km) for a workout segment given as a % of threshold (the RunPlayer's
+ * `powerStart`). Maps the effort band to a Daniels zone so the player's pace matches the
+ * Profile's pace-zone table. <78 Easy · <88 Marathon · <100 Threshold · <110 Interval · else Rep.
+ */
+export function zonePaceForPct(vdot: number, pct: number): number {
+  const z = paceZones(vdot)
+  if (pct < 78) return z.easy[1]
+  if (pct < 88) return z.marathon
+  if (pct < 100) return z.threshold
+  if (pct < 110) return z.interval
+  return z.rep
+}
+
+/** "4:15" from sec/km. */
+export const fmtPace = (secPerKm: number) => {
+  const s = Math.round(secPerKm)
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+/** "1:31:35" / "19:57" from seconds. */
+export const fmtTime = (sec: number) => {
+  const s = Math.round(sec)
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}` : `${m}:${String(ss).padStart(2, '0')}`
+}
+
+/** Parse "4:15" or "4:15.5" (min:sec) → sec/km. Returns null on junk. */
+export function parsePace(text: string): number | null {
+  const m = text.trim().match(/^(\d+):(\d{1,2}(?:\.\d+)?)$/)
+  if (!m) return null
+  const sec = Number(m[1]) * 60 + Number(m[2])
+  return sec > 0 && sec < 1800 ? sec : null
+}

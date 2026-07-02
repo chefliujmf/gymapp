@@ -46,6 +46,33 @@ Compare: matching `external_id` bases (slug vs slug:date) = a duplicate to colla
 created it; `mine:false` = adopted the other coach's. Custom activity FIELDS (#147) live at
 `/athlete/i28814/custom-item` (type `ACTIVITY_FIELD`).
 
+## Athlete STATS sync — per-sport, two-way (#210, since 2026-06-29)
+Separate from the plan mirror: the athlete's **per-sport settings** (FTP, max HR, threshold HR,
+threshold pace) sync both ways with intervals. Code: pure mapper `server/sport-settings.js`
+(unit-tested `src/sport-settings.test.ts`) + endpoints `GET /auth/intervals/athlete` (pull) and
+`PUT /auth/sport-stat` (auto-push on edit). UI = Profile → "Your stats" per-sport cards.
+- intervals stores these in the athlete record's **`sportSettings[]`** array — one entry per
+  sport-GROUP keyed by `types:[...]` (Ride/Run/Swim/…), each with `ftp`, `lthr`, `max_hr`,
+  `threshold_pace` (**metres/second**), `pace_units` (display only). We map groups cycling/running/
+  swimming; expose run pace as **sec/km**, swim as **sec/100m** (convert at the boundary).
+- **VO₂max is NOT an intervals field** → Platyplus-only (`user.vo2max`); running VDOT (`user.runVdot`,
+  Daniels, from threshold pace via `src/running-paces.ts`) is also Platyplus-only. Weight comes IN from
+  the device (`icu_weight`), shown read-only. Never try to push VO₂max/VDOT to intervals.
+- **PUSH uses the per-entry endpoint — NOT the athlete record.** ⚠️ `PUT /athlete/{id}` with
+  `{sportSettings}` returns **200 but is SILENTLY IGNORED** (the value never changes); a full-athlete
+  PUT is **403**. The ONLY working write is **`PUT /athlete/{id}/sport-settings/{entryId}`** with just
+  the changed field(s) — verified on the real account (ftp 263 stuck; `custom_field_values` and every
+  other field preserved). Each `sportSettings` entry carries its own `id` (e.g. Ride 172071). Code:
+  `icuPatchForGroup(list, group, patch)` → `{id, body}` → per-entry PUT. Get the list from
+  `GET /athlete/{id}/sport-settings`. (custom_field_values #147 live INSIDE each entry, so sending
+  only the changed field is what keeps them safe.)
+- **You CANNOT clear a field to blank via the API:** PUT with `threshold_pace: null` (per-entry OR
+  full-entry) returns 200 but intervals keeps the old value — null is ignored. Setting/updating a
+  real value works; clearing to empty does not propagate. Treat clear as Platyplus-local-only.
+- Debug recipe (real data): inside the QA/prod container, `loadStore()` → user's `icuKey` →
+  `fetch /athlete/i28814` → `fromIcuSportSettings(a.sportSettings)`. Don't rely on
+  `process.env.SEED_ICU_KEY` (may be empty in-container) — use the **user's stored key**, like the endpoint.
+
 ## When you change the sync, also
 - Keep `server/icu-match.js` pure (no side effects) so `src/icu-dedup.test.ts` can unit-test it; add a case.
 - Any `server/` change rebuilds the image (CI smoke-tests the module graph) — `node --check` first.

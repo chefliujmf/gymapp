@@ -1,15 +1,18 @@
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 
 export interface Passkey { id: string; label: string; createdAt: number }
-export interface CoachNotification { id: string; kind: 'coach'; date: string; at: string; title: string; body?: string; items?: string[]; read?: boolean }
+export interface CoachNotification { id: string; kind: 'coach'; subkind?: 'update' | 'review'; date: string; at: string; title: string; body?: string; items?: string[]; link?: string; score?: number; read?: boolean }
 export interface CoachReview { id: string; date: string; planId?: string; activityId?: string; sport?: string; score?: number; verdict?: string; execution?: string[]; body?: string; mind?: { pattern?: string; cue?: string }; next?: string; recovery?: string; takeaways?: string[]; at: string }
-export interface Checkin { date: string; energy?: number; sleep?: number; soreness?: number; note?: string }
-export interface ReadinessScore { score: number }
+// #207 Phase 2b: `auto` records the auto scores shown (display terms) so the model can learn the
+// athlete's systematic overrides → a personal calibration.
+export interface Checkin { date: string; energy?: number; sleep?: number; soreness?: number; note?: string; auto?: { energy?: number; sleep?: number; freshness?: number } }
+export interface ReadinessScore { score: number; raw?: number }
 export interface Readiness {
   connected: boolean; date?: string; sleepNeed?: number
   sleep?: (ReadinessScore & { sleepHours?: number; sleepScore?: number }) | null
   freshness?: (ReadinessScore & { acwr?: number | null; tsb?: number | null; personalZ?: number | null }) | null
   energy?: (ReadinessScore & { hrvZ?: number | null; rhrZ?: number | null; guard?: boolean }) | null
+  calibration?: { energy: number; sleep: number; freshness: number } // #207 Phase 2b learned offsets
   baseline?: { nHrv: number; nRhr: number; hrvCV7: number | null }
   today?: { hrv?: number | null; restingHR?: number | null; sleepHours?: number | null }
 }
@@ -32,6 +35,24 @@ export interface User {
   maxHR?: number | null // bpm
   ftp?: number | null // W
   vo2max?: number | null // ml/kg/min — athlete benchmarks the coach + readiness learn from (#207)
+  // #210 per-sport stats, two-way synced with intervals (ftp cycling only; thresholdPace running sec/km, swim sec/100m)
+  sportSettings?: Partial<Record<'cycling' | 'running' | 'swimming', SportStat>>
+  runVdot?: number | null // running VDOT ≈ VO₂max, derived from threshold pace (#209)
+  runThresholdPace?: number | null // sec/km
+  statPrefs?: Partial<Record<'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr', 'manual' | 'computed' | 'auto'>> // #236 manual vs computed; #277 auto = computed-when-ready, manual until then
+  learnReadiness?: boolean // #235 — auto-calibrate readiness from check-in overrides (default true)
+  statsSyncedAt?: number // last successful push to intervals
+  onboardedAt?: number // #257 set when the coach finishes onboarding (profile + first week)
+}
+
+export interface SportStat { ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null }
+export type SportGroup = 'cycling' | 'running' | 'swimming'
+export interface IcuAthletePull {
+  connected: boolean
+  sportSettings?: Partial<Record<SportGroup, SportStat>>
+  weight?: number | null
+  source?: string
+  error?: string
 }
 
 async function req<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
@@ -123,12 +144,26 @@ export const authApi = {
   forgot: (email: string) => req<{ ok: boolean; emailSent: boolean }>('/password/forgot', { body: { email } }),
   reset: (email: string, code: string, newPassword: string) => req<{ ok: boolean }>('/password/reset', { body: { email, code, newPassword } }),
   saveProfile: (info: Record<string, unknown>) => req<User>('/profile', { method: 'PUT', body: info }),
+  // #210 per-sport stats two-way sync
+  pullIcuAthlete: () => req<IcuAthletePull>('/intervals/athlete'),
+  runEstimate: () => req<{ available: boolean; thresholdPace?: number; criticalSpeed?: number; r2?: number | null; source?: string; confidence?: 'high' | 'medium' | 'low'; assessed?: boolean; reason?: string; runs?: number; weeklyKm?: number }>('/intervals/run-estimate'),
+  runVolume: () => req<{ available: boolean; longestKm?: number; weeklyKm?: number; runs?: number; windowDays?: number }>('/intervals/run-volume'),
+  runPaceTrend: () => req<{ available: boolean; paces?: (number | null)[]; weeks?: number }>('/intervals/run-pace-trend'), // #230 per-week avg pace
+  // #223 — forecast a FUTURE day's expected freshness from planned load.
+  readinessForecast: (date: string) => req<{ connected: boolean; future?: boolean; available?: boolean; date?: string; daysOut?: number; form?: number; freshness?: number | null; acwr?: number | null; totalPlannedLoad?: number; plannedDays?: number }>(`/readiness-forecast?date=${date}`),
+  // #248 — per-day CTL/ATL/Form projection (forward line on Load & Form charts).
+  readinessProjection: (days = 14) => req<{ connected: boolean; available?: boolean; dates?: string[]; loads?: number[]; ctl?: number[]; atl?: number[]; form?: number[] }>(`/readiness-projection?days=${days}`),
+  saveSportStat: (body: { group: SportGroup; ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; runVdot?: number | null }) =>
+    req<User & { synced?: boolean; pushError?: string | null }>('/sport-stat', { method: 'PUT', body }),
   getAthlete: () => req<{ profile: string; updatedAt: number }>('/profile/athlete'),
   saveAthlete: (profile: string) => req<{ profile: string; updatedAt: number }>('/profile/athlete', { method: 'PUT', body: { profile } }),
   checkin: (data: Checkin) => req<Checkin>('/checkin', { method: 'POST', body: data }),
   checkins: (from: string, to: string) => req<Checkin[]>(`/checkins?from=${from}&to=${to}`),
   readiness: (date: string) => req<Readiness>(`/readiness?date=${date}`),
   planFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string }) => req<{ ok: boolean }>(`/plan/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
+  // #273 feedback on a completed device activity (no plan)
+  getActivityFeedback: (id: string) => req<{ feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; at?: number } | null>(`/activity/${encodeURIComponent(id)}/feedback`),
+  activityFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; sport?: string; date?: string }) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   promoteProd: () => req<{ ok: boolean }>('/promote-prod', { method: 'POST' }),
   // Fan a Platyplus-recorded workout out to intervals (match-first, server-side, #122/#123).
   completeActivity: (a: { sport: string; title: string; date: string; startIso: string; durationSec: number; samples: { t: number; power?: number; cadence?: number; hr?: number }[] }) =>
@@ -148,5 +183,6 @@ export const authApi = {
   listUsers: () => req<User[]>('/users'),
   addUser: (username: string, email: string, role: 'admin' | 'user') => req<{ user: User; tempPassword: string; emailed: boolean }>('/users', { body: { username, email, role } }),
   resetUser: (id: string) => req<{ tempPassword: string; emailed: boolean }>(`/users/${id}/reset`, { method: 'POST' }),
+  setUserPassword: (id: string, password: string) => req<{ ok: boolean }>(`/users/${id}/password`, { method: 'POST', body: { password } }),
   deleteUser: (id: string) => req<{ ok: boolean }>(`/users/${id}`, { method: 'DELETE' }),
 }

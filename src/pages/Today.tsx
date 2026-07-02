@@ -14,6 +14,7 @@ import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Che
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet } from './AddSheet'
 import { authApi, type Checkin, type Readiness } from '../auth/api'
+import { useAuth } from '../auth/AuthContext'
 import { InfoDot } from '../charts'
 
 // Obvious + funny 1–5 faces (wrecked → amazing). One set for every metric since
@@ -27,14 +28,42 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   const [loaded, setLoaded] = useState(false)
   useEffect(() => { setLoaded(false); authApi.checkins(day, day).then((a) => setCi(a[0] || null)).catch(() => {}).finally(() => setLoaded(true)) }, [day])
   useEffect(() => { onChange?.(ci) }, [ci]) // keep the parent (readiness verdict banner) in sync
-  const set = (patch: Partial<Checkin>) => { const next = { ...(ci || { date: day }), ...patch } as Checkin; setCi(next); authApi.checkin(next).catch(() => {}) }
+  const set = (patch: Partial<Checkin>) => {
+    const next = { ...(ci || { date: day }), ...patch } as Checkin
+    setCi(next)
+    // #207 Phase 2b: stamp the auto score shown (display terms) so a real override reads as "edited".
+    // PRESERVE each row's existing stamp — only fill a MISSING one from the current derive. Re-stamping
+    // every row on each save made an unedited row falsely read "edited" when its auto-derive later
+    // drifted (e.g. Freshness 3→5 after the baselines change). JM 2026-07-01.
+    const prev = ci?.auto || {}
+    const freshNow = calc.soreness != null ? 6 - calc.soreness : undefined
+    const auto = {
+      energy: prev.energy ?? calc.energy,
+      sleep: prev.sleep ?? calc.sleep,
+      freshness: prev.freshness ?? freshNow,
+    }
+    const hasAuto = auto.energy != null || auto.sleep != null || auto.freshness != null
+    authApi.checkin(hasAuto ? { ...next, auto } : next).catch(() => {})
+  }
   const [editing, setEditing] = useState(false)
   // #195: auto-derive Sleep·Freshness·Energy (1–5) from intervals wellness + personal baselines
   // (server/readiness.js, WHOOP-inspired). Each unanswered row prefills from data + an ⓘ "why";
   // tapping a face overrides. Energy is null on cold start → stays a manual tap. #74 chips below.
   const [rdy, setRdy] = useState<Readiness | null>(null)
   const [touched, setTouched] = useState<Set<string>>(new Set())
-  useEffect(() => { let live = true; setRdy(null); setTouched(new Set()); authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day])
+  // #223: only the CURRENT day gets a live readiness derivation. Past days show what was LOGGED
+  // (no auto-derive); future days never mount this card (they show a forecast instead).
+  useEffect(() => { let live = true; setRdy(null); setTouched(new Set()); if (isToday) authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day, isToday])
+  // #206: overnight HRV/sleep lands in intervals HOURS late (Coros→intervals lag), so a morning
+  // check shows none yet. Re-pull on app focus + a manual ⟳ so a later sync appears without a reload.
+  const [refreshing, setRefreshing] = useState(false)
+  const refreshRdy = () => { if (!isToday) return; setRefreshing(true); authApi.readiness(day).then(setRdy).catch(() => {}).finally(() => setRefreshing(false)) }
+  useEffect(() => {
+    if (!isToday) return
+    const onVis = () => { if (document.visibilityState === 'visible') authApi.readiness(day).then(setRdy).catch(() => {}) }
+    window.addEventListener('focus', onVis); document.addEventListener('visibilitychange', onVis)
+    return () => { window.removeEventListener('focus', onVis); document.removeEventListener('visibilitychange', onVis) }
+  }, [day, isToday])
   // Per-day "why" for the ⓘ — the ACTUAL inputs behind THIS day's score (computed from the
   // wellness data whether or not the row is answered), + the value the data suggests.
   const sgn = (z?: number | null) => (z == null ? '?' : (z > 0 ? '+' : '') + z + 'σ')
@@ -65,18 +94,24 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   // ⓘ text: the per-day WHY (today's actual inputs) on top, then the scale. Falls back to a
   // clear "no data yet" note so the ⓘ is never just a definition.
   const disp = (r: typeof rows[number]) => { const v = ci?.[r.key]; return v == null ? null : (r.invert ? 6 - v : v) }
-  // What the data computed, in DISPLAY terms (freshness flips), to compare against the user's input.
-  const autoDisp = (r: typeof rows[number]) => (calc[r.key] != null ? (r.invert ? 6 - (calc[r.key] as number) : (calc[r.key] as number)) : null)
+  // The auto value RECORDED when this check-in was shown (display terms; #207 Phase 2b stores ci.auto
+  // as {energy,sleep,freshness}). Compare against THIS, not the live recompute — otherwise a later
+  // drift in the model (calibration / recalibration / new wellness data) falsely reads as "edited".
+  const autoDisp = (r: typeof rows[number]) => { const a = ci?.auto; if (!a) return null; const v = r.key === 'soreness' ? a.freshness : a[r.key]; return v ?? null }
   const overridden = (r: typeof rows[number]) => { const a = autoDisp(r), s = disp(r); return a != null && s != null && a !== s }
+  // #207 Phase 2b: the learned personal-calibration offset for this row (Freshness lives on 'soreness').
+  const calOff = (r: typeof rows[number]) => rdy?.calibration?.[r.key === 'soreness' ? 'freshness' : r.key] ?? 0
   const infoFor = (r: typeof rows[number]) => {
     const head = why[r.key]
       ? `Why ${isToday ? 'today' : 'this day'}: ${why[r.key]}.`
       : `No HRV/sleep synced for ${isToday ? 'today' : 'this day'} yet — this is your own read.`
     const delta = overridden(r) ? `\n\nAuto computed ${autoDisp(r)} · you set ${disp(r)}.` : ''
-    return `${head}${delta}\n\n${r.scale}.`
+    const off = calOff(r)
+    const tuned = off ? `\n\nTuned to you: nudged ${off > 0 ? '+' : ''}${off} because you've consistently rated this ${off > 0 ? 'higher' : 'lower'} than the model.` : ''
+    return `${head}${delta}${tuned}\n\n${r.scale}.`
   }
-  // Show "· auto" only while the shown value still equals the data-derived value (untouched).
-  const isAuto = (r: typeof rows[number]) => !touched.has(r.key) && calc[r.key] != null && ci?.[r.key] === calc[r.key]
+  // "· auto" while the shown value still equals the auto value RECORDED when filled (untouched).
+  const isAuto = (r: typeof rows[number]) => !touched.has(r.key) && autoDisp(r) != null && disp(r) === autoDisp(r)
   // Collapse to a one-line summary ONCE all 3 are logged (collapse-after-done is fine —
   // it's collapse-before-filling that gets skipped). Tap Edit to change; History → Logs.
   const verdict = readinessVerdict(ci)
@@ -94,7 +129,7 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
           ) })}
         </div>
         {verdict && (
-          <div className="checkin__coach">💬 Coach knows you're <b>{vLabel.toLowerCase()}</b> today<Link to="/chat" className="checkin__coachbtn">Ask coach ↗</Link></div>
+          <div className="checkin__coach">💬 Your coach has today's check-in<Link to="/chat" className="checkin__coachbtn">Ask coach ↗</Link></div>
         )}
       </div>
     )
@@ -104,7 +139,7 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
       <div className="checkin__t" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>How {isToday ? 'do' : 'did'} you feel{isToday ? ' today' : ''}?{editing && <button className="checkin__edit" onClick={() => setEditing(false)}>Done ✓</button>}</div>
       {rows.map((r) => (
         <div key={r.key} className="checkin__row2">
-          <span className="checkin__lbl">{r.label} <InfoDot text={infoFor(r)} />{isAuto(r) ? <span className="checkin__src"> · auto</span> : overridden(r) ? <span className="checkin__src checkin__src--edit"> · edited <span className="checkin__autowas">(auto {autoDisp(r)})</span></span> : null}<span className="checkin__desc">{r.desc}</span></span>
+          <span className="checkin__lbl">{r.label} <InfoDot text={infoFor(r)} />{isAuto(r) ? <span className="checkin__src"> · auto</span> : overridden(r) ? <span className="checkin__src checkin__src--edit"> · edited <span className="checkin__autowas">(auto {autoDisp(r)})</span></span> : null}{calOff(r) ? <span className="checkin__tuned" title="Personalised from your past ratings"> · tuned to you</span> : null}<span className="checkin__desc">{r.desc}</span></span>
           <div className="checkin__faces">
             {[1, 2, 3, 4, 5].map((n) => {
               const stored = r.invert ? 6 - n : n, on = ci?.[r.key] === stored
@@ -113,14 +148,46 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
           </div>
         </div>
       ))}
-      {rdy?.today && (rdy.today.hrv != null || rdy.today.restingHR != null || rdy.today.sleepHours != null) && (
+      {isToday && rdy?.connected && (
         <div className="checkin__wchips">
-          {rdy.today.sleepHours != null && <span className="wchip">😴 {rdy.today.sleepHours}h</span>}
-          {rdy.today.hrv != null && <span className="wchip">HRV {Math.round(rdy.today.hrv)}</span>}
-          {rdy.today.restingHR != null && <span className="wchip">Rest HR {Math.round(rdy.today.restingHR)}</span>}
-          <span className="wchip wchip--src" title="These values come from intervals.icu"><span className="wchip__up" aria-hidden="true">↑</span> intervals</span>
+          {rdy.today?.sleepHours != null && <span className="wchip">😴 {rdy.today.sleepHours}h</span>}
+          {rdy.today?.hrv != null && <span className="wchip">HRV {Math.round(rdy.today.hrv)}</span>}
+          {rdy.today?.restingHR != null && <span className="wchip">Rest HR {Math.round(rdy.today.restingHR)}</span>}
+          {(rdy.today?.hrv != null || rdy.today?.restingHR != null || rdy.today?.sleepHours != null)
+            ? <span className="wchip wchip--src" title="These values come from intervals.icu"><span className="wchip__up" aria-hidden="true">↑</span> intervals</span>
+            : <span className="wchip wchip--wait">HRV/sleep not synced yet</span>}
+          <button className="wchip wchip--refresh" onClick={refreshRdy} disabled={refreshing} title="Re-check intervals for a newer Coros sync">{refreshing ? '…' : '⟳'}</button>
         </div>
       )}
+    </div>
+  )
+}
+
+// #223 — FUTURE day: no check-in / no live verdict (you can't know how you'll feel). Show an
+// EXPECTED freshness forecast projected from planned load. Only Freshness is forecastable;
+// Energy & Sleep fill in from that day's check-in.
+const FORECAST_FACES = ['💀', '😖', '😐', '🙂', '😎']
+const freshLabel = (s: number) => s >= 4.3 ? 'Likely fresh' : s >= 3.4 ? 'Likely fresh enough' : s >= 2.5 ? 'Moderately recovered' : s >= 1.6 ? 'Likely fatigued' : 'Likely wrecked'
+function ForecastCard({ day, fmtDay }: { day: string; fmtDay: (s: string) => string }) {
+  const [f, setF] = useState<Awaited<ReturnType<typeof authApi.readinessForecast>> | null>(null)
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => { let live = true; setF(null); setLoaded(false); authApi.readinessForecast(day).then((r) => { if (live) setF(r) }).catch(() => {}).finally(() => { if (live) setLoaded(true) }); return () => { live = false } }, [day])
+  if (!loaded) return null
+  if (!f?.connected) return <div className="card forecast forecast--muted">📊 Connect intervals.icu to forecast how recovered you'll be on {fmtDay(day)}.</div>
+  if (!f.available || f.freshness == null) return <div className="card forecast forecast--muted">📊 Not enough training data yet to forecast {fmtDay(day)}.</div>
+  const s = f.freshness
+  const load = f.totalPlannedLoad || 0
+  const why = load > 0
+    ? `${load} TSS planned between now and then${(f.plannedDays || 0) > 0 ? ` across ${f.plannedDays} session${f.plannedDays! > 1 ? 's' : ''}` : ''} — projected Form ${f.form! > 0 ? '+' : ''}${f.form}.`
+    : `No hard sessions planned before then, so you should recover — projected Form ${f.form! > 0 ? '+' : ''}${f.form}.`
+  return (
+    <div className="card forecast">
+      <div className="forecast__h">📊 Expected · {fmtDay(day)} · forecast</div>
+      <div className="forecast__big">
+        <span className="forecast__face">{FORECAST_FACES[Math.round(s) - 1]}</span>
+        <div><div className="forecast__lbl">{freshLabel(s)}</div><div className="forecast__sub">Projected Freshness ~{Math.round(s)}/5 · Form {f.form! > 0 ? '+' : ''}{f.form}</div></div>
+      </div>
+      <div className="forecast__note"><b>Why:</b> {why}</div>
     </div>
   )
 }
@@ -149,6 +216,16 @@ function readinessVerdict(ci: Checkin | null): { tone: 'good' | 'mixed' | 'low';
 }
 const RECOVERY_EMOJI: Record<string, string> = { sauna: '🔥', cold: '🧊', massage: '💆', mobility: '🧎', foam: '🪵', walk: '🚶' }
 
+/** A clean one-liner for a plan CARD — prefer the structured objective; else strip markdown/headers
+ *  from the free-text notes and take the opening (the full text lives in the detail). */
+function planCardDesc(p: CoachPlan): string {
+  if (p.objective && p.objective.trim()) return p.objective.trim()
+  const raw = (p.notes || '').replace(/^#+\s*/, '').replace(new RegExp(`^${p.title}\\s*`, 'i'), '') // drop leading "# Title"
+  const clean = raw.replace(/#+/g, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim()
+  const afterObj = clean.match(/objective:\s*(.+)/i)?.[1] ?? clean
+  return afterObj.slice(0, 160)
+}
+
 /** A coach-pushed plan that isn't mirrored by an intervals event — runs in-app. */
 function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p: CoachPlan; onRun?: (p: CoachPlan) => void; showDate?: boolean; fmtDay: (s: string) => string; onSwap?: () => void; onRemove?: () => void; done?: boolean; act?: IcuActivity }) {
   const nav = useNavigate()
@@ -157,7 +234,7 @@ function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p
   const isDone = done || !!act
   return (
     <div className="today-entry">
-      <button className={'card' + (isDone ? ' card--done' : '')} style={{ textAlign: 'left', width: '100%' }} onClick={() => nav('/coach/' + p.id)}>
+      <button className={'card' + (isDone ? ' card--done' : '')} style={{ textAlign: 'left', width: '100%' }} onClick={() => nav(act ? '/activity/' + act.id : '/coach/' + p.id)}>
         <div className="card-row">
           {segs.length
             ? <div className="thumb"><MiniProfile segs={segs} /></div>
@@ -165,7 +242,7 @@ function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p
           <div className="card-body">
             <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}</span>
             <h3 style={isDone ? { opacity: 0.6 } : undefined}>{p.title}</h3>
-            {p.notes && <div className="plan-desc">{p.notes}</div>}
+            {(p.objective || p.notes) && <div className="plan-desc">{planCardDesc(p)}</div>}
             {act ? <DoneStats a={act} /> : <div className="meta">{mins ? <span>{mins} min</span> : <span>{(p.exercises || []).length} exercises{p.rounds && p.rounds > 1 ? ` · ${p.rounds} rounds` : ''}</span>}{!done && <span className="dot">▶ start</span>}</div>}
           </div>
         </div>
@@ -239,6 +316,12 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
 }
 
 export default function Today() {
+  const { user } = useAuth()
+  // #257: show the "meet your coach" welcome card ONLY for genuinely-new users — no completed
+  // onboarding AND no coach profile yet (existing users predate `onboardedAt`, so guard on
+  // hasCoachProfile too or they'd all see it). Skippable for the session.
+  const [skipOnb, setSkipOnb] = useState(() => sessionStorage.getItem('onb-skip') === '1')
+  const showOnboarding = !!user && !user.onboardedAt && !user.hasCoachProfile && !skipOnb
   const [selDay, setSelDay] = useState(todayISO())
   const todaysLogs = useLiveQuery(() => db.logs.where('date').equals(todayISO()).toArray())
   const dayLogs = useLiveQuery(() => db.logs.where('date').equals(selDay).toArray(), [selDay]) ?? []
@@ -267,6 +350,13 @@ export default function Today() {
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [])
   useEffect(() => { load() }, [load])
+  // #293 one-time: re-reconcile a WIDE window (past 45d → future 30d) so EXISTING plans pick up the
+  // corrected segment flattening (repeat blocks were collapsed to a flat 0-W block). Runs once/client.
+  useEffect(() => {
+    if (localStorage.getItem('plansResync293')) return
+    const d = (off: number) => { const x = new Date(); x.setDate(x.getDate() + off); return x.toISOString().slice(0, 10) }
+    syncIcuPlans(d(-45), d(30)).then(() => { localStorage.setItem('plansResync293', '1'); load() }).catch(() => {})
+  }, [load])
   useEffect(() => { listTemplates().then(setTemplates); listRideTemplates().then(setRideTemplates); getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }) }, [])
 
   function runPlan(p: CoachPlan) {
@@ -291,18 +381,19 @@ export default function Today() {
   const swapOn = (day: string) => setSheet({ date: day })
 
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' })()
-  // Merge-by-id: a coach/owned plan that's already shown as an intervals event card
-  // (matched by external_id OR by the mirror icuEventId) is hidden so there's no dupe.
-  const linkedIds = new Set((events ?? []).map((e) => e.external_id).filter(Boolean))
-  const shownEventIds = new Set((events ?? []).map((e) => String(e.id)))
-  // Also dedup an UNLINKED Platyplus plan against an intervals event that's the SAME
-  // planned workout (same day + sport + title) — e.g. the coach published straight to
-  // intervals and a separate Platyplus plan exists. Show one (the intervals event), hide the plan.
-  const shownEventKeys = new Set((events ?? []).map((e) => `${e.start_date_local.slice(0, 10)}|${sportOf(e)}|${String(e.name || '').trim().toLowerCase()}`))
+  // Dedup a coach/owned plan against its intervals mirror, DATA-AWARE (JM 2026-07-01): show whichever
+  // side has real STRUCTURE. A coach plan with segments/exercises/objective → its rich CoachPlanDetail
+  // (aim · tempo · what-to-expect · structure). A bare text-blob plan whose intervals event carries the
+  // workout_doc → the event card → PlanDetail (which parses the shape). Never show both.
+  const eventKey = (e: IcuEvent) => `${e.start_date_local.slice(0, 10)}|${sportOf(e)}|${String(e.name || '').trim().toLowerCase()}`
   const planKey = (p: CoachPlan) => `${p.date}|${p.sport === 'ride' ? 'cycling' : p.sport}|${String(p.title || '').trim().toLowerCase()}`
-  const planShown = (p: CoachPlan) => linkedIds.has(p.id) || (p.icuEventId != null && shownEventIds.has(String(p.icuEventId))) || shownEventKeys.has(planKey(p))
-  const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay)
-  const dayPlans = plans.filter((p) => p.date === selDay && !planShown(p))
+  const eventForPlan = (p: CoachPlan) => (events ?? []).find((e) => (!!e.external_id && e.external_id === p.id) || (p.icuEventId != null && String(p.icuEventId) === String(e.id)) || eventKey(e) === planKey(p))
+  const planHasStructure = (p: CoachPlan) => (p.sport === 'gym' ? (p.exercises?.length ?? 0) > 0 : (p.segments?.length ?? 0) > 0) || !!(p.objective && p.objective.trim())
+  const showPlan = (p: CoachPlan) => planHasStructure(p) || !eventForPlan(p) // structured → coach card; else defer to the event
+  const dayPlans = plans.filter((p) => p.date === selDay && showPlan(p))
+  const hiddenEventIds = new Set(plans.filter(showPlan).map((p) => eventForPlan(p)?.id).filter(Boolean).map(String))
+  const hiddenEventKeys = new Set(plans.filter(showPlan).map((p) => eventForPlan(p) ? eventKey(eventForPlan(p)!) : '').filter(Boolean))
+  const dayEvents = (events ?? []).filter((e) => e.start_date_local.slice(0, 10) === selDay && !hiddenEventIds.has(String(e.id)) && !hiddenEventKeys.has(eventKey(e)))
   const dayItems = items.filter((it) => it.date === selDay)
   // #202: meals/mind/recovery/supplement get their own sections; notes stay with the workouts.
   const dayMeals = dayItems.filter((it) => it.type === 'meal')
@@ -311,7 +402,8 @@ export default function Today() {
   const dayRecovery = dayItems.filter((it) => it.type === 'recovery')
   const dayNotes = dayItems.filter((it) => it.type === 'note')
   const hasWorkout = dayEvents.length > 0 || dayPlans.length > 0
-  const verdict = readinessVerdict(checkin)
+  const isFuture = selDay > todayISO() // #223: future days forecast, not a live verdict
+  const verdict = isFuture ? null : readinessVerdict(checkin)
   // Days that have anything on them → a tiny dot under the WeekStrip day (#66).
   const markedDays = new Set<string>([
     ...(events ?? []).map((e) => e.start_date_local.slice(0, 10)),
@@ -374,9 +466,24 @@ export default function Today() {
         <h1>Ready to train?</h1>
       </div>
 
+      {showOnboarding && (
+        <div className="card onb-card">
+          <div className="onb-card__ic"><img src="/favicon.svg?v=4" alt="" style={{ width: 34, height: 34, borderRadius: 9 }} /></div>
+          <div className="onb-card__b">
+            <h3>Meet your coach</h3>
+            <p>A 2-minute chat (tap, type, or talk) and your coach builds your first week around your real life.</p>
+            <div className="onb-card__row">
+              <button className="btn" style={{ width: 'auto' }} onClick={() => navigate('/chat?onboard=1')}>Set me up →</button>
+              <button className="btn auth-link" style={{ width: 'auto' }} onClick={() => { sessionStorage.setItem('onb-skip', '1'); setSkipOnb(true) }}>Skip for now</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <WeekStrip selected={selDay} onSelect={setSelDay} marked={markedDays} />
 
-      <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />
+      {/* #223: today = check-in + live verdict; future = freshness FORECAST (no fake "fresh"); past = logged. */}
+      {isFuture ? <ForecastCard key={selDay} day={selDay} fmtDay={fmtDay} /> : <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />}
 
       {todaysLogs && todaysLogs.length > 0 && (
         <Link to="/progress" style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — see history →</Link>

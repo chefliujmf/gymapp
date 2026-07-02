@@ -1,0 +1,454 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=440">
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card:#171b22;--line:#242a34}
+  *{box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}
+  body{background:#07090c;color:var(--text);margin:0;padding:16px;display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+  .col{width:400px}
+  .state{display:flex;gap:6px;margin-bottom:8px}
+  .state button{flex:1;padding:7px;border-radius:9px;border:1px solid var(--line);background:#0f131a;color:var(--dim);font-weight:700;font-size:12px;cursor:pointer}
+  .state button.on{background:#2a2f3a;color:var(--text)}
+  .tabs{display:flex;gap:5px;margin-bottom:12px}
+  .tabs button{flex:1;padding:8px 4px;border-radius:10px;border:1px solid var(--line);background:#12151c;color:var(--dim);font-weight:800;font-size:12px;cursor:pointer}
+  .tabs button.on{background:var(--accent);color:#06210f;border-color:var(--accent)}
+  .view{display:none}.view.on{display:block}
+  .phone{border:1px solid #1c2129;border-radius:24px;overflow:hidden;background:var(--bg)}
+  .body{padding:18px 16px 24px;display:flex;flex-direction:column}
+  .head{order:-3}
+  .pendingnote{order:-2;display:none;align-items:flex-start;gap:9px;background:#1a2330;border:1px solid #2f3b4d;border-radius:12px;padding:11px 13px;margin:6px 0 2px;font-size:13px;color:#cdd6e2}
+  .pendingnote b{color:#fff}
+  .verdict{order:-1}
+  .analysis{order:1}
+  .fb{order:2}
+  body.pre .verdict{display:none}
+  body.pre .pendingnote{display:flex}
+  body.pre .fb{order:-1;border-top:0;margin-top:10px;border-bottom:1px solid var(--line);padding-bottom:16px}
+  body.post .fbreopen{display:none}
+  .kick{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:800}
+  h1{font-size:22px;margin:3px 0 2px}
+  .subline{color:var(--dim);font-size:12.5px}
+  .verdict{background:linear-gradient(#1a2a20,#161c22);border:1px solid #34e07d55;border-radius:14px;padding:13px;margin:12px 0}
+  .verdict .vh{font-weight:800;font-size:14px}
+  .vtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;gap:8px}
+  .score{background:#34e07d22;color:#34e07d;border:1px solid #34e07d55;font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .verdict p{margin:0 0 8px;font-size:13px;line-height:1.45;color:#dfe4ea}
+  .verdict ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--dim);line-height:1.6}
+  .verdict ul b{color:var(--text)}
+  .sub{font-weight:800;font-size:13px;margin:16px 0 8px}
+  .sgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .st{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:8px 9px}
+  .st b{font-size:15px}.st small{font-size:9px}
+  .st span{display:block;font-size:9.5px;color:var(--dim);letter-spacing:.03em;text-transform:uppercase;margin-top:1px}
+  .chart{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .gwrap{position:relative;height:150px}.gwrap svg{width:100%;height:100%;display:block}
+  /* multi-track timeline (intervals-style stacked graphs) */
+  .track{position:relative;height:54px;border-bottom:1px solid #202631}
+  .track:last-child{border-bottom:0}
+  .track svg{width:100%;height:100%;display:block}
+  .tlbl{position:absolute;left:5px;top:4px;font-size:9px;font-weight:700;color:var(--dim);z-index:2;letter-spacing:.02em}
+  .route{height:130px;border-radius:12px;overflow:hidden;background:#0e1319;position:relative;margin:0 0 8px;border:1px solid var(--line)}
+  .route svg{width:100%;height:100%;display:block}
+  .mtag{position:absolute;left:10px;bottom:8px;font-size:11px;font-weight:700;color:#cdd6e2;background:rgba(0,0,0,.45);padding:3px 9px;border-radius:999px}
+  .indoor-note{display:none;align-items:center;gap:8px;background:#12161d;border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:12.5px;color:var(--dim);margin-bottom:8px}
+  body.indoor .outdoor{display:none}
+  body.indoor .indoor-note{display:flex}
+  body.outdoor .indoor-note{display:none}
+  .yl{position:absolute;left:2px;font-size:9px;color:var(--dim)}
+  .xrow{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:3px}
+  .leg{display:flex;gap:14px;font-size:11px;color:var(--dim);margin-top:8px;flex-wrap:wrap}
+  .leg i{display:inline-block;width:12px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+  .leg i.lineactual{height:0;border-top:2px solid var(--accent);border-radius:0}
+  .zbar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:6px 0}
+  .ivl{display:flex;flex-direction:column;gap:5px}
+  .ivrow{display:grid;grid-template-columns:64px 1fr auto;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:12.5px}
+  .ivrow .zt{font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px}
+  .ivrow .big{font-weight:800}
+  .setrow{display:flex;justify-content:space-between;align-items:center;padding:10px 2px;border-bottom:1px solid var(--line);font-size:13px}
+  .setrow:last-child{border:0}.setrow .ex{display:flex;flex-direction:column;gap:2px}.setrow .ex b{font-weight:700}.setrow .ex small{color:var(--dim);font-size:11px}
+  .setrow .rt{display:flex;align-items:center;gap:8px;color:var(--dim)}
+  .pr{background:#f0b14522;color:#f0b145;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px}
+  .chev{color:var(--accent);font-weight:800}
+  .plat{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0}
+  .plat a{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:700;color:var(--text);text-decoration:none}
+  .dot{width:9px;height:9px;border-radius:3px;display:inline-block}
+  .fb{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+  .fbh{font-weight:800;font-size:14px;margin-bottom:2px}
+  .fbsub{font-size:11.5px;color:var(--dim);margin-bottom:10px}
+  .faces{display:flex;gap:8px;margin:6px 0 4px}
+  .faces .f{flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 0;font-size:20px}
+  .faces .f.on{border-color:var(--accent);background:#34e07d18}
+  .rpe{display:flex;gap:4px}.rpe .n{flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:7px;padding:6px 0;font-size:12px;font-weight:700}
+  .rpe .n.on{background:var(--accent);color:#06210f}
+  .field{margin-top:12px}
+  .flbl{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chips span{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:12.5px;color:var(--text)}
+  .chips span.on{background:var(--accent);color:#06210f;border-color:var(--accent);font-weight:700}
+  .note{width:100%;margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px;color:var(--dim);font-size:13px;min-height:54px}
+  .save{width:100%;margin-top:12px;padding:13px;border:0;border-radius:999px;background:var(--accent);color:#06210f;font-weight:800;font-size:15px}
+  .tag-icu{font-size:9px;font-weight:800;color:#34e07d;background:#34e07d1c;border-radius:999px;padding:2px 7px;margin-left:6px;vertical-align:1px}
+  .fbdone{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:12.5px;color:var(--dim);line-height:1.7}
+  .fbdone b{color:var(--text)}
+</style></head><body class="post outdoor">
+<div class="col">
+  <div class="state">
+    <button onclick="setState('pre',this)">🆕 Just finished (input first)</button>
+    <button class="on" onclick="setState('post',this)">✅ After review</button>
+  </div>
+  <div class="state">
+    <button class="on" onclick="setVenue('outdoor',this)">🌤️ Outdoor (GPS)</button>
+    <button onclick="setVenue('indoor',this)">🏠 Indoor (trainer)</button>
+  </div>
+  <div class="tabs">
+    <button class="on" onclick="show('ride',this)">🚴 Ride</button>
+    <button onclick="show('run',this)">🏃 Run</button>
+    <button onclick="show('gym',this)">🏋️ Gym</button>
+    <button onclick="show('yoga',this)">🧘 Yoga</button>
+    <button onclick="show('mind',this)">🌬️ Mind</button>
+  </div>
+
+  <!-- ============ RIDE ============ -->
+  <div id="ride" class="view on"><div class="phone"><div class="body">
+    <div class="head">
+      <div class="kick">Ride · Mon Jun 29 · Wahoo → Strava</div>
+      <h1>Backroad Hill Efforts</h1>
+      <div class="subline">27.2 km · 1:06:59 · 452 m climb</div>
+    </div>
+    <div class="pendingnote"><span>✍️</span><div>Log how it went below — your coach reviews it right after you submit. <b>Your stats are ready now ↓</b></div></div>
+
+    <div class="verdict">
+      <div class="vtop"><div class="vh">💬 Your coach</div><span class="score">Execution 92 · Compliance 86%</span></div>
+      <p>Three clean threshold tens — you locked onto ~240 W and held it rep to rep with no fade, even as the heat pushed HR toward 167. That control is exactly what this block is for, and your steadiest effort was the last one, so there's more in the tank.</p>
+      <ul>
+        <li>💡 <b>Tip:</b> ease into rep 1 — you spiked to 248 then settled; a softer start saves the back half.</li>
+        <li>📈 <b>Next:</b> eFTP read 241 W today vs 260 set — one more solid block and we validate a bump.</li>
+        <li>🔥 Strong, disciplined ride. This is the work that moves the needle.</li>
+      </ul>
+    </div>
+
+    <div class="analysis">
+      <div class="sub">Session stats</div>
+      <div class="sgrid">
+        <div class="st"><b>76<small>%</small></b><span>Intensity</span></div>
+        <div class="st"><b>65</b><span>Load</span></div>
+        <div class="st"><b>198<small>w</small></b><span>Norm pwr</span></div>
+        <div class="st"><b>176<small>w</small></b><span>Avg pwr</span></div>
+        <div class="st"><b>1.12</b><span>Variability</span></div>
+        <div class="st"><b>241<small>w</small></b><span>Act. eFTP</span></div>
+        <div class="st"><b>151</b><span>Avg HR 82%</span></div>
+        <div class="st"><b>171</b><span>Max HR 92%</span></div>
+        <div class="st"><b>130</b><span>TRIMP</span></div>
+        <div class="st"><b>82</b><span>Cadence</span></div>
+        <div class="st"><b>706<small>kJ</small></b><span>Work</span></div>
+        <div class="st"><b>−5</b><span>Form →</span></div>
+      </div>
+
+      <div class="sub">Route <span class="kick outdoor" style="font-weight:700">· tap to open the map</span></div>
+      <div class="route outdoor">
+        <svg viewBox="0 0 300 130" preserveAspectRatio="none">
+          <defs><pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0H0V30" fill="none" stroke="#1a2029" stroke-width="1"/></pattern></defs>
+          <rect width="300" height="130" fill="url(#grid)"/>
+          <path d="M20,110 C50,80 40,50 80,55 C120,60 110,20 150,30 C190,40 200,90 240,75 C270,64 275,40 285,25" fill="none" stroke="#34e07d" stroke-width="2.4" vector-effect="non-scaling-stroke"/>
+          <circle cx="20" cy="110" r="3.5" fill="#34e07d"/><circle cx="285" cy="25" r="3.5" fill="#e05a5a"/>
+        </svg>
+        <span class="mtag">📍 27.2 km · 452 m climb · OpenStreetMap</span>
+      </div>
+      <div class="indoor-note"><span>🏠</span> Indoor trainer — no GPS route or elevation. Power/HR/cadence below.</div>
+
+      <div class="sub">Timeline — planned vs actual</div>
+      <div class="chart" style="padding:0 0 8px">
+        <div class="track">
+          <span class="tlbl">Power W · vs planned · FTP 260</span>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none">
+            <g fill="#e0913a" fill-opacity="0.22"><rect x="0" y="57" width="42" height="43"/><rect x="42" y="17" width="42" height="83"/><rect x="84" y="62" width="12" height="38"/><rect x="96" y="17" width="42" height="83"/><rect x="138" y="62" width="12" height="38"/><rect x="150" y="17" width="42" height="83"/><rect x="192" y="62" width="12" height="38"/><rect x="204" y="60" width="96" height="40"/></g>
+            <line x1="0" y1="12" x2="300" y2="12" stroke="#fff" stroke-opacity="0.25" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
+            <polyline fill="none" stroke="#8b7bff" stroke-width="1.5" vector-effect="non-scaling-stroke" points="0,72 8,66 16,58 28,49 42,45 44,22 50,14 58,20 66,13 74,19 80,16 84,31 88,60 92,63 96,42 100,18 108,13 118,21 128,14 138,33 142,61 148,64 150,41 156,19 164,12 174,22 184,15 192,34 196,61 210,63 240,64 280,66 300,68"/>
+          </svg>
+        </div>
+        <div class="track">
+          <span class="tlbl">Heart rate bpm · max 171</span>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none"><polyline fill="none" stroke="#e05a5a" stroke-width="1.6" vector-effect="non-scaling-stroke" points="0,78 20,60 40,50 44,40 60,28 80,25 84,45 92,58 96,50 100,30 120,22 138,26 142,52 150,55 156,32 174,24 192,30 196,55 220,48 260,44 300,50"/></svg>
+        </div>
+        <div class="track">
+          <span class="tlbl">Cadence rpm · avg 82</span>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none"><polyline fill="none" stroke="#c07bff" stroke-width="1.4" vector-effect="non-scaling-stroke" points="0,55 10,50 20,52 42,48 44,40 60,42 80,44 84,70 92,75 96,45 120,42 138,44 142,72 150,70 156,44 174,42 192,46 196,74 220,60 260,55 300,58"/></svg>
+        </div>
+        <div class="track outdoor">
+          <span class="tlbl">Altitude m · +452</span>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none"><polygon fill="#6b7280" fill-opacity="0.35" stroke="#9aa3b0" stroke-width="1" vector-effect="non-scaling-stroke" points="0,80 30,72 60,74 90,58 120,60 150,42 180,48 210,30 240,36 270,20 300,28 300,100 0,100"/></svg>
+        </div>
+        <div class="xrow" style="padding:2px 8px 0"><span>0m</span><span>18m</span><span>36m</span><span>54m</span><span>67m</span></div>
+      </div>
+      <div class="leg"><span><i style="border-top:2px solid #8b7bff;height:0;border-radius:0"></i>power</span><span><i style="background:#e0913a;opacity:.35"></i>planned</span><span><i style="border-top:2px solid #e05a5a;height:0;border-radius:0"></i>HR</span><span><i style="border-top:2px solid #c07bff;height:0;border-radius:0"></i>cadence</span></div>
+
+      <div class="sub">Intervals</div>
+      <div class="ivl">
+        <div class="ivrow"><span class="zt" style="background:#3aa0e022;color:#3aa0e0">Z2</span><span>Warm-up · 19m08s</span><span class="big">161w · 142♥</span></div>
+        <div class="ivrow"><span class="zt" style="background:#e0913a22;color:#e0913a">Z4</span><span>Rep 1 · 2m44s</span><span class="big">248w · 163♥</span></div>
+        <div class="ivrow"><span class="zt" style="background:#e0913a22;color:#e0913a">Z4</span><span>Rep 2 · 3m03s</span><span class="big">240w · 167♥</span></div>
+        <div class="ivrow"><span class="zt" style="background:#e0913a22;color:#e0913a">Z4</span><span>Rep 3 · 2m57s</span><span class="big">233w · 165♥</span></div>
+        <div class="ivrow"><span class="zt" style="background:#3aa0e022;color:#3aa0e0">Z2</span><span>Cooldown · 21m47s</span><span class="big">166w · 150♥</span></div>
+      </div>
+
+      <div class="sub">Time in zone</div>
+      <div class="zbar"><span style="width:61%;background:#3aa0e0"></span><span style="width:5%;background:#34e07d"></span><span style="width:29%;background:#e0913a"></span><span style="width:5%;background:#e05a5a"></span></div>
+      <div class="leg"><span><i style="background:#3aa0e0"></i>Z1–2 66%</span><span><i style="background:#e0913a"></i>Z4 29%</span><span><i style="background:#e05a5a"></i>Z5 5%</span></div>
+
+      <div class="plat">
+        <a href="#"><span class="dot" style="background:#fc4c02"></span>Strava ↗</a>
+        <a href="#"><span class="dot" style="background:#4c8bf5"></span>intervals.icu ↗</a>
+        <a href="#"><span class="dot" style="background:#00a8e1"></span>Wahoo ↗</a>
+      </div>
+    </div>
+
+    <div class="fb">
+      <div class="fbh">Your feedback <span class="tag-icu">syncs to intervals.icu</span></div>
+      <div class="fbsub">The same fields as intervals — the coach reads them to adjust your plan.</div>
+      <div class="flbl">Feel</div>
+      <div class="faces"><div class="f">😎</div><div class="f on">🙂</div><div class="f">😐</div><div class="f">🙁</div><div class="f">😵</div></div>
+      <div class="field"><div class="flbl">RPE</div><div class="rpe"><span class="n">3</span><span class="n">4</span><span class="n on">5</span><span class="n">6</span><span class="n">7</span><span class="n">8</span></div></div>
+      <div class="field"><div class="flbl">Legs before</div><div class="chips"><span>fresh</span><span class="on">normal</span><span>heavy</span><span>sore</span><span>tired</span></div></div>
+      <div class="field"><div class="flbl">Legs after</div><div class="chips"><span>strong</span><span class="on">tired OK</span><span>heavy</span><span>sore</span><span>cooked</span></div></div>
+      <div class="field"><div class="flbl">Fuel / GI</div><div class="chips"><span class="on">not needed</span><span>carbs OK</span><span>underfueled</span><span>GI issue</span></div></div>
+      <div class="field"><div class="flbl">Life constraint</div><div class="chips"><span>none</span><span class="on">time cap</span><span>family</span><span>work</span><span>poor sleep</span></div></div>
+      <div class="field"><div class="flbl">Mental state</div><div class="chips"><span>calm</span><span class="on">focused</span><span>impatient</span><span>frustrated</span></div></div>
+      <div class="field"><div class="flbl">Pain / niggles</div><div class="chips"><span class="on">none</span><span>knee</span><span>back</span><span>saddle</span></div></div>
+      <div class="field"><div class="flbl">Notes</div><div class="note">Felt strong after the first rep, legs opened up…</div></div>
+      <button class="save">Save & get coach review</button>
+    </div>
+  </div></div></div>
+
+  <!-- ============ RUN ============ -->
+  <div id="run" class="view"><div class="phone"><div class="body">
+    <div class="head">
+      <div class="kick">Run · Fri Jan 31 · Coros → Strava</div>
+      <h1>Afternoon Run</h1>
+      <div class="subline">5.55 km · 0:36:14 · 112 m climb</div>
+    </div>
+    <div class="pendingnote"><span>✍️</span><div>Log how it went below — your coach reviews it right after you submit. <b>Your stats are ready now ↓</b></div></div>
+
+    <div class="verdict">
+      <div class="vtop"><div class="vh">💬 Your coach</div><span class="score">Execution 88</span></div>
+      <p>Steady aerobic hour — you held ~6:00–6:15/km (GAP 6:12) with HR sitting calm around 150, Z2 for most of it. Exactly the easy volume that builds the engine; no ego, good discipline.</p>
+      <ul>
+        <li>💡 <b>Tip:</b> km 2 dipped to 6:02 and HR crept to 156 — keep easy days truly easy.</li>
+        <li>📈 <b>Next:</b> set your run threshold in Profile so I can give you power/pace zones and sharper analysis.</li>
+        <li>🔥 Consistent, controlled — the base is coming along nicely.</li>
+      </ul>
+    </div>
+
+    <div class="analysis">
+      <div class="sub">Session stats</div>
+      <div class="sgrid">
+        <div class="st"><b>6:31<small>/km</small></b><span>Avg pace</span></div>
+        <div class="st"><b>6:12<small>/km</small></b><span>GAP</span></div>
+        <div class="st"><b>80<small>%</small></b><span>Intensity</span></div>
+        <div class="st"><b>39</b><span>Load</span></div>
+        <div class="st"><b>151</b><span>Avg HR 78%</span></div>
+        <div class="st"><b>172</b><span>Max HR 89%</span></div>
+        <div class="st"><b>60</b><span>TRIMP</span></div>
+        <div class="st"><b>83</b><span>Cadence</span></div>
+        <div class="st"><b>0.92<small>m</small></b><span>Stride</span></div>
+        <div class="st"><b>413</b><span>Calories</span></div>
+        <div class="st"><b>−4</b><span>Form →</span></div>
+        <div class="st"><b>9.1</b><span>Avg km/h</span></div>
+      </div>
+
+      <div class="sub">Route <span class="kick outdoor" style="font-weight:700">· tap to open the map</span></div>
+      <div class="route outdoor">
+        <svg viewBox="0 0 300 130" preserveAspectRatio="none">
+          <rect width="300" height="130" fill="url(#grid)"/>
+          <path d="M30,100 C60,95 70,60 100,65 C130,70 130,35 165,45 C200,55 205,95 235,85 C260,77 270,55 275,45" fill="none" stroke="#34e07d" stroke-width="2.4" vector-effect="non-scaling-stroke"/>
+          <circle cx="30" cy="100" r="3.5" fill="#34e07d"/><circle cx="275" cy="45" r="3.5" fill="#e05a5a"/>
+        </svg>
+        <span class="mtag">📍 5.55 km · 112 m climb · OpenStreetMap</span>
+      </div>
+      <div class="indoor-note"><span>🏃</span> Treadmill — no GPS route or elevation. Pace/HR/cadence below.</div>
+
+      <div class="sub">Timeline <span class="kick" style="font-weight:700">· pace faster = higher</span></div>
+      <div class="chart" style="padding:0 0 8px">
+        <div class="track">
+          <span class="tlbl">Pace /km · easy Z2 target</span>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none">
+            <g fill="#3aa0e0" fill-opacity="0.18"><rect x="0" y="45" width="300" height="55"/></g>
+            <line x1="0" y1="45" x2="300" y2="45" stroke="#fff" stroke-opacity="0.2" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
+            <polyline fill="none" stroke="#34e07d" stroke-width="1.6" vector-effect="non-scaling-stroke" points="0,58 20,50 40,44 60,55 90,40 120,47 150,52 180,46 210,50 240,42 265,44 285,60 300,66"/>
+          </svg>
+        </div>
+        <div class="track">
+          <span class="tlbl">Heart rate bpm · max 172</span>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none"><polyline fill="none" stroke="#e05a5a" stroke-width="1.6" vector-effect="non-scaling-stroke" points="0,70 20,52 40,44 60,40 90,34 120,42 150,46 180,40 210,44 240,36 265,40 285,52 300,60"/></svg>
+        </div>
+        <div class="track">
+          <span class="tlbl">Cadence spm · avg 166</span>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none"><polyline fill="none" stroke="#c07bff" stroke-width="1.4" vector-effect="non-scaling-stroke" points="0,60 20,42 40,40 60,41 90,39 120,40 150,41 180,40 210,41 240,39 265,42 285,50 300,58"/></svg>
+        </div>
+        <div class="track outdoor">
+          <span class="tlbl">Altitude m · +112</span>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none"><polygon fill="#6b7280" fill-opacity="0.35" stroke="#9aa3b0" stroke-width="1" vector-effect="non-scaling-stroke" points="0,40 40,30 80,20 120,26 160,44 200,60 240,70 300,55 300,100 0,100"/></svg>
+        </div>
+        <div class="xrow" style="padding:2px 8px 0"><span>0km</span><span>1.4</span><span>2.8</span><span>4.2</span><span>5.5km</span></div>
+      </div>
+      <div class="leg"><span><i style="border-top:2px solid #34e07d;height:0;border-radius:0"></i>pace</span><span><i style="background:#3aa0e0;opacity:.35"></i>target</span><span><i style="border-top:2px solid #e05a5a;height:0;border-radius:0"></i>HR</span><span><i style="border-top:2px solid #c07bff;height:0;border-radius:0"></i>cadence</span></div>
+
+      <div class="sub">Splits</div>
+      <div class="ivl">
+        <div class="ivrow"><span class="zt" style="background:#3aa0e022;color:#3aa0e0">Z2</span><span>km 1 · 6m28s</span><span class="big">6:27 · 149♥</span></div>
+        <div class="ivrow"><span class="zt" style="background:#34e07d22;color:#34e07d">Z3</span><span>km 2 · 6m01s</span><span class="big">6:02 · 156♥</span></div>
+        <div class="ivrow"><span class="zt" style="background:#3aa0e022;color:#3aa0e0">Z2</span><span>km 3 · 5m56s</span><span class="big">5:56 · 150♥</span></div>
+        <div class="ivrow"><span class="zt" style="background:#3aa0e022;color:#3aa0e0">Z2</span><span>km 4 · 6m17s</span><span class="big">6:17 · 148♥</span></div>
+        <div class="ivrow"><span class="zt" style="background:#3aa0e022;color:#3aa0e0">Z2</span><span>km 5 · 7m27s</span><span class="big">7:27 · 152♥</span></div>
+      </div>
+
+      <div class="plat">
+        <a href="#"><span class="dot" style="background:#fc4c02"></span>Strava ↗</a>
+        <a href="#"><span class="dot" style="background:#4c8bf5"></span>intervals.icu ↗</a>
+        <a href="#"><span class="dot" style="background:#111"></span>Coros ↗</a>
+      </div>
+    </div>
+
+    <div class="fb">
+      <div class="fbh">Your feedback <span class="tag-icu">syncs to intervals.icu</span></div>
+      <div class="fbsub">Same fields as intervals — the coach reads them to adjust your plan.</div>
+      <div class="flbl">Feel</div>
+      <div class="faces"><div class="f">😎</div><div class="f on">🙂</div><div class="f">😐</div><div class="f">🙁</div><div class="f">😵</div></div>
+      <div class="field"><div class="flbl">RPE</div><div class="rpe"><span class="n">3</span><span class="n on">4</span><span class="n">5</span><span class="n">6</span><span class="n">7</span><span class="n">8</span></div></div>
+      <div class="field"><div class="flbl">Legs before</div><div class="chips"><span class="on">fresh</span><span>normal</span><span>heavy</span><span>tired</span></div></div>
+      <div class="field"><div class="flbl">Legs after</div><div class="chips"><span>strong</span><span class="on">normal</span><span>tired OK</span><span>heavy</span></div></div>
+      <div class="field"><div class="flbl">Pain / niggles</div><div class="chips"><span class="on">none</span><span>knee</span><span>shin</span><span>calf</span><span>foot</span></div></div>
+      <div class="field"><div class="flbl">Mental state</div><div class="chips"><span class="on">calm</span><span>focused</span><span>impatient</span></div></div>
+      <div class="field"><div class="flbl">Notes</div><div class="note">Easy one, legs felt fine…</div></div>
+      <button class="save">Save & get coach review</button>
+    </div>
+  </div></div></div>
+
+  <!-- ============ GYM ============ -->
+  <div id="gym" class="view"><div class="phone"><div class="body">
+    <div class="head">
+      <div class="kick">Gym · Wed Jul 2 · Platyplus</div>
+      <h1>Lower — Strength</h1>
+      <div class="subline">48 min · 5 lifts · 7.2 t volume</div>
+    </div>
+    <div class="pendingnote"><span>✍️</span><div>Log how it went below — your coach reviews it right after you submit. <b>Your lifts are saved ↓</b></div></div>
+
+    <div class="verdict">
+      <div class="vtop"><div class="vh">💬 Your coach</div><span class="score">Execution 94 · PR 🏆</span></div>
+      <p>Big session — your estimated squat 1RM ticked to 142 kg with bar speed still crisp on the top set, so that's real strength, not a grind. Everything else held prescribed reps with clean form.</p>
+      <ul>
+        <li>💡 <b>Tip:</b> the squat looked fast — you likely had a rep in reserve; we'll bank that as headroom.</li>
+        <li>📈 <b>Next:</b> keep the load, add a 4th squat set to build volume before we load up.</li>
+        <li>🔥 New best AND clean form — that's exactly how a PR should be earned.</li>
+      </ul>
+    </div>
+
+    <div class="analysis">
+      <div class="sub">What you logged <span class="kick" style="font-weight:700">· tap a lift for its progress</span></div>
+      <div class="chart" style="padding:2px 12px">
+        <a class="setrow" href="#" style="text-decoration:none;color:inherit"><span class="ex"><b>Back Squat</b><small>4×5 @ 120 kg</small></span><span class="rt"><span class="pr">PR e1RM 142</span><span class="chev">›</span></span></a>
+        <a class="setrow" href="#" style="text-decoration:none;color:inherit"><span class="ex"><b>Romanian DL</b><small>3×8 @ 90 kg</small></span><span class="rt"><small>e1RM 118 ↑</small><span class="chev">›</span></span></a>
+        <a class="setrow" href="#" style="text-decoration:none;color:inherit"><span class="ex"><b>Bulgarian Split Squat</b><small>3×10 @ 24 kg</small></span><span class="rt"><small>→</small><span class="chev">›</span></span></a>
+        <a class="setrow" href="#" style="text-decoration:none;color:inherit"><span class="ex"><b>Leg Curl</b><small>3×12 @ 45 kg</small></span><span class="rt"><span class="chev">›</span></span></a>
+        <a class="setrow" href="#" style="text-decoration:none;color:inherit"><span class="ex"><b>Calf Raise</b><small>4×15 @ 60 kg</small></span><span class="rt"><span class="chev">›</span></span></a>
+      </div>
+      <div class="plat"><a href="#"><span class="dot" style="background:#fc4c02"></span>Strava ↗</a><a href="#"><span class="dot" style="background:#4c8bf5"></span>intervals.icu ↗</a></div>
+    </div>
+
+    <div class="fb">
+      <div class="fbh">Your feedback</div>
+      <div class="fbsub">Gym-specific — the coach uses it for next session.</div>
+      <div class="flbl">Feel</div>
+      <div class="faces"><div class="f on">😎</div><div class="f">🙂</div><div class="f">😐</div><div class="f">🙁</div><div class="f">😵</div></div>
+      <div class="field"><div class="flbl">RPE</div><div class="rpe"><span class="n">5</span><span class="n">6</span><span class="n">7</span><span class="n on">8</span><span class="n">9</span><span class="n">10</span></div></div>
+      <div class="field"><div class="flbl">Soreness / pump</div><div class="chips"><span>none</span><span>light</span><span class="on">good pump</span><span>sore</span></div></div>
+      <div class="field"><div class="flbl">Form</div><div class="chips"><span class="on">clean</span><span>mostly clean</span><span>broke down</span></div></div>
+      <div class="field"><div class="flbl">Pain / niggles</div><div class="chips"><span class="on">none</span><span>shoulder</span><span>low back</span><span>knee</span></div></div>
+      <div class="field"><div class="flbl">Notes</div><div class="note">Squat felt fast, could've gone heavier…</div></div>
+      <button class="save">Save & get coach review</button>
+    </div>
+  </div></div></div>
+
+  <!-- ============ YOGA / PILATES (movement / mobility — light) ============ -->
+  <div id="yoga" class="view"><div class="phone"><div class="body">
+    <div class="head">
+      <div class="kick">Yoga / Pilates · Thu Jul 3 · Platyplus</div>
+      <h1>Evening Flow</h1>
+      <div class="subline">32 min · mobility & wind-down</div>
+    </div>
+    <div class="pendingnote"><span>✍️</span><div>How was it? A quick note below — yoga/pilates are about <b>mobility & recovery</b>, not performance.</div></div>
+
+    <div class="verdict">
+      <div class="vtop"><div class="vh">💬 Your coach</div><span class="score">🔥 4-week streak</span></div>
+      <p>Nice — 3 mobility sessions this week. These aren't about a number; they're working if you move easier and recover better. Your HRV trends up on weeks you keep these in.</p>
+      <ul>
+        <li>💡 <b>Tip:</b> a short flow the evening after hard rides speeds next-day freshness.</li>
+        <li>🔥 Consistency is the whole win — keep the streak alive.</li>
+      </ul>
+    </div>
+
+    <div class="analysis">
+      <div class="sub">This month</div>
+      <div class="sgrid" style="grid-template-columns:1fr 1fr">
+        <div class="st"><b>11</b><span>Sessions</span></div>
+        <div class="st"><b>5h 40m</b><span>Total time</span></div>
+        <div class="st"><b>4 wk</b><span>Streak</span></div>
+        <div class="st"><b>Looser</b><span>Avg after</span></div>
+      </div>
+    </div>
+
+    <div class="fb">
+      <div class="fbh">How do you feel now?</div>
+      <div class="fbsub">Light check — no performance stats for mobility sessions.</div>
+      <div class="flbl">After the session</div>
+      <div class="faces"><div class="f on">😌</div><div class="f">🙂</div><div class="f">😐</div><div class="f">😣</div></div>
+      <div class="field"><div class="flbl">Body</div><div class="chips"><span class="on">looser</span><span>same</span><span>tight spots</span></div></div>
+      <div class="field"><div class="flbl">Notes</div><div class="note">Hips felt tight at the start, better by the end…</div></div>
+      <button class="save">Save</button>
+    </div>
+  </div></div></div>
+
+  <!-- ============ MEDITATION (mind — no movement, light) ============ -->
+  <div id="mind" class="view"><div class="phone"><div class="body">
+    <div class="head">
+      <div class="kick">Meditation · Thu Jul 3 · Platyplus</div>
+      <h1>Wind-down · 10 min</h1>
+      <div class="subline">breath & calm</div>
+    </div>
+    <div class="pendingnote"><span>✍️</span><div>A quick note below — meditation is about <b>calm & consistency</b>, not performance.</div></div>
+
+    <div class="verdict">
+      <div class="vtop"><div class="vh">💬 Your coach</div><span class="score">🔥 6-day streak</span></div>
+      <p>Six days running — that's the habit taking hold. The win isn't a metric; it's a calmer nervous system and better sleep, and you're stacking the days that matter.</p>
+      <ul>
+        <li>💡 <b>Tip:</b> same time each night makes it automatic — even 5 minutes counts.</li>
+        <li>🔥 Streaks are the whole game here. Keep it going.</li>
+      </ul>
+    </div>
+
+    <div class="analysis">
+      <div class="sub">This month</div>
+      <div class="sgrid" style="grid-template-columns:1fr 1fr">
+        <div class="st"><b>18</b><span>Sessions</span></div>
+        <div class="st"><b>3h 10m</b><span>Total time</span></div>
+        <div class="st"><b>6 day</b><span>Streak</span></div>
+        <div class="st"><b>Calmer</b><span>Avg after</span></div>
+      </div>
+    </div>
+
+    <div class="fb">
+      <div class="fbh">How do you feel now?</div>
+      <div class="fbsub">Light check — no performance stats.</div>
+      <div class="flbl">After the session</div>
+      <div class="faces"><div class="f on">😌</div><div class="f">🙂</div><div class="f">😐</div><div class="f">😣</div></div>
+      <div class="field"><div class="flbl">Stress vs before</div><div class="chips"><span class="on">much lower</span><span>lower</span><span>same</span><span>higher</span></div></div>
+      <div class="field"><div class="flbl">Notes</div><div class="note">Mind was busy at first, settled after a few minutes…</div></div>
+      <button class="save">Save</button>
+    </div>
+  </div></div></div>
+</div>
+<script>
+function show(id,b){document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on')}
+let ST='post',VN='outdoor';
+function apply(){document.body.className=ST+' '+VN}
+function setState(s,b){ST=s;apply();b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on')}
+function setVenue(v,b){VN=v;apply();b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on')}
+</script>
+</body></html>

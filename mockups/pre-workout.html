@@ -1,0 +1,83 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=430">
+<style>
+:root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--line:#ffffff26}
+*{box-sizing:border-box}
+body{background:#0f1216;color:var(--text);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:14px;max-width:430px}
+h4{margin:22px 0 4px;font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--accent)}
+.sub{color:var(--text-dim);font-size:11.5px;margin:0 0 8px}
+.eyebrow{font-size:11px;letter-spacing:.6px;color:var(--text-dim);font-weight:700}
+.head{display:flex;gap:12px;align-items:center;margin:6px 0 10px}
+.thumb{width:64px;height:64px;flex:none;border-radius:12px;background:#12151b;border:1px solid var(--line);padding:8px}
+.bars{display:flex;align-items:flex-end;gap:2px;height:100%;width:100%}
+.bars i{border-radius:2px 2px 0 0;display:block}
+h1{font-size:20px;margin:2px 0 0}
+.exp{background:linear-gradient(90deg,#34e07d18,#34e07d05);border-left:3px solid var(--accent);padding:8px 11px;border-radius:0 9px 9px 0;font-size:12.5px;line-height:1.5;margin:8px 0}
+.exp .tag{font-weight:800;color:var(--accent);margin-right:4px}
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.ht{background:radial-gradient(130% 130% at 50% 0%,#20303a,#141a22);border:1px solid #34e07d33;border-radius:14px;padding:13px 10px;text-align:center}
+.ht b{font-size:22px;font-weight:800;display:block}.ht span{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{background:#161a21;border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:12px}
+.chip b{font-weight:800}.chip span{color:var(--text-dim);margin-left:5px;font-size:11px}
+.tcard{background:#161a21;border:1px solid var(--line);border-radius:12px;padding:10px 12px 8px;margin:8px 0}
+.clab{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--text);margin-bottom:8px}
+.c2{display:grid;grid-template-columns:50px 1fr;grid-template-rows:1fr 18px;column-gap:8px}
+.c2y{position:relative;grid-column:1;grid-row:1}.c2y span{position:absolute;right:2px;transform:translateY(-50%);font-size:9.5px;font-weight:600;color:var(--text-dim)}
+.c2p{position:relative;grid-column:2;grid-row:1}.c2x{position:relative;grid-column:2;grid-row:2;font-size:10px;font-weight:600;color:var(--text-dim)}
+.c2x span{position:absolute;transform:translateX(-50%);padding-top:4px}.c2x span.f{transform:none}.c2x span.l{transform:translateX(-100%)}
+svg{display:block;width:100%}.gl{stroke:var(--line);stroke-width:.5;opacity:.5}.gv{opacity:.2}
+.struct{margin:2px 0}
+.srow{display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid #ffffff0a}
+.sdot{width:10px;height:22px;border-radius:3px;flex:none}
+.srow .n{font-weight:700;font-size:13px}.srow .m{color:var(--text-dim);font-size:11.5px}.srow .t{margin-left:auto;font-weight:800;font-variant-numeric:tabular-nums}
+.cue{display:flex;gap:8px;font-size:12.5px;line-height:1.5;padding:6px 0;border-top:1px solid #ffffff0a}
+.cue .k{color:var(--accent);font-weight:800;white-space:nowrap}
+.btn{display:block;width:100%;margin-top:14px;padding:14px;border-radius:12px;border:none;background:var(--accent);color:#04120a;font-weight:800;font-size:15px;text-align:center}
+</style></head><body><div id="app"></div>
+<script>
+const FTP=260, DUR=4200, VW=600;
+const S=[130,131,131,132,133,134,134,135,136,137,137,138,139,139,140,141,142,142,143,144,145,145,146,147,148,148,149,150,150,151,152,153,153,154,155,156,156,157,158,158,159,160,161,161,162,163,164,164,165,166,167,167,168,169,169,170,171,172,172,173,174,175,175,176,177,177,178,179,180,180,181,182,183,183,184,185,186,186,187,188,188,189,190,191,191,192,193,194,194,195,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,143,156,155,155,154,153,153,152,151,151,150,149,149,148,147,147,146,145,145,144,143,143,142,141,141,140,139,139,138,137,137,136,136,135,134,134,133,132,132,131,130,130,129,128,128,127,126,126,125,124,124,123,122,122,121,120,120,119,118,118,117];
+const SEGS=[{"d":900,"a":50,"b":75},{"d":600,"a":98,"b":98},{"d":300,"a":55,"b":55},{"d":600,"a":98,"b":98},{"d":300,"a":55,"b":55},{"d":600,"a":98,"b":98},{"d":300,"a":55,"b":55},{"d":600,"a":60,"b":45}];
+const ZC=['#7fd1ff','#43d9a3','#ffd23f','#ff9f43','#ff6b6b','#e63946'];
+const ZN=['Recovery','Endurance','Tempo','Threshold','VO2max','Anaerobic'];
+const zi=p=>p<56?0:p<76?1:p<91?2:p<106?3:p<121?4:5, zc=p=>ZC[zi(p)];
+function niceStep(r,t){const raw=r/t,p=Math.pow(10,Math.floor(Math.log10(raw))),n=raw/p,s=n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10;return s*p;}
+function ticks(min,max,t){const st=niceStep(max-min,t),lo=Math.ceil(min/st)*st,hi=Math.floor(max/st)*st,o=[];for(let v=hi;v>=lo-1e-9;v-=st)o.push(Math.round(v));return o;}
+function thumb(){const mx=Math.max(...SEGS.map(s=>Math.max(s.a,s.b)));return "<div class='bars'>"+SEGS.map(s=>{const p=Math.max(s.a,s.b);return "<i style='flex:"+s.d+" 1 0;height:"+Math.max(10,p/mx*100)+"%;background:"+zc(p)+"'></i>";}).join("")+"</div>";}
+function shape(){
+  const H=150,P=2,n=S.length;const vmax=ticks(0,Math.max(...S)*1.05,8);const vtop=vmax[0];
+  const X=i=>P+(i/(n-1))*(VW-2*P),Y=v=>P+(1-v/vtop)*(H-2*P);
+  const path="M"+S.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L");
+  const yt=vmax,grid=yt.map(v=>"<line class='gl' x1='0' x2='"+VW+"' y1='"+Y(v)+"' y2='"+Y(v)+"'/>").join("");
+  const step=DUR/60>60?10:5,marks=[];for(let m=0;m<=DUR/60+.01;m+=step)marks.push(m);
+  const vg=marks.map(m=>{const x=P+(m*60/DUR)*(VW-2*P);return "<line class='gl gv' x1='"+x+"' x2='"+x+"' y1='0' y2='"+H+"'/>";}).join("");
+  const xh=marks.map((m,i)=>"<span class='"+(i===0?'f':i===marks.length-1?'l':'')+"' style='left:"+(m*60/DUR*100)+"%'>"+m+"m</span>").join("");
+  const yh=yt.map(v=>"<span style='top:"+(Y(v)/H*100)+"%'>"+v+"</span>").join("");
+  // zone band area under the line coloured by zone
+  const area="<defs><linearGradient id='g' x1='0' x2='0' y1='0' y2='1'><stop offset='0' stop-color='#34e07d' stop-opacity='.22'/><stop offset='1' stop-color='#34e07d' stop-opacity='0'/></linearGradient></defs><path d='"+path+" L"+X(n-1)+","+(H-P)+" L"+X(0)+","+(H-P)+" Z' fill='url(#g)'/>";
+  return "<div class='tcard'><div class='clab'>Planned power <span style='color:var(--text-dim)'>W · target shape</span></div><div class='c2'><div class='c2y'>"+yh+"</div><div class='c2p'><svg viewBox='0 0 "+VW+" "+H+"' preserveAspectRatio='none' height='150'>"+grid+vg+area+"<path d='"+path+"' fill='none' stroke='#34e07d' stroke-width='2.25' vector-effect='non-scaling-stroke'/></svg></div><div class='c2x'>"+xh+"</div></div><div class='exp'><span class='tag'>Coach</span>Three 10-min blocks at 255 W (98% FTP) with 5-min spins between — the sweet-spot-to-threshold work that raises your ceiling. Warm up fully; the first block should feel controlled, not hard.</div></div>";
+}
+function structRows(){
+  // collapse to labelled blocks
+  const rows=[["Warm-up","12 min · ramp to 75%",68],["3 × 10 min","@ 255 W (98%) · Z4 threshold",98],["Recoveries","5 min @ 143 W between",55],["Cool-down","10 min · ease down",52]];
+  return "<div class='struct'>"+rows.map(r=>"<div class='srow'><span class='sdot' style='background:"+zc(r[2])+"'></span><div><div class='n'>"+r[0]+"</div><div class='m'>"+r[1]+"</div></div></div>").join("")+"</div>";
+}
+function render(){
+ document.getElementById("app").innerHTML=
+ "<h4>Pre-workout — same spirit as post</h4>"+
+ "<div class='head'><div class='thumb'>"+thumb()+"</div><div><div class='eyebrow'>RIDE · OUTDOOR · TODAY · 70 MIN</div><h1>Cottage Threshold 3×10</h1></div></div>"+
+ "<div class='exp'><span class='tag'>What to expect</span>A threshold builder: ~70 min, IF 0.85, ~75 TSS. The meat is 3×10 min at 255 W. Fuel before, hydrate through it — it's a real quality day, not a spin.</div>"+
+ "<div class='hero'>"+[["75","Target TSS"],["0.85","Target IF"],["70 min","Duration"],["255 W","Key-set target"]].map(s=>"<div class='ht'><b>"+s[0]+"</b><span>"+s[1]+"</span></div>").join("")+"</div>"+
+ "<div class='chips'>"+[["3×10 min","key set"],["Z4","threshold"],["143 W","recoveries"],["85-95","cadence"]].map(s=>"<span class='chip'><b>"+s[0]+"</b><span>"+s[1]+"</span></span>").join("")+"</div>"+
+ shape()+
+ "<h4>Structure</h4>"+structRows()+
+ "<h4>Coach brief</h4><div class='tcard' style='padding:10px 14px'>"+
+   "<div class='cue'><span class='k'>🎯 Objective</span><span>Raise FTP — hold 255 W clean for all three blocks; even splits beat a fast first rep.</span></div>"+
+   "<div class='cue'><span class='k'>🔑 Key set</span><span>3×10 min @ 98%. If block 3 falls apart, that's the ceiling — note it.</span></div>"+
+   "<div class='cue'><span class='k'>⛽ Fuel</span><span>60-80 g carbs/h; bottle with electrolytes — warm day.</span></div>"+
+   "<div class='cue'><span class='k'>🧠 Mind</span><span>Settle the breathing in the first 2 min of each block; smooth, not surgey.</span></div>"+
+ "</div>"+
+ "<button class='btn'>▶ Start ride</button>";
+}
+render();
+</script></body></html>

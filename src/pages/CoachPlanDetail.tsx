@@ -2,10 +2,19 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getCoachPlan, gymSessionFromPlan, setGymSession, matchExercise } from '../plan'
 import { calApi, type CalItem } from '../calendar'
-import { SegmentProfile } from '../ui'
+import { MiniProfile } from '../ui'
+import { workoutSummary, structureRows, plannedSeries, plannedLoad } from '../workout-summary'
 import { setCurrentRide, canPlayHere } from '../ride'
 import { useBle } from '../BleContext'
-import { getSetting } from '../db'
+import { getSetting, db } from '../db'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
+import { InfoDot, TrendChart, minuteTicks } from '../charts'
+import { fetchActivities, fetchActivityThread, sportOfActivity, readIcuFeedback, type IcuActivity, type CoachNote } from '../intervals'
+import { authApi, type CoachReview } from '../auth/api'
+import ActivityFeedback from '../ActivityFeedback'
+import CoachVerdict from '../CoachVerdict'
+import { useAuth } from '../auth/AuthContext'
 
 /** Detail view for a coach-authored Platyplus plan: the universal coaching shell
  *  (Objective · Fuel · Mind · Recovery · Success · Cues) + the sport-specific body
@@ -15,13 +24,33 @@ export default function CoachPlanDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const ble = useBle()
+  const { user } = useAuth()
+  const logs = useLiveQuery(() => db.logs.toArray())
+  const e1rmMap = bestE1rmByExercise(logs || [])
+  const e1rmFor = (name: string) => e1rmMap.get(name) || [...e1rmMap.entries()].find(([k]) => k.toLowerCase() === name.toLowerCase())?.[1]
   const p = id ? getCoachPlan(id) : undefined
   const [items, setItems] = useState<CalItem[]>([])
   const [open, setOpen] = useState<Set<number>>(new Set())
   const [sheet, setSheet] = useState<{ title: string; body: string } | null>(null)
   const [ftp, setFtp] = useState<number>()
+  // #285 — if this planned workout is DONE (a completed activity exists for its day+sport), show the
+  // post-workout stuff: coach verdict + feedback + a link to the full analysis. Turns the planned view
+  // into the post view once completed, instead of a bare notes dump.
+  const [doneAct, setDoneAct] = useState<IcuActivity | null>(null)
+  const [review, setReview] = useState<CoachReview | null>(null)
+  const [note, setNote] = useState<CoachNote | null>(null)
+  const [icuComment, setIcuComment] = useState<string>()
   useEffect(() => { if (p) calApi.items(p.date, p.date).then(setItems).catch(() => {}) }, [p?.date])
   useEffect(() => { getSetting('ftp').then((v) => setFtp(Number(v) || undefined)) }, [])
+  useEffect(() => {
+    if (!p) return
+    fetchActivities(p.date, p.date).then((a) => {
+      const done = a.find((x) => sportOfActivity(x) === p.sport) || null
+      setDoneAct(done)
+      if (done) fetchActivityThread(done.id).then((t) => { setNote(t.coach); setIcuComment(t.comment) }).catch(() => {}) // #273 coach review + my comment live in intervals
+    }).catch(() => {})
+    authApi.coachReviews().then((r) => setReview(r.find((x) => x.planId === p.id) || r.find((x) => x.date === p.date && (x.sport === p.sport || !x.sport)) || null)).catch(() => {})
+  }, [p?.id, p?.date, p?.sport])
 
   if (!p) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button><h1>Plan not found</h1><p className="meta">Open it from Today so it can load.</p></div>
 
@@ -38,23 +67,83 @@ export default function CoachPlanDetail() {
   return (
     <div>
       <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
-      <div className="page-head">
-        <span className="eyebrow">{p.sport === 'gym' ? 'Gym' : p.sport === 'run' ? 'Run' : 'Ride'} · {dateLabel}{mins ? ` · ${mins} min` : p.sport === 'gym' && p.exercises ? ` · ${p.exercises.length} exercises` : ''}</span>
-        <h1>{p.title}</h1>
+      <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {isEndurance && (p.segments?.length ?? 0) > 0 && <div className="act-thumb"><MiniProfile segs={p.segments!} /></div>}
+        <div style={{ minWidth: 0 }}>
+          <span className="eyebrow">{p.sport === 'gym' ? 'Gym' : p.sport === 'run' ? 'Run' : 'Ride'} · {dateLabel}{mins ? ` · ${mins} min` : p.sport === 'gym' && p.exercises ? ` · ${p.exercises.length} exercises` : ''}</span>
+          <h1 style={{ margin: 0 }}>{p.title}</h1>
+        </div>
       </div>
 
-      {/* sport body */}
-      {isEndurance && (p.segments?.length ?? 0) > 0 && (
+      {/* #285 — completed: coach verdict + feedback + link to the full analysis */}
+      {(doneAct || review) && (
         <>
-          <div className="card" style={{ padding: 16, marginTop: 6 }}><SegmentProfile segs={p.segments!} ftp={p.ftp || ftp} /></div>
+          <div className="done-badge" style={{ position: 'static', display: 'inline-block', marginBottom: 8 }}>✓ Completed</div>
+          <CoachVerdict review={review} note={note} />
+          {doneAct && <Link to={`/activity/${doneAct.id}`} className="btn btn--ghost" style={{ marginBottom: 8 }}>📊 See full analysis →</Link>}
+          <ActivityFeedback id={doneAct ? String(doneAct.id) : `plan-${p.id}`} sport={p.sport} date={p.date} icuExisting={readIcuFeedback(doneAct)} icuNote={icuComment} />
+        </>
+      )}
+
+      {/* sport body */}
+      {isEndurance && (p.segments?.length ?? 0) > 0 && (() => {
+        const rFtp = p.ftp || ftp || user?.ftp || 200
+        const rEst = !(p.ftp || ftp || user?.ftp)
+        const sum = workoutSummary(p.segments!, rFtp)
+        const rows = structureRows(p.segments!, rFtp)
+        const load = plannedLoad(p.segments!, rFtp)
+        const totalSec = p.segments!.reduce((s, x) => s + (Number(x.duration) || 0), 0)
+        const keySet = rows.filter((r) => r.pct >= 88).sort((a, b) => b.durationSec * b.count - a.durationSec * a.count)[0]
+        const fmtDur = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${s}s`)
+        // #280 hero (4 headline targets) + chips (JM pick B, same spirit as post-workout)
+        const hero: [string, string][] = [
+          load ? ['Target TSS', String(load.tss)] : null,
+          load ? ['Target IF', load.if.toFixed(2)] : null,
+          sum ? ['Duration', `${sum.durationMin} min`] : null,
+          keySet ? ['Key-set target', keySet.watts ? `${keySet.watts} W` : `${keySet.pct}%`] : (sum ? ['Main target', sum.mainWatts ? `${sum.mainWatts} W` : `${sum.mainPct}%`] : null),
+        ].filter(Boolean) as [string, string][]
+        const chips: [string, string][] = [
+          keySet ? [keySet.count > 1 ? `${keySet.count}× ${fmtDur(keySet.durationSec)}` : fmtDur(keySet.durationSec), 'key set'] : null,
+          sum ? [sum.mainZone, 'zone'] : null,
+          rEst ? ['est FTP', 'set yours ⚙'] : null,
+        ].filter(Boolean) as [string, string][]
+        return (
+        <>
+          {/* #280 what to expect */}
+          <div className="act-ins"><span className="tag">What to expect</span>{p.objective || `A ${sum?.mainZone === 'Z4' || sum?.mainZone === 'Z5' ? 'quality' : 'steady'} ${p.sport === 'run' ? 'run' : 'ride'}: ~${sum?.durationMin ?? mins} min${load ? `, IF ${load.if.toFixed(2)}, ~${load.tss} TSS` : ''}. ${sum && sum.mainPct >= 88 ? `The meat is at ${sum.mainWatts ? sum.mainWatts + ' W' : sum.mainPct + '%'}.` : 'Keep it controlled and repeatable.'}`}</div>
+          <div className="act-hero">{hero.map(([l, v]) => <div key={l} className="ht"><b>{v}</b><span>{l}</span></div>)}</div>
+          {chips.length > 0 && <div className="act-chips">{chips.map(([l, v]) => <span key={l} className="act-chip"><b>{v}</b><span>{l}</span></span>)}</div>}
+          {/* #280 planned power SHAPE — dense chart standard */}
+          <div className="tl-card" style={{ marginTop: 8 }}>
+            <div className="tl-clabel">PLANNED POWER · W · target shape</div>
+            <TrendChart series={[{ label: 'Target', data: plannedSeries(p.segments!, rFtp), color: '#34e07d', area: true }]} height={150} axes unit=" W" xTicks={minuteTicks(totalSec)} />
+            <div className="act-ins"><span className="tag">💡</span>{p.cues?.[0] || (sum && sum.mainPct >= 91 ? 'Warm up fully — the first hard effort should feel controlled, not a shock; keep recoveries easy and let HR drop.' : 'Hold steady targets — smooth and repeatable beats spiky.')}</div>
+          </div>
+          {/* #280 structure */}
+          {rows.length > 1 && (
+            <>
+              <div className="section-title">Structure</div>
+              <div className="stack" style={{ gap: 6 }}>
+                {rows.map((r, i) => (
+                  <div key={i} className="pw-ivrow">
+                    <span className="pw-zt">{r.zone}</span>
+                    <span>{r.count > 1 ? `${r.count}× ` : ''}{r.label} · {fmtDur(r.durationSec)}</span>
+                    <b>{r.watts ? `${r.watts} W` : `${r.pct}%`}</b>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
           {canPlayHere(!!ble.bridge)
             ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ {p.sport === 'run' ? 'Run' : 'Ride'} now</button>
             : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to {p.sport === 'run' ? 'run' : 'ride'} — that's where your sensors connect.</div>}
         </>
-      )}
+        )
+      })()}
       {p.sport === 'gym' && (p.exercises?.length ?? 0) > 0 && (
         <>
           <button className="btn" onClick={startGym}>▶ Start workout</button>
+          {p.tip && <div className="tipbanner">💡 <span><b>Session tip:</b> {p.tip}</span></div>}
           <div className="section-title">Exercises</div>
           <div className="stack" style={{ gap: 8 }}>
             {p.exercises!.map((x, i) => {
@@ -66,7 +155,8 @@ export default function CoachPlanDetail() {
                     <div className="ex-thumb-sm" style={demo?.image ? { backgroundImage: `url(${demo.image})` } : undefined}>{!demo?.image && '🏋️'}{demo?.video && <span className="ex-play-sm">▶</span>}</div>
                     <div className="ex-row-text" style={{ flex: 1 }}>
                       <h4>{x.name}</h4>
-                      <div className="meta" style={{ marginTop: 2 }}><span><b>{(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}</b></span>{x.rest ? <span className="dot">rest {x.rest}s</span> : null}</div>
+                      <div className="meta" style={{ marginTop: 2 }}><span><b>{(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}</b></span>{x.rest ? <span className="dot">rest {x.rest}s</span> : null}{(() => { const e = (x.mode || 'reps') !== 'timed' ? e1rmFor(x.name) : undefined; const t = e ? roundLoad(weightForReps(e.e1rm, x.reps || 10)) : null; return t ? <span className="dot">target ~{t} kg</span> : null })()}{x.tempo ? <span className="dot" style={{ color: 'var(--accent)' }}>tempo {x.tempo} <InfoDot text="Seconds per rep — eccentric · pause bottom · concentric · pause top (e.g. 3-1-1-0 = 3s lower, 1s pause, 1s lift, 0s top). A slower lower = more time under tension." /></span> : null}</div>
+                      {x.tip && <div className="meta" style={{ marginTop: 4, color: 'var(--text-dim)', whiteSpace: 'normal' }}>💡 {x.tip}</div>}
                     </div>
                     <span style={{ opacity: 0.4, padding: '2px 4px' }}>{isOpen ? '▾' : '›'}</span>
                   </div>
@@ -85,6 +175,11 @@ export default function CoachPlanDetail() {
 
       {/* coaching shell */}
       {p.objective && <div className="plansec"><span className="plansec__k">🎯 Objective</span><p className="plansec__v">{p.objective}</p></div>}
+      {/* Fallback: unstructured plans keep everything in `notes` — show it formatted so the detail
+          is never empty (structured plans use the fields above/below instead). */}
+      {!p.objective && !p.cues?.length && p.notes && p.notes.trim() && (
+        <div className="plansec"><span className="plansec__k">📋 Plan</span><p className="plansec__v" style={{ whiteSpace: 'pre-wrap' }}>{p.notes.replace(/\s*(#{1,3})\s*/g, '\n\n').replace(/\*\*/g, '').replace(/^\n+/, '').trim()}</p></div>
+      )}
 
       {(p.fuel?.why || p.fuel?.supplements || meals.length > 0) && (
         <div className="plansec">

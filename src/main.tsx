@@ -4,16 +4,28 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { registerSW } from 'virtual:pwa-register'
 import './styles.css'
 
-// Keep the PWA fresh: registerType 'autoUpdate' reloads to the new build once a new
-// service worker activates. The gap was DETECTION — an open/installed PWA only checked
-// on first load, so after a deploy it kept running the OLD bundle (which broke login).
-// Now we also re-check whenever the app regains focus / comes online, and hourly.
+// Keep the PWA fresh. Two halves had to BOTH work or an installed app stayed on the old
+// bundle after a deploy (#200 stale login, #217 stale workout chart):
+//  1) DETECTION — re-check for a new service worker on focus / online / hourly (not just first load).
+//  2) RELOAD — when the new SW takes control, the already-loaded page is still running the OLD
+//     JS until it reloads. skipWaiting+clientsClaim activate the new SW, but nothing reloaded the
+//     page. This controllerchange handler does — but ONLY on a real update (a controller already
+//     existed), so a first install's clientsClaim doesn't trigger a needless reload.
+if ('serviceWorker' in navigator) {
+  let reloading = false
+  const hadController = !!navigator.serviceWorker.controller
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading || !hadController) return
+    reloading = true
+    window.location.reload()
+  })
+}
 const updateSW = registerSW({
   immediate: true,
   onRegisteredSW(_swUrl, r) {
     if (!r) return
     const check = () => { r.update().catch(() => {}) }
-    setInterval(check, 60 * 60 * 1000)
+    setInterval(check, 30 * 60 * 1000)
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check() })
     window.addEventListener('online', check)
   },
@@ -49,6 +61,10 @@ import Profile from './pages/Profile'
 import AthleteProfile from './pages/AthleteProfile'
 import Settings from './pages/Settings'
 import Fitness from './pages/Fitness'
+import Wellness from './pages/Wellness'
+import MindStats from './pages/MindStats'
+import CyclingStats from './pages/CyclingStats'
+import RunningStats from './pages/RunningStats'
 import Strength from './pages/Strength'
 import Logs from './pages/Logs'
 import LogActivity from './pages/LogActivity'
@@ -107,6 +123,10 @@ const router = createBrowserRouter([
       { path: 'profile/athlete', element: <AthleteProfile /> },
       { path: 'settings', element: <Settings /> },
       { path: 'fitness', element: <Fitness /> },
+      { path: 'wellness', element: <Wellness /> },
+      { path: 'mind-stats', element: <MindStats /> },
+      { path: 'cycling-stats', element: <CyclingStats /> },
+      { path: 'running-stats', element: <RunningStats /> },
       { path: 'strength', element: <Strength /> },
       { path: 'logs', element: <Logs /> },
       { path: 'log-activity', element: <LogActivity /> },

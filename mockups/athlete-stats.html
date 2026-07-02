@@ -1,0 +1,62 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Per-sport athlete stats — synced with intervals</title>
+<style>
+:root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--cyan:#7fd1ff;--amber:#ffb13d;--violet:#b98cff;--bg:#0f1216;--line:#2a2f3a}
+*{box-sizing:border-box;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{background:#07080a;color:var(--text);padding:22px;display:flex;flex-direction:column;align-items:center;gap:14px}
+h1.t{font-size:18px;font-weight:800;text-align:center}
+.sub{color:var(--text-dim);font-size:13px;max-width:520px;text-align:center;line-height:1.5}
+.phone{width:380px;background:var(--bg);border:1px solid var(--line);border-radius:24px;padding:16px 14px 18px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.sectitle{font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.syncpill{font-size:10px;font-weight:800;color:var(--accent);background:rgba(52,224,125,.12);border:1px solid rgba(52,224,125,.3);border-radius:999px;padding:2px 8px;display:inline-flex;align-items:center;gap:4px}
+.note{font-size:11px;color:var(--text-dim);line-height:1.4;margin:4px 2px 10px}
+.sport{background:linear-gradient(#21252f,#191c24);border:1px solid var(--line);border-radius:14px;padding:11px 12px;margin-top:9px}
+.sport__h{font-size:13px;font-weight:800;display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.sport__h .pz{margin-left:auto;font-size:10px;font-weight:700;color:var(--text-dim)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.field{background:#14181f;border:1px solid var(--line);border-radius:10px;padding:7px 9px}
+.field__l{font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;gap:5px}
+.field__v{font-size:17px;font-weight:800;margin-top:2px}
+.field__v small{font-size:11px;font-weight:600;color:var(--text-dim)}
+.src{font-size:8px;font-weight:800;color:var(--accent);border:1px solid rgba(52,224,125,.3);border-radius:4px;padding:0 3px}
+.src--pp{color:var(--violet);border-color:rgba(185,140,255,.3)}
+.src--unset{color:var(--amber);border-color:rgba(255,177,61,.3)}
+.field--unset .field__v{color:var(--amber);font-weight:700;font-size:13px}
+</style></head>
+<body>
+<h1 class="t">Your stats — per sport, two-way synced with intervals</h1>
+<p class="sub">Grouped like intervals' own sport settings. Each value carries its source: <span class="src">intervals</span> (synced both ways — edit here, it writes back), <span class="src src--pp">Platyplus</span> (we compute/you set — intervals has no field), <span class="src src--unset">set it</span> (not in intervals yet).</p>
+<div class="phone">
+  <div class="sectitle">Your stats <span class="syncpill">⇄ intervals</span></div>
+  <p class="note">Pulled from your intervals athlete profile. Edit any value and it updates intervals too — your custom fields are untouched. VO₂max is Platyplus's estimate (intervals doesn't store one).</p>
+
+  <div class="sport">
+    <div class="sport__h">🚴 Cycling</div>
+    <div class="grid">
+      <div class="field"><div class="field__l">FTP <span class="src">intervals</span></div><div class="field__v">260 <small>W</small></div></div>
+      <div class="field"><div class="field__l">Max HR <span class="src">intervals</span></div><div class="field__v">185 <small>bpm</small></div></div>
+      <div class="field"><div class="field__l">Threshold HR <span class="src">intervals</span></div><div class="field__v">170 <small>bpm</small></div></div>
+      <div class="field"><div class="field__l">VO₂max <span class="src src--pp">est.</span></div><div class="field__v">58 <small>est.</small></div></div>
+    </div>
+  </div>
+
+  <div class="sport">
+    <div class="sport__h">🏃 Running <span class="pz">VDOT 52 → E/M/T/I/R zones</span></div>
+    <div class="grid">
+      <div class="field field--unset"><div class="field__l">Threshold pace <span class="src src--unset">set it</span></div><div class="field__v">— <small>min/km</small></div></div>
+      <div class="field"><div class="field__l">Max HR <span class="src">intervals</span></div><div class="field__v">194 <small>bpm</small></div></div>
+      <div class="field"><div class="field__l">Threshold HR <span class="src">intervals</span></div><div class="field__v">170 <small>bpm</small></div></div>
+      <div class="field"><div class="field__l">VO₂max <span class="src src--pp">VDOT</span></div><div class="field__v">52 <small>est.</small></div></div>
+    </div>
+  </div>
+
+  <div class="sport">
+    <div class="sport__h">🌙 General</div>
+    <div class="grid">
+      <div class="field field--unset"><div class="field__l">Sleep need <span class="src src--pp">you</span></div><div class="field__v" style="color:var(--text)">9 <small>h</small></div></div>
+      <div class="field"><div class="field__l">Weight <span class="src">intervals</span></div><div class="field__v">75 <small>kg</small></div></div>
+    </div>
+  </div>
+</div>
+<p class="sub" style="margin-top:4px">Only the sports you do show (Cycling + Running here). Set the running <b>Threshold pace</b> → Platyplus derives your <b>Daniels pace zones</b> + running VDOT/VO₂max (#209), and writes the pace back to intervals.</p>
+</body></html>

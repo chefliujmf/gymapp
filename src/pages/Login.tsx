@@ -33,8 +33,14 @@ export default function Login() {
     setErr(''); setBusy(true)
     try { await apply(await authApi.passkeyLoginDiscoverable()) }
     catch (e) {
-      // No passkey on this device/account (or cancelled) → drop to the password form.
-      setErr((e as Error).message || 'No passkey here yet — use your password.')
+      // #266 (option C): give CLEAR feedback instead of looking like "nothing happened".
+      // A fresh device has no passkey to offer, or the OS dialog was cancelled → guide to
+      // password, after which we offer to set one up (PasskeyPrompt).
+      const name = (e as { name?: string }).name
+      const noCred = name === 'NotAllowedError' || name === 'AbortError' || /no passkey|not recognised|unknown|expired/i.test((e as Error).message || '')
+      setErr(noCred
+        ? 'No passkey on this device yet. Sign in with your password below — then we’ll offer to set one up.'
+        : ((e as Error).message || 'Passkey sign-in failed — use your password.'))
       setUsePassword(true)
     } finally { setBusy(false) }
   }
@@ -68,6 +74,7 @@ export default function Login() {
               <>
                 <input className="search" placeholder="Username or email" value={login} autoCapitalize="none" onChange={(e) => setLogin(e.target.value)} />
                 <PasswordInput value={password} onChange={setPassword} placeholder="Password" autoComplete="current-password" />
+                <p className="meta" style={{ margin: '-2px 2px 0', fontSize: 12 }}>Username &amp; email aren’t case-sensitive — your <b>password is</b>.</p>
                 <button className="btn" disabled={busy || !login || !password}>Sign in</button>
                 {passkeySupported && (
                   <button type="button" className="auth-link" onClick={() => setUsePassword(false)}>Use a passkey instead</button>

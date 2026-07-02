@@ -85,6 +85,16 @@ server.tool('set_athlete_profile',
   { profile: z.string().describe('the full athlete profile as markdown') },
   wrap((a) => api('PUT', '/api/profile/athlete', { profile: a.profile })))
 
+server.tool('check_connections',
+  "Check what's connected + whether the athlete's data is actually flowing into intervals.icu. Returns: intervals linked?, Strava linked?, how many activities synced in the last 3 weeks (+ the latest one's date/type/source device), which device sources are feeding intervals (e.g. Garmin/Coros/Wahoo/Strava), and whether HRV/sleep/resting-HR wellness is present. Use during onboarding (and anytime data looks missing) to tell the athlete EXACTLY what to connect — e.g. if they said they use a Coros but no activities are syncing, tell them to connect Coros inside intervals.icu.",
+  {},
+  wrap(() => api('GET', '/api/connections')))
+
+server.tool('save_coach_memory',
+  "Save/replace YOUR durable coaching memory for this athlete — what you've learned WORKS or FAILS for them, adjustments that paid off, and how they like to be coached (tone, cadence, preferences, constraints). Separate from set_athlete_profile (that's WHO they are; this is HOW to coach them). Read it every session and keep it current: write the FULL updated memory as tight dated bullets, marking rules active/retired. Use when they give feedback, when an approach works/flops, or when they state a preference.",
+  { memory: z.string().describe('the full coach memory as markdown (dated bullets, active/retired)') },
+  wrap((a) => api('PUT', '/api/coach-memory', { memory: a.memory })))
+
 server.tool('set_sports',
   'Set the athlete\'s sports (drives the app navigation + which coaching modules apply). Allowed: cycling, running, strength, yoga, pilates, meditation.',
   { sports: z.array(z.string()).describe('e.g. ["cycling","strength"]') },
@@ -98,12 +108,13 @@ server.tool('set_sports',
 const COACHING = {
   objective: z.string().optional().describe('one-line goal of the session'),
   cues: z.array(z.string()).optional().describe('short in-session cues'),
+  tip: z.string().optional().describe('one WHOLE-SESSION tip shown as a banner (e.g. "control the tempo — slow lowering builds strength; keep rests ~90-120s on the big lifts")'),
   success: z.string().optional().describe('what "done well" looks like'),
   recovery: z.string().optional().describe('post / evening / next-AM recovery guidance'),
   fuel: z.object({ why: z.string().optional().describe('Pre/During/Post fueling strategy'), supplements: z.string().optional() }).optional(),
   mind: z.object({ why: z.string().optional().describe('mental-focus theme') }).optional(),
 }
-const coachingOf = (a) => ({ objective: a.objective, cues: a.cues, success: a.success, recovery: a.recovery, fuel: a.fuel, mind: a.mind })
+const coachingOf = (a) => ({ objective: a.objective, cues: a.cues, tip: a.tip, success: a.success, recovery: a.recovery, fuel: a.fuel, mind: a.mind })
 server.tool('create_workout',
   'Schedule a strength/gym workout on a date. Platyplus is the MASTER and mirrors to intervals.icu. Re-call with the same id to UPDATE. Send the session as generated (warm-up + cool-down, main set ordered by equipment, unilateral moves both sides). Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind strategy); pick exercises via search_exercises.',
   {
@@ -116,9 +127,11 @@ server.tool('create_workout',
       mode: z.enum(['reps', 'timed']).optional().describe("default 'reps'"),
       sets: z.number().int().optional(),
       reps: z.number().int().optional(),
-      weight: z.number().optional().describe('kg (optional)'),
+      weight: z.number().optional().describe('kg (optional; the app auto-fills from e1RM if omitted)'),
       seconds: z.number().int().optional().describe('work seconds for timed mode'),
       rest: z.number().int().optional().describe('rest seconds (optional)'),
+      tempo: z.string().optional().describe('lifting TEMPO / time-under-tension as 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower, 1s pause, 1s lift, 0s top. Prescribe a slower eccentric (3-4s) for hypertrophy/control, faster for power. Omit if not relevant.'),
+      tip: z.string().optional().describe('one short FORM cue for THIS lift, e.g. "brace hard, drive mid-foot, no bounce out of the hole"'),
     })).min(1).describe('ordered list of exercises'),
     notes: z.string().optional(),
     ...COACHING,
@@ -190,9 +203,19 @@ server.tool('notify',
   wrap((a) => api('POST', '/api/notify', { title: a.title, body: a.body, items: a.items })))
 
 server.tool('save_coach_review',
-  'Save YOUR review of a COMPLETED workout so it shows in the athlete\'s Progress "Coach takeaways" + post-workout view. Call this after you assess how a session went (e.g. after they submit post-workout feedback). Give a one-line verdict, 2-4 short takeaways, and what\'s next.',
-  { date: z.string().describe('the workout date, YYYY-MM-DD'), verdict: z.string().optional().describe('one-line overall verdict, e.g. "Solid threshold work — held the watts, legs faded late."'), takeaways: z.array(z.string()).optional().describe('2-4 short bullets shown on the Progress card'), next: z.string().optional().describe('what to do next / next session focus'), sport: z.string().optional().describe('ride | run | gym'), score: z.number().optional().describe('optional 0-100 execution score'), planId: z.string().optional().describe('the planned workout id, if reviewing one') },
-  wrap((a) => api('POST', '/api/coach-review', { date: a.date, verdict: a.verdict, takeaways: a.takeaways, next: a.next, sport: a.sport, score: a.score, planId: a.planId })))
+  'Save YOUR PRIVATE review of a COMPLETED workout. Shows in the athlete\'s post-workout view + Progress, AND (when activityId is given) is auto-posted to the intervals Notes/comment thread in the standard "Coach note" format. This is the PRIVATE channel — put score, mind, recovery, health, and next-plan context HERE, never in the public title/description (use set_activity_text for that). Give a one-line verdict, 2-4 takeaways, and what\'s next.',
+  { date: z.string().describe('the workout date, YYYY-MM-DD'), verdict: z.string().optional().describe('one-line overall verdict, e.g. "Solid threshold work — held the watts, legs faded late."'), takeaways: z.array(z.string()).optional().describe('2-4 short bullets shown on the Progress card'), execution: z.array(z.string()).optional().describe('what went well / the main limiter'), body: z.string().optional().describe('body-maintenance action or "no new issue"'), next: z.string().optional().describe('what to do next / next session focus'), recovery: z.string().optional().describe('recovery + nutrition/supplement note (posted as a second Recovery/Supplements comment)'), sport: z.string().optional().describe('ride | run | gym'), score: z.number().optional().describe('execution score 0-10 (shown as N/10)'), planId: z.string().optional().describe('the planned workout id, if reviewing one'), activityId: z.string().optional().describe('the intervals activity id, if reviewing a completed device activity — REQUIRED for the note to sync to intervals') },
+  wrap((a) => api('POST', '/api/coach-review', { date: a.date, verdict: a.verdict, takeaways: a.takeaways, execution: a.execution, body: a.body, next: a.next, recovery: a.recovery, sport: a.sport, score: a.score, planId: a.planId, activityId: a.activityId })))
+
+server.tool('set_activity_text',
+  'Set the PUBLIC title + description on a COMPLETED intervals activity (this SYNCS TO STRAVA and is visible to others). PUBLIC-SAFE ONLY: describe the workout itself — type, route/place, terrain, effort style, conditions, duration. NEVER include score, health/pain/niggles, fatigue/recovery status, feelings ("felt good so I…"), or future-plan protection — those go in save_coach_review (the private Notes thread). Write like a human athlete wrote it (e.g. "Backroad Hill Efforts" / "KOM on the Backroads"), not a coach analysis. Follow instructions_public_text.',
+  { activityId: z.string().describe('the intervals activity id (e.g. i161879537)'), name: z.string().describe('public title, concise + human'), description: z.string().optional().describe('public-safe ride/run description') },
+  wrap((a) => api('PUT', `/api/activity/${a.activityId}/public-text`, { name: a.name, description: a.description })))
+
+server.tool('finish_onboarding',
+  'Call this ONCE at the END of onboarding a brand-new athlete — AFTER you have saved their profile (set_athlete_profile) AND drafted their first week. It marks setup complete so the app stops showing the "set me up" prompt. Do not call it before the first week exists.',
+  {},
+  wrap(() => api('POST', '/api/onboarding/complete', {})))
 
 await server.connect(new StdioServerTransport())
 console.error(`platyplus-mcp ready -> ${BASE}`)

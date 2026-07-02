@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { localISO } from '../date'
-import { fetchWellness, fetchPowerCurve, type IcuWellness, type PowerCurve } from '../intervals'
+import { fetchWellness, type IcuWellness } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
-import { TrendChart, BarChart, PowerCurveChart, InfoDot, ChartModal, bestAt, type Series } from '../charts'
+import { TrendChart, BarChart, InfoDot, ChartModal, type Series } from '../charts'
+import { hasModule } from '../modules'
+import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
+import { authApi } from '../auth/api'
 
-const ENDURANCE = ['cycling', 'running', 'triathlon']
-const RANGES: [string, number][] = [['6 wk', 42], ['3 mo', 90], ['6 mo', 180], ['1 yr', 365]]
-const last = (a: (number | null)[]) => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i] as number; return null }
+// #248 — small avg·min·max line for a chart series
+const statLine = (a: (number | null)[]): string => { const v = a.filter((x): x is number => x != null); return v.length ? `avg ${Math.round(v.reduce((s, b) => s + b, 0) / v.length)} · min ${Math.round(Math.min(...v))} · max ${Math.round(Math.max(...v))}` : '' }
+
+export const last = (a: (number | null)[]) => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i] as number; return null }
 const fmt = (v: number | null, unit = '') => (v == null ? '—' : `${Math.round(v * 10) / 10}${unit}`)
 
 function formZone(v: number | null) {
@@ -36,6 +40,16 @@ function fitnessInsight(fitness: (number | null)[]): string {
   if (d < -1) return `📉 Fitness is sliding (${d}) — add some load to rebuild.`
   return `➡️ Fitness is steady — a maintenance block.`
 }
+function loadInsight(load: (number | null)[]): string {
+  const v = load.filter((x): x is number => x != null)
+  if (!v.length) return ''
+  const avg = Math.round(v.reduce((a, b) => a + b, 0) / v.length)
+  const recent = v.slice(-7), older = v.slice(-14, -7)
+  const ra = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 0
+  const oa = older.length ? older.reduce((a, b) => a + b, 0) / older.length : 0
+  const trend = oa && ra > oa * 1.15 ? ' — ramping up this week' : oa && ra < oa * 0.85 ? ' — easing off this week' : ''
+  return `🔥 ~${avg} TSS/day on average, peaking at ${Math.max(...v)}${trend}.`
+}
 function formInsight(form: number | null): string {
   const z = formZone(form).label
   if (z === 'Optimal') return `💪 Optimal zone — you're training productively and gaining fitness.`
@@ -45,7 +59,7 @@ function formInsight(form: number | null): string {
   return `➡️ Maintenance — add stress to keep progressing.`
 }
 
-function MiniCard({ title, value, unit, hint, series, bars, color }: { title: string; value: number | null; unit?: string; hint?: string; series?: Series; bars?: (number | null)[]; color?: string }) {
+export function MiniCard({ title, value, unit, hint, series, bars, color }: { title: string; value: number | null; unit?: string; hint?: string; series?: Series; bars?: (number | null)[]; color?: string }) {
   const [hv, setHv] = useState<number | null>(null)
   const data = bars || series?.data || []
   const shown = hv != null && data[hv] != null ? (data[hv] as number) : value
@@ -60,62 +74,52 @@ function MiniCard({ title, value, unit, hint, series, bars, color }: { title: st
 export default function Fitness() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [preset, setPreset] = useState<number | 'custom'>(90)
   const [from, setFrom] = useState(localISO(new Date(Date.now() - 90 * 86400000)))
   const [to, setTo] = useState(localISO())
   const [rows, setRows] = useState<IcuWellness[] | null>(null)
-  const [pc, setPc] = useState<PowerCurve | null>(null)
+  const [proj, setProj] = useState<Awaited<ReturnType<typeof authApi.readinessProjection>> | null>(null) // #248
   const [modal, setModal] = useState<{ title: string; node: ReactNode } | null>(null)
   const sports = user?.sports || []
-  const isEndurance = !sports.length || sports.some((sp) => ENDURANCE.includes(sp))
-  const isCycling = !sports.length || sports.some((sp) => ['cycling', 'triathlon'].includes(sp))
-  const applyPreset = (d: number) => { setPreset(d); setFrom(localISO(new Date(Date.now() - d * 86400000))); setTo(localISO()) }
+  const isEndurance = hasModule(sports, 'endurance') // #198 central helper (empty = show all)
 
   useEffect(() => {
     if (!from || !to) return
     const [f, t] = from <= to ? [from, to] : [to, from] // forgiving: auto-swap reversed range
-    setRows(null); setPc(null)
+    setRows(null)
     fetchWellness(f, t).then(setRows).catch(() => setRows([]))
-    if (isCycling) fetchPowerCurve(Math.max(1, Math.round((Date.parse(t) - Date.parse(f)) / 86400000))).then(setPc).catch(() => setPc(null))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to])
+  useEffect(() => { if (isEndurance && user?.hasIcuKey) authApi.readinessProjection(14).then(setProj).catch(() => {}) }, [isEndurance, user?.hasIcuKey])
 
   const s = useMemo(() => {
     const r = rows || []
     const col = (k: keyof IcuWellness) => r.map((d) => d[k] as number | null)
-    const fitness = col('fitness'), fatigue = col('fatigue'), form = col('form')
-    const weight = col('weight'), eftp = col('eftp')
-    // VO2max estimate (Coggan: 10.8·FTP/kg + 7) per day where both eFTP and weight exist.
-    const vo2 = r.map((d) => (d.eftp && d.weight ? Math.round((10.8 * d.eftp / d.weight + 7) * 10) / 10 : null))
-    return { fitness, fatigue, form, weight, eftp, vo2, hrv: col('hrv'), rhr: col('restingHR'), sleep: col('sleepHours'), load: col('load') }
+    return { fitness: col('fitness'), fatigue: col('fatigue'), form: col('form'), load: col('load') }
   }, [rows])
 
   const fz = formZone(last(s.form))
-  const dates = (rows || []).map((d) => new Date(d.date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))
+  const pastDates = (rows || []).map((d) => new Date(d.date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))
+  // #248: append a dashed forward PROJECTION (from planned load) to the Fitness/Fatigue + Form charts.
+  const projOn = !!(proj?.available && proj.ctl?.length)
+  const fut = projOn ? proj!.dates!.map((d) => new Date(d + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })) : []
+  const dates = [...pastDates, ...fut]
+  const pad = (a: (number | null)[]) => projOn ? [...a, ...Array(fut.length).fill(null)] : a
+  const projLine = (a: (number | null)[], p?: number[]) => projOn && p ? [...Array(Math.max(0, pastDates.length - 1)).fill(null), last(a), ...p] : []
 
   return (
     <div>
       <div className="sub-head">
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
-        <div className="sub-head-t"><h1>Fitness</h1><p>Your form & trends, from intervals.icu</p></div>
+        <div className="sub-head-t"><h1>Load &amp; Form</h1><p>Whole-body training load &amp; freshness, from intervals.icu</p></div>
       </div>
 
       {!isEndurance ? (
-        <p className="meta">Fitness/Form tracking is for endurance sports (cycling, running, triathlon). Set your main sport in Profile.</p>
+        <p className="meta">Load &amp; Form tracking is for endurance sports (cycling, running, triathlon). Set your main sport in Profile.</p>
       ) : !user?.hasIcuKey ? (
-        <p className="meta">Connect intervals.icu in <span style={{ color: 'var(--accent)' }}>Settings → Connections</span> to see your fitness trends.</p>
+        <p className="meta">Connect intervals.icu in <span style={{ color: 'var(--accent)' }}>Profile</span> to see your load &amp; form.</p>
       ) : (
         <>
-          <div className="chips" style={{ marginBottom: preset === 'custom' ? 8 : 12 }}>
-            {RANGES.map(([label, d]) => <button key={d} className={'chip' + (preset === d ? ' chip--active' : '')} onClick={() => applyPreset(d)}>{label}</button>)}
-            <button className={'chip' + (preset === 'custom' ? ' chip--active' : '')} onClick={() => setPreset('custom')}>Custom</button>
-          </div>
-          {preset === 'custom' && (
-            <div className="date-range">
-              <label>From<input type="date" value={from} max={localISO()} onChange={(e) => setFrom(e.target.value)} /></label>
-              <label>To<input type="date" value={to} max={localISO()} onChange={(e) => setTo(e.target.value)} /></label>
-            </div>
-          )}
+          <DateRangeFilter presets={TRAINING_PRESETS} from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
 
           {rows === null ? <p className="meta">Loading…</p> : !rows.length ? <p className="meta">No fitness data in this range.</p> : (
             <>
@@ -127,43 +131,35 @@ export default function Fitness() {
               </div>
 
               <div className="card chart-card" style={{ padding: '12px 14px' }}>
-                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Fitness & Fatigue', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} series={[{ label: 'Fitness', color: '#4aa3ff', data: s.fitness, area: true }, { label: 'Fatigue', color: '#c061ff', data: s.fatigue }]} /> })}>⤢</button>
-                <div className="fit-legend"><span style={{ color: '#4aa3ff' }}>● Fitness</span><span style={{ color: '#c061ff' }}>● Fatigue</span></div>
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Fitness & Fatigue', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} series={[{ label: 'Fitness', color: '#4aa3ff', data: pad(s.fitness), area: true }, { label: 'Fatigue', color: '#c061ff', data: pad(s.fatigue) }, ...(projOn ? [{ label: 'Fitness·proj', color: '#4aa3ff', data: projLine(s.fitness, proj!.ctl), dash: true }, { label: 'Fatigue·proj', color: '#c061ff', data: projLine(s.fatigue, proj!.atl), dash: true }] : [])]} /> })}>⤢</button>
+                <div className="fit-legend"><span style={{ color: '#4aa3ff' }}>● Fitness</span><span style={{ color: '#c061ff' }}>● Fatigue</span>{projOn && <span className="meta">- - projected</span>}</div>
                 <TrendChart height={170} axes labels={dates} series={[
-                  { label: 'Fitness', color: '#4aa3ff', data: s.fitness, area: true },
-                  { label: 'Fatigue', color: '#c061ff', data: s.fatigue },
+                  { label: 'Fitness', color: '#4aa3ff', data: pad(s.fitness), area: true },
+                  { label: 'Fatigue', color: '#c061ff', data: pad(s.fatigue) },
+                  ...(projOn ? [{ label: 'Fitness·proj', color: '#4aa3ff', data: projLine(s.fitness, proj!.ctl), dash: true }, { label: 'Fatigue·proj', color: '#c061ff', data: projLine(s.fatigue, proj!.atl), dash: true }] : []),
                 ]} />
-                <p className="fit-insight">{fitnessInsight(s.fitness)}</p>
+                <p className="fit-insight">{fitnessInsight(s.fitness)} <span className="meta">· Fitness {statLine(s.fitness)}</span></p>
               </div>
 
               <div className="card chart-card" style={{ padding: '12px 14px', marginTop: 12 }}>
-                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Form', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: s.form }]} /> })}>⤢</button>
-                <div className="fit-legend"><span style={{ color: fz.color }}>● Form</span><span style={{ color: '#34e07d' }}>● optimal zone (−10…−30)</span></div>
-                <TrendChart height={130} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: s.form }]} />
-                <p className="fit-insight">{formInsight(last(s.form))}</p>
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Form', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: pad(s.form) }, ...(projOn ? [{ label: 'Form·proj', color: fz.color, data: projLine(s.form, proj!.form), dash: true }] : [])]} /> })}>⤢</button>
+                <div className="fit-legend"><span style={{ color: fz.color }}>● Form</span><span style={{ color: '#34e07d' }}>● optimal zone</span>{projOn && <span className="meta">- - projected</span>}</div>
+                <TrendChart height={130} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: pad(s.form) }, ...(projOn ? [{ label: 'Form·proj', color: fz.color, data: projLine(s.form, proj!.form), dash: true }] : [])]} />
+                <p className="fit-insight">{formInsight(last(s.form))} <span className="meta">· Form {statLine(s.form)}</span>{projOn && proj!.form!.length ? <span className="meta"> · projected → {proj!.form![proj!.form!.length - 1]} in {fut.length}d</span> : null}</p>
               </div>
 
-              <div className="fit-grid">
-                <MiniCard title="VO₂max (est.)" value={last(s.vo2)} hint="Aerobic engine size (ml/kg/min). Higher = fitter. Estimated from eFTP ÷ weight." series={{ label: '', color: '#34e07d', data: s.vo2, area: true }} />
-                <MiniCard title="eFTP" value={last(s.eftp)} unit=" W" hint="Estimated threshold power — watts you can hold ~1 hour. Higher = stronger." series={{ label: '', color: '#ffb020', data: s.eftp }} />
-                <MiniCard title="Weight" value={last(s.weight)} unit=" kg" hint="Body weight." series={{ label: '', color: '#e8e8ee', data: s.weight }} />
-                <MiniCard title="HRV" value={last(s.hrv)} hint="Heart-rate variability (ms). Above your usual = recovered; a drop = fatigue/stress." series={{ label: '', color: '#ff6b9d', data: s.hrv, area: true }} />
-                <MiniCard title="Resting HR" value={last(s.rhr)} unit=" bpm" hint="Resting heart rate. Lower than usual = recovered; a spike = tired/unwell." series={{ label: '', color: '#ff5d5d', data: s.rhr }} />
-                <MiniCard title="Sleep" value={last(s.sleep)} unit=" h" hint="Hours slept per night." bars={s.sleep} color="#7a8cff" />
-                <MiniCard title="Training load / day" value={last(s.load)} hint="How hard each day was (TSS — duration × intensity). Taller bar = harder day." bars={s.load} color="#9b6bff" />
+              <div className="card chart-card" style={{ padding: '12px 14px', marginTop: 12 }}>
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Training load / day', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} series={[{ label: 'Load', color: '#9b6bff', data: s.load, area: true }]} /> })}>⤢</button>
+                <div className="fit-legend"><span style={{ color: '#9b6bff' }}>● Training load / day<InfoDot text="How hard each day was — TSS (duration × intensity). Higher = harder day." /></span></div>
+                <TrendChart height={130} axes labels={dates} series={[{ label: 'Load', color: '#9b6bff', data: s.load, area: true }]} />
+                <p className="fit-insight">{loadInsight(s.load)}</p>
               </div>
-              {isCycling && pc && (
-                <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
-                  <div className="fit-legend"><span style={{ color: '#34e07d' }}>● Power curve<InfoDot text="The most power (watts) you can hold for each duration — sprints on the left (seconds), endurance on the right (hours). Push a line up = you got stronger at that effort." /></span></div>
-                  <PowerCurveChart secs={pc.secs} watts={pc.watts} />
-                  <div className="be-row">
-                    {([[5, '5s'], [60, '1m'], [300, '5m'], [1200, '20m']] as [number, string][]).map(([d, label]) => {
-                      const w = bestAt(pc.secs, pc.watts, d), wt = last(s.weight)
-                      return <div key={label} className="be"><span>{label}</span><b>{w ? Math.round(w) : '—'} W</b>{w && wt ? <em>{(w / wt).toFixed(2)} W/kg</em> : null}</div>
-                    })}
-                  </div>
-                </div>
-              )}
+              {/* sleep/HRV/resting-HR/weight moved to their own page (#194a) */}
+              <Link to="/wellness" className="card hub-link" style={{ marginTop: 12 }}>
+                <span className="hub-link__ic">❤️</span>
+                <span className="hub-link__t"><h3>Wellness</h3><div className="meta">Sleep · HRV · resting HR · weight trends</div></span>
+                <span className="hub-link__ch">›</span>
+              </Link>
               <p className="meta" style={{ marginTop: 10 }}>All read live from intervals.icu — Platyplus doesn't store these. The number on each card is your most recent day.</p>
             </>
           )}

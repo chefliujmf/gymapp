@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { fetchActivity, fetchActivityStreams, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams } from '../intervals'
-import { TrendChart, PowerCurveChart } from '../charts'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { fetchActivity, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
+import { TrendChart, PowerCurveChart, PowerBlocks, minuteTicks } from '../charts'
 import { zoneColor } from '../ui'
+import { findCoachPlan } from '../plan'
 import { getSetting } from '../db'
+import { authApi, type CoachReview } from '../auth/api'
+import ActivityFeedback from '../ActivityFeedback'
+import CoachVerdict from '../CoachVerdict'
 import FlybyMap from '../FlybyMap'
 
 // #54 Power tab: mean-max power curve + time-in-zone, computed from the watts stream.
@@ -37,14 +41,27 @@ function RidePower({ streams, ftp }: { streams: ActivityStreams; ftp: number }) 
   const curve = meanMaxCurve(watts)
   const zsec = zoneSecs(watts, ftp)
   const total = zsec.reduce((a, b) => a + b, 0) || 1
+  // curve insight: 20-min best ≈ threshold read; zones insight: where the time actually went
+  const at = (d: number) => { const i = curve.secs.indexOf(d); return i >= 0 ? curve.watts[i] : null }
+  const w20 = at(1200) || at(600), peak = curve.watts[0]
+  const curveIns = w20 ? `Best 20-min ${w20} W ≈ your threshold read${peak ? ` · 5-s peak ${peak} W` : ''}` : peak ? `5-s peak ${peak} W` : null
+  const topZone = zsec.indexOf(Math.max(...zsec))
+  const zoneIns = total > 1 ? `Most time in ${ZONES[topZone]} (${Math.round((zsec[topZone] / total) * 100)}%) — ${topZone <= 1 ? 'a genuinely easy/aerobic session' : topZone <= 2 ? 'solid endurance-to-tempo load' : 'real intensity today'}` : null
   return (
     <div>
-      <div className="tl-card"><div className="tl-clabel">POWER CURVE · best avg by duration</div><PowerCurveChart secs={curve.secs} watts={curve.watts} height={170} /></div>
-      <div className="tl-clabel" style={{ marginTop: 6 }}>TIME IN ZONE · FTP {ftp} W</div>
-      <div className="zbar">{ZONES.map((_, i) => zsec[i] > 0 && <div key={i} style={{ width: `${(zsec[i] / total) * 100}%`, background: zoneColor(ZONE_PCT[i]) }} title={`${ZONES[i]} ${mmss(zsec[i])}`} />)}</div>
-      <div className="zlist">{ZONES.map((z, i) => zsec[i] > 0 && (
-        <div key={i} className="zrow"><span className="zdot" style={{ background: zoneColor(ZONE_PCT[i]) }} />{z}<b>{mmss(zsec[i])}</b><span className="meta">{Math.round((zsec[i] / total) * 100)}%</span></div>
-      ))}</div>
+      <div className="tl-card">
+        <div className="tl-clabel">POWER CURVE · best avg by duration (W)</div>
+        <PowerCurveChart secs={curve.secs} watts={curve.watts} height={170} />
+        {curveIns && <div className="act-ins"><span className="tag">💡</span>{curveIns}</div>}
+      </div>
+      <div className="tl-card">
+        <div className="tl-clabel">TIME IN ZONE · FTP {ftp} W</div>
+        <div className="zbar">{ZONES.map((_, i) => zsec[i] > 0 && <div key={i} style={{ width: `${(zsec[i] / total) * 100}%`, background: zoneColor(ZONE_PCT[i]) }} title={`${ZONES[i]} ${mmss(zsec[i])}`} />)}</div>
+        <div className="zlist">{ZONES.map((z, i) => zsec[i] > 0 && (
+          <div key={i} className="zrow"><span className="zdot" style={{ background: zoneColor(ZONE_PCT[i]) }} />{z}<b>{mmss(zsec[i])}</b><span className="meta">{Math.round((zsec[i] / total) * 100)}%</span></div>
+        ))}</div>
+        {zoneIns && <div className="act-ins"><span className="tag">💡</span>{zoneIns}</div>}
+      </div>
     </div>
   )
 }
@@ -65,23 +82,43 @@ const TL_ROWS = [
   { key: 'cadence', label: 'Cadence', unit: ' rpm', color: '#4aa3ff', area: false },
 ] as const
 
-// #54: stacked power/HR/altitude/cadence charts sharing ONE scrubber (synced cursor).
-function RideTimeline({ streams }: { streams: ActivityStreams }) {
+// elapsed seconds → compact axis label (mm:ss, or h:mm over an hour)
+const fmtElapsed = (s: number) => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}` : `${m}:${String(ss).padStart(2, '0')}` }
+
+// #54/#286: stacked power/HR/altitude/cadence charts sharing ONE scrubber, each to the chart
+// standard — Y axis (dense ticks), round-minute TIME x-axis + gridlines, avg·max in the header,
+// and a COMPUTED coach insight line under each (the "insight per section" JM asked for).
+function RideTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity }) {
   const [cur, setCur] = useState<number | null>(null)
   const rows = TL_ROWS.filter((r) => ((streams[r.key] as unknown[] | undefined)?.length || 0) > 1)
   if (!rows.length) return <p className="meta">No power / HR / altitude data for this activity.</p>
   const data: Record<string, (number | null)[]> = {}
   for (const r of rows) data[r.key] = ds(streams[r.key] as (number | null)[])
-  const at = (key: string) => { const arr = data[key]; const v = cur != null ? arr[cur] : arr[arr.length - 1]; return v == null ? null : Math.round(v) }
+  const timeArr = streams.time && streams.time.length > 1 ? ds(streams.time as number[]) : null
+  const totalSec = timeArr ? Number(timeArr[timeArr.length - 1]) || 0 : 0
+  const xTicks = totalSec > 0 ? minuteTicks(totalSec) : undefined
+  const timeLabels = timeArr ? timeArr.map((v) => (v == null ? '' : fmtElapsed(v as number))) : undefined
+  const stat = (key: string) => { const v = data[key].filter((x): x is number => x != null); if (!v.length) return ''; const avg = Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length); return ` · avg ${avg} · max ${Math.round(Math.max(...v))}` }
+  const avg = (key: string) => { const v = data[key].filter((x): x is number => x != null); return v.length ? Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length) : 0 }
+  const insight = (key: string): string | null => {
+    if (key === 'watts') { const vi = a.icu_variability_index; const np = a.icu_weighted_avg_watts ? Math.round(a.icu_weighted_avg_watts) : null; if (vi) return `NP ${np ?? avg('watts')} W · VI ${vi.toFixed(2)} — ${vi >= 1.15 ? 'stochastic: surges & coasts, not steady blocks' : vi >= 1.05 ? 'somewhat variable — rolling terrain' : 'steady, well-paced'}`; return `Avg ${avg('watts')} W over the ride` }
+    if (key === 'heartrate') { const mx = a.max_heartrate ? Math.round(a.max_heartrate) : Math.max(...data.heartrate.filter((x): x is number => x != null)); return `Avg ${avg('heartrate')} bpm, peaked ${mx} — effort held ${avg('heartrate') / mx >= 0.85 ? 'high' : 'moderate'} for the session` }
+    if (key === 'altitude') { const g = a.total_elevation_gain ? Math.round(a.total_elevation_gain) : null; return g ? `${g} m climbed — ${g > 400 ? 'punchy up/down, hard to hold clean blocks' : g > 150 ? 'rolling terrain' : 'mostly flat'}` : null }
+    if (key === 'cadence') return `Avg ${avg('cadence')} rpm${avg('cadence') < 85 ? ' — grindy, watch the knees on climbs' : ''}`
+    return null
+  }
   return (
     <div>
-      <div className="tl-chips">{rows.map((r) => <div key={r.key} className="tl-chip"><span>{r.label}</span><b>{at(r.key) != null ? at(r.key) + r.unit : '—'}</b></div>)}</div>
-      {rows.map((r) => (
-        <div key={r.key} className="tl-card">
-          <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}</div>
-          <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={56} cursor={cur} onHover={setCur} />
-        </div>
-      ))}
+      {rows.map((r) => {
+        const ins = insight(r.key)
+        return (
+          <div key={r.key} className="tl-card">
+            <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}{stat(r.key)}</div>
+            <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={150} axes unit={r.unit} labels={timeLabels} xTicks={xTicks} cursor={cur} onHover={setCur} />
+            {ins && <div className="act-ins"><span className="tag">💡</span>{ins}</div>}
+          </div>
+        )
+      })}
       <p className="meta" style={{ textAlign: 'center', fontSize: 11 }}>drag across to scrub — all charts move together</p>
     </div>
   )
@@ -96,12 +133,22 @@ export default function ActivityDetail() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'map' | 'timeline' | 'power'>('map')
   const [ftp, setFtp] = useState(260)
+  const [review, setReview] = useState<CoachReview | null>(null)
+  const [note, setNote] = useState<CoachNote | null>(null)
+  const [icuComment, setIcuComment] = useState<string>()
   useEffect(() => {
     if (!id) return
     setLoading(true)
     getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }).catch(() => {})
+    // #273: the coach's verdict + the athlete's own comment come from intervals messages.
+    fetchActivityThread(id).then((t) => { setNote(t.coach); setIcuComment(t.comment) }).catch(() => {})
     Promise.all([fetchActivity(id), fetchActivityStreams(id)])
-      .then(([act, s]) => { setA(act); setStreams(s) })
+      .then(([act, s]) => {
+        setA(act); setStreams(s)
+        // …or an in-app review if the coach wrote one here (matched by id, else same-day).
+        const day = (act?.start_date_local || '').slice(0, 10)
+        if (day) authApi.coachReviews().then((rv) => setReview(rv.find((r) => r.activityId === id) || rv.find((r) => r.date === day) || null)).catch(() => {})
+      })
       .finally(() => setLoading(false))
   }, [id])
 
@@ -109,29 +156,59 @@ export default function ActivityDetail() {
   if (!a) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button><h1>Activity not found</h1><p className="meta">It may not be on intervals, or you're not connected.</p></div>
 
   const track = cleanLatLng(streams.latlng)
+  // #293 — link back to the coach plan this activity fulfilled (match day + sport).
+  const plan = findCoachPlan((a.start_date_local || '').slice(0, 10), sportOfActivity(a))
   const hasTimeline = TL_ROWS.some((r) => ((streams[r.key] as unknown[] | undefined)?.length || 0) > 1)
   const hasPower = (streams.watts?.filter((v) => v != null).length || 0) >= 5
   const tabs = ([track.length > 1 && 'map', hasTimeline && 'timeline', hasPower && 'power'].filter(Boolean)) as ('map' | 'timeline' | 'power')[]
   const activeTab: 'map' | 'timeline' | 'power' = tabs.includes(tab) ? tab : (tabs[0] || 'map')
+  // #273 — intervals-style metric grid (only what this activity actually has).
   const stats: [string, string][] = ([
-    a.distance ? ['Distance', `${(a.distance / 1000).toFixed(1)} km`] : null,
     a.moving_time ? ['Time', fmtTime(a.moving_time)] : null,
+    a.distance ? ['Distance', `${(a.distance / 1000).toFixed(1)} km`] : null,
+    a.icu_intensity ? ['Intensity', `${Math.round(a.icu_intensity <= 1.5 ? a.icu_intensity * 100 : a.icu_intensity)}%`] : null,
+    a.icu_training_load ? ['Load (TSS)', String(a.icu_training_load)] : null,
+    a.icu_weighted_avg_watts ? ['Norm power', `${Math.round(a.icu_weighted_avg_watts)} W`] : null,
     a.icu_average_watts ? ['Avg power', `${Math.round(a.icu_average_watts)} W`] : null,
+    a.icu_variability_index ? ['Variability', a.icu_variability_index.toFixed(2)] : null,
+    a.icu_eftp ? ['Act. eFTP', `${Math.round(a.icu_eftp)} W`] : null,
     a.average_heartrate ? ['Avg HR', `${Math.round(a.average_heartrate)} bpm`] : null,
+    a.max_heartrate ? ['Max HR', `${Math.round(a.max_heartrate)} bpm`] : null,
+    a.trimp ? ['TRIMP', String(Math.round(a.trimp))] : null,
+    a.average_cadence ? ['Cadence', String(Math.round(a.average_cadence))] : null,
     a.total_elevation_gain ? ['Elevation', `${Math.round(a.total_elevation_gain)} m`] : null,
-    a.icu_training_load ? ['TSS', String(a.icu_training_load)] : null,
+    a.calories ? ['Calories', String(Math.round(a.calories))] : null,
     a.avg_lr_balance ? ['L/R balance', `${Math.round(100 - a.avg_lr_balance)} · ${Math.round(a.avg_lr_balance)}`] : null,
   ].filter(Boolean)) as [string, string][]
+  const device = a.device_name || a.source
+  const hasVerdict = !!review || !!note
+  // #286 hero + chips: 4 headline stats big, the rest as compact chips (JM pick B)
+  const HERO = ['Load (TSS)', 'Norm power', 'Intensity', 'Avg HR']
+  const hero: [string, string][] = stats.filter(([l]) => HERO.includes(l)).slice(0, 4)
+  const heroSet = new Set(hero.map((h) => h[0]))
+  for (const s of stats) { if (hero.length >= 4) break; if (!heroSet.has(s[0])) { hero.push(s); heroSet.add(s[0]) } }
+  const chips = stats.filter(([l]) => !heroSet.has(l))
 
   return (
     <div>
       <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
+        {(streams.watts?.filter((v) => v != null).length || 0) >= 9 && <div className="act-thumb"><PowerBlocks watts={streams.watts} ftp={ftp} /></div>}
         <div style={{ minWidth: 0 }}>
           <span className="eyebrow">{sportOfActivity(a) === 'ride' ? 'Ride' : sportOfActivity(a) === 'run' ? 'Run' : 'Workout'} · {isIndoorActivity(a) ? 'Indoor' : 'Outdoor'}</span>
           <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Activity'}</h1>
         </div>
       </div>
+
+      {!hasVerdict && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} />}
+
+      <CoachVerdict review={review} note={note} />
+      {a.description && a.description.trim() && (
+        <p className="meta" style={{ margin: '2px 2px 10px', whiteSpace: 'normal' }}>{a.description.replace(/\s*(#{1,3})\s*/g, ' ').replace(/\*\*/g, '').trim()}</p>
+      )}
+
+      <div className="act-hero">{hero.map(([l, v]) => <div key={l} className="ht"><b>{v}</b><span>{l}</span></div>)}</div>
+      {chips.length > 0 && <div className="act-chips">{chips.map(([l, v]) => <span key={l} className="act-chip"><b>{v}</b><span>{l}</span></span>)}</div>}
 
       {tabs.length > 0 && (
         <div className="act-tabs">
@@ -142,15 +219,17 @@ export default function ActivityDetail() {
       )}
 
       {activeTab === 'map' && <div className="card" style={{ padding: 6 }}><FlybyMap track={track} /></div>}
-      {activeTab === 'timeline' && <RideTimeline streams={streams} />}
+      {activeTab === 'timeline' && <RideTimeline streams={streams} a={a} />}
       {activeTab === 'power' && <RidePower streams={streams} ftp={ftp} />}
       {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
 
-      <div className="actstats">{stats.map(([l, v]) => <div key={l} className="actstat"><span>{l}</span><b>{v}</b></div>)}</div>
+      {hasVerdict && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} />}
 
       <div className="links" style={{ marginTop: 12 }}>
+        {plan && <Link className="done-link done-link--map" to={`/coach/${plan.id}`}>📋 Planned workout →</Link>}
         {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}
         {a.strava_id && <a className="done-link" href={`https://www.strava.com/activities/${a.strava_id}`} target="_blank" rel="noreferrer">Strava ↗</a>}
+        {device && <span className="done-link" style={{ opacity: 0.7 }}>from {device}</span>}
       </div>
     </div>
   )

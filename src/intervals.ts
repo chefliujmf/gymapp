@@ -2,6 +2,7 @@
 // app can execute it. Read-only. Dev uses the /icu vite proxy; production will
 // use a serverless function so the key stays server-side.
 import { getSetting, setSetting } from './db'
+import { ICU_FIELDS, ICU_FIELD_CODES, FEEL_LABELS } from './icu-fields'
 
 const ICU = '/icu/api/v1'
 const DEFAULT_ATHLETE = 'i28814'
@@ -149,21 +150,54 @@ export interface IcuActivity {
   distance?: number // metres
   total_elevation_gain?: number // metres climbed
   icu_average_watts?: number
+  icu_weighted_avg_watts?: number // Normalized Power
+  icu_variability_index?: number
+  icu_efficiency_factor?: number
+  icu_eftp?: number // estimated FTP from this activity
   average_heartrate?: number
+  max_heartrate?: number
+  average_cadence?: number
+  calories?: number
   icu_training_load?: number // TSS
   icu_intensity?: number // IF
+  trimp?: number // HR-based load
   avg_lr_balance?: number // average left/right pedal balance (% on the right), when the meter records it
   trainer?: boolean
   icu_rpe?: number // 1-10
-  feel?: number // 1-5
+  feel?: number // 1-5 (intervals: 1=Strong … 5=Weak)
   strava_id?: number | string // set when the activity is linked to Strava
+  device_name?: string // e.g. Garmin/Coros/Wahoo — the source that uploaded to intervals
+  source?: string
+  description?: string // the athlete's / coach's activity notes (public-ish text)
+  // #273 — intervals custom ACTIVITY_FIELDs (private feedback), returned as top-level keys by code.
+  LegsBefore?: string; LegsAfter?: string; FuelGI?: string; PainNiggles?: string; LifeConstraint?: string; MentalState?: string
+}
+
+/** Read feedback the athlete/coach ALREADY logged on an intervals activity (feel · RPE · custom
+ *  fields), so Platyplus shows it instead of asking again. intervals stores these as 1-BASED number
+ *  indices into the option lists (verified 2026-07-01). Returns null when nothing is present. */
+export function readIcuFeedback(a?: IcuActivity | null): { feel?: string; rpe?: number; fields: Record<string, string> } | null {
+  if (!a) return null
+  const fields: Record<string, string> = {}
+  for (const [label, opts] of ICU_FIELDS) {
+    const code = ICU_FIELD_CODES[label]
+    const raw = code ? (a as unknown as Record<string, unknown>)[code] : undefined
+    const idx = typeof raw === 'number' ? raw : (typeof raw === 'string' && /^\d+$/.test(raw) ? Number(raw) : NaN)
+    if (idx >= 1 && idx <= opts.length) fields[label] = opts[idx - 1]      // 1-based index → label
+    else if (typeof raw === 'string' && raw.trim() && opts.includes(raw)) fields[label] = raw // (defensive: label form)
+  }
+  const feel = a.feel && a.feel >= 1 && a.feel <= FEEL_LABELS.length ? FEEL_LABELS[a.feel - 1] : undefined
+  const rpe = a.icu_rpe && a.icu_rpe >= 1 && a.icu_rpe <= 10 ? Math.round(a.icu_rpe) : undefined
+  if (!feel && !rpe && Object.keys(fields).length === 0) return null
+  return { feel, rpe, fields }
 }
 /** Completed activities in a window (read-only). Empty on no key / error. */
 export async function fetchActivities(oldest: string, newest: string): Promise<IcuActivity[]> {
   const { apiKey, athleteId, serverKey } = await getIcuConfig()
   if (!apiKey && !serverKey) return []
   try {
-    const res = await fetch(`${ICU}/athlete/${athleteId}/activities?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey) })
+    // #267: no-store so a deleted-upstream activity can't be served from cache.
+    const res = await fetch(`${ICU}/athlete/${athleteId}/activities?oldest=${oldest}&newest=${newest}`, { headers: icuHeaders(apiKey), cache: 'no-store' })
     return res.ok ? await res.json() : []
   } catch { return [] }
 }
@@ -191,6 +225,49 @@ export async function fetchActivityStreams(id: string | number, types: string[] 
     if (Array.isArray(arr)) for (const s of arr) if (s?.type && Array.isArray(s.data)) out[s.type] = s.data
     return out as ActivityStreams
   } catch { return {} }
+}
+// #273 — the coach's post-workout review lives as intervals activity MESSAGES (a comment
+// thread). The coach posts via the athlete's own key, so author name can't distinguish
+// coach from athlete — we recognise coach messages by their template (a "Coach note …"
+// header, a "Score: N/10", or the "Recovery / Supplements" companion). readIcuFeedback
+// reads the athlete's fields; this reads the COACH's words so we can show them (#273 mock).
+export interface CoachSection { title: string; lines: string[] }
+export interface CoachNote { score?: number; title?: string; sections: CoachSection[] }
+const COACH_HDR = /^(Coach note|Recovery\s*\/\s*Supplements)\b/i
+const isCoachMsg = (content: string) => {
+  const first = (content || '').trim().split('\n')[0] || ''
+  return COACH_HDR.test(first) || /\bScore:\s*\d+\s*\/\s*10\b/i.test(content)
+}
+/** Parse the coach's message(s) into score + titled sections (pure — unit-tested). */
+export function parseCoachNote(contents: string[]): CoachNote {
+  const sections: CoachSection[] = []
+  let title: string | undefined, score: number | undefined, cur: CoachSection | null = null
+  for (const content of contents) for (const raw of (content || '').split('\n')) {
+    const line = raw.trim()
+    if (!line) continue
+    const sm = line.match(/Score:\s*(\d+)\s*\/\s*10/i); if (sm && score == null) score = Number(sm[1])
+    const cn = line.match(/^Coach note\s*[-–—:]\s*(.+)$/i); if (cn) { title = cn[1].trim(); continue }
+    if (/^[-•*]\s+/.test(line)) { if (!cur) { cur = { title: '', lines: [] }; sections.push(cur) } cur.lines.push(line.replace(/^[-•*]\s+/, '').trim()) }
+    else { cur = { title: line, lines: [] }; sections.push(cur) }
+  }
+  return { score, title, sections: sections.filter((s) => s.lines.length) }
+}
+/** The intervals message thread for an activity, split into the coach's parsed review and the
+ *  athlete's own free-text comment(s) (#273 — "my comments" must show, not just the coach's). */
+export interface IcuThread { coach: CoachNote | null; comment?: string }
+export async function fetchActivityThread(id: string | number): Promise<IcuThread> {
+  const { apiKey, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return { coach: null }
+  try {
+    const res = await fetch(`${ICU}/activity/${id}/messages`, { headers: icuHeaders(apiKey), cache: 'no-store' })
+    if (!res.ok) return { coach: null }
+    const msgs = (await res.json()) as { content?: string }[]
+    const list = Array.isArray(msgs) ? msgs.filter((m) => m && typeof m.content === 'string') : []
+    const coachMsgs = list.filter((m) => isCoachMsg(m.content!))
+    const mine = list.filter((m) => !isCoachMsg(m.content!)).map((m) => m.content!.trim()).filter(Boolean)
+    const note = coachMsgs.length ? parseCoachNote(coachMsgs.map((m) => m.content!)) : null
+    return { coach: note && note.sections.length ? note : null, comment: mine.join('\n\n') || undefined }
+  } catch { return { coach: null } }
 }
 export const cleanLatLng = (t?: [number, number][]) => (t || []).filter((p) => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
 export const sportOfActivity = (a: IcuActivity) => (/run/i.test(a.type) ? 'run' : /ride|cycl/i.test(a.type) ? 'ride' : 'gym')
@@ -346,6 +423,24 @@ export function gymTemplateId(e: IcuEvent): number | undefined {
 /** A flattened player segment: ramps from powerStart% to powerEnd% of FTP. */
 export interface Segment { duration: number; powerStart: number; powerEnd: number; label?: string; hr?: string }
 
+// Coggan power zones → representative %FTP. intervals expresses some steps as
+// `{units:'power_zone', value:N}` ("ride in zone N") — without this map, value N (e.g. 2)
+// was read as a raw % → a Zone-2 endurance block rendered as 2% FTP ≈ 5 W (the bug JM hit).
+const ZONE_PCT: Record<number, number> = { 1: 50, 2: 65, 3: 83, 4: 98, 5: 113, 6: 135, 7: 160 }
+
+/** Resolve a workout step's power to {start,end} as %FTP, handling ramps, steady %, and zones. */
+export function stepPctFtp(p?: IcuStep['power']): { start: number; end: number; label?: string } {
+  if (!p) return { start: 0, end: 0 }
+  if (p.units === 'power_zone') {
+    const z = Math.round(p.value ?? 0)
+    // known zone → its midpoint %FTP (flat block); odd value that looks like a % → use it; else endurance
+    const pct = ZONE_PCT[z] ?? (p.value && p.value >= 20 ? p.value : 65)
+    return { start: pct, end: pct, label: z >= 1 && z <= 7 ? `Z${z}` : undefined }
+  }
+  // %ftp ramp {start,end} or steady {value}; fall back to value so steady efforts aren't 0 (#72/#107)
+  return { start: p.start ?? p.value ?? 0, end: p.end ?? p.value ?? 0 }
+}
+
 /** Flatten workout_doc steps, expanding repeat blocks, into player segments. */
 export function flattenIcuSteps(steps: IcuStep[] = []): Segment[] {
   const out: Segment[] = []
@@ -355,10 +450,8 @@ export function flattenIcuSteps(steps: IcuStep[] = []): Segment[] {
     } else if (s.steps) {
       s.steps.forEach(walk)
     } else if (s.duration) {
-      // steady steps carry {value}; ramps carry {start,end}. Fall back to value so a
-      // steady effort isn't flattened to 0 (#72 flat-blue) and warmups render (#107).
-      const p = s.power
-      out.push({ duration: s.duration, powerStart: p?.start ?? p?.value ?? 0, powerEnd: p?.end ?? p?.value ?? 0 })
+      const { start, end, label } = stepPctFtp(s.power)
+      out.push({ duration: s.duration, powerStart: start, powerEnd: end, label })
     }
   }
   steps.forEach(walk)

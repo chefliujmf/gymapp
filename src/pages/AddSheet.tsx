@@ -4,7 +4,12 @@ import { calApi, newId } from '../calendar'
 import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
 import { segmentsFromEndurance } from '../ride'
 import type { WorkoutTemplate, RideTemplate } from '../db'
+import { useAuth } from '../auth/AuthContext'
+import { hasModule } from '../modules'
 import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, X, Upload, Waves, Pill } from 'lucide-react'
+
+// #198: which module each sport tab belongs to (others — meal/mind/recovery/supplement/note — are universal).
+const TAB_MODULE: Record<string, string> = { ride: 'cycling', run: 'running', gym: 'strength' }
 
 export type SheetType = '' | 'ride' | 'run' | 'gym' | 'meal' | 'mind' | 'note' | 'recovery' | 'supplement'
 
@@ -26,6 +31,8 @@ const SUPPS = ['Creatine 5g', 'Vitamin D', 'Omega-3', 'Electrolytes', 'Whey prot
  *  Substitute mode is driven by `substitute` + `lockType` so this component does
  *  NOT depend on the Calendar's `Entry` type (avoids a circular import). */
 export function AddSheet({ date, substitute, lockType, ftp, templates, rideTemplates, onClose, onAdd, onReplaced }: { date: string; substitute?: boolean; lockType?: SheetType; ftp: number; templates: WorkoutTemplate[]; rideTemplates: RideTemplate[]; onClose: () => void; onAdd: () => void; onReplaced?: () => void }) {
+  const { user } = useAuth()
+  const sports = user?.sports || [] // #198: gate the sport tabs to the athlete's modules
   // Substitute is type-LOCKED to the replaced entry — pre-select its type and hide the picker.
   const [type, setType] = useState<SheetType>(() => lockType || '')
   const [q, setQ] = useState('')
@@ -57,7 +64,7 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
         {!type && (
           <>
             <div className="sheet-types">
-              {([['ride', 'Ride', Bike], ['run', 'Run', Footprints], ['gym', 'Gym', Dumbbell], ['meal', 'Meal', Salad], ['mind', 'Mind', Brain], ['recovery', 'Recovery', Waves], ['supplement', 'Supplement', Pill], ['note', 'Note', StickyNote]] as const).map(([t, label, Icon]) => (
+              {([['ride', 'Ride', Bike], ['run', 'Run', Footprints], ['gym', 'Gym', Dumbbell], ['meal', 'Meal', Salad], ['mind', 'Mind', Brain], ['recovery', 'Recovery', Waves], ['supplement', 'Supplement', Pill], ['note', 'Note', StickyNote]] as const).filter(([t]) => !TAB_MODULE[t] || hasModule(sports, TAB_MODULE[t])).map(([t, label, Icon]) => (
                 <button key={t} className="sheet-type" style={{ color: colorFor(t) }} onClick={() => setType(t)}><Icon size={22} /><span>{label}</span></button>
               ))}
             </div>

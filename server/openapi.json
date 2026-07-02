@@ -665,7 +665,10 @@
                 "properties": {
                   "title": { "type": "string", "description": "one-line summary, e.g. 'Updated your training plan'" },
                   "body": { "type": "string", "description": "optional one-line context" },
-                  "items": { "type": "array", "items": { "type": "string" }, "description": "bullets of what changed/was reviewed" }
+                  "items": { "type": "array", "items": { "type": "string" }, "description": "bullets of what changed/was reviewed" },
+                  "link": { "type": "string", "description": "#233 optional in-app route to open on tap (e.g. /coach/<planId>)" },
+                  "subkind": { "type": "string", "enum": ["update", "review"], "description": "#233 bell label (default update)" },
+                  "score": { "type": "number", "description": "#233 review execution score 0-10 (chip)" }
                 }
               }
             }
@@ -674,6 +677,36 @@
         "responses": {
           "201": { "description": "Notification created" },
           "400": { "description": "title is required" }
+        }
+      }
+    },
+    "/api/coach-memory": {
+      "put": {
+        "summary": "Coach saves its durable memory for the athlete (Bearer)",
+        "description": "What the coach has learned works/fails + how the athlete likes to be coached. Read every session, updated after. Separate from the athlete profile.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["memory"], "properties": { "memory": { "type": "string", "description": "full coach memory as markdown" } } } } }
+        },
+        "responses": { "200": { "description": "Saved" }, "413": { "description": "memory too long" } }
+      }
+    },
+    "/api/connections": {
+      "get": {
+        "summary": "Coach checks connections + data flow (Bearer)",
+        "description": "Returns whether intervals.icu/Strava are linked and whether data is actually flowing into intervals: recent activity count, latest activity (date/type/source), device sources feeding intervals, and whether HRV/sleep/resting-HR wellness is present. Used in onboarding to tell the athlete exactly what to connect.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Connection + data-flow status" } }
+      }
+    },
+    "/api/onboarding/complete": {
+      "post": {
+        "summary": "Coach marks onboarding complete (Bearer)",
+        "description": "Call ONCE at the end of onboarding a new athlete, after the profile is saved and the first week is drafted. Sets onboardedAt so the app stops showing the 'set me up' prompt.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Onboarding marked complete (returns onboardedAt)" }
         }
       }
     },
@@ -699,7 +732,23 @@
             }
           } } }
         },
-        "responses": { "201": { "description": "review stored" }, "400": { "description": "date required" } }
+        "responses": { "201": { "description": "review stored (and, if activityId + intervals connected, posted to the intervals Notes/comment thread in the Coach-note format — #290)" }, "400": { "description": "date required" } }
+      }
+    },
+    "/api/activity/{id}/public-text": {
+      "put": {
+        "summary": "Coach sets the PUBLIC title + description on a completed activity (Bearer) — syncs to Strava (#289)",
+        "description": "Public-safe ONLY: workout/route/effort/conditions. Private context (score, health, next-plan) goes in /api/coach-review, not here. PUTs name/description onto the intervals activity.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "intervals activity id, e.g. i161879537" }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": {
+            "type": "object",
+            "properties": { "name": { "type": "string", "description": "public title" }, "description": { "type": "string", "description": "public-safe description" } }
+          } } }
+        },
+        "responses": { "200": { "description": "updated" }, "400": { "description": "bad id / no intervals connection / nothing to set" }, "502": { "description": "intervals rejected the update" } }
       }
     },
     "/api/exercises": {
@@ -877,7 +926,7 @@
     },
     "/auth/checkin": {
       "post": {
-        "summary": "Upsert today's daily check-in (energy/sleep/soreness, each 1-5; soreness 5=very sore)",
+        "summary": "Upsert today's daily check-in (energy/sleep/soreness, each 1-5; soreness 5=very sore). Optional `auto` {energy,sleep,freshness} records the auto scores shown → personal calibration (#207 Phase 2b)",
         "tags": ["checkin"],
         "security": [{ "cookieAuth": [] }],
         "responses": { "200": { "description": "the saved check-in" } }
@@ -898,7 +947,66 @@
         "tags": ["checkin"],
         "security": [{ "cookieAuth": [] }],
         "parameters": [{ "name": "date", "in": "query", "schema": { "type": "string", "format": "date" } }],
-        "responses": { "200": { "description": "{ connected, sleep, freshness, energy (null on cold start), baseline, today }" } }
+        "responses": { "200": { "description": "{ connected, sleep, freshness, energy (null on cold start), calibration (learned per-dim offsets, #207 Phase 2b), baseline, today }" } }
+      }
+    },
+    "/auth/readiness-forecast": {
+      "get": {
+        "summary": "Forecast a FUTURE day's expected Freshness from planned load (projects CTL/ATL→Form). Only Freshness is forecastable ahead (#223)",
+        "tags": ["checkin"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "date", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } }],
+        "responses": { "200": { "description": "{ connected, future, available, date, daysOut, form, freshness (1-5), acwr, totalPlannedLoad, plannedDays }" } }
+      }
+    },
+    "/auth/readiness-projection": {
+      "get": {
+        "summary": "Per-day CTL/ATL/Form projection for the next N days from planned load — forward line on the Load & Form charts (#248)",
+        "tags": ["checkin"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "days", "in": "query", "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "{ connected, available, dates[], loads[], ctl[], atl[], form[] }" } }
+      }
+    },
+    "/auth/intervals/athlete": {
+      "get": {
+        "summary": "Pull the athlete's intervals.icu per-sport settings (ftp/maxHr/lthr/threshold_pace) + weight, mapped to Platyplus stats (#210)",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ connected, sportSettings:{cycling,running,swimming}, weight, source }" } }
+      }
+    },
+    "/auth/intervals/run-estimate": {
+      "get": {
+        "summary": "Estimate the runner's threshold pace from intervals' pace curve (Critical Speed) — running eFTP, a suggestion to apply/override (#215)",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ available, thresholdPace (sec/km), criticalSpeed, r2, source }" } }
+      }
+    },
+    "/auth/intervals/run-volume": {
+      "get": {
+        "summary": "Running endurance base (longest run + avg weekly km, last 6 wks) for the marathon-realism durability range (#216)",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ available, longestKm, weeklyKm, runs, windowDays }" } }
+      }
+    },
+    "/auth/intervals/run-pace-trend": {
+      "get": {
+        "summary": "Per-week average run pace (sec/km, last 8 wks, weighted) for the Running pace-trend chart (#230)",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ available, paces: (sec/km|null)[] oldest→newest, weeks }" } }
+      }
+    },
+    "/auth/sport-stat": {
+      "put": {
+        "summary": "Set a per-sport stat and TWO-WAY sync it to intervals.icu (auto-push; modifies only that sport's sportSettings entry, custom fields untouched) (#210)",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "group": { "type": "string", "enum": ["cycling", "running", "swimming"] }, "ftp": { "type": "number" }, "maxHr": { "type": "number" }, "lthr": { "type": "number" }, "thresholdPace": { "type": "number", "description": "running sec/km, swim sec/100m" }, "runVdot": { "type": "number" } } } } } },
+        "responses": { "200": { "description": "updated public user + { synced, pushError }" } }
       }
     },
     "/api/checkins": {

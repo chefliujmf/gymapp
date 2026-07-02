@@ -6,7 +6,8 @@ import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { db, getSetting, setSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
 import { e1rm, weightForReps, roundLoad, bestE1rmByExercise } from '../strength'
 import { getGymSession } from '../plan'
-import { authApi } from '../auth/api'
+import { authApi, type CoachReview } from '../auth/api'
+import GymSummary from '../GymSummary'
 import { localISO } from '../date'
 import { gymTSS, type GymIntensity } from '../tss'
 
@@ -17,6 +18,7 @@ interface PlayerEx {
   mode: 'timed' | 'reps'
   seconds: number; rest: number; sets: number; reps: number; weight?: number
   group?: string
+  tempo?: string; tip?: string // #284
 }
 interface Session { workoutId: string; title: string; discipline: string; duration: number; exercises: PlayerEx[]; intensity?: GymIntensity }
 
@@ -77,6 +79,8 @@ export default function GymPlayer() {
   const isTemplate = path.includes('/template/')
   const isSession = path.includes('/gym-session')
   const beep = useBeeper()
+  const [review, setReview] = useState<CoachReview | null>(null) // #285 coach verdict for today's gym (async)
+  useEffect(() => { authApi.coachReviews().then((r) => { const t = localISO(); setReview(r.find((x) => x.date === t && (x.sport === 'gym' || !x.sport)) || null) }).catch(() => {}) }, [])
   const gender = (useLiveQuery(() => getSetting('gender')) as 'male' | 'female' | undefined) ?? 'male'
   const female = gender === 'female'
 
@@ -91,7 +95,7 @@ export default function GymPlayer() {
     if (!isSession) return
     const s = getGymSession()
     if (!s) return
-    const exs: PlayerEx[] = s.exercises.map((x) => ({ ...enrich(x.name, x.exId, x.image, x.video), mode: x.mode, seconds: x.seconds, rest: x.rest, sets: x.sets, reps: x.reps, group: x.note }))
+    const exs: PlayerEx[] = s.exercises.map((x) => ({ ...enrich(x.name, x.exId, x.image, x.video), mode: x.mode, seconds: x.seconds, rest: x.rest, sets: x.sets, reps: x.reps, group: x.note, tempo: x.tempo, tip: x.tip }))
     const dur = Math.round(exs.reduce((a, e) => a + (e.mode === 'reps' ? e.sets * (30 + e.rest) : e.seconds + e.rest), 0) / 60)
     setW({ workoutId: s.workoutId, title: s.title, discipline: 'strength', duration: dur, exercises: exs, intensity: s.intensity })
   }, [isSession])
@@ -245,7 +249,10 @@ export default function GymPlayer() {
 
   if (!w || !cur) return <div className="page-head"><h1>No workout loaded</h1><button className="btn" onClick={() => navigate(-1)}>Back</button></div>
 
-  // ---- PRE-WORKOUT PREVIEW: estimate + reorder, then Start ----
+  // ---- PRE-WORKOUT PREVIEW: estimate + reorder + per-exercise insights, then Start ----
+  // #295: suggested working weight (from best recent est 1RM) + est 1RM + last time, so you walk in
+  // knowing the numbers. Name-keyed, case-insensitive.
+  const e1rmFor = (name: string) => e1rmMap.get(name) || [...e1rmMap.entries()].find(([k]) => k.toLowerCase() === name.toLowerCase())?.[1]
   if (!started && !done) return (
     <div className="gp2">
       <div className="gp2-top">
@@ -254,16 +261,35 @@ export default function GymPlayer() {
         <div style={{ width: 34 }} />
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px' }}>
-        <div className="section-title">Plan · reorder with ↑ ↓</div>
+        <div className="section-title">Plan · reorder with ↑ ↓ · targets from your recent lifts</div>
         <div className="stack" style={{ gap: 8 }}>
-          {order.map((ex, i) => (
-            <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
+          {order.map((ex, i) => {
+            const est = ex.mode === 'reps' ? e1rmFor(ex.name) : undefined
+            const sug = est ? roundLoad(weightForReps(est.e1rm, ex.reps || 10)) : null
+            const lastSets = (log[i] || []).filter((s) => (s.reps || 0) > 0)
+            const lastStr = lastSets.length ? lastSets.slice(0, 3).map((s) => `${s.weight ? s.weight + '×' : 'BW×'}${s.reps}`).join(' · ') : null
+            return (
+            <div key={i} className="card" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px' }}>
               <div className="thumb" style={{ width: 42, height: 42, flex: 'none' }}>{ex.image ? <img src={ex.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : '🏋️'}</div>
-              <div style={{ flex: 1, minWidth: 0 }}><h4 style={{ margin: 0 }}>{ex.name}</h4><div className="meta">{ex.mode === 'reps' ? `${ex.sets}×${ex.reps}` : `${ex.seconds}s`} · ~{Math.max(1, Math.round(estSec(ex) / 60))} min</div></div>
-              <button className="entry-kebab" onClick={() => moveEx(i, -1)} disabled={i === 0} title="Up">↑</button>
-              <button className="entry-kebab" onClick={() => moveEx(i, 1)} disabled={i === order.length - 1} title="Down">↓</button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h4 style={{ margin: 0 }}>{ex.name}</h4>
+                <div className="meta">{ex.mode === 'reps' ? `${ex.sets}×${ex.reps}` : `${ex.seconds}s`} · ~{Math.max(1, Math.round(estSec(ex) / 60))} min{ex.tempo ? <span className="tl-tempo"> · tempo {ex.tempo}</span> : ''}</div>
+                {(sug || est || lastStr) && (
+                  <div className="gp-ins">
+                    {sug ? <span className="gp-pill gp-pill--sug">suggested <b>{sug} kg</b></span> : ex.mode === 'reps' ? <span className="gp-pill">log a weight to get a target</span> : null}
+                    {est ? <span className="gp-pill">est 1RM <b>{Math.round(est.e1rm)} kg</b></span> : null}
+                    {lastStr ? <span className="gp-pill">last <b>{lastStr}</b></span> : null}
+                  </div>
+                )}
+                {ex.tip ? <div className="meta" style={{ whiteSpace: 'normal', color: 'var(--text-dim)', marginTop: 4 }}>💡 {ex.tip}</div> : null}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <button className="entry-kebab" onClick={() => moveEx(i, -1)} disabled={i === 0} title="Up">↑</button>
+                <button className="entry-kebab" onClick={() => moveEx(i, 1)} disabled={i === order.length - 1} title="Down">↓</button>
+              </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
       <button className="btn" style={{ margin: '8px 16px 18px' }} onClick={startWorkout}>▶ Start workout · ~{estTotalMin} min</button>
@@ -271,68 +297,18 @@ export default function GymPlayer() {
   )
 
   if (done) {
-    // ---- Post-gym summary (#69): totals + by-exercise + highlights + coach tip ----
-    const doneSets = (i: number) => (log[i] || []).filter((s) => s?.done && (s.reps || 0) > 0)
-    const allDone = order.flatMap((_, i) => doneSets(i))
-    const totVol = Math.round(allDone.reduce((v, s) => v + (s.weight || 0) * (s.reps || 0), 0))
-    const totReps = allDone.reduce((r, s) => r + (s.reps || 0), 0)
-    const byEx = order.map((ex, i) => {
-      const ss = doneSets(i)
-      const vol = ss.reduce((v, s) => v + (s.weight || 0) * (s.reps || 0), 0)
-      const top = ss.slice().sort((a, b) => (b.weight || 0) - (a.weight || 0))[0]
-      const lib = ex.exId ? allExercisesById[ex.exId] : undefined
-      const muscle = (lib?.muscle || lib?.category || '').toString()
-      const est = top?.weight ? Math.round(e1rm(top.weight, top.reps || 1)) : 0
-      return { name: ex.name, sets: ss, vol, top, est, muscle }
-    }).filter((e) => e.sets.length)
-    const maxVol = Math.max(1, ...byEx.map((e) => e.vol))
-    const muscles = [...new Set(byEx.map((e) => e.muscle).filter(Boolean))]
-    const hardest = allDone.slice().sort((a, b) => (b.weight || 0) - (a.weight || 0))[0]
-    const coachTip = totVol > 0
-      ? `Strong session — ${allDone.length} sets, ${totVol.toLocaleString()} kg moved. Next time, nudge the top set up a notch on the lifts that felt smooth.`
-      : `Nice work finishing all ${byEx.length || totalEx} exercises. Log your weights next time and I'll track volume & PRs for you.`
+    // ---- Post-gym summary (#285): unified with the completed-view — CoachVerdict + hero/chips +
+    // insight + by-exercise sets/PR + feedback (shared GymSummary, also used by PostWorkout revisit).
+    const exLogs = order.map((ex, i) => ({ name: ex.name, exId: ex.exId, sets: log[i] || [] }))
     return (
       <div className="gp2 gp2--done">
         <div className="gp2-sum">
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ textAlign: 'center', marginBottom: 6 }}>
             <div style={{ fontSize: 52 }}>🎉</div>
             <h1 style={{ margin: '6px 0 2px' }}>Workout complete</h1>
             <p style={{ color: 'var(--text-dim,#888)', margin: 0 }}>{w.title}</p>
           </div>
-
-          {/* A — summary totals */}
-          <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginTop: 16 }}>
-            <div className="stat"><div className="v">{totVol > 0 ? totVol.toLocaleString() : totalEx}<small>{totVol > 0 ? ' kg' : ''}</small></div><div className="k">{totVol > 0 ? 'Volume' : 'Exercises'}</div></div>
-            <div className="stat"><div className="v">{allDone.length || totalEx}</div><div className="k">Sets</div></div>
-            <div className="stat"><div className="v">{totReps || '—'}</div><div className="k">Reps</div></div>
-            <div className="stat"><div className="v">{finalMin}<small> min</small></div><div className="k">Time</div></div>
-          </div>
-
-          {/* B — by exercise */}
-          {byEx.length > 0 && <>
-            <div className="section-title" style={{ marginTop: 18 }}>By exercise</div>
-            <div className="stack" style={{ gap: 8 }}>
-              {byEx.map((e, i) => (
-                <div key={i} className="card" style={{ padding: '11px 13px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <strong style={{ fontSize: 14 }}>{e.name}</strong>
-                    {e.est > 0 && <span className="meta" style={{ flex: 'none' }}>est 1RM {e.est} kg</span>}
-                  </div>
-                  <div className="plan-desc" style={{ marginTop: 2 }}>{e.sets.map((s) => `${s.weight || 0}×${s.reps || 0}`).join(' · ')}{e.vol > 0 ? ` — ${e.vol.toLocaleString()} kg` : ''}</div>
-                  <div className="gymbar"><i style={{ width: `${Math.round((e.vol / maxVol) * 100)}%` }} /></div>
-                </div>
-              ))}
-            </div>
-          </>}
-
-          {/* C — highlights + coach tip */}
-          <div className="section-title" style={{ marginTop: 18 }}>Highlights</div>
-          <div className="card" style={{ padding: '12px 14px' }}>
-            {hardest?.weight ? <div className="gp2-hl">💪 <span><b>Hardest set:</b> {hardest.weight}×{hardest.reps} kg</span></div> : null}
-            {muscles.length > 0 && <div className="gp2-hl">🎯 <span><b>Muscles hit:</b> <span className="checkin__chips" style={{ display: 'inline-flex', marginLeft: 4 }}>{muscles.slice(0, 6).map((m) => <span key={m} className="mchip mchip--soreness">{m}</span>)}</span></span></div>}
-            <div className="gp2-hl">🧑‍🏫 <span>{coachTip}</span></div>
-          </div>
-
+          <GymSummary minutes={finalMin} exercises={exLogs} review={review} bestE1rm={e1rmMap} feedbackId={`gym-${localISO()}-${w.workoutId}`} feedbackDate={localISO()} />
           <button className="btn" style={{ marginTop: 18 }} onClick={() => navigate('/progress')}>View progress</button>
           <button className="btn btn--ghost" onClick={() => navigate('/exercises')}>Done</button>
         </div>
@@ -345,7 +321,7 @@ export default function GymPlayer() {
   const group = cur.kind === 'timed' || cur.kind === 'set' ? cur.ex.group : undefined
   const name = cur.kind === 'ready' ? (cur.next?.name ?? 'Get ready') : cur.kind === 'rest' ? cur.next.name : cur.ex.name
   const sub = cur.kind === 'timed' ? `Exercise ${cur.exNo} / ${totalEx}`
-    : cur.kind === 'set' ? `Set ${cur.setNo} / ${cur.sets} · target ${cur.reps} reps`
+    : cur.kind === 'set' ? `Set ${cur.setNo} / ${cur.sets} · target ${cur.reps} reps${cur.ex.tempo ? ` · tempo ${cur.ex.tempo}` : ''}`
     : cur.kind === 'rest' ? `Up next · ${cur.nextNo} / ${totalEx}` : `Starting · ${totalEx} exercises`
   const setEntry = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 1]) : undefined
   const prevSet = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 2]) : undefined

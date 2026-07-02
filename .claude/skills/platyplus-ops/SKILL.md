@@ -28,7 +28,7 @@ Personal/family fitness PWA (you + wife). Repo `chefliujmf/gymapp`. **Design rul
 - `claude` CLI lives at `/home/jmf/.local/bin/claude` (auth `~/.claude`) — owner's subscription.
 
 ## Integrations
-- **Strava** (done): one app (Client ID 102783), callback domain `duckdns.org` (covers QA+prod), per-user OAuth "Connect" button, scopes read_all+write, creds in `.secrets/strava.env` (dev) + box `auth.env`. Pull capped by `STRAVA_LOOKBACK_DAYS` (def 14). Push = opt-in per workout.
+- **Strava** — direct Platyplus↔Strava connect **REMOVED** (JM 2026-07-01). Redundant with intervals + Strava's API app is capped at 1 connected athlete until reviewed (wife hit 403 "limit of connected athletes exceeded"). **Users connect Strava + their device INSIDE intervals.icu**; Platyplus reads via intervals. No Connect-Strava button; onboarding coach guides them to intervals. `/auth/strava/*` + `server/strava.js` left dormant (gated by `STRAVA_CLIENT_ID`); "view on Strava ↗" activity deep-links kept.
 - **intervals.icu**: per-user API-key paste (OAuth needs a manual creds request to the intervals dev). Plan is the source of truth on intervals; `cleanEvents()` drops ATP/targets/notes + dedupes same-day rides.
 - **Chatbot**: `POST /auth/chat` (SSE, streams; `X-Accel-Buffering:no` so NPM doesn't buffer). Locked-down `claude -p` (deny shell/fs, allow ONLY `mcp__platyplus`), scoped to the signed-in user's Coach API token. MCP = `mcp/server.js` (typed tools over the Coach API).
   - **dev** spawns `claude` locally. **QA/prod** can't (Alpine/musl vs glibc claude) → `/auth/chat` proxies to a **host chat-helper** when `CHAT_HELPER_URL` is set.

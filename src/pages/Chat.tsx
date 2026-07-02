@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi } from '../auth/api'
+import { useAuth } from '../auth/AuthContext'
 
 interface Msg { role: 'user' | 'coach'; text: string }
 
 export default function Chat() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const onboarding = params.get('onboard') === '1' // #257: coach greets + interviews first
+  const kickedOff = useRef(false)
+  const { refresh } = useAuth()
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -33,8 +38,14 @@ export default function Chat() {
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, busy])
 
-  async function send() {
-    const text = input.trim()
+  // #257 onboarding: the coach speaks FIRST — auto-send an opener so it greets + starts the interview.
+  useEffect(() => {
+    if (onboarding && !kickedOff.current) { kickedOff.current = true; send("Hi! I'm new here — please set me up and build my first week.") }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onboarding])
+
+  async function send(textArg?: string) {
+    const text = (textArg ?? input).trim()
     if (!text || busy) return
     setInput(''); setMsgs((m) => [...m, { role: 'user', text }, { role: 'coach', text: '' }]); setBusy(true)
     const appendDelta = (d: string) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { role: 'coach', text: c[c.length - 1].text + d }; return c })
@@ -59,7 +70,7 @@ export default function Chat() {
       }
     } catch (e) {
       setMsgs((m) => { const c = [...m]; const last = c[c.length - 1]; if (last?.role === 'coach' && !last.text) c[c.length - 1] = { role: 'coach', text: '⚠️ ' + ((e as Error).message || 'Coach unavailable') }; return c })
-    } finally { setBusy(false) }
+    } finally { setBusy(false); if (onboarding) refresh().catch(() => {}) } // #257 pick up onboardedAt once the coach finishes
   }
   async function reset() {
     if (!confirm('Start a new conversation?')) return
@@ -105,7 +116,7 @@ export default function Chat() {
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
         />
         <button className={'chat-mic' + (listening ? ' chat-mic--on' : '')} onClick={toggleMic} aria-label="Voice input" title="Speak">{listening ? '⏹' : '🎤'}</button>
-        <button className="chat-send" onClick={send} disabled={busy || !input.trim()}>↑</button>
+        <button className="chat-send" onClick={() => send()} disabled={busy || !input.trim()}>↑</button>
       </div>
     </div>
   )

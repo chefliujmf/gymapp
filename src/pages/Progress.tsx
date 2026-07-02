@@ -7,7 +7,8 @@ import { localISO } from '../date'
 import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { matchExercise } from '../plan'
 import { TrendChart, ChartModal } from '../charts'
-import { e1rm } from '../strength'
+import { e1rm, exerciseInsight } from '../strength'
+import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
 
 const LB = 2.2046226
 // Anatomical muscle → muscle GROUP (JM: facet by muscle groups, not push/pull/legs).
@@ -50,6 +51,8 @@ export default function Progress() {
   const imp = (useLiveQuery(() => getSetting('units')) as string | undefined) === 'imperial'
   const [q, setQ] = useState('')
   const [facet, setFacet] = useState('Top movers')
+  const [from, setFrom] = useState(localISO(new Date(Date.now() - 56 * 86400000))) // #252 date filter (default 8 wk)
+  const [to, setTo] = useState(localISO())
   // #93: tap a lift → its dated est-1RM progression in a modal
   const [liftModal, setLiftModal] = useState<{ name: string; pts: { date: number; e1rm: number }[]; peak: number; improve: number; n: number; prThisWeek: boolean } | null>(null)
   // Real coach takeaways from the cyclingcoach engine (#91), if it has written any.
@@ -57,11 +60,12 @@ export default function Progress() {
   useEffect(() => { authApi.coachReviews().then((r) => setReview(r[0])).catch(() => {}) }, [])
 
   const data = useMemo(() => {
-    const L = logs || []
+    const all = logs || []
+    const since = Date.parse(from + 'T00:00:00'), until = Date.parse(to + 'T00:00:00') + 86400000
+    const L = all.filter((l) => l.completedAt >= since && l.completedAt < until) // #252: scope to the chosen range
     const unit = imp ? 'lb' : 'kg', conv = (kg: number) => (imp ? Math.round(kg * LB) : Math.round(kg))
     const wkVol = new Map<string, number>()
     const groupVol = new Map<string, number>()
-    const since28 = Date.now() - 28 * 86400000
     type Pt = { date: number; e1rm: number }
     const exMap = new Map<string, { name: string; group?: string; pts: Pt[] }>()
     for (const l of L) {
@@ -71,14 +75,16 @@ export default function Progress() {
         const best = Math.max(0, ...(arr || []).map((s: SetEntry) => (s.weight && s.reps ? e1rm(s.weight, s.reps) : 0)))
         const setVol = (arr || []).reduce((v, s) => v + (s.weight || 0) * (s.reps || 0), 0)
         const { name, group } = exMeta(l, Number(exi))
-        if (group && l.completedAt >= since28) groupVol.set(group, (groupVol.get(group) || 0) + setVol)
+        if (group) groupVol.set(group, (groupVol.get(group) || 0) + setVol)
         if (best <= 0) continue
         const e = exMap.get(name) || { name, group, pts: [] }; e.pts.push({ date: l.completedAt, e1rm: best }); exMap.set(name, e)
       }
     }
-    // weekly bars (8 wk)
+    // weekly bars across the selected range (Monday-aligned)
+    const monday = (t: number) => { const x = new Date(t); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x }
     const weeks: { w: string; v: number }[] = []
-    for (let i = 7; i >= 0; i--) { const w = weekKey(startOfWeek(-i)); weeks.push({ w, v: wkVol.get(w) || 0 }) }
+    for (let m = monday(since); m.getTime() < until; m.setDate(m.getDate() + 7)) { const w = localISO(m); weeks.push({ w, v: wkVol.get(w) || 0 }) }
+    if (!weeks.length) weeks.push({ w: weekKey(Date.now()), v: 0 })
     const thisWk = wkVol.get(weekKey(startOfWeek(0))) || 0, lastWk = wkVol.get(weekKey(startOfWeek(-1))) || 0
     const wow = lastWk ? Math.round(((thisWk - lastWk) / lastWk) * 100) : 0
     // per-exercise improvement + PRs
@@ -94,8 +100,8 @@ export default function Progress() {
     const prCount = lifts.filter((x) => x.prThisWeek).length
     const totalGroup = [...groupVol.values()].reduce((a, b) => a + b, 0) || 1
     const balance = GROUPS.map((g) => ({ g, pct: Math.round(((groupVol.get(g) || 0) / totalGroup) * 100) })).sort((a, b) => b.pct - a.pct)
-    return { unit, conv, weeks, thisWk, wow, lifts, prCount, balance, streak: dayStreak(L.map((l) => l.completedAt)), count: L.length, totalMin: L.reduce((s, l) => s + l.duration, 0), thisWeekN: L.filter((l) => l.completedAt >= startOfWeek(0)).length }
-  }, [logs, imp])
+    return { unit, conv, weeks, thisWk, wow, lifts, prCount, balance, streak: dayStreak(all.map((l) => l.completedAt)), count: L.length, totalMin: L.reduce((s, l) => s + l.duration, 0), thisWeekN: all.filter((l) => l.completedAt >= startOfWeek(0)).length }
+  }, [logs, imp, from, to])
 
   if (!logs) return null
   const { unit, conv, weeks, thisWk, wow, lifts, prCount, balance, streak, count, totalMin, thisWeekN } = data
@@ -118,7 +124,9 @@ export default function Progress() {
       <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head"><h1>Progress</h1><p>How you're trending — History lives in its own tab</p></div>
 
-      {count === 0 ? <div className="empty"><div className="big">📈</div>No workouts logged yet.<br />Complete a session to see your trends.</div> : <>
+      <DateRangeFilter presets={TRAINING_PRESETS} from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
+
+      {count === 0 ? <div className="empty"><div className="big">📈</div>No sessions in this range.<br />Widen the dates or complete a session.</div> : <>
         {/* hero */}
         <div className="prog-hero">
           <div className="prog-hero__big"><div className="v">{conv(thisWk).toLocaleString()} {wow !== 0 && <span className={'delta ' + (wow > 0 ? 'up' : 'down')}>{wow > 0 ? '▲' : '▼'} {Math.abs(wow)}%</span>}</div><div className="k">Volume · this week</div></div>
@@ -128,13 +136,13 @@ export default function Progress() {
           <div className="chips">
             {prCount > 0 && <span className="pill pill--pr">🏆 {prCount} PR{prCount > 1 ? 's' : ''} this week</span>}
             {topMover && topMover.improve > 0 && <span className="pill">📈 {topMover.name} +{topMover.improve}%</span>}
-            <span className="pill">🎯 {count} sessions · {Math.round(totalMin / 60)}h</span>
+            <span className="pill">🎯 {count} session{count === 1 ? '' : 's'} · {totalMin < 60 ? `${totalMin} min` : `${Math.round(totalMin / 6) / 10}h`}</span>
             <span className="pill">{thisWeekN} this week</span>
           </div>
         </div>
 
         {/* weekly volume */}
-        <div className="section-title">Weekly volume · 8 wk</div>
+        <div className="section-title">Weekly volume <span className="meta" style={{ fontWeight: 400 }}>· {weeks.length} wk</span></div>
         <div className="card" style={{ padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 110 }}>
             {weeks.map((b) => (
@@ -205,6 +213,7 @@ export default function Progress() {
           <TrendChart axes height={220} unit={` ${unit}`}
             series={[{ label: 'e1RM', data: liftModal.pts.map((p) => Math.round(conv(p.e1rm))), color: '#34e07d', area: true }]}
             labels={liftModal.pts.map((p) => new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} />
+          {(() => { const ins = exerciseInsight(liftModal.pts, (kg) => `${Math.round(conv(kg))} ${unit}`); return ins ? <div className="act-ins" style={{ marginTop: 10 }}><span className="tag">Coach</span>{ins.text}</div> : null })()}
           <div className="chips" style={{ marginTop: 12 }}>
             <span className="pill">Best {liftModal.peak} {unit}</span>
             <span className="pill">{liftModal.improve > 0 ? '+' : ''}{liftModal.improve}% · {liftModal.n} sessions</span>

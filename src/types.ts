@@ -157,6 +157,9 @@ export interface LibExercise {
   difficulty?: string
   instructions?: string[] // step-by-step (free-exercise-db)
   source?: 'centr' | 'musclewiki' | 'free-exercise-db'
+  /** #298 derived: uses a resistance band (equipment 'Bands' OR band in the name, incl. band-assisted
+   *  barbell/dumbbell moves) — powers the "Bands" filter. Set in catalog.ts, not the generated JSON. */
+  band?: boolean
 }
 
 export interface EnduranceWorkout {

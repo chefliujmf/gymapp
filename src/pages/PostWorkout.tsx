@@ -1,37 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getCoachPlan } from '../plan'
-import { authApi } from '../auth/api'
+import { authApi, type CoachReview } from '../auth/api'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
 import { DoneStats } from '../ui'
+import { lastLogForWorkout, db, type WorkoutLog } from '../db'
+import { bestE1rmByExercise } from '../strength'
+import GymSummary from '../GymSummary'
 
-// Intervals.icu "Feel" scale (Strong/Good/Normal/Poor/Weak), mirrored backend-side.
-// Exported so Log-activity shares ONE feedback model + coach pipeline (#143).
-export const FEEL: [string, string][] = [['Strong', '😎'], ['Good', '🙂'], ['Normal', '😐'], ['Poor', '🙁'], ['Weak', '😵']]
-const RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-// RIDE/RUN feedback MIRRORS the athlete's intervals.icu custom ACTIVITY_FIELDs exactly (#147) —
-// names + option lists fetched 2026-06-26 from /athlete/{id}/custom-item (type ACTIVITY_FIELD).
-export const ICU_FIELDS: [string, string[]][] = [
-  ['Legs Before', ['fresh', 'normal', 'relaxed', 'heavy', 'sore', 'flat', 'tired']],
-  ['Legs After', ['strong', 'normal', 'tired OK', 'barely tired', 'heavy', 'sore', 'cooked']],
-  ['Fuel/GI', ['not needed', 'water only OK', 'carbs OK', 'underfueled', 'GI issue', 'too much fuel']],
-  ['Pain/Niggles', ['none', 'knee', 'back', 'neck/shoulder', 'foot', 'saddle', 'other']],
-  ['Life Constraint', ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other']],
-  ['Mental State', ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out']],
-]
-// intervals field CODE for each label — kept so a future write-back can POST the right custom field.
-export const ICU_FIELD_CODES: Record<string, string> = { 'Legs Before': 'LegsBefore', 'Legs After': 'LegsAfter', 'Fuel/GI': 'FuelGI', 'Pain/Niggles': 'PainNiggles', 'Life Constraint': 'LifeConstraint', 'Mental State': 'MentalState' }
-// GYM is its OWN set, NOT cycling's (#152 — "gym is not the same as cycling, as discussed"):
-// gym-specific Soreness/pump + Form, then the universal context fields (gym-relevant Pain/Niggles,
-// Life Constraint, Mental State). No Legs/Fuel — those are endurance-only.
-export const GYM_FIELDS: [string, string[]][] = [
-  ['Soreness/pump', ['none', 'light', 'good pump', 'sore', 'very sore']],
-  ['Form', ['clean', 'mostly clean', 'broke down']],
-  ['Pain/Niggles', ['none', 'shoulder', 'low back', 'knee', 'wrist', 'elbow', 'other']],
-  ['Life Constraint', ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other']],
-  ['Mental State', ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out']],
-]
-export const FIELDS: Record<string, [string, string[]][]> = { ride: ICU_FIELDS, run: ICU_FIELDS, gym: GYM_FIELDS }
+// Feedback field defs now live in the shared, React-free module (used by the intervals reader too).
+export { FEEL, RPE, ICU_FIELDS, ICU_FIELD_CODES, GYM_FIELDS, FIELDS } from '../icu-fields'
+import { FEEL, RPE, FIELDS } from '../icu-fields'
 
 /** Post-workout feedback for a completed coach plan — sport-dependent. Coach notes
  *  up top, then the intervals "Feel" + RPE + sport fields + free text. Saved to the
@@ -46,10 +25,35 @@ export default function PostWorkout() {
   const [note, setNote] = useState('')
   const [saved, setSaved] = useState(false)
   const [act, setAct] = useState<IcuActivity>()
-  useEffect(() => { if (p) fetchActivities(p.date, p.date).then((a) => setAct(a.find((x) => sportOfActivity(x) === p.sport))).catch(() => {}) }, [p?.date, p?.sport])
+  // #285 — for a completed GYM plan, show the rich unified summary (verdict + sets/PR + feedback),
+  // not the old feel/RPE form. Load the local log + PR baseline + coach review.
+  const [gymLog, setGymLog] = useState<WorkoutLog | null>(null)
+  const [bestE1rm, setBestE1rm] = useState<Map<string, { e1rm: number; date: string }>>(new Map())
+  const [review, setReview] = useState<CoachReview | null>(null)
+  useEffect(() => { if (p && p.sport !== 'gym') fetchActivities(p.date, p.date).then((a) => setAct(a.find((x) => sportOfActivity(x) === p.sport))).catch(() => {}) }, [p?.date, p?.sport])
+  useEffect(() => {
+    if (!p || p.sport !== 'gym') return
+    lastLogForWorkout('plan-' + p.id).then((l) => setGymLog(l || null)).catch(() => {})
+    db.logs.toArray().then((ls) => setBestE1rm(bestE1rmByExercise(ls))).catch(() => {})
+    authApi.coachReviews().then((r) => setReview(r.find((x) => x.planId === p.id) || r.find((x) => x.date === p.date && (x.sport === 'gym' || !x.sport)) || null)).catch(() => {})
+  }, [p?.id, p?.date, p?.sport])
 
   if (!p) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button><h1>Plan not found</h1><p className="meta">Open it from Today.</p></div>
   const sportFields = FIELDS[p.sport] || FIELDS.gym
+
+  // #285 rich gym completed view (when a log exists) — replaces the bare feel/RPE form.
+  if (p.sport === 'gym' && gymLog) {
+    const exLogs = (gymLog.exNames && gymLog.exNames.length
+      ? gymLog.exNames.map((name, i) => ({ name, exId: gymLog.exIds?.[i], sets: gymLog.sets?.[i] || [] }))
+      : Object.keys(gymLog.sets || {}).map((k) => ({ name: `Exercise ${Number(k) + 1}`, sets: gymLog.sets![Number(k)] || [] })))
+    return (
+      <div>
+        <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
+        <div className="page-head"><span className="eyebrow">Gym · ✓ Completed{gymLog.duration ? ` · ${gymLog.duration} min` : ''}</span><h1>{p.title}</h1></div>
+        <GymSummary minutes={gymLog.duration || 0} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={`gym-${gymLog.date}-${gymLog.workoutId}`} feedbackDate={gymLog.date} />
+      </div>
+    )
+  }
 
   async function save() {
     setSaved(true)

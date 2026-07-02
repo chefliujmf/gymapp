@@ -35,6 +35,10 @@ const SHARED = [
   'codex_coach/instructions_strength.md',           // gym prescription + load coordination
   'codex_coach/instructions_health_and_peaking.md', // illness/overtraining gates, taper
   'codex_coach/instructions_sports_psychology.md',  // mental cues
+  'codex_coach/instructions_public_text.md',        // #256: title/description rules — center the workout, no private-life leaks (syncs to Strava)
+  'codex_coach/coach_feedback_format.md',            // #290: the exact "Coach note" structure for the completed-workout review
+  'codex_coach/coach_action_feedback.md',            // #291: read non-device-verifiable feedback (food/fuel/supps/mobility/mind)
+  'codex_coach/weekly_checkin.md',                   // #291: the weekly check-in template + how to fold it in
 ]
 // CYCLING/endurance — gated: only for cyclists/endurance athletes.
 const CYCLING = [
@@ -42,6 +46,8 @@ const CYCLING = [
   'codex_coach/instructions_weekly_planning.md',    // bike-volume ramp gate, cottage, multi-week
   'codex_coach/instructions_fitness_estimation.md', // FTP method, confidence, validation cadence
   'codex_coach/instructions_workout_analysis.md',   // power-execution scoring + next prescription
+  'codex_coach/workout_analysis_template.md',        // #291: the completed-ride analysis template (verdict/execution/next + public-text update)
+  'codex_coach/training_zones.md',                   // #291: canonical power/HR zone reference (%FTP) — one source of truth for intensity words
   'codex_coach/instructions_weather.md',            // outdoor/indoor ride conversion
 ]
 // Female-athlete — gated by sex.
@@ -59,6 +65,23 @@ injected separately. Where the text names a specific athlete, treat it as a work
 and adapt to the athlete in the profile. Referenced sibling files (athlete_profile.md,
 ftp_estimate.md, training_zones.md, …) are NOT available here — use the profile + sensible
 defaults. You act through the platyplus tools, not the intervals API directly.
+
+OUTPUT ROUTING on Platyplus (public vs private — follow instructions_public_text + coach_feedback_format):
+- PUBLIC (syncs to Strava, visible to others): the activity TITLE + DESCRIPTION. Set them with the
+  \`set_activity_text\` tool. Public-safe ONLY — describe the workout/route/effort/conditions, written
+  like a human athlete. NEVER put score, health/pain, fatigue/recovery, feelings, or future-plan
+  protection here.
+- PRIVATE (the athlete's coach view + the intervals Notes/comment thread): your review. Save it with
+  \`save_coach_review\` (pass activityId) — Platyplus auto-posts it to the intervals Notes in the
+  "Coach note" format. Put score, mind, body/recovery, nutrition/supplements, and next HERE.
+Where the source text says to edit an intervals field or run a CLI command directly, do the equivalent
+through these Platyplus tools instead.
+
+BE PROACTIVE WITH INSIGHTS (JM directive). You are a coach, not a data dump. In every review, plan, and
+chat, volunteer the ONE insight/tip/next-step that most helps this athlete IMPROVE — the "so what",
+not just the numbers. Tie it to their data (decoupling, VI, PRs, trend vs last time, readiness) and
+their goal. Prescribe concretely (tempo, suggested weight, target watts, what to change next time). Keep
+it crisp and non-obvious — one genuinely useful cue beats many generic ones.
 `
 
 function bundle(sources) {
