@@ -249,7 +249,10 @@ export default function GymPlayer() {
 
   if (!w || !cur) return <div className="page-head"><h1>No workout loaded</h1><button className="btn" onClick={() => navigate(-1)}>Back</button></div>
 
-  // ---- PRE-WORKOUT PREVIEW: estimate + reorder, then Start ----
+  // ---- PRE-WORKOUT PREVIEW: estimate + reorder + per-exercise insights, then Start ----
+  // #295: suggested working weight (from best recent est 1RM) + est 1RM + last time, so you walk in
+  // knowing the numbers. Name-keyed, case-insensitive.
+  const e1rmFor = (name: string) => e1rmMap.get(name) || [...e1rmMap.entries()].find(([k]) => k.toLowerCase() === name.toLowerCase())?.[1]
   if (!started && !done) return (
     <div className="gp2">
       <div className="gp2-top">
@@ -258,16 +261,35 @@ export default function GymPlayer() {
         <div style={{ width: 34 }} />
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px' }}>
-        <div className="section-title">Plan · reorder with ↑ ↓</div>
+        <div className="section-title">Plan · reorder with ↑ ↓ · targets from your recent lifts</div>
         <div className="stack" style={{ gap: 8 }}>
-          {order.map((ex, i) => (
-            <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
+          {order.map((ex, i) => {
+            const est = ex.mode === 'reps' ? e1rmFor(ex.name) : undefined
+            const sug = est ? roundLoad(weightForReps(est.e1rm, ex.reps || 10)) : null
+            const lastSets = (log[i] || []).filter((s) => (s.reps || 0) > 0)
+            const lastStr = lastSets.length ? lastSets.slice(0, 3).map((s) => `${s.weight ? s.weight + '×' : 'BW×'}${s.reps}`).join(' · ') : null
+            return (
+            <div key={i} className="card" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px' }}>
               <div className="thumb" style={{ width: 42, height: 42, flex: 'none' }}>{ex.image ? <img src={ex.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : '🏋️'}</div>
-              <div style={{ flex: 1, minWidth: 0 }}><h4 style={{ margin: 0 }}>{ex.name}</h4><div className="meta">{ex.mode === 'reps' ? `${ex.sets}×${ex.reps}` : `${ex.seconds}s`} · ~{Math.max(1, Math.round(estSec(ex) / 60))} min{ex.tempo ? ` · tempo ${ex.tempo}` : ''}</div>{ex.tip ? <div className="meta" style={{ whiteSpace: 'normal', color: 'var(--text-dim)' }}>💡 {ex.tip}</div> : null}</div>
-              <button className="entry-kebab" onClick={() => moveEx(i, -1)} disabled={i === 0} title="Up">↑</button>
-              <button className="entry-kebab" onClick={() => moveEx(i, 1)} disabled={i === order.length - 1} title="Down">↓</button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h4 style={{ margin: 0 }}>{ex.name}</h4>
+                <div className="meta">{ex.mode === 'reps' ? `${ex.sets}×${ex.reps}` : `${ex.seconds}s`} · ~{Math.max(1, Math.round(estSec(ex) / 60))} min{ex.tempo ? <span className="tl-tempo"> · tempo {ex.tempo}</span> : ''}</div>
+                {(sug || est || lastStr) && (
+                  <div className="gp-ins">
+                    {sug ? <span className="gp-pill gp-pill--sug">suggested <b>{sug} kg</b></span> : ex.mode === 'reps' ? <span className="gp-pill">log a weight to get a target</span> : null}
+                    {est ? <span className="gp-pill">est 1RM <b>{Math.round(est.e1rm)} kg</b></span> : null}
+                    {lastStr ? <span className="gp-pill">last <b>{lastStr}</b></span> : null}
+                  </div>
+                )}
+                {ex.tip ? <div className="meta" style={{ whiteSpace: 'normal', color: 'var(--text-dim)', marginTop: 4 }}>💡 {ex.tip}</div> : null}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <button className="entry-kebab" onClick={() => moveEx(i, -1)} disabled={i === 0} title="Up">↑</button>
+                <button className="entry-kebab" onClick={() => moveEx(i, 1)} disabled={i === order.length - 1} title="Down">↓</button>
+              </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
       <button className="btn" style={{ margin: '8px 16px 18px' }} onClick={startWorkout}>▶ Start workout · ~{estTotalMin} min</button>
