@@ -102,10 +102,15 @@ test guide → the **🧪 Test guide** section below.
     session-level `tip`/focus. Coach prescribes them (update the coach prompt + create_workout tool). Show on the exercise
     card (planned/player/completed) + a workout tip banner. Pairs #242 (exercise list) + #255 (per-exercise insights) +
     the gym post-workout rework. Mock-first. gymapp-only.
-285. ⬜ **Gym COMPLETED view still the OLD form (PostWorkout /feedback/:id) — doesnt match #273 mock.** JM 2026-07-01
+285. 🔨 **Gym COMPLETED view still the OLD form (PostWorkout /feedback/:id) — doesnt match #273 mock.** JM 2026-07-01
     ("not much like the mockups"). #273 rich view is on ActivityDetail (device rides/runs); coach-plan + GYM completions go
     through PostWorkout, which is the old feel/RPE form. Rework the completed-workout path (esp. gym) to the #273 mock:
     verdict + sets/PR + feedback collapse. Unify onto one component with ActivityDetail. gymapp-only.
+    🔨 BUILT 2026-07-02 (mock `mockups/gym-completed.html`, approved): new shared `src/GymSummary.tsx` — coach verdict +
+    hero/chips (Volume/Sets/Reps/Time + muscles + PR count) + computed coach insight + by-exercise sets/PR cards (est 1RM,
+    volume bar, tap→/progress) + feedback. Used by BOTH the GymPlayer done screen (dropped the old inline totals/highlights)
+    AND the revisit path PostWorkout `/feedback/:id` (loads the local log by `plan-<id>` + PR baseline + review) instead of the
+    bare feel/RPE form. PR badge from bestE1rmByExercise. **JM to verify on QA.**
 
 283. 🔨 **Remove direct Platyplus↔Strava connect (use intervals as the hub).** JM 2026-07-01: his wife hit Strava 403
     "limit of connected athletes exceeded" — Strava caps an API app at 1 athlete until reviewed, and it's redundant since
