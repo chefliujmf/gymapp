@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getCoachPlan } from '../plan'
-import { authApi } from '../auth/api'
+import { authApi, type CoachReview } from '../auth/api'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
 import { DoneStats } from '../ui'
+import { lastLogForWorkout, db, type WorkoutLog } from '../db'
+import { bestE1rmByExercise } from '../strength'
+import GymSummary from '../GymSummary'
 
 // Feedback field defs now live in the shared, React-free module (used by the intervals reader too).
 export { FEEL, RPE, ICU_FIELDS, ICU_FIELD_CODES, GYM_FIELDS, FIELDS } from '../icu-fields'
@@ -22,10 +25,35 @@ export default function PostWorkout() {
   const [note, setNote] = useState('')
   const [saved, setSaved] = useState(false)
   const [act, setAct] = useState<IcuActivity>()
-  useEffect(() => { if (p) fetchActivities(p.date, p.date).then((a) => setAct(a.find((x) => sportOfActivity(x) === p.sport))).catch(() => {}) }, [p?.date, p?.sport])
+  // #285 — for a completed GYM plan, show the rich unified summary (verdict + sets/PR + feedback),
+  // not the old feel/RPE form. Load the local log + PR baseline + coach review.
+  const [gymLog, setGymLog] = useState<WorkoutLog | null>(null)
+  const [bestE1rm, setBestE1rm] = useState<Map<string, { e1rm: number; date: string }>>(new Map())
+  const [review, setReview] = useState<CoachReview | null>(null)
+  useEffect(() => { if (p && p.sport !== 'gym') fetchActivities(p.date, p.date).then((a) => setAct(a.find((x) => sportOfActivity(x) === p.sport))).catch(() => {}) }, [p?.date, p?.sport])
+  useEffect(() => {
+    if (!p || p.sport !== 'gym') return
+    lastLogForWorkout('plan-' + p.id).then((l) => setGymLog(l || null)).catch(() => {})
+    db.logs.toArray().then((ls) => setBestE1rm(bestE1rmByExercise(ls))).catch(() => {})
+    authApi.coachReviews().then((r) => setReview(r.find((x) => x.planId === p.id) || r.find((x) => x.date === p.date && (x.sport === 'gym' || !x.sport)) || null)).catch(() => {})
+  }, [p?.id, p?.date, p?.sport])
 
   if (!p) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button><h1>Plan not found</h1><p className="meta">Open it from Today.</p></div>
   const sportFields = FIELDS[p.sport] || FIELDS.gym
+
+  // #285 rich gym completed view (when a log exists) — replaces the bare feel/RPE form.
+  if (p.sport === 'gym' && gymLog) {
+    const exLogs = (gymLog.exNames && gymLog.exNames.length
+      ? gymLog.exNames.map((name, i) => ({ name, exId: gymLog.exIds?.[i], sets: gymLog.sets?.[i] || [] }))
+      : Object.keys(gymLog.sets || {}).map((k) => ({ name: `Exercise ${Number(k) + 1}`, sets: gymLog.sets![Number(k)] || [] })))
+    return (
+      <div>
+        <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
+        <div className="page-head"><span className="eyebrow">Gym · ✓ Completed{gymLog.duration ? ` · ${gymLog.duration} min` : ''}</span><h1>{p.title}</h1></div>
+        <GymSummary minutes={gymLog.duration || 0} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={`gym-${gymLog.date}-${gymLog.workoutId}`} feedbackDate={gymLog.date} />
+      </div>
+    )
+  }
 
   async function save() {
     setSaved(true)
