@@ -5,13 +5,14 @@ import { getSetting, setSetting } from '../db'
 import { authApi, type SportGroup, type SportStat, type IcuAthletePull } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import Availability from '../Availability'
+import { BenchmarksCard } from '../Benchmarks'
 import EquipmentPicker from '../EquipmentPicker'
 import GoalsPicker from '../GoalsPicker'
 import OnboardReturnBar from '../OnboardReturnBar'
 import SleepNeed from '../SleepNeed'
-import { fetchAthleteSex, fetchWellness } from '../intervals'
+import { fetchAthleteSex } from '../intervals'
 import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, parsePace, type PaceZones, type RunVolume } from '../running-paces'
-import { runningVo2max, cyclingVo2max, headlineVo2max, confLabel } from '../vo2max-submax'
+import { confLabel } from '../vo2max-submax'
 import { dataGaps } from '../dataGaps'
 
 // #214 — spell each Daniels zone out (letter + what it's for) so the paces are legible, not cryptic.
@@ -77,20 +78,12 @@ export default function Profile() {
   const [pulled, setPulled] = useState<IcuAthletePull | null>(null)
   const [runEst, setRunEst] = useState<Awaited<ReturnType<typeof authApi.runEstimate>> | null>(null)
   const [runVol, setRunVol] = useState<{ available: boolean; longestKm?: number; weeklyKm?: number } | null>(null)
-  const [hrRest, setHrRest] = useState<number | null>(null) // #269 resting HR for the HR-ratio VO₂max
 
   // #210: intervals is canonical for synced stats — pull to display + re-pull after each edit.
   const pull = () => { if (user?.hasIcuKey) authApi.pullIcuAthlete().then(setPulled).catch(() => {}) }
   useEffect(() => { pull() }, [user?.hasIcuKey]) // eslint-disable-line react-hooks/exhaustive-deps
   // #269: resting HR (latest from intervals wellness) so VO₂max can use the HR-ratio method —
   // not just power/pace, which under-rated it (showed only the cycling Coggan value).
-  useEffect(() => {
-    if (!user?.hasIcuKey) return
-    const to = new Date(), from = new Date(Date.now() - 30 * 86400000)
-    fetchWellness(from.toISOString().slice(0, 10), to.toISOString().slice(0, 10))
-      .then((rows) => { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break } })
-      .catch(() => {})
-  }, [user?.hasIcuKey])
   // #215: estimate the running threshold pace from intervals' pace curve (Critical Speed).
   useEffect(() => {
     if (user?.hasIcuKey && (user?.sports || []).includes('running')) {
@@ -146,19 +139,7 @@ export default function Profile() {
   // #216 marathon realism — show the marathon as a potential→realistic range (durability-adjusted).
   const runVolume: RunVolume | undefined = runVol?.available ? { longestKm: runVol.longestKm || 0, weeklyKm: runVol.weeklyKm || 0 } : undefined
   const marathon = vdot ? marathonRealism(vdot, runVolume) : null
-  // #269: headline VO₂max from the BEST estimate across sports + methods (incl. HR-ratio), not just
-  // power/pace (which showed only the low cycling Coggan value). Manual value always wins.
-  const runHrMax = val('running', 'maxHr') ?? user?.maxHR ?? null
-  const cycHrMax = val('cycling', 'maxHr') ?? user?.maxHR ?? null
-  // #327 — order by the athlete's OWN sports so the headline VO₂max comes from what they actually do
-  // (cyclist → cycling, runner → running), not the biggest number across sports.
-  const estBySport: Record<string, ReturnType<typeof runningVo2max>> = {
-    running: runningVo2max({ vdot, hrMax: runHrMax, hrRest }),
-    cycling: cyclingVo2max({ ftp: val('cycling', 'ftp'), weightKg: pulled?.weight ?? null, hrMax: cycHrMax, hrRest }),
-  }
-  const vo2Order = [...(user?.sports || []).filter((s) => s in estBySport), 'running', 'cycling'].filter((s, i, a) => a.indexOf(s) === i)
-  const vo2 = headlineVo2max(user?.vo2max, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
-  const hrMax = runHrMax ?? cycHrMax
+  // #337 — VO₂max moved to the single BenchmarksCard (5-min-power method + picker), removed from here.
   // #215/#271 estimate (Critical Speed → threshold pace). Only a CONFIDENT estimate (server gates on
   // recent run volume + fit) is shown; a slower pace off thin data is suppressed, not pushed.
   const estPace = runEst?.available && runEst.thresholdPace ? runEst.thresholdPace : null
@@ -245,8 +226,11 @@ export default function Profile() {
         Your stats {connected && <span className="sync-pill">⇄ intervals</span>}
       </div>
       <p className="meta" style={{ margin: '2px 2px 8px' }}>
-        Personalises your readiness & coach. {connected ? <>Values tagged <Tag label="intervals" kind="icu" /> are pulled from your intervals profile and <strong>sync both ways</strong> — edit here, it writes back (your custom fields are untouched). </> : null}<Tag label="est." kind="pp" /> means Platyplus computes/you set it (intervals has no such field).
+        Personalises your readiness & coach. Tap any to pick <b>Manual · Auto · Computed</b>; estimates show what they’re still learning. {connected ? <>Values tagged <Tag label="intervals" kind="icu" /> sync both ways.</> : null}
       </p>
+      {/* #337 — the ONE learned-stats view (VO₂max from your 5-min power, FTP, pace, sleep) with the
+          Manual/Auto/Computed picker + learning state. Replaces the old scattered VO₂max/General card. */}
+      <BenchmarksCard />
       {/* #321 — go STRAIGHT to the user's own trend page (was a generic hub → "I don't get it"). */}
       <Link to={does('running') ? '/running-stats' : does('cycling') ? '/cycling-stats' : '/stats'} className="bm-trends" style={{ marginTop: 0, marginBottom: 8 }}>📈 See your {does('running') ? 'running' : does('cycling') ? 'cycling' : ''} trends & predictions ›</Link>{/* #228 */}
       {/* #235 — turn the readiness self-learning on/off */}
@@ -352,28 +336,8 @@ export default function Profile() {
         </div>
       )}
 
-      <div className="sport-card">
-        <div className="sport-card__h">🌙 General</div>
-        <div className="stat-cell-grid">
-          {/* #304: sleep need moved to its own SleepNeed card (default→confirm + learns from data). */}
-          {/* #207 Phase 2b: a TRUE estimate from your power/pace (refines as you train); manual entry wins */}
-          <StatCell label="VO₂max" tag={<Tag label={user?.vo2max ? 'you' : 'est.'} kind="pp" />} value={user?.vo2max ?? vo2?.value ?? null} fmt={String} parse={num(20, 95)} onSave={(v) => authApi.saveProfile({ vo2max: v }).then(() => refresh()).catch(() => {})} />
-          {connected && pulled?.weight != null && (
-            <div className="stat-cell">
-              <span className="stat-cell__l">Weight <Tag label="intervals" kind="icu" /></span>
-              <span className="stat-cell__in"><span className="stat-cell__ro">{pulled.weight}</span><span className="stat-cell__u">kg</span></span>
-            </div>
-          )}
-        </div>
-        <p className="meta" style={{ margin: '6px 2px 0' }}>
-          {user?.vo2max
-            ? <>VO₂max is your manual value. Clear it to use the estimate from {vo2 ? vo2.source : 'your power/pace'}.</>
-            : vo2
-              ? <>VO₂max <b>{vo2.value}</b> ({confLabel(vo2.confidence)}) from {vo2.source} — <strong>updates as you train</strong>; type your own to override. {hrMax && !hrRest ? 'Connect intervals for resting HR to refine it.' : ''}</>
-              : <>Set your FTP + weight, threshold pace, or max & resting HR and Platyplus estimates VO₂max. </>}
-          {' '}Sleep need defaults to 8 h until you set yours; both personalise your readiness & coach.
-        </p>
-      </div>
+      {/* #337 — the old "General / VO₂max 52.1" card was removed: VO₂max + sleep now live in the single
+          BenchmarksCard above (correct 5-min-power method + picker), so there's ONE source, not two. */}
     </div>
   )
 }

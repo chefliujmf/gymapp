@@ -19,6 +19,7 @@ interface StatDef {
   key: Key; label: string; unit?: string
   computed: number | null; computedSrc: string
   manual: number | null
+  pending?: string // #337 — when computed ISN'T ready yet: what/when it needs to land (our theory gates)
   fmt: (n: number) => string; parse: (s: string) => number | null
   save: (v: number) => Promise<unknown>
 }
@@ -39,7 +40,7 @@ function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; p
       <div className="bsheet" onClick={(e) => e.stopPropagation()}>
         <div className="bsheet__h"><h3>{def.label}</h3><button className="bsheet__x" onClick={onClose}>✕</button></div>
         <div className="bsheet__two">
-          <div className={'bsheet__opt' + (p === 'computed' ? ' on' : '')}><div className="bsheet__ol">Computed</div><div className="bsheet__ov" style={{ color: '#5ec8ff' }}>{def.computed != null ? def.fmt(def.computed) : '—'}</div><div className="bsheet__os">{def.computed != null ? def.computedSrc : 'not available yet'}</div></div>
+          <div className={'bsheet__opt' + (p === 'computed' ? ' on' : '')}><div className="bsheet__ol">Computed</div><div className="bsheet__ov" style={{ color: '#5ec8ff' }}>{def.computed != null ? def.fmt(def.computed) : '—'}</div><div className="bsheet__os">{def.computed != null ? def.computedSrc : (def.pending || 'not available yet')}</div></div>
           <div className={'bsheet__opt' + (p === 'manual' ? ' on' : '')}><div className="bsheet__ol">Manual</div><div className="bsheet__ov" style={{ color: '#9b8cff' }}>{def.manual != null ? def.fmt(def.manual) : '—'}</div><div className="bsheet__os">your value</div></div>
         </div>
         <div className="bsheet__lbl">Your value</div>
@@ -104,14 +105,20 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
   const vo2head = headlineVo2max(null, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
 
   const saveSport = (group: 'cycling' | 'running', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
+  // #337 — "when will the computed estimate land?" straight from our theory gates, so nothing just says
+  // "not available yet". Runs gate (pace): ≥4 runs + ≥25 km / 6 wks. Sleep: 21 nights. VO₂max cycling:
+  // a hard ~5-min effort. maxHR: no safe estimate exists — it needs a real max.
+  const runsShort = runsRecent != null ? Math.max(1, 4 - runsRecent) : null
+  const paceGate = paceEst ? undefined : (runsRecent != null ? `after ~${runsShort} more run${runsShort === 1 ? '' : 's'} — needs ≥4 runs + ~25 km in 6 weeks incl. a hard effort (Critical-Speed model)` : 'after a few runs incl. one hard effort (Critical-Speed model)')
+  const doesCycle = (user?.sports || []).includes('cycling')
+  const vo2Gate = (vo2head && vo2head.value != null) ? undefined : (doesCycle ? 'after a hard ~5-min bike effort in the last 90 days (that’s your MAP → VO₂max)' : 'after ~4+ runs so your pace VDOT is reliable')
   const defs: StatDef[] = [
-    { key: 'vo2max', label: 'VO₂max', computed: vo2head ? vo2head.value : null, computedSrc: vo2head ? `${confLabel(vo2head.confidence)} · ${vo2head.source}` : '', manual: user?.vo2max ?? null, fmt: String, parse: numParse(20, 95), save: (v) => authApi.saveProfile({ vo2max: v }).then(() => refresh()) },
-    { key: 'ftp', label: 'FTP', unit: 'W', computed: eftp, computedSrc: 'eFTP from your power', manual: ftpManual, fmt: String, parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }) },
-    { key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceEst, computedSrc: 'from your recent runs', manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }) },
-    { key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: null, computedSrc: '', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }) },
-    // #337 — sleep need joins the SAME picker (was a bespoke card). Computed = learned from best-recovery
-    // nights (null until ready → the cell shows "learning · N more nights").
-    { key: 'sleepNeed', label: 'Sleep need', unit: 'h', computed: sleepEst, computedSrc: sleepMore ? `learning · ~${sleepMore} more nights` : 'from your best-recovery nights', manual: user?.sleepNeed ?? null, fmt: String, parse: numParse(4, 12), save: (v) => authApi.saveProfile({ sleepNeed: v }).then(() => refresh()) },
+    { key: 'vo2max', label: 'VO₂max', computed: vo2head ? vo2head.value : null, computedSrc: vo2head ? `${confLabel(vo2head.confidence)} · ${vo2head.source}` : '', pending: vo2Gate, manual: user?.vo2max ?? null, fmt: String, parse: numParse(20, 95), save: (v) => authApi.saveProfile({ vo2max: v }).then(() => refresh()) },
+    { key: 'ftp', label: 'FTP', unit: 'W', computed: eftp, computedSrc: 'eFTP from your power', pending: eftp ? undefined : 'lands automatically from your rides — eFTP updates as intervals sees hard efforts', manual: ftpManual, fmt: String, parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }) },
+    { key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceEst, computedSrc: 'from your recent runs (Critical Speed)', pending: paceGate, manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }) },
+    { key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: null, computedSrc: '', pending: 'not estimated — there’s no safe way to guess it; set it from a hard effort or your watch', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }) },
+    // #337 — sleep need joins the SAME picker (was a bespoke card). Learned from best-recovery nights.
+    { key: 'sleepNeed', label: 'Sleep need', unit: 'h', computed: sleepEst, computedSrc: 'from your best-recovery nights', pending: sleepMore ? `in ~${sleepMore} more nights — needs 21 nights of sleep + HRV to learn your ideal` : undefined, manual: user?.sleepNeed ?? null, fmt: String, parse: numParse(4, 12), save: (v) => authApi.saveProfile({ sleepNeed: v }).then(() => refresh()) },
   ]
   // #277: default is AUTO — prefer the computed estimate once it's ready, manual until then.
   const prefOf = (d: StatDef): Pref => user?.statPrefs?.[d.key] ?? 'auto'
@@ -133,7 +140,7 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
               <div className="bm-cell__v">{v != null ? d.fmt(v) : '—'}{v != null && d.unit ? <span className="bm-cell__u">{d.unit}</span> : null}</div>
               {/* #337 — show the LEARNING state when the estimate isn't ready yet (e.g. "learning · N more
                   nights"); otherwise the tap affordance. Makes "what's estimated / still learning" visible. */}
-              <div className="bm-cell__alt">{d.computed == null && d.computedSrc ? d.computedSrc : 'tap to switch'}</div>
+              <div className="bm-cell__alt">{d.computed == null ? (d.pending ? `⏳ ${d.pending}` : d.computedSrc || 'tap to switch') : 'tap to switch'}</div>
             </button>
           )
         })}
