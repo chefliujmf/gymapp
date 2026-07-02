@@ -8,8 +8,8 @@ description: The Platyplus chart standard — EVERY graph must have X+Y axes wit
 **JM, repeatedly, across the whole Stats build:** "you keep creating graphs I cannot use — no X or Y axis, no insights. Make it useful for ALL graphs and be consistent." A bare sparkline is NOT acceptable for anything presented as a chart.
 
 ## The standard — every chart MUST have
-1. **Y axis** — at least min / mid / max value labels (with units). The reader must know the scale.
-2. **X axis** — labelled (dates for trends, mm:ss/distance for an activity timeline). Never an unlabelled line.
+1. **Y axis** — labelled with units, and **DENSE enough to read values off** (JM 2026-07-01: "not enough Y ticks, can't see shit" — min/mid/max is NOT enough). **Tick count scales with height** (~1 per 22px → a tall chart gets 8-9 gridlines). `TrendChart` does this via `niceTicks(min,max, round(H/22))`. Gutter ≥50px so labels aren't cramped.
+2. **X axis** — labelled AND dense. For an activity **timeline use ROUND-MINUTE marks** (0m · 10m · 20m … · h:mm), not raw even-fraction times like 16:46/33:33 (JM: "x axis barely data"). Pass explicit `xTicks={[{frac,label}]}` to `TrendChart`; it draws faint **vertical gridlines** at each so you can read across. Never an unlabelled line.
 3. **Crisp text** — NEVER font-stretch. If the geometry SVG uses `preserveAspectRatio="none"` (+ `vector-effect="non-scaling-stroke"` on lines), then **all text is an HTML overlay** positioned by %, or a properly-scaled `<svg>`. (The Wellness `WTrend` in `src/pages/Wellness.tsx` is the reference implementation.)
 4. **An insight** — a one-line plain-language takeaway under the chart (like Fitness's `fitnessInsight`/`formInsight`: "📈 Fitness is climbing (+4) — consistency is paying off"). A chart without a "so what" is half-done.
 5. **Where it fits the metric:** a **moving average** line over the noisy daily series, and a **min–max band** (Wellness option B). Min/max labels go top/bottom-right INSIDE the plot, never on the x-axis row (they collide).
@@ -29,7 +29,15 @@ description: The Platyplus chart standard — EVERY graph must have X+Y axes wit
 - [ ] Y labels (min/mid/max + unit) · [ ] X labels · [ ] crisp text (HTML overlay) · [ ] insight line · [ ] **DateRangeFilter** ·
   [ ] domain filters (type/muscle/equipment/search) where relevant · [ ] reuse the shared chart · [ ] no horizontal scroll, mobile-first.
 
+## Activity view "spirit" (post- AND pre-workout — JM 2026-07-01, #286/#280)
+The completed-activity detail (`ActivityDetail`) is the reference for BOTH post- and pre-workout. Same spirit everywhere:
+- **Thumbnail** = `PowerBlocks` (zone-coloured bars binned from the REAL power stream), NOT the planned segments — plan segments can be degenerate (a 0-W main block renders garbage). For pre-workout (no actuals yet) use the planned SegmentProfile, same clean treatment.
+- **Stats** = hero + chips (4 headline tiles + the rest as compact chips), grouped/scannable, not a 14-tile wall.
+- **A coach insight line under EVERY section** (`.act-ins`) — chart, stats, zones. Computed from the metrics in a coaching tone (the coach's *authored* prose stays in the verdict card / from intervals messages, see [[intervals-feedback-data-model]]).
+- **Charts to the dense standard above.** Pre-workout mirrors this: planned power/pace SHAPE chart + "what to expect" + coach cues per section.
+Memory: `platyplus-activity-view`.
+
 ## Known retrofit debt (axis-less today — fix to this standard)
-Activity **TimelineProfile** (#54 power/HR/altitude/cadence — no axes, no values shown until scrub), Mind weekly bars, Running pace trend, per-sport mini charts. Tracked in FEEDBACK-LOG.
+DONE: Activity **TimelineProfile** (#54/#286 — dense axes + round-minute time x + insight per track). Remaining: Mind weekly bars, Running pace trend, per-sport mini charts. Tracked in FEEDBACK-LOG.
 
 Pairs with `options-first` (mock charts before building) and memory `platyplus-chart-standard`.

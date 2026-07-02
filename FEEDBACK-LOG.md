@@ -90,7 +90,13 @@ test guide → the **🧪 Test guide** section below.
     "Username or email"; server `findByLogin` compared the raw stored email so it broke on any uppercase. FIXED: normalize
     both sides to lowercase (+ trim). Email or username both work now. gymapp-only.
 
-280. ⬜ **PRE-workout UX rework (the PLANNED-workout view, before you do it).** JM 2026-07-01: rework the planned-workout
+280. ⬜ **PRE-workout UX rework — KEEP THE SAME SPIRIT as the post-workout view (#286).** JM 2026-07-01: "let's keep the
+    same spirit for pre-workout." Mirror the LOCKED post-workout look on PlanDetail + CoachPlanDetail: **planned
+    SegmentProfile thumbnail** (same clean treatment as PowerBlocks), **hero+chips** target summary (target TSS/IF/
+    duration/zones), a **coach insight/tip line under EVERY section** (what to expect, key set, cues), and the planned
+    power/pace SHAPE chart to the **dense chart standard** (round-minute-equivalent X, dense Y, gridlines). Mock-first,
+    then build. Memory `platyplus-activity-view` + skill `platyplus-charts` hold the spec. (Original detail below.)
+    JM 2026-07-01: rework the planned-workout
     detail to match the polish of the post-workout view (#273). Screens: `PlanDetail` (intervals-sourced) + `CoachPlanDetail`
     (coach-authored). TARGET (mock-first, mirror #273 components): a clean header (sport · date · duration · target TSS/IF),
     the **coach shell** (objective · cues · success · fuel · mind · recovery — already partly there), the **planned power/
