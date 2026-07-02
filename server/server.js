@@ -1696,20 +1696,25 @@ app.delete('/api/items/:id', apiAuth, (req, res) => { deleteItemById(req.user, r
 // Exercise catalog search — resolve a name to a real exId (with demo media).
 // Coach-activity notification: the coach posts a short note of what it just did
 // (created/adjusted the plan, reviewed a workout). Surfaces in the user's bell.
-function pushNotification(u, { title, body, items }) {
+function pushNotification(u, { title, body, items, subkind, link, score, id }) {
   if (!u.notifications) u.notifications = []
   const t = String(title || '').trim().slice(0, 120)
   if (!t) return null
   const n = {
-    id: 'coach-' + randomBytes(6).toString('base64url'),
+    id: id || ('coach-' + randomBytes(6).toString('base64url')),
     kind: 'coach',
+    subkind: subkind === 'review' ? 'review' : undefined, // #233 distinguishes review vs update in the bell
     date: new Date().toISOString().slice(0, 10),
     at: new Date().toISOString(),
     title: t,
     body: typeof body === 'string' ? body.trim().slice(0, 600) : undefined,
     items: Array.isArray(items) ? items.filter((x) => typeof x === 'string').map((x) => x.trim().slice(0, 200)).slice(0, 12) : undefined,
+    link: typeof link === 'string' ? link.slice(0, 200) : undefined,
+    score: typeof score === 'number' ? score : undefined,
     read: false,
   }
+  // dedup by id (re-reviews replace the prior notification for that review)
+  u.notifications = (u.notifications || []).filter((x) => x.id !== n.id)
   u.notifications.unshift(n)
   u.notifications = u.notifications.slice(0, 50) // cap
   return n
@@ -1746,6 +1751,15 @@ app.post('/api/coach-review', apiAuth, (req, res) => {
     at: new Date().toISOString(),
   }
   req.user.coachReviews = [review, ...req.user.coachReviews.filter((r) => r.id !== review.id)].slice(0, 200)
+  // #233 — notify the athlete their session was reviewed (tappable → the activity / plan).
+  const score10 = review.score == null ? null : (review.score > 10 ? Math.round(review.score / 10) : review.score)
+  pushNotification(req.user, {
+    id: 'review-' + review.id, subkind: 'review',
+    title: `Coach reviewed your ${review.sport || 'workout'}`,
+    body: review.verdict || (review.takeaways && review.takeaways[0]) || undefined,
+    score: score10 != null ? score10 : undefined,
+    link: review.activityId ? `/activity/${review.activityId}` : (review.planId ? `/coach/${review.planId}` : undefined),
+  })
   save(store); res.status(201).json(review)
   // #290: the coach note belongs in the intervals Notes/comment thread too (not just Platyplus), in
   // the standard "Coach note" format so #286 reads it back. Private-safe context lives HERE, never in

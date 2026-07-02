@@ -1,0 +1,64 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=430">
+<style>
+:root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--line:#ffffff1c}
+*{box-sizing:border-box}
+body{background:#0f1216;color:var(--text);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:16px;max-width:360px}
+.sub{color:var(--text-dim);font-size:12px;margin:0 0 10px}
+/* notification center */
+.menu{background:linear-gradient(#1c2027,#15181e);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.head{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
+.head strong{font-size:14px}.head a{color:var(--accent);font-size:12px;text-decoration:none}
+.n{padding:11px 14px;border-top:1px solid var(--line);display:block;text-decoration:none;color:inherit;position:relative}
+.n:first-of-type{border-top:none}
+.n.unread{background:#34e07d0a}
+.n.unread::before{content:'';position:absolute;left:5px;top:16px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.lbl{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px}
+.tt{font-weight:800;font-size:13px;margin:6px 0 2px}
+.dt{color:var(--text-dim);font-size:11px}
+.bul{margin:5px 0 0;padding-left:16px}
+.bul li{font-size:12.5px;line-height:1.45;color:var(--text)}
+.chev{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text-dim)}
+/* stat row for the activity card */
+.stats{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.stat{font-size:11px;background:#ffffff12;border:1px solid var(--line);border-radius:7px;padding:2px 7px}
+.score{margin-left:auto;background:#34e07d22;color:var(--accent);border:1px solid #34e07d55;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px}
+</style></head><body>
+<p class="sub">🔔 Notification center — two new types: <b>new activity arrived</b> + <b>coach review</b>, alongside the existing coach-update notes. Tappable → the relevant screen.</p>
+<div class="menu">
+  <div class="head"><strong>Notifications</strong><a href="#">Mark all read</a></div>
+
+  <a class="n unread" href="#">
+    <span class="lbl" style="color:#f6c445;background:#f6c44522">🏅 New activity</span>
+    <div class="tt">Backroad Hill Efforts</div>
+    <div class="dt">Ride · today, 15:46 · from Wahoo</div>
+    <div class="stats"><span class="stat">⏱ 1h6m</span><span class="stat">📍 27.2 km</span><span class="stat">⚡ NP 198 W</span><span class="stat">❤️ 151</span></div>
+    <span class="chev">›</span>
+  </a>
+
+  <a class="n unread" href="#">
+    <span class="lbl" style="color:#a855f7;background:#a855f722">💬 Coach review</span><span class="score">8/10</span>
+    <div class="tt">Coach reviewed your ride</div>
+    <div class="dt">today · Backroad Hill Efforts</div>
+    <p style="font-size:12.5px;margin:5px 0 0">Real quality in hard heat — NP 198 on punchy terrain. Decoupling is the heat, not fitness.</p>
+    <span class="chev">›</span>
+  </a>
+
+  <a class="n" href="#">
+    <span class="lbl" style="color:#a855f7;background:#a855f722">🧑‍🏫 Coach update</span>
+    <div class="tt">Adjusted your week</div>
+    <div class="dt">yesterday</div>
+    <ul class="bul">
+      <li>Eased <b>Tuesday</b> to a recovery spin (poor check-in)</li>
+      <li>Moved the <b>FTP test</b> to Saturday (cooler morning)</li>
+      <li>Added a <b>rest day</b> Thursday (travel)</li>
+    </ul>
+    <span class="chev">›</span>
+  </a>
+
+  <a class="n" href="#">
+    <span class="lbl" style="color:#22c55e;background:#22c55e22">✨ Release note</span>
+    <div class="tt">Post-workout view — insights everywhere</div>
+    <div class="dt">Jul 2</div>
+  </a>
+</div>
+</body></html>

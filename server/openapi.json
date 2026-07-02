@@ -665,7 +665,10 @@
                 "properties": {
                   "title": { "type": "string", "description": "one-line summary, e.g. 'Updated your training plan'" },
                   "body": { "type": "string", "description": "optional one-line context" },
-                  "items": { "type": "array", "items": { "type": "string" }, "description": "bullets of what changed/was reviewed" }
+                  "items": { "type": "array", "items": { "type": "string" }, "description": "bullets of what changed/was reviewed" },
+                  "link": { "type": "string", "description": "#233 optional in-app route to open on tap (e.g. /coach/<planId>)" },
+                  "subkind": { "type": "string", "enum": ["update", "review"], "description": "#233 bell label (default update)" },
+                  "score": { "type": "number", "description": "#233 review execution score 0-10 (chip)" }
                 }
               }
             }
