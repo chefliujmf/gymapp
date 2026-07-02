@@ -9,6 +9,7 @@ import { useBle } from '../BleContext'
 import { getSetting, db } from '../db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
+import { fmtPace } from '../running-paces'
 import { InfoDot, TrendChart, minuteTicks } from '../charts'
 import { fetchActivities, fetchActivityThread, sportOfActivity, readIcuFeedback, type IcuActivity, type CoachNote } from '../intervals'
 import { authApi, type CoachReview } from '../auth/api'
@@ -96,28 +97,35 @@ export default function CoachPlanDetail() {
         const totalSec = p.segments!.reduce((s, x) => s + (Number(x.duration) || 0), 0)
         const keySet = rows.filter((r) => r.pct >= 88).sort((a, b) => b.durationSec * b.count - a.durationSec * a.count)[0]
         const fmtDur = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${s}s`)
+        // #331 — a RUN targets PACE (min/km), NOT watts. Convert each % (of threshold pace) to a pace
+        // using the athlete's threshold pace; label everything /km. Rides keep watts.
+        const isRun = p.sport === 'run'
+        const thrPace = (user?.runThresholdPace || (user?.sportSettings as { running?: { thresholdPace?: number } } | undefined)?.running?.thresholdPace) || null
+        const pctPace = (pct: number) => (thrPace && pct > 0 ? Math.round(thrPace * 100 / pct) : null)
+        const tgt = (pct: number, watts?: number | null) => isRun ? (pctPace(pct) ? `${fmtPace(pctPace(pct)!)}/km` : `${pct}%`) : (watts ? `${watts} W` : `${pct}%`)
+        const paceSeries = () => plannedSeries(p.segments!, 100).map((pct) => (thrPace && pct > 0 ? Math.round(thrPace * 100 / pct) : (thrPace || 0)))
         // #280 hero (4 headline targets) + chips (JM pick B, same spirit as post-workout)
         const hero: [string, string][] = [
           load ? ['Target TSS', String(load.tss)] : null,
           load ? ['Target IF', load.if.toFixed(2)] : null,
           sum ? ['Duration', `${sum.durationMin} min`] : null,
-          keySet ? ['Key-set target', keySet.watts ? `${keySet.watts} W` : `${keySet.pct}%`] : (sum ? ['Main target', sum.mainWatts ? `${sum.mainWatts} W` : `${sum.mainPct}%`] : null),
+          keySet ? [isRun ? 'Key-set pace' : 'Key-set target', tgt(keySet.pct, keySet.watts)] : (sum ? [isRun ? 'Main pace' : 'Main target', tgt(sum.mainPct, sum.mainWatts)] : null),
         ].filter(Boolean) as [string, string][]
         const chips: [string, string][] = [
           keySet ? [keySet.count > 1 ? `${keySet.count}× ${fmtDur(keySet.durationSec)}` : fmtDur(keySet.durationSec), 'key set'] : null,
           sum ? [sum.mainZone, 'zone'] : null,
-          rEst ? ['est FTP', 'set yours ⚙'] : null,
+          (!isRun && rEst) ? ['est FTP', 'set yours ⚙'] : null,
         ].filter(Boolean) as [string, string][]
         return (
         <>
           {/* #280 what to expect */}
-          <div className="act-ins"><span className="tag">What to expect</span>{p.objective || `A ${sum?.mainZone === 'Z4' || sum?.mainZone === 'Z5' ? 'quality' : 'steady'} ${p.sport === 'run' ? 'run' : 'ride'}: ~${sum?.durationMin ?? mins} min${load ? `, IF ${load.if.toFixed(2)}, ~${load.tss} TSS` : ''}. ${sum && sum.mainPct >= 88 ? `The meat is at ${sum.mainWatts ? sum.mainWatts + ' W' : sum.mainPct + '%'}.` : 'Keep it controlled and repeatable.'}`}</div>
+          <div className="act-ins"><span className="tag">What to expect</span>{p.objective || `A ${sum?.mainZone === 'Z4' || sum?.mainZone === 'Z5' ? 'quality' : 'steady'} ${isRun ? 'run' : 'ride'}: ~${sum?.durationMin ?? mins} min${load ? `, IF ${load.if.toFixed(2)}, ~${load.tss} TSS` : ''}. ${sum && sum.mainPct >= 88 ? `The meat is at ${tgt(sum.mainPct, sum.mainWatts)}.` : 'Keep it controlled and repeatable.'}`}</div>
           <div className="act-hero">{hero.map(([l, v]) => <div key={l} className="ht"><b>{v}</b><span>{l}</span></div>)}</div>
           {chips.length > 0 && <div className="act-chips">{chips.map(([l, v]) => <span key={l} className="act-chip"><b>{v}</b><span>{l}</span></span>)}</div>}
           {/* #280 planned power SHAPE — dense chart standard */}
           <div className="tl-card" style={{ marginTop: 8 }}>
-            <div className="tl-clabel">PLANNED POWER · W · target shape</div>
-            <TrendChart series={[{ label: 'Target', data: plannedSeries(p.segments!, rFtp), color: '#34e07d', area: true }]} height={150} axes unit=" W" xTicks={minuteTicks(totalSec)} />
+            <div className="tl-clabel">{isRun && thrPace ? 'PLANNED PACE · min/km · target shape' : 'PLANNED POWER · W · target shape'}</div>
+            <TrendChart series={[{ label: 'Target', data: isRun && thrPace ? paceSeries() : plannedSeries(p.segments!, rFtp), color: '#34e07d', area: true }]} height={150} axes unit={isRun && thrPace ? '/km' : ' W'} fmt={isRun && thrPace ? fmtPace : undefined} xTicks={minuteTicks(totalSec)} />
             <div className="act-ins"><span className="tag">💡</span>{p.cues?.[0] || (sum && sum.mainPct >= 91 ? 'Warm up fully — the first hard effort should feel controlled, not a shock; keep recoveries easy and let HR drop.' : 'Hold steady targets — smooth and repeatable beats spiky.')}</div>
           </div>
           {/* #280 structure */}
@@ -129,7 +137,7 @@ export default function CoachPlanDetail() {
                   <div key={i} className="pw-ivrow">
                     <span className="pw-zt">{r.zone}</span>
                     <span>{r.count > 1 ? `${r.count}× ` : ''}{r.label} · {fmtDur(r.durationSec)}</span>
-                    <b>{r.watts ? `${r.watts} W` : `${r.pct}%`}</b>
+                    <b>{tgt(r.pct, r.watts)}</b>
                   </div>
                 ))}
               </div>

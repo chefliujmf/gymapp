@@ -22,6 +22,31 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+331. ⬜ **Platyplus renders a RUN as WATTS (117 W, "PLANNED POWER", Z3) + intervals shows empty/"% (0-0w)".** JM
+    2026-07-02 (screenshots). The endurance detail (CoachPlanDetail) + charts are power-only; a run must show PACE
+    (min/km) using threshold pace, never watts. intervals: coach-authored run native text is bare "%" → parsed as 0 W;
+    must be pace + re-pushed. THE priority. gymapp-only.
+330. ⬜ **Post-workout feedback form is PRE-FILLED with values nobody entered (POOR + RPE 10) + WRONG SPORT (cycling
+    fields on a run) + incomplete.** JM 2026-07-02 (screenshot St-Lambert run): "How did it go?" shows POOR selected + RPE
+    10 selected though the human entered nothing → looks like fake data. FIX: nothing selected until the user taps; use
+    RUNNING feedback fields for a run (not cycling); complete the fields. gymapp-only.
+329. ⬜ **Factor the MENSTRUAL CYCLE into coaching + readiness — with a defined FORMULA.** JM 2026-07-02 (very
+    important): account for cycle phase. If intervals exposes cycle wellness (and it's not private), the coach READS it;
+    else it ASKS (cycle start date + typical length). DEFINE a formula: phase from cycle day → (a) LOAD modifier (push in
+    follicular/ovulatory, ease late-luteal/menses if symptomatic) + (b) readiness interpretation (luteal naturally raises
+    RHR / lowers HRV + core temp → don't dock Energy for it; adjust baseline by phase). Extends the female module
+    (coach-engine-female.md) + docs/readiness-scores.md. Pure, tested module. gymapp-only.
+328. 🔨 **Running pace + threshold must display in MIN/KM everywhere.** JM 2026-07-02. intervals threshold_pace is stored
+    in m/s (converted); UI + coach must always SHOW running pace/threshold as m:ss/km, never watts/%/m/s. Verify every run
+    surface (plan, player, stats, coach text). Ties #312/#313. gymapp-only.
+327. ⬜ **VO₂max shown for wife looks too high (doubt 52.1).** JM 2026-07-02. Likely the HR-ratio estimate using an ASSUMED
+    HRmax (220−age) + resting HR → unreliable, but shown as a confident number. FIX: when inputs are assumed/thin, mark it
+    clearly low-confidence / provisional (tie #319) or suppress; only show a firm VO₂max from real data (measured HRmax,
+    or pace/power VO₂max with enough runs). Review her actual computation. gymapp-only.
+326. 🔨 **Completed workout opens the PLANNED view, not the ANALYSED one — terrible.** JM 2026-07-02: clicking a DONE
+    workout lands on the planned page (only "flyby" gets you elsewhere); from there you can still hit Play/Analysis. Like
+    intervals: a COMPLETED session must open its ANALYSED/result view by default, with an option to view the plan. Fix the
+    routing: done → /activity/:id (analysed); planned → plan view. Remove Play from a completed session. gymapp-only.
 325. 🔨 **Onboarding forgot to ask the COACH's NAME.** JM 2026-07-02: Option C flow dropped naming the coach (was in the
     old chat interview; stored as `coachName`, set on Profile "Your coach"). ADD a step (or fold into About/goals #323) to
     let the user name their coach — it personalises every chat + insight. Prefill "Coach". gymapp-only.

@@ -150,10 +150,14 @@ export default function Profile() {
   // power/pace (which showed only the low cycling Coggan value). Manual value always wins.
   const runHrMax = val('running', 'maxHr') ?? user?.maxHR ?? null
   const cycHrMax = val('cycling', 'maxHr') ?? user?.maxHR ?? null
-  const vo2 = headlineVo2max(user?.vo2max, [
-    { sport: 'running', est: runningVo2max({ vdot, hrMax: runHrMax, hrRest }) },
-    { sport: 'cycling', est: cyclingVo2max({ ftp: val('cycling', 'ftp'), weightKg: pulled?.weight ?? null, hrMax: cycHrMax, hrRest }) },
-  ])
+  // #327 — order by the athlete's OWN sports so the headline VO₂max comes from what they actually do
+  // (cyclist → cycling, runner → running), not the biggest number across sports.
+  const estBySport: Record<string, ReturnType<typeof runningVo2max>> = {
+    running: runningVo2max({ vdot, hrMax: runHrMax, hrRest }),
+    cycling: cyclingVo2max({ ftp: val('cycling', 'ftp'), weightKg: pulled?.weight ?? null, hrMax: cycHrMax, hrRest }),
+  }
+  const vo2Order = [...(user?.sports || []).filter((s) => s in estBySport), 'running', 'cycling'].filter((s, i, a) => a.indexOf(s) === i)
+  const vo2 = headlineVo2max(user?.vo2max, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
   const hrMax = runHrMax ?? cycHrMax
   // #215/#271 estimate (Critical Speed → threshold pace). Only a CONFIDENT estimate (server gates on
   // recent run volume + fit) is shown; a slower pace off thin data is suppressed, not pushed.

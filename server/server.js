@@ -1186,13 +1186,12 @@ function planToIcuEvent(plan, items = []) {
     // intervals workout render EMPTY (matches cyclingcoach split_long_doc_step).
     const isRun = plan.sport === 'run'
     if (segs.length) ev.workout_doc = { steps: segs.flatMap((s) => encodeStep(s, isRun)) }
-    // ALSO emit readable native workout text alongside workout_doc — intervals needs it to render
-    // the power chart / readable structure (workout_doc stays authoritative for duration so
-    // moving_time isn't doubled). Format: "- 10m 50-62%". RIDES ONLY: intervals parses bare "%" in
-    // native text as %FTP → WATTS, which would re-introduce power on a RUN (#312). Runs rely on the
-    // pace workout_doc alone; their native text is pace-annotated so it's never read as power.
-    const native = segs.length
-      ? '## Workout\n' + segs.map((s) => { const m = Math.round((Number(s.duration) || 0) / 60); const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; const pct = a === b ? a + '%' : a + '-' + b + '%'; return `- ${m}m ${pct}${isRun ? ' pace' : ''}${s.label ? ' ' + s.label : ''}` }).join('\n')
+    // ALSO emit readable native workout text — RIDES ONLY. intervals renders the ride power chart from
+    // it. For a RUN it parses the bare "%" as %FTP → WATTS (the "58-68% (0-0w)" + empty chart bug #331),
+    // so runs get NO native workout block: the PACE workout_doc is authoritative and renders the pace
+    // chart on its own. Keep the coaching notes either way.
+    const native = (segs.length && !isRun)
+      ? '## Workout\n' + segs.map((s) => { const m = Math.round((Number(s.duration) || 0) / 60); const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; return `- ${m}m ${a === b ? a + '%' : a + '-' + b + '%'}${s.label ? ' ' + s.label : ''}` }).join('\n')
       : ''
     ev.description = [native, plan.notes, brief].filter(Boolean).join('\n\n')
   } else {

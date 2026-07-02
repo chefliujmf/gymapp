@@ -274,9 +274,12 @@ function PlanCard({ e, showDate, onSwap, onRemove, done, act }: { e: IcuEvent; s
   const atp = /^ATP\b/i.test(e.name) || e.category === 'NOTE'
   // For structured rides/runs, the thumb shows the workout's power profile, not a generic icon.
   const rideSegs = !atp && (sportOf(e) === 'cycling' || e.type === 'Run') ? flattenIcuSteps(e.workout_doc?.steps) : []
+  // #326 — a COMPLETED session opens its ANALYSED result (/activity/:id), like intervals; only a
+  // still-planned one opens the plan. (Was always /plan/:id → clicking a done workout showed the plan.)
+  const to = act ? `/activity/${act.id}` : `/plan/${e.id}`
   return (
     <div className="today-entry">
-      <Link to={`/plan/${e.id}`} className={'card' + (isDone ? ' card--done' : '')}>
+      <Link to={to} className={'card' + (isDone ? ' card--done' : '')}>
         <div className="card-row">
           {rideSegs.length
             ? <div className="thumb"><MiniProfile segs={rideSegs} /></div>

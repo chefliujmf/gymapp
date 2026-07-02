@@ -40,6 +40,7 @@ export function lerpMap(x, pts) {
   return pts[pts.length - 1][1]
 }
 
+import { cycleReadinessAdjust } from './cycle.js' // #329 — luteal RHR↑/HRV↓ correction
 export const MIN_BASELINE_DAYS = 14 // below this we can't trust a personal baseline → fall back to manual
 
 // --- personal baselines from wellness history -----------------------------
@@ -94,14 +95,19 @@ export function freshness({ atl, ctl, form, tsbBaseline } = {}) {
 // Flagged `provisional` until the personal baseline takes over (it self-personalises as data accrues).
 export const POP_HRV_BASELINE = { mean: Math.log(45), sd: 0.45 }
 export const POP_RHR_BASELINE = { mean: 60, sd: 9 }
-export function energy({ hrv, rhr, sleep, subjective, hrvBaseline, rhrBaseline } = {}) {
+export function energy({ hrv, rhr, sleep, subjective, hrvBaseline, rhrBaseline, cycleAdjust } = {}) {
+  // #329 — the luteal phase hormonally RAISES resting HR and SUPPRESSES HRV. That's not fatigue, so
+  // correct today's reading by the phase's expected shift BEFORE scoring, or Energy is wrongly docked.
+  const ca = cycleAdjust || { rhrBpm: 0, hrvPct: 0 }
+  const hrvC = hrv != null ? hrv * (1 + (ca.hrvPct || 0) / 100) : hrv // add back the suppressed %
+  const rhrC = rhr != null ? rhr - (ca.rhrBpm || 0) : rhr             // remove the hormonal elevation
   // Prefer the athlete's OWN baseline; fall back to population norms so we compute SOMETHING (#315).
-  const hb = hrvBaseline && hrvBaseline.sd ? hrvBaseline : (hrv != null ? POP_HRV_BASELINE : null)
+  const hb = hrvBaseline && hrvBaseline.sd ? hrvBaseline : (hrvC != null ? POP_HRV_BASELINE : null)
   const provisional = !(hrvBaseline && hrvBaseline.sd) && !!hb
-  const lnz = hrv != null && hb && hb.sd ? clamp(zscore(lnRMSSD(hrv), hb.mean, hb.sd), -2.5, 2.5) : null
+  const lnz = hrvC != null && hb && hb.sd ? clamp(zscore(lnRMSSD(hrvC), hb.mean, hb.sd), -2.5, 2.5) : null
   if (lnz == null) return null // truly no HRV at all → keep the manual tap
-  const rb = rhrBaseline && rhrBaseline.sd ? rhrBaseline : (rhr != null ? POP_RHR_BASELINE : null)
-  const rz = rhr != null && rb && rb.sd ? clamp(zscore(rhr, rb.mean, rb.sd), -2.5, 2.5) : null
+  const rb = rhrBaseline && rhrBaseline.sd ? rhrBaseline : (rhrC != null ? POP_RHR_BASELINE : null)
+  const rz = rhrC != null && rb && rb.sd ? clamp(zscore(rhrC, rb.mean, rb.sd), -2.5, 2.5) : null
   let hrvSub = zTo5(lnz, +1)
   const rhrSub = rz == null ? null : zTo5(rz, -1) // inverse: high RHR = worse
   // Parasympathetic-saturation guard: high HRV AND elevated RHR ⇒ suspect (fatigue masquerading), cap HRV's credit.
@@ -222,11 +228,13 @@ export function forecastFreshness({ ctl, atl, tsbBaseline } = {}, plannedLoads =
 // --- top-level ------------------------------------------------------------
 // history: wellness rows BEFORE today (for baselines). today: today's wellness row.
 // opts: { sleepNeed, subjective, checkins } (subjective = user's tap; checkins = for calibration).
-export function readiness(history = [], today = {}, { sleepNeed = 8, subjective, checkins = [] } = {}) {
+export function readiness(history = [], today = {}, { sleepNeed = 8, subjective, checkins = [], cyclePhase = null } = {}) {
   const base = baselines(history)
   const sl = sleep({ sleepScore: today.sleepScore, sleepHours: today.sleepHours, sleepNeed })
   const fr = freshness({ atl: today.fatigue != null ? today.fatigue : today.atl, ctl: today.fitness != null ? today.fitness : today.ctl, form: today.form, tsbBaseline: base.tsbBaseline })
-  const en = energy({ hrv: today.hrv, rhr: today.restingHR, sleep: sl && sl.score, subjective, hrvBaseline: base.hrvBaseline, rhrBaseline: base.rhrBaseline })
+  // #329 — don't penalise Energy for the luteal phase's hormonal RHR↑/HRV↓ (correct today's reading).
+  const cycAdj = cyclePhase ? cycleReadinessAdjust(cyclePhase) : null
+  const en = energy({ hrv: today.hrv, rhr: today.restingHR, sleep: sl && sl.score, subjective, hrvBaseline: base.hrvBaseline, rhrBaseline: base.rhrBaseline, cycleAdjust: cycAdj })
   // #207 Phase 2b: nudge each auto score toward what THIS athlete has consistently reported.
   const off = learnedOffsets(checkins)
   if (sl) { sl.raw = sl.score; sl.score = applyOffset(sl.score, off.sleep) }
