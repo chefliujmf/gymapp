@@ -22,6 +22,30 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+291. ⬜ **Replicate cyclingcoach "brian" logic + adapt to Platyplus — the engine port is INCOMPLETE.** JM 2026-07-01:
+    "we need to replicate cycling coach brian and logic and adapt it to platyplus" + "other files like that you missed?"
+    AUDIT: `sync-coach-engine.mjs` bundles only 11 of ~45 codex_coach files. MISSED behaviour files that matter:
+    • `feedback_protocol.md` — WHERE coach output goes (public title/description = Strava-safe · private context → Notes/
+      comment thread · quick-select fields). This is the rule JM is hitting.
+    • `instructions_intervals_icu.md` — the public-vs-private PRINCIPLES (description can appear on Strava; free-text →
+      Notes thread; never leak health/knee/"protect Saturday"). (API-direct bits don't apply — we act via Platyplus tools.)
+    • `coach_feedback_format.md`, `coach_action_feedback.md`, `workout_analysis_template.md` — review structure/format.
+    • Learned prefs in `coach_feedback_memory.md` (public-title examples) — currently only via per-user memory.
+    PLAN: (1) port the missing knowledge into the engine (adapt API-direct → Platyplus-tool language); (2) give the coach
+    the ACTIONS it's missing (#289 title/description, #290 review→Notes); (3) full behaviour audit brian↔Platyplus + close
+    remaining gaps. Big — phase it. gymapp-only.
+290. 🔨 **Coach review/comments show in Platyplus but DON'T sync to intervals Notes.** JM 2026-07-01: "coach comments do
+    not appear in the notes section (see it in platyplus but not sync)." ROOT CAUSE: `/api/coach-review` saves to
+    `coachReviews` (Platyplus store) only — nothing is posted to the intervals activity message/comment thread. FIX: after
+    saving, post the coach's PRIVATE-safe review (verdict + takeaways + recovery/next) to `/activity/{id}/messages` (like
+    #287 does for the athlete comment) so it shows in intervals Notes. Keep private context OUT of the public description
+    (feedback_protocol.md). gymapp-only.
+289. 🔨 **Coach doesn't set the activity TITLE + DESCRIPTION in intervals (it's "not renamed").** JM 2026-07-01: "the coach
+    has directives on how to give a title to strava + description … it's not renamed now … in fact it does it in intervals."
+    The directive (`instructions_public_text.md`) IS in the compiled engine, but the coach has NO tool/action to WRITE a
+    title/description onto the completed activity → nothing renames. FIX: add a Platyplus tool + server endpoint to PUT a
+    public-safe `name` + `description` on the intervals activity (syncs to Strava); instruct the coach (post-workout flow)
+    to set them per instructions_public_text (center the workout, no private-life/health leaks). gymapp-only.
 288. 🔨 **New users won't have the custom feedback fields in intervals — create them on connect.** JM 2026-07-01:
     "a new user might not have the fields created (custom) so you'll have to create them in intervals in onboarding."
     Right — the 6 ACTIVITY_FIELDs (LegsBefore/LegsAfter/FuelGI/PainNiggles/LifeConstraint/MentalState) exist on JM's
