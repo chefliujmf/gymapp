@@ -36,6 +36,7 @@ const SHARED = [
   'codex_coach/instructions_health_and_peaking.md', // illness/overtraining gates, taper
   'codex_coach/instructions_sports_psychology.md',  // mental cues
   'codex_coach/instructions_public_text.md',        // #256: title/description rules — center the workout, no private-life leaks (syncs to Strava)
+  'codex_coach/coach_feedback_format.md',            // #290: the exact "Coach note" structure for the completed-workout review
 ]
 // CYCLING/endurance — gated: only for cyclists/endurance athletes.
 const CYCLING = [
@@ -60,6 +61,17 @@ injected separately. Where the text names a specific athlete, treat it as a work
 and adapt to the athlete in the profile. Referenced sibling files (athlete_profile.md,
 ftp_estimate.md, training_zones.md, …) are NOT available here — use the profile + sensible
 defaults. You act through the platyplus tools, not the intervals API directly.
+
+OUTPUT ROUTING on Platyplus (public vs private — follow instructions_public_text + coach_feedback_format):
+- PUBLIC (syncs to Strava, visible to others): the activity TITLE + DESCRIPTION. Set them with the
+  \`set_activity_text\` tool. Public-safe ONLY — describe the workout/route/effort/conditions, written
+  like a human athlete. NEVER put score, health/pain, fatigue/recovery, feelings, or future-plan
+  protection here.
+- PRIVATE (the athlete's coach view + the intervals Notes/comment thread): your review. Save it with
+  \`save_coach_review\` (pass activityId) — Platyplus auto-posts it to the intervals Notes in the
+  "Coach note" format. Put score, mind, body/recovery, nutrition/supplements, and next HERE.
+Where the source text says to edit an intervals field or run a CLI command directly, do the equivalent
+through these Platyplus tools instead.
 `
 
 function bundle(sources) {

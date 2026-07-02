@@ -729,7 +729,23 @@
             }
           } } }
         },
-        "responses": { "201": { "description": "review stored" }, "400": { "description": "date required" } }
+        "responses": { "201": { "description": "review stored (and, if activityId + intervals connected, posted to the intervals Notes/comment thread in the Coach-note format — #290)" }, "400": { "description": "date required" } }
+      }
+    },
+    "/api/activity/{id}/public-text": {
+      "put": {
+        "summary": "Coach sets the PUBLIC title + description on a completed activity (Bearer) — syncs to Strava (#289)",
+        "description": "Public-safe ONLY: workout/route/effort/conditions. Private context (score, health, next-plan) goes in /api/coach-review, not here. PUTs name/description onto the intervals activity.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "intervals activity id, e.g. i161879537" }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": {
+            "type": "object",
+            "properties": { "name": { "type": "string", "description": "public title" }, "description": { "type": "string", "description": "public-safe description" } }
+          } } }
+        },
+        "responses": { "200": { "description": "updated" }, "400": { "description": "bad id / no intervals connection / nothing to set" }, "502": { "description": "intervals rejected the update" } }
       }
     },
     "/api/exercises": {

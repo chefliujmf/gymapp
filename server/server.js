@@ -629,7 +629,7 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
     try {
       const fb = plan.feedback
       const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
-      const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}") with a one-line verdict, 2-4 short takeaways, and what's next. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. Be concise; don't ask questions — just review and act.`
+      const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}", and activityId if it matched a device activity) with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). If it matched a device activity, ALSO set a PUBLIC-safe title + description with set_activity_text (activity id from get_recent_activities) — workout/route/effort only, NO health/score/plan. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. Be concise; don't ask questions — just review and act.`
       runCoachTask(req.user, msg).catch((e) => console.error('[coach-review] ' + (e.message || e)))
     } catch (e) { console.error('[coach-review] trigger ' + e.message) }
   }
@@ -710,7 +710,7 @@ app.post('/auth/activity/:id/feedback', auth, (req, res) => {
   if (req.user.coachProfile && req.user.coachProfile.trim()) {
     try {
       const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
-      const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${id}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${id}") with a one-line verdict, 2-4 short takeaways, and what's next. If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. Be concise; decide and act.`
+      const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${id}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${id}") with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${id}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. Be concise; decide and act.`
       runCoachTask(req.user, msg).catch((e) => console.error('[activity-review] ' + (e.message || e)))
     } catch (e) { console.error('[activity-review] trigger ' + e.message) }
   }
@@ -1734,7 +1734,47 @@ app.post('/api/coach-review', apiAuth, (req, res) => {
   }
   req.user.coachReviews = [review, ...req.user.coachReviews.filter((r) => r.id !== review.id)].slice(0, 200)
   save(store); res.status(201).json(review)
+  // #290: the coach note belongs in the intervals Notes/comment thread too (not just Platyplus), in
+  // the standard "Coach note" format so #286 reads it back. Private-safe context lives HERE, never in
+  // the public description (#289 set_activity_text). Best-effort, deduped.
+  if (review.activityId && req.user.icuKey && /^i?\d+$/.test(review.activityId)) {
+    postCoachNote(req.user, review.activityId, review).catch((e) => console.error('[coach-note-write] ' + (e.message || e)))
+  }
 })
+
+// #289 — the coach sets the PUBLIC title + description on a completed activity (syncs to Strava).
+// Public-safe ONLY (the coach engine enforces: workout/route/effort, no health/score/plan leaks).
+app.put('/api/activity/:id/public-text', apiAuth, async (req, res) => {
+  const id = String(req.params.id)
+  if (!/^i?\d+$/.test(id)) return res.status(400).json({ error: 'expected an intervals activity id' })
+  if (!req.user.icuKey) return res.status(400).json({ error: 'no intervals connection' })
+  const payload = {}
+  if (typeof req.body.name === 'string' && req.body.name.trim()) payload.name = req.body.name.trim().slice(0, 200)
+  if (typeof req.body.description === 'string') payload.description = req.body.description.slice(0, 4000)
+  if (!Object.keys(payload).length) return res.status(400).json({ error: 'name or description required' })
+  try {
+    const r = await icuFetch(req.user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+    if (!r.ok) return res.status(502).json({ error: 'intervals rejected the update', status: r.status })
+    res.json({ ok: true, ...payload })
+  } catch (e) { res.status(502).json({ error: String(e.message || e) }) }
+})
+
+// #290 — format a saved coach review into the standard "Coach note" (+ Recovery/Supplements) blocks
+// and post them to the intervals activity message thread. Matches coach_feedback_format.md so #286's
+// parseCoachNote reads it back into the verdict card + expander.
+async function postCoachNote(user, id, r) {
+  const score = r.score == null ? null : (r.score > 10 ? Math.round(r.score / 10) : r.score) // normalize 0-100 → /10
+  const bullets = (r.takeaways && r.takeaways.length ? r.takeaways : r.execution) || []
+  const lines = [`Coach note - ${(r.sport || 'workout')} ${r.date}`, '', 'Verdict']
+  lines.push(`- ${score != null ? `Score: ${score}/10. ` : ''}${r.verdict || ''}`.trimEnd())
+  if (r.execution && r.execution.length && bullets !== r.execution) { lines.push('', 'Execution'); for (const t of r.execution) lines.push(`- ${t}`) }
+  else if (bullets.length) { for (const t of bullets) lines.push(`- ${t}`) }
+  if (r.body) { lines.push('', 'Body / Recovery Exercises', `- ${r.body}`) }
+  if (r.mind && (r.mind.pattern || r.mind.cue)) { lines.push('', 'Mind'); if (r.mind.pattern) lines.push(`- ${r.mind.pattern}`); if (r.mind.cue) lines.push(`- ${r.mind.cue}`) }
+  if (r.next) { lines.push('', 'Next', `- ${r.next}`) }
+  await syncActivityNote(user, id, lines.join('\n').trim())
+  if (r.recovery && r.recovery.trim()) await syncActivityNote(user, id, `Recovery / Supplements\n\n${r.recovery.trim()}`)
+}
 app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit, req.query.equipment)))
 // Recipe + session catalog search — the coach picks a real id for fuel meals / mind sessions.
 app.get('/api/recipes', apiAuth, (req, res) => res.json(searchRecipes(req.query.q, req.query.limit, req.query.category, req.query.diet || req.user.info?.diet)))
