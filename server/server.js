@@ -1240,6 +1240,13 @@ async function deleteIcuEvent(user, plan) {
   if (!user.icuKey || !plan?.icuEventId) return
   try { await icuFetch(user, `/athlete/${user.icuAthlete || 'i28814'}/events/${plan.icuEventId}`, { method: 'DELETE' }) } catch { /* best effort */ }
 }
+// #297 — guarantee a TEMPO on strength lifts (default 3-1-1-0) so the chip always shows, even when
+// the coach LLM omits it. Only reps-mode (loaded) lifts; timed/mobility holds keep no tempo.
+function withDefaultTempo(x) {
+  if (!x || typeof x !== 'object') return x
+  if ((x.mode || 'reps') === 'reps' && (!x.tempo || !String(x.tempo).trim())) return { ...x, tempo: '3-1-1-0' }
+  return x
+}
 // Shared upsert/delete for workout plans (used by both the coach API and the UI).
 async function upsertPlan(user, body) {
   const err = validatePlan(body); if (err) return { status: 400, body: { error: err } }
@@ -1260,7 +1267,7 @@ async function upsertPlan(user, body) {
     origin: i >= 0 ? (user.plans[i].origin || 'platyplus') : 'platyplus',
     icuEventId: i >= 0 ? user.plans[i].icuEventId : undefined,
     ...(body.sport === 'gym'
-      ? { rounds: Number(body.rounds) || 1, exercises: Array.isArray(body.exercises) ? body.exercises : [] }
+      ? { rounds: Number(body.rounds) || 1, exercises: (Array.isArray(body.exercises) ? body.exercises : []).map(withDefaultTempo) }
       : { ftp: Number(body.ftp) || undefined, segments: Array.isArray(body.segments) ? body.segments : [] }),
   }
   if (i >= 0) user.plans[i] = plan; else user.plans.push(plan)
