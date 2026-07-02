@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { fetchActivity, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
-import { TrendChart, PowerCurveChart } from '../charts'
+import { TrendChart, PowerCurveChart, PowerBlocks } from '../charts'
 import { zoneColor } from '../ui'
 import { getSetting } from '../db'
 import { authApi, type CoachReview } from '../auth/api'
@@ -40,14 +40,27 @@ function RidePower({ streams, ftp }: { streams: ActivityStreams; ftp: number }) 
   const curve = meanMaxCurve(watts)
   const zsec = zoneSecs(watts, ftp)
   const total = zsec.reduce((a, b) => a + b, 0) || 1
+  // curve insight: 20-min best ≈ threshold read; zones insight: where the time actually went
+  const at = (d: number) => { const i = curve.secs.indexOf(d); return i >= 0 ? curve.watts[i] : null }
+  const w20 = at(1200) || at(600), peak = curve.watts[0]
+  const curveIns = w20 ? `Best 20-min ${w20} W ≈ your threshold read${peak ? ` · 5-s peak ${peak} W` : ''}` : peak ? `5-s peak ${peak} W` : null
+  const topZone = zsec.indexOf(Math.max(...zsec))
+  const zoneIns = total > 1 ? `Most time in ${ZONES[topZone]} (${Math.round((zsec[topZone] / total) * 100)}%) — ${topZone <= 1 ? 'a genuinely easy/aerobic session' : topZone <= 2 ? 'solid endurance-to-tempo load' : 'real intensity today'}` : null
   return (
     <div>
-      <div className="tl-card"><div className="tl-clabel">POWER CURVE · best avg by duration</div><PowerCurveChart secs={curve.secs} watts={curve.watts} height={170} /></div>
-      <div className="tl-clabel" style={{ marginTop: 6 }}>TIME IN ZONE · FTP {ftp} W</div>
-      <div className="zbar">{ZONES.map((_, i) => zsec[i] > 0 && <div key={i} style={{ width: `${(zsec[i] / total) * 100}%`, background: zoneColor(ZONE_PCT[i]) }} title={`${ZONES[i]} ${mmss(zsec[i])}`} />)}</div>
-      <div className="zlist">{ZONES.map((z, i) => zsec[i] > 0 && (
-        <div key={i} className="zrow"><span className="zdot" style={{ background: zoneColor(ZONE_PCT[i]) }} />{z}<b>{mmss(zsec[i])}</b><span className="meta">{Math.round((zsec[i] / total) * 100)}%</span></div>
-      ))}</div>
+      <div className="tl-card">
+        <div className="tl-clabel">POWER CURVE · best avg by duration (W)</div>
+        <PowerCurveChart secs={curve.secs} watts={curve.watts} height={170} />
+        {curveIns && <div className="act-ins"><span className="tag">💡</span>{curveIns}</div>}
+      </div>
+      <div className="tl-card">
+        <div className="tl-clabel">TIME IN ZONE · FTP {ftp} W</div>
+        <div className="zbar">{ZONES.map((_, i) => zsec[i] > 0 && <div key={i} style={{ width: `${(zsec[i] / total) * 100}%`, background: zoneColor(ZONE_PCT[i]) }} title={`${ZONES[i]} ${mmss(zsec[i])}`} />)}</div>
+        <div className="zlist">{ZONES.map((z, i) => zsec[i] > 0 && (
+          <div key={i} className="zrow"><span className="zdot" style={{ background: zoneColor(ZONE_PCT[i]) }} />{z}<b>{mmss(zsec[i])}</b><span className="meta">{Math.round((zsec[i] / total) * 100)}%</span></div>
+        ))}</div>
+        {zoneIns && <div className="act-ins"><span className="tag">💡</span>{zoneIns}</div>}
+      </div>
     </div>
   )
 }
@@ -71,27 +84,46 @@ const TL_ROWS = [
 // elapsed seconds → compact axis label (mm:ss, or h:mm over an hour)
 const fmtElapsed = (s: number) => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}` : `${m}:${String(ss).padStart(2, '0')}` }
 
-// #54: stacked power/HR/altitude/cadence charts sharing ONE scrubber. Each to the chart standard
-// (#230): Y axis + a shared TIME x-axis + an avg/max insight in the label.
-function RideTimeline({ streams }: { streams: ActivityStreams }) {
+// round-minute x-axis marks (0m · 10m · … · h:mm) → readable, denser time axis (#286)
+function minuteTicks(totalSec: number): { frac: number; label: string }[] {
+  const totMin = totalSec / 60, step = totMin > 60 ? 10 : totMin > 30 ? 5 : 2, out: { frac: number; label: string }[] = []
+  for (let m = 0; m <= totMin + 0.01; m += step) out.push({ frac: Math.min(1, (m * 60) / totalSec), label: m >= 60 ? `${Math.floor(m / 60)}:${String(Math.round(m % 60)).padStart(2, '0')}` : `${m}m` })
+  return out
+}
+// #54/#286: stacked power/HR/altitude/cadence charts sharing ONE scrubber, each to the chart
+// standard — Y axis (dense ticks), round-minute TIME x-axis + gridlines, avg·max in the header,
+// and a COMPUTED coach insight line under each (the "insight per section" JM asked for).
+function RideTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity }) {
   const [cur, setCur] = useState<number | null>(null)
   const rows = TL_ROWS.filter((r) => ((streams[r.key] as unknown[] | undefined)?.length || 0) > 1)
   if (!rows.length) return <p className="meta">No power / HR / altitude data for this activity.</p>
   const data: Record<string, (number | null)[]> = {}
   for (const r of rows) data[r.key] = ds(streams[r.key] as (number | null)[])
-  // shared time axis (from the time stream, downsampled to the same length); fallback to none
-  const timeLabels = streams.time && streams.time.length > 1 ? ds(streams.time as number[]).map((v) => (v == null ? '' : fmtElapsed(v))) : undefined
-  const at = (key: string) => { const arr = data[key]; const v = cur != null ? arr[cur] : arr[arr.length - 1]; return v == null ? null : Math.round(v) }
-  const stat = (key: string) => { const v = data[key].filter((x): x is number => x != null); if (!v.length) return ''; const avg = Math.round(v.reduce((a, b) => a + b, 0) / v.length); return ` · avg ${avg} · max ${Math.round(Math.max(...v))}` }
+  const timeArr = streams.time && streams.time.length > 1 ? ds(streams.time as number[]) : null
+  const totalSec = timeArr ? Number(timeArr[timeArr.length - 1]) || 0 : 0
+  const xTicks = totalSec > 0 ? minuteTicks(totalSec) : undefined
+  const timeLabels = timeArr ? timeArr.map((v) => (v == null ? '' : fmtElapsed(v as number))) : undefined
+  const stat = (key: string) => { const v = data[key].filter((x): x is number => x != null); if (!v.length) return ''; const avg = Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length); return ` · avg ${avg} · max ${Math.round(Math.max(...v))}` }
+  const avg = (key: string) => { const v = data[key].filter((x): x is number => x != null); return v.length ? Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length) : 0 }
+  const insight = (key: string): string | null => {
+    if (key === 'watts') { const vi = a.icu_variability_index; const np = a.icu_weighted_avg_watts ? Math.round(a.icu_weighted_avg_watts) : null; if (vi) return `NP ${np ?? avg('watts')} W · VI ${vi.toFixed(2)} — ${vi >= 1.15 ? 'stochastic: surges & coasts, not steady blocks' : vi >= 1.05 ? 'somewhat variable — rolling terrain' : 'steady, well-paced'}`; return `Avg ${avg('watts')} W over the ride` }
+    if (key === 'heartrate') { const mx = a.max_heartrate ? Math.round(a.max_heartrate) : Math.max(...data.heartrate.filter((x): x is number => x != null)); return `Avg ${avg('heartrate')} bpm, peaked ${mx} — effort held ${avg('heartrate') / mx >= 0.85 ? 'high' : 'moderate'} for the session` }
+    if (key === 'altitude') { const g = a.total_elevation_gain ? Math.round(a.total_elevation_gain) : null; return g ? `${g} m climbed — ${g > 400 ? 'punchy up/down, hard to hold clean blocks' : g > 150 ? 'rolling terrain' : 'mostly flat'}` : null }
+    if (key === 'cadence') return `Avg ${avg('cadence')} rpm${avg('cadence') < 85 ? ' — grindy, watch the knees on climbs' : ''}`
+    return null
+  }
   return (
     <div>
-      <div className="tl-chips">{rows.map((r) => <div key={r.key} className="tl-chip"><span>{r.label}</span><b>{at(r.key) != null ? at(r.key) + r.unit : '—'}</b></div>)}</div>
-      {rows.map((r) => (
-        <div key={r.key} className="tl-card">
-          <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}{stat(r.key)}</div>
-          <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={90} axes unit={r.unit} labels={timeLabels} cursor={cur} onHover={setCur} />
-        </div>
-      ))}
+      {rows.map((r) => {
+        const ins = insight(r.key)
+        return (
+          <div key={r.key} className="tl-card">
+            <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}{stat(r.key)}</div>
+            <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={150} axes unit={r.unit} labels={timeLabels} xTicks={xTicks} cursor={cur} onHover={setCur} />
+            {ins && <div className="act-ins"><span className="tag">💡</span>{ins}</div>}
+          </div>
+        )
+      })}
       <p className="meta" style={{ textAlign: 'center', fontSize: 11 }}>drag across to scrub — all charts move together</p>
     </div>
   )
@@ -153,11 +185,18 @@ export default function ActivityDetail() {
   ].filter(Boolean)) as [string, string][]
   const device = a.device_name || a.source
   const hasVerdict = !!review || !!note
+  // #286 hero + chips: 4 headline stats big, the rest as compact chips (JM pick B)
+  const HERO = ['Load (TSS)', 'Norm power', 'Intensity', 'Avg HR']
+  const hero: [string, string][] = stats.filter(([l]) => HERO.includes(l)).slice(0, 4)
+  const heroSet = new Set(hero.map((h) => h[0]))
+  for (const s of stats) { if (hero.length >= 4) break; if (!heroSet.has(s[0])) { hero.push(s); heroSet.add(s[0]) } }
+  const chips = stats.filter(([l]) => !heroSet.has(l))
 
   return (
     <div>
       <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
+        {(streams.watts?.filter((v) => v != null).length || 0) >= 9 && <div className="act-thumb"><PowerBlocks watts={streams.watts} ftp={ftp} /></div>}
         <div style={{ minWidth: 0 }}>
           <span className="eyebrow">{sportOfActivity(a) === 'ride' ? 'Ride' : sportOfActivity(a) === 'run' ? 'Run' : 'Workout'} · {isIndoorActivity(a) ? 'Indoor' : 'Outdoor'}</span>
           <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Activity'}</h1>
@@ -171,7 +210,8 @@ export default function ActivityDetail() {
         <p className="meta" style={{ margin: '2px 2px 10px', whiteSpace: 'normal' }}>{a.description.replace(/\s*(#{1,3})\s*/g, ' ').replace(/\*\*/g, '').trim()}</p>
       )}
 
-      <div className="actstats">{stats.map(([l, v]) => <div key={l} className="actstat"><span>{l}</span><b>{v}</b></div>)}</div>
+      <div className="act-hero">{hero.map(([l, v]) => <div key={l} className="ht"><b>{v}</b><span>{l}</span></div>)}</div>
+      {chips.length > 0 && <div className="act-chips">{chips.map(([l, v]) => <span key={l} className="act-chip"><b>{v}</b><span>{l}</span></span>)}</div>}
 
       {tabs.length > 0 && (
         <div className="act-tabs">
@@ -182,7 +222,7 @@ export default function ActivityDetail() {
       )}
 
       {activeTab === 'map' && <div className="card" style={{ padding: 6 }}><FlybyMap track={track} /></div>}
-      {activeTab === 'timeline' && <RideTimeline streams={streams} />}
+      {activeTab === 'timeline' && <RideTimeline streams={streams} a={a} />}
       {activeTab === 'power' && <RidePower streams={streams} ftp={ftp} />}
       {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
 

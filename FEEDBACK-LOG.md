@@ -22,6 +22,19 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+288. 🔨 **New users won't have the custom feedback fields in intervals — create them on connect.** JM 2026-07-01:
+    "a new user might not have the fields created (custom) so you'll have to create them in intervals in onboarding."
+    Right — the 6 ACTIVITY_FIELDs (LegsBefore/LegsAfter/FuelGI/PainNiggles/LifeConstraint/MentalState) exist on JM's
+    account but not a fresh one, so the 1-based values we write have nowhere to land. FIXED: `ensureIcuFields(user)` in
+    server — GETs `/athlete/{id}/custom-item`, creates any missing field (POST custom-item, type select, options with
+    1-based values matching icu-fields.ts), idempotent + best-effort. Called from `/auth/icu` whenever a key is set
+    (covers onboarding connect + reconnect). gymapp-only. **JM to verify on a fresh QA account.**
+287. 🔨 **Free-text comment doesn't sync to intervals (feel/RPE/fields do).** JM 2026-07-01 (QA): entered a comment on
+    today's activity in Platyplus; the rest synced but the comment didn't appear in intervals. ROOT CAUSE: the comment
+    isn't a field — it belongs in the intervals MESSAGE thread, and the write-back only PUT the custom fields. FIXED:
+    `syncActivityNote(user, id, content)` POSTs the note to `/activity/{id}/messages` (deduped — skips if an identical
+    comment already exists, so re-saving doesn't spam). Wired into `/auth/activity/:id/feedback`. Reads already surface it
+    (#286 fetchActivityThread). gymapp-only. **JM to verify on QA.**
 286. 🔨 **Monday post-workout round — bi-directional feedback + coach text + charts to standard (a #273 re-report).**
     JM 2026-07-01 testing "Monday" (completed ride i161348698): (a) "most feedback from intervals were NOT collected = no
     bi-directional sync" — his feel/RPE/fields didn't show; (b) "anything else should have my comments, it's empty" — his
@@ -42,6 +55,13 @@ test guide → the **🧪 Test guide** section below.
       min/mid/max is readable + **X (time) on every track**; **removed the interval breakdown list** (intervals' auto-detect
       unreliable). e/f/g→resolved. Unit test `src/coach-note.test.ts` (parseCoachNote on the real Monday text).
     Self-validated vs mock (`mockups/monday-validate.html`) before flagging for JM test. gymapp-only. **JM to verify on QA.**
+    **REWORK (mock-agreed 2026-07-01, `mockups/monday-postworkout.html`, 5 rounds):** JM reworked the whole detail view.
+    BUILT to the agreed mock: (1) **thumbnail** = zone-coloured power blocks binned from the REAL stream (`PowerBlocks`),
+    since the plan segments are degenerate (Monday's main 42-min block is 0 W); (2) **stats** = layout **B hero+chips**
+    (4 headline tiles: Load/NP/Intensity/AvgHR + rest as chips); (3) **coach insight line under EVERY section** (Power/HR/
+    Altitude timeline + power-curve + zones), computed from the metrics; (4) **denser axes on ALL charts** — TrendChart Y
+    ticks now scale with height (~9 on a tall chart), round-minute TIME x-axis with gridlines both ways, wider Y gutter;
+    PowerCurve got dense watt gridlines too. Removed the bulky per-track readout chips. gymapp-only. **JM to verify on QA.**
 
 284. 🔨 **Gym UX: per-exercise TIPS + TEMPO (time-under-tension, e.g. 3-0-1-0) + a full-WORKOUT tip.** JM 2026-07-01:
     tips are good per-exercise (form cues) AND for the whole session; add a **tempo/TUT** prescription per lift

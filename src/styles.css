@@ -265,6 +265,22 @@ select.search { appearance: none; -webkit-appearance: none; }
 .actstat b { font-size: 15px; line-height: 1.1; }
 .actstat { display: flex; flex-direction: column; }
 @media (max-width: 380px) { .actstats { grid-template-columns: repeat(3, 1fr); } }
+/* #286 post-workout stats — HERO + chips (JM pick B). 4 headline tiles, rest as small chips. */
+.act-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.act-hero .ht { background: radial-gradient(130% 130% at 50% 0%, #20303a, #141a22); border: 1px solid #34e07d33; border-radius: 14px; padding: 13px 10px; text-align: center; }
+.act-hero .ht b { font-size: 23px; font-weight: 800; line-height: 1.05; display: block; }
+.act-hero .ht span { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); }
+.act-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.act-chip { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 9px; padding: 6px 10px; font-size: 12px; }
+.act-chip b { font-weight: 800; }
+.act-chip span { color: var(--text-dim); margin-left: 5px; font-size: 11px; }
+/* #286 coach/insight line under a section or chart */
+.act-ins { background: linear-gradient(90deg, #34e07d18, #34e07d05); border-left: 3px solid var(--accent); padding: 8px 11px; border-radius: 0 9px 9px 0; font-size: 12px; line-height: 1.5; color: var(--text); margin: 8px 0 4px; }
+.act-ins .tag { font-weight: 800; color: var(--accent); margin-right: 4px; }
+/* #286 activity thumbnail: zone-coloured power blocks (from the real stream) */
+.pblocks { display: flex; align-items: flex-end; gap: 3px; height: 100%; width: 100%; }
+.pblocks i { flex: 1 1 0; border-radius: 2px 2px 0 0; display: block; opacity: .95; }
+.act-thumb { width: 64px; height: 64px; flex: none; border-radius: 12px; background: #12151b; border: 1px solid var(--line); padding: 8px; }
 .done-link--map { color: var(--accent); font-weight: 700; }
 /* #54 timeline analytics tabs + stacked synced charts */
 .act-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 14px 0 12px; }
@@ -700,12 +716,18 @@ select.search { appearance: none; -webkit-appearance: none; }
 @keyframes trend-draw { to { stroke-dashoffset: 0; } }
 .chart-tip { position: absolute; top: 2px; transform: translateX(-50%); background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 5px 9px; font-size: 11px; font-weight: 700; display: flex; flex-direction: column; gap: 1px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.4); z-index: 3; }
 .chart-tip__d { color: var(--text-dim); font-weight: 600; }
-/* gridded axis layout: y labels gutter + plot + x labels row */
-.chart2 { display: grid; grid-template-columns: 42px 1fr; grid-template-rows: 1fr 16px; column-gap: 4px; }
+/* gridded axis layout: y labels gutter + plot + x labels row. #286: wider gutter (breathing
+   room) + taller x row so denser ticks read. */
+.chart2 { display: grid; grid-template-columns: 50px 1fr; grid-template-rows: 1fr 18px; column-gap: 8px; }
 .chart2__y { position: relative; grid-column: 1; grid-row: 1; }
-.chart2__y span { position: absolute; right: 3px; transform: translateY(-50%); font-size: 10px; font-weight: 600; color: var(--text-dim); white-space: nowrap; }
+.chart2__y span { position: absolute; right: 2px; transform: translateY(-50%); font-size: 9.5px; font-weight: 600; color: var(--text-dim); white-space: nowrap; }
 .chart2__plot { grid-column: 2; grid-row: 1; }
 .chart2__x { grid-column: 2; grid-row: 2; display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; color: var(--text-dim); padding-top: 3px; }
+/* #286 absolute x-ticks (round-minute time marks land at their real position) */
+.chart2__x--abs { display: block; position: relative; }
+.chart2__x--abs span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.chart2__x--abs span.is-first { transform: none; }
+.chart2__x--abs span.is-last { transform: translateX(-100%); }
 
 /* expanded chart modal */
 .chart-modal { position: fixed; inset: 0; z-index: 100; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; padding: 16px; }

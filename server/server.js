@@ -247,6 +247,9 @@ app.put('/auth/icu', auth, async (req, res) => {
     if (me && me.id) req.user.icuAthlete = String(me.id)
   }
   save(store); res.json(pub(req.user))
+  // #288: make sure this athlete has our custom feedback fields in intervals (new accounts don't),
+  // so bi-directional feedback has somewhere to write. Idempotent + best-effort.
+  if (req.user.icuKey) ensureIcuFields(req.user).catch(() => {})
 })
 
 // profile picture — small client-resized data URL stored on the account
@@ -646,6 +649,35 @@ const ICU_FB_FIELDS = {
   'Life Constraint': { code: 'LifeConstraint', opts: ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other'] },
   'Mental State': { code: 'MentalState', opts: ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out'] },
 }
+// #287 — post the athlete's free-text comment to the intervals activity MESSAGE thread (deduped:
+// skip if an identical comment already exists, so re-saving feedback doesn't spam duplicates).
+async function syncActivityNote(user, id, content) {
+  const existing = await icuFetch(user, `/activity/${id}/messages`).then((r) => (r.ok ? r.json() : [])).catch(() => [])
+  if (Array.isArray(existing) && existing.some((m) => m && typeof m.content === 'string' && m.content.trim() === content)) return
+  await icuFetch(user, `/activity/${id}/messages`, { method: 'POST', body: JSON.stringify({ content }) })
+}
+
+// #288 — a NEW user's intervals account has none of our custom feedback fields, so the 1-based
+// values we write have nowhere to land. Create the six ACTIVITY_FIELDs (idempotent — skip any that
+// already exist by code). Called on connect/onboarding. Best-effort; never throws to the caller.
+async function ensureIcuFields(user) {
+  if (!user || !user.icuKey) return
+  const ath = user.icuAthlete || 'i28814'
+  try {
+    const cur = await icuFetch(user, `/athlete/${ath}/custom-item`).then((r) => (r.ok ? r.json() : [])).catch(() => [])
+    const have = new Set((Array.isArray(cur) ? cur : []).filter((it) => it && it.content && it.content.code).map((it) => it.content.code))
+    for (const [name, def] of Object.entries(ICU_FB_FIELDS)) {
+      if (have.has(def.code)) continue
+      const item = {
+        type: 'ACTIVITY_FIELD', visibility: 'PRIVATE', name,
+        description: 'Private athlete feedback field for coach analysis (Platyplus).',
+        content: { code: def.code, type: 'select', gauge: true, example: def.opts[0], options: def.opts.map((text, i) => ({ text, value: i + 1 })) },
+      }
+      await icuFetch(user, `/athlete/${ath}/custom-item`, { method: 'POST', body: JSON.stringify(item) }).catch((e) => console.error('[icu-field-create ' + def.code + '] ' + (e.message || e)))
+    }
+  } catch (e) { console.error('[ensureIcuFields] ' + (e.message || e)) }
+}
+
 app.post('/auth/activity/:id/feedback', auth, (req, res) => {
   const id = String(req.params.id)
   const b = req.body || {}
@@ -670,6 +702,9 @@ app.post('/auth/activity/:id/feedback', auth, (req, res) => {
     if (fb.rpe) payload.icu_rpe = fb.rpe
     for (const [label, val] of Object.entries(fb.fields || {})) { const def = ICU_FB_FIELDS[label]; if (def) { const i = def.opts.indexOf(val); if (i >= 0) payload[def.code] = i + 1 } }
     if (Object.keys(payload).length) icuFetch(req.user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify(payload) }).catch((e) => console.error('[icu-feedback-write] ' + (e.message || e)))
+    // #287: the free-text comment isn't a field — it lives in the intervals MESSAGE thread. Post it
+    // there (deduped) so "Anything else?" shows up in intervals too, not just Platyplus.
+    if (fb.note && fb.note.trim()) syncActivityNote(req.user, id, fb.note.trim()).catch((e) => console.error('[icu-note-write] ' + (e.message || e)))
   }
   // async coach review referencing the activity (best-effort; only once the coach is set up).
   if (req.user.coachProfile && req.user.coachProfile.trim()) {

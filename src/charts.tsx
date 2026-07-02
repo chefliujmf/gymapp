@@ -1,6 +1,25 @@
 import { useId, useState } from 'react'
+import { zoneColor } from './zones'
 
 export type Series = { label: string; color: string; data: (number | null)[]; area?: boolean; dash?: boolean }
+
+/** #286 — a completed activity's shape as zone-coloured bars, binned from the REAL power
+ *  stream (not the planned segments, which can be degenerate/0 W). Used for the card + detail
+ *  thumbnail so a done ride always reads correctly. Falls back to null if there's no power. */
+export function PowerBlocks({ watts, ftp = 260, bins = 9 }: { watts?: (number | null)[]; ftp?: number; bins?: number }) {
+  const w = (watts || []).map((v) => (v == null ? 0 : Number(v)))
+  const real = w.filter((v) => v > 0)
+  if (real.length < bins) return null
+  const per = Math.floor(w.length / bins)
+  const avgs: number[] = []
+  for (let b = 0; b < bins; b++) { let s = 0, c = 0; for (let i = b * per; i < (b + 1) * per && i < w.length; i++) { s += w[i]; c++ } avgs.push(c ? s / c : 0) }
+  const mx = Math.max(...avgs) || 1
+  return (
+    <div className="pblocks">
+      {avgs.map((v, i) => <i key={i} style={{ height: `${Math.max(10, (v / mx) * 100)}%`, background: zoneColor((v / ftp) * 100) }} />)}
+    </div>
+  )
+}
 
 /** A tappable ⓘ that reveals a short plain-language explanation (popover).
  * Tap to open, tap away / blur to dismiss (mobile-friendly, keyboard-focusable). */
@@ -52,7 +71,7 @@ const range = (series: Series[]) => {
 
 /** Smooth multi-series line chart: gradient area, draw-in animation, and tap/hover
  * scrubbing with a tooltip. Responsive (stretches to width). */
-export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover, bands, cursor }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void; bands?: { from: number; to: number; color: string }[]; cursor?: number | null }) {
+export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover, bands, cursor, xTicks }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void; bands?: { from: number; to: number; color: string }[]; cursor?: number | null; xTicks?: { frac: number; label: string }[] }) {
   const uid = useId()
   const [hi_, setHi] = useState<number | null>(null)
   // `cursor` makes the chart CONTROLLED — used to sync several stacked charts to one
@@ -63,7 +82,10 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
   if (!r) return <div className="chart-empty">No data yet</div>
   const H = height
   const n = Math.max(...series.map((s) => s.data.length), 1)
-  const nice = axes ? niceTicks(r.min, r.max) : null
+  // #286: tick DENSITY scales with height — a tall chart gets ~8-9 gridlines (readable
+  // precision), a small sparkline stays clean. Fixes "not enough Y ticks" across the app.
+  const yCount = Math.max(3, Math.min(10, Math.round(H / 22)))
+  const nice = axes ? niceTicks(r.min, r.max, yCount) : null
   const dMin = nice ? nice.min : r.min, dMax = nice ? nice.max : r.max
   const P = axes ? 1 : pad
   const x = (i: number) => P + (i / Math.max(1, n - 1)) * (VW - 2 * P)
@@ -73,6 +95,11 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
   const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - rect.left) / rect.width; setH(Math.max(0, Math.min(n - 1, Math.round(fx * (n - 1))))) }
   const hx = hi != null ? (hi / Math.max(1, n - 1)) * 100 : 0
   const gridYs = nice ? nice.ticks.map((v) => y(v)) : [0, 0.5, 1].map((g) => P + g * (H - 2 * P))
+  // explicit x-ticks (e.g. round-minute time marks) → vertical gridlines + labels; else derive from labels
+  const xt: { frac: number; label: string }[] = xTicks
+    ? xTicks
+    : labels ? [0, 0.25, 0.5, 0.75, 1].map((f) => ({ frac: f, label: labels[Math.round(f * (n - 1))] || '' })) : []
+  const xAt = (f: number) => P + f * (VW - 2 * P)
 
   const plot = (
     <div className="trend-wrap chart2__plot" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setH(null)}>
@@ -83,6 +110,7 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
           return hh > 0 ? <rect key={bi} x={0} width={VW} y={yy} height={hh} fill={b.color} opacity={0.14} /> : null
         })}
         {gridYs.map((yy, gi) => <line key={gi} x1={0} x2={VW} y1={yy} y2={yy} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
+        {axes && xt.map((t, ti) => <line key={'v' + ti} x1={xAt(t.frac)} x2={xAt(t.frac)} y1={P} y2={H - P} stroke="var(--line)" strokeWidth="0.5" opacity="0.22" />)}
         {series.map((s, si) => {
           const pts = s.data.map((v, i) => (v == null ? null : [x(i), y(v)] as [number, number])).filter(Boolean) as [number, number][]
           if (!pts.length) return null
@@ -116,12 +144,11 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
   )
   if (!axes) return plot
   const yTicks = nice ? nice.ticks.map((v) => ({ f: (dMax - v) / ((dMax - dMin) || 1), v })) : []
-  const xTicks = labels ? [0, 0.25, 0.5, 0.75, 1].map((f) => labels[Math.round(f * (n - 1))] || '') : []
   return (
     <div className="chart2">
       <div className="chart2__y">{yTicks.map((t, i) => <span key={i} style={{ top: `${t.f * 100}%` }}>{fv(t.v)}</span>)}</div>
       {plot}
-      {xTicks.length > 0 && <div className="chart2__x">{xTicks.map((d, i) => <span key={i}>{d}</span>)}</div>}
+      {xt.length > 0 && <div className="chart2__x chart2__x--abs">{xt.map((t, i) => <span key={i} style={{ left: `${t.frac * 100}%` }} className={i === 0 ? 'is-first' : i === xt.length - 1 ? 'is-last' : ''}>{t.label}</span>)}</div>}
     </div>
   )
 }
@@ -147,17 +174,20 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
   const sMin = Math.min(...pts0.map((p) => p[0])), sMax = Math.max(...pts0.map((p) => p[0]))
   const vMax = Math.max(...pts0.map((p) => p[1]))
   const H = height, padT = 8, padB = 6, pad = 6
+  // chart-standard Y axis, dense (#286): ~6 clean watt gridlines; scale the path to the nice top.
+  const yt = niceTicks(0, vMax, Math.max(4, Math.min(8, Math.round(H / 26))))
+  const vTop = Math.max(vMax, yt.max)
+  const yLabels = yt.ticks.filter((v) => v <= vTop)
   const lx = (s: number) => pad + ((Math.log(s) - Math.log(sMin)) / (Math.log(sMax) - Math.log(sMin))) * (VW - 2 * pad)
-  const y = (v: number) => padT + (1 - v / vMax) * (H - padT - padB)
+  const y = (v: number) => padT + (1 - v / vTop) * (H - padT - padB)
   const ticks = DUR_TICKS.filter(([s]) => s >= sMin && s <= sMax)
   const d = 'M' + pts0.map((p) => `${lx(p[0])},${y(p[1])}`).join(' L')
-  // chart-standard Y axis: max / mid / 0 watts on the left (readable HTML overlay).
-  const yLabels = [vMax, Math.round(vMax / 2), 0]
   return (
     <div className="chart2">
-      <div className="chart2__y">{yLabels.map((v, i) => <span key={i} style={{ top: `${(1 - v / vMax) * 100}%` }}>{Math.round(v)} W</span>)}</div>
+      <div className="chart2__y">{yLabels.map((v, i) => <span key={i} style={{ top: `${(1 - v / vTop) * 100}%` }}>{Math.round(v)} W</span>)}</div>
       <div className="chart2__plot">
         <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
+          {yLabels.map((v, i) => <line key={'h' + i} x1={0} x2={VW} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeWidth="0.5" opacity="0.35" />)}
           {ticks.map(([s]) => <line key={s} x1={lx(s)} x2={lx(s)} y1={padT} y2={H - padB} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
           <defs><linearGradient id="pc-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.25" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
           <path d={`${d} L${lx(pts0[pts0.length - 1][0])},${H - padB} L${lx(pts0[0][0])},${H - padB} Z`} fill="url(#pc-fill)" />
