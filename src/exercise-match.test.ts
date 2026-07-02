@@ -19,4 +19,10 @@ describe('matchExercise (#296)', () => {
     const m = matchExercise('zzzq nonexercise')
     expect(m).toBeUndefined()
   })
+  it('handles singular/plural + parenthetical notes (audit — no recurrence)', () => {
+    // #296 audit: these previously fell to image-only. All should land on a video demo now.
+    for (const n of ['Biceps curl', 'Triceps pushdown', 'Calf raises', 'Dumbbell bench press (or machine chest press)', 'Pallof press (both sides)', 'Lat pulldown (or assisted pull-up)']) {
+      expect(matchExercise(n)?.video, n).toBeTruthy()
+    }
+  })
 })
