@@ -50,7 +50,7 @@ export function gymSessionFromPlan(p: CoachPlan): AdHocSession {
   const exercises: AdHocEx[] = []
   for (let r = 0; r < (p.rounds || 1); r++)
     for (const x of p.exercises || []) {
-      const lib = (x.exId && allExercisesById[x.exId]) || findLib(x.name)
+      const lib = resolveLib(x.exId, x.name)
       exercises.push({
         name: x.name, exId: lib?.id, image: lib?.image, video: lib?.video, imageFemale: lib?.imageFemale, videoFemale: lib?.videoFemale,
         mode: x.mode || 'reps', seconds: x.seconds || 0, rest: x.rest || 0, sets: x.sets || 3, reps: x.reps || 10,
@@ -144,8 +144,37 @@ function findLib(name: string) {
       if (key > vKey) { vBest = e; vKey = key }
     }
     if (vBest) return vBest
+    // #309 HARD RULE — never resolve to an entry with NO picture AND NO video. If `best` is media-less
+    // (one of the ~49 blank library rows), swap to the tightest same-movement entry that HAS media
+    // (image is fine — the rule is "no picture AND no video"). Only if none exists do we keep `best`.
+    if (!best.image && !best.imageFemale && !best.videoFemale) {
+      let mBest: (typeof library)[number] | undefined
+      let mKey = -Infinity
+      for (const e of library) {
+        if (!hasMedia(e)) continue
+        const et = toks(e.name)
+        if (!want.every((w) => et.includes(w))) continue
+        const key = (norm(e.name) === nn ? 1000 : 0) - et.length - (/[+/]|combo|complex|into|thru/i.test(e.name) ? 50 : 0) + (e.video ? 5 : 0)
+        if (key > mKey) { mBest = e; mKey = key }
+      }
+      if (mBest) return mBest
+    }
   }
   return best
+}
+/** Does a library entry carry ANY demo media (video/image, either sex)? #309: we never render a
+ *  gym exercise with none — a blank tile reads as broken. */
+function hasMedia(e?: { image?: string; video?: string; imageFemale?: string; videoFemale?: string }) {
+  return !!(e && (e.video || e.image || e.videoFemale || e.imageFemale))
+}
+/** Resolve a coach exercise to a library entry, PREFERRING media. The coach may pass an exId that
+ *  points at a media-less row (#309) — in that case fall back to a name match that has media. */
+function resolveLib(exId: string | undefined, name: string) {
+  const byId = exId ? allExercisesById[exId] : undefined
+  if (byId && hasMedia(byId)) return byId
+  const byName = findLib(name)
+  if (byName && hasMedia(byName)) return byName
+  return byId || byName // keep whatever id we have; UI shows a clean emoji when truly media-less
 }
 
 /** Build a playable gym session from a coach WeightTraining event.
@@ -157,7 +186,7 @@ export function gymSessionFromEvent(e: IcuEvent): AdHocSession {
     const exercises: AdHocEx[] = []
     for (let r = 0; r < (spec.rounds || 1); r++)
       for (const x of spec.exercises) {
-        const lib = (x.exId && allExercisesById[x.exId]) || findLib(x.name)
+        const lib = resolveLib(x.exId, x.name)
         exercises.push({
           name: x.name, exId: lib?.id, image: lib?.image, video: lib?.video, imageFemale: lib?.imageFemale, videoFemale: lib?.videoFemale,
           mode: x.mode, seconds: x.work || 0, rest: x.rest || 0, sets: x.sets || 3, reps: x.reps || 10,
@@ -168,7 +197,7 @@ export function gymSessionFromEvent(e: IcuEvent): AdHocSession {
   }
   // Current coach format: the markdown "Main Set" table.
   const exercises: AdHocEx[] = parseGymTable(e.description || '').map((r) => {
-    const lib = findLib(r.exercise)
+    const lib = resolveLib(undefined, r.exercise)
     return {
       name: r.exercise, exId: lib?.id, image: lib?.image, video: lib?.video, imageFemale: lib?.imageFemale, videoFemale: lib?.videoFemale,
       mode: 'reps', seconds: 0, rest: lastNum(r.rest), sets: r.sets || 3, reps: firstNum(r.reps) || 10, note: r.reps,

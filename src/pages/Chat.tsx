@@ -1,18 +1,38 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { authApi } from '../auth/api'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { authApi, type User } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 
 interface Msg { role: 'user' | 'coach'; text: string }
 
+// #310 (Option C) — the onboarding coach doesn't interrogate you in a wall of text; it walks you
+// through a few short steps that OPEN THE EXISTING PAGES (Profile / Settings) to set each value, then
+// builds your first week. Step order is client-driven (reliable), the coach LLM only bookends (build).
+const ackKey = (k: string) => 'setup:ack:' + k
+const getAck = (k: string) => { try { return localStorage.getItem(ackKey(k)) === '1' } catch { return false } }
+const isEndurance = (u: User) => (u.sports || []).some((s) => s === 'cycling' || s === 'running')
+const hasThreshold = (u: User) => !!(u.ftp || u.runThresholdPace || u.sportSettings?.cycling?.ftp || u.sportSettings?.running?.thresholdPace)
+interface Step { key: string; label: string; line: string; to?: string; ext?: string; done: (u: User) => boolean; when?: (u: User) => boolean; optional?: boolean }
+const STEPS: Step[] = [
+  { key: 'intervals', label: 'Connect intervals.icu', line: "First, connect intervals.icu — it's your data hub (HRV, sleep, activities, FTP). I read your history from it.", to: '/settings?onboard=1#ob-connect', done: (u) => !!u.hasIcuKey },
+  { key: 'strava', label: 'Connect Strava — inside intervals', line: 'In intervals.icu, connect Strava so your rides & runs (and ~3 months of history) flow in. Tap done when it’s linked.', ext: 'https://intervals.icu/settings', done: () => getAck('strava') },
+  { key: 'sport', label: 'Your sport(s)', line: 'Which sports do you do? Tap all that apply — it tunes your plan and app.', to: '/profile?onboard=1#ob-sport', done: (u) => (u.sports || []).length > 0 },
+  { key: 'about', label: 'About you', line: 'Confirm your biological sex — it tunes fuelling & recovery, and turns on women-specific coaching where it matters.', to: '/profile?onboard=1#ob-about', done: (u) => !!u.sex },
+  { key: 'numbers', label: 'Your numbers (optional)', line: "Set FTP / threshold pace if you know them. Don't worry if not — I'll estimate from your intervals history and suggest values.", to: '/profile?onboard=1#ob-numbers', done: (u) => hasThreshold(u), when: isEndurance, optional: true },
+  { key: 'equipment', label: 'Your equipment', line: "What gear do you have? I only pick exercises you can actually do.", to: '/profile?onboard=1#ob-equipment', done: (u) => { const e = (u.info as { equipment?: unknown[] }).equipment; return Array.isArray(e) && e.length > 0 } },
+  { key: 'avail', label: 'Weekly availability', line: 'How long can you train each day? I fit sessions around your real week.', to: '/profile?onboard=1#ob-avail', done: (u) => !!(u.info as { availability?: unknown }).availability },
+]
+
 export default function Chat() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const onboarding = params.get('onboard') === '1' // #257: coach greets + interviews first
-  const kickedOff = useRef(false)
-  const { refresh } = useAuth()
-  // #306(a): persist the conversation so navigating away (e.g. to ADD) + back doesn't wipe it and
-  // re-fire the onboarding opener (which reset the whole interview).
+  const { user, refresh } = useAuth()
+  // Onboarding mode ends the moment the coach finishes (onboardedAt) — the build stream then shows in
+  // the normal thread. #257 + #310.
+  const onboarding = params.get('onboard') === '1' && !user?.onboardedAt
+  const [building, setBuilding] = useState(false) // tapped "build my week" → show the chat thread
+  const [, force] = useState(0) // re-render after a manual ack (localStorage, not in user)
+  // #306(a): persist the conversation so navigating away (e.g. to a setup page) + back doesn't wipe it.
   const [msgs, setMsgs] = useState<Msg[]>(() => { try { return JSON.parse(sessionStorage.getItem('chatMsgs') || '[]') } catch { return [] } })
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -23,6 +43,9 @@ export default function Chat() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null)
   const endRef = useRef<HTMLDivElement>(null)
+
+  // Returning from a setup page → pull the freshest profile so completed steps tick off.
+  useEffect(() => { if (onboarding) refresh().catch(() => {}) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Voice input — speak instead of type (great for non-technical users + onboarding).
   function toggleMic() {
@@ -43,14 +66,6 @@ export default function Chat() {
   }
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, busy])
-
-  // #257 onboarding: the coach speaks FIRST — auto-send an opener so it greets + starts the interview.
-  useEffect(() => {
-    // #306(a): only auto-open the interview if there's NO conversation yet (fresh onboarding), so a
-    // remount (nav away + back) resumes instead of restarting.
-    if (onboarding && !kickedOff.current && msgs.length === 0) { kickedOff.current = true; send("Hi! I'm new here — please set me up and build my first week.") }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onboarding])
 
   async function send(textArg?: string) {
     const text = (textArg ?? input).trim()
@@ -83,12 +98,62 @@ export default function Chat() {
     } catch (e) {
       const msg = (e as Error).name === 'AbortError' ? 'That took too long — tap send to try again.' : ((e as Error).message || 'Coach unavailable — tap send to retry.')
       setMsgs((m) => { const c = [...m]; const last = c[c.length - 1]; if (last?.role === 'coach' && !last.text) c[c.length - 1] = { role: 'coach', text: '⚠️ ' + msg }; return c })
-    } finally { clearTimeout(longTimer); clearTimeout(killTimer); setBusy(false); setWaitedLong(false); if (onboarding) refresh().catch(() => {}) } // #257 pick up onboardedAt once the coach finishes
+    } finally { clearTimeout(longTimer); clearTimeout(killTimer); setBusy(false); setWaitedLong(false); if (onboarding || building) refresh().catch(() => {}) } // #257 pick up onboardedAt once the coach finishes
   }
   async function reset() {
     if (!confirm('Start a new conversation?')) return
     await authApi.chatReset().catch(() => {})
     setMsgs([]); try { sessionStorage.removeItem('chatMsgs') } catch { /* ignore */ }
+  }
+
+  // ── #310 onboarding step flow — walk the applicable steps, open the real pages ──────────────
+  if (onboarding && !building && user) {
+    const steps = STEPS.filter((s) => !s.when || s.when(user))
+    const skipped = (s: Step) => !!s.optional && getAck('skip:' + s.key)
+    const settled = (s: Step) => s.done(user) || skipped(s)
+    const doneN = steps.filter(settled).length
+    const nowIdx = steps.findIndex((s) => !settled(s))
+    // "ready to build" once every REQUIRED step is done (optional steps don't block).
+    const ready = steps.every((s) => s.optional || s.done(user))
+    const startBuild = () => { setBuilding(true); send('Everything is set. Please analyse my recent intervals history (last ~3 months incl. Strava) to estimate my fitness — FTP / threshold pace, zones — and build my first training week around my availability and equipment. Suggest any numbers I left blank.') }
+    return (
+      <div className="ob-wrap">
+        <div className="ob-hero">
+          <div className="ob-ava">🦫</div>
+          <div><h2>Welcome{user.username ? `, ${user.username}` : ''}! Let’s set you up.</h2><p>A few taps — I’ll open each page, you set it, come back. No long forms.</p></div>
+        </div>
+        <div className="ob-prog"><i style={{ width: `${Math.round((doneN / steps.length) * 100)}%` }} /></div>
+        <div className="ob-steps">
+          {steps.map((s, i) => {
+            const done = s.done(user)
+            const isSkipped = !done && skipped(s)
+            const isNow = i === nowIdx
+            return (
+              <div key={s.key} className={'ob-step' + (done || isSkipped ? ' done' : isNow ? ' now' : '')}>
+                <div className="ob-step__top">
+                  <span className={'ob-step__mark' + (done ? ' on' : '')}>{done ? '✓' : isSkipped ? '~' : i + 1}</span>
+                  <span className="ob-step__lbl">{s.label}{isSkipped && <span className="meta" style={{ fontWeight: 400 }}> · coach will estimate</span>}</span>
+                </div>
+                {isNow && !done && <>
+                  <div className="ob-step__line">{s.line}</div>
+                  {s.ext
+                    ? <div style={{ display: 'flex', gap: 8 }}>
+                        <a className="ob-open ob-open--ghost" style={{ flex: 1 }} href={s.ext} target="_blank" rel="noreferrer">Open intervals ↗</a>
+                        <button className="ob-open" style={{ flex: 1 }} onClick={() => { try { localStorage.setItem(ackKey('strava'), '1') } catch { /* quota */ } force((n) => n + 1) }}>Done ✓</button>
+                      </div>
+                    : <Link className="ob-open" to={s.to!}>Open {s.label.replace(' (optional)', '')} →</Link>}
+                  {s.optional && <button className="ob-open ob-open--ghost" style={{ marginTop: 8 }} onClick={() => { try { localStorage.setItem(ackKey('skip:' + s.key), '1') } catch { /* quota */ } force((n) => n + 1) }}>Skip — let the coach estimate</button>}
+                </>}
+              </div>
+            )
+          })}
+        </div>
+        <div className="ob-build">
+          <button className="ob-build__btn" disabled={!ready} onClick={startBuild} style={ready ? undefined : { opacity: .5 }}>🦫 Build my first week</button>
+          <p className="ob-build__sub">{ready ? 'I’ll read your history and design week 1 around your availability.' : `Finish the steps above first (${doneN}/${steps.length}).`}</p>
+        </div>
+      </div>
+    )
   }
 
   return (

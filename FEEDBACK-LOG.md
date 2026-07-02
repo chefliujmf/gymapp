@@ -22,18 +22,97 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-310. ⬜ **Onboarding is OVERWHELMING — redesign to a guided page-wizard, not a chat interrogation.** JM 2026-07-02
-    (watching wife onboard): "you ask too many questions + a wall of text… maybe for onboarding the coach switches to a
-    PAGE to let the user PICK the values, then comes back to the chat when one page's input is done — that chat flow is
-    overwhelming." DIRECTION: coach bookends a **structured wizard** — welcome → hand off to one pick-page at a time
-    (sex, sport(s), equipment, availability, thresholds/FTP/pace — prefill from intervals) → return to chat after each →
-    coach analyzes intervals FIRST + asks only what's missing → builds week. Absorbs #306(e-g). **Mock-first** (wizard
-    flow). gymapp-only.
+325. ⬜ **Onboarding forgot to ask the COACH's NAME.** JM 2026-07-02: Option C flow dropped naming the coach (was in the
+    old chat interview; stored as `coachName`, set on Profile "Your coach"). ADD a step (or fold into About/goals #323) to
+    let the user name their coach — it personalises every chat + insight. Prefill "Coach". gymapp-only.
+324. ⬜ **Stats page doesn't fit the screen — too "big", parts can't be seen (horizontal overflow).** JM 2026-07-02:
+    content wider than the viewport → clipped, some parts unreachable. Violates the NO-horizontal-scroll mobile rule. FIND
+    the overflow source on /stats (+ detail pages CyclingStats/RunningStats/Strength/MindStats): fixed widths, `nowrap`,
+    wide numbers/tables (e.g. race-prediction range "3:45:00–4:03:00"), non-wrapping grids, oversized fonts. Fix so it
+    fits ≤430px with padding, wraps, no clip. Check every stats subpage. gymapp-only.
+323. ⬜ **Onboarding must capture the RICH profile + OBJECTIVES/identity, not just discrete values (like JM's own).** JM
+    2026-07-02: "I don't think onboarding is good enough to capture a full profile + objectives like I did for myself." The
+    structured pages (C, #310) get sport/sex/equipment/availability/numbers — but MISS the qualitative goal & identity that
+    make coaching personal: e.g. **wife = "be fit, be consistent, NOT gain muscle"** vs **JM = "300 FTP, be a diesel
+    engine."** "VERY important to capture this kind of thing." DIRECTION (hybrid, don't lose the coach's conversational
+    strength): keep C's pages for values, ADD a SHORT, focused **goals conversation** step — primary goal, what success
+    looks like, motivation/identity, hard limits, what they DON'T want — with guided prompts/quick-picks so it's not a wall
+    of text, feeding `set_athlete_profile` (the markdown the coach plans from). The coach should also PROBE from intervals
+    history ("you've been riding ~Xh/wk — aiming to build that?"). Mock-first (the goals step). Ties #310/#313. gymapp-only.
+322. ⬜ **Availability page is TOO BULKY — make it dense.** JM 2026-07-02 (screenshot): 7 day-rows × 8 big circular chips
+    (Rest/30m/…/3h+) eats the whole screen "bulky for nothing." Redesign denser — e.g. a compact per-day segmented
+    control or a slider/stepper, fit the week in ~1 screen. Also add the frequency question (#316) without adding bulk.
+    **Mock-first** (2-3 dense layouts). Ties #303/#316. gymapp-only.
+321. ⬜ **"See trends" link is confusing — dumps you on the Stats HUB, not the trend.** JM 2026-07-02 (screenshot of the
+    Stats hub: Wellness/History/Per-sport). Clicking Profile's "📈 See trends & race predictions in Stats ›" lands on a
+    generic hub — unexpected/"I don't get it." FIX: either take them straight to the RELEVANT trend (the stat they came
+    from), or make the destination obviously the trends page (clearer heading/why-am-I-here), or drop the confusing link.
+    gymapp-only.
+320. ⬜ **Equipment should live on PROFILE, not Settings.** JM 2026-07-02: "equipment is not a profile thing?" — right,
+    it's a coaching input like sports/diet/availability (all on Profile), not app config. MOVE the equipment picker to
+    Profile (near Sports/Availability); update the onboarding step (#310) + setup checklist (#307) to point at Profile;
+    keep a redirect/or remove from Settings. Reverses #307's Settings target. gymapp-only.
+319. ⬜ **Generalize "set a default, LEARN from data over time" to EVERY learned stat (not just sleep).** JM 2026-07-02
+    (frustrated I scoped it to sleep): the #304 concept — we SET a starting value but LEARN the real one from data, showing
+    "need ~X more days" while collecting + suggesting the data-driven value with a manual override — must apply to ALL
+    learned stats: VO₂max, threshold pace, FTP, maxHR, LTHR, weight, etc. Each shows: current value + source (est/manual/
+    intervals) + a learning state (collecting → "N more days", or "data suggests X — use it?"). Unifies with
+    [[benchmarks-manual-vs-computed]] + readiness learning ([[platyplus-readiness-model]]). Systemic — one shared "learned
+    stat" pattern reused everywhere. Mock-first for the card. gymapp-only.
+318. ⬜ **Notification panel overflows off the LEFT edge — can't see it (going too far left).** JM 2026-07-02: the
+    notifications dropdown/popover is positioned so it runs past the left screen edge, clipping content. FIX its CSS
+    positioning — anchor within the viewport (right-align under the bell, `max-width`/`left` clamp, no negative offset /
+    off-screen translate). Mobile-first: must fit ≤430px with padding, no horizontal clip. gymapp-only.
+317. ⬜ **No TIME estimate on the gym workout in prod (for her).** JM 2026-07-02 (wife): her gym session shows no duration/
+    time estimate. Gym plans should show an estimated duration (from sets × reps × tempo + rest, per exercise → total),
+    like rides show time. Check why it's blank for her plan (missing tempo/rest? not computed on coach-authored plans?) +
+    render a time estimate on the gym workout header/card. Add a test for the estimator. gymapp-only.
+316. ⬜ **Ask desired training FREQUENCY (sessions/week) → drives base plan + OPTIONAL bonus workouts.** JM 2026-07-02:
+    availability captures hours/day, but also ask how many times/week she WANTS to train. Add to the availability page
+    (e.g. "How many days/week? 3·4·5·6"), store on profile. COACH BEHAVIOUR: plan exactly that many BASE sessions/week
+    (she says 4 → show 4). If she then wants extra (a 5th on a free day), surface ONE **optional/bonus** suggested workout
+    she can opt into — clearly marked optional, not part of the base load. So the week = N committed + on-demand bonus.
+    Ties #303/#310; coach prompt + plan model needs an "optional" flag on bonus sessions. gymapp-only.
+315. ⬜ **Wife's ENERGY (readiness) isn't being calculated despite HR/HRV present.** JM 2026-07-02: she has HR, HRV, etc.
+    but Energy shows uncalculated. Readiness engine (server/readiness.js, #158/#159) auto-derives Sleep·Freshness·Energy
+    1–5 from intervals wellness (CTL/ATL/Form, HRV, RHR, sleep) + check-in. DEBUG for xenia (i628280): is wellness
+    actually flowing in (HRV/RHR/sleep present)? is the engine running on her account / gated on something she lacks
+    (e.g. needs a baseline / N days)? Fix so Energy computes from the data we have; if it needs more history, show the
+    "need ~X more days" state (#304) instead of blank. Verify on her account. gymapp-only.
+314. ⬜ **Coach-authored RUN in intervals is TEXT-ONLY — won't push to her Garmin as a structured workout.** JM
+    2026-07-02 (wife): the run event in intervals has only a text description, no structured steps → Garmin Connect won't
+    get a real workout to follow. Runs (like rides, #293) must be authored as STRUCTURED intervals steps (warmup / reps /
+    cooldown with PACE or HR targets, not watts — see #312) so intervals → Garmin sync gives a followable workout. Audit
+    create_run / planToIcuEvent run branch: emit structured steps + pace targets. Test. Ties #312. gymapp-only.
+313. ⬜ **User may not know their threshold pace/FTP — ESTIMATE + advise from intervals (Strava history).** JM 2026-07-02:
+    don't force the number; after intervals connects there's ~3mo of Strava history — estimate threshold pace/FTP from it
+    and tell the user (with a "use this" like Profile already does for pace via Critical Speed, #215/#271). ONBOARDING:
+    the "your numbers" step is OPTIONAL (never blocks the build); the coach analyses intervals FIRST and proposes values.
+    Extend the same estimate to FTP if not already. Folds into #310 numbers step + #306(f). gymapp-only.
+312. 🔨 **A RUN shows WATTS instead of pace.** JM 2026-07-02 (wife): today's run displays power (W) — a run must show
+    PACE (min/km), not watts. Likely the same class as #217 (power_zone steps mis-read) but for run activities/plan
+    rendering, or a run planned/imported with a power target. FIND where run sessions pick their target metric + force
+    pace for runs (watts only for ride). Add a test. gymapp-only.
+311. ⬜ **Passkey registration is confusing on Samsung/Android — user got pushed to a Samsung-account/password flow she
+    didn't know.** JM 2026-07-02 (wife): on Samsung the passkey prompt jumped to "connect to Samsung [Pass/account]" +
+    asked for a password she doesn't know. IMPROVE registration: (a) make passkey OPTIONAL/skippable during onboarding —
+    password login must be enough to finish; (b) clearer copy on what a passkey is + that she can use the phone's
+    fingerprint/PIN (platform authenticator) instead of a Samsung account; (c) offer "not now" + let her add it later from
+    Settings; (d) check `authenticatorSelection`/`residentKey` hints so Android offers the on-device passkey, not Samsung
+    Pass. gymapp-only. Research WebAuthn UX on Samsung/Android first.
+310. 🔨 **Onboarding is OVERWHELMING (wall of text, too much typing) — CHOSEN: Option C (coach opens the existing pages).**
+    JM 2026-07-02 (watching wife onboard): "you ask too many questions + a wall of text… maybe the coach switches to a PAGE
+    to let the user PICK the values, then comes back to chat — that chat flow is overwhelming." Picked C from the mock:
+    "easier to maintain, not additional UX, we reuse what we have." BUILD: coach chats in-thread, hands off to the EXISTING
+    page for each value (Profile: sport/sex/thresholds/body · Settings: equipment · Availability page), user sets it →
+    "✓ Done, back to coach" → coach acks + advances → coach analyzes intervals FIRST + builds week. Client-driven scripted
+    step order (NOT LLM-ordered) for reliability; coach LLM bookends (welcome + build). Absorbs #306(e-g) + #308 (sex is a
+    visible step). Mock approved: mockups/onboarding-wizard.html?opt=C. gymapp-only.
 309. ⬜ **An exercise STILL showed with no picture AND no video — hard rule violated.** JM 2026-07-02: "one exercise did
     not have picture or video, I was very clear not to use those." FIX: at RENDER, if an exercise resolves to no image AND
     no video (after female-variant + #300 backfill), never display it bare — drop it or swap to a matched media-having
     alternative same movement/muscle. Find the specific one (today's plan) + add a guard/test. Relates #300. gymapp-only.
-308. ⬜ **Onboarding must VISIBLY capture/confirm biological SEX so the user trusts the plan is women-adjusted.** JM
+308. 🔨 **Onboarding must VISIBLY capture/confirm biological SEX so the user trusts the plan is women-adjusted.** JM
     2026-07-02: "are we confident workouts are adjusted for women? I saw no sex input in onboarding — incomplete + not
     usable." STATUS (verified): machinery works — sex syncs from intervals → `coach-engine-female.md` (RED-S/fuelling/
     cycle-aware) injects when `user.sex==='female'`; xenia's sex IS female (i628280) so it DOES fire. GAP: it's invisible —

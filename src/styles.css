@@ -39,6 +39,9 @@ a { color: inherit; text-decoration: none; }
 .app-main {
   flex: 1; width: 100%; max-width: var(--maxw); margin: 0 auto;
   padding: calc(env(safe-area-inset-top) + 14px) 16px calc(var(--tab-h) + env(safe-area-inset-bottom) + 24px);
+  /* #324 mobile hard-rule: the page NEVER scrolls/clips sideways — a lone wide child (a race-time
+     range, a 3-col stat grid) can't push content off-screen. Children shrink/wrap instead. */
+  overflow-x: hidden;
 }
 
 /* ---------- Tab bar ---------- */
@@ -324,6 +327,33 @@ select.search { appearance: none; -webkit-appearance: none; }
 .setup-lbl.done { color: var(--text-dim); font-weight: 600; }
 .setup-fix { flex: none; font-size: 12px; font-weight: 800; color: var(--accent); background: #34e07d16; border: 1px solid #34e07d44; border-radius: 8px; padding: 4px 10px; }
 .setup-fix--cta { background: var(--accent); color: #04120a; border-color: var(--accent); }
+
+/* #310 onboarding (Option C) — coach-led, opens the existing pages */
+.ob-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; justify-content: space-between; background: linear-gradient(180deg, #1c3a2a, #14271d); border: 1px solid #34e07d55; border-radius: 12px; padding: 9px 12px; margin: 0 0 12px; }
+.ob-bar__t { font-size: 12.5px; font-weight: 700; color: #eafff2; }
+.ob-bar__done { flex: none; background: var(--accent); color: #04120a; border: none; border-radius: 9px; padding: 7px 14px; font-weight: 800; font-size: 13px; }
+.ob-wrap { padding: 16px 14px 24px; }
+.ob-hero { display: flex; gap: 11px; align-items: flex-start; margin-bottom: 4px; }
+.ob-ava { flex: none; width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #34e07d, #1b9e57); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.ob-hero h2 { font-size: 18px; font-weight: 800; margin: 0; line-height: 1.3; }
+.ob-hero p { font-size: 13px; color: var(--text-dim); margin: 3px 0 0; }
+.ob-prog { height: 5px; border-radius: 4px; background: #252a34; overflow: hidden; margin: 16px 2px 18px; }
+.ob-prog i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.ob-steps { display: flex; flex-direction: column; gap: 10px; }
+.ob-step { border: 1px solid var(--line); border-radius: 14px; padding: 13px 14px; background: linear-gradient(180deg, #21252f, #191c24); }
+.ob-step.done { opacity: .68; }
+.ob-step.now { border-color: #34e07d88; box-shadow: 0 0 0 1px #34e07d33; }
+.ob-step__top { display: flex; align-items: center; gap: 10px; }
+.ob-step__mark { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: var(--accent); }
+.ob-step__mark.on { background: #34e07d22; border-color: var(--accent); }
+.ob-step__lbl { font-weight: 750; font-size: 14.5px; flex: 1; }
+.ob-step__line { font-size: 13px; color: var(--text-dim); margin: 9px 0 12px; line-height: 1.45; }
+.ob-open { display: block; width: 100%; text-align: center; background: var(--accent); color: #04120a; border: none; border-radius: 11px; padding: 12px; font-weight: 800; font-size: 14px; text-decoration: none; }
+.ob-open--ghost { background: #34e07d16; color: var(--accent); border: 1px solid #34e07d44; }
+.ob-build { margin-top: 18px; }
+.ob-build__btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: var(--accent); color: #04120a; border: none; border-radius: 13px; padding: 15px; font-weight: 850; font-size: 15.5px; }
+.ob-build__sub { text-align: center; font-size: 12px; color: var(--text-dim); margin: 9px 4px 0; line-height: 1.4; }
+
 /* #304 sleep need */
 .sn-card { padding: 14px; }
 .sn-row { display: flex; align-items: center; gap: 12px; }
@@ -415,7 +445,9 @@ select.search { appearance: none; -webkit-appearance: none; }
 .sport-card__h { font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
 .sport-card__vdot { margin-left: auto; font-size: 11px; font-weight: 800; color: var(--accent); background: rgba(52,224,125,.1); border: 1px solid rgba(52,224,125,.28); border-radius: 999px; padding: 2px 8px; }
 .stat-cell-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.stat-cell { display: flex; flex-direction: column; gap: 4px; background: #14181f; border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; }
+/* #324 — grid tracks must be allowed to shrink below their content (default min-width:auto overflows) */
+.stat-cell-grid > *, .bm-grid > *, .fit-grid > * { min-width: 0; }
+.stat-cell { display: flex; flex-direction: column; gap: 4px; background: #14181f; border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; min-width: 0; }
 .stat-cell__l { font-size: 10px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .03em; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .stat-cell__in { display: flex; align-items: baseline; gap: 5px; }
 .stat-cell__i { background: transparent; border: none; color: var(--text); font-size: 17px; font-weight: 800; width: 100%; min-width: 0; padding: 1px 0; }
@@ -441,7 +473,9 @@ select.search { appearance: none; -webkit-appearance: none; }
 .zrow--mar { border-color: rgba(240,177,69,.4); background: rgba(240,177,69,.06); }
 .zname-top { display: flex; align-items: center; gap: 6px; }
 .range-badge { font-size: 9px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; color: var(--warn, #f0b145); border: 1px solid rgba(240,177,69,.45); border-radius: 999px; padding: 1px 6px; }
-.zpace--mar { color: var(--warn, #f0b145); text-align: right; }
+/* #324 — the range value ("3:45:00–4:03:00") is the one wide token here; let it wrap rather than
+   force the row wider than the screen. */
+.zpace--mar { color: var(--warn, #f0b145); text-align: right; white-space: normal; }
 .zpace--mar .zsub { display: block; font-size: 10px; font-weight: 600; color: var(--text-dim); }
 .pred-note { font-size: 11px; line-height: 1.45; color: var(--text-dim); margin: 8px 2px 0; }
 .pred-note b { color: var(--text); font-weight: 700; }

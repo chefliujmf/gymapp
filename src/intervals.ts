@@ -11,6 +11,8 @@ export interface IcuStep {
   duration?: number
   // intervals expresses power as a ramp {start,end} OR a steady {value} (%FTP) — both occur
   power?: { start?: number; end?: number; value?: number; units?: string }
+  // runs target PACE (% of threshold pace) instead of power (#312) — same shape, different key
+  pace?: { start?: number; end?: number; value?: number; units?: string }
   reps?: number
   steps?: IcuStep[]
   text?: string
@@ -450,7 +452,9 @@ export function flattenIcuSteps(steps: IcuStep[] = []): Segment[] {
     } else if (s.steps) {
       s.steps.forEach(walk)
     } else if (s.duration) {
-      const { start, end, label } = stepPctFtp(s.power)
+      // #312: a run step carries `pace` (% of threshold pace) instead of `power` — read whichever
+      // intervals sent so an imported run isn't flattened to 0.
+      const { start, end, label } = stepPctFtp(s.pace ?? s.power)
       out.push({ duration: s.duration, powerStart: start, powerEnd: end, label })
     }
   }

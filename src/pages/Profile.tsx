@@ -5,6 +5,8 @@ import { getSetting, setSetting } from '../db'
 import { authApi, type SportGroup, type SportStat, type IcuAthletePull } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import Availability from '../Availability'
+import EquipmentPicker from '../EquipmentPicker'
+import OnboardReturnBar from '../OnboardReturnBar'
 import SleepNeed from '../SleepNeed'
 import { fetchAthleteSex, fetchWellness } from '../intervals'
 import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, parsePace, type PaceZones, type RunVolume } from '../running-paces'
@@ -163,6 +165,7 @@ export default function Profile() {
 
   return (
     <div>
+      <OnboardReturnBar />
       <div className="sub-head">
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
         <div className="sub-head-t"><h1>Profile</h1><p>You & your coaching</p></div>
@@ -198,7 +201,7 @@ export default function Profile() {
       <p className="meta" style={{ margin: '6px 2px 4px' }}>What your coach goes by in chat — saved when you tap away.</p>
       <Link to="/profile/athlete" className="btn btn--ghost" style={{ marginTop: 8 }}>🏷️ Athlete profile — what your coach knows about you ›</Link>
 
-      <div className="section-title">Sports you do {sportSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
+      <div className="section-title" id="ob-sport">Sports you do {sportSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <div className="chips">
         {SPORTS.map(([v, label]) => (
           <button key={v} className={'chip' + (does(v) ? ' chip--active' : '')} onClick={() => toggleSport(v)}>{label}</button>
@@ -206,7 +209,22 @@ export default function Profile() {
       </div>
       <p className="meta" style={{ margin: '6px 2px 4px' }}>Pick all that apply — tunes your nav & coach. Cycling/Running unlock the endurance method & Fitness page.</p>
 
-      <Availability />
+      {/* #308 — biological sex is a VISIBLE, settable step (was silent from intervals). Gates the coach's
+          female-athlete module (cycle-aware fuelling, recovery, RED-S). Prefilled from intervals when linked. */}
+      <div className="section-title" id="ob-about">About you</div>
+      <div className="chips">
+        {([['male', '♂︎ Male'], ['female', '♀︎ Female']] as [string, string][]).map(([v, label]) => (
+          <button key={v} className={'chip' + (user?.sex === v ? ' chip--active' : '')} onClick={() => authApi.saveProfile({ sex: v }).then(() => refresh()).catch(() => {})}>{label}</button>
+        ))}
+      </div>
+      {user?.sex === 'female'
+        ? <p className="meta" style={{ margin: '6px 2px 4px', color: 'var(--accent)' }}>💚 Coaching adjusted for female physiology — cycle-aware fuelling, recovery & load.</p>
+        : <p className="meta" style={{ margin: '6px 2px 4px' }}>Tunes fuelling & recovery.{connected ? ' Prefilled from intervals.' : ''}</p>}
+
+      <div id="ob-avail"><Availability /></div>
+
+      {/* #320 — equipment is a coaching input (like sports/diet), so it lives here on Profile, not Settings. */}
+      <EquipmentPicker />
 
       <div className="section-title">Diet {dietSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <div className="chips">
@@ -215,7 +233,7 @@ export default function Profile() {
       <p className="meta" style={{ margin: '6px 2px 4px' }}>Your coach picks ONLY meals that match — vegetarian shows veg + vegan; vegan shows vegan only.</p>
 
       {/* #210/#209/#211 — per-sport stats, two-way synced with intervals */}
-      <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="section-title" id="ob-numbers" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         Your stats {connected && <span className="sync-pill">⇄ intervals</span>}
       </div>
       <p className="meta" style={{ margin: '2px 2px 8px' }}>
