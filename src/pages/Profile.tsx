@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { getSetting, setSetting } from '../db'
 import { authApi, type SportGroup, type SportStat, type IcuAthletePull } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
+import Availability from '../Availability'
 import { fetchAthleteSex, fetchWellness } from '../intervals'
 import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, parsePace, type PaceZones, type RunVolume } from '../running-paces'
 import { runningVo2max, cyclingVo2max, headlineVo2max, confLabel } from '../vo2max-submax'
@@ -200,6 +201,8 @@ export default function Profile() {
         ))}
       </div>
       <p className="meta" style={{ margin: '6px 2px 4px' }}>Pick all that apply — tunes your nav & coach. Cycling/Running unlock the endurance method & Fitness page.</p>
+
+      <Availability />
 
       <div className="section-title">Diet {dietSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <div className="chips">

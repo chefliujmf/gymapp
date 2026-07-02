@@ -22,7 +22,7 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-303. ⬜ **Profile → weekly AVAILABILITY page (hours per weekday).** JM 2026-07-02: input how many hours per weekday one
+303. 🔨 **Profile → weekly AVAILABILITY page (hours per weekday).** JM 2026-07-02: input how many hours per weekday one
     can work out (Mon 1h, Tue 2h, …), make it nice. Feeds the coach's planning (respect availability when placing sessions).
     Store on the profile; coach reads it. Mock-first (nice weekly grid). gymapp-only.
 

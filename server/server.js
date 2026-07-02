@@ -900,6 +900,14 @@ function buildSystemPrompt(user) {
   p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-5 (energy: 5=energized, sleep: 5=fully rested, soreness: 5=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
   const ownedEq = Array.isArray(user.info?.equipment) ? user.info.equipment.filter((e) => typeof e === 'string') : []
   if (ownedEq.length) p += `\n\n# Equipment the athlete OWNS: ${ownedEq.join(', ')}.\nWhen building gym/strength sessions, prescribe ONLY exercises that use this gear or Bodyweight — pass \`equipment="${ownedEq.join(',')}"\` to search_exercises so you never pick something they can't do. (They set this in Settings → Equipment.)`
+  // #303 — weekly availability (hours/day) so the coach places sessions within the athlete's real windows.
+  const av = user.info?.availability && typeof user.info.availability === 'object' ? user.info.availability : null
+  if (av) {
+    const DOW = [['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun']]
+    const line = DOW.map(([k, d]) => `${d} ${Number(av[k]) || 0}h`).join(' · ')
+    const wk = DOW.reduce((s, [k]) => s + (Number(av[k]) || 0), 0)
+    if (wk > 0) p += `\n\n# WEEKLY AVAILABILITY (hours/day the athlete can train): ${line} (${wk}h/wk total). RESPECT IT — fit each session inside that day's window (no ${'`'}2h+${'`'} ride on a 30-min day), place the long ride on the biggest day, and don't schedule anything on a 0h/rest day. If the week's target needs more time than available, say so rather than overbooking.`
+  }
   // #284 — gym prescription depth: tempo (time-under-tension) + per-lift + session tips.
   p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): for each lift set sets×reps and ALWAYS set a TEMPO on strength lifts — 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower · 1s pause · 1s lift · 0s top (slower eccentric ⇒ more time-under-tension ⇒ hypertrophy/control; faster ⇒ power). Default to "3-1-1-0" for main + accessory strength work; only omit tempo for pure mobility/holds/plyometrics. This is REQUIRED, not optional — the app shows it as a chip. Add a one-line FORM tip per lift, and ONE whole-session \`tip\`. Don't set weight — the app fills it from the athlete's e1RM. Keep tips short and practical.`
   const diet = String(user.info?.diet || '').toLowerCase()
