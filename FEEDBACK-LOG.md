@@ -26,10 +26,12 @@ test guide → the **🧪 Test guide** section below.
     time estimate. Gym plans should show an estimated duration (from sets × reps × tempo + rest, per exercise → total),
     like rides show time. Check why it's blank for her plan (missing tempo/rest? not computed on coach-authored plans?) +
     render a time estimate on the gym workout header/card. Add a test for the estimator. gymapp-only.
-316. ⬜ **Also ask how many times/week she WANTS to train (frequency), not just hours/day.** JM 2026-07-02: availability
-    captures hours per day, but we should also ask desired training FREQUENCY (sessions/week) — a preference distinct from
-    raw availability. Add to the availability step/page (e.g. "How many days/week do you want to train? 3·4·5·6") → store
-    on profile → coach respects it when placing sessions. Ties #303/#310. gymapp-only.
+316. ⬜ **Ask desired training FREQUENCY (sessions/week) → drives base plan + OPTIONAL bonus workouts.** JM 2026-07-02:
+    availability captures hours/day, but also ask how many times/week she WANTS to train. Add to the availability page
+    (e.g. "How many days/week? 3·4·5·6"), store on profile. COACH BEHAVIOUR: plan exactly that many BASE sessions/week
+    (she says 4 → show 4). If she then wants extra (a 5th on a free day), surface ONE **optional/bonus** suggested workout
+    she can opt into — clearly marked optional, not part of the base load. So the week = N committed + on-demand bonus.
+    Ties #303/#310; coach prompt + plan model needs an "optional" flag on bonus sessions. gymapp-only.
 315. ⬜ **Wife's ENERGY (readiness) isn't being calculated despite HR/HRV present.** JM 2026-07-02: she has HR, HRV, etc.
     but Energy shows uncalculated. Readiness engine (server/readiness.js, #158/#159) auto-derives Sleep·Freshness·Energy
     1–5 from intervals wellness (CTL/ATL/Form, HRV, RHR, sleep) + check-in. DEBUG for xenia (i628280): is wellness
