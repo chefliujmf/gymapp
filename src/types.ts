@@ -160,6 +160,9 @@ export interface LibExercise {
   /** #298 derived: uses a resistance band (equipment 'Bands' OR band in the name, incl. band-assisted
    *  barbell/dumbbell moves) — powers the "Bands" filter. Set in catalog.ts, not the generated JSON. */
   band?: boolean
+  /** #300: this `video` was backfilled from a same-movement, same-muscle library video (the entry had
+   *  only a static image). The clip is a close variation, not the exact listed exercise. */
+  videoBackfilled?: boolean
 }
 
 export interface EnduranceWorkout {

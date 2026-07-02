@@ -22,7 +22,7 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-303. ⬜ **Profile → weekly AVAILABILITY page (hours per weekday).** JM 2026-07-02: input how many hours per weekday one
+303. 🔨 **Profile → weekly AVAILABILITY page (hours per weekday).** JM 2026-07-02: input how many hours per weekday one
     can work out (Mon 1h, Tue 2h, …), make it nice. Feeds the coach's planning (respect availability when placing sessions).
     Store on the profile; coach reads it. Mock-first (nice weekly grid). gymapp-only.
 
@@ -35,7 +35,7 @@ test guide → the **🧪 Test guide** section below.
     round-trip (segments, #293). Gym exercises live in the plan NOTES (markdown table) → text syncs both ways, but STRUCTURED
     gym fields (tempo/sets/reps as data) don't round-trip because intervals has no gym-exercise structure. Architecture
     decision needed (canonical structured store + reconcile). gymapp-only.
-300. ⬜ **No-video exercises — remove from the library OR source free/open-source videos.** JM 2026-07-02. Library: 3102
+300. 🔨 **No-video exercises — remove from the library OR source free/open-source videos.** JM 2026-07-02. Library: 3102
     video · 1379 image-only (Centr .jpg) · 49 no-media. Matcher now PREFERS video (#296) so prescribed exercises resolve to
     video ~93%+. Options: (a) drop the 49 no-media + hide image-only from browse; (b) source video for image-only from OPEN/
     FREE libs (wger, free-exercise-db, exercisedb). JM prefers videos. Decision needed before deleting 1379 entries.

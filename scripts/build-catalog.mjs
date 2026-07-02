@@ -574,6 +574,34 @@ const normMuscle = (raw) => {
   return raw.charAt(0).toUpperCase() + raw.slice(1) // keep unknowns, title-cased
 }
 for (const ex of exercises) ex.muscle = normMuscle(ex.muscle)
+
+// #300 — VIDEO BACKFILL: image-only exercises borrow a same-MOVEMENT, same-MUSCLE video from the
+// (already self-hosted) library so they play a demo instead of a static image. Reuses existing
+// /media videos only → zero new hosting, independence-gate safe. Same-muscle guard = no wrong demos.
+{
+  const BF_STOP = new Set(['or', 'plus', 'and', 'the', 'a', 'an', 'with', 'to', 'of', 'for', 'machine', 'seated', 'standing'])
+  const BF_STEM = { biceps: 'bicep', triceps: 'tricep', abs: 'ab', calves: 'calf', flyes: 'fly', flies: 'fly', curls: 'curl', rows: 'row', raises: 'raise', presses: 'press', squats: 'squat', lunges: 'lunge', dips: 'dip', extensions: 'extension' }
+  const bfTok = (s) => String(s || '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter((w) => w && !BF_STOP.has(w)).map((w) => BF_STEM[w] || w)
+  const bfMu = (e) => (e.muscle || e.category || '').toString().toLowerCase()
+  const vids = exercises.filter((e) => e.video).map((e) => ({ e, t: new Set(bfTok(e.name)), m: bfMu(e) }))
+  let bf = 0
+  for (const e of exercises) {
+    if (e.video || !e.image) continue
+    const want = bfTok(e.name); if (!want.length) continue
+    const em = bfMu(e); let best = null, bk = -1
+    for (const { e: ve, t, m } of vids) {
+      let ov = 0; for (const w of want) if (t.has(w)) ov++
+      if (ov < 1) continue
+      const cw = ov / want.length, cn = ov / (t.size || 1)
+      if (want.length === 1 ? cn < 0.5 : cw < 0.6) continue
+      if (em && m && em !== m) continue
+      const key = ov * 1000 + (cw + cn) * 100 - t.size
+      if (key > bk) { bk = key; best = ve }
+    }
+    if (best?.video) { e.video = best.video; e.videoBackfilled = true; bf++ }
+  }
+  console.log(`video backfill (#300): +${bf} image-only exercises now play a same-muscle library video`) // eslint-disable-line no-console
+}
 const mind = listJson(join(DL, 'meditation')).map((f) => mapMind(readJson(join(DL, 'meditation', f))))
 const endurance = listJson(JOIN_DIR).map((f) => mapEndurance(readJson(join(JOIN_DIR, f))))
 
