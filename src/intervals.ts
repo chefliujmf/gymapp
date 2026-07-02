@@ -190,7 +190,11 @@ export function readIcuFeedback(a?: IcuActivity | null): { feel?: string; rpe?: 
   }
   const feel = a.feel && a.feel >= 1 && a.feel <= FEEL_LABELS.length ? FEEL_LABELS[a.feel - 1] : undefined
   const rpe = a.icu_rpe && a.icu_rpe >= 1 && a.icu_rpe <= 10 ? Math.round(a.icu_rpe) : undefined
-  if (!feel && !rpe && Object.keys(fields).length === 0) return null
+  // #330 — Strava/device imports (and the coach's auto-review) can populate feel/icu_rpe WITHOUT the
+  // athlete touching our form → the form then showed a phantom "POOR / RPE 10" as if entered. Our
+  // CUSTOM fields (Legs/Fuel/Pain/…) only ever come from THIS app, so treat feedback as athlete-logged
+  // ONLY when at least one custom field is present. Otherwise start the form blank.
+  if (Object.keys(fields).length === 0) return null
   return { feel, rpe, fields }
 }
 /** Completed activities in a window (read-only). Empty on no key / error. */
