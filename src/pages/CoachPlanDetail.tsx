@@ -9,7 +9,7 @@ import { useBle } from '../BleContext'
 import { getSetting, db } from '../db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
-import { fmtPace } from '../running-paces'
+import { fmtPace, paceFromPowerPct } from '../running-paces'
 import { InfoDot, TrendChart, minuteTicks } from '../charts'
 import { fetchActivities, fetchActivityThread, sportOfActivity, readIcuFeedback, type IcuActivity, type CoachNote } from '../intervals'
 import { authApi, type CoachReview } from '../auth/api'
@@ -101,11 +101,12 @@ export default function CoachPlanDetail() {
         // using the athlete's threshold pace; label everything /km. Rides keep watts.
         const isRun = p.sport === 'run'
         const thrPace = (user?.runThresholdPace || (user?.sportSettings as { running?: { thresholdPace?: number } } | undefined)?.running?.thresholdPace) || null
-        const pctPace = (pct: number) => (thrPace && pct > 0 ? Math.round(thrPace * 100 / pct) : null)
+        // #331 — remap the coach's POWER-% to a realistic PACE-% first (58% power ≠ 58% pace, which
+        // would be ~9:30/km walking). Matches the intervals push exactly.
+        const pctPace = (pct: number) => (thrPace && pct > 0 ? Math.round(thrPace * 100 / paceFromPowerPct(pct)) : null)
         const tgt = (pct: number, watts?: number | null) => isRun ? (pctPace(pct) ? `${fmtPace(pctPace(pct)!)}/km` : `${pct}%`) : (watts ? `${watts} W` : `${pct}%`)
-        // #331 — plot the EFFORT shape (harder = up, exactly like the cycling power chart) but LABEL the
-        // axis in min/km via fmt, so a run chart looks like cycling, just in pace. fmt maps %→pace.
-        const runFmt = (v: number) => (thrPace && v > 0 ? `${fmtPace(Math.round(thrPace * 100 / v))}` : `${Math.round(v)}%`)
+        // plot the EFFORT shape (harder = up, like the cycling power chart) but LABEL the axis in min/km.
+        const runFmt = (v: number) => (thrPace && v > 0 ? `${fmtPace(Math.round(thrPace * 100 / paceFromPowerPct(v)))}` : `${Math.round(v)}%`)
         // #280 hero (4 headline targets) + chips (JM pick B, same spirit as post-workout)
         const hero: [string, string][] = [
           load ? ['Target TSS', String(load.tss)] : null,

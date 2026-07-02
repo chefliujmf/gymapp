@@ -6,6 +6,21 @@
 // under `pace` for runs so intervals — and the Garmin workout it syncs — shows pace, never watts.
 export const MAX_DOC_STEP_SECONDS = 3600
 
+// #331 — the coach authors intensity as POWER-style % (Z1≈55%, Z2≈65%, threshold≈100%). Running PACE
+// does NOT scale like power: even an easy jog is ~80% of threshold pace, not 55% (58% of threshold
+// pace = ~9:30/km = walking, the "ridiculous" bug). Remap a power-% to a REALISTIC % of threshold pace
+// so the pace targets are sane. Anchors from run training zones (Daniels/Coggan-pace equivalents).
+const PACE_ANCHORS = [[40, 82], [55, 86], [65, 89], [75, 92], [85, 95], [95, 98], [100, 100], [110, 104], [120, 108]]
+export function paceFromPowerPct(p) {
+  const n = Number(p) || 0
+  if (n <= PACE_ANCHORS[0][0]) return PACE_ANCHORS[0][1]
+  if (n >= PACE_ANCHORS[PACE_ANCHORS.length - 1][0]) return PACE_ANCHORS[PACE_ANCHORS.length - 1][1]
+  for (let i = 1; i < PACE_ANCHORS.length; i++) {
+    if (n <= PACE_ANCHORS[i][0]) { const [x0, y0] = PACE_ANCHORS[i - 1], [x1, y1] = PACE_ANCHORS[i]; return Math.round(y0 + (y1 - y0) * (n - x0) / (x1 - x0)) }
+  }
+  return 85
+}
+
 // Encode ONE plan segment (powerStart/powerEnd = % of FTP for rides, % of threshold pace for runs)
 // into intervals workout_doc step(s). Splits a step longer than MAX into interpolated chunks — a
 // single over-long step makes the intervals workout render EMPTY (matches cyclingcoach split_long_doc_step).
