@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { workoutSummary, structureRows, powerZone, segTarget } from './workout-summary'
+import { workoutSummary, structureRows, powerZone, segTarget, plannedSeries, plannedLoad } from './workout-summary'
 
 const flat = (pct: number, dur: number) => ({ duration: dur, powerStart: pct, powerEnd: pct })
 // warm-up 15m@65, 3×(10m@95 / 3m@55), cooldown 9m@60
@@ -50,4 +50,21 @@ describe('structureRows', () => {
     expect(rows).toHaveLength(2)
     expect(rows[0].durationSec).toBe(600)
   })
+})
+
+describe('plannedSeries / plannedLoad', () => {
+  it('plannedSeries samples target watts per 10s (flat block = constant)', () => {
+    const s = plannedSeries([flat(50, 60)], 260) // 60s @ 50% of 260 = 130 W
+    expect(s.length).toBe(6)
+    expect(s.every((w) => w === 130)).toBe(true)
+  })
+  it('plannedLoad gives a sane IF + TSS for the 3×10 threshold', () => {
+    const l = plannedLoad(threshold3x10, 260)!
+    // IF should sit in a realistic threshold range, TSS scales with duration×IF²
+    expect(l.if).toBeGreaterThan(0.7)
+    expect(l.if).toBeLessThan(0.95)
+    expect(l.tss).toBeGreaterThan(45)
+    expect(l.tss).toBeLessThan(110)
+  })
+  it('no ftp → null', () => { expect(plannedLoad(threshold3x10)).toBeNull() })
 })

@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getCoachPlan, gymSessionFromPlan, setGymSession, matchExercise } from '../plan'
 import { calApi, type CalItem } from '../calendar'
-import { SegmentProfile } from '../ui'
-import { workoutSummary, structureRows } from '../workout-summary'
+import { MiniProfile } from '../ui'
+import { workoutSummary, structureRows, plannedSeries, plannedLoad } from '../workout-summary'
 import { setCurrentRide, canPlayHere } from '../ride'
 import { useBle } from '../BleContext'
 import { getSetting, db } from '../db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
-import { InfoDot } from '../charts'
+import { InfoDot, TrendChart, minuteTicks } from '../charts'
 import { fetchActivities, fetchActivityThread, sportOfActivity, readIcuFeedback, type IcuActivity, type CoachNote } from '../intervals'
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
@@ -67,9 +67,12 @@ export default function CoachPlanDetail() {
   return (
     <div>
       <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
-      <div className="page-head">
-        <span className="eyebrow">{p.sport === 'gym' ? 'Gym' : p.sport === 'run' ? 'Run' : 'Ride'} · {dateLabel}{mins ? ` · ${mins} min` : p.sport === 'gym' && p.exercises ? ` · ${p.exercises.length} exercises` : ''}</span>
-        <h1>{p.title}</h1>
+      <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {isEndurance && (p.segments?.length ?? 0) > 0 && <div className="act-thumb"><MiniProfile segs={p.segments!} /></div>}
+        <div style={{ minWidth: 0 }}>
+          <span className="eyebrow">{p.sport === 'gym' ? 'Gym' : p.sport === 'run' ? 'Run' : 'Ride'} · {dateLabel}{mins ? ` · ${mins} min` : p.sport === 'gym' && p.exercises ? ` · ${p.exercises.length} exercises` : ''}</span>
+          <h1 style={{ margin: 0 }}>{p.title}</h1>
+        </div>
       </div>
 
       {/* #285 — completed: coach verdict + feedback + link to the full analysis */}
@@ -88,19 +91,34 @@ export default function CoachPlanDetail() {
         const rEst = !(p.ftp || ftp || user?.ftp)
         const sum = workoutSummary(p.segments!, rFtp)
         const rows = structureRows(p.segments!, rFtp)
+        const load = plannedLoad(p.segments!, rFtp)
+        const totalSec = p.segments!.reduce((s, x) => s + (Number(x.duration) || 0), 0)
+        const keySet = rows.filter((r) => r.pct >= 88).sort((a, b) => b.durationSec * b.count - a.durationSec * a.count)[0]
         const fmtDur = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${s}s`)
+        // #280 hero (4 headline targets) + chips (JM pick B, same spirit as post-workout)
+        const hero: [string, string][] = [
+          load ? ['Target TSS', String(load.tss)] : null,
+          load ? ['Target IF', load.if.toFixed(2)] : null,
+          sum ? ['Duration', `${sum.durationMin} min`] : null,
+          keySet ? ['Key-set target', keySet.watts ? `${keySet.watts} W` : `${keySet.pct}%`] : (sum ? ['Main target', sum.mainWatts ? `${sum.mainWatts} W` : `${sum.mainPct}%`] : null),
+        ].filter(Boolean) as [string, string][]
+        const chips: [string, string][] = [
+          keySet ? [keySet.count > 1 ? `${keySet.count}× ${fmtDur(keySet.durationSec)}` : fmtDur(keySet.durationSec), 'key set'] : null,
+          sum ? [sum.mainZone, 'zone'] : null,
+          rEst ? ['est FTP', 'set yours ⚙'] : null,
+        ].filter(Boolean) as [string, string][]
         return (
         <>
           {/* #280 what to expect */}
-          {sum && (
-            <div className="pw-expect">
-              <div className="pw-e"><b>{sum.mainWatts ? `${sum.mainWatts}` : `${sum.mainPct}%`}<small>{sum.mainWatts ? 'W' : ''}</small></b><span>Target{rEst ? ' (est)' : ''}</span></div>
-              <div className="pw-e"><b>{sum.mainZone}</b><span>Zone</span></div>
-              <div className="pw-e"><b>{sum.durationMin}<small>m</small></b><span>Duration</span></div>
-            </div>
-          )}
-          <div className="card" style={{ padding: 16, marginTop: 6 }}><SegmentProfile segs={p.segments!} ftp={rFtp} ftpEstimated={rEst} /></div>
-          <p className="meta" style={{ margin: '6px 2px 0', whiteSpace: 'normal' }}>💡 {p.cues?.[0] || (sum && sum.mainPct >= 91 ? 'Warm up fully — the first hard effort should feel controlled, not a shock; keep recoveries easy and let HR drop.' : 'Hold steady targets — smooth and repeatable beats spiky.')}</p>
+          <div className="act-ins"><span className="tag">What to expect</span>{p.objective || `A ${sum?.mainZone === 'Z4' || sum?.mainZone === 'Z5' ? 'quality' : 'steady'} ${p.sport === 'run' ? 'run' : 'ride'}: ~${sum?.durationMin ?? mins} min${load ? `, IF ${load.if.toFixed(2)}, ~${load.tss} TSS` : ''}. ${sum && sum.mainPct >= 88 ? `The meat is at ${sum.mainWatts ? sum.mainWatts + ' W' : sum.mainPct + '%'}.` : 'Keep it controlled and repeatable.'}`}</div>
+          <div className="act-hero">{hero.map(([l, v]) => <div key={l} className="ht"><b>{v}</b><span>{l}</span></div>)}</div>
+          {chips.length > 0 && <div className="act-chips">{chips.map(([l, v]) => <span key={l} className="act-chip"><b>{v}</b><span>{l}</span></span>)}</div>}
+          {/* #280 planned power SHAPE — dense chart standard */}
+          <div className="tl-card" style={{ marginTop: 8 }}>
+            <div className="tl-clabel">PLANNED POWER · W · target shape</div>
+            <TrendChart series={[{ label: 'Target', data: plannedSeries(p.segments!, rFtp), color: '#34e07d', area: true }]} height={150} axes unit=" W" xTicks={minuteTicks(totalSec)} />
+            <div className="act-ins"><span className="tag">💡</span>{p.cues?.[0] || (sum && sum.mainPct >= 91 ? 'Warm up fully — the first hard effort should feel controlled, not a shock; keep recoveries easy and let HR drop.' : 'Hold steady targets — smooth and repeatable beats spiky.')}</div>
+          </div>
           {/* #280 structure */}
           {rows.length > 1 && (
             <>

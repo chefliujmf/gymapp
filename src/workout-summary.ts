@@ -29,6 +29,29 @@ export function workoutSummary(segs: Seg[], ftp?: number | null): WorkoutSummary
   return { durationMin, mainPct, mainWatts: ftp ? Math.round((mainPct / 100) * ftp) : null, mainZone: powerZone(mainPct) }
 }
 
+/** Per-10s target-watt series from segments (linear within a ramp) — feeds the planned-shape chart. */
+export function plannedSeries(segs: Seg[], ftp: number): number[] {
+  const out: number[] = []
+  for (const s of segs) {
+    const n = Math.max(1, Math.round(s.duration / 10))
+    for (let i = 0; i < n; i++) { const f = n > 1 ? i / (n - 1) : 0; out.push(Math.round(((s.powerStart + (s.powerEnd - s.powerStart) * f) / 100) * ftp)) }
+  }
+  return out
+}
+/** Planned Intensity Factor + TSS from the target series (NP via 30s-rolling 4th-power mean). */
+export function plannedLoad(segs: Seg[], ftp?: number | null): { if: number; tss: number } | null {
+  if (!segs?.length || !ftp) return null
+  const totalSec = segs.reduce((s, x) => s + x.duration, 0)
+  const w = plannedSeries(segs, ftp) // 10s samples
+  const win = 3 // 3×10s ≈ 30s
+  let sum4 = 0, cnt = 0
+  for (let i = 0; i + 1 <= w.length; i++) { const a = w.slice(Math.max(0, i - win + 1), i + 1); const avg = a.reduce((x, y) => x + y, 0) / a.length; sum4 += Math.pow(avg, 4); cnt++ }
+  const np = cnt ? Math.pow(sum4 / cnt, 0.25) : 0
+  const IF = np / ftp
+  const tss = Math.round((totalSec * IF * IF) / 3600 * 100)
+  return { if: Math.round(IF * 100) / 100, tss }
+}
+
 export interface StructureRow { label: string; count: number; durationSec: number; pct: number; zone: string; watts: number | null }
 /** Structure list: merge consecutive equal-target steps, then collapse an immediately-repeated
  *  (same target + same duration) run into one "N×" row. Labels by role (warm-up / effort / etc.). */

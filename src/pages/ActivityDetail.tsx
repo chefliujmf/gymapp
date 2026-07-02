@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { fetchActivity, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
-import { TrendChart, PowerCurveChart, PowerBlocks } from '../charts'
+import { TrendChart, PowerCurveChart, PowerBlocks, minuteTicks } from '../charts'
 import { zoneColor } from '../ui'
 import { getSetting } from '../db'
 import { authApi, type CoachReview } from '../auth/api'
@@ -84,12 +84,6 @@ const TL_ROWS = [
 // elapsed seconds → compact axis label (mm:ss, or h:mm over an hour)
 const fmtElapsed = (s: number) => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}` : `${m}:${String(ss).padStart(2, '0')}` }
 
-// round-minute x-axis marks (0m · 10m · … · h:mm) → readable, denser time axis (#286)
-function minuteTicks(totalSec: number): { frac: number; label: string }[] {
-  const totMin = totalSec / 60, step = totMin > 60 ? 10 : totMin > 30 ? 5 : 2, out: { frac: number; label: string }[] = []
-  for (let m = 0; m <= totMin + 0.01; m += step) out.push({ frac: Math.min(1, (m * 60) / totalSec), label: m >= 60 ? `${Math.floor(m / 60)}:${String(Math.round(m % 60)).padStart(2, '0')}` : `${m}m` })
-  return out
-}
 // #54/#286: stacked power/HR/altitude/cadence charts sharing ONE scrubber, each to the chart
 // standard — Y axis (dense ticks), round-minute TIME x-axis + gridlines, avg·max in the header,
 // and a COMPUTED coach insight line under each (the "insight per section" JM asked for).

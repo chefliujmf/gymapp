@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getPlanEvent, gymSessionFromEvent, setGymSession, matchExercise } from '../plan'
 import { eventObjective, parseGymTable, parseGymWorkout, sportOf, flattenIcuSteps, type GymTableRow } from '../intervals'
-import { SegmentProfile } from '../ui'
-import { workoutSummary, structureRows } from '../workout-summary'
+import { MiniProfile } from '../ui'
+import { workoutSummary, structureRows, plannedSeries, plannedLoad } from '../workout-summary'
+import { TrendChart, minuteTicks } from '../charts'
 import { setCurrentRide, canPlayHere } from '../ride'
 import { useBle } from '../BleContext'
 import { getSetting } from '../db'
@@ -59,12 +60,15 @@ export default function PlanDetail() {
   return (
     <div>
       <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
-      <div className="page-head">
-        <span className="eyebrow">{kind} · {dateLabel}{mins ? ` · ${mins} min` : ''}{e.icu_training_load ? ` · ${e.icu_training_load} TSS` : (sport === 'gym' && mins ? ` · ~${gymTSS(mins, rpeIntensity(e.description || ''))} TSS` : '')}</span>
-        <h1>{e.name}</h1>
+      <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {isRide && flattenIcuSteps(e.workout_doc?.steps).length > 0 && <div className="act-thumb"><MiniProfile segs={flattenIcuSteps(e.workout_doc?.steps)} /></div>}
+        <div style={{ minWidth: 0 }}>
+          <span className="eyebrow">{kind} · {dateLabel}{mins ? ` · ${mins} min` : ''}{e.icu_training_load ? ` · ${e.icu_training_load} TSS` : (sport === 'gym' && mins ? ` · ~${gymTSS(mins, rpeIntensity(e.description || ''))} TSS` : '')}</span>
+          <h1 style={{ margin: 0 }}>{e.name}</h1>
+        </div>
       </div>
 
-      {obj && <p className="lead" style={{ marginTop: 4 }}>{obj}</p>}
+      {obj && !isRide && <p className="lead" style={{ marginTop: 4 }}>{obj}</p>}
 
       {gym.length > 0 && (
         <>
@@ -119,18 +123,30 @@ export default function PlanDetail() {
         const rEst = !(ftp || user?.ftp)
         const sum = workoutSummary(segs, rFtp)
         const rows = structureRows(segs, rFtp)
+        const load = plannedLoad(segs, rFtp)
+        const totalSec = segs.reduce((s, x) => s + (Number(x.duration) || 0), 0)
+        const keySet = rows.filter((r) => r.pct >= 88).sort((a, b) => b.durationSec * b.count - a.durationSec * a.count)[0]
         const fmtDur = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${s}s`)
+        const hero: [string, string][] = [
+          load ? ['Target TSS', String(load.tss)] : null,
+          load ? ['Target IF', load.if.toFixed(2)] : null,
+          sum ? ['Duration', `${sum.durationMin} min`] : null,
+          keySet ? ['Key-set target', keySet.watts ? `${keySet.watts} W` : `${keySet.pct}%`] : (sum ? ['Main target', sum.mainWatts ? `${sum.mainWatts} W` : `${sum.mainPct}%`] : null),
+        ].filter(Boolean) as [string, string][]
+        const chips: [string, string][] = [
+          keySet ? [keySet.count > 1 ? `${keySet.count}× ${fmtDur(keySet.durationSec)}` : fmtDur(keySet.durationSec), 'key set'] : null,
+          sum ? [sum.mainZone, 'zone'] : null,
+          rEst ? ['est FTP', 'set yours ⚙'] : null,
+        ].filter(Boolean) as [string, string][]
         return (
         <>
-          {sum && (
-            <div className="pw-expect">
-              <div className="pw-e"><b>{sum.mainWatts ? `${sum.mainWatts}` : `${sum.mainPct}%`}<small>{sum.mainWatts ? 'W' : ''}</small></b><span>Target{rEst ? ' (est)' : ''}</span></div>
-              <div className="pw-e"><b>{sum.mainZone}</b><span>Zone</span></div>
-              <div className="pw-e"><b>{sum.durationMin}<small>m</small></b><span>Duration</span></div>
-            </div>
-          )}
-          <div className="card" style={{ padding: 16, marginTop: 6 }}>
-            <SegmentProfile segs={segs} ftp={rFtp} ftpEstimated={rEst} />
+          {obj && <div className="act-ins"><span className="tag">What to expect</span>{obj}</div>}
+          <div className="act-hero">{hero.map(([l, v]) => <div key={l} className="ht"><b>{v}</b><span>{l}</span></div>)}</div>
+          {chips.length > 0 && <div className="act-chips">{chips.map(([l, v]) => <span key={l} className="act-chip"><b>{v}</b><span>{l}</span></span>)}</div>}
+          <div className="tl-card" style={{ marginTop: 8 }}>
+            <div className="tl-clabel">PLANNED POWER · W · target shape</div>
+            <TrendChart series={[{ label: 'Target', data: plannedSeries(segs, rFtp), color: '#34e07d', area: true }]} height={150} axes unit=" W" xTicks={minuteTicks(totalSec)} />
+            {sum && <div className="act-ins"><span className="tag">💡</span>{sum.mainPct >= 91 ? 'Warm up fully — first hard effort controlled, not a shock; keep recoveries easy.' : 'Hold steady targets — smooth and repeatable beats spiky.'}</div>}
           </div>
           {rows.length > 1 && (
             <>

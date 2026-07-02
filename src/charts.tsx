@@ -48,6 +48,13 @@ function smoothPath(pts: [number, number][]): string {
 }
 
 const VW = 320
+/** Round-minute x-axis marks (0m · 10m · … · h:mm) for a time-based chart of `totalSec`. #286/#280 */
+export function minuteTicks(totalSec: number): { frac: number; label: string }[] {
+  if (!(totalSec > 0)) return []
+  const totMin = totalSec / 60, step = totMin > 60 ? 10 : totMin > 30 ? 5 : totMin > 10 ? 2 : 1, out: { frac: number; label: string }[] = []
+  for (let m = 0; m <= totMin + 0.01; m += step) out.push({ frac: Math.min(1, (m * 60) / totalSec), label: m >= 60 ? `${Math.floor(m / 60)}:${String(Math.round(m % 60)).padStart(2, '0')}` : `${m}m` })
+  return out
+}
 /** Round axis bounds + ticks (1/2/5/10 ×10ⁿ steps) — clean numbers like 0,25,50. */
 function niceTicks(min: number, max: number, count = 5): { min: number; max: number; ticks: number[] } {
   if (!isFinite(min) || !isFinite(max) || min === max) { const m = isFinite(min) ? min : 0; return { min: m - 1, max: m + 1, ticks: [m - 1, m, m + 1] } }
