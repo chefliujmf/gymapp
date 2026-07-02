@@ -667,6 +667,7 @@ async function ensureIcuFields(user, { force = false } = {}) {
   try {
     const cur = await icuFetch(user, `/athlete/${ath}/custom-item`).then((r) => (r.ok ? r.json() : [])).catch(() => [])
     const have = new Set((Array.isArray(cur) ? cur : []).filter((it) => it && it.content && it.content.code).map((it) => it.content.code))
+    let created = 0
     for (const [name, def] of Object.entries(ICU_FB_FIELDS)) {
       if (have.has(def.code)) continue
       const item = {
@@ -674,8 +675,11 @@ async function ensureIcuFields(user, { force = false } = {}) {
         description: 'Private athlete feedback field for coach analysis (Platyplus).',
         content: { code: def.code, type: 'select', gauge: true, example: def.opts[0], options: def.opts.map((text, i) => ({ text, value: i + 1 })) },
       }
-      await icuFetch(user, `/athlete/${ath}/custom-item`, { method: 'POST', body: JSON.stringify(item) }).catch((e) => console.error('[icu-field-create ' + def.code + '] ' + (e.message || e)))
+      const r = await icuFetch(user, `/athlete/${ath}/custom-item`, { method: 'POST', body: JSON.stringify(item) }).catch((e) => { console.error('[icu-field-create ' + def.code + '] ' + (e.message || e)); return null })
+      if (r && r.ok) created++
     }
+    // #305 — TELL the user we set these up in their intervals (transparency).
+    if (created > 0) pushNotification(user, { id: 'icu-fields-' + user.id, title: `Set up ${created} feedback field${created > 1 ? 's' : ''} in your intervals`, body: 'Private per-workout fields (legs, fuel, pain, mind…) so your feedback syncs both ways and the coach can read it. Only you see them.', link: '/settings' })
     user.icuFieldsAt = Date.now(); save(store) // mark done so we don't re-check every time
   } catch (e) { console.error('[ensureIcuFields] ' + (e.message || e)) }
 }
