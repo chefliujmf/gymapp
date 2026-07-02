@@ -1,0 +1,65 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=430">
+<style>
+:root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--line:#ffffff1c;--amber:#f6c445;--blue:#5aa9ff}
+*{box-sizing:border-box}
+body{background:#0f1216;color:var(--text);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:16px;max-width:430px}
+h4{margin:20px 0 8px;font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--text-dim)}
+.card{background:linear-gradient(#21252f,#191c24);border:1px solid #ffffff14;border-radius:14px;padding:14px;margin:8px 0}
+.row{display:flex;align-items:center;gap:12px}
+.big{font-size:30px;font-weight:800;line-height:1}
+.big small{font-size:15px;color:var(--text-dim);font-weight:600}
+.lbl{font-size:13px;font-weight:800}
+.sub{color:var(--text-dim);font-size:12px;line-height:1.45;margin-top:3px}
+.tag{font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.03em}
+.tag.def{background:#ffffff14;color:var(--text-dim)}
+.tag.you{background:#34e07d22;color:var(--accent);border:1px solid #34e07d44}
+.tag.learn{background:#5aa9ff22;color:var(--blue);border:1px solid #5aa9ff44}
+.actions{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:#161a21;color:var(--text);font-weight:800;font-size:13px;text-align:center}
+.btn.primary{background:var(--accent);color:#04120a;border-color:var(--accent)}
+.stepper{display:flex;align-items:center;gap:14px;margin-left:auto}
+.stepper button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:#161a21;color:var(--text);font-size:18px;font-weight:800}
+/* learning progress */
+.prog{height:7px;background:#ffffff14;border-radius:999px;overflow:hidden;margin:10px 0 6px}
+.prog i{display:block;height:100%;background:var(--blue);border-radius:999px}
+.hint{font-size:11.5px;color:var(--text-dim);display:flex;align-items:center;gap:6px}
+.sugg{border:1px solid #5aa9ff44;background:linear-gradient(#1a2634,#161c22)}
+</style></head><body>
+
+<h4>1 · Default — needs your confirm</h4>
+<div class="card">
+  <div class="row">
+    <div><div class="lbl">Sleep need <span class="tag def">Default</span></div><div class="sub">We start everyone at 8 h. Confirm it or set yours — it drives your personal <b>Sleep</b> readiness score.</div></div>
+    <div class="stepper"><button>–</button><span class="big">8<small>h</small></span><button>+</button></div>
+  </div>
+  <div class="actions"><button class="btn primary">Confirm 8 h</button><button class="btn">That's not me → adjust</button></div>
+</div>
+
+<h4>2 · Confirmed — yours</h4>
+<div class="card">
+  <div class="row">
+    <div><div class="lbl">Sleep need <span class="tag you">Yours</span></div><div class="sub">Driving your Sleep readiness. Platyplus keeps watching your data and will suggest a change if your recovery says so.</div></div>
+    <div class="stepper"><button>–</button><span class="big">8<small>h</small></span><button>+</button></div>
+  </div>
+</div>
+
+<h4>3 · Learning from your data (the "X more days")</h4>
+<div class="card">
+  <div class="row">
+    <div style="flex:1"><div class="lbl">Sleep need <span class="tag learn">Learning</span></div><div class="sub">Watching your sleep vs recovery to find your real need.</div></div>
+    <span class="big" style="color:var(--text-dim)">8<small>h</small></span>
+  </div>
+  <div class="prog"><i style="width:62%"></i></div>
+  <div class="hint">🔎 <span>Need <b>~11 more nights</b> of sleep + HRV data before I can estimate your ideal. Using 8 h for now.</span></div>
+</div>
+
+<h4>4 · Learned — suggests a change</h4>
+<div class="card sugg">
+  <div class="row">
+    <div style="flex:1"><div class="lbl">Sleep need <span class="tag learn">Data suggests 9 h</span></div><div class="sub">Over 6 weeks, you recover best on <b>~9 h</b> — you train often and average 7.4 h, which is short for your load.</div></div>
+    <span class="big">8→<span style="color:var(--blue)">9</span><small>h</small></span>
+  </div>
+  <div class="actions"><button class="btn primary">Use 9 h</button><button class="btn">Keep 8 h</button></div>
+</div>
+
+</body></html>

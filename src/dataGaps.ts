@@ -23,7 +23,7 @@ export function dataGaps(u?: User | null): DataGap[] {
 
   if (endurance && !u.maxHR) g.push({ key: 'maxHr', label: 'Set your max HR', unlocks: 'heart-rate zones & a VO₂max estimate from your HR', hint: 'Profile → Max HR' })
 
-  if (!u.sleepNeed) g.push({ key: 'sleepNeed', label: 'Set your sleep need', unlocks: 'a personal sleep score in readiness (vs a generic 8 h)', hint: 'Profile → Sleep need' })
+  // #304: sleep need is handled by its own SleepNeed card (default→confirm + learns from data), not this nudge.
 
   return g
 }
