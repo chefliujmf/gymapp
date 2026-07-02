@@ -16,6 +16,7 @@ import { AddSheet } from './AddSheet'
 import { authApi, type Checkin, type Readiness } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import { InfoDot } from '../charts'
+import SetupChecklist from '../SetupChecklist'
 
 // Obvious + funny 1–5 faces (wrecked → amazing). One set for every metric since
 // all now read higher = better.
@@ -479,6 +480,8 @@ export default function Today() {
           </div>
         </div>
       )}
+
+      <SetupChecklist />
 
       <WeekStrip selected={selDay} onSelect={setSelDay} marked={markedDays} />
 
