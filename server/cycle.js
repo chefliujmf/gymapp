@@ -1,0 +1,74 @@
+// #329 — MENSTRUAL-CYCLE factor for coaching + readiness. Pure + unit-tested (src/cycle.test.ts).
+//
+// Two effects, both phase-driven:
+//   (a) LOAD modifier — how hard to program this phase (push in follicular/ovulatory; ease late-luteal
+//       & symptomatic menses). A MULTIPLIER on planned intensity/volume.
+//   (b) READINESS interpretation — the luteal phase RAISES resting HR (~+2–5 bpm) and core temp and
+//       LOWERS HRV (~−5–10%) for HORMONAL reasons, not fatigue. We hand these expected shifts back so
+//       Energy isn't docked for a normal luteal reading (server/readiness.js applies them).
+//
+// Phase source: intervals wellness `menstrualPhase` (+ `menstrualPhasePredicted`) when present; else
+// derived from cycle day + typical length (the coach asks for the last period start if unknown).
+// Individual variation is large — these are DEFAULTS the coach confirms against her tracked symptoms.
+
+export const PHASES = ['menstrual', 'follicular', 'ovulatory', 'luteal', 'late_luteal']
+
+/** Map intervals' menstrualPhase text (or our own) to a canonical phase. */
+export function normalizePhase(v) {
+  const s = String(v || '').toLowerCase().trim()
+  if (!s) return null
+  if (/(menstr|period|bleed|menses)/.test(s)) return 'menstrual'
+  if (/ovulat/.test(s)) return 'ovulatory'
+  if (/late.?luteal|pms|premenstr/.test(s)) return 'late_luteal'
+  if (/luteal/.test(s)) return 'luteal'
+  if (/follic/.test(s)) return 'follicular'
+  return null
+}
+
+/** Derive phase from cycle day (1-based) + typical length. Scales the luteal window to length. */
+export function phaseFromDay(day, cycleLen = 28) {
+  const L = Math.max(21, Math.min(40, Number(cycleLen) || 28))
+  const d = ((Math.round(Number(day)) - 1) % L + L) % L + 1 // wrap into 1..L
+  const ovul = L - 14 // ovulation ~14 days before next period
+  if (d <= 5) return 'menstrual'
+  if (d < ovul) return 'follicular'
+  if (d <= ovul + 1) return 'ovulatory'
+  if (d >= L - 2) return 'late_luteal'
+  return 'luteal'
+}
+
+/** (a) Load multiplier for planned intensity/volume this phase. */
+export function cycleLoadModifier(phase) {
+  return { menstrual: 0.90, follicular: 1.05, ovulatory: 1.00, luteal: 0.95, late_luteal: 0.85 }[phase] ?? 1.0
+}
+
+/** (b) Expected HORMONAL shift in today's wellness for this phase — so readiness does NOT penalise it.
+ *  rhrBpm = bpm the resting HR is expected to sit ABOVE baseline; hrvPct = % HRV is expected BELOW. */
+export function cycleReadinessAdjust(phase) {
+  const M = {
+    menstrual:   { rhrBpm: 1, hrvPct: 3 },
+    follicular:  { rhrBpm: 0, hrvPct: 0 },
+    ovulatory:   { rhrBpm: 1, hrvPct: 2 },
+    luteal:      { rhrBpm: 3, hrvPct: 6 },
+    late_luteal: { rhrBpm: 5, hrvPct: 10 },
+  }
+  return M[phase] || { rhrBpm: 0, hrvPct: 0 }
+}
+
+/** One-line coaching guidance per phase (the female module expands on it). */
+export function cycleGuidance(phase) {
+  return {
+    menstrual: 'Menses — many train normally; ease only if symptomatic (cramps/heavy flow/low iron). Prioritise iron-rich fuel.',
+    follicular: 'Follicular — GREEN LIGHT: best window for intensity, PRs and hard intervals; recovery is strong.',
+    ovulatory: 'Ovulation — high output, but oestrogen raises ligament laxity → warm up well, watch heavy/plyometric landing mechanics.',
+    luteal: 'Luteal — slightly higher perceived effort + core temp; keep quality but trim top-end volume, hydrate, fuel carbs.',
+    late_luteal: 'Late luteal / PMS — down-shift: fewer/shorter hard efforts, more Z2 + recovery, extra carbs, sleep, magnesium; expect a naturally higher RHR / lower HRV.',
+  }[phase] || ''
+}
+
+/** Full phase summary for a coach prompt + readiness. */
+export function cycleContext({ phase, cycleDay, cycleLength = 28 } = {}) {
+  const ph = normalizePhase(phase) || (cycleDay != null ? phaseFromDay(cycleDay, cycleLength) : null)
+  if (!ph) return null
+  return { phase: ph, loadModifier: cycleLoadModifier(ph), readinessAdjust: cycleReadinessAdjust(ph), guidance: cycleGuidance(ph) }
+}

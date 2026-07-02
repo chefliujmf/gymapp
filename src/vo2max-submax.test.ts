@@ -50,12 +50,23 @@ describe('headlineVo2max', () => {
     const h = headlineVo2max(52, [{ sport: 'running', est: { value: 43, source: 'x', confidence: 'medium' } }])
     expect(h!.value).toBe(52); expect(h!.confidence).toBe('high')
   })
-  it('else best estimate by confidence then value', () => {
-    const h = headlineVo2max(null, [
-      { sport: 'cycling', est: { value: 60, source: 'x', confidence: 'low' } },
-      { sport: 'running', est: { value: 52, source: 'y', confidence: 'medium' } },
+  it('#327 — uses the PRIMARY sport (first in the caller-ordered list), not the biggest number', () => {
+    // cyclist: cycling first → cycling wins even though running est is numerically higher
+    const cyclist = headlineVo2max(null, [
+      { sport: 'cycling', est: { value: 48, source: 'power', confidence: 'low' } },
+      { sport: 'running', est: { value: 60, source: 'hr', confidence: 'medium' } },
     ])
-    expect(h!.sport).toBe('running') // medium beats low even though cycling value higher
+    expect(cyclist!.sport).toBe('cycling'); expect(cyclist!.value).toBe(48)
+    // runner: running first → running wins
+    const runner = headlineVo2max(null, [
+      { sport: 'running', est: { value: 45, source: 'vdot', confidence: 'medium' } },
+      { sport: 'cycling', est: { value: 55, source: 'hr', confidence: 'low' } },
+    ])
+    expect(runner!.sport).toBe('running'); expect(runner!.value).toBe(45)
+  })
+  it('skips a sport with no estimate → next sport', () => {
+    const h = headlineVo2max(null, [{ sport: 'cycling', est: null }, { sport: 'running', est: { value: 45, source: 'vdot', confidence: 'medium' } }])
+    expect(h!.sport).toBe('running')
   })
   it('null when nothing', () => expect(headlineVo2max(null, [{ sport: 'running', est: null }])).toBeNull())
 })

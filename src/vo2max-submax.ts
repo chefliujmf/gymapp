@@ -40,15 +40,15 @@ export function cyclingVo2max({ ftp, weightKg, hrMax, hrRest }: { ftp?: number |
   return null
 }
 
-const RANK: Record<Vo2Confidence, number> = { high: 3, medium: 2, low: 1 }
-
-/** Headline VO₂max for the global card: a manual value (high) wins; else the best per-sport estimate
- *  (highest confidence, then highest value). Returns the value + which sport + source/confidence. */
+/** Headline VO₂max for the global card. #327 — it must reflect the sport the athlete ACTUALLY does:
+ *  a cyclist's number comes from cycling, a runner's from running. So `perSport` MUST be ordered by
+ *  the athlete's own sports (primary first); we take the primary sport's estimate, NOT the biggest
+ *  number across sports (which used to pick an inflated off-sport HR-ratio). Manual value always wins. */
 export function headlineVo2max(manual: number | null | undefined, perSport: { sport: string; est: Vo2Estimate | null }[]): { value: number; sport: string; source: string; confidence: Vo2Confidence } | null {
   if (manual) return { value: round1(manual), sport: '', source: 'you set it', confidence: 'high' }
   const valid = perSport.filter((p): p is { sport: string; est: Vo2Estimate } => !!p.est)
   if (!valid.length) return null
-  const best = valid.sort((a, b) => RANK[b.est.confidence] - RANK[a.est.confidence] || b.est.value - a.est.value)[0]
+  const best = valid[0] // caller ordered by the athlete's sports → primary sport wins
   return { value: best.est.value, sport: best.sport, source: best.est.source, confidence: best.est.confidence }
 }
 
