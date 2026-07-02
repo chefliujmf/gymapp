@@ -29,6 +29,13 @@ description: The Platyplus chart standard — EVERY graph must have X+Y axes wit
 - [ ] Y labels (min/mid/max + unit) · [ ] X labels · [ ] crisp text (HTML overlay) · [ ] insight line · [ ] **DateRangeFilter** ·
   [ ] domain filters (type/muscle/equipment/search) where relevant · [ ] reuse the shared chart · [ ] no horizontal scroll, mobile-first.
 
+## INSIGHTS EVERYWHERE (JM 2026-07-02 — a core product principle, not just charts)
+"The coach must be proactive and add insights almost everywhere that brings a lot of value for an athlete to improve." Platyplus is a coach, not a dashboard — **every place data appears is a chance to coach**:
+- every chart → an insight line (below); every stats section/card → a short coach read (💡);
+- pre-workout → actionable targets (suggested weight + est 1RM + last/trend for gym; target zones / what-to-expect / cues for rides); lists/history → trends, PRs, "faster than 8 wks ago", streaks.
+- the COACH volunteers insight/tip/next-step proactively (reviews, plans, chat) — never a bare data dump.
+Prefer COMPUTED insights for app surfaces (deterministic, always present); the coach's authored prose lives in the verdict/notes. **Test before shipping any data view: "what's the *so what*?"** If none is on screen, it's half-done. One crisp useful line per surface — not obvious noise. Memory `platyplus-insights-everywhere`.
+
 ## Activity view "spirit" (post- AND pre-workout — JM 2026-07-01, #286/#280)
 The completed-activity detail (`ActivityDetail`) is the reference for BOTH post- and pre-workout. Same spirit everywhere:
 - **Thumbnail** = `PowerBlocks` (zone-coloured bars binned from the REAL power stream), NOT the planned segments — plan segments can be degenerate (a 0-W main block renders garbage). For pre-workout (no actuals yet) use the planned SegmentProfile, same clean treatment.
