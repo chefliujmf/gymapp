@@ -29,6 +29,33 @@ export interface CoachPlan {
   mind?: { why?: string }
 }
 
+/** Sum a tempo string ("3-1-1-0" = 3s down · 1s pause · 1s up · 0s) → seconds per rep. Falls back to
+ *  ~3 s/rep (a controlled default) when no tempo is set. */
+function tempoSecPerRep(tempo?: string): number {
+  const parts = String(tempo || '').split('-').map((n) => Number(n)).filter((n) => !isNaN(n))
+  const s = parts.reduce((a, b) => a + b, 0)
+  return s > 0 ? s : 3
+}
+/** #317 — estimate a gym session's DURATION in minutes (reps × tempo work + rest between sets +
+ *  a per-exercise setup buffer), so gym plans show a time like rides do. Pure + unit-tested. */
+export function estimateGymMinutes(p: Pick<CoachPlan, 'exercises' | 'rounds'>): number {
+  const exs = p.exercises || []
+  if (!exs.length) return 0
+  let sec = 0
+  for (const x of exs) {
+    const sets = x.sets && x.sets > 0 ? x.sets : 3
+    const rest = x.rest != null && x.rest >= 0 ? x.rest : 60 // s between sets
+    const work = (x.mode || 'reps') === 'timed'
+      ? (x.seconds && x.seconds > 0 ? x.seconds : 40)                     // timed hold
+      : (x.reps && x.reps > 0 ? x.reps : 10) * tempoSecPerRep(x.tempo)    // reps × tempo
+    sec += sets * work + sets * rest      // rest after each set (last ≈ transition to next move)
+    sec += 20                              // per-exercise setup (find station / load)
+  }
+  sec *= (p.rounds && p.rounds > 0 ? p.rounds : 1)
+  sec += 5 * 60                            // warm-up / general setup buffer
+  return Math.max(1, Math.round(sec / 60))
+}
+
 /** Fetch the account's coach-pushed plans for a date range (session-authed). */
 export async function fetchGymPlans(from: string, to: string): Promise<CoachPlan[]> {
   try {

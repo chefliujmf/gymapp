@@ -239,7 +239,8 @@ export default function Profile() {
       <p className="meta" style={{ margin: '2px 2px 8px' }}>
         Personalises your readiness & coach. {connected ? <>Values tagged <Tag label="intervals" kind="icu" /> are pulled from your intervals profile and <strong>sync both ways</strong> — edit here, it writes back (your custom fields are untouched). </> : null}<Tag label="est." kind="pp" /> means Platyplus computes/you set it (intervals has no such field).
       </p>
-      <Link to="/stats" className="bm-trends" style={{ marginTop: 0, marginBottom: 8 }}>📈 See trends & race predictions in Stats ›</Link>{/* #228 */}
+      {/* #321 — go STRAIGHT to the user's own trend page (was a generic hub → "I don't get it"). */}
+      <Link to={does('running') ? '/running-stats' : does('cycling') ? '/cycling-stats' : '/stats'} className="bm-trends" style={{ marginTop: 0, marginBottom: 8 }}>📈 See your {does('running') ? 'running' : does('cycling') ? 'cycling' : ''} trends & predictions ›</Link>{/* #228 */}
       {/* #235 — turn the readiness self-learning on/off */}
       <label className="toggle-row">
         <span className="toggle-row__t"><b>Learn from my check-ins</b><span className="meta">Auto-adapt your Sleep/Freshness/Energy scores toward how you actually rate them over time.</span></span>

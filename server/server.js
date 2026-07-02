@@ -218,7 +218,9 @@ app.post('/auth/passkey/register/options', auth, async (req, res) => {
   const options = await generateRegistrationOptions({
     rpName: RP_NAME, rpID: RP_ID, userName: req.user.username, userID: new TextEncoder().encode(req.user.id),
     attestationType: 'none', excludeCredentials: req.user.passkeys.map((p) => ({ id: p.id })),
-    authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
+    // #311 — hint the ON-DEVICE (platform) authenticator: the phone's fingerprint/Face/PIN, so Android
+    // offers that instead of pushing the user into a Samsung-account / security-key flow they don't know.
+    authenticatorSelection: { authenticatorAttachment: 'platform', residentKey: 'required', userVerification: 'preferred' },
   })
   challenges.set('reg:' + req.user.id, options.challenge); res.json(options)
 })

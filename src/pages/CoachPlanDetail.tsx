@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { getCoachPlan, gymSessionFromPlan, setGymSession, matchExercise } from '../plan'
+import { getCoachPlan, gymSessionFromPlan, setGymSession, matchExercise, estimateGymMinutes } from '../plan'
 import { calApi, type CalItem } from '../calendar'
 import { MiniProfile } from '../ui'
 import { workoutSummary, structureRows, plannedSeries, plannedLoad } from '../workout-summary'
@@ -57,6 +57,7 @@ export default function CoachPlanDetail() {
   const meals = items.filter((it) => it.type === 'meal')
   const minds = items.filter((it) => it.type === 'mind')
   const mins = Math.round((p.segments || []).reduce((s, x) => s + (Number(x.duration) || 0), 0) / 60)
+  const gymMins = p.sport === 'gym' ? estimateGymMinutes(p) : 0 // #317
   const dateLabel = new Date(p.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
   const toggle = (i: number) => setOpen((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n })
   const isEndurance = p.sport === 'ride' || p.sport === 'run'
@@ -70,7 +71,7 @@ export default function CoachPlanDetail() {
       <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {isEndurance && (p.segments?.length ?? 0) > 0 && <div className="act-thumb"><MiniProfile segs={p.segments!} /></div>}
         <div style={{ minWidth: 0 }}>
-          <span className="eyebrow">{p.sport === 'gym' ? 'Gym' : p.sport === 'run' ? 'Run' : 'Ride'} · {dateLabel}{mins ? ` · ${mins} min` : p.sport === 'gym' && p.exercises ? ` · ${p.exercises.length} exercises` : ''}</span>
+          <span className="eyebrow">{p.sport === 'gym' ? 'Gym' : p.sport === 'run' ? 'Run' : 'Ride'} · {dateLabel}{mins ? ` · ${mins} min` : p.sport === 'gym' && (p.exercises?.length ?? 0) > 0 ? ` · ${p.exercises!.length} exercises · ~${gymMins} min` : ''}</span>
           <h1 style={{ margin: 0 }}>{p.title}</h1>
         </div>
       </div>

@@ -1148,6 +1148,10 @@ select.search { appearance: none; -webkit-appearance: none; }
 .acct__head { padding: 8px 10px 10px; border-bottom: 1px solid var(--border, #2a2e38); margin-bottom: 4px; display: flex; flex-direction: column; }
 .acct__head strong { font-size: 14px; }
 .acct__head span { font-size: 12px; color: var(--muted, #9aa3b2); }
+/* #318 — the notification panel is wide (320px); anchored right:0 of the bell it ran off the LEFT
+   edge on narrow phones. Pin it to the viewport's right with a width clamped to fit the screen. */
+.notif-menu { position: fixed; top: calc(env(safe-area-inset-top) + 52px); right: 10px; left: auto;
+  width: min(340px, calc(100vw - 20px)); min-width: 0; max-height: 70vh; overflow-y: auto; }
 .acct__item {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   padding: 10px 10px; border: none; background: none; cursor: pointer;
