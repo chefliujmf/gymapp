@@ -22,6 +22,17 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+328. 🔨 **Running pace + threshold must display in MIN/KM everywhere.** JM 2026-07-02. intervals threshold_pace is stored
+    in m/s (converted); UI + coach must always SHOW running pace/threshold as m:ss/km, never watts/%/m/s. Verify every run
+    surface (plan, player, stats, coach text). Ties #312/#313. gymapp-only.
+327. ⬜ **VO₂max shown for wife looks too high (doubt 52.1).** JM 2026-07-02. Likely the HR-ratio estimate using an ASSUMED
+    HRmax (220−age) + resting HR → unreliable, but shown as a confident number. FIX: when inputs are assumed/thin, mark it
+    clearly low-confidence / provisional (tie #319) or suppress; only show a firm VO₂max from real data (measured HRmax,
+    or pace/power VO₂max with enough runs). Review her actual computation. gymapp-only.
+326. 🔨 **Completed workout opens the PLANNED view, not the ANALYSED one — terrible.** JM 2026-07-02: clicking a DONE
+    workout lands on the planned page (only "flyby" gets you elsewhere); from there you can still hit Play/Analysis. Like
+    intervals: a COMPLETED session must open its ANALYSED/result view by default, with an option to view the plan. Fix the
+    routing: done → /activity/:id (analysed); planned → plan view. Remove Play from a completed session. gymapp-only.
 325. 🔨 **Onboarding forgot to ask the COACH's NAME.** JM 2026-07-02: Option C flow dropped naming the coach (was in the
     old chat interview; stored as `coachName`, set on Profile "Your coach"). ADD a step (or fold into About/goals #323) to
     let the user name their coach — it personalises every chat + insight. Prefill "Coach". gymapp-only.

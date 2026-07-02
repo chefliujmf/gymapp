@@ -18,11 +18,16 @@ export function hrRatioVo2max(hrMax?: number | null, hrRest?: number | null): nu
   return round1(15.3 * hrMax / hrRest)
 }
 
-/** Running VO₂max — VDOT (pace) and HR-ratio combined; the higher wins (central capacity guard). */
+/** Running VO₂max. #327 — VDOT (from real run PACE) is the trustworthy runner estimate; the HR-ratio
+ *  method inflates when HRmax is ASSUMED (220−age), so it must NOT win (the old Math.max biased high →
+ *  an unbelievable 52 for a 6:45/km runner). Prefer VDOT; if HR-ratio diverges a lot, the VDOT is only
+ *  low-confidence (thin/uncertain data), never the higher HR number. */
 export function runningVo2max({ vdot, hrMax, hrRest }: { vdot?: number | null; hrMax?: number | null; hrRest?: number | null }): Vo2Estimate | null {
   const hr = hrRatioVo2max(hrMax, hrRest)
-  if (vdot && hr) { const v = Math.max(vdot, hr); return { value: round1(v), source: v === vdot ? 'your running pace (VDOT)' : 'your max & resting HR', confidence: 'medium' } }
-  if (vdot) return { value: round1(vdot), source: 'your running pace (VDOT)', confidence: 'medium' }
+  if (vdot) {
+    const diverges = hr != null && Math.abs(vdot - hr) > 6 // HRmax likely assumed / stale → trust pace, flag it
+    return { value: round1(vdot), source: 'your running pace (VDOT)', confidence: diverges ? 'low' : 'medium' }
+  }
   if (hr) return { value: hr, source: 'your max & resting HR', confidence: 'low' }
   return null
 }

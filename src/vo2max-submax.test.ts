@@ -14,19 +14,21 @@ describe('hrRatioVo2max (15.3 × HRmax/HRrest)', () => {
   })
 })
 
-describe('runningVo2max — VDOT vs HR-ratio, higher wins', () => {
-  it('takes HR-ratio (52) over a conservatively-low VDOT (43)', () => {
-    const e = runningVo2max({ vdot: 43, hrMax: 185, hrRest: 55 })
-    expect(e!.value).toBeGreaterThan(50)
-    expect(e!.source).toMatch(/HR/)
-    expect(e!.confidence).toBe('medium')
-  })
-  it('takes VDOT when it is higher', () => {
-    const e = runningVo2max({ vdot: 58, hrMax: 185, hrRest: 60 })
-    expect(e!.value).toBe(58)
+describe('runningVo2max — VDOT (pace) is trusted, HR-ratio never inflates it (#327)', () => {
+  it('uses VDOT from pace, NOT the higher HR-ratio (was the "52 for a 6:45/km runner" bug)', () => {
+    const e = runningVo2max({ vdot: 43, hrMax: 185, hrRest: 55 }) // HR-ratio ≈ 51
+    expect(e!.value).toBe(43)
     expect(e!.source).toMatch(/pace/)
   })
-  it('HR-ratio only → low confidence', () => {
+  it('big VDOT↔HR divergence (assumed/stale HRmax) → low confidence, still VDOT value', () => {
+    const e = runningVo2max({ vdot: 43, hrMax: 190, hrRest: 55 }) // HR-ratio ≈ 53, diverges >6
+    expect(e!.value).toBe(43)
+    expect(e!.confidence).toBe('low')
+  })
+  it('agreeing VDOT + HR → medium confidence', () => {
+    expect(runningVo2max({ vdot: 50, hrMax: 185, hrRest: 58 })!.confidence).toBe('medium')
+  })
+  it('HR-ratio only (no pace) → low confidence fallback', () => {
     expect(runningVo2max({ hrMax: 185, hrRest: 55 })!.confidence).toBe('low')
   })
   it('null with nothing', () => expect(runningVo2max({})).toBeNull())
