@@ -104,10 +104,13 @@ const toks = (s: string) => norm(s).split(' ').filter((w) => w && !STOP.has(w)).
  * to the best library demo by significant-word overlap. */
 export function matchExercise(name: string) { return findLib(name) }
 function findLib(name: string) {
-  const want = toks(name)
+  // #296: drop parenthetical notes — "(or machine chest press)", "(both sides)", "(left)" — they
+  // bloat the query tokens and break the video-swap (which needs the whole query inside one entry).
+  const clean = name.replace(/\([^)]*\)/g, ' ')
+  const want = toks(clean)
   if (!want.length) return undefined
   const wantSet = new Set(want)
-  const nn = norm(name)
+  const nn = norm(clean)
   // #296: PASS 1 — find the correct movement. Old code gated on score>=2, so single-word lifts
   // (Squat, Deadlift, Plank, Pull-up) could never match → no demo at all. Score by token overlap
   // with a tightness guard so "squat" doesn't grab a 5-word combo on one shared word.
