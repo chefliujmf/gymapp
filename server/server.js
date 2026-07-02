@@ -1199,8 +1199,10 @@ async function pushPlanToIcu(user, plan) {
   const mineId = plan.icuEventId ? String(plan.icuEventId) : null
 
   const matches = await findIcuEventsForPlan(user, plan)
-  // OUR events = those whose external_id (minus the ":date" instance suffix) is this plan's id.
-  let ours = matches.filter((e) => e.external_id && stripIcuInstance(e.external_id) === plan.id)
+  // OUR events = external_id matches this plan's id — either exactly, or minus the ":date" instance
+  // suffix. (#301 mirror fix: some ids already END in a date, so the stripped form wouldn't match and
+  // the event was mis-read as "foreign" → never updated.)
+  let ours = matches.filter((e) => e.external_id && (e.external_id === plan.id || stripIcuInstance(e.external_id) === plan.id))
   if (ours.length > 1) { // collapse the instance-suffix duplicate(s) → keep one
     const keep = ours.find((e) => String(e.id) === mineId) || ours[0]
     for (const e of ours) if (String(e.id) !== String(keep.id)) await delEvent(e.id)
@@ -1215,10 +1217,14 @@ async function pushPlanToIcu(user, plan) {
     if (plan.icuEventId) { plan.icuEventId = undefined; plan.icuEventMine = undefined; save(store) }
     return { skipped: 'past' }
   }
-  // (2) We have none of our own but the session already exists (other coach) → adopt, don't dup.
+  // (2) None of our own but the session already exists (e.g. the retired cyclingcoach's event) →
+  // ADOPT it and UPDATE it so Platyplus's content (incl. the #301 gym link) mirrors. cyclingcoach is
+  // retired → Platyplus is the sole writer now, so it's safe to take over the event.
   if (!mine && foreign) {
-    plan.icuEventId = foreign.id; plan.icuEventMine = false; save(store)
-    return { exists: foreign.id }
+    const evF = planToIcuEvent(plan, (user.items || []).filter((it) => it.date === plan.date))
+    const r = await icuFetch(user, `/athlete/${ath}/events/${foreign.id}`, { method: 'PUT', body: JSON.stringify(evF) }).catch(() => null)
+    plan.icuEventId = foreign.id; plan.icuEventMine = true; save(store)
+    return (r && r.ok) ? { updated: foreign.id } : { exists: foreign.id }
   }
   // (3) Update OUR event, else create one.
   const ev = planToIcuEvent(plan, (user.items || []).filter((it) => it.date === plan.date))
