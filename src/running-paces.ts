@@ -191,3 +191,17 @@ export function parsePace(text: string): number | null {
   const sec = Number(m[1]) * 60 + Number(m[2])
   return sec > 0 && sec < 1800 ? sec : null
 }
+
+// #331 — the coach authors run intensity as POWER-style % (Z2≈65%). Running PACE compresses hard:
+// 58% of threshold pace ≈ 9:30/km (walking), which is absurd. Remap a power-% to a REALISTIC % of
+// threshold pace so run targets are sane. MUST match server/icu-steps.js paceFromPowerPct.
+const PACE_ANCHORS: [number, number][] = [[40, 82], [55, 86], [65, 89], [75, 92], [85, 95], [95, 98], [100, 100], [110, 104], [120, 108]]
+export function paceFromPowerPct(p: number): number {
+  const n = Number(p) || 0
+  if (n <= PACE_ANCHORS[0][0]) return PACE_ANCHORS[0][1]
+  if (n >= PACE_ANCHORS[PACE_ANCHORS.length - 1][0]) return PACE_ANCHORS[PACE_ANCHORS.length - 1][1]
+  for (let i = 1; i < PACE_ANCHORS.length; i++) {
+    if (n <= PACE_ANCHORS[i][0]) { const [x0, y0] = PACE_ANCHORS[i - 1], [x1, y1] = PACE_ANCHORS[i]; return Math.round(y0 + (y1 - y0) * (n - x0) / (x1 - x0)) }
+  }
+  return 90
+}

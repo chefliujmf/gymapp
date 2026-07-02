@@ -22,6 +22,17 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+334. ⬜ **Chart y-axis crammed + too close to the "PLANNED PACE" title.** JM 2026-07-02: the pace chart's y labels
+    (5:59/6:03/6:07…) crowd the title and are too dense/non-linear. Add spacing (title→chart) + fewer, cleaner ticks.
+    gymapp-only.
+333. ⬜ **COMPLETED run activity renders POWER (avg 220 W, POWER CURVE, TIME-IN-ZONE by FTP) — SHE WAS RUNNING.** JM
+    2026-07-02 (screenshots, Garmin FR255). ActivityDetail shows watts/power-curve/FTP-zones for a RUN; must be PACE:
+    pace chart (min/km), pace curve (best pace by duration), time-in-zone by PACE zones. Same class as #331 but the
+    analysed/completed view. Garmin records running power so the data exists — but runs show PACE. THE priority. gymapp-only.
+332. ⬜ **Gym warm-up/cool-down are COMBINED multi-move lines with no demo.** JM 2026-07-02: "Warm-up: march on the spot,
+    leg swings, 10 bodyweight squats, arm circles" (one line, generic icon) — "you combine 3?!". Break warm-up/cool-down
+    into individual movements (each with a demo) OR render as a clean labelled routine block, not a garbled combined line
+    that matches no library exercise. Coach authoring + render. gymapp-only.
 331. ⬜ **Platyplus renders a RUN as WATTS (117 W, "PLANNED POWER", Z3) + intervals shows empty/"% (0-0w)".** JM
     2026-07-02 (screenshots). The endurance detail (CoachPlanDetail) + charts are power-only; a run must show PACE
     (min/km) using threshold pace, never watts. intervals: coach-authored run native text is bare "%" → parsed as 0 W;

@@ -27,7 +27,7 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
-import { encodeStep, flattenIcuStepsSrv } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct } from './icu-steps.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -1185,14 +1185,19 @@ function planToIcuEvent(plan, items = []) {
     // Split any step > MAX (3600s) into interpolated chunks — a single over-long step makes the
     // intervals workout render EMPTY (matches cyclingcoach split_long_doc_step).
     const isRun = plan.sport === 'run'
-    if (segs.length) ev.workout_doc = { steps: segs.flatMap((s) => encodeStep(s, isRun)) }
-    // ALSO emit readable native workout text — RIDES ONLY. intervals renders the ride power chart from
-    // it. For a RUN it parses the bare "%" as %FTP → WATTS (the "58-68% (0-0w)" + empty chart bug #331),
-    // so runs get NO native workout block: the PACE workout_doc is authoritative and renders the pace
-    // chart on its own. Keep the coaching notes either way.
-    const native = (segs.length && !isRun)
-      ? '## Workout\n' + segs.map((s) => { const m = Math.round((Number(s.duration) || 0) / 60); const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; return `- ${m}m ${a === b ? a + '%' : a + '-' + b + '%'}${s.label ? ' ' + s.label : ''}` }).join('\n')
-      : ''
+    const durTxt = (secs) => (secs >= 60 && secs % 60 === 0 ? `${secs / 60}m` : `${secs}s`)
+    let native = ''
+    if (isRun) {
+      // #331 — RUNS: emit native "- Xm Y% pace" text and let intervals PARSE it (it then computes
+      // distance/zones → the pace chart renders, and the labels are real min/km). NO workout_doc: a
+      // manual pace workout_doc rendered an EMPTY chart. paceFromPowerPct remaps the coach's power-%
+      // (58% ≈ walking on pace) to a realistic pace-%.
+      if (segs.length) native = '## Workout\n' + segs.map((s) => { const secs = Number(s.duration) || 0; const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; const p = paceFromPowerPct(Math.round((a + b) / 2)); return `- ${durTxt(secs)} ${p}% pace${s.label ? ' ' + s.label : ''}` }).join('\n')
+    } else {
+      // RIDES: structured power workout_doc + readable native watts text (intervals renders the chart).
+      if (segs.length) ev.workout_doc = { steps: segs.flatMap((s) => encodeStep(s, false)) }
+      native = segs.length ? '## Workout\n' + segs.map((s) => { const m = Math.round((Number(s.duration) || 0) / 60); const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; return `- ${m}m ${a === b ? a + '%' : a + '-' + b + '%'}${s.label ? ' ' + s.label : ''}` }).join('\n') : ''
+    }
     ev.description = [native, plan.notes, brief].filter(Boolean).join('\n\n')
   } else {
     ev.type = 'WeightTraining'
