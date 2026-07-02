@@ -22,6 +22,19 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+297. ⬜ **Tempo chip (#284) not showing in dev.** JM 2026-07-02: "I don't see the tempo chip we agreed on." Verify the
+    per-exercise tempo pill (e.g. 3-1-1-0) renders on the gym exercise cards (CoachPlanDetail + player). Likely a data
+    issue (coach not setting `tempo`) or a render regression. gymapp-only.
+296. ⬜ **Some exercises still have no video — the free library should cover them.** JM 2026-07-02. Investigate the demo
+    match (matchExercise / exercise library): which exercises miss video, and whether the free (self-hosted) library has
+    a clip we're not matching (name-matching gap) vs genuinely missing media. gymapp-only.
+295. ⬜ **Pre-workout GYM insights — show stats before starting (e1RM / suggested weight per exercise if we have data).**
+    JM 2026-07-02: "would be cool to have insights before starting the workout — 1-rep-max or suggested weight kind of
+    thing if we have the data." Add per-exercise pre-workout stats to CoachPlanDetail/GymPlayer pre-start (est 1RM from
+    history + suggested working weight for the prescribed reps via weightForReps). Same spirit as post-workout. gymapp-only.
+294. ⬜ **Lost the gym REORDERING page in dev.** JM 2026-07-02: the pre-start "reorder exercises (↑↓)" step is gone.
+    Investigate the flow CoachPlanDetail "Start workout" → GymPlayer pre-start (`!started && !done`) — did it get skipped/
+    auto-started, or a routing regression? Restore it. gymapp-only.
 292. 🔨 **Power-curve chart missing the hover scrubber the timeline has — standardize.** JM 2026-07-02 (DEV): the timeline
     charts show a vertical line + tooltip with the value at a point on hover; the POWER CURVE doesn't. "Standardize those
     graphs to be consistent." FIXED: `PowerCurveChart` now has the same hover scrubber — snaps to the nearest curve point,

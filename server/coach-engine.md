@@ -243,6 +243,13 @@ Default rest:
 - accessories: `45-75 sec`
 - circuits are acceptable only if technique quality stays high
 
+Tempo (time under tension) — PRESCRIBE IT on strength lifts. When you create a gym workout, set each
+strength exercise's `tempo` (4 digits: eccentric-pauseBottom-concentric-pauseTop, e.g. `3-1-1-0`).
+Default to a controlled `3-1-1-0` for main and accessory strength work (a 3-4 s eccentric builds
+control + hypertrophy for a masters cyclist); use a faster concentric intent when the goal is power.
+Omit tempo only for mobility/holds/plyometrics where it doesn't apply. The app shows it as a chip and
+in the player, so it is a real cue, not a note — fill it in.
+
 ## Progression rules
 
 Progress slowly.
