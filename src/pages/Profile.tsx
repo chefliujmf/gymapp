@@ -10,6 +10,7 @@ import GoalsPicker from '../GoalsPicker'
 import OnboardReturnBar from '../OnboardReturnBar'
 import { fetchAthleteSex } from '../intervals'
 import { dataGaps } from '../dataGaps'
+import { bmr, tdee, calorieTarget, macroSplit, ageFromDob, type Goal } from '../nutrition'
 
 const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['strength', 'Strength'], ['yoga', 'Yoga'], ['pilates', 'Pilates'], ['meditation', 'Meditation']]
 const DIETS: [string, string][] = [['vegetarian', 'vegetarian'], ['vegan', 'vegan'], ['no preference', 'no preference']]
@@ -46,6 +47,50 @@ function CycleFields({ user, refresh }: { user: User; refresh: () => Promise<voi
       {ph
         ? <p className="meta" style={{ margin: '6px 2px 4px', color: 'var(--accent)' }}>~Day {ph.day} · likely <b>{ph.phase}</b> — your coach adapts load, recovery & fuelling for it.</p>
         : <p className="meta" style={{ margin: '6px 2px 4px' }}>Add these and your coach adapts training to your cycle phase. If you sync it in intervals, it's read automatically.</p>}
+    </div>
+  )
+}
+
+// #265 — daily fuel targets (BMR→TDEE→calories/protein/macros). Captures the missing inputs (height +
+// birth date; sex/weight come from About-you/intervals) and shows the athlete their numbers. The coach
+// gets the same targets injected server-side so meal picks match.
+const ACT_FOR_DAYS = (d?: number): 'light' | 'moderate' | 'active' | 'athlete' => { const n = Number(d) || 0; return n >= 7 ? 'athlete' : n >= 5 ? 'active' : n >= 3 ? 'moderate' : 'light' }
+function FuelFields({ user, refresh }: { user: User; refresh: () => Promise<void> }) {
+  const info = (user.info || {}) as { heightCm?: number; dob?: string; fuelGoal?: Goal; trainingDays?: number; weight?: number }
+  const [heightCm, setHeightCm] = useState<number | ''>(info.heightCm || '')
+  const [dob, setDob] = useState(info.dob || '')
+  const [goal, setGoal] = useState<Goal>(info.fuelGoal || 'maintain')
+  const [weight, setWeight] = useState<number | null>(info.weight ?? null)
+  const [saved, setSaved] = useState(false)
+  useEffect(() => { if (user.hasIcuKey) authApi.pullIcuAthlete().then((p) => { if (p.weight) setWeight(p.weight) }).catch(() => {}) }, [user.hasIcuKey])
+  const save = (patch: Record<string, unknown>) => { authApi.saveProfile(patch).then(() => { refresh().catch(() => {}); setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {}) }
+  const sex = user.sex as 'male' | 'female' | undefined
+  const age = ageFromDob(dob)
+  const b = bmr({ sex, weightKg: weight || undefined, heightCm: heightCm || undefined, age: age || undefined })
+  const td = tdee(b, { activity: ACT_FOR_DAYS(info.trainingDays) })
+  const cal = calorieTarget(td, goal)
+  const macros = macroSplit(cal, weight, goal)
+  const GOALS: [Goal, string][] = [['lose', 'Lose'], ['maintain', 'Maintain'], ['gain', 'Gain']]
+  const need = [!sex && 'sex', !weight && 'weight', !heightCm && 'height', !dob && 'birth date'].filter(Boolean)
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div className="section-title" style={{ fontSize: 13 }}>Daily fuel targets <span className="meta" style={{ fontWeight: 400 }}>· BMR/TDEE{saved ? ' · Saved ✓' : ''}</span></div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Height (cm)
+          <input type="number" inputMode="numeric" min={100} max={230} className="search" style={{ maxWidth: 92, textAlign: 'center' }} value={heightCm} onChange={(e) => { const v = e.target.value ? Math.max(100, Math.min(230, Math.round(Number(e.target.value)))) : ''; setHeightCm(v); if (v) save({ heightCm: v }) }} /></label>
+        <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Birth date
+          <input type="date" className="search" style={{ maxWidth: 160 }} value={dob} onChange={(e) => { setDob(e.target.value); save({ dob: e.target.value }) }} /></label>
+      </div>
+      <div className="chips" style={{ marginTop: 8 }}>
+        {GOALS.map(([v, label]) => <button key={v} className={'chip' + (goal === v ? ' chip--active' : '')} onClick={() => { setGoal(v); save({ fuelGoal: v }) }}>{label}</button>)}
+      </div>
+      {cal && macros
+        ? <div className="card" style={{ marginTop: 8, padding: '10px 12px' }}>
+            <div style={{ fontWeight: 800, fontSize: 15 }}>~{cal} kcal/day <span className="meta" style={{ fontWeight: 400 }}>· {goal === 'maintain' ? 'maintain' : goal === 'lose' ? 'lean cut' : 'lean gain'}</span></div>
+            <div className="meta" style={{ marginTop: 3, color: 'var(--text)' }}>Protein <b>{macros.protein} g</b> · Fat <b>{macros.fat} g</b> · Carbs <b>{macros.carbs} g</b></div>
+            <div className="meta" style={{ marginTop: 3 }}>BMR ~{b} · TDEE ~{td} kcal ({ACT_FOR_DAYS(info.trainingDays)}). Your coach uses these to pick meals.</div>
+          </div>
+        : <p className="meta" style={{ margin: '8px 2px 4px' }}>Add {need.join(' + ')} to see your daily calorie + protein targets{need.includes('weight') ? ' (weight comes from intervals)' : ''}.</p>}
     </div>
   )
 }
@@ -155,6 +200,9 @@ export default function Profile() {
         {DIETS.map(([v, label]) => <button key={v} className={'chip' + (diet === v ? ' chip--active' : '')} onClick={() => setDiet(v)}>{label}</button>)}
       </div>
       <p className="meta" style={{ margin: '6px 2px 4px' }}>Your coach picks ONLY meals that match — vegetarian shows veg + vegan; vegan shows vegan only.</p>
+
+      {/* #265 — daily fuel targets (BMR/TDEE/protein) from sex+weight+height+age */}
+      <FuelFields user={user!} refresh={refresh} />
 
       {/* #337b — Profile is PREFERENCES. Your benchmarks (VO₂max, FTP, threshold pace, zones, predictions)
           live in ONE place — Stats — with the Manual/Auto/Computed picker. No duplicate UX here. */}

@@ -538,13 +538,12 @@ test guide → the **🧪 Test guide** section below.
     ("No passkey on this device yet — sign in with your password, then we'll offer to set one up.") instead of dying
     silently. Registration still also available in Settings → Passkeys. Manual test: fresh browser → password login →
     modal appears → Add → next sign-in uses Touch ID. gymapp-only.
-265. ⬜ **Eat/Fuel: capture biological sex + compute BMR/TDEE & protein needs.** JM 2026-06-30: for fuelling we should
-    capture male/female (biological sex drives BMR). Where under Profile? — add to the Profile "about you" block (already
-    has weight/maxHR/sleepNeed; `sex` field already exists in `pub()` but isn't edited in the UI). Then compute:
-    **BMR** (Mifflin-St Jeor: sex+weight+height+age), **TDEE** (BMR × activity, or better: BMR + intervals daily
-    calories), **protein target** (1.6–2.2 g/kg by goal), and show on Eat (daily targets vs intake). Needs new fields:
-    height, age/birth-year (sex exists). ALSO: cycle/menstrual considerations for women later (optional). Pure unit-tested
-    `nutrition.ts` (BMR/TDEE/protein). gymapp-only.
+265. 🔨 **Eat/Fuel: capture sex + compute BMR/TDEE & protein needs.** JM 2026-06-30. The math (`nutrition.ts`, 14 tests) was
+    built but UNWIRED. Now wired: Profile → **FuelFields** captures the missing inputs (height + birth date; sex from
+    About-you, weight from intervals) + a fuel-goal picker (lose/maintain/gain), and shows the athlete their **daily
+    targets** (calories + protein/fat/carbs + BMR/TDEE). Weight is stashed server-side from wellness; **buildSystemPrompt
+    injects the same fuel targets** so the coach picks meals/portions that hit the calorie + protein goal. Self-validated
+    render. On QA. FOLLOW-UP: the full Eat "targets vs intake" tracking view + intervals daily-calories for a truer TDEE.
 264. 🔨 **Non-admin users must NOT have Coach API page access.** JM 2026-06-30: the Coach API token page (REST token for
     the coach bot) should be admin-only — hide the nav entry + guard the route for `role !== 'admin'`. (Token is a
     power-user/integration feature; a normal user like xenia shouldn't see it.) gymapp-only.
@@ -687,11 +686,10 @@ test guide → the **🧪 Test guide** section below.
     trainers|mind|cycle|plan}/:id`), `/chat`, `/build`, `/admin`. That's by design; changing it risks breaking those.
     NEEDS A REPRO to fix safely: JM — which exact page/screen loses the bar when you DON'T expect it? (Also possible: iOS
     keyboard shrinking the visual viewport.) gymapp-only.
-237. ⬜ **VDOT (from threshold pace) contradicts HR-ratio VO₂max → flag stale pace.** JM 2026-06-30 (QA): Running shows
-    VDOT 41 (from pace 4:57/km) but VO₂max 50.5 (HR-ratio) — VDOT ≈ running VO₂max so this is contradictory. ROOT: his
-    threshold pace is set slow/stale, so VDOT + zones + predictions are all too easy while HR says he's fitter. SHIPPED a
-    ⚠️ flag on the Running page ("pace may be stale, update it"). TODO: reconcile properly — prompt to update pace / use
-    the **#215** estimate-from-runs so VDOT/zones/predictions match reality. Pairs #215/#216/#234. gymapp-only.
+237. 🔨 **VDOT (from threshold pace) contradicts HR-ratio VO₂max → flag stale pace.** JM 2026-06-30 (QA). The ⚠️ stale-pace
+    flag shipped; the reconcile path now exists too: the **#215** estimate-from-runs (`runEstimate`/Critical Speed) is a
+    Computed threshold pace in the Manual/Auto/Computed picker (#236/#337b) → Auto/Computed drives VDOT/zones/predictions
+    from real runs, and #327 flags the VO₂max low-confidence when VDOT vs HR-ratio diverge. JM to verify on prod. gymapp-only.
 236. 🧪 **Benchmarks = MANUAL vs COMPUTED, both shown, preference in Settings (JM's chosen model).** JM 2026-06-30:
     "I prefer the option to set it manually OR estimated — have BOTH values, and in Settings decide the preference. Same
     for FTP or other data like that. Manual-vs-computed kind of thing." THE MODEL (supersedes the earlier anchor/freeze

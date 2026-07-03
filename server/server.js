@@ -569,6 +569,7 @@ app.get('/auth/readiness', auth, async (req, res) => {
     date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
     restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, eftp: d.eftp ?? d.icu_eftp ?? null,
     sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null,
+    weight: d.weight ?? null, // #265 — for BMR/TDEE fuel targets
     menstrualPhase: d.menstrualPhase ?? d.menstrualPhasePredicted ?? null, // #329
   }))
   const today = rows.find((r) => r.date === date) || rows[rows.length - 1] || {}
@@ -583,6 +584,7 @@ app.get('/auth/readiness', auth, async (req, res) => {
   // #236: stash the latest resting HR + eFTP so the coach's computed VO₂max/FTP match the app.
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { req.user.restingHR = rows[i].restingHR; break }
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { req.user.eftp = Math.round(rows[i].eftp); break }
+  for (let i = rows.length - 1; i >= 0; i--) if (rows[i].weight != null) { req.user.weight = Math.round(rows[i].weight * 10) / 10; break } // #265
   // #256 port (per-athlete LEARNED baselines): stash this athlete's own 60-day HRV/RHR norm so the
   // COACH interprets today's reading as a deviation from THEIR baseline, not textbook absolutes.
   const bl = wellnessBaselines(rows)
@@ -1011,6 +1013,19 @@ function buildSystemPrompt(user) {
   p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): for each lift set sets×reps and ALWAYS set a TEMPO on strength lifts — 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower · 1s pause · 1s lift · 0s top (slower eccentric ⇒ more time-under-tension ⇒ hypertrophy/control; faster ⇒ power). Default to "3-1-1-0" for main + accessory strength work; only omit tempo for pure mobility/holds/plyometrics. This is REQUIRED, not optional — the app shows it as a chip. Add a one-line FORM tip per lift, and ONE whole-session \`tip\`. Don't set weight — the app fills it from the athlete's e1RM. Keep tips short and practical.`
   const diet = String(user.info?.diet || '').toLowerCase()
   if (diet === 'vegetarian' || diet === 'vegan') p += `\n\n# DIET: the athlete is ${diet.toUpperCase()}.\nEVERY meal you pick or suggest MUST be ${diet}. search_recipes already returns ONLY ${diet}-compatible recipes for this athlete, so pick from those — never recommend a meal outside their diet, and don't suggest meat${diet === 'vegan' ? ', fish, dairy, eggs, or honey' : ' or fish'}. (They set this in Settings → Preferences.)`
+  // #265 — daily FUEL TARGETS (mirror src/nutrition.ts: Mifflin-St Jeor BMR → TDEE → goal calories + protein).
+  const fKg = Number(user.weight) || null, fCm = Number(user.info?.heightCm) || null
+  const fAge = user.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
+  if (user.sex && fKg && fCm && fAge && fAge > 12 && fAge < 100) {
+    const bmr = Math.round(10 * fKg + 6.25 * fCm - 5 * fAge + (user.sex === 'female' ? -161 : 5))
+    const days = Number(user.info?.trainingDays) || 0
+    const act = days >= 7 ? 1.9 : days >= 5 ? 1.725 : days >= 3 ? 1.55 : 1.375
+    const tdeeV = Math.round(bmr * act)
+    const goal = ['lose', 'gain', 'maintain'].includes(user.info?.fuelGoal) ? user.info.fuelGoal : 'maintain'
+    const cal = Math.round(tdeeV * (goal === 'lose' ? 0.82 : goal === 'gain' ? 1.1 : 1))
+    const protein = Math.round(fKg * (goal === 'lose' ? 2.2 : goal === 'gain' ? 2.0 : 1.8))
+    p += `\n\n# DAILY FUEL TARGETS — ~${cal} kcal/day (goal: ${goal}), protein ~${protein} g (BMR ${bmr} · TDEE ${tdeeV}). When you pick meals/portions, aim the DAY near these and hit the protein — it's the priority. Fuel UP on hard/long days (more carbs around the session) and trim on rest days. These are estimates; adapt to how their weight/energy actually trend.`
+  }
   p += '\n\n' + APP_HELP
   // #256 port — durable COACH MEMORY: consult it EVERY session, then keep it current.
   if (user.coachMemory && user.coachMemory.trim()) {
