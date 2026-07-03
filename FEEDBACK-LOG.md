@@ -52,18 +52,24 @@ test guide → the **🧪 Test guide** section below.
     Done: `/auth/intervals/power-benchmarks` returns `observedMaxHr` + `maxHrSamples` (guarded 120–230 bpm); Benchmarks
     Max HR card now has a Computed value + honest source ("observed peak — hit N×"); pending copy = "lands the first
     time you go all-out with a strap/watch". Same Manual/Auto/Computed picker as the rest.
-341. ⬜ **Local WEATHER in the coach brain (heat/cold/wind → adjust intensity).** JM 2026-07-03: e.g. 32°C out → ease
-    intensity/pace, hydrate, or move indoors. Use a FREE no-key source (Open-Meteo) for the athlete's location (from
-    intervals lat/long or ask); coach reads the planned-day forecast + adjusts (heat derating on pace/power, hydration/
-    fuel note, indoor swap). Ties readiness + plan. gymapp-only.
-340. ⬜ **Banner for exercises/activities that haven't received FULL feedback (mock-first).** JM 2026-07-03: like the
-    workout-feedback prompts, show a banner flagging exercises/sessions still missing complete feedback. Mock-first.
-    gymapp-only.
+341. 🔨 **Local WEATHER in the coach brain (heat/cold/wind → adjust intensity).** JM 2026-07-03. Done: `server/weather.js`
+    turns a day's forecast into coaching guidance (heat derating + hydration, cold layers, wind→effort, rain→indoor; pure,
+    6 tests). `/api/weather?date=` (Open-Meteo, FREE/no-key) + MCP `get_weather` tool; athlete location auto-derived from
+    recent GPS activities (no new UI; `needsLocation` → coach asks their city). Coach prompt: call get_weather before an
+    outdoor session + DERATE in heat, fold into the plan/notes. Verified live (Montreal feels-like 32°C → heat:high). On QA.
+340. 🔨 **Banner for activities that haven't received full feedback (option A).** JM 2026-07-03 (mock A picked). Done:
+    History page shows an amber roll-up banner ("N sessions still need your feedback") + a knock-out list (oldest first),
+    each row = sport emoji, title·day, missing chips + a richness progress bar, deep-linking to the activity's feedback.
+    Nag only on the CORE (feel + RPE) so it's not spammy — custom fields drive the % but not the flag. `feedbackGaps.ts`
+    (5 tests) + `IncompleteFeedbackBanner` in Logs.tsx. Self-validated vs mock A. On QA.
 339. 🔨 **Coach scheduled a GYM and a RUN the SAME day — "crazy".** JM 2026-07-03. Respect training frequency (#316) +
     availability; don't double-book a day unless the athlete explicitly wants a double. **Fixed by #345** (maxPerDay cap,
     default 1, in the coach prompt). On QA.
-338. ⬜ **Coach CHAT on the app = wall of text, no titles.** JM 2026-07-03: format coach replies with headings/structure
-    (not a wall). Terse, scannable. Coach system prompt: use short sections/bold labels; the client renders markdown.
+338. 🔨 **Coach CHAT on the app = wall of text, no titles.** JM 2026-07-03. Root: the chat rendered coach text as PLAIN
+    text (markdown showed literally). Done: (a) a tiny dependency-free, CSP-safe markdown-lite renderer — `chatFormat.ts`
+    (parse **bold** / "- " bullets / "## "+bold-line headers → blocks; 7 tests) → `ChatBody` renders React nodes (no HTML
+    injection) with `.chat-h/.chat-p/.chat-ul` styles; (b) coach prompt now says "format for a phone — lead with the
+    answer, bold mini-headers + hyphen bullets, never a wall." Short replies stay plain bubbles. On QA.
 337b. 🔨 **Streamline: benchmarks live in ONE place (Stats), Profile = preferences only.** JM 2026-07-03: VO₂max/zones
     showed in BOTH Profile (52.1) and Stats — "confusing, streamline." Done: removed BenchmarksCard + all per-sport stat
     cards/SleepNeed/zones from Profile; Profile now links to Stats for data. Profile = preferences (coach, sports, sex,
@@ -93,12 +99,21 @@ test guide → the **🧪 Test guide** section below.
     (min/km) using threshold pace, never watts. **Done** (PLANNED view): CoachPlanDetail shows PLANNED PACE, native
     "% pace" text pushes to intervals, pacing corrected + calibrated (#343) + chart fixed (#344). On QA. NB: the
     COMPLETED/analysed run view is the sibling #333 (still open).
-330. ⬜ **Post-workout feedback form is PRE-FILLED with values nobody entered (POOR + RPE 10) + WRONG SPORT (cycling
-    fields on a run) + incomplete.** JM 2026-07-02 (screenshot St-Lambert run): "How did it go?" shows POOR selected + RPE
-    10 selected though the human entered nothing → looks like fake data. FIX: nothing selected until the user taps; use
-    RUNNING feedback fields for a run (not cycling); complete the fields. gymapp-only.
-329. ⬜ **Factor the MENSTRUAL CYCLE into coaching + readiness — with a defined FORMULA.** JM 2026-07-02 (very
-    important): account for cycle phase. If intervals exposes cycle wellness (and it's not private), the coach READS it;
+330. 🔨 **Post-workout feedback form PRE-FILLED with fake values (POOR + RPE 10) + WRONG SPORT (cycling fields on a run).**
+    JM 2026-07-02 (St-Lambert run). Done: (a) **phantom guard** — `readIcuFeedback` returns null unless a custom field is
+    present, so Strava/coach-imported feel/RPE no longer show as "already logged"; form starts blank (already shipped +
+    tested). (b) **running fields** — new `RUN_FIELDS` (no "saddle"; Pain = knee/shin·calf/foot·ankle/hip/IT band/hamstring;
+    running Fuel), `FIELDS.run` uses them, and BOTH the app read (`readIcuFeedback`, sport-aware) AND the server write
+    (`ICU_FB_FIELDS_RUN`) map through the run options so the round-trip + coach message stay consistent. 6 read-feedback
+    tests. On QA.
+329. 🔨 **Factor the MENSTRUAL CYCLE into coaching + readiness — with a defined FORMULA.** JM 2026-07-02 (very important).
+    Formula done earlier (server/cycle.js, 10 tests, on prod). NOW wired end-to-end: `/auth/readiness` derives the phase
+    (intervals `menstrualPhase` → else stored cycle start+length via phaseFromDay), **passes cyclePhase to the readiness
+    engine** (luteal RHR↑/HRV↓ no longer docks Energy) AND stashes it so **buildSystemPrompt injects the phase into the
+    coach** — it now biases the PLAN by phase (green-light follicular/ovulatory; ease late-luteal if symptomatic), not just
+    Energy; asks once if unknown. Minimal cycle UI on Profile (female only): last-period-start + length + a phase readout.
+    308 tests. On QA. STILL OPEN: a richer in-app cycle tracker + writing the phase BACK to intervals.
+    (orig ask ↓) If intervals exposes cycle wellness (and it's not private), the coach READS it;
     else it ASKS (cycle start date + typical length). DEFINE a formula: phase from cycle day → (a) LOAD modifier (push in
     follicular/ovulatory, ease late-luteal/menses if symptomatic) + (b) readiness interpretation (luteal naturally raises
     RHR / lowers HRV + core temp → don't dock Energy for it; adjust baseline by phase). Extends the female module

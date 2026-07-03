@@ -40,11 +40,16 @@ describe('post-workout feedback matches intervals custom fields (#147)', () => {
     expect(ICU_FIELD_CODES['Legs After']).toBe('LegsAfter')
   })
 
-  it('ride + run use the intervals set; GYM is its own (#152)', () => {
+  it('ride uses the cycling set; run has its own (no "saddle"); GYM is its own (#152/#330)', () => {
     expect(FIELDS.ride).toBe(ICU_FIELDS)
-    expect(FIELDS.run).toBe(ICU_FIELDS)
+    expect(FIELDS.run).not.toBe(ICU_FIELDS) // #330 — running-specific options
     expect(FIELDS.gym).toBe(GYM_FIELDS)
     expect(FIELDS.gym).not.toBe(ICU_FIELDS)
+    const runPain = FIELDS.run.find(([l]) => l === 'Pain/Niggles')![1]
+    expect(runPain).not.toContain('saddle') // no cycling term on a run
+    expect(runPain).toContain('shin/calf')
+    // same LABELS + codes as cycling so the intervals round-trip still resolves
+    expect(FIELDS.run.map(([l]) => l)).toEqual(ICU_FIELDS.map(([l]) => l))
   })
 
   it('gym has its OWN gym-specific fields, not cycling Legs/Fuel (#152)', () => {

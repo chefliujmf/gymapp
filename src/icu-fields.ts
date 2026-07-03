@@ -18,6 +18,18 @@ export const ICU_FIELDS: [string, string[]][] = [
 // intervals field CODE (the activity property name) for each label.
 export const ICU_FIELD_CODES: Record<string, string> = { 'Legs Before': 'LegsBefore', 'Legs After': 'LegsAfter', 'Fuel/GI': 'FuelGI', 'Pain/Niggles': 'PainNiggles', 'Life Constraint': 'LifeConstraint', 'Mental State': 'MentalState' }
 
+// #330 — RUNS get running-appropriate options (a run must NOT show "saddle" etc.). Same LABELS + codes as
+// ICU_FIELDS so the intervals round-trip still works (index-based); only the sport-specific choices differ.
+// Read-back is sport-aware (readIcuFeedback), so the form and the stored value stay consistent.
+export const RUN_FIELDS: [string, string[]][] = [
+  ['Legs Before', ['fresh', 'normal', 'relaxed', 'heavy', 'sore', 'flat', 'tired']],
+  ['Legs After', ['strong', 'normal', 'tired OK', 'barely tired', 'heavy', 'sore', 'cooked']],
+  ['Fuel/GI', ['not needed', 'water only OK', 'gels/carbs OK', 'underfueled', 'GI issue', 'too much fuel']],
+  ['Pain/Niggles', ['none', 'knee', 'shin/calf', 'foot/ankle', 'hip', 'IT band', 'hamstring', 'other']],
+  ['Life Constraint', ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other']],
+  ['Mental State', ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out']],
+]
+
 // GYM is its OWN set (#152) — no Legs/Fuel. These are Platyplus-only (intervals has no gym custom fields).
 export const GYM_FIELDS: [string, string[]][] = [
   ['Soreness/pump', ['none', 'light', 'good pump', 'sore', 'very sore']],
@@ -26,7 +38,7 @@ export const GYM_FIELDS: [string, string[]][] = [
   ['Life Constraint', ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other']],
   ['Mental State', ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out']],
 ]
-export const FIELDS: Record<string, [string, string[]][]> = { ride: ICU_FIELDS, run: ICU_FIELDS, gym: GYM_FIELDS }
+export const FIELDS: Record<string, [string, string[]][]> = { ride: ICU_FIELDS, run: RUN_FIELDS, gym: GYM_FIELDS }
 
 /** options list for an ICU field label */
 export const optsFor = (label: string) => (ICU_FIELDS.find(([l]) => l === label)?.[1]) || []

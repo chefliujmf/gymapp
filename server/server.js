@@ -28,6 +28,8 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from '.
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts } from './icu-steps.js'
+import { weatherGuidance } from './weather.js'
+import { cycleContext, normalizePhase, phaseFromDay } from './cycle.js' // #329
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -567,8 +569,16 @@ app.get('/auth/readiness', auth, async (req, res) => {
     date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
     restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, eftp: d.eftp ?? d.icu_eftp ?? null,
     sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null,
+    menstrualPhase: d.menstrualPhase ?? d.menstrualPhasePredicted ?? null, // #329
   }))
   const today = rows.find((r) => r.date === date) || rows[rows.length - 1] || {}
+  // #329 — cycle phase for female athletes: intervals wellness `menstrualPhase` if present, else derive
+  // from a stored cycle start date + length. Stash it so the coach's system prompt can adjust the PLAN.
+  const cyclePhase = req.user.sex === 'female'
+    ? (normalizePhase(today.menstrualPhase)
+      || (req.user.info?.cycleStart ? phaseFromDay(Math.floor((new Date(date) - new Date(req.user.info.cycleStart)) / 86400000) + 1, req.user.info.cycleLength) : null))
+    : null
+  if (cyclePhase) { req.user.cyclePhase = cyclePhase; req.user.cyclePhaseAt = date } else if (req.user.cyclePhase) { delete req.user.cyclePhase; delete req.user.cyclePhaseAt }
   const history = rows.filter((r) => r.date < date)
   // #236: stash the latest resting HR + eFTP so the coach's computed VO₂max/FTP match the app.
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { req.user.restingHR = rows[i].restingHR; break }
@@ -582,7 +592,7 @@ app.get('/auth/readiness', auth, async (req, res) => {
   // #207 Phase 2b: pass PAST check-ins (before this date) so the model calibrates to the athlete's
   // own overrides — but never the day being viewed. #235: skip entirely if learning is turned OFF.
   const calCheckins = req.user.learnReadiness === false ? [] : (req.user.checkins || []).filter((c) => c && c.date < date)
-  res.json({ connected: true, date, sleepNeed, today, ...computeReadiness(history, today, { sleepNeed, checkins: calCheckins }) })
+  res.json({ connected: true, date, sleepNeed, today, cyclePhase, ...computeReadiness(history, today, { sleepNeed, checkins: calCheckins, cyclePhase }) })
 })
 
 // #223 — FORECAST a FUTURE day's freshness from planned load (only Freshness is knowable ahead;
@@ -684,6 +694,14 @@ const ICU_FB_FIELDS = {
   'Life Constraint': { code: 'LifeConstraint', opts: ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other'] },
   'Mental State': { code: 'MentalState', opts: ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out'] },
 }
+// #330 — RUN overrides (running-appropriate Fuel + Pain locations, no "saddle"). Same codes as above.
+// MUST mirror RUN_FIELDS in src/icu-fields.ts so the index the app shows == the index we write.
+const ICU_FB_FIELDS_RUN = {
+  ...ICU_FB_FIELDS,
+  'Fuel/GI': { code: 'FuelGI', opts: ['not needed', 'water only OK', 'gels/carbs OK', 'underfueled', 'GI issue', 'too much fuel'] },
+  'Pain/Niggles': { code: 'PainNiggles', opts: ['none', 'knee', 'shin/calf', 'foot/ankle', 'hip', 'IT band', 'hamstring', 'other'] },
+}
+const fbFieldsFor = (sport) => (sport === 'run' ? ICU_FB_FIELDS_RUN : ICU_FB_FIELDS)
 // #287 — post the athlete's free-text comment to the intervals activity MESSAGE thread (deduped:
 // skip if an identical comment already exists, so re-saving feedback doesn't spam duplicates).
 async function syncActivityNote(user, id, content) {
@@ -744,7 +762,8 @@ app.post('/auth/activity/:id/feedback', auth, (req, res) => {
     const payload = {}
     const fi = ICU_FEEL_LABELS.indexOf(fb.feel); if (fi >= 0) payload.feel = fi + 1
     if (fb.rpe) payload.icu_rpe = fb.rpe
-    for (const [label, val] of Object.entries(fb.fields || {})) { const def = ICU_FB_FIELDS[label]; if (def) { const i = def.opts.indexOf(val); if (i >= 0) payload[def.code] = i + 1 } }
+    const fbDefs = fbFieldsFor(fb.sport) // #330 — a run's values map through the RUN option list
+    for (const [label, val] of Object.entries(fb.fields || {})) { const def = fbDefs[label]; if (def) { const i = def.opts.indexOf(val); if (i >= 0) payload[def.code] = i + 1 } }
     if (Object.keys(payload).length) icuFetch(req.user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify(payload) }).catch((e) => console.error('[icu-feedback-write] ' + (e.message || e)))
     // #287: the free-text comment isn't a field — it lives in the intervals MESSAGE thread. Post it
     // there (deduped) so "Anything else?" shows up in intervals too, not just Platyplus.
@@ -881,7 +900,9 @@ const CHAT_DENY = 'Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,Task,Notebo
 // chat-helper instead of spawning locally. Set on QA/prod; unset in dev.
 const CHAT_HELPER_URL = process.env.CHAT_HELPER_URL || ''
 const CHAT_HELPER_SECRET = process.env.CHAT_HELPER_SECRET || ''
-const coachIdentity = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app, helping ONE user (the signed-in account) with THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When you schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). Be concise, practical and encouraging.`
+const coachIdentity = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app, helping ONE user (the signed-in account) with THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When you schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). Be concise, practical and encouraging.
+
+FORMAT FOR A PHONE (never a wall of text): lead with the answer in one line. If the reply runs beyond ~3 sentences, break it up — use a short **bold** mini-header per topic and hyphen "- " bullets for lists (days, steps, options). Keep bullets to one line each. Markdown renders (**bold**, "- " bullets, "## " headers); don't use tables or code blocks. Prefer 2-4 tight sections over one long paragraph.`
 
 // The coach also helps users configure & use Platyplus itself. These steps require
 // taps in the user's browser (the coach guides, it can't do them).
@@ -924,6 +945,14 @@ function buildSystemPrompt(user) {
   }
   const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
+  // #329 — this athlete's CURRENT cycle phase (from intervals menstrualPhase or a stored cycle start,
+  // stashed by /auth/readiness). Adjust the PLAN by phase, not just readiness. Only if reasonably fresh.
+  if (isFemale) {
+    const fresh = user.cyclePhaseAt && (Date.now() - new Date(user.cyclePhaseAt + 'T00:00:00Z').getTime()) < 6 * 86400000
+    const cc = fresh ? cycleContext({ phase: user.cyclePhase }) : null
+    if (cc) p += `\n\n# CYCLE PHASE — currently **${cc.phase}** (as of ${user.cyclePhaseAt}). ${cc.guidance} When you plan or adjust this week, apply a load bias of ~×${cc.loadModifier} for this phase (push intensity in the follicular/ovulatory green window; ease top-end + add recovery/Z2 + carbs/sleep in late-luteal/PMS if symptomatic). Don't over-medicalise it — many train through; adapt to how SHE reports feeling. Their late-luteal RHR/HRV naturally shift, so don't read that as poor recovery.`
+    else if (!user.cyclePhase) p += `\n\n# CYCLE PHASE — unknown. If it would help tailor load/recovery and she's open to it, ASK for her last period start date + typical cycle length (or connect it in intervals), then factor the phase into planning. Never assume; ask once, respect a "no".`
+  }
   // #207 Phase 2: the athlete's own benchmarks — so the coach judges intensity FOR THEM.
   const stats = []
   // #236/#277: FTP resolves by statPrefs.ftp — computed/AUTO prefer eFTP when available, else the set FTP.
@@ -970,6 +999,8 @@ function buildSystemPrompt(user) {
   // calendar day beyond this cap unless the athlete explicitly opts into doubles.
   const maxPerDay = Math.max(1, Number(user.info?.maxPerDay) || 1)
   p += `\n\n# ONE SESSION PER DAY (max ${maxPerDay}/day): the athlete trains at most ${maxPerDay} session${maxPerDay > 1 ? 's' : ''} per calendar day. ${maxPerDay === 1 ? 'Do NOT schedule two workouts on the same day (no gym + run, no ride + run together) — spread sessions across different days. If two efforts must share a day because time is tight, ask first or fold them into ONE combined session.' : `Never exceed ${maxPerDay} on any single day, and only double up when it genuinely serves the plan (e.g. AM/PM split).`} Respect their weekly availability + rest days when spacing them.`
+  // #341 — weather-aware coaching for OUTDOOR sessions.
+  p += `\n\n# WEATHER (outdoor sessions): before planning or confirming an outdoor run/ride — especially in heat or cold — call get_weather (date = the session day). In the heat, DERATE: judge easy days by feel/HR (pace/power hold at a higher cost), trim quality targets, add hydration/electrolyte + fueling notes, prefer the cool hour or shade, and move a hard session indoors when it's extreme. Cold → longer warm-up + layers; strong wind → ride to effort not speed; likely rain → grip/visibility or indoors. Fold it into the plan/notes, don't just report it. If it returns needsLocation, ask their city once.`
   // #323 — the athlete's OWN goal & identity. This is what makes the plan theirs; center on it and
   // let it OVERRIDE generic defaults (e.g. "tone, don't bulk" ⇒ not a hypertrophy block).
   const goals = user.info?.goals
@@ -1696,6 +1727,46 @@ app.get('/api/intervals/wellness', apiAuth, async (req, res) => {
     restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null, weight: d.weight ?? null,
   }))
   res.json({ connected: true, wellness })
+})
+
+// #341 — best-effort athlete location for weather. Prefer a saved location; else derive from the most
+// recent OUTDOOR activity's GPS (summary coords, else the streams' first point) and cache it. No new UI.
+async function athleteLatLon(user) {
+  if (user.info && Number.isFinite(user.info.lat) && Number.isFinite(user.info.lon)) return { lat: user.info.lat, lon: user.info.lon }
+  const ath = user.icuAthlete || 'i28814'
+  const acts = await icuGet(user, `/athlete/${ath}/activities?oldest=${icuDay(60)}&newest=${icuDay(0)}`).catch(() => null)
+  const list = Array.isArray(acts) ? acts : []
+  const cache = (lat, lon) => { if (Number.isFinite(lat) && Number.isFinite(lon)) { user.info = user.info || {}; user.info.lat = lat; user.info.lon = lon; save(store); return { lat, lon } } return null }
+  for (const a of list) {
+    const ll = Array.isArray(a.start_latlng) ? a.start_latlng : null
+    const lat = ll ? ll[0] : (a.icu_lat ?? a.start_lat)
+    const lon = ll ? ll[1] : (a.icu_lng ?? a.start_lng)
+    const hit = cache(lat, lon); if (hit) return hit
+  }
+  const gps = list.find((a) => (a.distance || 0) > 0 && !a.trainer)
+  if (gps) {
+    const s = await icuGet(user, `/activity/${gps.id}/streams?types=latlng`).catch(() => null)
+    const pts = Array.isArray(s) ? (s.find((x) => x.type === 'latlng') || {}).data : null
+    if (Array.isArray(pts) && Array.isArray(pts[0])) return cache(pts[0][0], pts[0][1])
+  }
+  return null
+}
+
+// #341 — the day's forecast + coaching guidance for the athlete's location (Open-Meteo, FREE, no key).
+app.get('/api/weather', apiAuth, async (req, res) => {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : icuDay(0)
+  const loc = await athleteLatLon(req.user).catch(() => null)
+  if (!loc) return res.json({ available: false, needsLocation: true, reason: 'No location yet — ask the athlete where they train (city), or it fills in from their next GPS activity.' })
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,wind_speed_10m_max&timezone=auto&start_date=${date}&end_date=${date}`
+    const r = await fetch(url, { headers: { 'user-agent': 'platyplus/1.0' } })
+    if (!r.ok) return res.json({ available: false, reason: `weather service ${r.status}` })
+    const j = await r.json()
+    const d = j.daily || {}
+    const at = (k) => (Array.isArray(d[k]) ? d[k][0] : null)
+    const g = weatherGuidance({ tMax: at('temperature_2m_max'), tApparentMax: at('apparent_temperature_max'), tMin: at('temperature_2m_min'), precipProb: at('precipitation_probability_max'), windMax: at('wind_speed_10m_max') })
+    res.json({ available: true, date, ...g })
+  } catch (e) { res.json({ available: false, reason: (e && e.message) || 'weather fetch failed' }) }
 })
 
 app.get('/api/intervals/activities', apiAuth, async (req, res) => {

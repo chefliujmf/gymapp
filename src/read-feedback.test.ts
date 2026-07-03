@@ -22,4 +22,16 @@ describe('readIcuFeedback (#330)', () => {
     expect(Object.keys(r!.fields).length).toBeGreaterThan(0)
   })
   it('nothing → null', () => expect(readIcuFeedback(null)).toBeNull())
+
+  // #330 — a RUN reads its fields with the RUN option list (no cycling "saddle"); a ride keeps cycling opts.
+  it('a run maps Pain/Niggles index via RUN options (shin/calf), not cycling', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = readIcuFeedback({ type: 'Run', PainNiggles: 3 } as any)
+    expect(r!.fields['Pain/Niggles']).toBe('shin/calf') // RUN_FIELDS Pain index 3
+  })
+  it('a ride maps Pain/Niggles index via cycling options (saddle)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = readIcuFeedback({ type: 'Ride', PainNiggles: 6 } as any)
+    expect(r!.fields['Pain/Niggles']).toBe('saddle') // ICU_FIELDS Pain index 6
+  })
 })
