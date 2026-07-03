@@ -56,9 +56,11 @@ test guide → the **🧪 Test guide** section below.
     intensity/pace, hydrate, or move indoors. Use a FREE no-key source (Open-Meteo) for the athlete's location (from
     intervals lat/long or ask); coach reads the planned-day forecast + adjusts (heat derating on pace/power, hydration/
     fuel note, indoor swap). Ties readiness + plan. gymapp-only.
-340. ⬜ **Banner for exercises/activities that haven't received FULL feedback (mock-first).** JM 2026-07-03: like the
-    workout-feedback prompts, show a banner flagging exercises/sessions still missing complete feedback. Mock-first.
-    gymapp-only.
+340. 🔨 **Banner for activities that haven't received full feedback (option A).** JM 2026-07-03 (mock A picked). Done:
+    History page shows an amber roll-up banner ("N sessions still need your feedback") + a knock-out list (oldest first),
+    each row = sport emoji, title·day, missing chips + a richness progress bar, deep-linking to the activity's feedback.
+    Nag only on the CORE (feel + RPE) so it's not spammy — custom fields drive the % but not the flag. `feedbackGaps.ts`
+    (5 tests) + `IncompleteFeedbackBanner` in Logs.tsx. Self-validated vs mock A. On QA.
 339. 🔨 **Coach scheduled a GYM and a RUN the SAME day — "crazy".** JM 2026-07-03. Respect training frequency (#316) +
     availability; don't double-book a day unless the athlete explicitly wants a double. **Fixed by #345** (maxPerDay cap,
     default 1, in the coach prompt). On QA.

@@ -7,6 +7,7 @@ import { allWorkoutsById } from '../data/catalog'
 import { authApi, type Checkin } from '../auth/api'
 import { e1rm } from '../strength'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
+import { incompleteFeedback } from '../feedbackGaps'
 import { DoneStats } from '../ui'
 import { buildDayEntries } from '../logs-merge'
 import { DateRangeFilter, type RangePreset } from '../DateRange'
@@ -38,6 +39,38 @@ function ActivityLogCard({ log }: { log: WorkoutLog }) {
         <div className="hist-body"><h3>{log.title}</h3>{bits && <div className="meta">{bits}</div>}</div>
         <span className="src-tag src-pp">Platyplus</span>
       </div>
+    </div>
+  )
+}
+
+// #340 — one banner rolling up sessions whose CORE feedback (feel + RPE) is still missing, then a
+// knock-out list (oldest first so nothing goes stale). Each row deep-links to the activity's feedback.
+function IncompleteFeedbackBanner({ acts }: { acts: IcuActivity[] }) {
+  const gaps = incompleteFeedback(acts)
+  if (!gaps.length) return null
+  const show = gaps.slice(0, 6)
+  const dayLabel = (iso?: string) => (iso ? new Date(iso).toLocaleDateString(undefined, { weekday: 'short' }) : '')
+  return (
+    <div className="fbgap">
+      <div className="fbban">
+        <div className="fbban__ic">📝</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="fbban__t">{gaps.length} session{gaps.length > 1 ? 's' : ''} still need your feedback</div>
+          <div className="fbban__s">Your coach reviews it and adapts your plan — a minute each. Oldest first so nothing goes stale.</div>
+        </div>
+      </div>
+      {show.map(({ act, status }) => (
+        <Link key={String(act.id)} to={`/activity/${act.id}`} className="fbrow">
+          <div className="fbrow__th">{SPORT_EMOJI[sportOfActivity(act)] || '⏱️'}</div>
+          <div className="fbrow__b">
+            <div className="fbrow__t">{act.name || 'Activity'} · {dayLabel(act.start_date_local)}</div>
+            <div className="fbrow__m">{status.missing.map((m) => <span key={m} className="fbmiss">{m}</span>)}</div>
+            <div className="fbprog"><i style={{ width: `${Math.max(6, status.pct)}%` }} /></div>
+          </div>
+          <span className="fbrow__cta">Add →</span>
+        </Link>
+      ))}
+      {gaps.length > show.length && <p className="meta" style={{ margin: '6px 2px 0' }}>+{gaps.length - show.length} more below.</p>}
     </div>
   )
 }
@@ -202,6 +235,8 @@ export default function Logs() {
         <button className="chip" onClick={() => setNewest((n) => !n)}>{newest ? '↓ Newest' : '↑ Oldest'}</button>
       </div>
       <DateRangeFilter presets={HISTORY_PRESETS} from={from} to={to} onChange={(nf, nt) => { setFrom(nf); setTo(nt) }} />
+
+      <IncompleteFeedbackBanner acts={acts} />
 
       {logs === undefined ? <p className="meta">Loading…</p> : !days.length ? <p className="meta">{q || type !== 'all' ? 'No sessions match your filters.' : 'Nothing logged in this range — check-ins & workouts show here by day.'}</p> : (
         days.map(([date, d]) => (
