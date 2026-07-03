@@ -1470,3 +1470,13 @@ select.search { appearance: none; -webkit-appearance: none; }
 .fbprog { height: 5px; border-radius: 3px; background: #2a2f3a; overflow: hidden; margin-top: 7px; max-width: 150px; }
 .fbprog i { display: block; height: 100%; background: var(--warn,#f0b145); }
 .fbrow__cta { flex: none; font-size: 12px; font-weight: 800; color: var(--warn,#f0b145); background: rgba(240,177,69,.09); border: 1px solid rgba(240,177,69,.27); border-radius: 9px; padding: 6px 11px; }
+
+/* #338 — structured coach chat (mini-headers, bullets, bold) instead of a wall of text. */
+.chat-msg--coach { white-space: normal; }
+.chat-h { font-weight: 800; font-size: 13px; margin: 10px 0 3px; letter-spacing: .1px; }
+.chat-msg--coach > .chat-h:first-child { margin-top: 0; }
+.chat-p { margin: 6px 0; }
+.chat-msg--coach > .chat-p:first-child { margin-top: 0; }
+.chat-msg--coach > *:last-child { margin-bottom: 0; }
+.chat-ul { margin: 5px 0; padding-left: 18px; }
+.chat-ul li { margin: 2px 0; }

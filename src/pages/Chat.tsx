@@ -2,8 +2,33 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi, type User } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
+import { parseBlocks, type Inline } from '../chatFormat'
 
 interface Msg { role: 'user' | 'coach'; text: string }
+
+// #338 — render the coach's reply with light structure (mini-headers, bullets, bold) instead of a
+// wall of text. Pure, dependency-free, no HTML injection (parseBlocks in chatFormat.ts).
+function Spans({ spans }: { spans: Inline[] }) {
+  return <>{spans.map((sp, i) => (sp.b ? <strong key={i}>{sp.s}</strong> : <span key={i}>{sp.s}</span>))}</>
+}
+function ChatBody({ text }: { text: string }) {
+  const blocks = parseBlocks(text)
+  const out: React.ReactNode[] = []
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i]
+    if (b.type === 'li') {
+      const items = []
+      while (i < blocks.length && blocks[i].type === 'li') { items.push(blocks[i]); i++ }
+      i--
+      out.push(<ul key={i} className="chat-ul">{items.map((it, j) => <li key={j}><Spans spans={it.spans} /></li>)}</ul>)
+    } else if (b.type === 'h') {
+      out.push(<div key={i} className="chat-h"><Spans spans={b.spans} /></div>)
+    } else {
+      out.push(<p key={i} className="chat-p"><Spans spans={b.spans} /></p>)
+    }
+  }
+  return <>{out}</>
+}
 
 // #310 (Option C) — the onboarding coach doesn't interrogate you in a wall of text; it walks you
 // through a few short steps that OPEN THE EXISTING PAGES (Profile / Settings) to set each value, then
@@ -182,7 +207,9 @@ export default function Chat() {
           const thinking = m.role === 'coach' && !m.text && i === msgs.length - 1 && busy
           return (
             <div key={i} className={'chat-msg chat-msg--' + m.role + (thinking ? ' chat-msg--typing' : '')}>
-              {m.text || (thinking ? `${coach} is ${waitedLong ? 'still working — this can take a moment…' : 'thinking…'}` : '')}
+              {m.text
+                ? (m.role === 'coach' ? <ChatBody text={m.text} /> : m.text)
+                : (thinking ? `${coach} is ${waitedLong ? 'still working — this can take a moment…' : 'thinking…'}` : '')}
             </div>
           )
         })}

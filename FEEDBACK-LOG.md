@@ -64,8 +64,11 @@ test guide → the **🧪 Test guide** section below.
 339. 🔨 **Coach scheduled a GYM and a RUN the SAME day — "crazy".** JM 2026-07-03. Respect training frequency (#316) +
     availability; don't double-book a day unless the athlete explicitly wants a double. **Fixed by #345** (maxPerDay cap,
     default 1, in the coach prompt). On QA.
-338. ⬜ **Coach CHAT on the app = wall of text, no titles.** JM 2026-07-03: format coach replies with headings/structure
-    (not a wall). Terse, scannable. Coach system prompt: use short sections/bold labels; the client renders markdown.
+338. 🔨 **Coach CHAT on the app = wall of text, no titles.** JM 2026-07-03. Root: the chat rendered coach text as PLAIN
+    text (markdown showed literally). Done: (a) a tiny dependency-free, CSP-safe markdown-lite renderer — `chatFormat.ts`
+    (parse **bold** / "- " bullets / "## "+bold-line headers → blocks; 7 tests) → `ChatBody` renders React nodes (no HTML
+    injection) with `.chat-h/.chat-p/.chat-ul` styles; (b) coach prompt now says "format for a phone — lead with the
+    answer, bold mini-headers + hyphen bullets, never a wall." Short replies stay plain bubbles. On QA.
 337b. 🔨 **Streamline: benchmarks live in ONE place (Stats), Profile = preferences only.** JM 2026-07-03: VO₂max/zones
     showed in BOTH Profile (52.1) and Stats — "confusing, streamline." Done: removed BenchmarksCard + all per-sport stat
     cards/SleepNeed/zones from Profile; Profile now links to Stats for data. Profile = preferences (coach, sports, sex,
