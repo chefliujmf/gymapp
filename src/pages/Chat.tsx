@@ -146,7 +146,7 @@ export default function Chat() {
     return (
       <div className="ob-wrap">
         <div className="ob-hero">
-          <div className="ob-ava">🦫</div>
+          <div className="ob-ava"><img src="/favicon.svg?v=4" alt="" style={{ width: '68%', height: '68%', borderRadius: 8 }} /></div>
           <div><h2>Welcome{user.username ? `, ${user.username}` : ''}! Let’s set you up.</h2><p>A few taps — I’ll open each page, you set it, come back. No long forms.</p></div>
         </div>
         <div className="ob-prog"><i style={{ width: `${Math.round((doneN / steps.length) * 100)}%` }} /></div>
@@ -176,7 +176,7 @@ export default function Chat() {
           })}
         </div>
         <div className="ob-build">
-          <button className="ob-build__btn" disabled={!ready} onClick={startBuild} style={ready ? undefined : { opacity: .5 }}>🦫 Build my first week</button>
+          <button className="ob-build__btn" disabled={!ready} onClick={startBuild} style={ready ? undefined : { opacity: .5 }}><img src="/favicon.svg?v=4" alt="" style={{ width: 16, height: 16, borderRadius: 5, verticalAlign: '-3px', marginRight: 6 }} />Build my first week</button>
           <p className="ob-build__sub">{ready ? 'I’ll read your history and design week 1 around your availability.' : `Finish the steps above first (${doneN}/${steps.length}).`}</p>
         </div>
       </div>

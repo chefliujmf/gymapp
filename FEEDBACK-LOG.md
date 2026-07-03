@@ -273,9 +273,9 @@ test guide → the **🧪 Test guide** section below.
     video · 1379 image-only (Centr .jpg) · 49 no-media. Matcher now PREFERS video (#296) so prescribed exercises resolve to
     video ~93%+. Options: (a) drop the 49 no-media + hide image-only from browse; (b) source video for image-only from OPEN/
     FREE libs (wger, free-exercise-db, exercisedb). JM prefers videos. Decision needed before deleting 1379 entries.
-299. ⬜ **Auto-trigger coach review on activity completed + feedback — EXISTS, verify.** JM 2026-07-02. Already wired:
-    `/auth/activity/:id/feedback` → `runCoachTask` reviews the activity → `save_coach_review` (→ intervals Notes #290 + bell
-    notification #233) + `set_activity_text` (#289). Gated on `coachProfile` (set for JM). Verify end-to-end on QA/prod.
+299. 🔨 **Auto-trigger coach review on activity completed + feedback — EXISTS, verify.** JM 2026-07-02. VERIFIED wired in
+    code: `/auth/activity/:id/feedback` → `runCoachTask` (server.js:772-777) reviews the activity → `save_coach_review`
+    (→ intervals Notes #290 + bell #233) + `set_activity_text` (#289). Gated on `coachProfile`. JM to verify end-to-end on prod.
 
 298. 🔨 **Tag band exercises + make "Bands" a filter/equipment.** JM 2026-07-02: "identify and tag the ones with small
     band and make this available as a filter and equipment." FOUND: equipment "Bands" already exists (203 exercises) + the
@@ -460,9 +460,9 @@ test guide → the **🧪 Test guide** section below.
     not only in Profile. FIXED: RunningStats Threshold cell now shows the pace and is tap-to-edit inline (parses m:ss,
     saves via saveSportStat → syncs to intervals + updates VDOT). (Also confirms #269 VO₂max fix: now reads 50.5 from HR,
     not 43.9.) gymapp-only.
-274. ⬜ **"Why a beaver?" — onboarding card used 🦫 (beaver) but the brand is Platyplus (platypus).** JM 2026-06-30.
-    FIXED: the Today "Meet your coach" card now uses the real Platyplus logo (favicon.svg) like the login screen, not a
-    beaver emoji. (No platypus emoji exists → use the logo.) gymapp-only.
+274. 🔨 **"Why a beaver?" — onboarding used 🦫 (beaver) but the brand is Platyplus (platypus).** JM 2026-06-30. Today card
+    was fixed earlier; NOW the remaining 3 (OnboardReturnBar bar, Chat onboarding avatar + "Build my first week" button)
+    also use the real Platyplus logo (favicon.svg), no beaver anywhere. `grep 🦫 src/` = 0. JM to verify on prod. gymapp-only.
 273. 🔨 **Post-workout UX, per activity type — intervals.icu-style analysis + coach text. MOCK LOCKED (5 rounds).**
     JM 2026-06-30/07-01. Mock: `mockups/post-workout-insights.html` (toggles: pre/post review, indoor/outdoor; tabs
     ride/run/gym/mind). LOCKED SPEC to build:
