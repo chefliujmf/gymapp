@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting, listTemplates, listRideTemplates, type WorkoutTemplate, type RideTemplate } from '../db'
@@ -358,6 +358,22 @@ export default function Today() {
     syncIcuPlans(d(-45), d(30)).then(() => { localStorage.setItem('plansResync293', '1'); load() }).catch(() => {})
   }, [load])
   useEffect(() => { listTemplates().then(setTemplates); listRideTemplates().then(setRideTemplates); getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }) }, [])
+  // #153 — a PWA left open across midnight captured "today" at mount and never re-anchored (the week
+  // strip highlighted the wrong day). On regaining focus, if the date rolled over, re-anchor to the new
+  // today — but ONLY if the user was still viewing the old today (don't clobber a manually-picked day).
+  const anchoredToday = useRef(todayISO())
+  useEffect(() => {
+    const reanchor = () => {
+      const now = todayISO()
+      if (now === anchoredToday.current) return
+      setSelDay((cur) => (cur === anchoredToday.current ? now : cur)) // move only if viewing "today"
+      anchoredToday.current = now
+      load() // refresh the week window + data for the new day
+    }
+    document.addEventListener('visibilitychange', reanchor)
+    window.addEventListener('focus', reanchor)
+    return () => { document.removeEventListener('visibilitychange', reanchor); window.removeEventListener('focus', reanchor) }
+  }, [load])
 
   function runPlan(p: CoachPlan) {
     if (p.sport === 'gym') { setGymSession(gymSessionFromPlan(p)); navigate('/gym-session/play') }

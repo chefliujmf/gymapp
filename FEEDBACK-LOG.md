@@ -681,9 +681,12 @@ test guide → the **🧪 Test guide** section below.
 239. 🧪 **White native controls on dark (number spinners, date pickers) — FIXED.** JM 2026-06-30: "bad UX, white buttons
     with grey text" — native `<input type=number>` spinner steppers (kg/reps etc.) rendered light on the dark theme. FIX:
     `color-scheme: dark` on `:root` → all native controls (spinners, date pickers, scrollbars) render dark. gymapp-only.
-238. ⬜ **Bottom nav bar sometimes disappears.** JM 2026-06-30: "sometimes the bar at bottom goes away, why?" The bottom
-    tab bar (Plan/Train/Eat/Stats) is intermittently gone. Investigate: scroll-hide? sub-pages (sub-head/back) dropping
-    it? keyboard/viewport? It should be consistent. gymapp-only.
+238. ⬜ **Bottom nav bar sometimes disappears.** JM 2026-06-30. INVESTIGATED: `.tab-bar` is `position:fixed;bottom:0`
+    (no scroll-hide), so it's the INTENTIONAL `isDetail` route-hiding in App.tsx — the nav (+ top bar + Coach FAB) is
+    hidden on immersive pages: players (`/play`, ride/run-player), detail pages (`/{workouts|exercises|programs|recipes|
+    trainers|mind|cycle|plan}/:id`), `/chat`, `/build`, `/admin`. That's by design; changing it risks breaking those.
+    NEEDS A REPRO to fix safely: JM — which exact page/screen loses the bar when you DON'T expect it? (Also possible: iOS
+    keyboard shrinking the visual viewport.) gymapp-only.
 237. ⬜ **VDOT (from threshold pace) contradicts HR-ratio VO₂max → flag stale pace.** JM 2026-06-30 (QA): Running shows
     VDOT 41 (from pace 4:57/km) but VO₂max 50.5 (HR-ratio) — VDOT ≈ running VO₂max so this is contradictory. ROOT: his
     threshold pace is set slow/stale, so VDOT + zones + predictions are all too easy while HR says he's fitter. SHIPPED a
@@ -1188,11 +1191,11 @@ test guide → the **🧪 Test guide** section below.
 154. ⬜ **R4 feedback fields may not be mobile-friendly — chips, consider a dropdown.** The post-workout fields render
     as chip rows; with 6 fields × 6-8 options that's a lot of chips on a phone. JM: "not sure this is mobile friendly
     (dropdown?)". Evaluate chips vs a compact native `<select>` per field on mobile. JM 2026-06-26.
-153. ⬜ **BUG: Today week strip shows the WRONG "today" (23 highlighted on June 26).** On dev the strip green-selected
-    TUE 23 as today though it was Fri 26 (Log-activity correctly showed 26). `localISO()` uses `new Date()` (correct),
-    so a fresh load = today; likely a STALE long-open tab (selDay/WeekStrip captured `new Date()` at mount days ago and
-    never re-anchored). Fix: re-anchor "today" + selDay when the app regains focus / the date rolls over (so a PWA left
-    open across days self-heals). Confirm a hard-refresh fixes it. JM screenshot 2026-06-26.
+153. 🔨 **BUG: Today week strip shows the WRONG "today" (23 highlighted on June 26).** JM 2026-06-26. Root confirmed: a PWA
+    left open across midnight captured `todayISO()` in `selDay` at mount and never re-anchored. FIXED: Today now re-anchors
+    on `visibilitychange`/`focus` — when the date has rolled over it moves `selDay` to the new today (ONLY if the user was
+    still viewing the old today, so a manually-picked day isn't clobbered) and reloads the week window. Self-heals without a
+    hard refresh. JM to verify (leave the PWA open overnight, or verify a hard-refresh still shows the right day). gymapp-only.
 152. 🧪 **Gym feedback must be its OWN set, not cycling's (corrects R4/#147).** My R4 applied the 6 intervals
     ACTIVITY_FIELDs (Legs Before/After, Fuel/GI…) to ALL sports incl. gym. JM: "gym is not the same as cycling, it's
     own as discussed in the past." → ride/run keep the intervals 6; gym gets a gym-specific set (Soreness/pump, Form,
