@@ -2,7 +2,7 @@
 // app can execute it. Read-only. Dev uses the /icu vite proxy; production will
 // use a serverless function so the key stays server-side.
 import { getSetting, setSetting } from './db'
-import { ICU_FIELDS, ICU_FIELD_CODES, FEEL_LABELS } from './icu-fields'
+import { ICU_FIELDS, RUN_FIELDS, ICU_FIELD_CODES, FEEL_LABELS } from './icu-fields'
 
 const ICU = '/icu/api/v1'
 const DEFAULT_ATHLETE = 'i28814'
@@ -181,7 +181,8 @@ export interface IcuActivity {
 export function readIcuFeedback(a?: IcuActivity | null): { feel?: string; rpe?: number; fields: Record<string, string> } | null {
   if (!a) return null
   const fields: Record<string, string> = {}
-  for (const [label, opts] of ICU_FIELDS) {
+  const fieldSet = /run/i.test(a.type || '') ? RUN_FIELDS : ICU_FIELDS // #330 — read a run's fields with the RUN options
+  for (const [label, opts] of fieldSet) {
     const code = ICU_FIELD_CODES[label]
     const raw = code ? (a as unknown as Record<string, unknown>)[code] : undefined
     const idx = typeof raw === 'number' ? raw : (typeof raw === 'string' && /^\d+$/.test(raw) ? Number(raw) : NaN)

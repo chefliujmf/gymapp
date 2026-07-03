@@ -684,6 +684,14 @@ const ICU_FB_FIELDS = {
   'Life Constraint': { code: 'LifeConstraint', opts: ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other'] },
   'Mental State': { code: 'MentalState', opts: ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out'] },
 }
+// #330 — RUN overrides (running-appropriate Fuel + Pain locations, no "saddle"). Same codes as above.
+// MUST mirror RUN_FIELDS in src/icu-fields.ts so the index the app shows == the index we write.
+const ICU_FB_FIELDS_RUN = {
+  ...ICU_FB_FIELDS,
+  'Fuel/GI': { code: 'FuelGI', opts: ['not needed', 'water only OK', 'gels/carbs OK', 'underfueled', 'GI issue', 'too much fuel'] },
+  'Pain/Niggles': { code: 'PainNiggles', opts: ['none', 'knee', 'shin/calf', 'foot/ankle', 'hip', 'IT band', 'hamstring', 'other'] },
+}
+const fbFieldsFor = (sport) => (sport === 'run' ? ICU_FB_FIELDS_RUN : ICU_FB_FIELDS)
 // #287 — post the athlete's free-text comment to the intervals activity MESSAGE thread (deduped:
 // skip if an identical comment already exists, so re-saving feedback doesn't spam duplicates).
 async function syncActivityNote(user, id, content) {
@@ -744,7 +752,8 @@ app.post('/auth/activity/:id/feedback', auth, (req, res) => {
     const payload = {}
     const fi = ICU_FEEL_LABELS.indexOf(fb.feel); if (fi >= 0) payload.feel = fi + 1
     if (fb.rpe) payload.icu_rpe = fb.rpe
-    for (const [label, val] of Object.entries(fb.fields || {})) { const def = ICU_FB_FIELDS[label]; if (def) { const i = def.opts.indexOf(val); if (i >= 0) payload[def.code] = i + 1 } }
+    const fbDefs = fbFieldsFor(fb.sport) // #330 — a run's values map through the RUN option list
+    for (const [label, val] of Object.entries(fb.fields || {})) { const def = fbDefs[label]; if (def) { const i = def.opts.indexOf(val); if (i >= 0) payload[def.code] = i + 1 } }
     if (Object.keys(payload).length) icuFetch(req.user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify(payload) }).catch((e) => console.error('[icu-feedback-write] ' + (e.message || e)))
     // #287: the free-text comment isn't a field — it lives in the intervals MESSAGE thread. Post it
     // there (deduped) so "Anything else?" shows up in intervals too, not just Platyplus.

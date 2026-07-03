@@ -93,10 +93,13 @@ test guide → the **🧪 Test guide** section below.
     (min/km) using threshold pace, never watts. **Done** (PLANNED view): CoachPlanDetail shows PLANNED PACE, native
     "% pace" text pushes to intervals, pacing corrected + calibrated (#343) + chart fixed (#344). On QA. NB: the
     COMPLETED/analysed run view is the sibling #333 (still open).
-330. ⬜ **Post-workout feedback form is PRE-FILLED with values nobody entered (POOR + RPE 10) + WRONG SPORT (cycling
-    fields on a run) + incomplete.** JM 2026-07-02 (screenshot St-Lambert run): "How did it go?" shows POOR selected + RPE
-    10 selected though the human entered nothing → looks like fake data. FIX: nothing selected until the user taps; use
-    RUNNING feedback fields for a run (not cycling); complete the fields. gymapp-only.
+330. 🔨 **Post-workout feedback form PRE-FILLED with fake values (POOR + RPE 10) + WRONG SPORT (cycling fields on a run).**
+    JM 2026-07-02 (St-Lambert run). Done: (a) **phantom guard** — `readIcuFeedback` returns null unless a custom field is
+    present, so Strava/coach-imported feel/RPE no longer show as "already logged"; form starts blank (already shipped +
+    tested). (b) **running fields** — new `RUN_FIELDS` (no "saddle"; Pain = knee/shin·calf/foot·ankle/hip/IT band/hamstring;
+    running Fuel), `FIELDS.run` uses them, and BOTH the app read (`readIcuFeedback`, sport-aware) AND the server write
+    (`ICU_FB_FIELDS_RUN`) map through the run options so the round-trip + coach message stay consistent. 6 read-feedback
+    tests. On QA.
 329. ⬜ **Factor the MENSTRUAL CYCLE into coaching + readiness — with a defined FORMULA.** JM 2026-07-02 (very
     important): account for cycle phase. If intervals exposes cycle wellness (and it's not private), the coach READS it;
     else it ASKS (cycle start date + typical length). DEFINE a formula: phase from cycle day → (a) LOAD modifier (push in
