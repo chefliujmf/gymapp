@@ -538,13 +538,12 @@ test guide → the **🧪 Test guide** section below.
     ("No passkey on this device yet — sign in with your password, then we'll offer to set one up.") instead of dying
     silently. Registration still also available in Settings → Passkeys. Manual test: fresh browser → password login →
     modal appears → Add → next sign-in uses Touch ID. gymapp-only.
-265. ⬜ **Eat/Fuel: capture biological sex + compute BMR/TDEE & protein needs.** JM 2026-06-30: for fuelling we should
-    capture male/female (biological sex drives BMR). Where under Profile? — add to the Profile "about you" block (already
-    has weight/maxHR/sleepNeed; `sex` field already exists in `pub()` but isn't edited in the UI). Then compute:
-    **BMR** (Mifflin-St Jeor: sex+weight+height+age), **TDEE** (BMR × activity, or better: BMR + intervals daily
-    calories), **protein target** (1.6–2.2 g/kg by goal), and show on Eat (daily targets vs intake). Needs new fields:
-    height, age/birth-year (sex exists). ALSO: cycle/menstrual considerations for women later (optional). Pure unit-tested
-    `nutrition.ts` (BMR/TDEE/protein). gymapp-only.
+265. 🔨 **Eat/Fuel: capture sex + compute BMR/TDEE & protein needs.** JM 2026-06-30. The math (`nutrition.ts`, 14 tests) was
+    built but UNWIRED. Now wired: Profile → **FuelFields** captures the missing inputs (height + birth date; sex from
+    About-you, weight from intervals) + a fuel-goal picker (lose/maintain/gain), and shows the athlete their **daily
+    targets** (calories + protein/fat/carbs + BMR/TDEE). Weight is stashed server-side from wellness; **buildSystemPrompt
+    injects the same fuel targets** so the coach picks meals/portions that hit the calorie + protein goal. Self-validated
+    render. On QA. FOLLOW-UP: the full Eat "targets vs intake" tracking view + intervals daily-calories for a truer TDEE.
 264. 🔨 **Non-admin users must NOT have Coach API page access.** JM 2026-06-30: the Coach API token page (REST token for
     the coach bot) should be admin-only — hide the nav entry + guard the route for `role !== 'admin'`. (Token is a
     power-user/integration feature; a normal user like xenia shouldn't see it.) gymapp-only.
@@ -681,14 +680,16 @@ test guide → the **🧪 Test guide** section below.
 239. 🧪 **White native controls on dark (number spinners, date pickers) — FIXED.** JM 2026-06-30: "bad UX, white buttons
     with grey text" — native `<input type=number>` spinner steppers (kg/reps etc.) rendered light on the dark theme. FIX:
     `color-scheme: dark` on `:root` → all native controls (spinners, date pickers, scrollbars) render dark. gymapp-only.
-238. ⬜ **Bottom nav bar sometimes disappears.** JM 2026-06-30: "sometimes the bar at bottom goes away, why?" The bottom
-    tab bar (Plan/Train/Eat/Stats) is intermittently gone. Investigate: scroll-hide? sub-pages (sub-head/back) dropping
-    it? keyboard/viewport? It should be consistent. gymapp-only.
-237. ⬜ **VDOT (from threshold pace) contradicts HR-ratio VO₂max → flag stale pace.** JM 2026-06-30 (QA): Running shows
-    VDOT 41 (from pace 4:57/km) but VO₂max 50.5 (HR-ratio) — VDOT ≈ running VO₂max so this is contradictory. ROOT: his
-    threshold pace is set slow/stale, so VDOT + zones + predictions are all too easy while HR says he's fitter. SHIPPED a
-    ⚠️ flag on the Running page ("pace may be stale, update it"). TODO: reconcile properly — prompt to update pace / use
-    the **#215** estimate-from-runs so VDOT/zones/predictions match reality. Pairs #215/#216/#234. gymapp-only.
+238. ⬜ **Bottom nav bar sometimes disappears.** JM 2026-06-30. INVESTIGATED: `.tab-bar` is `position:fixed;bottom:0`
+    (no scroll-hide), so it's the INTENTIONAL `isDetail` route-hiding in App.tsx — the nav (+ top bar + Coach FAB) is
+    hidden on immersive pages: players (`/play`, ride/run-player), detail pages (`/{workouts|exercises|programs|recipes|
+    trainers|mind|cycle|plan}/:id`), `/chat`, `/build`, `/admin`. That's by design; changing it risks breaking those.
+    NEEDS A REPRO to fix safely: JM — which exact page/screen loses the bar when you DON'T expect it? (Also possible: iOS
+    keyboard shrinking the visual viewport.) gymapp-only.
+237. 🔨 **VDOT (from threshold pace) contradicts HR-ratio VO₂max → flag stale pace.** JM 2026-06-30 (QA). The ⚠️ stale-pace
+    flag shipped; the reconcile path now exists too: the **#215** estimate-from-runs (`runEstimate`/Critical Speed) is a
+    Computed threshold pace in the Manual/Auto/Computed picker (#236/#337b) → Auto/Computed drives VDOT/zones/predictions
+    from real runs, and #327 flags the VO₂max low-confidence when VDOT vs HR-ratio diverge. JM to verify on prod. gymapp-only.
 236. 🧪 **Benchmarks = MANUAL vs COMPUTED, both shown, preference in Settings (JM's chosen model).** JM 2026-06-30:
     "I prefer the option to set it manually OR estimated — have BOTH values, and in Settings decide the preference. Same
     for FTP or other data like that. Manual-vs-computed kind of thing." THE MODEL (supersedes the earlier anchor/freeze
@@ -1188,11 +1189,11 @@ test guide → the **🧪 Test guide** section below.
 154. ⬜ **R4 feedback fields may not be mobile-friendly — chips, consider a dropdown.** The post-workout fields render
     as chip rows; with 6 fields × 6-8 options that's a lot of chips on a phone. JM: "not sure this is mobile friendly
     (dropdown?)". Evaluate chips vs a compact native `<select>` per field on mobile. JM 2026-06-26.
-153. ⬜ **BUG: Today week strip shows the WRONG "today" (23 highlighted on June 26).** On dev the strip green-selected
-    TUE 23 as today though it was Fri 26 (Log-activity correctly showed 26). `localISO()` uses `new Date()` (correct),
-    so a fresh load = today; likely a STALE long-open tab (selDay/WeekStrip captured `new Date()` at mount days ago and
-    never re-anchored). Fix: re-anchor "today" + selDay when the app regains focus / the date rolls over (so a PWA left
-    open across days self-heals). Confirm a hard-refresh fixes it. JM screenshot 2026-06-26.
+153. 🔨 **BUG: Today week strip shows the WRONG "today" (23 highlighted on June 26).** JM 2026-06-26. Root confirmed: a PWA
+    left open across midnight captured `todayISO()` in `selDay` at mount and never re-anchored. FIXED: Today now re-anchors
+    on `visibilitychange`/`focus` — when the date has rolled over it moves `selDay` to the new today (ONLY if the user was
+    still viewing the old today, so a manually-picked day isn't clobbered) and reloads the week window. Self-heals without a
+    hard refresh. JM to verify (leave the PWA open overnight, or verify a hard-refresh still shows the right day). gymapp-only.
 152. 🧪 **Gym feedback must be its OWN set, not cycling's (corrects R4/#147).** My R4 applied the 6 intervals
     ACTIVITY_FIELDs (Legs Before/After, Fuel/GI…) to ALL sports incl. gym. JM: "gym is not the same as cycling, it's
     own as discussed in the past." → ride/run keep the intervals 6; gym gets a gym-specific set (Soreness/pump, Form,
