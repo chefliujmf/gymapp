@@ -28,6 +28,7 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from '.
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts } from './icu-steps.js'
+import { weatherGuidance } from './weather.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -981,6 +982,8 @@ function buildSystemPrompt(user) {
   // calendar day beyond this cap unless the athlete explicitly opts into doubles.
   const maxPerDay = Math.max(1, Number(user.info?.maxPerDay) || 1)
   p += `\n\n# ONE SESSION PER DAY (max ${maxPerDay}/day): the athlete trains at most ${maxPerDay} session${maxPerDay > 1 ? 's' : ''} per calendar day. ${maxPerDay === 1 ? 'Do NOT schedule two workouts on the same day (no gym + run, no ride + run together) — spread sessions across different days. If two efforts must share a day because time is tight, ask first or fold them into ONE combined session.' : `Never exceed ${maxPerDay} on any single day, and only double up when it genuinely serves the plan (e.g. AM/PM split).`} Respect their weekly availability + rest days when spacing them.`
+  // #341 — weather-aware coaching for OUTDOOR sessions.
+  p += `\n\n# WEATHER (outdoor sessions): before planning or confirming an outdoor run/ride — especially in heat or cold — call get_weather (date = the session day). In the heat, DERATE: judge easy days by feel/HR (pace/power hold at a higher cost), trim quality targets, add hydration/electrolyte + fueling notes, prefer the cool hour or shade, and move a hard session indoors when it's extreme. Cold → longer warm-up + layers; strong wind → ride to effort not speed; likely rain → grip/visibility or indoors. Fold it into the plan/notes, don't just report it. If it returns needsLocation, ask their city once.`
   // #323 — the athlete's OWN goal & identity. This is what makes the plan theirs; center on it and
   // let it OVERRIDE generic defaults (e.g. "tone, don't bulk" ⇒ not a hypertrophy block).
   const goals = user.info?.goals
@@ -1707,6 +1710,46 @@ app.get('/api/intervals/wellness', apiAuth, async (req, res) => {
     restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null, weight: d.weight ?? null,
   }))
   res.json({ connected: true, wellness })
+})
+
+// #341 — best-effort athlete location for weather. Prefer a saved location; else derive from the most
+// recent OUTDOOR activity's GPS (summary coords, else the streams' first point) and cache it. No new UI.
+async function athleteLatLon(user) {
+  if (user.info && Number.isFinite(user.info.lat) && Number.isFinite(user.info.lon)) return { lat: user.info.lat, lon: user.info.lon }
+  const ath = user.icuAthlete || 'i28814'
+  const acts = await icuGet(user, `/athlete/${ath}/activities?oldest=${icuDay(60)}&newest=${icuDay(0)}`).catch(() => null)
+  const list = Array.isArray(acts) ? acts : []
+  const cache = (lat, lon) => { if (Number.isFinite(lat) && Number.isFinite(lon)) { user.info = user.info || {}; user.info.lat = lat; user.info.lon = lon; save(store); return { lat, lon } } return null }
+  for (const a of list) {
+    const ll = Array.isArray(a.start_latlng) ? a.start_latlng : null
+    const lat = ll ? ll[0] : (a.icu_lat ?? a.start_lat)
+    const lon = ll ? ll[1] : (a.icu_lng ?? a.start_lng)
+    const hit = cache(lat, lon); if (hit) return hit
+  }
+  const gps = list.find((a) => (a.distance || 0) > 0 && !a.trainer)
+  if (gps) {
+    const s = await icuGet(user, `/activity/${gps.id}/streams?types=latlng`).catch(() => null)
+    const pts = Array.isArray(s) ? (s.find((x) => x.type === 'latlng') || {}).data : null
+    if (Array.isArray(pts) && Array.isArray(pts[0])) return cache(pts[0][0], pts[0][1])
+  }
+  return null
+}
+
+// #341 — the day's forecast + coaching guidance for the athlete's location (Open-Meteo, FREE, no key).
+app.get('/api/weather', apiAuth, async (req, res) => {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : icuDay(0)
+  const loc = await athleteLatLon(req.user).catch(() => null)
+  if (!loc) return res.json({ available: false, needsLocation: true, reason: 'No location yet — ask the athlete where they train (city), or it fills in from their next GPS activity.' })
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,wind_speed_10m_max&timezone=auto&start_date=${date}&end_date=${date}`
+    const r = await fetch(url, { headers: { 'user-agent': 'platyplus/1.0' } })
+    if (!r.ok) return res.json({ available: false, reason: `weather service ${r.status}` })
+    const j = await r.json()
+    const d = j.daily || {}
+    const at = (k) => (Array.isArray(d[k]) ? d[k][0] : null)
+    const g = weatherGuidance({ tMax: at('temperature_2m_max'), tApparentMax: at('apparent_temperature_max'), tMin: at('temperature_2m_min'), precipProb: at('precipitation_probability_max'), windMax: at('wind_speed_10m_max') })
+    res.json({ available: true, date, ...g })
+  } catch (e) { res.json({ available: false, reason: (e && e.message) || 'weather fetch failed' }) }
 })
 
 app.get('/api/intervals/activities', apiAuth, async (req, res) => {

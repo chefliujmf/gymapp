@@ -1102,6 +1102,15 @@
         "responses": { "200": { "description": "{ connected, activities[] }" } }
       }
     },
+    "/api/weather": {
+      "get": {
+        "summary": "#341 — the day's forecast + coaching guidance (heat derating, hydration, cold, wind, rain) for the athlete's location (Open-Meteo, free/no-key). Location is derived from recent GPS activities. { available:false, needsLocation:true } if unknown.",
+        "tags": ["intervals"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "date", "in": "query", "schema": { "type": "string" }, "description": "YYYY-MM-DD; default today" }],
+        "responses": { "200": { "description": "{ available, date, feels, heat, flags[], notes[], summary }" } }
+      }
+    },
     "/api/strava/activities": {
       "get": {
         "summary": "Recent Strava activities (Bearer; needs activity:read_all scope)",

@@ -70,6 +70,11 @@ server.tool('get_wellness',
   { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },
   wrap((a) => api('GET', `/api/intervals/wellness?days=${a.days || 14}`)))
 
+server.tool('get_weather',
+  "Get the day's WEATHER forecast + coaching guidance for the athlete's location (free, no key). Call it before planning or confirming an OUTDOOR run/ride, especially in heat/cold. Returns feels-like temp, wind, rain%, and ready-made guidance (heat derating, hydration, cold layers, wind, or move-indoors). { needsLocation:true } means no location yet — ask the athlete their city (it also auto-fills from their next GPS activity). Use it to ADJUST intensity/pace + add fuel/hydration notes, don't just report it.",
+  { date: DATE.optional().describe('YYYY-MM-DD; default today. Use the planned session date.') },
+  wrap((a) => api('GET', `/api/weather${a.date ? `?date=${a.date}` : ''}`)))
+
 server.tool('get_recent_activities',
   "Read the athlete's recently COMPLETED activities from intervals.icu: date, type, indoor/outdoor, duration, distance, avg HR, avg power, Load (TSS), intensity (IF), RPE, feel. READ-ONLY; returns { connected:false } if intervals.icu isn't connected.",
   { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },

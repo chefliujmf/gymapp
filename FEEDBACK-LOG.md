@@ -52,10 +52,11 @@ test guide → the **🧪 Test guide** section below.
     Done: `/auth/intervals/power-benchmarks` returns `observedMaxHr` + `maxHrSamples` (guarded 120–230 bpm); Benchmarks
     Max HR card now has a Computed value + honest source ("observed peak — hit N×"); pending copy = "lands the first
     time you go all-out with a strap/watch". Same Manual/Auto/Computed picker as the rest.
-341. ⬜ **Local WEATHER in the coach brain (heat/cold/wind → adjust intensity).** JM 2026-07-03: e.g. 32°C out → ease
-    intensity/pace, hydrate, or move indoors. Use a FREE no-key source (Open-Meteo) for the athlete's location (from
-    intervals lat/long or ask); coach reads the planned-day forecast + adjusts (heat derating on pace/power, hydration/
-    fuel note, indoor swap). Ties readiness + plan. gymapp-only.
+341. 🔨 **Local WEATHER in the coach brain (heat/cold/wind → adjust intensity).** JM 2026-07-03. Done: `server/weather.js`
+    turns a day's forecast into coaching guidance (heat derating + hydration, cold layers, wind→effort, rain→indoor; pure,
+    6 tests). `/api/weather?date=` (Open-Meteo, FREE/no-key) + MCP `get_weather` tool; athlete location auto-derived from
+    recent GPS activities (no new UI; `needsLocation` → coach asks their city). Coach prompt: call get_weather before an
+    outdoor session + DERATE in heat, fold into the plan/notes. Verified live (Montreal feels-like 32°C → heat:high). On QA.
 340. 🔨 **Banner for activities that haven't received full feedback (option A).** JM 2026-07-03 (mock A picked). Done:
     History page shows an amber roll-up banner ("N sessions still need your feedback") + a knock-out list (oldest first),
     each row = sport emoji, title·day, missing chips + a richness progress bar, deep-linking to the activity's feedback.
