@@ -22,10 +22,10 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-345. ⬜ **"Max workouts per DAY" preference (default 1) — next to preferred workouts/week.** JM 2026-07-03: the coach
+345. 🔨 **"Max workouts per DAY" preference (default 1) — next to preferred workouts/week.** JM 2026-07-03: the coach
     pushed a gym AND a run the same day; unless the athlete SAYS they can double (time/capacity), expect ONE session/day.
-    Add a preference field beside the per-week number (#335/#316); coach + plan logic respect it as a hard cap. Extends #339
-    (this is the concrete fix for it). gymapp-only.
+    Done: `maxPerDay` field (default 1) beside days/week in Availability; persisted to `info.maxPerDay`; coach prompt now
+    hard-caps sessions/day ("do NOT schedule two workouts same day unless opted in"). Directly resolves #339. On QA.
 344. 🔨 **Planned-workout chart "looks weird" — line stops at 20m, needle at 5m, degenerate Y-axis; review ALL graph
     rendering.** JM 2026-07-03 (screenshot, Recovery Shakeout Run): the pace "target shape" line ends at ~20m (of 25),
     a downward needle at the 5m segment boundary, and the Y-axis shows 8 near-identical labels (6:18–6:20) for a nearly-
@@ -59,8 +59,9 @@ test guide → the **🧪 Test guide** section below.
 340. ⬜ **Banner for exercises/activities that haven't received FULL feedback (mock-first).** JM 2026-07-03: like the
     workout-feedback prompts, show a banner flagging exercises/sessions still missing complete feedback. Mock-first.
     gymapp-only.
-339. ⬜ **Coach scheduled a GYM and a RUN the SAME day — "crazy".** JM 2026-07-03. Respect training frequency (#316) +
-    availability; don't double-book a day unless the athlete explicitly wants a double. Coach prompt + plan logic guard.
+339. 🔨 **Coach scheduled a GYM and a RUN the SAME day — "crazy".** JM 2026-07-03. Respect training frequency (#316) +
+    availability; don't double-book a day unless the athlete explicitly wants a double. **Fixed by #345** (maxPerDay cap,
+    default 1, in the coach prompt). On QA.
 338. ⬜ **Coach CHAT on the app = wall of text, no titles.** JM 2026-07-03: format coach replies with headings/structure
     (not a wall). Terse, scannable. Coach system prompt: use short sections/bold labels; the client renders markdown.
 337b. 🔨 **Streamline: benchmarks live in ONE place (Stats), Profile = preferences only.** JM 2026-07-03: VO₂max/zones

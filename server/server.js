@@ -966,6 +966,10 @@ function buildSystemPrompt(user) {
   // never part of the base load.
   const freq = Number(user.info?.trainingDays) || 0
   if (freq > 0) p += `\n\n# TRAINING FREQUENCY: the athlete wants ~${freq} training days/week. Plan exactly ${freq} COMMITTED sessions. If they ask for more (a bonus day), add ONE OPTIONAL session — prefix its title with "(optional)" and say it's a bonus they can skip — don't inflate the base week.`
+  // #345 — most athletes train ONCE a day. Never stack two sessions (e.g. a gym + a run) on the same
+  // calendar day beyond this cap unless the athlete explicitly opts into doubles.
+  const maxPerDay = Math.max(1, Number(user.info?.maxPerDay) || 1)
+  p += `\n\n# ONE SESSION PER DAY (max ${maxPerDay}/day): the athlete trains at most ${maxPerDay} session${maxPerDay > 1 ? 's' : ''} per calendar day. ${maxPerDay === 1 ? 'Do NOT schedule two workouts on the same day (no gym + run, no ride + run together) — spread sessions across different days. If two efforts must share a day because time is tight, ask first or fold them into ONE combined session.' : `Never exceed ${maxPerDay} on any single day, and only double up when it genuinely serves the plan (e.g. AM/PM split).`} Respect their weekly availability + rest days when spacing them.`
   // #323 — the athlete's OWN goal & identity. This is what makes the plan theirs; center on it and
   // let it OVERRIDE generic defaults (e.g. "tone, don't bulk" ⇒ not a hypertrophy block).
   const goals = user.info?.goals

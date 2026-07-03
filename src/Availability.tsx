@@ -14,9 +14,10 @@ const idxOf = (h: number) => { const i = STEPS.indexOf(h); return i >= 0 ? i : 0
 
 export default function Availability() {
   const { user, refresh } = useAuth()
-  const info = (user?.info || {}) as { availability?: Avail; trainingDays?: number }
+  const info = (user?.info || {}) as { availability?: Avail; trainingDays?: number; maxPerDay?: number }
   const [avail, setAvail] = useState<Avail>(() => info.availability || {})
   const [days, setDays] = useState<number>(() => info.trainingDays || 0)
+  const [maxPerDay, setMaxPerDay] = useState<number>(() => info.maxPerDay || 1) // #345 default: ONE session/day
   const [saved, setSaved] = useState(false)
   const flash = () => { setSaved(true); setTimeout(() => setSaved(false), 1500) }
   const set = (day: string, h: number) => {
@@ -24,6 +25,7 @@ export default function Availability() {
     authApi.saveProfile({ availability: next }).then(() => { flash(); refresh().catch(() => {}) }).catch(() => {})
   }
   const setFreq = (n: number) => { setDays(n); authApi.saveProfile({ trainingDays: n }).then(() => { flash(); refresh().catch(() => {}) }).catch(() => {}) }
+  const setMax = (n: number) => { setMaxPerDay(n); authApi.saveProfile({ maxPerDay: n }).then(() => { flash(); refresh().catch(() => {}) }).catch(() => {}) }
   const total = DAYS.reduce((s, [k]) => s + (avail[k] || 0), 0)
 
   return (
@@ -38,6 +40,16 @@ export default function Availability() {
           className="search" style={{ maxWidth: 92, textAlign: 'center' }}
           onChange={(e) => setFreq(Math.max(0, Math.min(14, Math.round(Number(e.target.value) || 0))))} />
         <span className="meta">days / week</span>
+      </div>
+
+      {/* #345 — most people train ONCE a day; the coach must not stack a gym + a run on the same day
+          unless you say you can double. Default 1. */}
+      <p className="meta" style={{ margin: '2px 2px 6px' }}>How many sessions per day, at most?</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <input type="number" inputMode="numeric" min={1} max={4} value={maxPerDay}
+          className="search" style={{ maxWidth: 92, textAlign: 'center' }}
+          onChange={(e) => setMax(Math.max(1, Math.min(4, Math.round(Number(e.target.value) || 1))))} />
+        <span className="meta">session{maxPerDay > 1 ? 's' : ''} / day{maxPerDay === 1 ? ' — one training a day' : ' (e.g. AM + PM)'}</span>
       </div>
 
       <p className="meta" style={{ margin: '2px 2px 8px' }}>And how long each day? Your coach fits sessions around it{days ? ` — ${days} planned, extras offered as optional` : ''}.</p>
