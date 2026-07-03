@@ -23,7 +23,7 @@ export default function OnboardReturnBar() {
   if (!onboard) return null
   return (
     <div className="ob-bar">
-      <span className="ob-bar__t">🦫 Coach setup — set this, then head back</span>
+      <span className="ob-bar__t"><img src="/favicon.svg?v=4" alt="" style={{ width: 16, height: 16, borderRadius: 5, verticalAlign: '-3px', marginRight: 6 }} />Coach setup — set this, then head back</span>
       <button className="ob-bar__done" onClick={() => navigate('/chat?onboard=1')}>Done ✓</button>
     </div>
   )

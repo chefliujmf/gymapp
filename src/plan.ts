@@ -130,6 +130,12 @@ const toks = (s: string) => norm(s).split(' ').filter((w) => w && !STOP.has(w)).
 /** Match a coach exercise label ("Dumbbell bench press or machine chest press")
  * to the best library demo by significant-word overlap. */
 export function matchExercise(name: string) { return findLib(name) }
+// #296 — resolve an exercise's demo RELIABLY: prefer the catalog id the coach set (search_exercises →
+// exId, always a real library entry with media) and only fall back to fuzzy name-matching. Fixes
+// "some exercises have no video" when the authored name doesn't token-match the library.
+export function resolveDemo(exId: string | undefined, name: string) {
+  return (exId && allExercisesById[exId]) || findLib(name)
+}
 function findLib(name: string) {
   // #296: drop parenthetical notes — "(or machine chest press)", "(both sides)", "(left)" — they
   // bloat the query tokens and break the video-swap (which needs the whole query inside one entry).

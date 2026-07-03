@@ -125,10 +125,11 @@ test guide → the **🧪 Test guide** section below.
 328. 🔨 **Running pace + threshold must display in MIN/KM everywhere.** JM 2026-07-02. intervals threshold_pace is stored
     in m/s (converted); UI + coach must always SHOW running pace/threshold as m:ss/km, never watts/%/m/s. Verify every run
     surface (plan, player, stats, coach text). Ties #312/#313. gymapp-only.
-327. ⬜ **VO₂max shown for wife looks too high (doubt 52.1).** JM 2026-07-02. Likely the HR-ratio estimate using an ASSUMED
-    HRmax (220−age) + resting HR → unreliable, but shown as a confident number. FIX: when inputs are assumed/thin, mark it
-    clearly low-confidence / provisional (tie #319) or suppress; only show a firm VO₂max from real data (measured HRmax,
-    or pace/power VO₂max with enough runs). Review her actual computation. gymapp-only.
+327. 🔨 **VO₂max shown for wife looks too high (doubt 52.1).** JM 2026-07-02. Fixed in `vo2max-submax.ts` (#234/#337):
+    running now PREFERS VDOT from real pace and no longer lets the HR-ratio method (inflated by an ASSUMED 220−age HRmax)
+    win — and when VDOT vs HR-ratio diverge >6, the value is flagged **low confidence**; HR-ratio alone is 'low'; cycling
+    comes from 5-min MAP power. The Benchmarks card shows the confidence + source. No more phantom 52 for a 6:45/km runner.
+    JM to verify on prod. gymapp-only.
 326. 🔨 **Completed workout opens the PLANNED view, not the ANALYSED one — terrible.** JM 2026-07-02: clicking a DONE
     workout lands on the planned page (only "flyby" gets you elsewhere); from there you can still hit Play/Analysis. Like
     intervals: a COMPLETED session must open its ANALYSED/result view by default, with an option to view the plan. Fix the
@@ -272,9 +273,9 @@ test guide → the **🧪 Test guide** section below.
     video · 1379 image-only (Centr .jpg) · 49 no-media. Matcher now PREFERS video (#296) so prescribed exercises resolve to
     video ~93%+. Options: (a) drop the 49 no-media + hide image-only from browse; (b) source video for image-only from OPEN/
     FREE libs (wger, free-exercise-db, exercisedb). JM prefers videos. Decision needed before deleting 1379 entries.
-299. ⬜ **Auto-trigger coach review on activity completed + feedback — EXISTS, verify.** JM 2026-07-02. Already wired:
-    `/auth/activity/:id/feedback` → `runCoachTask` reviews the activity → `save_coach_review` (→ intervals Notes #290 + bell
-    notification #233) + `set_activity_text` (#289). Gated on `coachProfile` (set for JM). Verify end-to-end on QA/prod.
+299. 🔨 **Auto-trigger coach review on activity completed + feedback — EXISTS, verify.** JM 2026-07-02. VERIFIED wired in
+    code: `/auth/activity/:id/feedback` → `runCoachTask` (server.js:772-777) reviews the activity → `save_coach_review`
+    (→ intervals Notes #290 + bell #233) + `set_activity_text` (#289). Gated on `coachProfile`. JM to verify end-to-end on prod.
 
 298. 🔨 **Tag band exercises + make "Bands" a filter/equipment.** JM 2026-07-02: "identify and tag the ones with small
     band and make this available as a filter and equipment." FOUND: equipment "Bands" already exists (203 exercises) + the
@@ -282,19 +283,21 @@ test guide → the **🧪 Test guide** section below.
     Squat", "Deadlift with Bands") were tagged by primary kit (Barbell/Dumbbell) so they were missed. FIXED: catalog.ts
     derives a `band` flag (equipment 'Bands' OR band in name) → 228 flagged; the "Bands" filter chip now matches the flag
     (catches band-assisted too); "Bands" always present in the equipment list. gymapp-only. **JM to verify on QA.**
-297. ⬜ **Tempo chip (#284) not showing in dev.** JM 2026-07-02: "I don't see the tempo chip we agreed on." Verify the
-    per-exercise tempo pill (e.g. 3-1-1-0) renders on the gym exercise cards (CoachPlanDetail + player). Likely a data
-    issue (coach not setting `tempo`) or a render regression. gymapp-only.
-296. ⬜ **Some exercises still have no video — the free library should cover them.** JM 2026-07-02. Investigate the demo
-    match (matchExercise / exercise library): which exercises miss video, and whether the free (self-hosted) library has
-    a clip we're not matching (name-matching gap) vs genuinely missing media. gymapp-only.
-295. ⬜ **Pre-workout GYM insights — show stats before starting (e1RM / suggested weight per exercise if we have data).**
-    JM 2026-07-02: "would be cool to have insights before starting the workout — 1-rep-max or suggested weight kind of
-    thing if we have the data." Add per-exercise pre-workout stats to CoachPlanDetail/GymPlayer pre-start (est 1RM from
-    history + suggested working weight for the prescribed reps via weightForReps). Same spirit as post-workout. gymapp-only.
-294. ⬜ **Lost the gym REORDERING page in dev.** JM 2026-07-02: the pre-start "reorder exercises (↑↓)" step is gone.
-    Investigate the flow CoachPlanDetail "Start workout" → GymPlayer pre-start (`!started && !done`) — did it get skipped/
-    auto-started, or a routing regression? Restore it. gymapp-only.
+297. 🔨 **Tempo chip (#284) not showing in dev.** JM 2026-07-02. VERIFIED in code: the tempo pill renders on the gym cards
+    (CoachPlanDetail: `tempo {x.tempo}` on main-set reps; GymPlayer pre-start line shows `· tempo {ex.tempo}`), and
+    `withDefaultTempo` defaults reps-mode exercises to `3-1-1-0` on save — so it always has a value. Likely an old build.
+    JM to re-verify on prod. gymapp-only.
+296. 🔨 **Some exercises still have no video — the free library should cover them.** JM 2026-07-02. Root: it was FUZZY
+    NAME-matching (matchExercise), which misses when the authored name doesn't token-match. Confirmed the library is 99%
+    media-covered — so the gap is matching, not missing clips. Fix: new `resolveDemo(exId, name)` prefers the catalog
+    **exId** the coach sets (search_exercises always returns a real entry with media) and only falls back to name-match;
+    CoachPlanDetail now uses it. Ties #332 (coach now sets exId per move). JM to verify on prod. gymapp-only.
+295. 🔨 **Pre-workout GYM insights — show stats before starting.** JM 2026-07-02. VERIFIED implemented: GymPlayer pre-start
+    (`!started && !done`) shows, per exercise, a **suggested working weight** (est 1RM × prescribed reps via weightForReps),
+    **est 1RM**, and **last session's sets** — plus the demo thumb + tempo. JM to verify on prod. gymapp-only.
+294. 🔨 **Lost the gym REORDERING page in dev.** JM 2026-07-02. VERIFIED present: GymPlayer pre-start renders the ↑/↓ reorder
+    buttons per exercise; it shows for any FRESH gym session (only skipped when RESUMING saved mid-workout progress —
+    correct). Likely an old build or a resumed session. JM to re-verify on prod. gymapp-only.
 292. 🔨 **Power-curve chart missing the hover scrubber the timeline has — standardize.** JM 2026-07-02 (DEV): the timeline
     charts show a vertical line + tooltip with the value at a point on hover; the POWER CURVE doesn't. "Standardize those
     graphs to be consistent." FIXED: `PowerCurveChart` now has the same hover scrubber — snaps to the nearest curve point,
@@ -457,9 +460,9 @@ test guide → the **🧪 Test guide** section below.
     not only in Profile. FIXED: RunningStats Threshold cell now shows the pace and is tap-to-edit inline (parses m:ss,
     saves via saveSportStat → syncs to intervals + updates VDOT). (Also confirms #269 VO₂max fix: now reads 50.5 from HR,
     not 43.9.) gymapp-only.
-274. ⬜ **"Why a beaver?" — onboarding card used 🦫 (beaver) but the brand is Platyplus (platypus).** JM 2026-06-30.
-    FIXED: the Today "Meet your coach" card now uses the real Platyplus logo (favicon.svg) like the login screen, not a
-    beaver emoji. (No platypus emoji exists → use the logo.) gymapp-only.
+274. 🔨 **"Why a beaver?" — onboarding used 🦫 (beaver) but the brand is Platyplus (platypus).** JM 2026-06-30. Today card
+    was fixed earlier; NOW the remaining 3 (OnboardReturnBar bar, Chat onboarding avatar + "Build my first week" button)
+    also use the real Platyplus logo (favicon.svg), no beaver anywhere. `grep 🦫 src/` = 0. JM to verify on prod. gymapp-only.
 273. 🔨 **Post-workout UX, per activity type — intervals.icu-style analysis + coach text. MOCK LOCKED (5 rounds).**
     JM 2026-06-30/07-01. Mock: `mockups/post-workout-insights.html` (toggles: pre/post review, indoor/outdoor; tabs
     ride/run/gym/mind). LOCKED SPEC to build:

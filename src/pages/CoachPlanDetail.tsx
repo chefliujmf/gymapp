@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { getCoachPlan, gymSessionFromPlan, setGymSession, matchExercise, estimateGymMinutes } from '../plan'
+import { getCoachPlan, gymSessionFromPlan, setGymSession, resolveDemo, estimateGymMinutes } from '../plan'
 import { calApi, type CalItem } from '../calendar'
 import { MiniProfile } from '../ui'
 import { workoutSummary, structureRows, plannedSeries, plannedLoad } from '../workout-summary'
@@ -173,7 +173,7 @@ export default function CoachPlanDetail() {
                 <div className="stack" style={{ gap: 8 }}>
                   {exs.flatMap((x, i) => {
                     const sec = secOf(x)
-                    const demo = matchExercise(x.name)
+                    const demo = resolveDemo(x.exId, x.name)
                     const isOpen = open.has(i)
                     const header = showHeaders && (i === 0 || secOf(exs[i - 1]) !== sec)
                       ? <div key={'h' + i} className="section-title" style={{ fontSize: 12, margin: i ? '6px 2px 2px' : '0 2px 2px' }}>{SEC[sec]}</div> : null
