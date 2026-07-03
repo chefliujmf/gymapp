@@ -82,7 +82,7 @@ const range = (series: Series[], minSpan?: number) => {
 
 /** Smooth multi-series line chart: gradient area, draw-in animation, and tap/hover
  * scrubbing with a tooltip. Responsive (stretches to width). */
-export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover, bands, cursor, xTicks, straight = false, minSpan }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void; bands?: { from: number; to: number; color: string }[]; cursor?: number | null; xTicks?: { frac: number; label: string }[]; straight?: boolean; minSpan?: number }) {
+export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover, bands, cursor, xTicks, straight = false, minSpan, invert = false }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void; bands?: { from: number; to: number; color: string }[]; cursor?: number | null; xTicks?: { frac: number; label: string }[]; straight?: boolean; minSpan?: number; invert?: boolean }) {
   const uid = useId()
   const [hi_, setHi] = useState<number | null>(null)
   // `cursor` makes the chart CONTROLLED — used to sync several stacked charts to one
@@ -100,7 +100,8 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
   const dMin = nice ? nice.min : r.min, dMax = nice ? nice.max : r.max
   const P = axes ? 1 : pad
   const x = (i: number) => P + (i / Math.max(1, n - 1)) * (VW - 2 * P)
-  const y = (v: number) => P + (1 - (v - dMin) / ((dMax - dMin) || 1)) * (H - 2 * P)
+  // invert (#333): put the SMALLEST value at the top — for pace (min/km), faster = up, matching the pace curve.
+  const y = (v: number) => P + (invert ? (v - dMin) / ((dMax - dMin) || 1) : 1 - (v - dMin) / ((dMax - dMin) || 1)) * (H - 2 * P)
   const fv = (v: number) => (fmt ? fmt(v) : `${Math.round(v * 10) / 10}${unit}`)
   const setH = (i: number | null) => { if (!ctrl) setHi(i); onHover?.(i) }
   const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - rect.left) / rect.width; setH(Math.max(0, Math.min(n - 1, Math.round(fx * (n - 1))))) }
@@ -157,7 +158,7 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
     </div>
   )
   if (!axes) return plot
-  const yTicks = nice ? nice.ticks.map((v) => ({ f: (dMax - v) / ((dMax - dMin) || 1), v })) : []
+  const yTicks = nice ? nice.ticks.map((v) => ({ f: (invert ? v - dMin : dMax - v) / ((dMax - dMin) || 1), v })) : []
   return (
     <div className="chart2">
       <div className="chart2__y">{yTicks.map((t, i) => <span key={i} style={{ top: `${t.f * 100}%` }}>{fv(t.v)}</span>)}</div>
@@ -233,6 +234,59 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
     </div>
   )
 }
+/** #333 — Best-PACE curve (running's power curve): fastest average pace sustained for each duration,
+ * on a LOG duration axis. Pace is inverted (faster = higher) so the curve reads like the power curve:
+ * short bursts fast at the left, easing to the right. `pace` in sec/km. */
+export function PaceCurveChart({ secs, pace, color = 'var(--accent, #34e07d)', height = 200 }: { secs: number[]; pace: number[]; color?: string; height?: number }) {
+  const [hi, setHi] = useState<number | null>(null)
+  const pts0 = secs.map((s, i) => [s, pace[i]] as [number, number]).filter(([s, p]) => s > 0 && p != null && p > 0)
+  if (pts0.length < 2) return <div className="chart-empty">No pace curve yet</div>
+  const sMin = Math.min(...pts0.map((p) => p[0])), sMax = Math.max(...pts0.map((p) => p[0]))
+  const pMin = Math.min(...pts0.map((p) => p[1])), pMax = Math.max(...pts0.map((p) => p[1])) // sec/km: min = fastest
+  const H = height, padT = 8, padB = 6, pad = 6
+  const span = Math.max(pMax - pMin, 20) // avoid a collapsed axis on a steady run
+  const lo = pMin - span * 0.08, range2 = span * 1.16
+  const fmtP = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
+  const lx = (s: number) => pad + ((Math.log(s) - Math.log(sMin)) / (Math.log(sMax) - Math.log(sMin) || 1)) * (VW - 2 * pad)
+  const y = (p: number) => padT + ((p - lo) / (range2 || 1)) * (H - padT - padB) // faster (smaller sec/km) → TOP
+  const ticks = DUR_TICKS.filter(([s]) => s >= sMin && s <= sMax)
+  const yLabels = [0, 0.25, 0.5, 0.75, 1].map((f) => lo + f * range2)
+  const d = 'M' + pts0.map((p) => `${lx(p[0])},${y(p[1])}`).join(' L')
+  const onMove = (ev: React.PointerEvent) => {
+    const rect = ev.currentTarget.getBoundingClientRect(); const xPx = ((ev.clientX - rect.left) / rect.width) * VW
+    let bi = 0, bd = Infinity
+    for (let i = 0; i < pts0.length; i++) { const dd = Math.abs(lx(pts0[i][0]) - xPx); if (dd < bd) { bd = dd; bi = i } }
+    setHi(bi)
+  }
+  const hpx = hi != null ? (lx(pts0[hi][0]) / VW) * 100 : 0
+  const fmtS = (s: number) => (s < 60 ? `${s}s` : s < 3600 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`)
+  return (
+    <div className="chart2">
+      <div className="chart2__y">{yLabels.map((p, i) => <span key={i} style={{ top: `${((p - lo) / range2) * 100}%` }}>{fmtP(p)}</span>)}</div>
+      <div className="chart2__plot" style={{ position: 'relative' }} onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHi(null)}>
+        <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
+          {yLabels.map((p, i) => <line key={'h' + i} x1={0} x2={VW} y1={y(p)} y2={y(p)} stroke="var(--line)" strokeWidth="0.5" opacity="0.35" />)}
+          {ticks.map(([s]) => <line key={s} x1={lx(s)} x2={lx(s)} y1={padT} y2={H - padB} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
+          <defs><linearGradient id="pace-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.25" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
+          <path d={`${d} L${lx(pts0[pts0.length - 1][0])},${H - padB} L${lx(pts0[0][0])},${H - padB} Z`} fill="url(#pace-fill)" />
+          <path className="trend-line" pathLength={1} d={d} fill="none" stroke={color} strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          {hi != null && <>
+            <line x1={lx(pts0[hi][0])} x2={lx(pts0[hi][0])} y1={0} y2={H} stroke="var(--text-dim)" strokeWidth="0.75" opacity="0.6" vectorEffect="non-scaling-stroke" />
+            <circle cx={lx(pts0[hi][0])} cy={y(pts0[hi][1])} r="3.5" fill={color} stroke="var(--bg)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+          </>}
+        </svg>
+        {hi != null && (
+          <div className="chart-tip" style={{ left: `${Math.max(13, Math.min(87, hpx))}%` }}>
+            <span className="chart-tip__d">{fmtS(pts0[hi][0])}</span>
+            <span style={{ color }}>{fmtP(pts0[hi][1])}/km</span>
+          </div>
+        )}
+      </div>
+      <div className="chart2__x">{ticks.map(([s, label]) => <span key={s}>{label}</span>)}</div>
+    </div>
+  )
+}
+
 /** Best watts at a target duration (nearest available sec) from a mean-max curve. */
 export function bestAt(secs: number[], watts: number[], target: number): number | null {
   let bi = -1, bd = Infinity

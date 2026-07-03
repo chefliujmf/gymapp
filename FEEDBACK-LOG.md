@@ -74,21 +74,25 @@ test guide → the **🧪 Test guide** section below.
     each stat shows its theory GATE when computed isn't ready ("after a hard ~5-min bike effort", "in ~N more nights —
     needs 21 nights"). `vo2max-submax.ts` (17 tests). Verified her number is realistic (Coros 49). On QA — awaiting JM ✅.
 335. 🔨 **Training frequency = free NUMBER field, not fixed 3/4/5/6 chips (#316b).** JM 2026-07-02: chips "stupid", just a field. Done: number input 0-14 days/week.
-334. ⬜ **Chart y-axis crammed + too close to the "PLANNED PACE" title.** JM 2026-07-02: the pace chart's y labels
-    (5:59/6:03/6:07…) crowd the title and are too dense/non-linear. Add spacing (title→chart) + fewer, cleaner ticks.
-    gymapp-only.
-333. ⬜ **COMPLETED run activity renders POWER (avg 220 W, POWER CURVE, TIME-IN-ZONE by FTP) — SHE WAS RUNNING.** JM
-    2026-07-02 (screenshots, Garmin FR255). ActivityDetail shows watts/power-curve/FTP-zones for a RUN; must be PACE:
-    pace chart (min/km), pace curve (best pace by duration), time-in-zone by PACE zones. Same class as #331 but the
-    analysed/completed view. Garmin records running power so the data exists — but runs show PACE. THE priority. gymapp-only.
+334. 🔨 **Chart y-axis crammed + too close to the "PLANNED PACE" title.** JM 2026-07-02: the pace chart's y labels
+    (5:59/6:03/6:07…) crowd the title and are too dense/non-linear. **Folded into #344** (min axis span spreads the
+    labels; step profile removes the near-vertical clutter). On QA — verify the title spacing reads OK too.
+333. 🔨 **COMPLETED run activity renders POWER (avg 220 W, POWER CURVE, TIME-IN-ZONE by FTP) — SHE WAS RUNNING.** JM
+    2026-07-02 (screenshots, Garmin FR255). Done: ActivityDetail now branches on sport — a RUN shows PACE everywhere:
+    hero/chips are pace-based (distance, avg pace, load, HR — no watts/NP/VI/eFTP); a **PACE timeline** (min/km from
+    velocity_smooth, faster=up) + HR/altitude/cadence; a **Pace tab** with a **pace curve** (best avg pace by duration,
+    inverted log axis) + **time-in-PACE-zone** (Daniels, off threshold pace). Added velocity_smooth/distance streams +
+    `PaceCurveChart` + TrendChart `invert`. Pure maths in `run-analysis.ts` (7 tests). Run-gated → zero ride regression.
+    Self-validated vs mock (mockups/run-analysis-check.html). On QA. NB: needs threshold pace set for the zone bar.
 332. ⬜ **Gym warm-up/cool-down are COMBINED multi-move lines with no demo.** JM 2026-07-02: "Warm-up: march on the spot,
     leg swings, 10 bodyweight squats, arm circles" (one line, generic icon) — "you combine 3?!". Break warm-up/cool-down
     into individual movements (each with a demo) OR render as a clean labelled routine block, not a garbled combined line
     that matches no library exercise. Coach authoring + render. gymapp-only.
-331. ⬜ **Platyplus renders a RUN as WATTS (117 W, "PLANNED POWER", Z3) + intervals shows empty/"% (0-0w)".** JM
+331. 🔨 **Platyplus renders a RUN as WATTS (117 W, "PLANNED POWER", Z3) + intervals shows empty/"% (0-0w)".** JM
     2026-07-02 (screenshots). The endurance detail (CoachPlanDetail) + charts are power-only; a run must show PACE
-    (min/km) using threshold pace, never watts. intervals: coach-authored run native text is bare "%" → parsed as 0 W;
-    must be pace + re-pushed. THE priority. gymapp-only.
+    (min/km) using threshold pace, never watts. **Done** (PLANNED view): CoachPlanDetail shows PLANNED PACE, native
+    "% pace" text pushes to intervals, pacing corrected + calibrated (#343) + chart fixed (#344). On QA. NB: the
+    COMPLETED/analysed run view is the sibling #333 (still open).
 330. ⬜ **Post-workout feedback form is PRE-FILLED with values nobody entered (POOR + RPE 10) + WRONG SPORT (cycling
     fields on a run) + incomplete.** JM 2026-07-02 (screenshot St-Lambert run): "How did it go?" shows POOR selected + RPE
     10 selected though the human entered nothing → looks like fake data. FIX: nothing selected until the user taps; use
