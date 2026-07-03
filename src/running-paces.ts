@@ -195,7 +195,10 @@ export function parsePace(text: string): number | null {
 // #331 — the coach authors run intensity as POWER-style % (Z2≈65%). Running PACE compresses hard:
 // 58% of threshold pace ≈ 9:30/km (walking), which is absurd. Remap a power-% to a REALISTIC % of
 // threshold pace so run targets are sane. MUST match server/icu-steps.js paceFromPowerPct.
-const PACE_ANCHORS: [number, number][] = [[40, 79], [55, 82], [65, 84], [75, 86], [85, 89], [95, 96], [100, 100], [110, 105], [120, 110]]
+// #343 — DERIVED FROM DANIELS FOUNDATIONS (see server/icu-steps.js): zone pace as % of threshold SPEED,
+// computed from the oxygen-cost curves below + stable across VDOT. Effort-% → pace-% of threshold. KEEP
+// IN SYNC with server/icu-steps.js PACE_ANCHORS.
+const PACE_ANCHORS: [number, number][] = [[20, 70], [30, 73], [40, 77], [55, 81], [65, 84], [75, 89], [85, 93], [95, 98], [100, 100], [108, 111], [120, 119]]
 // Returns a FLOAT (not rounded) so a ramped segment plots a smooth line, not a jagged integer staircase
 // (#331b — the run chart's warm-up ramp looked bad; round only at the final display/push).
 export function paceFromPowerPct(p: number): number {

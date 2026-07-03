@@ -71,6 +71,9 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
   const [map5, setMap5] = useState<number | null>(null) // #337 best 5-min power (MAP)
   const [pbWeight, setPbWeight] = useState<number | null>(null)
   const [runsRecent, setRunsRecent] = useState<number | null>(null)
+  const [compMaxHr, setCompMaxHr] = useState<number | null>(null) // #337c computed Max HR (observed peak ∨ intervals ceiling)
+  const [maxHrSamples, setMaxHrSamples] = useState<number>(0)
+  const [maxHrFrom, setMaxHrFrom] = useState<string>('')
   const [sleepEst, setSleepEst] = useState<number | null>(null) // computed sleep need (null until learned)
   const [sleepMore, setSleepMore] = useState<number | null>(null) // nights still needed
   const [open, setOpen] = useState<Key | null>(null)
@@ -80,7 +83,7 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
     if (!connected) return
     authApi.pullIcuAthlete().then(setPull).catch(() => {})
     authApi.runEstimate().then((r) => { if (r.available && r.thresholdPace) setPaceEst(r.thresholdPace) }).catch(() => {})
-    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null) } setRunsRecent(p.runsRecent ?? null) }).catch(() => {}) // #337
+    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? '') }).catch(() => {}) // #337
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)
     fetchWellness(from, to).then((rows) => {
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break }
@@ -116,7 +119,7 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
     { key: 'vo2max', label: 'VO₂max', computed: vo2head ? vo2head.value : null, computedSrc: vo2head ? `${confLabel(vo2head.confidence)} · ${vo2head.source}` : '', pending: vo2Gate, manual: user?.vo2max ?? null, fmt: String, parse: numParse(20, 95), save: (v) => authApi.saveProfile({ vo2max: v }).then(() => refresh()) },
     { key: 'ftp', label: 'FTP', unit: 'W', computed: eftp, computedSrc: 'eFTP from your power', pending: eftp ? undefined : 'lands automatically from your rides — eFTP updates as intervals sees hard efforts', manual: ftpManual, fmt: String, parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }) },
     { key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceEst, computedSrc: 'from your recent runs (Critical Speed)', pending: paceGate, manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }) },
-    { key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: null, computedSrc: '', pending: 'not estimated — there’s no safe way to guess it; set it from a hard effort or your watch', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }) },
+    { key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: compMaxHr, computedSrc: maxHrFrom === 'observed' ? `observed peak — highest HR in your last 180 days${maxHrSamples > 1 ? ` (hit ${maxHrSamples}×)` : ''}` : 'your zone ceiling from intervals — beat it in an all-out effort to raise it', pending: 'lands the first time you go all-out with a HR strap/watch — we read the peak, not an age formula', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }) },
     // #337 — sleep need joins the SAME picker (was a bespoke card). Learned from best-recovery nights.
     { key: 'sleepNeed', label: 'Sleep need', unit: 'h', computed: sleepEst, computedSrc: 'from your best-recovery nights', pending: sleepMore ? `in ~${sleepMore} more nights — needs 21 nights of sleep + HRV to learn your ideal` : undefined, manual: user?.sleepNeed ?? null, fmt: String, parse: numParse(4, 12), save: (v) => authApi.saveProfile({ sleepNeed: v }).then(() => refresh()) },
   ]

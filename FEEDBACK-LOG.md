@@ -22,6 +22,28 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+343. 🔨 **Coach used cycling power-logic on RUNS — "Recovery Run" pushed at 94–95% = Z4 threshold in PROD.**
+    JM 2026-07-03: her recovery run showed Z4 in intervals; her real endurance is ~6:15–6:45. Root cause: NO
+    running engine — the coach had a cycling engine (FTP) but nothing for running, so it thought "95% = just
+    below threshold = easy." **95% is NEVER easy, any sport.** JM: "have an engine per sport/activity … running
+    is different, he has books … those are the foundations, follow them — don't hard-code 95% scolds." Done:
+    (a) **per-sport engine map** `SPORT_ENGINES` in server.js + new `server/coach-engine-running.md` = Daniels
+    E/M/T/I/R FOUNDATIONS (physiology/%VO₂max, 80/20); (b) `PACE_ANCHORS` (icu-steps.js + running-paces.ts,
+    in sync) **re-derived from the Daniels oxygen-cost curves** — recovery 73%T, easy 81–84, marathon 93,
+    threshold 100, interval 111, rep 119; (c) `clampEasyEfforts` HARD guard (both sports) caps easy/recovery-
+    labelled segments prescribed >80% → wired into upsertPlan + planToIcuEvent; (d) MCP `create_run` schema
+    teaches the zones from the science. **Fixed her prod run** (94→Z1 7:13–7:25). 15 icu-steps tests. Coach
+    memory + skill + CLAUDE.md updated. [[platyplus-coach-engine]] [[platyplus-intervals-workout-steps]]
+342. 🔨 **Max HR IS computable — stop saying "no safe way to guess it".** JM 2026-07-03: the card claimed Max HR can
+    only be set manually. Wrong: the honest computed source is the **observed peak** — the highest per-activity max HR
+    over the last 180 days (what Garmin/Coros/intervals use). Age formulas are the unsafe guess; observed peak is real.
+    Done: `/auth/intervals/power-benchmarks` returns `observedMaxHr` + `maxHrSamples` (guarded 120–230 bpm); Benchmarks
+    Max HR card now has a Computed value + honest source ("observed peak — hit N×"); pending copy = "lands the first
+    time you go all-out with a strap/watch". Same Manual/Auto/Computed picker as the rest.
+341. ⬜ **Local WEATHER in the coach brain (heat/cold/wind → adjust intensity).** JM 2026-07-03: e.g. 32°C out → ease
+    intensity/pace, hydrate, or move indoors. Use a FREE no-key source (Open-Meteo) for the athlete's location (from
+    intervals lat/long or ask); coach reads the planned-day forecast + adjusts (heat derating on pace/power, hydration/
+    fuel note, indoor swap). Ties readiness + plan. gymapp-only.
 340. ⬜ **Banner for exercises/activities that haven't received FULL feedback (mock-first).** JM 2026-07-03: like the
     workout-feedback prompts, show a banner flagging exercises/sessions still missing complete feedback. Mock-first.
     gymapp-only.

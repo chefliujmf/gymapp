@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS } from '../server/icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts } from '../server/icu-steps.js'
 
 // #312 — a RUN must target PACE (%pace), a RIDE POWER (%ftp). The bug: every ride/run emitted
 // power → intervals (and the Garmin workout it syncs) showed WATTS on runs.
@@ -53,5 +53,61 @@ describe('flattenIcuStepsSrv — reads pace (runs) or power (rides), never colla
     const flat = flattenIcuStepsSrv([{ reps: 3, steps: [{ duration: 60, pace: { start: 110, end: 110, units: '%pace' } }] }])
     expect(flat).toHaveLength(3)
     expect(flat[0]).toMatchObject({ duration: 60, powerStart: 110 })
+  })
+})
+
+// #331c — the coach's easy/recovery effort must NEVER map near threshold. Two layers:
+// (a) paceFromPowerPct now reaches Z1 pace (~73–78%) for recovery efforts (30–40); (b) clampEasyEfforts
+// is a hard guard that caps any easy-LABELLED segment prescribed above threshold-adjacent %.
+describe('paceFromPowerPct — Daniels zones incl. recovery Z1', () => {
+  it('recovery effort (30–40) lands in Z1 pace (~73–77%), below easy Z2', () => {
+    expect(paceFromPowerPct(30)).toBe(73) // Daniels recovery ≈ 72.5% of threshold speed
+    expect(paceFromPowerPct(40)).toBe(77)
+    expect(paceFromPowerPct(30)).toBeLessThan(paceFromPowerPct(55)) // recovery slower than easy
+  })
+  it('easy/endurance (55–65) = Z2 (81–84%)', () => {
+    expect(paceFromPowerPct(55)).toBe(81)
+    expect(paceFromPowerPct(65)).toBe(84)
+  })
+  it('threshold = 100%, intervals/reps above it (Daniels I≈111%T, R≈118%T)', () => {
+    expect(paceFromPowerPct(100)).toBe(100)
+    expect(paceFromPowerPct(108)).toBe(111) // interval = velocity at VO₂max
+    expect(paceFromPowerPct(120)).toBe(119)
+  })
+})
+
+describe('clampEasyEfforts — "95% is never easy" hard guard (both sports)', () => {
+  it('clamps a Recovery run authored at 94–95% down to a real recovery effort', () => {
+    const segs = [
+      { duration: 300, powerStart: 94, powerEnd: 94, label: 'Warm-up walk/jog' },
+      { duration: 900, powerStart: 95, powerEnd: 95, label: 'Easy jog' },
+      { duration: 300, powerStart: 94, powerEnd: 94, label: 'Cool-down easy' },
+    ]
+    const { segments, clamped } = clampEasyEfforts('Recovery Shakeout Run', segs)
+    expect(clamped).toBe(3)
+    for (const s of segments) expect(s.powerStart).toBeLessThanOrEqual(55)
+    // recovery-titled → Z1 pace after remap
+    expect(paceFromPowerPct(segments[0].powerStart)).toBeLessThanOrEqual(80)
+  })
+  it('leaves intentional work (tempo/threshold/strides) untouched', () => {
+    const segs = [
+      { duration: 600, powerStart: 85, powerEnd: 85, label: 'Tempo' },
+      { duration: 30, powerStart: 110, powerEnd: 110, label: 'Stride' },
+      { duration: 1200, powerStart: 98, powerEnd: 98, label: 'Threshold' },
+    ]
+    const { segments, clamped } = clampEasyEfforts('Aerobic Run + Strides', segs)
+    expect(clamped).toBe(0)
+    expect(segments).toEqual(segs)
+  })
+  it('applies to rides too — a "recovery spin" at 95% FTP is clamped', () => {
+    const { segments, clamped } = clampEasyEfforts('Recovery Spin', [{ duration: 1800, powerStart: 95, powerEnd: 95, label: 'Easy spin' }])
+    expect(clamped).toBe(1)
+    expect(segments[0].powerStart).toBeLessThanOrEqual(55)
+  })
+  it('leaves an already-easy warm-up ramp (50→70) alone', () => {
+    const segs = [{ duration: 600, powerStart: 50, powerEnd: 70, label: 'Warm-up' }]
+    const { segments, clamped } = clampEasyEfforts('Endurance', segs)
+    expect(clamped).toBe(0)
+    expect(segments).toEqual(segs)
   })
 })
