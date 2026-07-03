@@ -134,7 +134,7 @@ const COACHING = {
 }
 const coachingOf = (a) => ({ objective: a.objective, cues: a.cues, tip: a.tip, success: a.success, recovery: a.recovery, fuel: a.fuel, mind: a.mind })
 server.tool('create_workout',
-  'Schedule a strength/gym workout on a date. Platyplus is the MASTER and mirrors to intervals.icu. Re-call with the same id to UPDATE. Send the session as generated (warm-up + cool-down, main set ordered by equipment, unilateral moves both sides). Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind strategy); pick exercises via search_exercises.',
+  'Schedule a strength/gym workout on a date. Platyplus is the MASTER and mirrors to intervals.icu. Re-call with the same id to UPDATE. Break the WARM-UP and COOL-DOWN into INDIVIDUAL moves — one entry each, tagged section:"warmup"/"cooldown", every one with a real library exId from search_exercises (the library has arm circles, leg swings, high knees, cat-cow, jogging in place, glute bridge, etc.). NEVER cram several movements into one "Warm-up: A, B, C" line. Main set ordered by equipment, unilateral moves both sides. Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind strategy).',
   {
     date: DATE,
     title: z.string(),
@@ -142,6 +142,7 @@ server.tool('create_workout',
     exercises: z.array(z.object({
       name: z.string(),
       exId: z.string().optional().describe('catalog id from search_exercises (links the demo)'),
+      section: z.enum(['warmup', 'main', 'cooldown']).optional().describe("which part of the session; default 'main'. Tag each warm-up/cool-down move so they render under their own header — do NOT combine moves into one line."),
       mode: z.enum(['reps', 'timed']).optional().describe("default 'reps'"),
       sets: z.number().int().optional(),
       reps: z.number().int().optional(),

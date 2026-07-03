@@ -1,0 +1,68 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym warm-up / cool-down — fix</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--warn:#f0b145;--bg:#0f1216;--line:#2a2f3a;--soft:#191c24}
+  *{box-sizing:border-box;margin:0}body{background:#05070a;color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:14px;max-width:460px;margin:auto}
+  h2{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin:20px 2px 8px;font-weight:800}
+  .cap{color:var(--dim);font-size:12px;margin:2px 2px 10px}.cap b{color:var(--accent)}
+  .toggle{display:flex;gap:6px;margin-bottom:8px}
+  .toggle button{flex:1;padding:8px 6px;border:1px solid var(--line);background:#12151c;color:var(--dim);border-radius:9px;font-size:12px;font-weight:700}
+  .toggle button.on{background:var(--accent);color:#08150c;border-color:var(--accent)}
+  .stage{display:none}.stage.on{display:block}
+  /* exercise row (real app style) */
+  .exrow{display:flex;gap:11px;align-items:center;background:linear-gradient(180deg,#21252f,#191c24);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px}
+  .th{flex:none;width:44px;height:44px;border-radius:9px;background:#14181f;display:flex;align-items:center;justify-content:center;font-size:20px;background-size:cover;position:relative}
+  .th .play{position:absolute;right:2px;bottom:2px;font-size:9px;background:#000a;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center}
+  .exb{flex:1;min-width:0}.ext{font-weight:700;font-size:14px}
+  .exm{font-size:12px;color:var(--dim);margin-top:2px}.exm b{color:var(--text)}
+  .dot::before{content:'·';margin:0 5px;color:var(--line)}
+  .seclabel{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;font-weight:800;margin:16px 2px 2px}
+  .bad{border-color:#e0484d55}
+  /* B — routine block */
+  .block{background:linear-gradient(180deg,#21252f,#191c24);border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin-top:8px}
+  .block__h{font-weight:800;font-size:14px;display:flex;align-items:center;gap:8px}
+  .block__h .pill{font-size:10px;font-weight:800;color:var(--accent);background:#34e07d18;border:1px solid #34e07d40;border-radius:999px;padding:2px 7px}
+  .move{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
+  .move:first-of-type{border-top:none}
+  .move__th{flex:none;width:34px;height:34px;border-radius:8px;background:#14181f;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .move__n{flex:1;font-size:13.5px}.move__d{font-size:12px;color:var(--dim)}
+</style>
+<div class="toggle">
+  <button class="on" onclick="show('cur',this)">Current (bug)</button>
+  <button onclick="show('A',this)">A · Individual moves</button>
+  <button onclick="show('B',this)">B · Routine block</button>
+</div>
+
+<div class="stage on" id="cur">
+  <p class="cap"><b>Today:</b> the whole warm-up is crammed into ONE exercise line — generic icon, no demo, matches no library move. JM: "you combine 3?!"</p>
+  <div class="seclabel">Session</div>
+  <div class="exrow bad"><div class="th">🏋️</div><div class="exb"><div class="ext">Warm-up: march on the spot, leg swings, 10 bodyweight squats, arm circles</div><div class="exm">1 × 1</div></div></div>
+  <div class="exrow"><div class="th" style="background-image:url(https://dummyimage.com/80x80/2a2f3a/2a2f3a)">🏋️<span class="play">▶</span></div><div class="exb"><div class="ext">Goblet Squat</div><div class="exm"><b>3×10</b><span class="dot"></span>rest 60s<span class="dot"></span>tempo 3-1-1-0</div></div></div>
+</div>
+
+<div class="stage" id="A">
+  <p class="cap"><b>A — each warm-up move is its own row</b> (demo + duration), grouped under a "Warm-up" header — same rich treatment as the main set. Coach picks each move from the library so every one has a demo.</p>
+  <div class="seclabel">🔥 Warm-up · ~5 min</div>
+  <div class="exrow"><div class="th">🚶<span class="play">▶</span></div><div class="exb"><div class="ext">March on the spot</div><div class="exm"><b>45s</b></div></div></div>
+  <div class="exrow"><div class="th">🦵<span class="play">▶</span></div><div class="exb"><div class="ext">Leg swings</div><div class="exm"><b>10/side</b></div></div></div>
+  <div class="exrow"><div class="th">🏋️<span class="play">▶</span></div><div class="exb"><div class="ext">Bodyweight squats</div><div class="exm"><b>10 reps</b></div></div></div>
+  <div class="exrow"><div class="th">🔄<span class="play">▶</span></div><div class="exb"><div class="ext">Arm circles</div><div class="exm"><b>30s</b></div></div></div>
+  <div class="seclabel">Main set</div>
+  <div class="exrow"><div class="th">🏋️<span class="play">▶</span></div><div class="exb"><div class="ext">Goblet Squat</div><div class="exm"><b>3×10</b><span class="dot"></span>rest 60s</div></div></div>
+</div>
+
+<div class="stage" id="B">
+  <p class="cap"><b>B — one tidy "Warm-up" block</b> listing the moves as a clean checklist (each with duration/reps + a small icon), not a garbled exercise line. Lighter; tap the block to expand demos.</p>
+  <div class="seclabel">Session</div>
+  <div class="block">
+    <div class="block__h">🔥 Warm-up <span class="pill">~5 min · 4 moves</span></div>
+    <div class="move"><div class="move__th">🚶</div><div class="move__n">March on the spot</div><div class="move__d">45s</div></div>
+    <div class="move"><div class="move__th">🦵</div><div class="move__n">Leg swings</div><div class="move__d">10/side</div></div>
+    <div class="move"><div class="move__th">🏋️</div><div class="move__n">Bodyweight squats</div><div class="move__d">10 reps</div></div>
+    <div class="move"><div class="move__th">🔄</div><div class="move__n">Arm circles</div><div class="move__d">30s</div></div>
+  </div>
+  <div class="exrow"><div class="th">🏋️<span class="play">▶</span></div><div class="exb"><div class="ext">Goblet Squat</div><div class="exm"><b>3×10</b><span class="dot"></span>rest 60s</div></div></div>
+</div>
+
+<script>function show(id,b){document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('on',s.id===id));document.querySelectorAll('.toggle button').forEach(x=>x.classList.remove('on'));if(b)b.classList.add('on')}
+var q=new URLSearchParams(location.search).get('o');if(q)show(q)</script>

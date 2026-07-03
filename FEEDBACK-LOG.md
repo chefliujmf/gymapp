@@ -90,10 +90,14 @@ test guide → the **🧪 Test guide** section below.
     inverted log axis) + **time-in-PACE-zone** (Daniels, off threshold pace). Added velocity_smooth/distance streams +
     `PaceCurveChart` + TrendChart `invert`. Pure maths in `run-analysis.ts` (7 tests). Run-gated → zero ride regression.
     Self-validated vs mock (mockups/run-analysis-check.html). On QA. NB: needs threshold pace set for the zone bar.
-332. ⬜ **Gym warm-up/cool-down are COMBINED multi-move lines with no demo.** JM 2026-07-02: "Warm-up: march on the spot,
-    leg swings, 10 bodyweight squats, arm circles" (one line, generic icon) — "you combine 3?!". Break warm-up/cool-down
-    into individual movements (each with a demo) OR render as a clean labelled routine block, not a garbled combined line
-    that matches no library exercise. Coach authoring + render. gymapp-only.
+332. 🔨 **Gym warm-up/cool-down are COMBINED multi-move lines with no demo.** JM 2026-07-02 ("you combine 3?!"). Picked
+    **option A** (individual demo'd moves under a header). Confirmed the library covers warm-up moves (99% w/ media: arm
+    circles, leg swings, high knees, cat-cow, jogging in place…). Done: `create_workout` gains a `section`
+    ('warmup'|'main'|'cooldown') field + guidance to author warm-up/cool-down as INDIVIDUAL library moves (each an exId),
+    never a combined line. CoachPlanDetail groups exercises under 🔥 Warm-up / Main set / 🧊 Cool-down headers (each move
+    its own demo row); the GymPlayer already plays them individually now. Mock A approved. On QA.
+    **Test:** ask the coach for a gym session → the plan shows warm-up as separate demo'd rows under a "🔥 Warm-up" header,
+    not one garbled line; each warm-up move opens a real demo video.
 331. 🔨 **Platyplus renders a RUN as WATTS (117 W, "PLANNED POWER", Z3) + intervals shows empty/"% (0-0w)".** JM
     2026-07-02 (screenshots). The endurance detail (CoachPlanDetail) + charts are power-only; a run must show PACE
     (min/km) using threshold pace, never watts. **Done** (PLANNED view): CoachPlanDetail shows PLANNED PACE, native

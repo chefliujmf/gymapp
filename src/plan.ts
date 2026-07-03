@@ -15,7 +15,7 @@ export interface CoachPlan {
   ftp?: number
   segments?: Segment[]
   rounds?: number
-  exercises?: Array<{ name: string; exId?: string; mode?: 'timed' | 'reps'; seconds?: number; sets?: number; reps?: number; weight?: number; rest?: number; tempo?: string; tip?: string }>
+  exercises?: Array<{ name: string; exId?: string; mode?: 'timed' | 'reps'; seconds?: number; sets?: number; reps?: number; weight?: number; rest?: number; tempo?: string; tip?: string; section?: 'warmup' | 'main' | 'cooldown' }>
   icuEventId?: string // set when this plan mirrors an intervals.icu event
   origin?: 'platyplus' | 'icu'
   // Structured coaching (optional; coach-authored). Meals/mind are separate calendar

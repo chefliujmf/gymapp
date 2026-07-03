@@ -161,32 +161,47 @@ export default function CoachPlanDetail() {
         <>
           <button className="btn" onClick={startGym}>▶ Start workout</button>
           {p.tip && <div className="tipbanner">💡 <span><b>Session tip:</b> {p.tip}</span></div>}
-          <div className="section-title">Exercises</div>
-          <div className="stack" style={{ gap: 8 }}>
-            {p.exercises!.map((x, i) => {
-              const demo = matchExercise(x.name)
-              const isOpen = open.has(i)
-              return (
-                <div key={i} className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                  <div className="ex-row" style={{ alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => toggle(i)}>
-                    <div className="ex-thumb-sm" style={demo?.image ? { backgroundImage: `url(${demo.image})` } : undefined}>{!demo?.image && '🏋️'}{demo?.video && <span className="ex-play-sm">▶</span>}</div>
-                    <div className="ex-row-text" style={{ flex: 1 }}>
-                      <h4>{x.name}</h4>
-                      <div className="meta" style={{ marginTop: 2 }}><span><b>{(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}</b></span>{x.rest ? <span className="dot">rest {x.rest}s</span> : null}{(() => { const e = (x.mode || 'reps') !== 'timed' ? e1rmFor(x.name) : undefined; const t = e ? roundLoad(weightForReps(e.e1rm, x.reps || 10)) : null; return t ? <span className="dot">target ~{t} kg</span> : null })()}{x.tempo ? <span className="dot" style={{ color: 'var(--accent)' }}>tempo {x.tempo} <InfoDot text="Seconds per rep — eccentric · pause bottom · concentric · pause top (e.g. 3-1-1-0 = 3s lower, 1s pause, 1s lift, 0s top). A slower lower = more time under tension." /></span> : null}</div>
-                      {x.tip && <div className="meta" style={{ marginTop: 4, color: 'var(--text-dim)', whiteSpace: 'normal' }}>💡 {x.tip}</div>}
-                    </div>
-                    <span style={{ opacity: 0.4, padding: '2px 4px' }}>{isOpen ? '▾' : '›'}</span>
-                  </div>
-                  {isOpen && demo && (
-                    <div style={{ padding: '0 12px 12px' }}>
-                      {demo.video ? <video className="ex-video-inline" src={demo.video} poster={demo.image} controls autoPlay loop muted playsInline /> : demo.image && <img className="ex-video-inline" src={demo.image} alt={x.name} />}
-                      <Link to={`/exercises/${demo.id}`} className="see-all" style={{ display: 'inline-block', marginTop: 6 }}>Full exercise →</Link>
-                    </div>
-                  )}
+          {/* #332 — warm-up/cool-down are INDIVIDUAL moves (each a demo), grouped under their own header. */}
+          {(() => {
+            const secOf = (x: { section?: string }) => (x.section === 'warmup' || x.section === 'cooldown' ? x.section : 'main')
+            const SEC: Record<string, string> = { warmup: '🔥 Warm-up', main: 'Main set', cooldown: '🧊 Cool-down' }
+            const exs = p.exercises!
+            const showHeaders = new Set(exs.map(secOf)).size > 1
+            return (
+              <>
+                {!showHeaders && <div className="section-title">Exercises</div>}
+                <div className="stack" style={{ gap: 8 }}>
+                  {exs.flatMap((x, i) => {
+                    const sec = secOf(x)
+                    const demo = matchExercise(x.name)
+                    const isOpen = open.has(i)
+                    const header = showHeaders && (i === 0 || secOf(exs[i - 1]) !== sec)
+                      ? <div key={'h' + i} className="section-title" style={{ fontSize: 12, margin: i ? '6px 2px 2px' : '0 2px 2px' }}>{SEC[sec]}</div> : null
+                    const card = (
+                      <div key={i} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                        <div className="ex-row" style={{ alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => toggle(i)}>
+                          <div className="ex-thumb-sm" style={demo?.image ? { backgroundImage: `url(${demo.image})` } : undefined}>{!demo?.image && (sec === 'warmup' ? '🔥' : sec === 'cooldown' ? '🧊' : '🏋️')}{demo?.video && <span className="ex-play-sm">▶</span>}</div>
+                          <div className="ex-row-text" style={{ flex: 1 }}>
+                            <h4>{x.name}</h4>
+                            <div className="meta" style={{ marginTop: 2 }}><span><b>{(x.mode || 'reps') === 'timed' ? `${x.seconds || 40}s` : `${x.sets || 3}×${x.reps || 10}`}</b></span>{x.rest ? <span className="dot">rest {x.rest}s</span> : null}{(() => { const e = (x.mode || 'reps') !== 'timed' && sec === 'main' ? e1rmFor(x.name) : undefined; const t = e ? roundLoad(weightForReps(e.e1rm, x.reps || 10)) : null; return t ? <span className="dot">target ~{t} kg</span> : null })()}{x.tempo && sec === 'main' ? <span className="dot" style={{ color: 'var(--accent)' }}>tempo {x.tempo} <InfoDot text="Seconds per rep — eccentric · pause bottom · concentric · pause top (e.g. 3-1-1-0 = 3s lower, 1s pause, 1s lift, 0s top). A slower lower = more time under tension." /></span> : null}</div>
+                            {x.tip && <div className="meta" style={{ marginTop: 4, color: 'var(--text-dim)', whiteSpace: 'normal' }}>💡 {x.tip}</div>}
+                          </div>
+                          <span style={{ opacity: 0.4, padding: '2px 4px' }}>{isOpen ? '▾' : '›'}</span>
+                        </div>
+                        {isOpen && demo && (
+                          <div style={{ padding: '0 12px 12px' }}>
+                            {demo.video ? <video className="ex-video-inline" src={demo.video} poster={demo.image} controls autoPlay loop muted playsInline /> : demo.image && <img className="ex-video-inline" src={demo.image} alt={x.name} />}
+                            <Link to={`/exercises/${demo.id}`} className="see-all" style={{ display: 'inline-block', marginTop: 6 }}>Full exercise →</Link>
+                          </div>
+                        )}
+                      </div>
+                    )
+                    return header ? [header, card] : [card]
+                  })}
                 </div>
-              )
-            })}
-          </div>
+              </>
+            )
+          })()}
         </>
       )}
 
