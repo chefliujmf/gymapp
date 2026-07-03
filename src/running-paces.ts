@@ -196,12 +196,14 @@ export function parsePace(text: string): number | null {
 // 58% of threshold pace ≈ 9:30/km (walking), which is absurd. Remap a power-% to a REALISTIC % of
 // threshold pace so run targets are sane. MUST match server/icu-steps.js paceFromPowerPct.
 const PACE_ANCHORS: [number, number][] = [[40, 79], [55, 82], [65, 84], [75, 86], [85, 89], [95, 96], [100, 100], [110, 105], [120, 110]]
+// Returns a FLOAT (not rounded) so a ramped segment plots a smooth line, not a jagged integer staircase
+// (#331b — the run chart's warm-up ramp looked bad; round only at the final display/push).
 export function paceFromPowerPct(p: number): number {
   const n = Number(p) || 0
   if (n <= PACE_ANCHORS[0][0]) return PACE_ANCHORS[0][1]
   if (n >= PACE_ANCHORS[PACE_ANCHORS.length - 1][0]) return PACE_ANCHORS[PACE_ANCHORS.length - 1][1]
   for (let i = 1; i < PACE_ANCHORS.length; i++) {
-    if (n <= PACE_ANCHORS[i][0]) { const [x0, y0] = PACE_ANCHORS[i - 1], [x1, y1] = PACE_ANCHORS[i]; return Math.round(y0 + (y1 - y0) * (n - x0) / (x1 - x0)) }
+    if (n <= PACE_ANCHORS[i][0]) { const [x0, y0] = PACE_ANCHORS[i - 1], [x1, y1] = PACE_ANCHORS[i]; return y0 + (y1 - y0) * (n - x0) / (x1 - x0) }
   }
   return 90
 }
