@@ -30,10 +30,14 @@ export default function Availability() {
     <>
       <div className="section-title" id="ob-avail">Weekly availability {saved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
 
-      {/* #316 — desired training frequency (drives base sessions; extras are optional bonus) */}
+      {/* #316 — desired training frequency (drives base sessions; extras are optional bonus). A free
+          NUMBER field, not fixed chips (#316b — "just have a field"). */}
       <p className="meta" style={{ margin: '2px 2px 6px' }}>How many days a week do you want to train?</p>
-      <div className="chips" style={{ marginBottom: 10 }}>
-        {[3, 4, 5, 6].map((n) => <button key={n} className={'chip' + (days === n ? ' chip--active' : '')} onClick={() => setFreq(n)}>{n} days</button>)}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <input type="number" inputMode="numeric" min={0} max={14} value={days || ''} placeholder="e.g. 4"
+          className="search" style={{ maxWidth: 92, textAlign: 'center' }}
+          onChange={(e) => setFreq(Math.max(0, Math.min(14, Math.round(Number(e.target.value) || 0))))} />
+        <span className="meta">days / week</span>
       </div>
 
       <p className="meta" style={{ margin: '2px 2px 8px' }}>And how long each day? Your coach fits sessions around it{days ? ` — ${days} planned, extras offered as optional` : ''}.</p>

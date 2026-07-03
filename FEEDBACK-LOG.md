@@ -22,6 +22,14 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+340. ⬜ **Banner for exercises/activities that haven't received FULL feedback (mock-first).** JM 2026-07-03: like the
+    workout-feedback prompts, show a banner flagging exercises/sessions still missing complete feedback. Mock-first.
+    gymapp-only.
+339. ⬜ **Coach scheduled a GYM and a RUN the SAME day — "crazy".** JM 2026-07-03. Respect training frequency (#316) +
+    availability; don't double-book a day unless the athlete explicitly wants a double. Coach prompt + plan logic guard.
+338. ⬜ **Coach CHAT on the app = wall of text, no titles.** JM 2026-07-03: format coach replies with headings/structure
+    (not a wall). Terse, scannable. Coach system prompt: use short sections/bold labels; the client renders markdown.
+335. 🔨 **Training frequency = free NUMBER field, not fixed 3/4/5/6 chips (#316b).** JM 2026-07-02: chips "stupid", just a field. Done: number input 0-14 days/week.
 334. ⬜ **Chart y-axis crammed + too close to the "PLANNED PACE" title.** JM 2026-07-02: the pace chart's y labels
     (5:59/6:03/6:07…) crowd the title and are too dense/non-linear. Add spacing (title→chart) + fewer, cleaner ticks.
     gymapp-only.

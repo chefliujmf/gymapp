@@ -6,11 +6,12 @@
 // under `pace` for runs so intervals — and the Garmin workout it syncs — shows pace, never watts.
 export const MAX_DOC_STEP_SECONDS = 3600
 
-// #331 — the coach authors intensity as POWER-style % (Z1≈55%, Z2≈65%, threshold≈100%). Running PACE
-// does NOT scale like power: even an easy jog is ~80% of threshold pace, not 55% (58% of threshold
-// pace = ~9:30/km = walking, the "ridiculous" bug). Remap a power-% to a REALISTIC % of threshold pace
-// so the pace targets are sane. Anchors from run training zones (Daniels/Coggan-pace equivalents).
-const PACE_ANCHORS = [[40, 82], [55, 86], [65, 89], [75, 92], [85, 95], [95, 98], [100, 100], [110, 104], [120, 108]]
+// #331/#336 — the coach authors intensity as POWER-style % (Z1≈55%, Z2≈65%, threshold≈100%). Running
+// PACE does NOT scale like power. Calibrated to DANIELS zones: Easy (E) pace = threshold + ~45–75 s/km,
+// i.e. ~84–86% of threshold PACE (NOT 92% — that's marathon/steady, which made "easy" feel hard). So an
+// aerobic/endurance segment (power 65–78%) lands at ~84–86% pace = threshold+50–70 s. Threshold=100%,
+// intervals/reps go >100%. This is the E/M/T/I/R relationship, not a linear power scale.
+const PACE_ANCHORS = [[40, 79], [55, 82], [65, 84], [75, 86], [85, 89], [95, 96], [100, 100], [110, 105], [120, 110]]
 export function paceFromPowerPct(p) {
   const n = Number(p) || 0
   if (n <= PACE_ANCHORS[0][0]) return PACE_ANCHORS[0][1]

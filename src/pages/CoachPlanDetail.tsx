@@ -105,8 +105,11 @@ export default function CoachPlanDetail() {
         // would be ~9:30/km walking). Matches the intervals push exactly.
         const pctPace = (pct: number) => (thrPace && pct > 0 ? Math.round(thrPace * 100 / paceFromPowerPct(pct)) : null)
         const tgt = (pct: number, watts?: number | null) => isRun ? (pctPace(pct) ? `${fmtPace(pctPace(pct)!)}/km` : `${pct}%`) : (watts ? `${watts} W` : `${pct}%`)
-        // plot the EFFORT shape (harder = up, like the cycling power chart) but LABEL the axis in min/km.
-        const runFmt = (v: number) => (thrPace && v > 0 ? `${fmtPace(Math.round(thrPace * 100 / paceFromPowerPct(v)))}` : `${Math.round(v)}%`)
+        // #331b — SMOOTH run chart: sample each segment (incl. ramps) and remap to pace-% as a FLOAT, so a
+        // ramp draws a clean line — not the jagged integer staircase plannedSeries(…,100) made. Effort-up
+        // (harder = higher), just like the cycling power chart; fmt maps the pace-% back to min/km.
+        const runShape = (): number[] => { const out: number[] = []; for (const s of (p.segments || [])) { const dur = Number(s.duration) || 0; const n = Math.max(2, Math.round(dur / 5)); const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; for (let i = 0; i < n; i++) { const f = n > 1 ? i / (n - 1) : 0; out.push(paceFromPowerPct(a + (b - a) * f)) } } return out }
+        const runFmt = (v: number) => (thrPace && v > 0 ? `${fmtPace(Math.round(thrPace * 100 / v))}` : `${Math.round(v)}%`)
         // #280 hero (4 headline targets) + chips (JM pick B, same spirit as post-workout)
         const hero: [string, string][] = [
           load ? ['Target TSS', String(load.tss)] : null,
@@ -129,7 +132,7 @@ export default function CoachPlanDetail() {
           <div className="tl-card" style={{ marginTop: 8 }}>
             {/* #331 — a RUN never shows watts: pace curve if we have a threshold pace, else the % shape. */}
             <div className="tl-clabel">{isRun ? (thrPace ? 'PLANNED PACE · min/km · target shape' : 'PLANNED EFFORT · % of threshold · target shape') : 'PLANNED POWER · W · target shape'}</div>
-            <TrendChart series={[{ label: 'Target', data: isRun ? plannedSeries(p.segments!, 100) : plannedSeries(p.segments!, rFtp), color: '#34e07d', area: true }]} height={150} axes unit={isRun ? (thrPace ? '/km' : '%') : ' W'} fmt={isRun ? runFmt : undefined} xTicks={minuteTicks(totalSec)} />
+            <TrendChart series={[{ label: 'Target', data: isRun ? runShape() : plannedSeries(p.segments!, rFtp), color: '#34e07d', area: true }]} height={150} axes unit={isRun ? (thrPace ? '/km' : '%') : ' W'} fmt={isRun ? runFmt : undefined} xTicks={minuteTicks(totalSec)} />
             {isRun && !thrPace && <div className="act-ins"><span className="tag">⚙</span>Set your <Link to="/profile?onboard=1#ob-numbers" style={{ color: 'var(--accent)' }}>threshold pace</Link> so these show as min/km.</div>}
             <div className="act-ins"><span className="tag">💡</span>{p.cues?.[0] || (sum && sum.mainPct >= 91 ? 'Warm up fully — the first hard effort should feel controlled, not a shock; keep recoveries easy and let HR drop.' : 'Hold steady targets — smooth and repeatable beats spiky.')}</div>
           </div>

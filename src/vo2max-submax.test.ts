@@ -34,14 +34,32 @@ describe('runningVo2max — VDOT (pace) is trusted, HR-ratio never inflates it (
   it('null with nothing', () => expect(runningVo2max({})).toBeNull())
 })
 
-describe('cyclingVo2max — Coggan then HR-ratio×0.95', () => {
-  it('Coggan from eFTP÷weight', () => {
-    expect(cyclingVo2max({ ftp: 260, weightKg: 76 })!.value).toBeCloseTo(10.8 * 260 / 76 + 7, 1)
+describe('cyclingVo2max — MAP (5-min power) preferred, FTP→MAP fallback (#337)', () => {
+  it('5-min max power is the accurate MAP input (305 W / 76 kg ≈ 50, matches Coros)', () => {
+    const e = cyclingVo2max({ map5min: 305, weightKg: 76 })!
+    expect(e.value).toBeCloseTo(10.8 * 305 / 76 + 7, 1)
+    expect(e.value).toBeGreaterThan(48)
+    expect(e.source).toMatch(/5-min/)
+    expect(e.confidence).toBe('medium')
+  })
+  it('FTP alone is scaled up to est. MAP (×1.22) so it does not read artificially low', () => {
+    const ftpEst = cyclingVo2max({ ftp: 235, weightKg: 76 })!.value
+    const rawFtp = 10.8 * 235 / 76 + 7 // the old, too-low number (~40)
+    expect(ftpEst).toBeGreaterThan(rawFtp + 4)
   })
   it('HR-ratio fallback reads a touch lower than running', () => {
     const run = runningVo2max({ hrMax: 185, hrRest: 55 })!.value
     const cyc = cyclingVo2max({ hrMax: 185, hrRest: 55 })!.value
     expect(cyc).toBeLessThan(run)
+  })
+})
+
+describe('runningVo2max thin-volume guard (#337)', () => {
+  it('barely any runs (<4) → no running VO₂max at all', () => {
+    expect(runningVo2max({ vdot: 45, runsRecent: 1 })).toBeNull()
+  })
+  it('enough runs → normal estimate', () => {
+    expect(runningVo2max({ vdot: 45, runsRecent: 12 })!.value).toBe(45)
   })
 })
 

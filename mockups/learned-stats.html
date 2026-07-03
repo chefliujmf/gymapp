@@ -1,0 +1,115 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learned stats — your data</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--you:#9b8cff;--icu:#34e07d;--est:#5ec8ff;--learn:#f0b145}
+  *{box-sizing:border-box;margin:0;-webkit-font-smoothing:antialiased}
+  body{background:#05070a;color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:14px}
+  .cap{color:var(--dim);font-size:12px;text-align:center;margin:0 auto 12px;max-width:430px;line-height:1.5}
+  .cap b{color:var(--accent)}
+  .phone{max-width:430px;margin:0 auto;background:var(--bg);border:1px solid var(--line);border-radius:22px;padding:16px 14px 22px}
+  h2{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);margin:6px 2px 12px;display:flex;align-items:center;gap:8px}
+  .sport{font-size:10px;font-weight:800;color:var(--dim)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+  .cell{min-width:0;background:linear-gradient(180deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;padding:11px 12px}
+  .cell.full{grid-column:1/-1}
+  .cell__l{font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .tag{font-size:8.5px;font-weight:800;border-radius:999px;padding:1px 6px;border:1px solid}
+  .tag--you{color:var(--you);border-color:#9b8cff66}
+  .tag--icu{color:var(--icu);border-color:#34e07d66}
+  .tag--est{color:var(--est);border-color:#5ec8ff66}
+  .tag--learn{color:var(--learn);border-color:#f0b14566}
+  .cell__v{font-size:22px;font-weight:850;margin:6px 0 1px}
+  .cell__v small{font-size:12px;color:var(--dim);font-weight:600;margin-left:2px}
+  .cell__s{font-size:10.5px;color:var(--dim);line-height:1.35}
+  .cell__s b{color:var(--text)}
+  .learnbar{height:4px;border-radius:3px;background:#2a2f3a;overflow:hidden;margin:7px 0 5px}
+  .learnbar i{display:block;height:100%;background:var(--learn)}
+  .tapnote{text-align:center;font-size:11px;color:var(--dim);margin:2px 2px 0}
+
+  /* picker sheet */
+  .sheet{max-width:430px;margin:16px auto 0;background:linear-gradient(180deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:18px;padding:16px}
+  .sheet h3{font-size:16px;margin:0 0 3px}
+  .sheet .sub{font-size:12px;color:var(--dim);margin-bottom:14px}
+  .opts{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+  .opt{display:flex;justify-content:space-between;align-items:center;border:1.5px solid var(--line);border-radius:12px;padding:11px 13px}
+  .opt.on{border-color:var(--accent);background:#1c3a2a55}
+  .opt__l{font-weight:750;font-size:14px}
+  .opt__s{font-size:11px;color:var(--dim)}
+  .opt__v{font-weight:850;font-size:15px}
+  .opt__v.you{color:var(--you)}.opt__v.est{color:var(--est)}
+  .toggle{display:flex;gap:6px;background:#12151c;border:1px solid var(--line);border-radius:11px;padding:4px}
+  .toggle button{flex:1;padding:9px;border:none;border-radius:8px;background:none;color:var(--dim);font-weight:800;font-size:13px}
+  .toggle button.on{background:var(--accent);color:#08150c}
+  .why{font-size:11.5px;color:var(--dim);margin-top:10px;line-height:1.45}
+</style>
+
+<p class="cap"><b>Your data — set, estimated &amp; learning.</b> Every stat shows its <b>value</b>, where it comes from (<span style="color:var(--you)">yours</span>/<span style="color:var(--icu)">device</span>/<span style="color:var(--est)">estimate</span>), and its <b>learning state</b>. Tap any to pick Manual · Auto · Computed. Cycling = power, running = pace.</p>
+
+<div class="phone">
+  <h2>🚴 Cycling <span class="sport">· power</span></h2>
+  <div class="grid">
+    <div class="cell">
+      <div class="cell__l">VO₂max <span class="tag tag--you">Coros</span></div>
+      <div class="cell__v">50</div>
+      <div class="cell__s">Your device value. Estimate agrees: <b>~50</b> from your 5-min max power (305 W ≈ 4.0 W/kg).</div>
+    </div>
+    <div class="cell">
+      <div class="cell__l">FTP <span class="tag tag--icu">intervals</span></div>
+      <div class="cell__v">235<small>W</small></div>
+      <div class="cell__s">eFTP from your power curve. <b>3.1 W/kg.</b></div>
+    </div>
+    <div class="cell">
+      <div class="cell__l">Max HR <span class="tag tag--you">yours</span></div>
+      <div class="cell__v">188<small>bpm</small></div>
+      <div class="cell__s">Your set value.</div>
+    </div>
+    <div class="cell">
+      <div class="cell__l">Threshold HR <span class="tag tag--est">est.</span></div>
+      <div class="cell__v">168<small>bpm</small></div>
+      <div class="cell__s">From your rides — confirm it.</div>
+    </div>
+  </div>
+
+  <h2>🏃 Running <span class="sport">· pace</span></h2>
+  <div class="grid">
+    <div class="cell">
+      <div class="cell__l">Threshold pace <span class="tag tag--you">yours</span></div>
+      <div class="cell__v">5:25<small>/km</small></div>
+      <div class="cell__s">Daniels zones: easy <b>6:13–6:53</b>, interval 4:53.</div>
+    </div>
+    <div class="cell">
+      <div class="cell__l">VO₂max <span class="tag tag--est">est.</span></div>
+      <div class="cell__v">—</div>
+      <div class="cell__s">Barely any runs — <b>not estimated from running</b>. Uses your cycling value.</div>
+    </div>
+  </div>
+
+  <h2>🌙 Recovery <span class="sport">· learning</span></h2>
+  <div class="grid">
+    <div class="cell">
+      <div class="cell__l">Sleep need <span class="tag tag--learn">learning</span></div>
+      <div class="cell__v">8<small>h</small></div>
+      <div class="learnbar"><i style="width:38%"></i></div>
+      <div class="cell__s">Learning your real need — <b>~13 more nights</b>. Using 8 h for now.</div>
+    </div>
+    <div class="cell">
+      <div class="cell__l">Energy <span class="tag tag--learn">building</span></div>
+      <div class="cell__v">3.8<small>/5</small></div>
+      <div class="learnbar"><i style="width:20%"></i></div>
+      <div class="cell__s">First estimate — <b>~11 more nights</b> to personalise to your HRV baseline.</div>
+    </div>
+  </div>
+  <p class="tapnote">Tap any stat → Manual · Auto · Computed ↓</p>
+</div>
+
+<!-- picker sheet (VO₂max tapped) -->
+<div class="sheet">
+  <h3>VO₂max</h3>
+  <div class="sub">Cycling · from your power. Pick which value drives your plan &amp; readiness.</div>
+  <div class="opts">
+    <div class="opt on"><div><div class="opt__l">Manual</div><div class="opt__s">Your Coros / measured value</div></div><div class="opt__v you">50</div></div>
+    <div class="opt"><div><div class="opt__l">Computed</div><div class="opt__s">From 5-min max power (MAP), 90-day best</div></div><div class="opt__v est">50</div></div>
+  </div>
+  <div class="toggle"><button>Manual</button><button class="on">Auto</button><button>Computed</button></div>
+  <div class="why"><b>Auto:</b> use your Coros value; if it’s ever missing, fall back to the 5-min-power estimate. The estimate keeps updating in the background either way.</div>
+</div>

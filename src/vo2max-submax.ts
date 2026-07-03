@@ -22,7 +22,10 @@ export function hrRatioVo2max(hrMax?: number | null, hrRest?: number | null): nu
  *  method inflates when HRmax is ASSUMED (220−age), so it must NOT win (the old Math.max biased high →
  *  an unbelievable 52 for a 6:45/km runner). Prefer VDOT; if HR-ratio diverges a lot, the VDOT is only
  *  low-confidence (thin/uncertain data), never the higher HR number. */
-export function runningVo2max({ vdot, hrMax, hrRest }: { vdot?: number | null; hrMax?: number | null; hrRest?: number | null }): Vo2Estimate | null {
+export function runningVo2max({ vdot, hrMax, hrRest, runsRecent }: { vdot?: number | null; hrMax?: number | null; hrRest?: number | null; runsRecent?: number | null }): Vo2Estimate | null {
+  // #337 — a VDOT off almost no running is meaningless (JM: "I barely run"). If we know the recent run
+  // count and it's thin (<4), DON'T offer a running VO₂max at all — let the sport they actually train win.
+  if (runsRecent != null && runsRecent < 4) return null
   const hr = hrRatioVo2max(hrMax, hrRest)
   if (vdot) {
     const diverges = hr != null && Math.abs(vdot - hr) > 6 // HRmax likely assumed / stale → trust pace, flag it
@@ -32,9 +35,15 @@ export function runningVo2max({ vdot, hrMax, hrRest }: { vdot?: number | null; h
   return null
 }
 
-/** Cycling VO₂max — Coggan from eFTP÷weight; HR-ratio ×0.95 fallback. */
-export function cyclingVo2max({ ftp, weightKg, hrMax, hrRest }: { ftp?: number | null; weightKg?: number | null; hrMax?: number | null; hrRest?: number | null }): Vo2Estimate | null {
-  if (ftp && weightKg && weightKg > 0) return { value: round1(10.8 * ftp / weightKg + 7), source: 'your power ÷ weight', confidence: 'low' }
+/** Cycling VO₂max. #337 — the `10.8 × W/kg + 7` (Storer/Hawley) formula is for MAXIMAL AEROBIC POWER
+ *  (MAP ≈ your best 5–6-min power), NOT FTP. Feeding it raw FTP under-reads badly (a 235 W / 76 kg
+ *  rider → 40, when Coros says 50). So: use **5-min max power** when we have it (accurate); else scale
+ *  FTP up to an estimated MAP (FTP ≈ 0.82·MAP → MAP ≈ FTP × 1.22) so the estimate isn't artificially low. */
+export function cyclingVo2max({ ftp, weightKg, hrMax, hrRest, map5min }: { ftp?: number | null; weightKg?: number | null; hrMax?: number | null; hrRest?: number | null; map5min?: number | null }): Vo2Estimate | null {
+  if (weightKg && weightKg > 0) {
+    if (map5min && map5min > 0) return { value: round1(10.8 * map5min / weightKg + 7), source: 'your 5-min max power', confidence: 'medium' }
+    if (ftp && ftp > 0) return { value: round1(10.8 * (ftp * 1.22) / weightKg + 7), source: 'your FTP (→ est. MAP)', confidence: 'low' }
+  }
   const hr = hrRatioVo2max(hrMax, hrRest)
   if (hr) return { value: round1(hr * 0.95), source: 'your max & resting HR', confidence: 'low' }
   return null
