@@ -106,8 +106,14 @@ test guide → the **🧪 Test guide** section below.
     running Fuel), `FIELDS.run` uses them, and BOTH the app read (`readIcuFeedback`, sport-aware) AND the server write
     (`ICU_FB_FIELDS_RUN`) map through the run options so the round-trip + coach message stay consistent. 6 read-feedback
     tests. On QA.
-329. ⬜ **Factor the MENSTRUAL CYCLE into coaching + readiness — with a defined FORMULA.** JM 2026-07-02 (very
-    important): account for cycle phase. If intervals exposes cycle wellness (and it's not private), the coach READS it;
+329. 🔨 **Factor the MENSTRUAL CYCLE into coaching + readiness — with a defined FORMULA.** JM 2026-07-02 (very important).
+    Formula done earlier (server/cycle.js, 10 tests, on prod). NOW wired end-to-end: `/auth/readiness` derives the phase
+    (intervals `menstrualPhase` → else stored cycle start+length via phaseFromDay), **passes cyclePhase to the readiness
+    engine** (luteal RHR↑/HRV↓ no longer docks Energy) AND stashes it so **buildSystemPrompt injects the phase into the
+    coach** — it now biases the PLAN by phase (green-light follicular/ovulatory; ease late-luteal if symptomatic), not just
+    Energy; asks once if unknown. Minimal cycle UI on Profile (female only): last-period-start + length + a phase readout.
+    308 tests. On QA. STILL OPEN: a richer in-app cycle tracker + writing the phase BACK to intervals.
+    (orig ask ↓) If intervals exposes cycle wellness (and it's not private), the coach READS it;
     else it ASKS (cycle start date + typical length). DEFINE a formula: phase from cycle day → (a) LOAD modifier (push in
     follicular/ovulatory, ease late-luteal/menses if symptomatic) + (b) readiness interpretation (luteal naturally raises
     RHR / lowers HRV + core temp → don't dock Energy for it; adjust baseline by phase). Extends the female module

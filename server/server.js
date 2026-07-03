@@ -29,6 +29,7 @@ import { readiness as computeReadiness, baselines as wellnessBaselines, forecast
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
+import { cycleContext, normalizePhase, phaseFromDay } from './cycle.js' // #329
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -568,8 +569,16 @@ app.get('/auth/readiness', auth, async (req, res) => {
     date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
     restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, eftp: d.eftp ?? d.icu_eftp ?? null,
     sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null,
+    menstrualPhase: d.menstrualPhase ?? d.menstrualPhasePredicted ?? null, // #329
   }))
   const today = rows.find((r) => r.date === date) || rows[rows.length - 1] || {}
+  // #329 — cycle phase for female athletes: intervals wellness `menstrualPhase` if present, else derive
+  // from a stored cycle start date + length. Stash it so the coach's system prompt can adjust the PLAN.
+  const cyclePhase = req.user.sex === 'female'
+    ? (normalizePhase(today.menstrualPhase)
+      || (req.user.info?.cycleStart ? phaseFromDay(Math.floor((new Date(date) - new Date(req.user.info.cycleStart)) / 86400000) + 1, req.user.info.cycleLength) : null))
+    : null
+  if (cyclePhase) { req.user.cyclePhase = cyclePhase; req.user.cyclePhaseAt = date } else if (req.user.cyclePhase) { delete req.user.cyclePhase; delete req.user.cyclePhaseAt }
   const history = rows.filter((r) => r.date < date)
   // #236: stash the latest resting HR + eFTP so the coach's computed VO₂max/FTP match the app.
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { req.user.restingHR = rows[i].restingHR; break }
@@ -583,7 +592,7 @@ app.get('/auth/readiness', auth, async (req, res) => {
   // #207 Phase 2b: pass PAST check-ins (before this date) so the model calibrates to the athlete's
   // own overrides — but never the day being viewed. #235: skip entirely if learning is turned OFF.
   const calCheckins = req.user.learnReadiness === false ? [] : (req.user.checkins || []).filter((c) => c && c.date < date)
-  res.json({ connected: true, date, sleepNeed, today, ...computeReadiness(history, today, { sleepNeed, checkins: calCheckins }) })
+  res.json({ connected: true, date, sleepNeed, today, cyclePhase, ...computeReadiness(history, today, { sleepNeed, checkins: calCheckins, cyclePhase }) })
 })
 
 // #223 — FORECAST a FUTURE day's freshness from planned load (only Freshness is knowable ahead;
@@ -936,6 +945,14 @@ function buildSystemPrompt(user) {
   }
   const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
+  // #329 — this athlete's CURRENT cycle phase (from intervals menstrualPhase or a stored cycle start,
+  // stashed by /auth/readiness). Adjust the PLAN by phase, not just readiness. Only if reasonably fresh.
+  if (isFemale) {
+    const fresh = user.cyclePhaseAt && (Date.now() - new Date(user.cyclePhaseAt + 'T00:00:00Z').getTime()) < 6 * 86400000
+    const cc = fresh ? cycleContext({ phase: user.cyclePhase }) : null
+    if (cc) p += `\n\n# CYCLE PHASE — currently **${cc.phase}** (as of ${user.cyclePhaseAt}). ${cc.guidance} When you plan or adjust this week, apply a load bias of ~×${cc.loadModifier} for this phase (push intensity in the follicular/ovulatory green window; ease top-end + add recovery/Z2 + carbs/sleep in late-luteal/PMS if symptomatic). Don't over-medicalise it — many train through; adapt to how SHE reports feeling. Their late-luteal RHR/HRV naturally shift, so don't read that as poor recovery.`
+    else if (!user.cyclePhase) p += `\n\n# CYCLE PHASE — unknown. If it would help tailor load/recovery and she's open to it, ASK for her last period start date + typical cycle length (or connect it in intervals), then factor the phase into planning. Never assume; ask once, respect a "no".`
+  }
   // #207 Phase 2: the athlete's own benchmarks — so the coach judges intensity FOR THEM.
   const stats = []
   // #236/#277: FTP resolves by statPrefs.ftp — computed/AUTO prefer eFTP when available, else the set FTP.

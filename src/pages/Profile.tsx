@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getSetting, setSetting } from '../db'
-import { authApi } from '../auth/api'
+import { authApi, type User } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import Availability from '../Availability'
 import EquipmentPicker from '../EquipmentPicker'
@@ -14,6 +14,41 @@ import { dataGaps } from '../dataGaps'
 const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['strength', 'Strength'], ['yoga', 'Yoga'], ['pilates', 'Pilates'], ['meditation', 'Meditation']]
 const DIETS: [string, string][] = [['vegetarian', 'vegetarian'], ['vegan', 'vegan'], ['no preference', 'no preference']]
 
+
+// #329 — optional cycle inputs (last period start + typical length). The coach uses intervals'
+// menstrualPhase first; this is the fallback/manual path. Phase readout mirrors server/cycle.js.
+function cyclePhaseOf(start?: string, len = 28): { day: number; phase: string } | null {
+  if (!start) return null
+  const L = Math.max(21, Math.min(40, Number(len) || 28))
+  const day = ((Math.floor((Date.now() - new Date(start + 'T00:00:00').getTime()) / 86400000)) % L + L) % L + 1
+  const ovul = L - 14
+  const phase = day <= 5 ? 'menstrual' : day < ovul ? 'follicular' : day <= ovul + 1 ? 'ovulatory' : day >= L - 2 ? 'late luteal (PMS)' : 'luteal'
+  return { day, phase }
+}
+function CycleFields({ user, refresh }: { user: User; refresh: () => Promise<void> }) {
+  const info = (user.info || {}) as { cycleStart?: string; cycleLength?: number }
+  const [start, setStart] = useState(info.cycleStart || '')
+  const [len, setLen] = useState<number>(info.cycleLength || 28)
+  const [saved, setSaved] = useState(false)
+  const save = (patch: { cycleStart?: string; cycleLength?: number }) => { authApi.saveProfile(patch).then(() => { refresh().catch(() => {}); setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {}) }
+  const ph = cyclePhaseOf(start, len)
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div className="section-title" style={{ fontSize: 13 }}>Menstrual cycle <span className="meta" style={{ fontWeight: 400 }}>· optional{saved ? ' · Saved ✓' : ''}</span></div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Last period start
+          <input type="date" className="search" style={{ maxWidth: 160 }} value={start} onChange={(e) => { setStart(e.target.value); save({ cycleStart: e.target.value }) }} />
+        </label>
+        <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Cycle length
+          <input type="number" inputMode="numeric" min={21} max={40} className="search" style={{ maxWidth: 92, textAlign: 'center' }} value={len} onChange={(e) => { const v = Math.max(21, Math.min(40, Math.round(Number(e.target.value) || 28))); setLen(v); save({ cycleLength: v }) }} />
+        </label>
+      </div>
+      {ph
+        ? <p className="meta" style={{ margin: '6px 2px 4px', color: 'var(--accent)' }}>~Day {ph.day} · likely <b>{ph.phase}</b> — your coach adapts load, recovery & fuelling for it.</p>
+        : <p className="meta" style={{ margin: '6px 2px 4px' }}>Add these and your coach adapts training to your cycle phase. If you sync it in intervals, it's read automatically.</p>}
+    </div>
+  )
+}
 
 export default function Profile() {
   const navigate = useNavigate()
@@ -102,6 +137,10 @@ export default function Profile() {
       {user?.sex === 'female'
         ? <p className="meta" style={{ margin: '6px 2px 4px', color: 'var(--accent)' }}>💚 Coaching adjusted for female physiology — cycle-aware fuelling, recovery & load.</p>
         : <p className="meta" style={{ margin: '6px 2px 4px' }}>Tunes fuelling & recovery.{connected ? ' Prefilled from intervals.' : ''}</p>}
+
+      {/* #329 — optional cycle tracking → the coach adapts load/recovery by phase (uses intervals' phase
+          first; this is the fallback + for those not syncing it). Only shown for female athletes. */}
+      {user?.sex === 'female' && <CycleFields user={user} refresh={refresh} />}
 
       {/* #323 — rich goals/identity capture (what makes coaching personal) */}
       <GoalsPicker />
