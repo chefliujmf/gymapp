@@ -68,24 +68,28 @@ function niceTicks(min: number, max: number, count = 5): { min: number; max: num
   for (let v = nMin; v <= nMax + step * 0.001; v += step) ticks.push(Math.round(v * 1000) / 1000)
   return { min: nMin, max: nMax, ticks }
 }
-const range = (series: Series[]) => {
+const range = (series: Series[], minSpan?: number) => {
   const all = series.flatMap((s) => s.data.filter((v): v is number => v != null))
   if (!all.length) return null
   let min = Math.min(...all), max = Math.max(...all)
   if (min === max) { min -= 1; max += 1 }
+  // #344 — enforce a MINIMUM data span so a near-flat series (e.g. a recovery run at 73–75%) isn't
+  // stretched to fill the whole height (which made a 2% spread look like a cliff + collapsed the axis
+  // labels). Expand symmetrically around the centre; a genuinely varied workout keeps its real range.
+  if (minSpan && max - min < minSpan) { const c = (min + max) / 2; min = c - minSpan / 2; max = c + minSpan / 2 }
   return { min, max }
 }
 
 /** Smooth multi-series line chart: gradient area, draw-in animation, and tap/hover
  * scrubbing with a tooltip. Responsive (stretches to width). */
-export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover, bands, cursor, xTicks }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void; bands?: { from: number; to: number; color: string }[]; cursor?: number | null; xTicks?: { frac: number; label: string }[] }) {
+export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover, bands, cursor, xTicks, straight = false, minSpan }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void; bands?: { from: number; to: number; color: string }[]; cursor?: number | null; xTicks?: { frac: number; label: string }[]; straight?: boolean; minSpan?: number }) {
   const uid = useId()
   const [hi_, setHi] = useState<number | null>(null)
   // `cursor` makes the chart CONTROLLED — used to sync several stacked charts to one
   // scrubber (#54). When omitted, the chart tracks its own hover.
   const ctrl = cursor !== undefined
   const hi = ctrl ? cursor : hi_
-  const r = range(series)
+  const r = range(series, minSpan)
   if (!r) return <div className="chart-empty">No data yet</div>
   const H = height
   const n = Math.max(...series.map((s) => s.data.length), 1)
@@ -121,7 +125,10 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
         {series.map((s, si) => {
           const pts = s.data.map((v, i) => (v == null ? null : [x(i), y(v)] as [number, number])).filter(Boolean) as [number, number][]
           if (!pts.length) return null
-          const path = smoothPath(pts)
+          // #344 — a PLANNED workout is piecewise-linear (steady blocks + ramps): draw straight segments,
+          // NOT a Catmull-Rom curve, which overshoots at the step boundaries (the "needle"). Real time-series
+          // (fitness/pace trends) keep smoothing.
+          const path = straight ? 'M' + pts.map((p) => `${p[0]},${p[1]}`).join(' L') : smoothPath(pts)
           const last = pts[pts.length - 1]
           return (
             <g key={si}>

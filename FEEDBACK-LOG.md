@@ -22,6 +22,18 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+345. ⬜ **"Max workouts per DAY" preference (default 1) — next to preferred workouts/week.** JM 2026-07-03: the coach
+    pushed a gym AND a run the same day; unless the athlete SAYS they can double (time/capacity), expect ONE session/day.
+    Add a preference field beside the per-week number (#335/#316); coach + plan logic respect it as a hard cap. Extends #339
+    (this is the concrete fix for it). gymapp-only.
+344. 🔨 **Planned-workout chart "looks weird" — line stops at 20m, needle at 5m, degenerate Y-axis; review ALL graph
+    rendering.** JM 2026-07-03 (screenshot, Recovery Shakeout Run): the pace "target shape" line ends at ~20m (of 25),
+    a downward needle at the 5m segment boundary, and the Y-axis shows 8 near-identical labels (6:18–6:20) for a nearly-
+    flat run. Root: a piecewise-constant workout target is rendered by Catmull-Rom smoothing of a densely-sampled array
+    (bezier overshoot = needle; index/tick math = the gap) + no minimum Y-range (flat workout ⇒ collapsed axis). Fix:
+    render the planned target as a proper STEP/RAMP profile from the segments (time-proportional, run + ride consistent),
+    add a Y-axis min-range, and AUDIT every chart (TrendChart trends, BarChart, PowerCurveChart) for the same classes of
+    bug. Supersedes/extends #334 (y-axis crammed). Mock the profile shape first. gymapp-only.
 343. 🔨 **Coach used cycling power-logic on RUNS — "Recovery Run" pushed at 94–95% = Z4 threshold in PROD.**
     JM 2026-07-03: her recovery run showed Z4 in intervals; her real endurance is ~6:15–6:45. Root cause: NO
     running engine — the coach had a cycling engine (FTP) but nothing for running, so it thought "95% = just
@@ -51,6 +63,15 @@ test guide → the **🧪 Test guide** section below.
     availability; don't double-book a day unless the athlete explicitly wants a double. Coach prompt + plan logic guard.
 338. ⬜ **Coach CHAT on the app = wall of text, no titles.** JM 2026-07-03: format coach replies with headings/structure
     (not a wall). Terse, scannable. Coach system prompt: use short sections/bold labels; the client renders markdown.
+337b. 🔨 **Streamline: benchmarks live in ONE place (Stats), Profile = preferences only.** JM 2026-07-03: VO₂max/zones
+    showed in BOTH Profile (52.1) and Stats — "confusing, streamline." Done: removed BenchmarksCard + all per-sport stat
+    cards/SleepNeed/zones from Profile; Profile now links to Stats for data. Profile = preferences (coach, sports, sex,
+    goals, availability, equipment, diet, learn-readiness). 274 tests green. On QA — awaiting JM ✅.
+337. 🔨 **Learned-stats system: Manual/Auto/Computed picker for every benchmark + "when computed lands".** JM 2026-07-03:
+    VO₂max was terrible (used sparse running). Done: cycling VO₂max from **5-min MAP power** (`10.8·W/kg+7`), not FTP;
+    running VO₂max suppressed when <4 recent runs; headline uses the athlete's PRIMARY sport; sleep-need joins the picker;
+    each stat shows its theory GATE when computed isn't ready ("after a hard ~5-min bike effort", "in ~N more nights —
+    needs 21 nights"). `vo2max-submax.ts` (17 tests). Verified her number is realistic (Coros 49). On QA — awaiting JM ✅.
 335. 🔨 **Training frequency = free NUMBER field, not fixed 3/4/5/6 chips (#316b).** JM 2026-07-02: chips "stupid", just a field. Done: number input 0-14 days/week.
 334. ⬜ **Chart y-axis crammed + too close to the "PLANNED PACE" title.** JM 2026-07-02: the pace chart's y labels
     (5:59/6:03/6:07…) crowd the title and are too dense/non-linear. Add spacing (title→chart) + fewer, cleaner ticks.
