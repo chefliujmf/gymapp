@@ -8,7 +8,6 @@ import Availability from '../Availability'
 import EquipmentPicker from '../EquipmentPicker'
 import GoalsPicker from '../GoalsPicker'
 import OnboardReturnBar from '../OnboardReturnBar'
-import SleepNeed from '../SleepNeed'
 import { fetchAthleteSex } from '../intervals'
 import { dataGaps } from '../dataGaps'
 
@@ -74,8 +73,6 @@ export default function Profile() {
         </div>
       )}
 
-      <div className="section-title">Sleep</div>
-      <SleepNeed />
 
       <div className="section-title" id="ob-coach">Your coach {coachSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <input
