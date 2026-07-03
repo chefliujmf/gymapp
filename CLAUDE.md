@@ -66,6 +66,8 @@ See skill `platyplus-testing` + memory `platyplus-testing-workflow`.
 | Change deploy/infra/containers | **`RESTORE.md`** and this file |
 | Change the build pipeline | `scripts/*` stay consistent (`build-catalog`, `fetch-missing-media`) |
 | New UX feature using the calendar | use `calApi` (`src/calendar.ts`); document new endpoints in openapi.json |
+| **Add a sport the coach should know** | add a row to `SPORT_ENGINES` in `server/server.js` + a `server/coach-engine-<sport>.md` (ONE engine per sport — cycling=FTP power, running=Daniels pace; gated by `user.sports`) |
+| **Change run/ride pace mapping** (`PACE_ANCHORS`) | keep `server/icu-steps.js` **and** `src/running-paces.ts` IN SYNC; anchors are DERIVED from the Daniels curves in `running-paces.ts` (not hand-guessed) — re-verify + update `src/icu-steps.test.ts`. Easy/recovery is enforced by `clampEasyEfforts` (both files' guard) |
 
 ## Readiness engine — our own WHOOP (since 2026-06-26)
 Platyplus auto-derives the check-in's **Sleep · Freshness · Energy** as a personal **1–5** from intervals

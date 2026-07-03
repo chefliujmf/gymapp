@@ -22,29 +22,77 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+345. 🔨 **"Max workouts per DAY" preference (default 1) — next to preferred workouts/week.** JM 2026-07-03: the coach
+    pushed a gym AND a run the same day; unless the athlete SAYS they can double (time/capacity), expect ONE session/day.
+    Done: `maxPerDay` field (default 1) beside days/week in Availability; persisted to `info.maxPerDay`; coach prompt now
+    hard-caps sessions/day ("do NOT schedule two workouts same day unless opted in"). Directly resolves #339. On QA.
+344. 🔨 **Planned-workout chart "looks weird" — line stops at 20m, needle at 5m, degenerate Y-axis; review ALL graph
+    rendering.** JM 2026-07-03 (screenshot, Recovery Shakeout Run): the pace "target shape" line ends at ~20m (of 25),
+    a downward needle at the 5m segment boundary, and the Y-axis shows 8 near-identical labels (6:18–6:20) for a nearly-
+    flat run. Root: a piecewise-constant workout target is rendered by Catmull-Rom smoothing of a densely-sampled array
+    (bezier overshoot = needle; index/tick math = the gap) + no minimum Y-range (flat workout ⇒ collapsed axis). Fix:
+    render the planned target as a proper STEP/RAMP profile from the segments (time-proportional, run + ride consistent),
+    add a Y-axis min-range, and AUDIT every chart (TrendChart trends, BarChart, PowerCurveChart) for the same classes of
+    bug. Supersedes/extends #334 (y-axis crammed). Mock the profile shape first. gymapp-only.
+343. 🔨 **Coach used cycling power-logic on RUNS — "Recovery Run" pushed at 94–95% = Z4 threshold in PROD.**
+    JM 2026-07-03: her recovery run showed Z4 in intervals; her real endurance is ~6:15–6:45. Root cause: NO
+    running engine — the coach had a cycling engine (FTP) but nothing for running, so it thought "95% = just
+    below threshold = easy." **95% is NEVER easy, any sport.** JM: "have an engine per sport/activity … running
+    is different, he has books … those are the foundations, follow them — don't hard-code 95% scolds." Done:
+    (a) **per-sport engine map** `SPORT_ENGINES` in server.js + new `server/coach-engine-running.md` = Daniels
+    E/M/T/I/R FOUNDATIONS (physiology/%VO₂max, 80/20); (b) `PACE_ANCHORS` (icu-steps.js + running-paces.ts,
+    in sync) **re-derived from the Daniels oxygen-cost curves** — recovery 73%T, easy 81–84, marathon 93,
+    threshold 100, interval 111, rep 119; (c) `clampEasyEfforts` HARD guard (both sports) caps easy/recovery-
+    labelled segments prescribed >80% → wired into upsertPlan + planToIcuEvent; (d) MCP `create_run` schema
+    teaches the zones from the science. **Fixed her prod run** (94→Z1 7:13–7:25). 15 icu-steps tests. Coach
+    memory + skill + CLAUDE.md updated. [[platyplus-coach-engine]] [[platyplus-intervals-workout-steps]]
+342. 🔨 **Max HR IS computable — stop saying "no safe way to guess it".** JM 2026-07-03: the card claimed Max HR can
+    only be set manually. Wrong: the honest computed source is the **observed peak** — the highest per-activity max HR
+    over the last 180 days (what Garmin/Coros/intervals use). Age formulas are the unsafe guess; observed peak is real.
+    Done: `/auth/intervals/power-benchmarks` returns `observedMaxHr` + `maxHrSamples` (guarded 120–230 bpm); Benchmarks
+    Max HR card now has a Computed value + honest source ("observed peak — hit N×"); pending copy = "lands the first
+    time you go all-out with a strap/watch". Same Manual/Auto/Computed picker as the rest.
+341. ⬜ **Local WEATHER in the coach brain (heat/cold/wind → adjust intensity).** JM 2026-07-03: e.g. 32°C out → ease
+    intensity/pace, hydrate, or move indoors. Use a FREE no-key source (Open-Meteo) for the athlete's location (from
+    intervals lat/long or ask); coach reads the planned-day forecast + adjusts (heat derating on pace/power, hydration/
+    fuel note, indoor swap). Ties readiness + plan. gymapp-only.
 340. ⬜ **Banner for exercises/activities that haven't received FULL feedback (mock-first).** JM 2026-07-03: like the
     workout-feedback prompts, show a banner flagging exercises/sessions still missing complete feedback. Mock-first.
     gymapp-only.
-339. ⬜ **Coach scheduled a GYM and a RUN the SAME day — "crazy".** JM 2026-07-03. Respect training frequency (#316) +
-    availability; don't double-book a day unless the athlete explicitly wants a double. Coach prompt + plan logic guard.
+339. 🔨 **Coach scheduled a GYM and a RUN the SAME day — "crazy".** JM 2026-07-03. Respect training frequency (#316) +
+    availability; don't double-book a day unless the athlete explicitly wants a double. **Fixed by #345** (maxPerDay cap,
+    default 1, in the coach prompt). On QA.
 338. ⬜ **Coach CHAT on the app = wall of text, no titles.** JM 2026-07-03: format coach replies with headings/structure
     (not a wall). Terse, scannable. Coach system prompt: use short sections/bold labels; the client renders markdown.
+337b. 🔨 **Streamline: benchmarks live in ONE place (Stats), Profile = preferences only.** JM 2026-07-03: VO₂max/zones
+    showed in BOTH Profile (52.1) and Stats — "confusing, streamline." Done: removed BenchmarksCard + all per-sport stat
+    cards/SleepNeed/zones from Profile; Profile now links to Stats for data. Profile = preferences (coach, sports, sex,
+    goals, availability, equipment, diet, learn-readiness). 274 tests green. On QA — awaiting JM ✅.
+337. 🔨 **Learned-stats system: Manual/Auto/Computed picker for every benchmark + "when computed lands".** JM 2026-07-03:
+    VO₂max was terrible (used sparse running). Done: cycling VO₂max from **5-min MAP power** (`10.8·W/kg+7`), not FTP;
+    running VO₂max suppressed when <4 recent runs; headline uses the athlete's PRIMARY sport; sleep-need joins the picker;
+    each stat shows its theory GATE when computed isn't ready ("after a hard ~5-min bike effort", "in ~N more nights —
+    needs 21 nights"). `vo2max-submax.ts` (17 tests). Verified her number is realistic (Coros 49). On QA — awaiting JM ✅.
 335. 🔨 **Training frequency = free NUMBER field, not fixed 3/4/5/6 chips (#316b).** JM 2026-07-02: chips "stupid", just a field. Done: number input 0-14 days/week.
-334. ⬜ **Chart y-axis crammed + too close to the "PLANNED PACE" title.** JM 2026-07-02: the pace chart's y labels
-    (5:59/6:03/6:07…) crowd the title and are too dense/non-linear. Add spacing (title→chart) + fewer, cleaner ticks.
-    gymapp-only.
-333. ⬜ **COMPLETED run activity renders POWER (avg 220 W, POWER CURVE, TIME-IN-ZONE by FTP) — SHE WAS RUNNING.** JM
-    2026-07-02 (screenshots, Garmin FR255). ActivityDetail shows watts/power-curve/FTP-zones for a RUN; must be PACE:
-    pace chart (min/km), pace curve (best pace by duration), time-in-zone by PACE zones. Same class as #331 but the
-    analysed/completed view. Garmin records running power so the data exists — but runs show PACE. THE priority. gymapp-only.
+334. 🔨 **Chart y-axis crammed + too close to the "PLANNED PACE" title.** JM 2026-07-02: the pace chart's y labels
+    (5:59/6:03/6:07…) crowd the title and are too dense/non-linear. **Folded into #344** (min axis span spreads the
+    labels; step profile removes the near-vertical clutter). On QA — verify the title spacing reads OK too.
+333. 🔨 **COMPLETED run activity renders POWER (avg 220 W, POWER CURVE, TIME-IN-ZONE by FTP) — SHE WAS RUNNING.** JM
+    2026-07-02 (screenshots, Garmin FR255). Done: ActivityDetail now branches on sport — a RUN shows PACE everywhere:
+    hero/chips are pace-based (distance, avg pace, load, HR — no watts/NP/VI/eFTP); a **PACE timeline** (min/km from
+    velocity_smooth, faster=up) + HR/altitude/cadence; a **Pace tab** with a **pace curve** (best avg pace by duration,
+    inverted log axis) + **time-in-PACE-zone** (Daniels, off threshold pace). Added velocity_smooth/distance streams +
+    `PaceCurveChart` + TrendChart `invert`. Pure maths in `run-analysis.ts` (7 tests). Run-gated → zero ride regression.
+    Self-validated vs mock (mockups/run-analysis-check.html). On QA. NB: needs threshold pace set for the zone bar.
 332. ⬜ **Gym warm-up/cool-down are COMBINED multi-move lines with no demo.** JM 2026-07-02: "Warm-up: march on the spot,
     leg swings, 10 bodyweight squats, arm circles" (one line, generic icon) — "you combine 3?!". Break warm-up/cool-down
     into individual movements (each with a demo) OR render as a clean labelled routine block, not a garbled combined line
     that matches no library exercise. Coach authoring + render. gymapp-only.
-331. ⬜ **Platyplus renders a RUN as WATTS (117 W, "PLANNED POWER", Z3) + intervals shows empty/"% (0-0w)".** JM
+331. 🔨 **Platyplus renders a RUN as WATTS (117 W, "PLANNED POWER", Z3) + intervals shows empty/"% (0-0w)".** JM
     2026-07-02 (screenshots). The endurance detail (CoachPlanDetail) + charts are power-only; a run must show PACE
-    (min/km) using threshold pace, never watts. intervals: coach-authored run native text is bare "%" → parsed as 0 W;
-    must be pace + re-pushed. THE priority. gymapp-only.
+    (min/km) using threshold pace, never watts. **Done** (PLANNED view): CoachPlanDetail shows PLANNED PACE, native
+    "% pace" text pushes to intervals, pacing corrected + calibrated (#343) + chart fixed (#344). On QA. NB: the
+    COMPLETED/analysed run view is the sibling #333 (still open).
 330. ⬜ **Post-workout feedback form is PRE-FILLED with values nobody entered (POOR + RPE 10) + WRONG SPORT (cycling
     fields on a run) + incomplete.** JM 2026-07-02 (screenshot St-Lambert run): "How did it go?" shows POOR selected + RPE
     10 selected though the human entered nothing → looks like fake data. FIX: nothing selected until the user taps; use

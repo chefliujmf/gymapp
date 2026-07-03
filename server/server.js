@@ -27,7 +27,7 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts } from './icu-steps.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -351,9 +351,22 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
     const at = (t) => { for (let i = 0; i < curve.secs.length; i++) if (curve.secs[i] >= t) return Number(vals[i]) || null; return null }
     map5 = at(300); ftp20 = at(1200); weight = curve.weight || null
   }
-  const runs = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(90)}&newest=${icuDay(0)}`)
+  const runs = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(180)}&newest=${icuDay(0)}`)
   const runsRecent = Array.isArray(runs) ? runs.filter((a) => /run/i.test(a.type || '') && a.distance > 800).length : null
-  res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent })
+  // #337c — Max HR is COMPUTABLE (JM): NOT an age formula, but a real observed ceiling. Two honest
+  // sources — (a) the highest per-activity max HR she's actually hit over 180d, and (b) intervals'
+  // athlete_max_hr (her zone ceiling). Max HR is a CEILING, so take the higher of the two. Source line
+  // says which drove it + the sample count, so sparse HR data (e.g. only easy runs) is transparent.
+  let observedMaxHr = null, maxHrSamples = 0, icuMaxHr = null
+  if (Array.isArray(runs)) {
+    const hrs = runs.map((a) => Number(a.max_heartrate ?? a.max_hr ?? a.icu_hr_max) || 0).filter((h) => h >= 120 && h <= 230).sort((x, y) => y - x)
+    if (hrs.length) { observedMaxHr = hrs[0]; maxHrSamples = hrs.filter((h) => h >= hrs[0] - 3).length }
+    const am = runs.map((a) => Number(a.athlete_max_hr) || 0).find((h) => h >= 120 && h <= 230)
+    if (am) icuMaxHr = am
+  }
+  const computedMaxHr = Math.max(observedMaxHr || 0, icuMaxHr || 0) || null
+  const maxHrFrom = computedMaxHr == null ? '' : (observedMaxHr && observedMaxHr >= (icuMaxHr || 0) ? 'observed' : 'intervals')
+  res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent, observedMaxHr, maxHrSamples, icuMaxHr, computedMaxHr, maxHrFrom })
 })
 
 // #216 — running endurance base for the marathon-realism range: longest single run +
@@ -886,8 +899,14 @@ Keep these answers short and concrete.`
 // per-user profile supplies the specifics. Optional (dev before first sync).
 function loadEngine(f) { try { return readFileSync(join(__dirname, f), 'utf8').trim() } catch { return '' } }
 const COACH_ENGINE = loadEngine('coach-engine.md')             // generic, all athletes
-const COACH_ENGINE_CYCLING = loadEngine('coach-engine-cycling.md') // gated by discipline
 const COACH_ENGINE_FEMALE = loadEngine('coach-engine-female.md')   // gated by sex
+// ONE engine PER SPORT/activity (JM directive): running ≠ cycling — each has its own method (Daniels
+// pace vs FTP power). Inject the engine for every sport the athlete actually does. `sports` = onboarding
+// sport keys; `rx` = a profile-text fallback when the structured field is unset. Add a row per new sport.
+const SPORT_ENGINES = [
+  { key: 'cycling', file: 'coach-engine-cycling.md', sports: ['cycling', 'triathlon'], rx: /\b(cycl|bike|biking|\bride\b|\brides\b|ftp|w\/kg|wattage|triathlon|gran fondo)\b/i },
+  { key: 'running', file: 'coach-engine-running.md', sports: ['running', 'triathlon'], rx: /\b(run|running|jog|marathon|\b5k\b|\b10k\b|half|ultra|vdot|daniels|threshold pace)\b/i },
+].map((e) => ({ ...e, text: loadEngine(e.file) }))
 
 function buildSystemPrompt(user) {
   const name = user.coachName || 'Coach'
@@ -898,8 +917,11 @@ function buildSystemPrompt(user) {
   // not cycling-for-everyone). Prefer the STRUCTURED fields (sport from onboarding, sex
   // from intervals.icu); fall back to a profile-text heuristic only when unset.
   const sports = user.sports && user.sports.length ? user.sports : (user.sport ? [user.sport] : [])
-  const isCyclist = sports.length ? sports.some((sp) => ['cycling', 'triathlon'].includes(sp)) : /\b(cycl|bike|biking|\bride\b|\brides\b|ftp|w\/kg|wattage|triathlon|gran fondo)\b/i.test(prof)
-  if (isCyclist && COACH_ENGINE_CYCLING) p += '\n\n' + COACH_ENGINE_CYCLING
+  // Inject each sport engine the athlete does (structured sport, else profile-text fallback).
+  for (const e of SPORT_ENGINES) {
+    const does = sports.length ? sports.some((sp) => e.sports.includes(sp)) : e.rx.test(prof)
+    if (does && e.text) p += '\n\n' + e.text
+  }
   const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
   // #207 Phase 2: the athlete's own benchmarks — so the coach judges intensity FOR THEM.
@@ -944,6 +966,10 @@ function buildSystemPrompt(user) {
   // never part of the base load.
   const freq = Number(user.info?.trainingDays) || 0
   if (freq > 0) p += `\n\n# TRAINING FREQUENCY: the athlete wants ~${freq} training days/week. Plan exactly ${freq} COMMITTED sessions. If they ask for more (a bonus day), add ONE OPTIONAL session — prefix its title with "(optional)" and say it's a bonus they can skip — don't inflate the base week.`
+  // #345 — most athletes train ONCE a day. Never stack two sessions (e.g. a gym + a run) on the same
+  // calendar day beyond this cap unless the athlete explicitly opts into doubles.
+  const maxPerDay = Math.max(1, Number(user.info?.maxPerDay) || 1)
+  p += `\n\n# ONE SESSION PER DAY (max ${maxPerDay}/day): the athlete trains at most ${maxPerDay} session${maxPerDay > 1 ? 's' : ''} per calendar day. ${maxPerDay === 1 ? 'Do NOT schedule two workouts on the same day (no gym + run, no ride + run together) — spread sessions across different days. If two efforts must share a day because time is tight, ask first or fold them into ONE combined session.' : `Never exceed ${maxPerDay} on any single day, and only double up when it genuinely serves the plan (e.g. AM/PM split).`} Respect their weekly availability + rest days when spacing them.`
   // #323 — the athlete's OWN goal & identity. This is what makes the plan theirs; center on it and
   // let it OVERRIDE generic defaults (e.g. "tone, don't bulk" ⇒ not a hypertrophy block).
   const goals = user.info?.goals
@@ -1193,7 +1219,7 @@ function planToIcuEvent(plan, items = []) {
   const brief = renderCoachBrief(plan, items)
   const ev = { start_date_local: plan.date + 'T00:00:00', category: 'WORKOUT', name: plan.title, external_id: plan.id, description: '' }
   if (plan.sport === 'ride' || plan.sport === 'run') {
-    const segs = plan.segments || []
+    const segs = clampEasyEfforts(plan.title, plan.segments || []).segments // #331c last-line guard on the push (covers pre-guard plans on re-sync)
     ev.type = plan.sport === 'ride' ? 'Ride' : 'Run'
     ev.moving_time = segs.reduce((s, x) => s + (Number(x.duration) || 0), 0)
     // CRITICAL: intervals only MODELS a ride/run (chart, planned load, Wahoo steps) when the
@@ -1329,6 +1355,13 @@ async function upsertPlan(user, body) {
     ...(body.sport === 'gym'
       ? { rounds: Number(body.rounds) || 1, exercises: (Array.isArray(body.exercises) ? body.exercises : []).map(withDefaultTempo) }
       : { ftp: Number(body.ftp) || undefined, segments: Array.isArray(body.segments) ? body.segments : [] }),
+  }
+  // #331c — HARD guard: never persist an "easy/recovery/warm-up"-labelled run/ride segment at near-threshold
+  // effort (95% is NEVER easy — any sport). Fixes it at the source so the DB, the app view, AND the intervals
+  // push are all sane, even when the coach fat-fingers the %.
+  if (plan.sport !== 'gym' && Array.isArray(plan.segments) && plan.segments.length) {
+    const g = clampEasyEfforts(plan.title, plan.segments)
+    if (g.clamped) { plan.segments = g.segments; console.log(`[clampEasyEfforts] ${user.username} "${plan.title}" — clamped ${g.clamped} easy segment(s) below ${'threshold'}`) }
   }
   if (i >= 0) user.plans[i] = plan; else user.plans.push(plan)
   save(store)

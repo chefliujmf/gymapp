@@ -219,8 +219,9 @@ export async function fetchActivity(id: string | number): Promise<IcuActivity | 
 /** Per-sample streams of an activity from intervals (GPS + power/HR/altitude/cadence
  *  over time). Empty on no key / error. Powers the post-workout map (#51) + the
  *  timeline analytics (#54). */
-export interface ActivityStreams { time?: number[]; watts?: (number | null)[]; heartrate?: (number | null)[]; altitude?: (number | null)[]; cadence?: (number | null)[]; latlng?: [number, number][] }
-export async function fetchActivityStreams(id: string | number, types: string[] = ['latlng', 'time', 'watts', 'heartrate', 'altitude', 'cadence']): Promise<ActivityStreams> {
+export interface ActivityStreams { time?: number[]; watts?: (number | null)[]; heartrate?: (number | null)[]; altitude?: (number | null)[]; cadence?: (number | null)[]; latlng?: [number, number][]; velocity_smooth?: (number | null)[]; distance?: (number | null)[] }
+// #333 — runs also need velocity_smooth (m/s → pace) + distance so the completed-run view shows PACE, not watts.
+export async function fetchActivityStreams(id: string | number, types: string[] = ['latlng', 'time', 'watts', 'heartrate', 'altitude', 'cadence', 'velocity_smooth', 'distance']): Promise<ActivityStreams> {
   const { apiKey, serverKey } = await getIcuConfig()
   if (!apiKey && !serverKey) return {}
   try {

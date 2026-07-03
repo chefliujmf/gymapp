@@ -1,0 +1,66 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planned-workout chart — fix</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--line:#2a2f3a}
+  *{box-sizing:border-box;margin:0}body{background:#05070a;color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:14px}
+  h2{font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin:20px 2px 8px;font-weight:800}
+  .cap{color:var(--dim);font-size:12px;margin:2px 2px 10px;max-width:440px}
+  .cap b{color:var(--accent)}
+  .card{max-width:440px;background:linear-gradient(180deg,#21252f,#191c24);border:1px solid var(--line);border-radius:14px;padding:12px 12px 6px}
+  .clabel{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;font-weight:800;margin-bottom:10px}
+  .wrap{display:grid;grid-template-columns:44px 1fr;gap:4px}
+  .yax{display:flex;flex-direction:column;justify-content:space-between;font-size:10px;color:var(--dim);text-align:right;padding:2px 4px 16px 0}
+  .plot{position:relative}
+  .xax{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:2px;max-width:440px}
+  svg{display:block;width:100%;height:150px}
+  .toggle{display:flex;gap:6px;max-width:440px;margin-bottom:6px}
+  .toggle button{flex:1;padding:8px;border:1px solid var(--line);background:#12151c;color:var(--dim);border-radius:9px;font-size:12px;font-weight:700}
+  .toggle button.on{background:var(--accent);color:#08150c;border-color:var(--accent)}
+</style>
+<div class="toggle">
+  <button class="on" onclick="pick('recovery',this)">Recovery run (flat)</button>
+  <button onclick="pick('intervals',this)">Interval run</button>
+  <button onclick="pick('ride',this)">Ride (watts)</button>
+</div>
+<div id="host"></div>
+<script>
+const VW=320,H=150,P=6
+const W={
+  recovery:{unit:'/km',thr:325,ftp:0,fmtPace:1,color:'#34e07d',segs:[[300,73,73,'Warm-up'],[900,75,75,'Easy jog'],[300,73,73,'Cool-down']]},
+  intervals:{unit:'/km',thr:325,ftp:0,fmtPace:1,color:'#34e07d',segs:[[300,55,68,'Warm-up'],[180,111,111,'I'],[120,73,73,'rec'],[180,111,111,'I'],[120,73,73,'rec'],[180,111,111,'I'],[120,73,73,'rec'],[180,111,111,'I'],[300,60,55,'Cool-down']]},
+  ride:{unit:'W',thr:0,ftp:200,fmtPace:0,color:'#34e07d',segs:[[600,50,60,'Warm-up'],[300,100,100,'T'],[180,55,55,'rec'],[300,100,100,'T'],[180,55,55,'rec'],[300,100,100,'T'],[600,55,50,'Cool-down']]}
+}
+function pacePts(w){const out=[];for(const s of w.segs){const dur=s[0],a=s[1],b=s[2];const n=Math.max(2,Math.round(dur/5));for(let i=0;i<n;i++){const f=n>1?i/(n-1):0;out.push(a+(b-a)*f)}}return out}
+function segPts(w){const tot=w.segs.reduce((s,x)=>s+x[0],0);let t=0;const pts=[];for(const s of w.segs){pts.push([t/tot,s[1]]);t+=s[0];pts.push([t/tot,s[2]])}return{pts,tot}}
+function val(w,v){return w.fmtPace?fmtPace(w.thr*100/v):Math.round(w.ftp*v/100)+''}
+function fmtPace(s){s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
+function smoothPath(pts){if(pts.length<3)return'M'+pts.map(p=>p[0]+','+p[1]).join(' L');let d='M'+pts[0][0]+','+pts[0][1];for(let i=0;i<pts.length-1;i++){const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;d+=' C'+(p1[0]+(p2[0]-p0[0])/6)+','+(p1[1]+(p2[1]-p0[1])/6)+' '+(p2[0]-(p3[0]-p1[0])/6)+','+(p2[1]-(p3[1]-p1[1])/6)+' '+p2[0]+','+p2[1]}return d}
+function bounds(min,max,minSpan){if(minSpan&&max-min<minSpan){const c=(min+max)/2;min=c-minSpan/2;max=c+minSpan/2}const pad=(max-min)*0.08||1;return[min-pad,max+pad]}
+function chart(title,w,mode){
+  const dense=pacePts(w),sg=segPts(w),tot=sg.tot
+  const vals=mode==='A'?dense:sg.pts.map(p=>p[1])
+  const b=mode==='A'?bounds(Math.min(...vals),Math.max(...vals),0):bounds(Math.min(...vals),Math.max(...vals),w.fmtPace?22:w.ftp*0.35)
+  const dMin=b[0],dMax=b[1]
+  const y=v=>P+(1-(v-dMin)/((dMax-dMin)||1))*(H-2*P)
+  let path,last,pp
+  if(mode==='A'){pp=dense.map((v,i)=>[P+(i/(dense.length-1))*(VW-2*P),y(v)]);path=smoothPath(pp)}
+  else{pp=sg.pts.map(p=>[P+p[0]*(VW-2*P),y(p[1])]);path='M'+pp.map(p=>p[0]+','+p[1]).join(' L')}
+  last=pp[pp.length-1]
+  const area=path+' L'+last[0]+','+(H-P)+' L'+pp[0][0]+','+(H-P)+' Z'
+  const yl=[];for(let i=0;i<5;i++)yl.push(val(w,dMax-(dMax-dMin)*i/4))
+  const totMin=tot/60,step=totMin>30?5:totMin>10?2:1,xl=[];for(let m=0;m<=totMin+.01;m+=step)xl.push(m+'m')
+  const gid='g'+title.replace(/\W/g,'')+mode
+  return '<div class="card"><div class="clabel">'+title+'</div><div class="wrap"><div class="yax">'+yl.map(l=>'<span>'+l+'</span>').join('')+'</div><div class="plot"><svg viewBox="0 0 '+VW+' '+H+'" preserveAspectRatio="none">'+
+    [0,.25,.5,.75,1].map(g=>'<line x1="0" x2="'+VW+'" y1="'+(P+g*(H-2*P))+'" y2="'+(P+g*(H-2*P))+'" stroke="#2a2f3a" stroke-width=".5" opacity=".4"/>').join('')+
+    '<defs><linearGradient id="'+gid+'" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="'+w.color+'" stop-opacity=".3"/><stop offset="1" stop-color="'+w.color+'" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="'+area+'" fill="url(#'+gid+')"/><path d="'+path+'" fill="none" stroke="'+w.color+'" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="'+last[0]+'" cy="'+last[1]+'" r="3" fill="'+w.color+'"/>'+
+    '</svg></div></div><div class="xax">'+xl.map(l=>'<span>'+l+'</span>').join('')+'</div></div>'
+}
+function pick(k,btn){document.querySelectorAll('.toggle button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');const w=W[k]
+  document.getElementById('host').innerHTML=
+  '<h2>A · CURRENT (smoothed dense samples, full range)</h2><p class="cap">The bug: a nearly-flat run stretches a ~2% spread to full height → warm-up hugs the baseline (looks like the line "stops"), and the near-vertical step makes the bezier <b>overshoot</b> (the needle).</p>'+chart(k+' — current',w,'A')+
+  '<h2>B · FIXED (step/ramp profile + min axis span)</h2><p class="cap"><b>Straight</b> segment lines at true time positions (no bezier = no needle) + a <b>minimum Y-span</b> so a flat run reads flat and labels spread. Same primitive for run + ride.</p>'+chart(k+' — fixed',w,'B')
+}
+const _w=new URLSearchParams(location.search).get('w')||'recovery'
+pick(_w,[...document.querySelectorAll('.toggle button')].find(b=>b.textContent.toLowerCase().includes(_w))||document.querySelector('.toggle button'))
+</script>

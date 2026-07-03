@@ -157,9 +157,9 @@ server.tool('create_workout',
 
 const SEGMENTS = z.array(z.object({
   minutes: z.number().positive(),
-  powerStart: z.number().describe('% of FTP (ride) or threshold (run)'),
+  powerStart: z.number().describe('Intensity as % of threshold effort — % of FTP (ride) or threshold pace (run). Daniels zones (same scale both sports): recovery 30-40 · easy/aerobic/warm-up/cool-down 50-65 · marathon/steady 70-80 · threshold/tempo 90-100 · VO2/intervals 100-108 · reps/strides 108-120. 100 = threshold (~1 h race effort); easy is a low fraction of that (~80% of run volume lives there).'),
   powerEnd: z.number().optional().describe('% target at end of the segment; default = powerStart (steady)'),
-  label: z.string().optional(),
+  label: z.string().optional().describe('e.g. "Warm-up", "Easy jog", "Threshold", "Stride" — label matches the intensity (easy label ⇒ easy %)'),
 })).min(1).describe('ordered segments (warm-up, work, recovery, cool-down, ...)')
 
 const makeEndurance = (sport) => wrap((a) => api('POST', '/api/plan', {
@@ -174,7 +174,7 @@ server.tool('create_ride',
   makeEndurance('ride'))
 
 server.tool('create_run',
-  'Schedule a structured run (pace/effort intervals as % of threshold). Re-call with same id to update. Optionally attach the coaching shell.',
+  'Schedule a structured run. Coach it the RUNNING way — Daniels E/M/T/I/R off threshold PACE (see SEGMENTS for the zones), not by bike power. The app converts each segment % to the athlete\'s real min/km. Re-call with same id to update. Optionally attach the coaching shell.',
   { date: DATE, title: z.string(), ftp: z.number().optional(), segments: SEGMENTS, notes: z.string().optional(), ...COACHING, id: z.string().optional() },
   makeEndurance('run'))
 

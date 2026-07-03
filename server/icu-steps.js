@@ -6,12 +6,13 @@
 // under `pace` for runs so intervals — and the Garmin workout it syncs — shows pace, never watts.
 export const MAX_DOC_STEP_SECONDS = 3600
 
-// #331/#336 — the coach authors intensity as POWER-style % (Z1≈55%, Z2≈65%, threshold≈100%). Running
-// PACE does NOT scale like power. Calibrated to DANIELS zones: Easy (E) pace = threshold + ~45–75 s/km,
-// i.e. ~84–86% of threshold PACE (NOT 92% — that's marathon/steady, which made "easy" feel hard). So an
-// aerobic/endurance segment (power 65–78%) lands at ~84–86% pace = threshold+50–70 s. Threshold=100%,
-// intervals/reps go >100%. This is the E/M/T/I/R relationship, not a linear power scale.
-const PACE_ANCHORS = [[40, 79], [55, 82], [65, 84], [75, 86], [85, 89], [95, 96], [100, 100], [110, 105], [120, 110]]
+// #331/#336/#343 — the coach authors intensity as effort-% off threshold; running PACE does NOT scale
+// like power. These anchors are DERIVED FROM THE DANIELS FOUNDATIONS, not hand-guessed: each zone's pace
+// as a % of THRESHOLD SPEED, computed from the oxygen-cost curves in running-paces.ts and stable across
+// VDOT (40/48/55 all agree ±0.5%). Recovery(59% VO₂max)≈73%T · Easy(65–74%)≈78–87%T · Marathon≈94%T ·
+// Threshold=100%T · Interval(100% VO₂max)≈111%T · Rep(108%)≈118%T. Effort-% (x) → pace-% of threshold (y).
+// KEEP IN SYNC with src/running-paces.ts PACE_ANCHORS.
+const PACE_ANCHORS = [[20, 70], [30, 73], [40, 77], [55, 81], [65, 84], [75, 89], [85, 93], [95, 98], [100, 100], [108, 111], [120, 119]]
 export function paceFromPowerPct(p) {
   const n = Number(p) || 0
   if (n <= PACE_ANCHORS[0][0]) return PACE_ANCHORS[0][1]
@@ -20,6 +21,32 @@ export function paceFromPowerPct(p) {
     if (n <= PACE_ANCHORS[i][0]) { const [x0, y0] = PACE_ANCHORS[i - 1], [x1, y1] = PACE_ANCHORS[i]; return Math.round(y0 + (y1 - y0) * (n - x0) / (x1 - x0)) }
   }
   return 85
+}
+
+// #331c — HARD sanity guard (JM: "95% is NEVER easy, for ANY sport"). A segment LABELLED easy/recovery/
+// warm-up/cool-down/jog/spin must NOT be prescribed near threshold. The coach sometimes fat-fingers a
+// high % (e.g. a "Recovery Run" at 94% → threshold effort). Clamp any easy-INTENT segment above the easy
+// ceiling down to a real easy/recovery effort — for BOTH runs (% threshold pace) and rides (% FTP), since
+// the number means the same "fraction of threshold" in each. Intentional work (tempo/threshold/intervals/
+// strides) is left untouched — only easy-labelled segments are capped. Pure + unit-tested.
+const EASY_LABEL = /\b(recover\w*|shake ?out|warm[ -]?up|cool[ -]?down|easy|jog|z1|z2|spin|aerobic base)\b/i
+const RECOVERY_LABEL = /\b(recover\w*|shake ?out|z1|walk)\b/i
+const EASY_CEILING = 80 // above this, an "easy" label is a mistake
+export function clampEasyEfforts(title = '', segments = []) {
+  const titleEasy = EASY_LABEL.test(String(title))
+  const titleRecovery = RECOVERY_LABEL.test(String(title))
+  let clamped = 0
+  const out = (segments || []).map((s) => {
+    const label = String(s.label || '')
+    const easy = label ? EASY_LABEL.test(label) : titleEasy // a segment's own label wins; unlabelled inherits the title
+    if (!easy) return s
+    const ps = Number(s.powerStart) || 0, pe = s.powerEnd != null ? Number(s.powerEnd) : ps
+    if (Math.max(ps, pe) <= EASY_CEILING) return s // already easy — leave the ramp/values as authored
+    const cap = (RECOVERY_LABEL.test(label) || titleRecovery) ? 35 : 55 // recovery → Z1, plain easy → Z2
+    clamped++
+    return { ...s, powerStart: cap, powerEnd: cap }
+  })
+  return clamped ? { segments: out, clamped } : { segments, clamped: 0 }
 }
 
 // Encode ONE plan segment (powerStart/powerEnd = % of FTP for rides, % of threshold pace for runs)
