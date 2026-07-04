@@ -545,7 +545,7 @@ app.post('/auth/checkin', auth, (req, res) => {
   // early, so the coach is told to lean on the subjective check-in + FRESHNESS/Form (always
   // available). Once per day (coachDecided), only for athletes who've set up their coach.
   try {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = localTodayInTz(req.user.icuTimezone) // #347 — local today (cached tz), so a near-midnight check-in still fires
     const complete = ci.energy != null && ci.sleep != null && ci.soreness != null
     if (req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && !ci.coachDecided) {
       ci.coachDecided = true; save(store)
@@ -556,11 +556,21 @@ app.post('/auth/checkin', auth, (req, res) => {
   } catch (e) { console.error('[checkin-decide] trigger ' + e.message) }
 })
 app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
+// #347 — the athlete's LOCAL "today" from their intervals timezone (not the server's UTC), so a
+// tomorrow-forecast near local midnight isn't mistaken for today (e.g. 8pm Montreal = next-day UTC).
+// Caches the tz on the user (stable); falls back to UTC.
+function localTodayInTz(tz) { try { return new Date().toLocaleDateString('en-CA', { timeZone: tz || 'UTC' }) } catch { return new Date().toISOString().slice(0, 10) } }
+async function athleteToday(user) {
+  if (!user.icuTimezone && user.icuKey) {
+    try { const me = await icuGet(user, `/athlete/${user.icuAthlete || 'i28814'}`); if (me && me.timezone) { user.icuTimezone = me.timezone; save(store) } } catch { /* fall back to UTC */ }
+  }
+  return localTodayInTz(user.icuTimezone)
+}
 // #195: auto-derived readiness (Sleep · Freshness · Energy 1–5) from 60d of intervals wellness +
 // personal baselines. Returns { connected:false } if intervals isn't connected; energy is null on
 // cold start (too few HRV days) so the UI keeps the manual tap. See server/readiness.js.
 app.get('/auth/readiness', auth, async (req, res) => {
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : new Date().toISOString().slice(0, 10)
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : await athleteToday(req.user) // #347 local, not UTC
   const oldest = new Date(date + 'T00:00:00Z'); oldest.setUTCDate(oldest.getUTCDate() - 60)
   const ath = req.user.icuAthlete || 'i28814'
   const data = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${oldest.toISOString().slice(0, 10)}&newest=${date}`)
@@ -605,7 +615,7 @@ app.get('/auth/readiness-forecast', auth, async (req, res) => {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : null
   if (!date) return res.status(400).json({ error: 'date required' })
   if (!req.user.icuKey) return res.json({ connected: false })
-  const today = new Date().toISOString().slice(0, 10)
+  const today = await athleteToday(req.user) // #347 — LOCAL today (intervals tz), not UTC, so tomorrow isn't read as today
   if (date <= today) return res.json({ connected: true, future: false }) // only future days forecast
   const ath = req.user.icuAthlete || 'i28814'
   // current fitness state: latest wellness row with CTL+ATL, + a personal TSB baseline (60d)
@@ -635,7 +645,7 @@ app.get('/auth/readiness-projection', auth, async (req, res) => {
   if (!req.user.icuKey) return res.json({ connected: false })
   const days = Math.min(28, Math.max(1, Number(req.query.days) || 14))
   const ath = req.user.icuAthlete || 'i28814'
-  const today = new Date().toISOString().slice(0, 10)
+  const today = await athleteToday(req.user) // #347 local tz
   const wData = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${addDays(today, -30)}&newest=${today}`)
   const rows = (Array.isArray(wData) ? wData : []).map((d) => ({ ctl: d.ctl, atl: d.atl }))
   const latest = [...rows].reverse().find((r) => r.ctl != null && r.atl != null)
@@ -1781,14 +1791,39 @@ app.get('/api/intervals/wellness', apiAuth, async (req, res) => {
   res.json({ connected: true, wellness })
 })
 
-// #341 — best-effort athlete location for weather. Prefer a saved location; else derive from the most
-// recent OUTDOOR activity's GPS (summary coords, else the streams' first point) and cache it. No new UI.
+// #341/#347 — geocode a CITY → { lat, lon } via Open-Meteo (free, no key). Disambiguates same-named
+// cities (Montreal QC vs Spain/France) by matching the athlete's region/country.
+async function geocodePlace(city, region, country) {
+  if (!city) return null
+  try {
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=10`, { headers: { 'user-agent': 'platyplus/1.0' } })
+    if (!r.ok) return null
+    const res = (await r.json()).results || []
+    if (!res.length) return null
+    const norm = (s) => String(s || '').toLowerCase().trim()
+    const hit = res.find((x) => region && norm(x.admin1) === norm(region))
+      || res.find((x) => country && (norm(x.country) === norm(country) || norm(x.country_code) === norm(country)))
+      || res[0]
+    return Number.isFinite(hit.latitude) ? { lat: hit.latitude, lon: hit.longitude } : null
+  } catch { return null }
+}
+// #341 — best-effort athlete location for weather. Order: (1) a saved location; (2) the intervals athlete
+// PROFILE — direct lat/lng, else geocode its city (and stash the timezone, #347); (3) the most recent
+// OUTDOOR activity's GPS. Cached. (JM: capture it in ONBOARDING too so it's reliable — separate item.)
 async function athleteLatLon(user) {
   if (user.info && Number.isFinite(user.info.lat) && Number.isFinite(user.info.lon)) return { lat: user.info.lat, lon: user.info.lon }
   const ath = user.icuAthlete || 'i28814'
+  const cache = (lat, lon) => { if (Number.isFinite(lat) && Number.isFinite(lon)) { user.info = user.info || {}; user.info.lat = lat; user.info.lon = lon; save(store); return { lat, lon } } return null }
+  // (2) the intervals athlete profile — lat/lng directly, else geocode the city
+  const me = await icuGet(user, `/athlete/${ath}`).catch(() => null)
+  if (me) {
+    if (me.timezone && !user.icuTimezone) { user.icuTimezone = me.timezone; save(store) } // #347 grab tz while here
+    if (Number.isFinite(me.lat) && Number.isFinite(me.lng)) { const h = cache(me.lat, me.lng); if (h) return h }
+    const g = me.city ? await geocodePlace(me.city, me.state, me.country) : null
+    if (g) return cache(g.lat, g.lon)
+  }
   const acts = await icuGet(user, `/athlete/${ath}/activities?oldest=${icuDay(60)}&newest=${icuDay(0)}`).catch(() => null)
   const list = Array.isArray(acts) ? acts : []
-  const cache = (lat, lon) => { if (Number.isFinite(lat) && Number.isFinite(lon)) { user.info = user.info || {}; user.info.lat = lat; user.info.lon = lon; save(store); return { lat, lon } } return null }
   for (const a of list) {
     const ll = Array.isArray(a.start_latlng) ? a.start_latlng : null
     const lat = ll ? ll[0] : (a.icu_lat ?? a.start_lat)

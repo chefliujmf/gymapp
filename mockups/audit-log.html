@@ -1,0 +1,81 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#232 — activity & changes log</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9aa2b1;--faint:#6b7280;--accent:#34e07d;--blue:#6ea8ff;--purple:#b78cff;--warn:#f0b145;--bg:#0f1216;--line:#2a2f3a;--soft:#191c24;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+  *{box-sizing:border-box;margin:0}body{background:#05070a;color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:14px;max-width:460px;margin:auto}
+  h1{font-size:15px;margin:0 0 2px}.sub{color:var(--dim);font-size:12px;margin-bottom:12px}
+  .toggle{display:flex;gap:6px;margin-bottom:10px}
+  .toggle button{flex:1;padding:8px 6px;border:1px solid var(--line);background:#12151c;color:var(--dim);border-radius:9px;font-size:11.5px;font-weight:700}
+  .toggle button.on{background:var(--accent);color:#08150c;border-color:var(--accent)}
+  .stage{display:none}.stage.on{display:block}
+  .daylbl{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;font-weight:800;margin:14px 2px 6px}
+  .ev{display:grid;grid-template-columns:46px 20px 1fr;gap:9px;align-items:start;padding:8px 4px;border-bottom:1px solid var(--line)}
+  .ev__t{font-family:var(--mono);font-size:11px;color:var(--faint);padding-top:2px;font-variant-numeric:tabular-nums}
+  .ev__i{font-size:15px;text-align:center;padding-top:1px}
+  .ev__b{min-width:0}
+  .ev__a{font-weight:650;font-size:13.5px}
+  .who{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:1px 6px;border-radius:999px;margin-right:6px;vertical-align:1px}
+  .you{color:var(--accent);background:#34e07d18;border:1px solid #34e07d44}
+  .coach{color:var(--purple);background:#b78cff18;border:1px solid #b78cff44}
+  .sync{color:var(--blue);background:#6ea8ff18;border:1px solid #6ea8ff44}
+  .sys{color:var(--dim);background:#9aa2b118;border:1px solid #9aa2b133}
+  .ev__d{font-size:12px;color:var(--dim);margin-top:2px}
+  /* filter bar (B) */
+  .fbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+  .chip{font-size:11.5px;font-weight:700;color:var(--dim);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+  .chip.on{background:var(--text);color:#08150c;border-color:var(--text)}
+  /* entity group (C) */
+  .ent{background:linear-gradient(180deg,#21252f,#191c24);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:9px}
+  .ent__h{font-weight:750;font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .ent__h .m{font-size:11px;color:var(--faint);font-weight:400}
+  .sub-ev{display:flex;gap:8px;font-size:12.5px;padding:4px 0;border-top:1px solid var(--line)}
+  .sub-ev:first-of-type{border-top:none}
+  .sub-ev .t{font-family:var(--mono);font-size:10.5px;color:var(--faint);white-space:nowrap;padding-top:1px}
+  .cap{color:var(--faint);font-size:11.5px;margin-top:10px}.cap b{color:var(--text)}
+</style>
+<h1>#232 · Activity & changes log</h1>
+<div class="sub">Today there's <b style="color:var(--warn)">no record</b> of what changed — plan edits, coach actions, syncs. Proposed: a timestamped trail you can read when something looks off.</div>
+<div class="toggle">
+  <button class="on" onclick="show('A',this)">A · Feed</button>
+  <button onclick="show('B',this)">B · Feed + filters</button>
+  <button onclick="show('C',this)">C · Per-workout</button>
+</div>
+
+<div class="stage on" id="A">
+  <p class="cap"><b>A — one clean chronological feed</b>, grouped by day. Each row: time · who did it (You / Coach / Sync / System) · what · target. Read top-down.</p>
+  <div class="daylbl">Today · Jul 4</div>
+  <div class="ev"><span class="ev__t">12:30</span><span class="ev__i">💚</span><span class="ev__b"><div class="ev__a"><span class="who coach">Coach</span>Reshaped the week after a missed ride</div><div class="ev__d">Moved "Tempo Ride" Wed → Sat · removed the missed Wed event · notified you</div></span></div>
+  <div class="ev"><span class="ev__t">09:15</span><span class="ev__i">✏️</span><span class="ev__b"><div class="ev__a"><span class="who you">You</span>Edited "Push Day"</div><div class="ev__d">+ Bench Press · − Dips · pushed to intervals</div></span></div>
+  <div class="ev"><span class="ev__t">08:01</span><span class="ev__i">💚</span><span class="ev__b"><div class="ev__a"><span class="who coach">Coach</span>Reviewed "Morning Run"</div><div class="ev__d">Posted coach note + set a public title on the activity</div></span></div>
+  <div class="ev"><span class="ev__t">08:00</span><span class="ev__i">🔄</span><span class="ev__b"><div class="ev__a"><span class="who sync">Sync</span>Imported "Morning Run" from intervals</div><div class="ev__d">Run · 8.42 km · 52 min · matched your planned Easy Run</div></span></div>
+  <div class="daylbl">Yesterday · Jul 3</div>
+  <div class="ev"><span class="ev__t">18:00</span><span class="ev__i">➕</span><span class="ev__b"><div class="ev__a"><span class="who coach">Coach</span>Created "Recovery Shakeout Run" (Fri)</div><div class="ev__d">Run · 25 min · Z1 · pushed to intervals</div></span></div>
+  <div class="ev"><span class="ev__t">07:45</span><span class="ev__i">📝</span><span class="ev__b"><div class="ev__a"><span class="who you">You</span>Checked in</div><div class="ev__d">Energy 4 · Sleep 3 · Soreness 2</div></span></div>
+</div>
+
+<div class="stage" id="B">
+  <p class="cap"><b>B — the feed + a filter bar</b> (who / what / date) so you can zero in when investigating: "show only Coach actions", "only sync events", "only plan changes". Best for finding what went wrong.</p>
+  <div class="fbar"><span class="chip on">All</span><span class="chip">You</span><span class="chip">Coach</span><span class="chip">Sync</span><span class="chip">Plans</span><span class="chip">intervals</span></div>
+  <div class="fbar" style="margin-bottom:8px"><span class="chip">Today</span><span class="chip on">7 days</span><span class="chip">30 days</span></div>
+  <div class="daylbl">Today · Jul 4</div>
+  <div class="ev"><span class="ev__t">12:30</span><span class="ev__i">💚</span><span class="ev__b"><div class="ev__a"><span class="who coach">Coach</span>Reshaped week (missed ride)</div><div class="ev__d">Moved "Tempo Ride" Wed → Sat · removed Wed · notified</div></span></div>
+  <div class="ev"><span class="ev__t">09:15</span><span class="ev__i">✏️</span><span class="ev__b"><div class="ev__a"><span class="who you">You</span>Edited "Push Day" · + Bench − Dips</div><div class="ev__d">then Platyplus mirrored it → intervals (event 120381637)</div></span></div>
+  <div class="ev"><span class="ev__t">08:00</span><span class="ev__i">🔄</span><span class="ev__b"><div class="ev__a"><span class="who sync">Sync</span>Imported "Morning Run"</div><div class="ev__d">8.42 km · matched planned Easy Run</div></span></div>
+</div>
+
+<div class="stage" id="C">
+  <p class="cap"><b>C — grouped per workout</b>: each session shows its own change history in one card, so you can see the whole life of "Tempo Ride" at a glance. Great for "what happened to THIS one".</p>
+  <div class="ent">
+    <div class="ent__h">🚴 Tempo Ride <span class="m">· planned Wed Jul 3</span></div>
+    <div class="sub-ev"><span class="t">Jul 1 18:00</span><span><span class="who coach">Coach</span> created · 45 min · 4×5min threshold</span></div>
+    <div class="sub-ev"><span class="t">Jul 1 18:00</span><span><span class="who sys">Sys</span> mirrored → intervals</span></div>
+    <div class="sub-ev"><span class="t">Jul 4 12:30</span><span><span class="who coach">Coach</span> missed → moved to Sat, removed Wed event</span></div>
+  </div>
+  <div class="ent">
+    <div class="ent__h">🏋️ Push Day <span class="m">· Thu Jul 4</span></div>
+    <div class="sub-ev"><span class="t">Jul 2 09:00</span><span><span class="who coach">Coach</span> created · 6 exercises</span></div>
+    <div class="sub-ev"><span class="t">Jul 4 09:15</span><span><span class="who you">You</span> edited · + Bench − Dips</span></div>
+  </div>
+</div>
+<script>function show(id,b){document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('on',s.id===id));document.querySelectorAll('.toggle button').forEach(x=>x.classList.remove('on'));if(b)b.classList.add('on')}
+var q=new URLSearchParams(location.search).get('o');if(q)show(q)</script>

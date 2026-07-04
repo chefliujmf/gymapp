@@ -22,6 +22,25 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
+    (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
+    UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
+    but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
+    {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
+    message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
+    passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");
+    (2) server derives local today from the athlete's intervals timezone; (3) client-only message fix. Note: the readiness
+    endpoint uses UTC "today" too — same class of bug. gymapp-only.
+346. ⬜ **A completed workout shows as TWO entries in intervals (ghost PLANNED event + the DONE activity).** JM 2026-07-04
+    (screenshot, xenia Fri 03 Jul). VERIFIED in her data: a planned event "Upper Body + Core" (WeightTraining, our push
+    id 120381637) AND a completed activity "Strength" (WeightTraining, id i162487273, **paired_event_id=None**) both on
+    2026-07-03. They didn't merge because (a) her WATCH names the activity generically "Strength" ≠ the plan title, and gym
+    has no structured link → intervals left it unpaired; (b) Platyplus only deletes a past planned event on RE-PUSH (never
+    happened) so the ghost lingers. FIX options: (1) when a past plan is DONE (matching activity in the slot), DELETE its
+    Platyplus-pushed planned event from intervals — clean for gym (no plan-vs-actual there); extends #156's handle-missed;
+    (2) PAIR the activity to the plan (`paired_event_id`) so intervals shows one planned-vs-actual — richer for ride/run;
+    (3) both (pair ride/run, drop the gym ghost). Ties #150/#185/#160/#156. gymapp-only.
+
 > 🎯 **FOCUS (JM 2026-07-03):** prioritise **OUTDOOR activities + GYM**. **Indoor-ride** features are LATER — #174 (Bluetooth HR on the bike), #106 (pedaling metrics), and the indoor bits of the ride player / #62 ref. Cut by JM: #173, #163, #149, #61 (marked ❌ below).
 
 345. 🔨 **"Max workouts per DAY" preference (default 1) — next to preferred workouts/week.** JM 2026-07-03: the coach
