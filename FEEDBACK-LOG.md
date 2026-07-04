@@ -22,6 +22,14 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+348. 🔨 **Capture LOCATION (weather + local time) in onboarding + Profile, bi-directionally synced with intervals.** JM
+    2026-07-04 (from #341/#347: "you have the location for weather right? if you need it, put it in onboarding" + "sync it
+    with intervals bi-directional"). Mocked C/B/A → JM picked **C (detected + confirm)**. Done: `GET/POST /auth/location` —
+    GET resolves saved → the intervals athlete **city** (geocoded, Open-Meteo) → null; POST takes a city, geocodes it
+    (weather lat/lon kept Platyplus-side), and **WRITES the city back to the intervals athlete profile** (verified intervals
+    persists `city` via PUT but IGNORES lat/lng). Profile **LocationField** (option C: "📍 Montreal, Quebec · from intervals"
+    + Use this ✓ / Change → city field) at `#ob-location`; new **onboarding step** "Your location". Feeds weather (#341) +
+    the local-today tz fix (#347). openapi + audit. Self-validated vs mock C. On QA. gymapp-only.
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),

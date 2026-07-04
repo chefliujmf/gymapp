@@ -570,6 +570,33 @@ app.post('/auth/checkin', auth, (req, res) => {
     }
   } catch (e) { console.error('[checkin-decide] trigger ' + e.message) }
 })
+
+// #341/#268 — the athlete's LOCATION (weather + local time), BI-DIRECTIONALLY synced with intervals: we
+// READ the intervals athlete `city` (option C prefill) and WRITE a changed city back. intervals persists
+// `city` but IGNORES lat/lng (verified) → we geocode + keep lat/lon Platyplus-side for weather.
+app.get('/auth/location', auth, async (req, res) => {
+  const u = req.user
+  if (u.info && Number.isFinite(u.info.lat) && Number.isFinite(u.info.lon)) return res.json({ name: u.info.locationName || null, lat: u.info.lat, lon: u.info.lon, source: 'saved', timezone: u.icuTimezone || null })
+  if (u.icuKey) {
+    const me = await icuGet(u, `/athlete/${u.icuAthlete || 'i28814'}`).catch(() => null)
+    if (me) {
+      if (me.timezone && !u.icuTimezone) { u.icuTimezone = me.timezone; save(store) }
+      if (me.city) { const g = await geocodePlace(me.city, me.state, me.country); if (g) return res.json({ name: [me.city, me.state].filter(Boolean).join(', '), lat: g.lat, lon: g.lon, source: 'intervals', timezone: u.icuTimezone || me.timezone || null }) }
+    }
+  }
+  res.json({ name: null, lat: null, lon: null, source: null, timezone: u.icuTimezone || null })
+})
+app.post('/auth/location', auth, async (req, res) => {
+  const u = req.user, city = typeof req.body?.city === 'string' ? req.body.city.trim().slice(0, 80) : ''
+  if (!city) return res.status(400).json({ error: 'city required' })
+  const g = await geocodePlace(city)
+  if (!g) return res.status(400).json({ error: "Couldn't find that place — try a nearby city or add the region." })
+  u.info = u.info || {}; u.info.lat = g.lat; u.info.lon = g.lon; u.info.locationName = city
+  audit(u, { actor: 'you', action: 'Set location', target: city, detail: 'weather + local time · synced to intervals', kind: 'other' }) // #232
+  save(store)
+  if (u.icuKey) icuFetch(u, `/athlete/${u.icuAthlete || 'i28814'}`, { method: 'PUT', body: JSON.stringify({ city }) }).catch((e) => console.error('[icu-city-write] ' + (e.message || e))) // #268 write-back
+  res.json({ name: city, lat: g.lat, lon: g.lon, source: 'saved' })
+})
 app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
 // #347 — the athlete's LOCAL "today" from their intervals timezone (not the server's UTC), so a
 // tomorrow-forecast near local midnight isn't mistaken for today (e.g. 8pm Montreal = next-day UTC).

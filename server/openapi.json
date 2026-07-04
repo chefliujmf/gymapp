@@ -381,6 +381,21 @@
         }
       }
     },
+    "/auth/location": {
+      "get": {
+        "summary": "#341/#268 — the athlete's location (weather + local time): saved, else the intervals athlete city (geocoded). { name, lat, lon, source, timezone }.",
+        "tags": ["plans"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ name, lat, lon, source: saved|intervals|null, timezone }" } }
+      },
+      "post": {
+        "summary": "#341/#268 — set the athlete's location by CITY (geocoded for weather); bi-directionally WRITES the city back to the intervals athlete profile.",
+        "tags": ["plans"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "city": { "type": "string" } }, "required": ["city"] } } } },
+        "responses": { "200": { "description": "{ name, lat, lon, source }" }, "400": { "description": "city not found" } }
+      }
+    },
     "/auth/audit": {
       "get": {
         "summary": "#232 — the athlete's activity & changes log (append-only, capped): plan edits, coach actions, syncs. Most recent first.",

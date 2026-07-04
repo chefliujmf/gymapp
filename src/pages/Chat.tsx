@@ -48,6 +48,7 @@ const STEPS: Step[] = [
   { key: 'numbers', label: 'Your numbers (optional)', line: "Set FTP / threshold pace if you know them. Don't worry if not — I'll estimate from your intervals history and suggest values.", to: '/profile?onboard=1#ob-numbers', done: (u) => hasThreshold(u), when: isEndurance, optional: true },
   { key: 'equipment', label: 'Your equipment', line: "What gear do you have? I only pick exercises you can actually do.", to: '/profile?onboard=1#ob-equipment', done: (u) => { const e = (u.info as { equipment?: unknown[] }).equipment; return Array.isArray(e) && e.length > 0 } },
   { key: 'avail', label: 'Weekly availability', line: 'How long can you train each day? I fit sessions around your real week.', to: '/profile?onboard=1#ob-avail', done: (u) => !!(u.info as { availability?: unknown }).availability },
+  { key: 'location', label: 'Your location', line: "Where do you train? It powers weather-aware coaching (heat/cold/wind) and fixes your local time. I'll prefill it from intervals — just confirm.", to: '/profile?onboard=1#ob-location', done: (u) => Number.isFinite((u.info as { lat?: number }).lat) }, // #341
 ]
 
 export default function Chat() {
