@@ -360,7 +360,7 @@ export default function Today() {
   useEffect(() => { listTemplates().then(setTemplates); listRideTemplates().then(setRideTemplates); getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }) }, [])
   // #156 — on open, let the coach handle any recently-MISSED session (reshape the week + remove it +
   // notify). Server-side dedup (missedHandledAt) makes calling every load safe. Refresh if it acted.
-  useEffect(() => { authApi.handleMissed().then((r) => { if (r.missed > 0) setTimeout(load, 4000) }).catch(() => {}) }, [load])
+  useEffect(() => { authApi.handleMissed().then((r) => { if (r.missed > 0 || (r.paired || 0) > 0) setTimeout(load, 4000) }).catch(() => {}) }, [load])
   // #153 — a PWA left open across midnight captured "today" at mount and never re-anchored (the week
   // strip highlighted the wrong day). On regaining focus, if the date rolled over, re-anchor to the new
   // today — but ONLY if the user was still viewing the old today (don't clobber a manually-picked day).
