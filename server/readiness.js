@@ -121,10 +121,12 @@ export function energy({ hrv, rhr, sleep, subjective, hrvBaseline, rhrBaseline, 
 }
 
 // SLEEP (1–5) — prefer a device sleep score (0–100); else hours ÷ PERSONAL need (default 8h).
+// #159 — ALWAYS carry sleepHours + sleepNeed (even when a tracker score drives the number) so the "why"
+// can show the actionable basis (Xh slept vs your ~Yh need), not just a bare "75/100".
 export function sleep({ sleepScore, sleepHours, sleepNeed = 8 } = {}) {
-  if (sleepScore != null) return { score: score100To5(sleepScore), sleepScore }
+  const need = sleepNeed > 0 ? sleepNeed : 8
+  if (sleepScore != null) return { score: score100To5(sleepScore), sleepScore, sleepHours: sleepHours ?? null, sleepNeed: need }
   if (sleepHours != null) {
-    const need = sleepNeed > 0 ? sleepNeed : 8
     const ratio = sleepHours / need
     return { score: clamp(round1(lerpMap(ratio, [[0.55, 1], [0.7, 2], [0.85, 3], [1.0, 4.5], [1.08, 5]])), 1, 5), sleepHours, sleepNeed: need }
   }

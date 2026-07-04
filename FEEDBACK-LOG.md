@@ -30,6 +30,7 @@ test guide → the **🧪 Test guide** section below.
     persists `city` via PUT but IGNORES lat/lng). Profile **LocationField** (option C: "📍 Montreal, Quebec · from intervals"
     + Use this ✓ / Change → city field) at `#ob-location`; new **onboarding step** "Your location". Feeds weather (#341) +
     the local-today tz fix (#347). openapi + audit. Self-validated vs mock C. On QA. gymapp-only.
+349. 🔨 **Sleep "why" was too shallow — "tracker scored 75/100" with no hours-vs-need.** JM 2026-07-04 (screenshot, Sleep 4). Fixed: `server/readiness.js` `sleep()` now ALWAYS carries `sleepHours` + `sleepNeed` (even when a device sleep SCORE drives the number, which previously dropped them); the Today "why" now leads with the actionable basis — e.g. "6.2h slept vs your ~8h need · tracker sleep score 75/100" — not just the bare score. 313 tests. On QA. gymapp-only.
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
@@ -48,9 +49,9 @@ test guide → the **🧪 Test guide** section below.
     Done: `/auth/plans/handle-missed` (runs on app load) now, for each recent past plan (last 6 days), PAIRs the completed
     activity to our planned event (`pairActivityToPlan` → PUT `paired_event_id`, idempotent) when a matching activity exists;
     MISSED plans still get the coach reshape+remove (#156). Pairing API round-trip VERIFIED (her Jul-3 dup manually paired as
-    the test: activity i162487273 → event 120381637). Also uses local today (#347). ⚠️ NOTE: pairing sets the activity side;
-    intervals' event kept `paired_activity_id=None` — so the two rows MAY not fully collapse visually for gym. JM to check
-    his Jul-3 in intervals: if it still shows two, switch to option 1 (delete the gym ghost). Ties #150/#185/#160/#156. gymapp-only.
+    the test: activity i162487273 → event 120381637). Also uses local today (#347). ✅ CONFIRMED by JM 2026-07-04: after
+    pairing, intervals now shows **ONE** entry (the dup collapsed) — the activity-side `paired_event_id` is enough.
+    Ties #150/#185/#160/#156. gymapp-only.
 
 > 🎯 **FOCUS (JM 2026-07-03):** prioritise **OUTDOOR activities + GYM**. **Indoor-ride** features are LATER — #174 (Bluetooth HR on the bike), #106 (pedaling metrics), and the indoor bits of the ride player / #62 ref. Cut by JM: #173, #163, #149, #61 (marked ❌ below).
 
@@ -821,7 +822,7 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
-228. ⬜ **Profile vs Stats streamline — global athlete data buried in Profile; global belongs at TOP of Stats.** JM
+228. 🔨 **Profile vs Stats streamline — global athlete data buried in Profile; global belongs at TOP of Stats.** JM
     2026-06-30: "this Profile page has [the General/global stats] at the end of the page — reorganize so global is at the
     top of Stats; need to think how to streamline this too." Profile's "General" (sleep need / VO₂max / weight) + the
     per-sport "Your stats" (FTP/maxHR/threshold pace) are EDITABLE athlete inputs living in Profile, but they overlap
