@@ -76,8 +76,10 @@ export default function Settings() {
           hint="Stills save data and load instantly; tap a video in a workout to pause it." options={[['0', 'Video'], ['1', 'Stills only']]} />
       </Collapsible>
 
-      <Collapsible title="Data" subtitle="Clear cached data on this device">
-        <button className="btn btn--ghost" style={{ color: 'var(--danger)' }} onClick={clearData}>Clear cached data on this device</button>
+      <Collapsible title="Data" subtitle="Activity log · clear cached data">
+        {/* #232 — a timestamped trail of what changed (plan edits, coach actions, syncs) for investigation */}
+        <button className="btn btn--ghost" onClick={() => navigate('/activity-log')}>🗂️ Activity &amp; changes log — what changed, when ›</button>
+        <button className="btn btn--ghost" style={{ color: 'var(--danger)', marginTop: 8 }} onClick={clearData}>Clear cached data on this device</button>
       </Collapsible>
     </div>
   )

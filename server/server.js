@@ -494,6 +494,20 @@ app.get('/auth/coach-reviews', auth, (req, res) => {
   res.json(r)
 })
 
+// #232 — activity & changes log. Append-only per user (capped), so you can investigate what changed —
+// plan edits, coach actions, syncs. `actor` = you | coach | sync | system. Does NOT save() itself; the
+// caller's existing save() persists it (audit always precedes a save at each mutation).
+function audit(user, e) {
+  if (!user || !e || !e.action) return
+  user.audit = user.audit || []
+  user.audit.push({ at: Date.now(), actor: e.actor || 'system', action: e.action, target: e.target || '', detail: e.detail || '', kind: e.kind || 'other' })
+  if (user.audit.length > 500) user.audit = user.audit.slice(-500)
+}
+app.get('/auth/audit', auth, (req, res) => {
+  const limit = Math.min(300, Math.max(1, Number(req.query.limit) || 200))
+  res.json((req.user.audit || []).slice(-limit).reverse()) // most recent first
+})
+
 // Coach-activity notifications — the user reads (bell) + marks read.
 app.get('/auth/notifications', auth, (req, res) => res.json(req.user.notifications || []))
 app.post('/auth/notifications/read', auth, (req, res) => {
@@ -533,6 +547,7 @@ function upsertCheckin(user, body) {
   }
   const i = user.checkins.findIndex((x) => x.date === date)
   if (i >= 0) user.checkins[i] = { ...user.checkins[i], ...ci }; else user.checkins.push(ci)
+  if (i < 0) audit(user, { actor: 'you', action: 'Checked in', target: date, detail: [ci.energy != null && `energy ${ci.energy}`, ci.sleep != null && `sleep ${ci.sleep}`, ci.soreness != null && `soreness ${ci.soreness}`].filter(Boolean).join(' · '), kind: 'checkin' }) // #232
   return ci
 }
 const checkinsInRange = (user, from, to) => (user.checkins || []).filter((c) => (!from || c.date >= from) && (!to || c.date <= to)).sort((a, b) => (a.date < b.date ? -1 : 1))
@@ -763,6 +778,7 @@ app.post('/auth/activity/:id/feedback', auth, (req, res) => {
   }
   if (!req.user.activityFeedback) req.user.activityFeedback = {}
   req.user.activityFeedback[id] = fb
+  audit(req.user, { actor: 'you', action: 'Logged feedback', target: fb.title || `${fb.sport || 'workout'} ${fb.date || ''}`.trim(), detail: [fb.feel && `felt ${fb.feel}`, fb.rpe && `RPE ${fb.rpe}`].filter(Boolean).join(' · '), kind: 'feedback' }) // #232
   save(store)
   res.json({ ok: true, feedback: fb })
   // #273 BI-DIRECTIONAL: write feel/RPE + custom fields BACK to the intervals activity (as the
@@ -832,7 +848,7 @@ app.post('/auth/token/rotate', auth, (req, res) => { req.user.apiToken = randomB
 app.get('/auth/plans', auth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
 // Calendar authoring (session): create/update/delete workout plans from the UI
 // — same path as the coach API, so it auto-pushes to intervals.
-app.post('/auth/plans', auth, async (req, res) => { const r = await upsertPlan(req.user, req.body); res.status(r.status).json(r.body) })
+app.post('/auth/plans', auth, async (req, res) => { const r = await upsertPlan(req.user, req.body, 'you'); res.status(r.status).json(r.body) })
 // Import intervals.icu-origin planned workouts into Platyplus (Platyplus then owns them).
 app.post('/auth/plans/sync', auth, async (req, res) => {
   const from = req.body?.from || req.query.from, to = req.body?.to || req.query.to
@@ -889,7 +905,7 @@ app.post('/auth/plans/resync', auth, async (req, res) => {
   }
   res.json({ total: plans.length, created, exists, updated, skipped, errors })
 })
-app.delete('/auth/plans/:id', auth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
+app.delete('/auth/plans/:id', auth, async (req, res) => { await deletePlanById(req.user, req.params.id, 'you'); res.json({ ok: true }) })
 
 // Non-workout calendar items (meal / mind / note) — Platyplus only, no intervals push.
 app.get('/auth/items', auth, (req, res) => res.json(itemsInRange(req.user, req.query.from, req.query.to)))
@@ -1427,7 +1443,7 @@ function withDefaultTempo(x) {
   return x
 }
 // Shared upsert/delete for workout plans (used by both the coach API and the UI).
-async function upsertPlan(user, body) {
+async function upsertPlan(user, body, actor = 'coach') {
   const err = validatePlan(body); if (err) return { status: 400, body: { error: err } }
   const i = user.plans.findIndex((p) => p.id === body.id)
   const plan = {
@@ -1457,11 +1473,12 @@ async function upsertPlan(user, body) {
     if (g.clamped) { plan.segments = g.segments; console.log(`[clampEasyEfforts] ${user.username} "${plan.title}" — clamped ${g.clamped} easy segment(s) below ${'threshold'}`) }
   }
   if (i >= 0) user.plans[i] = plan; else user.plans.push(plan)
+  audit(user, { actor, action: i >= 0 ? 'Updated' : 'Created', target: plan.title, detail: `${plan.sport}${plan.date ? ' · ' + plan.date : ''} · mirrored to intervals`, kind: 'plan' }) // #232
   save(store)
   const icu = await pushPlanToIcu(user, plan)
   return { status: i >= 0 ? 200 : 201, body: { ...plan, icu } }
 }
-async function deletePlanById(user, id) {
+async function deletePlanById(user, id, actor = 'coach') {
   const plan = (user.plans || []).find((x) => x.id === id)
   await deleteIcuEvent(user, plan)
   user.plans = (user.plans || []).filter((x) => x.id !== id)
@@ -1470,6 +1487,7 @@ async function deletePlanById(user, id) {
   if (Array.isArray(user.logs) && user.logs.some((l) => l.workoutId === id)) {
     user.logs = user.logs.filter((l) => l.workoutId !== id)
   }
+  if (plan) audit(user, { actor, action: 'Removed', target: plan.title, detail: `${plan.sport}${plan.date ? ' · ' + plan.date : ''}`, kind: 'plan' }) // #232
   save(store)
 }
 
@@ -1548,6 +1566,7 @@ async function reconcileFromIcu(user, from, to) {
   const before = user.plans.length
   user.plans = user.plans.filter((p) => !planDroppedByReconcile(p, { liveIds: liveIcuIds, liveSlots, from, to }))
   const dropped = before - user.plans.length
+  if (imported || dropped) audit(user, { actor: 'sync', action: 'Synced from intervals', target: '', detail: [imported && `${imported} imported`, dropped && `${dropped} removed`, refreshed && `${refreshed} refreshed`].filter(Boolean).join(' · '), kind: 'sync' }) // #232
   if (imported || dropped || refreshed) save(store)
   return { imported, dropped, refreshed, scanned: (events || []).length }
 }
@@ -1944,6 +1963,7 @@ function pushNotification(u, { title, body, items, subkind, link, score, id }) {
   if (!u.notifications) u.notifications = []
   const t = String(title || '').trim().slice(0, 120)
   if (!t) return null
+  audit(u, { actor: 'coach', action: 'Notified you', target: t, detail: String(body || '').slice(0, 140), kind: 'notify' }) // #232
   const n = {
     id: id || ('coach-' + randomBytes(6).toString('base64url')),
     kind: 'coach',
@@ -2030,6 +2050,7 @@ app.post('/api/coach-review', apiAuth, (req, res) => {
     at: new Date().toISOString(),
   }
   req.user.coachReviews = [review, ...req.user.coachReviews.filter((r) => r.id !== review.id)].slice(0, 200)
+  audit(req.user, { actor: 'coach', action: 'Reviewed a session', target: review.title || `${review.sport || ''} ${review.date || ''}`.trim(), detail: review.verdict || (review.score != null ? `score ${review.score}` : ''), kind: 'review' }) // #232
   // #233 — notify the athlete their session was reviewed (tappable → the activity / plan).
   const score10 = review.score == null ? null : (review.score > 10 ? Math.round(review.score / 10) : review.score)
   pushNotification(req.user, {
