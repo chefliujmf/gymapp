@@ -16,6 +16,51 @@ const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running
 const DIETS: [string, string][] = [['vegetarian', 'vegetarian'], ['vegan', 'vegan'], ['no preference', 'no preference']]
 
 
+// #341/#268 — LOCATION (weather-aware coaching + local time). Option C: prefill the detected city (from
+// intervals), one tap to confirm, or Change to a city field. Bi-directionally synced with intervals (the
+// city is written back). No lat/lng UI — the server geocodes + keeps coords for weather.
+function LocationField() {
+  const [loc, setLoc] = useState<{ name: string | null; source: string | null } | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [city, setCity] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const [saved, setSaved] = useState(false)
+  useEffect(() => { authApi.location().then((l) => { setLoc(l); setCity((l.name || '').split(',')[0]) }).catch(() => setLoc({ name: null, source: null })) }, [])
+  const submit = (c: string) => {
+    const q = c.trim(); if (!q) return
+    setBusy(true); setErr('')
+    authApi.saveLocation(q).then((r) => { setLoc({ name: r.name, source: 'saved' }); setCity(r.name); setEditing(false); setSaved(true); setTimeout(() => setSaved(false), 1500) })
+      .catch((e) => setErr((e as Error).message || "Couldn't find that place")).finally(() => setBusy(false))
+  }
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div className="section-title" style={{ fontSize: 13 }} id="ob-location">Location <span className="meta" style={{ fontWeight: 400 }}>· weather + local time{saved ? ' · Saved ✓' : ''}</span></div>
+      {loc === null ? <p className="meta">Loading…</p>
+        : (loc.name && !editing) ? (
+          <div className="card" style={{ padding: '11px 13px' }}>
+            <div style={{ fontWeight: 750, fontSize: 14 }}>📍 {loc.name} <span className="meta" style={{ fontWeight: 400 }}>· {loc.source === 'intervals' ? 'from intervals' : 'saved'}</span></div>
+            <div className="meta" style={{ marginTop: 3 }}>Used for weather-aware coaching + your local time.{loc.source === 'intervals' ? ' Confirm to lock it in (and keep intervals in sync).' : ''}</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              {loc.source !== 'saved' && <button className="btn" disabled={busy} onClick={() => submit((loc.name || '').split(',')[0])} style={{ flex: 1 }}>Use this ✓</button>}
+              <button className="btn btn--ghost" onClick={() => setEditing(true)} style={{ flex: 1 }}>Change</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <input className="search" placeholder="City — e.g. Montreal" value={city} onChange={(e) => setCity(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(city) }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button className="btn" disabled={busy || !city.trim()} onClick={() => submit(city)} style={{ flex: 1 }}>{busy ? 'Finding…' : 'Save location'}</button>
+              {loc?.name && <button className="btn btn--ghost" onClick={() => { setEditing(false); setErr('') }}>Cancel</button>}
+            </div>
+            {err && <p className="meta" style={{ color: 'var(--danger)', marginTop: 6 }}>{err}</p>}
+            <p className="meta" style={{ margin: '6px 2px 0' }}>Your coach adjusts for heat/cold/wind, and your local date fixes forecasts. Synced to intervals.</p>
+          </>
+        )}
+    </div>
+  )
+}
+
 // #329 — optional cycle inputs (last period start + typical length). The coach uses intervals'
 // menstrualPhase first; this is the fallback/manual path. Phase readout mirrors server/cycle.js.
 function cyclePhaseOf(start?: string, len = 28): { day: number; phase: string } | null {
@@ -186,6 +231,9 @@ export default function Profile() {
       {/* #329 — optional cycle tracking → the coach adapts load/recovery by phase (uses intervals' phase
           first; this is the fallback + for those not syncing it). Only shown for female athletes. */}
       {user?.sex === 'female' && <CycleFields user={user} refresh={refresh} />}
+
+      {/* #341/#268 — location for weather-aware coaching + local time (bi-directionally synced w/ intervals) */}
+      <LocationField />
 
       {/* #323 — rich goals/identity capture (what makes coaching personal) */}
       <GoalsPicker />

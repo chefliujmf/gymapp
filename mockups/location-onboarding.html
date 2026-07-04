@@ -1,0 +1,67 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Location capture — onboarding + Profile</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9aa2b1;--faint:#6b7280;--accent:#34e07d;--blue:#6ea8ff;--warn:#f0b145;--bg:#0f1216;--line:#2a2f3a;--soft:#191c24}
+  *{box-sizing:border-box;margin:0}body{background:#05070a;color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:14px;max-width:440px;margin:auto}
+  h1{font-size:15px;margin:0 0 2px}.sub{color:var(--dim);font-size:12px;margin-bottom:12px}
+  .sub b{color:var(--warn)}
+  .toggle{display:flex;gap:6px;margin-bottom:10px}
+  .toggle button{flex:1;padding:9px 6px;border:1px solid var(--line);background:#12151c;color:var(--dim);border-radius:10px;font-size:11.5px;font-weight:700}
+  .toggle button.on{background:var(--accent);color:#08150c;border-color:var(--accent)}
+  .stage{display:none}.stage.on{display:block}
+  .cap{color:var(--dim);font-size:12px;margin:0 2px 12px;line-height:1.5}.cap b{color:var(--accent)}
+  .section-title{font-weight:800;font-size:13px;margin:14px 2px 4px}
+  .meta{color:var(--dim);font-size:12px}
+  .search{width:100%;background:#12151c;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:11px 12px;font-size:14px}
+  .btn{font:inherit;font-size:13px;font-weight:800;border-radius:11px;padding:11px 14px;border:1px solid var(--line);background:#12151c;color:var(--text);width:100%;text-align:center;margin-top:8px}
+  .btn.g{background:var(--accent);color:#08150c;border-color:var(--accent)}
+  .btn.ghost{background:transparent}
+  .read{margin-top:8px;font-size:12.5px;color:var(--accent)}.read b{color:var(--text)}
+  /* intervals detect card */
+  .dcard{background:linear-gradient(180deg,#16261c,#13201a);border:1px solid #34e07d3a;border-radius:12px;padding:12px 13px;margin-top:8px}
+  .dcard__t{font-weight:750;font-size:14px;display:flex;align-items:center;gap:8px}
+  .dcard__m{font-size:12px;color:var(--dim);margin-top:3px}
+  .drow{display:flex;gap:8px;margin-top:10px}.drow .btn{margin-top:0}
+  /* onboarding step chip */
+  .obstep{display:flex;gap:10px;align-items:center;background:linear-gradient(180deg,#21252f,#191c24);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:10px}
+  .obstep__n{flex:none;width:26px;height:26px;border-radius:50%;background:#34e07d22;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+  .obstep__t{flex:1;font-size:13.5px;font-weight:650}.obstep__t span{display:block;color:var(--dim);font-weight:400;font-size:11.5px}
+</style>
+<h1>Location — for weather-aware coaching + your local time</h1>
+<div class="sub"><b>Now: nothing is asked.</b> Weather/timezone are guessed from your intervals city or GPS — fragile for non-connected users. Proposed: capture it once (onboarding + Profile).</div>
+
+<div class="obstep"><div class="obstep__n">📍</div><div class="obstep__t">Set your location<span>1 tap — powers weather-aware coaching + your local time</span></div><span class="meta">Onboarding step ›</span></div>
+
+<div class="toggle">
+  <button class="on" onclick="show('C',this)">C · Detected + confirm</button>
+  <button onclick="show('B',this)">B · Use my location</button>
+  <button onclick="show('A',this)">A · City field</button>
+</div>
+
+<div class="stage on" id="C">
+  <p class="cap"><b>C — prefilled from intervals, one tap to confirm</b> (least friction for connected athletes like you). Falls back to A if intervals has no city.</p>
+  <div class="section-title">Location</div>
+  <div class="dcard">
+    <div class="dcard__t">📍 Montreal, Quebec <span class="meta" style="font-weight:400">· from intervals</span></div>
+    <div class="dcard__m">We'll use this for weather + your local time. Not right?</div>
+    <div class="drow"><button class="btn g" style="flex:1">Use this ✓</button><button class="btn ghost" style="flex:1">Change</button></div>
+  </div>
+</div>
+
+<div class="stage" id="B">
+  <p class="cap"><b>B — one-tap "use my location"</b> (browser geolocation → exact coords), city field as fallback. Fastest + most precise.</p>
+  <div class="section-title">Location</div>
+  <button class="btn g">📍 Use my current location</button>
+  <p class="meta" style="text-align:center;margin:8px 0 4px">or type a city</p>
+  <input class="search" placeholder="e.g. Montreal">
+</div>
+
+<div class="stage" id="A">
+  <p class="cap"><b>A — a simple city field</b> (geocoded, free). Works everywhere, no permissions prompt; a "use my location" shortcut optional.</p>
+  <div class="section-title">Where do you train?</div>
+  <input class="search" placeholder="City — e.g. Montreal" value="Montreal">
+  <button class="btn ghost">📍 Use my current location instead</button>
+  <div class="read">📍 <b>Montreal, QC, Canada</b> · weather + local time ✓</div>
+</div>
+<script>function show(id,b){document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('on',s.id===id));document.querySelectorAll('.toggle button').forEach(x=>x.classList.remove('on'));if(b)b.classList.add('on')}
+var q=new URLSearchParams(location.search).get('o');if(q)show(q)</script>

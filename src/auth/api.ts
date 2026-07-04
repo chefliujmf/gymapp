@@ -165,6 +165,8 @@ export const authApi = {
   readiness: (date: string) => req<Readiness>(`/readiness?date=${date}`),
   handleMissed: () => req<{ missed: number; paired?: number }>(`/plans/handle-missed`, { method: 'POST', body: {} }), // #156/#346
   audit: () => req<AuditEvent[]>(`/audit`), // #232
+  location: () => req<{ name: string | null; lat: number | null; lon: number | null; source: 'saved' | 'intervals' | null; timezone: string | null }>(`/location`), // #341
+  saveLocation: (city: string) => req<{ name: string; lat: number; lon: number; source: string }>(`/location`, { method: 'POST', body: { city } }), // #341/#268
   planFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string }) => req<{ ok: boolean }>(`/plan/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   // #273 feedback on a completed device activity (no plan)
   getActivityFeedback: (id: string) => req<{ feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; at?: number } | null>(`/activity/${encodeURIComponent(id)}/feedback`),
