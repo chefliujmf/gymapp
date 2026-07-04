@@ -30,7 +30,7 @@ test guide → the **🧪 Test guide** section below.
     persists `city` via PUT but IGNORES lat/lng). Profile **LocationField** (option C: "📍 Montreal, Quebec · from intervals"
     + Use this ✓ / Change → city field) at `#ob-location`; new **onboarding step** "Your location". Feeds weather (#341) +
     the local-today tz fix (#347). openapi + audit. Self-validated vs mock C. On QA. gymapp-only.
-349. 🔨 **Sleep "why" was too shallow — "tracker scored 75/100" with no hours-vs-need.** JM 2026-07-04 (screenshot, Sleep 4). Fixed: `server/readiness.js` `sleep()` now ALWAYS carries `sleepHours` + `sleepNeed` (even when a device sleep SCORE drives the number, which previously dropped them); the Today "why" now leads with the actionable basis — e.g. "6.2h slept vs your ~8h need · tracker sleep score 75/100" — not just the bare score. 313 tests. On QA. gymapp-only.
+349. 🔨 **Sleep "why" was too shallow — "tracker scored 75/100" with no hours-vs-need.** JM 2026-07-04 (screenshot, Sleep 4). Fixed: `server/readiness.js` `sleep()` now ALWAYS carries `sleepHours` + `sleepNeed` (even when a device sleep SCORE drives the number, which previously dropped them); the Today "why" now leads with the actionable basis — e.g. "6.2h slept vs your ~8h need · tracker sleep score 75/100" — not just the bare score. 313 tests. **On QA + prod.** gymapp-only.
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
