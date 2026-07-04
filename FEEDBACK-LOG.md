@@ -31,15 +31,18 @@ test guide → the **🧪 Test guide** section below.
     passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");
     (2) server derives local today from the athlete's intervals timezone; (3) client-only message fix. Note: the readiness
     endpoint uses UTC "today" too — same class of bug. gymapp-only.
-346. ⬜ **A completed workout shows as TWO entries in intervals (ghost PLANNED event + the DONE activity).** JM 2026-07-04
+346. 🔨 **A completed workout shows as TWO entries in intervals (ghost PLANNED event + the DONE activity).** JM 2026-07-04
     (screenshot, xenia Fri 03 Jul). VERIFIED in her data: a planned event "Upper Body + Core" (WeightTraining, our push
     id 120381637) AND a completed activity "Strength" (WeightTraining, id i162487273, **paired_event_id=None**) both on
     2026-07-03. They didn't merge because (a) her WATCH names the activity generically "Strength" ≠ the plan title, and gym
     has no structured link → intervals left it unpaired; (b) Platyplus only deletes a past planned event on RE-PUSH (never
-    happened) so the ghost lingers. FIX options: (1) when a past plan is DONE (matching activity in the slot), DELETE its
-    Platyplus-pushed planned event from intervals — clean for gym (no plan-vs-actual there); extends #156's handle-missed;
-    (2) PAIR the activity to the plan (`paired_event_id`) so intervals shows one planned-vs-actual — richer for ride/run;
-    (3) both (pair ride/run, drop the gym ghost). Ties #150/#185/#160/#156. gymapp-only.
+    happened) so the ghost lingers. JM chose: **pair if it corresponds; if not (missed), remove the planned one eventually.**
+    Done: `/auth/plans/handle-missed` (runs on app load) now, for each recent past plan (last 6 days), PAIRs the completed
+    activity to our planned event (`pairActivityToPlan` → PUT `paired_event_id`, idempotent) when a matching activity exists;
+    MISSED plans still get the coach reshape+remove (#156). Pairing API round-trip VERIFIED (her Jul-3 dup manually paired as
+    the test: activity i162487273 → event 120381637). Also uses local today (#347). ⚠️ NOTE: pairing sets the activity side;
+    intervals' event kept `paired_activity_id=None` — so the two rows MAY not fully collapse visually for gym. JM to check
+    his Jul-3 in intervals: if it still shows two, switch to option 1 (delete the gym ghost). Ties #150/#185/#160/#156. gymapp-only.
 
 > 🎯 **FOCUS (JM 2026-07-03):** prioritise **OUTDOOR activities + GYM**. **Indoor-ride** features are LATER — #174 (Bluetooth HR on the bike), #106 (pedaling metrics), and the indoor bits of the ride player / #62 ref. Cut by JM: #173, #163, #149, #61 (marked ❌ below).
 
