@@ -27,7 +27,7 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay } from './cycle.js' // #329
 
@@ -1293,6 +1293,15 @@ function renderCoachBrief(plan, items = []) {
   if (Array.isArray(plan.cues) && plan.cues.length) L.push(`\n## Cues\n${plan.cues.map((c) => `• ${c}`).join('\n')}`)
   return L.length ? L.join('\n') + '\n\n— authored in Platyplus' : ''
 }
+// #157 — a SHORT coaching note (below a divider) instead of the full brief dump; the full plan lives in Platyplus.
+function shortCoachNote(plan) {
+  const L = []
+  if (plan.objective) L.push(`Objective: ${plan.objective}`)
+  if (plan.fuel?.why) L.push(`Fuel: ${plan.fuel.why}`)
+  if (Array.isArray(plan.cues) && plan.cues.length) L.push(`Cues: ${plan.cues.join('; ')}`)
+  L.push(`Full plan · meals · mind → ${ORIGIN}/coach/${encodeURIComponent(plan.id)}`)
+  return '\n─────────── coach notes ───────────\n' + L.join('\n')
+}
 // intervals/Wahoo won't render a single step longer than this — split + interpolate.
 // Map a plan to an intervals calendar event. Rides carry POWER (%ftp) steps, runs carry PACE
 // (%pace) steps (#312) so intervals pushes a real interval workout to the head unit / Garmin.
@@ -1311,20 +1320,13 @@ function planToIcuEvent(plan, items = []) {
     // Split any step > MAX (3600s) into interpolated chunks — a single over-long step makes the
     // intervals workout render EMPTY (matches cyclingcoach split_long_doc_step).
     const isRun = plan.sport === 'run'
-    const durTxt = (secs) => (secs >= 60 && secs % 60 === 0 ? `${secs / 60}m` : `${secs}s`)
-    let native = ''
-    if (isRun) {
-      // #331 — RUNS: emit native "- Xm Y% pace" text and let intervals PARSE it (it then computes
-      // distance/zones → the pace chart renders, and the labels are real min/km). NO workout_doc: a
-      // manual pace workout_doc rendered an EMPTY chart. paceFromPowerPct remaps the coach's power-%
-      // (58% ≈ walking on pace) to a realistic pace-%.
-      if (segs.length) native = '## Workout\n' + segs.map((s) => { const secs = Number(s.duration) || 0; const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; const p = paceFromPowerPct(Math.round((a + b) / 2)); return `- ${durTxt(secs)} ${p}% pace${s.label ? ' ' + s.label : ''}` }).join('\n')
-    } else {
-      // RIDES: structured power workout_doc + readable native watts text (intervals renders the chart).
-      if (segs.length) ev.workout_doc = { steps: segs.flatMap((s) => encodeStep(s, false)) }
-      native = segs.length ? '## Workout\n' + segs.map((s) => { const m = Math.round((Number(s.duration) || 0) / 60); const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; return `- ${m}m ${a === b ? a + '%' : a + '-' + b + '%'}${s.label ? ' ' + s.label : ''}` }).join('\n') : ''
-    }
-    ev.description = [native, plan.notes, brief].filter(Boolean).join('\n\n')
+    // #157 — native Warmup / Nx / Cooldown workout text (reads like a real intervals workout). RUNS parse
+    // this text for the pace chart (#331), so each step keeps its "- Xm Y% pace" target. RIDES also carry
+    // the structured workout_doc (the chart authority). The coaching brief is TRIMMED below a divider — the
+    // full plan (meals/mind/recovery) stays in Platyplus via the link.
+    const native = nativeWorkoutText(segs, isRun)
+    if (!isRun && segs.length) ev.workout_doc = { steps: segs.flatMap((s) => encodeStep(s, false)) }
+    ev.description = [native, plan.notes, shortCoachNote(plan)].filter(Boolean).join('\n\n')
   } else {
     ev.type = 'WeightTraining'
     // #301 — DON'T mirror gym structure as text (tempo/sets can't round-trip through intervals, which

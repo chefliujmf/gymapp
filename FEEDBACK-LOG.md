@@ -1165,12 +1165,14 @@ test guide → the **🧪 Test guide** section below.
     it's a manual tap) — best proxy is a composite of HRV+RestHR+sleep, label it a soft estimate, manual tap always
     overrides. Sleep mapping today (Today.tsx `sleepTo5`): device sleepSCORE/20→1-5, else hours <5/<6/<7/<8/≥8→1-5.
     JM 2026-06-26.
-157. ⬜ **The workout TEXT Platyplus pushes to intervals is very different from a real planned workout's text.** JM:
-    "look at the text in intervals in a planned workout vs what Platyplus pushed — huge difference." `planToIcuEvent`
-    builds description = native "## Workout\n- 10m 50-62%" + notes + coach brief; intervals' own planned-workout text/
-    format (the structured/native workout the chart renders from) differs. Align the pushed description + workout_doc to
-    intervals' native format so the pushed event reads + charts like a proper planned workout (cf. cyclingcoach
-    instructions_intervals_icu). Pairs with #150. JM screenshot 2026-06-26.
+157. 🔨 **The workout TEXT Platyplus pushes to intervals reads unlike a real planned workout.** JM 2026-06-26. Mocked
+    current-vs-proposed (mockups/intervals-text.html); JM picked **A · native sections + brief below**. Done:
+    `nativeWorkoutText(segs, isRun)` (icu-steps.js) renders **Warmup / Nx repeats / Cooldown** blocks instead of a flat
+    "## Workout" list (peels labelled warm-up/cool-down + a leading ramp; `detectRepeat` collapses periodic work into an
+    "Nx" block), and `shortCoachNote` trims the brief to Objective/Fuel/Cues below a divider + a link (full plan/meals/mind
+    stay in Platyplus). Rides keep `workout_doc` (chart authority); runs parse the text — **round-trip VERIFIED on a real
+    intervals run**: "2x" + "% pace" → 4 steps, pace targets [77,111,75,75]. 4 new unit tests (312 total). JM to verify on
+    prod (open a pushed ride/run in intervals — reads native; chart still renders). gymapp-only.
 156. 🔨 **Missed-workout UX.** JM 2026-06-26 → refined 2026-07-03. Mocked 3 options (mockups/missed-workout.html); JM picked
     **C, refined**: DON'T leave a red "Missed" card on the calendar — instead the coach reshapes the week, REMOVES the missed
     workout, and the NOTIFICATION carries the coach's own explanation. Done: `POST /auth/plans/handle-missed` detects a plan

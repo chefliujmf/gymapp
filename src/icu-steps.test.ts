@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts } from '../server/icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, detectRepeat } from '../server/icu-steps.js'
 
 // #312 — a RUN must target PACE (%pace), a RIDE POWER (%ftp). The bug: every ride/run emitted
 // power → intervals (and the Garmin workout it syncs) showed WATTS on runs.
@@ -110,4 +110,37 @@ describe('clampEasyEfforts — "95% is never easy" hard guard (both sports)', ()
     expect(clamped).toBe(0)
     expect(segments).toEqual(segs)
   })
+})
+
+// #157 — native intervals workout text: Warmup / Nx / Cooldown, so the pushed text reads like a real
+// workout (round-trip verified: intervals parses "2x" + "% pace" into steps).
+describe('nativeWorkoutText (#157)', () => {
+  const ride = [
+    { duration: 600, powerStart: 50, powerEnd: 65, label: 'Warm-up' },
+    { duration: 300, powerStart: 100, powerEnd: 100 },
+    { duration: 180, powerStart: 55, powerEnd: 55 },
+    { duration: 300, powerStart: 100, powerEnd: 100 },
+    { duration: 180, powerStart: 55, powerEnd: 55 },
+    { duration: 600, powerStart: 55, powerEnd: 55, label: 'Cool-down' },
+  ]
+  it('groups a ride into Warmup / Nx / Cooldown blocks', () => {
+    const t = nativeWorkoutText(ride, false)
+    expect(t).toContain('Warmup')
+    expect(t).toContain('2x') // the repeated [5m 100% / 3m 55%] block
+    expect(t).toContain('Cooldown')
+    expect(t).not.toContain('## Workout') // no more markdown wall
+    // the 2x block collapses the 4 work steps into 2 lines
+    expect((t.match(/100%/g) || []).length).toBe(1)
+  })
+  it('runs keep the "% pace" target on every step', () => {
+    const run = [{ duration: 300, powerStart: 35, powerEnd: 45, label: 'Warm-up' }, { duration: 180, powerStart: 108, powerEnd: 108 }, { duration: 300, powerStart: 35, powerEnd: 35, label: 'Cool-down' }]
+    const t = nativeWorkoutText(run, true)
+    expect(t).toMatch(/\d+% pace/)
+    expect(t).not.toMatch(/\d+\s*W\b/) // never watts on a run
+    expect(t).not.toMatch(/\d+%(?!\s*pace)/) // every % target is a pace
+  })
+  it('no false repeat when the work is not periodic', () => {
+    expect(detectRepeat([{ duration: 300, powerStart: 100, powerEnd: 100 }, { duration: 180, powerStart: 90, powerEnd: 90 }, { duration: 120, powerStart: 80, powerEnd: 80 }])).toBeNull()
+  })
+  it('empty segments → empty string', () => expect(nativeWorkoutText([], false)).toBe(''))
 })
