@@ -1,0 +1,149 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendar #166 — tab by tab</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#262a33;
+    --ride:#1f9f8a;--run:#d1793a;--gym:#5a63c8;--meal:#d1567f;--mind:#8a63c8;--note:#5a6472;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05070a;color:var(--text);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:16px}
+  .nav{position:sticky;top:0;z-index:20;display:flex;gap:8px;justify-content:center;padding:10px 0;margin-bottom:6px;background:#05070a}
+  .nav button{padding:10px 18px;border:1px solid var(--line);background:#141821;color:var(--dim);font-size:14px;font-weight:800;border-radius:11px;cursor:pointer}
+  .nav button.on{background:var(--accent);color:#07140c;border-color:var(--accent)}
+  .wrap{display:flex;gap:22px;justify-content:center;align-items:flex-start}
+  .col{width:390px}
+  .tag{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px;text-align:center}
+  .tag.now{color:var(--dim)} .tag.new{color:var(--accent)}
+  .phone{background:var(--bg);border-radius:20px;border:1px solid #1c2029;padding:12px 11px 20px;min-height:560px}
+  h1{font-size:17px;font-weight:800}.dim{color:var(--dim)}
+  .title{max-width:820px;margin:0 auto 14px;text-align:center}
+  .title h2{font-size:18px;font-weight:800}.title p{color:var(--dim);font-size:13px;margin-top:3px}
+  /* view tabs */
+  .views{display:flex;gap:2px;background:#16161a;border:1px solid var(--line);border-radius:11px;padding:3px;margin-bottom:11px}
+  .vb{flex:1;padding:7px 3px;color:var(--dim);font-size:12px;font-weight:700;border-radius:8px;text-align:center}
+  .vb.on{background:#0f0f12;color:#fff}
+  .head{display:flex;align-items:center;gap:5px;margin-bottom:11px}
+  .head h1{flex:1;text-align:center;font-size:16px}
+  .icon{width:29px;height:29px;border-radius:8px;background:#1b1f28;border:1px solid var(--line);color:var(--dim);display:flex;align-items:center;justify-content:center;font-size:15px}
+  .today-btn{color:var(--accent);font-weight:800;font-size:12px}
+  .addbtn{background:var(--accent);color:#07140c;font-weight:800;font-size:12px;border:0;border-radius:8px;padding:6px 11px}
+  .secttl{font-weight:800;font-size:13px}
+  /* entry cards + power profile */
+  .prof{display:flex;align-items:flex-end;gap:1.5px;height:100%;width:100%;padding:6px 5px}
+  .prof i{flex:1;background:currentColor;border-radius:1px;opacity:.9;min-height:8%}
+  .chip{width:48px;height:48px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;font-size:20px;overflow:hidden}
+  .chip.ride{background:radial-gradient(120% 120% at 30% 20%,#1f6f5c,#0e2f36)}
+  .chip.run{background:radial-gradient(120% 120% at 30% 20%,#b9612a,#3f2018)}
+  .chip.gym{background:radial-gradient(120% 120% at 30% 20%,#4a4f9e,#1f2240)}
+  .chip.meal{background:radial-gradient(120% 120% at 30% 20%,#b9466a,#3f1827)}
+  .chip.mind{background:radial-gradient(120% 120% at 30% 20%,#6a4aa0,#261c3c)}
+  .chip.chart{background:linear-gradient(135deg,#2a2a31,#4a4a55)}
+  .chip.ride.chart{color:#54e0c4}.chip.run.chart{color:#f0a35e}
+  .entry{display:flex;align-items:center;gap:10px;background:linear-gradient(150deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:13px;padding:8px 10px}
+  .entry.sm{padding:6px 9px;gap:8px}.entry.sm .chip{width:38px;height:38px;font-size:16px;border-radius:9px}
+  .entry .t{flex:1;min-width:0}.entry .t h3{font-size:13.5px;font-weight:700}.entry .t .m{font-size:11.5px;color:var(--dim);margin-top:2px}
+  .kebab{color:var(--dim);font-size:17px}
+  .stack{display:flex;flex-direction:column;gap:7px}
+  /* NOW month */
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .dow{text-align:center;font-size:10px;color:var(--dim);font-weight:700;padding:2px 0}
+  .cell{min-height:66px;display:flex;flex-direction:column;gap:2px;padding:3px 2px;border-radius:9px;border:1px solid transparent;background:#1b1e26;overflow:hidden}
+  .cell.dim{opacity:.4}.cell.sel{border-color:var(--accent)}
+  .num{font-size:11px;font-weight:600}
+  .num.today{color:#07140c;background:var(--accent);border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px}
+  .ev{display:flex;align-items:center;gap:2px;font-size:8.5px;font-weight:600;padding:1px 2px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .more{font-size:8px;color:var(--dim);padding-left:2px}
+  .detail{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:9px 10px;margin-top:12px}
+  .detail .dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+  /* NEW month grid */
+  .mgrid{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .mc{min-height:80px;border-right:1px solid #1a1d24;border-bottom:1px solid #1a1d24;padding:3px 2px;display:flex;flex-direction:column;gap:2px;background:#12151c}
+  .mc:nth-child(7n){border-right:0}.mc.dim{background:#0d0f14;opacity:.55}.mc.today{background:#101d16}
+  .mc .n{font-size:10.5px;font-weight:700;color:var(--dim);align-self:center}
+  .mc.today .n{color:#07140c;background:var(--accent);width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .bar{font-size:8.5px;font-weight:700;color:#fff;border-radius:3px;padding:1.5px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;border-left:3px solid rgba(255,255,255,.55)}
+  .selrow{display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px}
+  /* scrubber (Day/Agenda) */
+  .scrub{display:flex;gap:4px;margin-bottom:12px}
+  .scrub .d{flex:1;text-align:center;padding:6px 0 5px;border-radius:10px;background:#171b23;border:1px solid var(--line)}
+  .scrub .d small{display:block;font-size:9px;color:var(--dim);font-weight:700;text-transform:uppercase}
+  .scrub .d b{font-size:14px;font-weight:800}
+  .scrub .d.on{background:var(--accent);border-color:var(--accent)}.scrub .d.on small,.scrub .d.on b{color:#07140c}
+  .scrub .d .dots{display:flex;gap:2px;justify-content:center;margin-top:2px;height:4px}
+  .scrub .d .dots i{width:4px;height:4px;border-radius:50%}
+  /* NOW week card / NEW week row */
+  .wkcard{background:linear-gradient(150deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:9px}
+  .wkcard .wh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .wrow{border:1px solid var(--line);border-radius:11px;margin-bottom:7px;overflow:hidden}
+  .wrow .wh{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#141821}
+  .wrow.today .wh{background:#0f1d15}
+  .wrow .wh .dn{font-weight:800;font-size:13px;width:52px}.wrow.today .wh .dn{color:var(--accent)}
+  .wrow .wh .cnt{color:var(--dim);font-size:11px;flex:1}
+  .wrow .body{padding:8px 9px;display:flex;flex-direction:column;gap:6px}
+  .wrow .rest{color:var(--dim);font-size:12px;font-style:italic;padding:8px 10px}
+  /* NEW agenda */
+  .agenda .g{display:flex;gap:10px;margin-bottom:8px}
+  .agenda .rail{width:38px;flex:none;text-align:center;padding-top:3px}
+  .agenda .rail small{font-size:9px;color:var(--dim);font-weight:800;text-transform:uppercase;display:block}
+  .agenda .rail b{font-size:18px;font-weight:800;line-height:1}
+  .agenda .rail.today small{color:var(--accent)}
+  .agenda .rail.today b{color:#07140c;background:var(--accent);width:27px;height:27px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;margin-top:2px}
+  .agenda .cx{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;border-left:1px solid var(--line);padding:1px 0 10px 11px}
+  .agenda .rest{color:var(--dim);font-size:12px;font-style:italic;display:flex;align-items:center;gap:6px;padding:5px 0}
+  .agenda .rest::before{content:"";width:7px;height:7px;border-radius:50%;border:1.5px dashed var(--dim)}
+  .wksep{font-size:10px;color:var(--dim);font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin:4px 0 9px 48px}
+  /* NOW schedule */
+  .sched .day{margin-bottom:12px}.sched .dt{font-weight:800;font-size:12px;margin-bottom:6px}
+</style>
+
+<div class="nav" id="nav"></div>
+<div class="title" id="title"></div>
+<div class="wrap"><div class="col"><div class="tag now">Now</div><div class="phone" id="now"></div></div>
+<div class="col"><div class="tag new">Proposed</div><div class="phone" id="new"></div></div></div>
+
+<script>
+const DIM={ride:'--ride',run:'--run',gym:'--gym',meal:'--meal',mind:'--mind',note:'--note'};
+const C=k=>getComputedStyle(document.documentElement).getPropertyValue(DIM[k]).trim();
+const ICON={ride:'🚴',run:'🏃',gym:'🏋️',meal:'🥗',mind:'🧘',note:'🚩'};
+const prof=(s,k)=>{const H={end:[40,52,58,55,60,57,54,58,52,45],thr:[30,34,90,88,34,92,90,34,90,30],long:[45,50,54,52,55,53,56,54,52,48]}[s];
+  return `<span class="prof" style="color:var(${DIM[k]})">${H.map(h=>`<i style="height:${h}%"></i>`).join('')}</span>`;}
+const chip=(k,s)=> s?`<span class="chip ${k} chart">${prof(s,k)}</span>`:`<span class="chip ${k}">${ICON[k]}</span>`;
+const entry=(k,ti,me,s,sm)=>`<div class="entry ${sm?'sm':''}">${chip(k,s)}<div class="t"><h3>${ti}</h3><div class="m">${me}</div></div><span class="kebab">⋯</span></div>`;
+const WEEK=[
+ {dow:'Mon',n:6, ev:[['gym','Upper · Push','5 exercises · ~45 min'],['meal','Chicken & rice bowl','~620 kcal']]},
+ {dow:'Tue',n:7, ev:[['ride','Endurance Z2','90 min · ~65 TSS','end'],['mind','Breathe','10 min · calm']]},
+ {dow:'Wed',n:8, ev:[['run','Easy 6 km','6.0 km · 6:20/km','long']]},
+ {dow:'Thu',n:9, ev:[]},
+ {dow:'Fri',n:10,ev:[['ride','Threshold 4×8','75 min · ~95 TSS','thr'],['gym','Legs','6 exercises · ~50 min']]},
+ {dow:'Sat',n:11,ev:[['run','Long run 14 km','14 km · 5:55/km','long'],['meal','Recovery smoothie','~340 kcal']],today:true},
+ {dow:'Sun',n:12,ev:[['note','Base block · wk 2','Training block · plan']]},
+];
+const SAT=WEEK[5];
+const de=(d,sm)=>d.ev.map(e=>entry(e[0],e[1],e[2],e[3],sm)).join('');
+const viewbar=on=>`<div class="views">${['Day','Week','Month','Schedule'].map(v=>`<div class="vb ${v.toLowerCase()===on?'on':''}">${v}</div>`).join('')}</div>`;
+const scrubber=()=>`<div class="scrub">${WEEK.map(d=>`<div class="d ${d.today?'on':''}"><small>${d.dow}</small><b>${d.n}</b><div class="dots">${d.ev.slice(0,3).map(e=>`<i style="background:${d.today?'#07140c':C(e[0])}"></i>`).join('')}</div></div>`).join('')}</div>`;
+
+const T={
+ day:{h:'Tab 1 · DAY',p:'NOW: a flat “2 planned” list. PROPOSED: a week scrubber to hop days + a real date header with a Today badge — same rich cards.',
+  now:()=>viewbar('day')+`<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px"><div class="secttl">2 planned</div><button class="addbtn">＋ Add</button></div><div class="stack">${de(SAT)}</div>`,
+  new:()=>viewbar('day')+scrubber()+`<div style="display:flex;justify-content:space-between;align-items:center;margin:2px 0 12px"><h1 style="font-size:16px">Saturday, Jul 11 · <span style="color:var(--accent)">Today</span></h1><button class="addbtn">＋ Add</button></div><div class="stack">${de(SAT)}</div>`},
+ week:{h:'Tab 2 · WEEK',p:'NOW: 7 big cards, lots of scroll, rest days take a whole card. PROPOSED: compact day-rows (name · count, today tinted), rest days collapse to one line — the full week fits with far less scrolling.',
+  now:()=>viewbar('week')+WEEK.slice(0,4).map(d=>`<div class="wkcard" style="${d.today?'border-color:#2fb968':''}"><div class="wh"><strong style="${d.today?'color:var(--accent)':''}">${d.dow}, Jul ${d.n}</strong><span class="icon" style="width:24px;height:24px;font-size:13px">＋</span></div><div class="stack">${d.ev.length?de(d,true):'<span class="dim" style="font-size:12px">—</span>'}</div></div>`).join('')+'<div class="dim" style="font-size:12px;text-align:center">…3 more days ↓</div>',
+  new:()=>viewbar('week')+WEEK.map(d=>d.ev.length?`<div class="wrow ${d.today?'today':''}"><div class="wh"><span class="dn">${d.dow} ${d.n}</span><span class="cnt">${d.ev.length} planned</span><span class="icon" style="width:24px;height:24px;font-size:13px">＋</span></div><div class="body">${de(d,true)}</div></div>`:`<div class="wrow"><div class="rest"><b style="color:var(--text)">${d.dow} ${d.n}</b> · Rest day</div></div>`).join('')},
+ month:{h:'Tab 3 · MONTH  ← the sparse one you flagged',p:'NOW: 80px cells with tiny 9px pills, most empty; real content sits in a panel below. PROPOSED: event BARS (sport colour + label) fill the cells, today tinted, tap a day → detail. Denser, more “calendar”. (Labels still clip at 7 cols on a phone — the trade-off.)',
+  now:()=>{const DOW=['M','T','W','T','F','S','S'];const grid=[[29,30,1,2,3,4,5],[6,7,8,9,10,11,12],[13,14,15,16,17,18,19],[20,21,22,23,24,25,26]];let c='';grid.forEach((r,ri)=>r.forEach(n=>{const im=!(ri===0&&n>=27);const d=WEEK.find(w=>w.n===n&&im&&n>=6&&n<=12);let e='';if(d){e=d.ev.slice(0,2).map(x=>`<span class="ev" style="background:${C(x[0])}22;color:${C(x[0])}">${ICON[x[0]]}<em>${x[1].split(' ')[0]}</em></span>`).join('');if(d.ev.length>2)e+=`<span class="more">+${d.ev.length-2}</span>`;}c+=`<div class="cell ${im?'':'dim'} ${n===11?'sel':''}"><span class="num ${n===11&&im?'today':''}">${n}</span>${e}</div>`;}));return viewbar('month')+`<div class="head"><div class="icon">‹</div><h1>July 2026</h1><div class="icon">›</div><span class="today-btn">Today</span></div><div class="cal-grid" style="margin-bottom:3px">${DOW.map(x=>`<div class="dow">${x}</div>`).join('')}</div><div class="cal-grid">${c}</div><div class="detail"><div class="dh"><b style="font-size:12px">Saturday, Jul 11</b><button class="addbtn">＋ Add</button></div><div class="stack">${de(SAT,true)}</div></div>`;},
+  new:()=>{const DOW=['MON','TUE','WED','THU','FRI','SAT','SUN'];const grid=[[29,30,1,2,3,4,5],[6,7,8,9,10,11,12],[13,14,15,16,17,18,19],[20,21,22,23,24,25,26]];let c='';grid.forEach((r,ri)=>r.forEach(n=>{const im=!(ri===0&&n>=27);const d=WEEK.find(w=>w.n===n&&im&&n>=6&&n<=12);let b='';if(d)b=d.ev.slice(0,3).map(x=>`<span class="bar" style="background:${C(x[0])}33;border-color:${C(x[0])}">${x[1].split(' ').slice(0,2).join(' ')}</span>`).join('');c+=`<div class="mc ${im?'':'dim'} ${n===11&&im?'today':''}"><span class="n">${n}</span>${b}</div>`;}));return viewbar('month')+`<div class="head"><div class="icon">‹</div><h1>July 2026</h1><div class="icon">›</div><span class="today-btn">Today</span></div><div class="cal-grid" style="margin-bottom:4px">${DOW.map(x=>`<div class="dow" style="font-size:9px">${x}</div>`).join('')}</div><div class="mgrid">${c}</div><div class="selrow"><b style="font-size:13px">Sat, Jul 11 · Today</b><button class="addbtn">＋ Add</button></div><div class="stack">${de(SAT,true)}</div>`;}},
+ schedule:{h:'Tab 4 · SCHEDULE',p:'NOW: a plain agenda — a date heading then cards, only days that have something. PROPOSED: a date-rail timeline (big day number, today badge), rest days shown as thin dashed rows so the week reads continuous, week separators.',
+  now:()=>viewbar('schedule')+`<div class="sched">${WEEK.filter(d=>d.ev.length).map(d=>`<div class="day"><div class="dt" style="${d.today?'color:var(--accent)':''}">${d.today?'Today · ':''}${d.dow}, Jul ${d.n}</div><div class="stack">${de(d,true)}</div></div>`).join('')}</div>`,
+  new:()=>viewbar('schedule')+`<div class="agenda"><div class="wksep">This week · Jul 6–12</div>${WEEK.map(d=>`<div class="g"><div class="rail ${d.today?'today':''}"><small>${d.dow}</small><b>${d.n}</b></div><div class="cx">${d.ev.length?de(d,true):'<div class="rest">Rest day — recovery</div>'}</div></div>`).join('')}</div>`},
+};
+const ORDER=[['day','① Day'],['week','② Week'],['month','③ Month'],['schedule','④ Schedule']];
+let tab=new URLSearchParams(location.search).get('tab')||'day';
+function render(){
+ const t=T[tab];
+ document.getElementById('nav').innerHTML=ORDER.map(([k,l])=>`<button data-t="${k}" class="${k===tab?'on':''}">${l}</button>`).join('');
+ document.getElementById('title').innerHTML=`<h2>${t.h}</h2><p>${t.p}</p>`;
+ document.getElementById('now').innerHTML=t.now();
+ document.getElementById('new').innerHTML=t.new();
+ document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render();window.scrollTo(0,0);});
+}
+render();
+</script>

@@ -1415,9 +1415,16 @@ test guide → the **🧪 Test guide** section below.
     it SIMPLE + admin-focused (no workout features). Mobile-first: user cards, role badges, "+Add user" sheet,
     per-user actions sheet (reset / change role / remove) with confirmations. Coach API token stays in Profile.
     (source: UX-BACKLOG Session-2.)
-166. ⬜ **Calendar density + polish (centerpiece).** Big, modern, close to Google Calendar: Day/Week/Month/
+166. 🔨 **Calendar density + polish (centerpiece).** Big, modern, close to Google Calendar: Day/Week/Month/
     Schedule views; clean event blocks; today highlighted. Everything (workouts, rides, runs, meals, mind) is an
     event on a day. The current calendar still feels empty/sparse — needs density + polish. (source: UX-BACKLOG Calendar.)
+    **Reviewed tab-by-tab with JM (mockups/calendar-tabs.html, Now vs Proposed).** JM verdict 2026-07-04: build Day/Week/Schedule,
+    **keep Month as-is** (JM: "now is better" — the denser event-bar grid had uneven column widths, "stupid and ugly";
+    root was `1fr` tracks stretching to nowrap bar text — a real bug, but he prefers the current grid+detail either way).
+    Built: (a) **Day** — week scrubber strip (tap to hop days, per-day dots, today green) + Today badge on the count row;
+    (b) **Week** — compact day-rows (name · count, today tinted), rest days collapse to one line → whole week fits;
+    (c) **Schedule** — date-rail timeline (big day number, today badge, border-left column) + month separators.
+    Files: `src/pages/Calendar.tsx` (WeekScrubber, week/schedule rewrites), `src/styles.css` (.cal-scrub/.cal-week/.cal-agenda). 313 tests. On QA.
 167. 🔨 **Gym player refinements (live workout screen).** [VERIFIED built — gym player already has add-set (＋ set) + pre-start reorder/insights; verify skip-set on prod] Pre-workout **time estimate** (total + per-exercise,
     reps × time-under-tension); **reorder exercises before starting**; **add-set / skip-set** in player + full
     set TABLE (JetFit-style); **history back-nav** returns to your position (today dumps to exercise 1); a

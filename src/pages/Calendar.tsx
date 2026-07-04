@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchEvents, deleteEvent, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
 import { MiniProfile, DoneStats } from '../ui'
@@ -149,6 +149,24 @@ export default function Calendar() {
     )
   }
 
+  // Week scrubber (#166) — hop between the days of the selected week; coloured dots preview
+  // each day's entries, today is green, the selected day is outlined. Used by the Day view.
+  const WeekScrubber = () => (
+    <div className="cal-scrub">
+      {weekDays(sel).map((day) => {
+        const es = entriesFor(day)
+        const isToday = day === todayISO
+        return (
+          <button key={day} className={'cal-scrubday' + (day === sel ? ' cal-scrubday--sel' : '') + (isToday ? ' cal-scrubday--today' : '')} onClick={() => setSel(day)}>
+            <small>{new Date(day + 'T00:00').toLocaleDateString(undefined, { weekday: 'short' })}</small>
+            <b>{Number(day.slice(8, 10))}</b>
+            <span className="cal-scrubdots">{es.slice(0, 3).map((e, i) => <i key={i} style={{ background: isToday ? '#07140c' : isAtp(e) ? '#9aa3b2' : colorFor(kindOf(e)) }} />)}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+
   // ---- header: view switcher + contextual nav -----------------------------
   const VIEWS: [View, string][] = [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['schedule', 'Schedule']]
   const title = view === 'month' ? `${MONTHS[cur.m]} ${cur.y}` : view === 'day' ? fmtFull(sel) : view === 'week' ? `Week of ${new Date(weekDays(sel)[0] + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Schedule'
@@ -204,15 +222,23 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* ---- WEEK ---- (7 day sections, mobile-first) */}
+      {/* ---- WEEK ---- (#166: compact day-rows, rest days collapse to one line) */}
       {view === 'week' && (
-        <div className="stack" style={{ gap: 10 }}>
+        <div className="cal-week">
           {weekDays(sel).map((day) => {
             const es = entriesFor(day)
+            const isToday = day === todayISO
+            if (!es.length) return (
+              <div key={day} className="cal-wkrow cal-wkrow--rest">
+                <span><b>{fmtShort(day)}</b> · Rest day</span>
+                <button className="icon-btn" onClick={() => setSheet({ date: day })} aria-label="Add"><Plus size={15} /></button>
+              </div>
+            )
             return (
-              <div key={day} className="card" style={{ padding: 12, border: day === todayISO ? '1px solid #2fb968' : undefined }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: es.length ? 8 : 0 }}>
-                  <strong style={{ color: day === todayISO ? '#2fb968' : undefined }}>{fmtShort(day)}</strong>
+              <div key={day} className={'cal-wkrow' + (isToday ? ' cal-wkrow--today' : '')}>
+                <div className="cal-wkrow__head">
+                  <strong>{fmtShort(day)}</strong>
+                  <span className="cal-wkrow__cnt">{es.length} planned</span>
                   <button className="icon-btn" onClick={() => setSheet({ date: day })} aria-label="Add"><Plus size={16} /></button>
                 </div>
                 <div className="stack" style={{ gap: 6 }}>{es.map((e, i) => <EntryCard key={i} e={e} day={day} />)}</div>
@@ -225,8 +251,9 @@ export default function Calendar() {
       {/* ---- DAY ---- */}
       {view === 'day' && (
         <>
+          <WeekScrubber />
           <div className="cal-day-head">
-            <div className="section-title" style={{ margin: 0 }}>{entriesFor(sel).length} planned</div>
+            <div className="section-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>{entriesFor(sel).length} planned{sel === todayISO && <span className="cal-todaybadge">Today</span>}</div>
             <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setSheet({ date: sel })}><Plus size={16} /> Add</button>
           </div>
           <div className="stack">
@@ -236,19 +263,30 @@ export default function Calendar() {
         </>
       )}
 
-      {/* ---- SCHEDULE ---- (agenda: each day with entries, today forward) */}
+      {/* ---- SCHEDULE ---- (#166: date-rail timeline, month separators; only days with entries) */}
       {view === 'schedule' && (
-        <div className="stack" style={{ gap: 14 }}>
+        <div className="cal-agenda">
           {(() => {
             const days: string[] = []
             for (let d = todayISO; d <= range[1]; d = addDays(d, 1)) if (entriesFor(d).length) days.push(d)
             if (!days.length) return <p className="meta">Nothing scheduled in the next 120 days.</p>
-            return days.map((day) => (
-              <div key={day}>
-                <div className="section-title" style={{ margin: '0 0 6px', color: day === todayISO ? '#2fb968' : undefined }}>{day === todayISO ? 'Today · ' : ''}{fmtFull(day)}</div>
-                <div className="stack" style={{ gap: 6 }}>{entriesFor(day).map((e, i) => <EntryCard key={i} e={e} day={day} />)}</div>
-              </div>
-            ))
+            return days.map((day, idx) => {
+              const dt = new Date(day + 'T00:00')
+              const isToday = day === todayISO
+              const showMonth = idx === 0 || days[idx - 1].slice(0, 7) !== day.slice(0, 7)
+              return (
+                <Fragment key={day}>
+                  {showMonth && <div className="cal-agmonth">{dt.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</div>}
+                  <div className="cal-agrow">
+                    <div className={'cal-agrail' + (isToday ? ' cal-agrail--today' : '')}>
+                      <small>{dt.toLocaleDateString(undefined, { weekday: 'short' })}</small>
+                      <b>{Number(day.slice(8, 10))}</b>
+                    </div>
+                    <div className="cal-agcol">{entriesFor(day).map((e, i) => <EntryCard key={i} e={e} day={day} />)}</div>
+                  </div>
+                </Fragment>
+              )
+            })
           })()}
         </div>
       )}
