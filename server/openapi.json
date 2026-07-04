@@ -381,6 +381,14 @@
         }
       }
     },
+    "/auth/plans/handle-missed": {
+      "post": {
+        "summary": "#156 — detect recently-MISSED sessions (past plan, not completed) and let the coach reshape the week + remove the missed workout + notify with his explanation. Dedup via missedHandledAt; called on app load. Returns { missed }.",
+        "tags": ["plans"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ missed: number }" } }
+      }
+    },
     "/auth/plans/resync": {
       "post": {
         "summary": "Push every Platyplus-origin plan in a window OUT to intervals (dedup-aware re-sync button, #150)",

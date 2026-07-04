@@ -161,6 +161,7 @@ export const authApi = {
   checkin: (data: Checkin) => req<Checkin>('/checkin', { method: 'POST', body: data }),
   checkins: (from: string, to: string) => req<Checkin[]>(`/checkins?from=${from}&to=${to}`),
   readiness: (date: string) => req<Readiness>(`/readiness?date=${date}`),
+  handleMissed: () => req<{ missed: number }>(`/plans/handle-missed`, { method: 'POST', body: {} }), // #156
   planFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string }) => req<{ ok: boolean }>(`/plan/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   // #273 feedback on a completed device activity (no plan)
   getActivityFeedback: (id: string) => req<{ feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; at?: number } | null>(`/activity/${encodeURIComponent(id)}/feedback`),

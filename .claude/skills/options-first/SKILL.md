@@ -1,11 +1,17 @@
 ---
 name: options-first
-description: Before implementing any UX / visual / layout / interaction change, present 2-3 distinct options WITH rendered HTML mockups (opened in the browser) and get the user's pick FIRST. Use whenever a change affects what the user sees or how they interact — never implement-then-iterate.
+description: Before implementing any UX / visual / layout / interaction change, present 2-3 distinct options WITH rendered HTML mockups (opened in the browser) and get the user's pick FIRST. For ANY bug / issue / improvement, first show your DIAGNOSIS (what you understand + what you see) then 3-5 improvement OPTIONS before coding. Never implement-then-iterate.
 ---
 
 # Options + mockups first
 
 **Rule (JM directive):** do NOT implement a UX/visual/interaction change and let the user react. Present **2-3 distinct options as a rendered HTML mockup** — write a self-contained HTML file to `gymapp/mockups/` and `open` it in the browser (JM reads HTML far better than ASCII; a sport/variant toggle in one file lets him compare). Get the pick, THEN build only that one.
+
+**Rule — DIAGNOSE, then OPTIONS, for ANY bug / issue / improvement (JM directive 2026-07-03):** before touching code on a bug, issue, or "make this better", FIRST reply with two parts, in this order:
+1. **What I understand & what I see** — restate the problem in my own words + the *diagnosis*: the root cause / what the code, data, or screenshot actually shows (cite `file:line`, the real values, the failing path). Prove I've understood before proposing anything. If I haven't found the cause yet, say so and investigate first.
+2. **Improvement options — ideally 3-5, distinct, recommendation first** — each a genuinely different approach (not one idea reworded), with a one-line trade-off (effort · risk · what it fixes vs leaves). For UX/visual options, MOCK them (per the rule above). For logic/backend/infra, describe each concretely (what changes, where).
+
+Then get JM's pick and build ONLY that. This applies **beyond UX** — logic bugs, data issues, coach-prompt tweaks, infra choices all get diagnosis + options too. The ONLY skip is a truly trivial, unambiguous one-liner (a typo, a token, a value JM named exactly) — and even then, state the one obvious fix before doing it. Use `AskUserQuestion` for the pick when there are clear discrete options. Don't fix-first-explain-later; JM wants to see the thinking and choose the direction.
 
 **⚠️ JM CAUGHT ME DRIFTING (2026-06-23): I kept "just building" instead of mocking first.** Default-to-mock for ANYTHING beyond a trivial token/text/one-attribute tweak. The test: *would JM have an opinion on how it looks or is laid out?* If yes → MOCK FIRST, even if I think I know the answer. Specifically mock-first (not build-first): any NEW page/section, any redesign of an existing screen (Progress, post-workout summaries, check-in, nav), any "beef it up / make it richer" request, any new card/list layout. Build-without-mock is ONLY ok for: a color/contrast token, removing an element JM explicitly named, copy edits, a pure bug fix with no layout choice, or a change JM described concretely enough that there's one obvious rendering. When unsure, mock. Shipping unmocked UI and iterating is exactly the anti-pattern JM is paying me to avoid.
 
