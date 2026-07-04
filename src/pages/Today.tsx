@@ -70,7 +70,15 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   const why: Partial<Record<'energy' | 'sleep' | 'soreness', string>> = {}
   const calc: Partial<Record<'energy' | 'sleep' | 'soreness', number>> = {}
   if (rdy?.connected) {
-    if (rdy.sleep) { calc.sleep = Math.round(rdy.sleep.score); why.sleep = rdy.sleep.sleepScore != null ? `your tracker scored this night ${rdy.sleep.sleepScore}/100` : `${rdy.sleep.sleepHours ?? '—'}h slept vs your ~${rdy.sleepNeed}h need` }
+    if (rdy.sleep) {
+      calc.sleep = Math.round(rdy.sleep.score)
+      // #159 — lead with the ACTIONABLE basis (hours slept vs your need), THEN the tracker score if any.
+      // (Was: only the bare "tracker scored 75/100" when a score existed, which hid the real why.)
+      const sp: string[] = []
+      if (rdy.sleep.sleepHours != null) sp.push(`${rdy.sleep.sleepHours}h slept vs your ~${rdy.sleepNeed}h need`)
+      if (rdy.sleep.sleepScore != null) sp.push(`tracker sleep score ${rdy.sleep.sleepScore}/100`)
+      why.sleep = sp.join(' · ') || 'from your check-in'
+    }
     if (rdy.energy) { calc.energy = Math.round(rdy.energy.score); why.energy = rdy.energy.provisional
       ? `first estimate from today's HRV, sleep ${rdy.sleep?.score ?? '—'}/5 & resting HR — I'm still learning your personal baseline (~${rdy.energy.needDays ?? 14} more nights to personalise)`
       : `HRV ${sgn(rdy.energy.hrvZ)} vs your baseline, sleep ${rdy.sleep?.score ?? '—'}/5, resting HR ${sgn(rdy.energy.rhrZ)}${rdy.energy.guard ? ' (HRV high but RHR raised → eased)' : ''}` }

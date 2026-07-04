@@ -111,6 +111,12 @@ describe('energy (lnRMSSD-z + sleep + RHR-z + subjective)', () => {
 
 describe('sleep (personal need)', () => {
   it('prefers a device sleep score', () => { expect(sleep({ sleepScore: 80 }).score).toBe(4) })
+  it('#159 — a tracker score STILL carries sleepHours + sleepNeed (so the "why" can show hours vs need)', () => {
+    const s = sleep({ sleepScore: 75, sleepHours: 6.2, sleepNeed: 8 })
+    expect(s.sleepScore).toBe(75)
+    expect(s.sleepHours).toBe(6.2)
+    expect(s.sleepNeed).toBe(8)
+  })
   it('hours ÷ personal need — JM needs ~9h so 7.7h is mediocre, not "great"', () => {
     const jm = sleep({ sleepHours: 7.7, sleepNeed: 9 })
     const avg = sleep({ sleepHours: 7.7, sleepNeed: 8 })
