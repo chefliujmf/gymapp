@@ -1480,3 +1480,17 @@ select.search { appearance: none; -webkit-appearance: none; }
 .chat-msg--coach > *:last-child { margin-bottom: 0; }
 .chat-ul { margin: 5px 0; padding-left: 18px; }
 .chat-ul li { margin: 2px 0; }
+
+/* #232 — activity & changes log (feed) */
+.audit-ev { display: grid; grid-template-columns: 46px 20px 1fr; gap: 9px; align-items: start; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+.audit-ev__t { font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size: 11px; color: var(--text-faint,#6b7280); padding-top: 2px; font-variant-numeric: tabular-nums; }
+.audit-ev__i { font-size: 15px; text-align: center; padding-top: 1px; }
+.audit-ev__b { min-width: 0; }
+.audit-ev__a { font-weight: 600; font-size: 13.5px; line-height: 1.35; }
+.audit-ev__a b { font-weight: 750; }
+.audit-ev__d { font-size: 12px; color: var(--text-dim); margin-top: 2px; white-space: normal; }
+.audit-who { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; padding: 1px 6px; border-radius: 999px; margin-right: 6px; vertical-align: 1px; }
+.audit-who--you { color: var(--accent); background: #34e07d18; border: 1px solid #34e07d44; }
+.audit-who--coach { color: #b78cff; background: #b78cff18; border: 1px solid #b78cff44; }
+.audit-who--sync { color: #6ea8ff; background: #6ea8ff18; border: 1px solid #6ea8ff44; }
+.audit-who--sys { color: var(--text-dim); background: #9aa2b118; border: 1px solid #9aa2b133; }

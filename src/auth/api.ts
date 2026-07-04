@@ -3,6 +3,8 @@ import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 export interface Passkey { id: string; label: string; createdAt: number }
 export interface CoachNotification { id: string; kind: 'coach'; subkind?: 'update' | 'review'; date: string; at: string; title: string; body?: string; items?: string[]; link?: string; score?: number; read?: boolean }
 export interface CoachReview { id: string; date: string; planId?: string; activityId?: string; sport?: string; score?: number; verdict?: string; execution?: string[]; body?: string; mind?: { pattern?: string; cue?: string }; next?: string; recovery?: string; takeaways?: string[]; at: string }
+// #232 — activity & changes log entry
+export interface AuditEvent { at: number; actor: 'you' | 'coach' | 'sync' | 'system'; action: string; target?: string; detail?: string; kind?: string }
 // #207 Phase 2b: `auto` records the auto scores shown (display terms) so the model can learn the
 // athlete's systematic overrides → a personal calibration.
 export interface Checkin { date: string; energy?: number; sleep?: number; soreness?: number; note?: string; auto?: { energy?: number; sleep?: number; freshness?: number } }
@@ -162,6 +164,7 @@ export const authApi = {
   checkins: (from: string, to: string) => req<Checkin[]>(`/checkins?from=${from}&to=${to}`),
   readiness: (date: string) => req<Readiness>(`/readiness?date=${date}`),
   handleMissed: () => req<{ missed: number }>(`/plans/handle-missed`, { method: 'POST', body: {} }), // #156
+  audit: () => req<AuditEvent[]>(`/audit`), // #232
   planFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string }) => req<{ ok: boolean }>(`/plan/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   // #273 feedback on a completed device activity (no plan)
   getActivityFeedback: (id: string) => req<{ feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; at?: number } | null>(`/activity/${encodeURIComponent(id)}/feedback`),

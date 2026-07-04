@@ -773,10 +773,13 @@ test guide → the **🧪 Test guide** section below.
     update** — when the coach adjusts the plan / posts a review, notify with a one-line "what changed" (the coach already
     has a `notify` tool — surface those in-app + push); (2) **new activity** — when a new intervals/device activity
     appears in History, notify. Tie into the existing notifications model + the releases/bell. gymapp-only.
-232. ⬜ **Activity + changes/audit log for investigation.** JM 2026-06-30: "have an activity and changes log too for
-    investigation." A timestamped log of what changed — plan edits, coach actions, syncs, activity ingest, stat edits —
-    queryable for debugging "why did X change?". (FEEDBACK-LOG is the human backlog; this is a runtime/audit trail.)
-    Decide scope: server-side audit table vs an in-app "recent changes" view. gymapp-only.
+232. 🔨 **Activity + changes/audit log for investigation.** JM 2026-06-30 → mocked A/B/C, JM picked **A (feed)**, "mobile-
+    first, in Settings" 2026-07-04. Done: an append-only per-user `audit` store (capped 500) with an `audit(user, {actor,
+    action, target, detail, kind})` helper captured at the mutation points — plan Created/Updated/Removed (actor **you** via
+    /auth/plans vs **coach** via /api/plan), **sync** import/remove (reconcile), **check-in**, **feedback**, coach **review**,
+    coach **notify**. `GET /auth/audit` (recent-first, capped). Client: **AuditLog** page (day-grouped feed, time · icon ·
+    actor chip · action · target · detail; mobile-first vertical list) at `/activity-log`, linked from **Settings → Data**.
+    openapi updated. Self-validated render vs mock A. On QA. gymapp-only.
 231. ⬜ **Benchmark clarity: eFTP vs FTP + VO₂max reads low vs Coros.** JM 2026-06-30: "FTP intervals but don't see
     eFTP? confusing. VO₂max so low — Coros much higher." The card shows the SET FTP (synced); eFTP (estimated) is only a
     trend on the Cycling page. VO₂max = Coggan `10.8·FTP÷weight+7` ≈ 44, conservative vs Coros's HR-based model. SHIPPED:
