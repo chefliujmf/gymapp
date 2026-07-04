@@ -11,10 +11,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
 import { fmtPace, paceFromPowerPct } from '../running-paces'
 import { InfoDot, TrendChart, minuteTicks } from '../charts'
-import { fetchActivities, fetchActivityThread, sportOfActivity, readIcuFeedback, type IcuActivity, type CoachNote } from '../intervals'
-import { authApi, type CoachReview } from '../auth/api'
-import ActivityFeedback from '../ActivityFeedback'
-import CoachVerdict from '../CoachVerdict'
+import { fetchActivities, sportOfActivity } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
 
 /** Detail view for a coach-authored Platyplus plan: the universal coaching shell
@@ -37,23 +34,37 @@ export default function CoachPlanDetail() {
   // #285 — if this planned workout is DONE (a completed activity exists for its day+sport), show the
   // post-workout stuff: coach verdict + feedback + a link to the full analysis. Turns the planned view
   // into the post view once completed, instead of a bare notes dump.
-  const [doneAct, setDoneAct] = useState<IcuActivity | null>(null)
-  const [review, setReview] = useState<CoachReview | null>(null)
-  const [note, setNote] = useState<CoachNote | null>(null)
-  const [icuComment, setIcuComment] = useState<string>()
   useEffect(() => { if (p) calApi.items(p.date, p.date).then(setItems).catch(() => {}) }, [p?.date])
   useEffect(() => { getSetting('ftp').then((v) => setFtp(Number(v) || undefined)) }, [])
+  // #155 — a DONE workout opens its RESULTS page, not the plan: ride/run → /activity/:id (analysis),
+  // gym → /feedback/:id (session summary). We detect completion, then redirect (replace). `checkedDone`
+  // gates a brief loader for PAST plans so the plan never flashes before we redirect.
+  const [checkedDone, setCheckedDone] = useState(false)
   useEffect(() => {
-    if (!p) return
+    if (!p || p.sport === 'gym') return // gym completion = a local log (handled below)
+    let cancelled = false
     fetchActivities(p.date, p.date).then((a) => {
+      if (cancelled) return
       const done = a.find((x) => sportOfActivity(x) === p.sport) || null
-      setDoneAct(done)
-      if (done) fetchActivityThread(done.id).then((t) => { setNote(t.coach); setIcuComment(t.comment) }).catch(() => {}) // #273 coach review + my comment live in intervals
-    }).catch(() => {})
-    authApi.coachReviews().then((r) => setReview(r.find((x) => x.planId === p.id) || r.find((x) => x.date === p.date && (x.sport === p.sport || !x.sport)) || null)).catch(() => {})
-  }, [p?.id, p?.date, p?.sport])
+      if (done) navigate(`/activity/${done.id}`, { replace: true }) // done ride/run → full analysis
+      else setCheckedDone(true)
+    }).catch(() => { if (!cancelled) setCheckedDone(true) })
+    return () => { cancelled = true }
+  }, [p?.id, p?.date, p?.sport, navigate])
+  // gym: completed if a log matches this plan (by date + workoutId) → open its summary
+  useEffect(() => {
+    if (!p || p.sport !== 'gym' || logs === undefined) return
+    const done = (logs || []).find((l) => l.date === p.date && (l.workoutId === p.id || l.workoutId === `plan-${p.id}`))
+    if (done) navigate(`/feedback/${p.id}`, { replace: true })
+    else setCheckedDone(true)
+  }, [p?.id, p?.date, p?.sport, logs, navigate])
 
   if (!p) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button><h1>Plan not found</h1><p className="meta">Open it from Today so it can load.</p></div>
+
+  // #155 — for a PAST plan, wait until we know if it's done (→ redirect to results) before rendering, so
+  // the plan never flashes. Upcoming/today plans render immediately (they're not done yet).
+  const todayStr = new Date().toISOString().slice(0, 10)
+  if (p.date < todayStr && !checkedDone) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button><h1>Loading…</h1></div>
 
   const meals = items.filter((it) => it.type === 'meal')
   const minds = items.filter((it) => it.type === 'mind')
@@ -77,15 +88,8 @@ export default function CoachPlanDetail() {
         </div>
       </div>
 
-      {/* #285 — completed: coach verdict + feedback + link to the full analysis */}
-      {(doneAct || review) && (
-        <>
-          <div className="done-badge" style={{ position: 'static', display: 'inline-block', marginBottom: 8 }}>✓ Completed</div>
-          <CoachVerdict review={review} note={note} />
-          {doneAct && <Link to={`/activity/${doneAct.id}`} className="btn btn--ghost" style={{ marginBottom: 8 }}>📊 See full analysis →</Link>}
-          <ActivityFeedback id={doneAct ? String(doneAct.id) : `plan-${p.id}`} sport={p.sport} date={p.date} icuExisting={readIcuFeedback(doneAct)} icuNote={icuComment} />
-        </>
-      )}
+      {/* #155 — a DONE workout redirects to its RESULTS page (ride/run → /activity/:id, gym → /feedback/:id),
+          so this page only ever shows a PLANNED (or missed) session. No inline completed view here. */}
 
       {/* sport body */}
       {isEndurance && (p.segments?.length ?? 0) > 0 && (() => {
@@ -153,7 +157,7 @@ export default function CoachPlanDetail() {
           )}
           {canPlayHere(!!ble.bridge)
             ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ {p.sport === 'run' ? 'Run' : 'Ride'} now</button>
-            : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to {p.sport === 'run' ? 'run' : 'ride'} — that's where your sensors connect.</div>}
+            : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to {p.sport === 'run' ? 'run' : 'ride'} — that's where your HR strap{p.sport === 'run' ? '' : ' & trainer'} connect{p.sport === 'run' ? 's' : ''} (Bluetooth works on mobile).</div>}
         </>
         )
       })()}

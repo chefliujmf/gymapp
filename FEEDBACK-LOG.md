@@ -1179,19 +1179,14 @@ test guide → the **🧪 Test guide** section below.
     each missed + `notify` with what changed & why. Today calls it on load (server dedups). openapi updated. 308 tests.
     **Test (on prod):** have a planned session go 1 day past without completing it, open the app → within ~1 min the missed
     workout disappears from the calendar and a bell notification explains what the coach moved/dropped. gymapp-only.
-155. ⬜ **Detail page must branch on session STATE (JM spec 2026-06-26) + unify the "use your phone" messaging.**
-    JM update 2026-06-26: on **desktop you should NOT even have the "play" button** at all (not just gated) — the
-    full-page "Ride from your phone" gate is moot; just no play affordance on desktop, show the workout + inline hint.
-    JM: "planned → you see info about the workout; done → you see STATS about the session; missed (past, not done) →
-    like planned." Today it always shows the plan (profile + ride gate) even when done. ALSO inconsistent: two "use
-    mobile" treatments — a FULL-PAGE gate ("Ride from your phone", RidePlayer) AND an inline banner ("Open Platyplus
-    on your phone to ride", my R2 fix on the detail page). PLAN:
-    • **planned / missed** → workout info (profile/exercises) + action: mobile = Ride/Run now; desktop = the INLINE
-      phone hint (non-blocking, keeps the workout visible). Reserve the FULL-PAGE gate ONLY for actually launching the
-      player on desktop. Unify copy/tone between the two.
-    • **done** → RESULTS: actual stats (duration/distance/HR/power/TSS), planned-vs-actual, HR/power graph, GPS map+
-      flyby (#51), RPE/feedback — reuse the activity-detail UI (/activity/:id, built 2026-06-25). No ride gate.
-    Done-detection: a completed activity/log matches this plan's date+sport(+title). JM screenshots 2026-06-26.
+155. 🔨 **Detail page must branch on session STATE + unify the "use your phone" messaging.** JM 2026-06-26 → chose "open
+    the results page" 2026-07-03. Diagnosis: desktop-no-Play was ALREADY handled (`canPlayHere` shows the inline hint, not
+    a Play button); the bug was a DONE workout showing "✓ Completed" AND the full plan + Play (a mix). Done: a completed
+    plan now REDIRECTS to its results — ride/run → `/activity/:id` (analysis), gym → `/feedback/:id` (session summary);
+    a past plan shows a brief loader until we know (no plan-flash); the inline completed block is removed (superseded).
+    Copy unified — the inline phone hint now matches the full-page gate's sensor wording. So: planned/missed → plan; done →
+    results. 308 tests. **Test (prod):** open a COMPLETED ride/run → lands on the analysis, not the plan; a completed gym →
+    its summary; an upcoming plan → the plan + (mobile) Play / (desktop) phone hint. gymapp-only.
 154. ⬜ **R4 feedback fields may not be mobile-friendly — chips, consider a dropdown.** The post-workout fields render
     as chip rows; with 6 fields × 6-8 options that's a lot of chips on a phone. JM: "not sure this is mobile friendly
     (dropdown?)". Evaluate chips vs a compact native `<select>` per field on mobile. JM 2026-06-26.
