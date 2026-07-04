@@ -1,0 +1,210 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendar #166 — pick a direction</title>
+<style>
+  :root{
+    --text:#eef1f4; --dim:#9298a6; --accent:#34e07d; --bg:#0f1216;
+    --card1:#21252f; --card2:#191c24; --line:#262a33;
+    --ride:#1f9f8a; --run:#d1793a; --gym:#5a63c8; --meal:#d1567f; --mind:#8a63c8; --note:#5a6472;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05070a;color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:12px 10px 60px}
+  /* option switcher */
+  .switch{position:sticky;top:0;z-index:20;max-width:430px;margin:0 auto 12px;display:flex;gap:6px;background:#0a0c10;padding:8px;border-radius:14px;border:1px solid #1c2029}
+  .switch button{flex:1;padding:9px 4px;border:1px solid var(--line);background:#141821;color:var(--dim);font-size:12.5px;font-weight:800;border-radius:10px;cursor:pointer}
+  .switch button.on{background:var(--accent);color:#07140c;border-color:var(--accent)}
+  .cap{max-width:430px;margin:0 auto 8px;font-size:12.5px;color:var(--dim);text-align:center}
+  .cap b{color:var(--text)}
+  .phone{max-width:414px;margin:0 auto;background:var(--bg);border-radius:22px;border:1px solid #1c2029;padding:14px 12px 24px;min-height:640px}
+  h1{font-size:18px;font-weight:800}.dim{color:var(--dim)}
+  .views{display:flex;gap:2px;background:#16161a;border:1px solid var(--line);border-radius:12px;padding:3px;margin-bottom:12px}
+  .vb{flex:1;padding:8px 4px;background:none;color:var(--dim);font-size:13px;font-weight:700;border-radius:9px;text-align:center;border:0;cursor:pointer}
+  .vb.on{background:#0f0f12;color:#fff}
+  .head{display:flex;align-items:center;gap:6px;margin-bottom:12px}
+  .head h1{flex:1;text-align:center;font-size:18px}
+  .icon{width:32px;height:32px;border-radius:8px;background:#1b1f28;border:1px solid var(--line);color:var(--dim);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer}
+  .today-btn{color:var(--accent);font-weight:800;font-size:13px;background:none;border:0;cursor:pointer}
+  .prof{display:flex;align-items:flex-end;gap:1.5px;height:100%;width:100%;padding:6px 5px}
+  .prof i{flex:1;background:currentColor;border-radius:1px;opacity:.9;min-height:8%}
+  .chip{width:52px;height:52px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden}
+  .chip.ride{background:radial-gradient(120% 120% at 30% 20%,#1f6f5c,#0e2f36)}
+  .chip.run{background:radial-gradient(120% 120% at 30% 20%,#b9612a,#3f2018)}
+  .chip.gym{background:radial-gradient(120% 120% at 30% 20%,#4a4f9e,#1f2240)}
+  .chip.meal{background:radial-gradient(120% 120% at 30% 20%,#b9466a,#3f1827)}
+  .chip.mind{background:radial-gradient(120% 120% at 30% 20%,#6a4aa0,#261c3c)}
+  .chip.chart{background:linear-gradient(135deg,#2a2a31,#4a4a55)}
+  .chip.ride.chart{color:#54e0c4}.chip.run.chart{color:#f0a35e}
+  .entry{display:flex;align-items:center;gap:11px;background:linear-gradient(150deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;padding:9px 11px}
+  .entry .t{flex:1;min-width:0}.entry .t h3{font-size:14.5px;font-weight:700}.entry .t .m{font-size:12px;color:var(--dim);margin-top:2px}
+  .kebab{color:var(--dim);font-size:18px;padding:0 2px}
+  /* NOW */
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .dow{text-align:center;font-size:11px;color:var(--dim);font-weight:700;padding:2px 0}
+  .cell{min-height:76px;display:flex;flex-direction:column;gap:3px;padding:4px 3px;border-radius:10px;border:1px solid transparent;background:#1b1e26;overflow:hidden;cursor:pointer}
+  .cell.dim{opacity:.4}.cell.sel{border-color:var(--accent)}
+  .num{font-size:12px;font-weight:600}
+  .num.today{color:#07140c;background:var(--accent);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center}
+  .ev{display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:600;padding:1px 3px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .more{font-size:9px;color:var(--dim);padding-left:3px}
+  .detail{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:10px 12px;margin-top:14px}
+  .detail .dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .detail .dh b{font-size:13px}
+  .addbtn{background:var(--accent);color:#07140c;font-weight:800;font-size:13px;border:0;border-radius:9px;padding:7px 12px;cursor:pointer}
+  /* A */
+  .scrub{display:flex;gap:5px;margin-bottom:14px}
+  .scrub .d{flex:1;text-align:center;padding:7px 0 6px;border-radius:11px;background:#171b23;border:1px solid var(--line);cursor:pointer}
+  .scrub .d small{display:block;font-size:10px;color:var(--dim);font-weight:700;text-transform:uppercase}
+  .scrub .d b{font-size:16px;font-weight:800}
+  .scrub .d.on{background:var(--accent);border-color:var(--accent)}
+  .scrub .d.on small,.scrub .d.on b{color:#07140c}
+  .scrub .d .dots{display:flex;gap:2px;justify-content:center;margin-top:3px;height:5px}
+  .scrub .d .dots i{width:5px;height:5px;border-radius:50%}
+  .agenda .g{display:flex;gap:11px;margin-bottom:9px}
+  .agenda .rail{width:40px;flex:none;text-align:center;padding-top:4px}
+  .agenda .rail small{font-size:10px;color:var(--dim);font-weight:800;text-transform:uppercase;display:block}
+  .agenda .rail b{font-size:19px;font-weight:800;line-height:1}
+  .agenda .rail.today small{color:var(--accent)}
+  .agenda .rail.today b{color:#07140c;background:var(--accent);width:29px;height:29px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:15px;margin-top:2px}
+  .agenda .col{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;border-left:1px solid var(--line);padding:2px 0 12px 12px}
+  .agenda .rest{color:var(--dim);font-size:12.5px;font-style:italic;display:flex;align-items:center;gap:7px;padding:6px 0}
+  .agenda .rest::before{content:"";width:8px;height:8px;border-radius:50%;border:1.5px dashed var(--dim)}
+  .wk-sep{font-size:11px;color:var(--dim);font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin:6px 0 10px 51px}
+  /* B */
+  .mgrid{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .mgrid .mc{min-height:90px;border-right:1px solid #1a1d24;border-bottom:1px solid #1a1d24;padding:4px 3px 3px;display:flex;flex-direction:column;gap:2px;background:#12151c;cursor:pointer}
+  .mgrid .mc:nth-child(7n){border-right:0}
+  .mgrid .mc.dim{background:#0d0f14;opacity:.55}
+  .mgrid .mc.today{background:#101d16}
+  .mgrid .mc.sel{outline:2px solid var(--accent);outline-offset:-2px}
+  .mgrid .mc .n{font-size:11.5px;font-weight:700;color:var(--dim);align-self:center;margin-bottom:1px}
+  .mgrid .mc.today .n{color:#07140c;background:var(--accent);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .bar{font-size:9px;font-weight:700;color:#fff;border-radius:4px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;border-left:3px solid rgba(255,255,255,.55)}
+  .selrow{display:flex;justify-content:space-between;align-items:center;margin:14px 0 9px}
+  /* C */
+  .band{margin-bottom:8px}
+  .band .bl{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin:0 0 7px}
+  .band .bl::after{content:"";flex:1;height:1px;background:var(--line)}
+  .band .items{display:flex;flex-direction:column;gap:7px;padding-left:2px}
+  .band.empty .items{color:var(--dim);font-size:12.5px;font-style:italic;padding:2px 0 4px 4px}
+</style>
+
+<div class="switch">
+  <button data-o="now">NOW</button>
+  <button data-o="a" class="on">A · Agenda</button>
+  <button data-o="b">B · Month</button>
+  <button data-o="c">C · Day</button>
+</div>
+<div class="cap" id="cap"></div>
+<div class="phone" id="app"></div>
+
+<script>
+const DIM={ride:'--ride',run:'--run',gym:'--gym',meal:'--meal',mind:'--mind',note:'--note'};
+const C=k=>getComputedStyle(document.documentElement).getPropertyValue(DIM[k]).trim();
+const ICON={ride:'🚴',run:'🏃',gym:'🏋️',meal:'🥗',mind:'🧘',note:'🚩'};
+const prof=(shape,k)=>{const H={end:[40,52,58,55,60,57,54,58,52,45],thr:[30,34,90,88,34,92,90,34,90,30],long:[45,50,54,52,55,53,56,54,52,48]}[shape];
+  return `<span class="prof" style="color:var(${DIM[k]})">${H.map(h=>`<i style="height:${h}%"></i>`).join('')}</span>`;}
+const chip=(k,shape)=> shape? `<span class="chip ${k} chart">${prof(shape,k)}</span>` : `<span class="chip ${k}">${ICON[k]}</span>`;
+const entry=(k,title,meta,shape)=>`<div class="entry">${chip(k,shape)}<div class="t"><h3>${title}</h3><div class="m">${meta}</div></div><span class="kebab">⋯</span></div>`;
+
+const WEEK=[
+ {dow:'Mon',n:6, ev:[['gym','Upper · Push','5 exercises · ~45 min'],['meal','Chicken & rice bowl','~620 kcal · 48g P']]},
+ {dow:'Tue',n:7, ev:[['ride','Endurance Z2','90 min · 1.8h · ~65 TSS','end'],['mind','Breathe','10 min · calm']]},
+ {dow:'Wed',n:8, ev:[['run','Easy 6 km','6.0 km · 6:20/km','long']]},
+ {dow:'Thu',n:9, ev:[]},
+ {dow:'Fri',n:10,ev:[['ride','Threshold 4×8','75 min · ~95 TSS','thr'],['gym','Legs','6 exercises · ~50 min']]},
+ {dow:'Sat',n:11,ev:[['run','Long run 14 km','14 km · 5:55/km','long'],['meal','Recovery smoothie','~340 kcal · 30g P']],today:true},
+ {dow:'Sun',n:12,ev:[['note','Base block · wk 2','Training block · plan']]},
+];
+const dayEntries=d=>d.ev.map(e=>entry(e[0],e[1],e[2],e[3])).join('');
+let SEL=11; // selected day-of-month (NOW/B/C)
+
+function NOW(){
+ const DOW=['M','T','W','T','F','S','S'];
+ const grid=[[29,30,1,2,3,4,5],[6,7,8,9,10,11,12],[13,14,15,16,17,18,19],[20,21,22,23,24,25,26],[27,28,29,30,31,1,2]];
+ let cells='';
+ grid.forEach((row,ri)=>row.forEach(n=>{
+   const inMonth=!((ri===0&&n>=27)||(ri===4&&n<=2));
+   const day=WEEK.find(w=>w.n===n&&inMonth&&n>=6&&n<=12);
+   let evs='';
+   if(day){evs=day.ev.slice(0,3).map(e=>`<span class="ev" style="background:${C(e[0])}22;color:${C(e[0])}">${ICON[e[0]]}<em style="overflow:hidden;text-overflow:ellipsis">${e[1].split(' ')[0]}</em></span>`).join('');
+     if(day.ev.length>3)evs+=`<span class="more">+${day.ev.length-3}</span>`;}
+   cells+=`<div class="cell ${inMonth?'':'dim'} ${n===SEL&&inMonth?'sel':''}" data-n="${n}"><span class="num ${n===11&&inMonth?'today':''}">${n}</span>${evs}</div>`;
+ }));
+ const sel=WEEK.find(w=>w.n===SEL)||{ev:[]};
+ const selName=sel.dow?`${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][({6:1,7:2,8:3,9:4,10:5,11:6,12:0})[SEL]]}, Jul ${SEL}`:`Jul ${SEL}`;
+ return `
+  <div class="views"><div class="vb">Day</div><div class="vb">Week</div><div class="vb on">Month</div><div class="vb">Schedule</div></div>
+  <div class="head"><div class="icon">‹</div><h1>July 2026</h1><div class="icon">›</div><button class="today-btn">Today</button></div>
+  <div class="cal-grid" style="margin-bottom:4px">${DOW.map(d=>`<div class="dow">${d}</div>`).join('')}</div>
+  <div class="cal-grid" id="nowgrid">${cells}</div>
+  <div class="detail"><div class="dh"><b>${selName}</b><button class="addbtn">＋ Add</button></div>
+   <div style="display:flex;flex-direction:column;gap:8px">${sel.ev.length?dayEntries(sel):'<p class="dim" style="font-size:13px">Nothing planned. Tap “Add”.</p>'}</div></div>`;
+}
+function A(){
+ const scrub=WEEK.map(d=>`<div class="d ${d.today?'on':''}"><small>${d.dow}</small><b>${d.n}</b>
+   <div class="dots">${d.ev.slice(0,3).map(e=>`<i style="background:${d.today?'#07140c':C(e[0])}"></i>`).join('')}</div></div>`).join('');
+ let rows='';
+ WEEK.forEach((d,i)=>{
+   if(i===0)rows+=`<div class="wk-sep">This week · Jul 6–12</div>`;
+   const col=d.ev.length? dayEntries(d) : `<div class="rest">Rest day — recovery</div>`;
+   rows+=`<div class="g"><div class="rail ${d.today?'today':''}"><small>${d.dow}</small><b>${d.n}</b></div><div class="col">${col}</div></div>`;
+ });
+ return `
+  <div class="views"><div class="vb">Day</div><div class="vb">Week</div><div class="vb">Month</div><div class="vb on">Agenda</div></div>
+  <div class="scrub">${scrub}</div>
+  <div class="agenda">${rows}</div>`;
+}
+function B(){
+ const DOW=['MON','TUE','WED','THU','FRI','SAT','SUN'];
+ const grid=[[29,30,1,2,3,4,5],[6,7,8,9,10,11,12],[13,14,15,16,17,18,19],[20,21,22,23,24,25,26]];
+ let cells='';
+ grid.forEach((row,ri)=>row.forEach(n=>{
+   const inMonth=!(ri===0&&n>=27);
+   const day=WEEK.find(w=>w.n===n&&inMonth&&n>=6&&n<=12);
+   let bars='';
+   if(day)bars=day.ev.slice(0,3).map(e=>`<span class="bar" style="background:${C(e[0])}33;border-color:${C(e[0])}">${e[1].split(' ').slice(0,2).join(' ')}</span>`).join('');
+   cells+=`<div class="mc ${inMonth?'':'dim'} ${n===11&&inMonth?'today':''} ${n===SEL&&inMonth&&n!==11?'sel':''}" data-n="${n}"><span class="n">${n}</span>${bars}</div>`;
+ }));
+ const sel=WEEK.find(w=>w.n===SEL)||{ev:[]};
+ const nm=({6:'Mon',7:'Tue',8:'Wed',9:'Thu',10:'Fri',11:'Sat',12:'Sun'})[SEL];
+ return `
+  <div class="views"><div class="vb">Day</div><div class="vb">Week</div><div class="vb on">Month</div><div class="vb">Agenda</div></div>
+  <div class="head"><div class="icon">‹</div><h1>July 2026</h1><div class="icon">›</div><button class="today-btn">Today</button></div>
+  <div class="cal-grid" style="margin-bottom:5px">${DOW.map(d=>`<div class="dow" style="font-size:10px">${d}</div>`).join('')}</div>
+  <div class="mgrid" id="mgrid">${cells}</div>
+  <div class="selrow"><b style="font-size:14px">${nm?nm+', ':''}Jul ${SEL}${SEL===11?' · Today':''}</b><button class="addbtn">＋ Add</button></div>
+  <div style="display:flex;flex-direction:column;gap:8px">${sel.ev.length?dayEntries(sel):'<p class="dim" style="font-size:13px">Nothing planned. Tap “Add”.</p>'}</div>`;
+}
+function Cv(){
+ const scrub=WEEK.map(d=>`<div class="d ${d.n===SEL?'on':''}" data-n="${d.n}"><small>${d.dow}</small><b>${d.n}</b>
+   <div class="dots">${d.ev.slice(0,3).map(e=>`<i style="background:${d.n===SEL?'#07140c':C(e[0])}"></i>`).join('')}</div></div>`).join('');
+ const sel=WEEK.find(w=>w.n===SEL)||{ev:[]};
+ // naive daypart split for demo: runs/rides→morning, meals→midday, mind→evening, gym→evening
+ const morning=[],midday=[],evening=[];
+ sel.ev.forEach(e=>{const k=e[0]; (k==='meal'?midday:(k==='mind'||k==='gym')?evening:morning).push(entry(e[0],e[1],e[2]+' · planned',e[3]));});
+ const band=(ic,name,items)=>`<div class="band ${items.length?'':'empty'}"><div class="bl"><span>${ic}</span>${name}</div>
+   <div class="items">${items.length?items.join(''):'Nothing planned — tap ＋ to add'}</div></div>`;
+ const nm=({6:'Monday',7:'Tuesday',8:'Wednesday',9:'Thursday',10:'Friday',11:'Saturday',12:'Sunday'})[SEL];
+ return `
+  <div class="views"><div class="vb on">Day</div><div class="vb">Week</div><div class="vb">Month</div><div class="vb">Agenda</div></div>
+  <div class="scrub">${scrub}</div>
+  <div class="head" style="margin:2px 0 14px"><h1 style="text-align:left;font-size:17px">${nm}, Jul ${SEL}${SEL===11?' · <span style="color:var(--accent)">Today</span>':''}</h1><button class="addbtn">＋ Add</button></div>
+  ${band('🌅','Morning',morning)}${band('☀️','Midday',midday)}${band('🌙','Evening',evening)}`;
+}
+const OPT={now:['<b>NOW</b> — current calendar. Month grid reads mostly empty; real content lives in the panel below.',NOW],
+  a:['<b>A · Agenda</b> — tap a scrubber day. Continuous timeline, rest days as thin rows.',A],
+  b:['<b>B · Month</b> — tap any day to load its detail below. Event bars fill the cells.',B],
+  c:['<b>C · Day</b> — tap a scrubber day. Dayparts are a demo guess (events are all-day).',Cv]};
+let cur='a';
+function render(){
+ document.getElementById('cap').innerHTML=OPT[cur][0];
+ document.getElementById('app').innerHTML=OPT[cur][1]();
+ // wire day taps
+ document.querySelectorAll('[data-n]').forEach(el=>el.onclick=()=>{const n=+el.dataset.n; if(n>=6&&n<=12){SEL=n; render();}});
+}
+document.querySelectorAll('.switch button').forEach(b=>b.onclick=()=>{
+ cur=b.dataset.o; SEL=11;
+ document.querySelectorAll('.switch button').forEach(x=>x.classList.toggle('on',x===b));
+ render();
+});
+render();
+</script>
