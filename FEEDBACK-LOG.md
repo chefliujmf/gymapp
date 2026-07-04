@@ -22,6 +22,8 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+> 🎯 **FOCUS (JM 2026-07-03):** prioritise **OUTDOOR activities + GYM**. **Indoor-ride** features are LATER — #174 (Bluetooth HR on the bike), #106 (pedaling metrics), and the indoor bits of the ride player / #62 ref. Cut by JM: #173, #163, #149, #61 (marked ❌ below).
+
 345. 🔨 **"Max workouts per DAY" preference (default 1) — next to preferred workouts/week.** JM 2026-07-03: the coach
     pushed a gym AND a run the same day; unless the athlete SAYS they can double (time/capacity), expect ONE session/day.
     Done: `maxPerDay` field (default 1) beside days/week in Availability; persisted to `info.maxPerDay`; coach prompt now
@@ -1221,7 +1223,7 @@ test guide → the **🧪 Test guide** section below.
     NOT pushed back to intervals (only the coach engine dual-writes by shared ID), so they never appear in intervals;
     (c) the reconcile/dedup (external_id `:date` suffix, day/sport/title) may hide one side. Need a screenshot + a
     specific example (which item, which direction, which date) to pin the exact path. JM 2026-06-26.
-149. ⬜ **Strava: confirm completed activities actually reach Strava.** JM's "morning run" was in intervals
+149. ❌ CUT (JM 2026-07-03) — **Strava: confirm completed activities actually reach Strava.** JM's "morning run" was in intervals
     but NOT in Strava. Likely the device→Strava sync (Garmin/Coros account config), not Platyplus — but
     confirm: (a) for DEVICE activities, Strava comes from the device's own Strava link, not us; (b) for
     PLATYPLUS-recorded/uploaded activities (#122), verify the opt-in Strava push works. JM 2026-06-25.
@@ -1332,7 +1334,7 @@ test guide → the **🧪 Test guide** section below.
 23. ⬜ **intervals indoor-completion labeling** — confirm an indoor-done workout reaches intervals labeled (pairs w/ coach + a real completion).
 51. 🔨 **Post-workout GPS map + Strava-style flyby** — route map + an animated dot replaying the path. Needs the activity GPS stream + a map render. Pairs w/ #54.
 54. 🔨 **Clone rich post-workout RIDE analytics** — intervals-style tabs: TIMELINE (power/HR/cadence/altitude) · POWER (zones, curve, decoupling) · HR · ROUTE (map) · DATA. Big; from intervals/Strava streams.
-61. ⬜ **(ref) Xert-style weekly ride calendar** — inspiration for a richer Plan view (per-day score badge, mini map, power profile, weekly-stats bar).
+61. ❌ CUT (JM 2026-07-03) — **(ref) Xert-style weekly ride calendar** — inspiration for a richer Plan view (per-day score badge, mini map, power profile, weekly-stats bar).
 62. ⬜ **(ref) TrainerRoad in-workout + ride summary** — inspiration for the ride player + post-ride summary (#54).
 64. 🔨 **Infer Sleep from intervals wellness** — when intervals is connected, prefill the check-in Sleep from the wellness sleep score (still editable). Extends into #74.
 65. 🔨 **Check-in auto-adapts today's workout (coach)** — on a poor check-in, the coach evaluates + adjusts TODAY's plan (recovery/cut intensity) with a note. Design the trigger; pairs #76/#91.
@@ -1368,7 +1370,7 @@ test guide → the **🧪 Test guide** section below.
     scrape/download the self-hosted video/audio/images. Deter download + screenshots (signed/expiring URLs,
     range-only, obfuscation, no-download attrs already added). True DRM is hard — raise the bar meaningfully.
     Also: Centr video resolution is poor (source quality; consider re-encode / better source). (source: UX-BACKLOG.)
-163. ⬜ **intervals.icu "Connect" button (OAuth).** Needs OAuth creds **requested from the intervals dev** (not
+163. ❌ CUT (JM 2026-07-03) — **intervals.icu "Connect" button (OAuth).** Needs OAuth creds **requested from the intervals dev** (not
     self-serve). Until then, the key-paste flow (friendlier UX, shipped) stands. For public launch. (source: UX-BACKLOG.)
 164. ⬜ **Profile vs Settings split + section nav.** Profile = the person (avatar, name, account, passkeys,
     connections like Strava/intervals). Separate **Settings** page for small config (API tokens, units, diet,
@@ -1397,7 +1399,7 @@ test guide → the **🧪 Test guide** section below.
 171. ⬜ **Check-in history: collapse-when-done + Logs list.** Once all 3 (energy/sleep/freshness) are logged,
     collapse the Today check-in card to a one-line summary; full history in Logs. (source: UX-BACKLOG check-in.)
 172. ⬜ **Remove the "(indoor)" tag shown on rides.** Small label cleanup. (source: UX-BACKLOG ride/strava session-3.)
-173. ⬜ **BYO Strava (multi-provider activity source).** A user may not use intervals.icu at all — let them link
+173. ❌ CUT (JM 2026-07-03) — **BYO Strava (multi-provider activity source).** A user may not use intervals.icu at all — let them link
     their own **Strava** (OAuth) in account settings as an alternative source/sink for activities. Same
     provider-abstraction idea as BYO-AI (`intervals | strava | …`). (source: UX-BACKLOG.)
 174. ⬜ **Bluetooth HR during a bike workout (+ HR affordances).** Confirm + fix: (1) Web Bluetooth is
