@@ -829,6 +829,41 @@ app.post('/auth/plans/sync', auth, async (req, res) => {
   if (!from || !to) return res.status(400).json({ error: 'from + to (YYYY-MM-DD) required' })
   res.json(await reconcileFromIcu(req.user, from, to))
 })
+// #156 — MISSED-workout handling: a plan 1–3 days past with no completion → the coach reshapes the week,
+// REMOVES the missed workout from the calendar, and notifies with HIS OWN explanation (JM: don't leave a
+// red "Missed" card; remove it + let the coach say what he did). Dedup via plan.missedHandledAt so it fires
+// once per plan. Called by the app on load (no scheduler). Misses older than 3 days are marked handled
+// silently to avoid a backlog storm on first run.
+app.post('/auth/plans/handle-missed', auth, async (req, res) => {
+  const user = req.user, today = icuDay(0)
+  const candidates = (user.plans || []).filter((p) => p.date && p.date < today && !p.missedHandledAt)
+  if (!candidates.length) return res.json({ missed: 0 })
+  // completion signals: a local log (workoutId===plan.id) or a matching intervals activity / log by day+sport
+  const doneIds = new Set((user.logs || []).map((l) => l.workoutId).filter(Boolean))
+  const doneSlots = new Set()
+  for (const l of (user.logs || [])) doneSlots.add(slotKey(l.date, l.discipline === 'running' ? 'run' : l.discipline === 'cycling' ? 'ride' : 'gym'))
+  if (user.icuKey) {
+    const acts = await icuGet(user, `/athlete/${user.icuAthlete || 'i28814'}/activities?oldest=${icuDay(4)}&newest=${today}`).catch(() => null)
+    for (const a of (Array.isArray(acts) ? acts : [])) doneSlots.add(slotKey((a.start_date_local || '').slice(0, 10), eventSport(a.type)))
+  }
+  const isDone = (p) => doneIds.has(p.id) || doneSlots.has(slotKey(p.date, p.sport))
+  const missed = []
+  for (const p of candidates) {
+    p.missedHandledAt = Date.now() // dedup: never re-consider this plan
+    if (isDone(p)) continue // completed after all
+    if (p.date < icuDay(3)) continue // stale (>3 days) — mark handled, don't bother the coach
+    missed.push(p)
+  }
+  save(store)
+  if (missed.length && user.coachProfile && user.coachProfile.trim()) {
+    const list = missed.map((p) => `"${p.title}" (${p.sport}, planned ${p.date}, id ${p.id})`).join('; ')
+    const ids = missed.map((p) => p.id).join(', ')
+    const msg = `The athlete MISSED ${missed.length} planned session${missed.length > 1 ? 's' : ''} (now past, not completed): ${list}. Reassess the REST OF THIS WEEK (list_schedule): if a missed session still matters for the plan, MOVE it to a free upcoming day that fits their availability + the one-session-per-day rule; if the week's stimulus is already covered or there's no room, DROP it. EITHER WAY, remove each missed workout from the calendar now with remove_workout (ids: ${ids}) so it doesn't linger. Keep easy days easy; never stack two hard days. Then call notify with a SHORT, warm message telling the athlete EXACTLY what you did and why — e.g. "You missed Wednesday's tempo — I moved it to Saturday and kept Thu/Fri easy so your week still lands." Don't nag or ask questions — just fix it and tell them.`
+    runCoachTask(user, msg).catch((e) => console.error('[missed-handler] ' + (e.message || e)))
+  }
+  res.json({ missed: missed.length })
+})
+
 // PUSH every Platyplus-origin plan in a window OUT to intervals (dedup-aware) — the manual
 // "re-sync" button (#150). Recovers plans that never pushed (errored/predate the push) and
 // adopts any matching event the athlete's other coach already created (no duplicates).

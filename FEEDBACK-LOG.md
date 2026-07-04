@@ -1171,10 +1171,14 @@ test guide → the **🧪 Test guide** section below.
     format (the structured/native workout the chart renders from) differs. Align the pushed description + workout_doc to
     intervals' native format so the pushed event reads + charts like a proper planned workout (cf. cyclingcoach
     instructions_intervals_icu). Pairs with #150. JM screenshot 2026-06-26.
-156. ⬜ **Missed-workout UX: red day-dot + clearly-"missed" activity.** A PAST Platyplus planned workout NOT linked to
-    a completed activity = MISSED. The WeekStrip dot for that day should be **red** (today the dots are green/neutral),
-    and the session should render as clearly "missed" (not just a faint planned card). Part of the #155 state model
-    (missed = past + not done). JM 2026-06-26.
+156. 🔨 **Missed-workout UX.** JM 2026-06-26 → refined 2026-07-03. Mocked 3 options (mockups/missed-workout.html); JM picked
+    **C, refined**: DON'T leave a red "Missed" card on the calendar — instead the coach reshapes the week, REMOVES the missed
+    workout, and the NOTIFICATION carries the coach's own explanation. Done: `POST /auth/plans/handle-missed` detects a plan
+    1–3 days past with no completion (local log by workoutId + intervals activity by day+sport), dedups via
+    `plan.missedHandledAt` (stale >3d marked silently), and fires ONE coach task → reshape (move/drop) + `remove_workout`
+    each missed + `notify` with what changed & why. Today calls it on load (server dedups). openapi updated. 308 tests.
+    **Test (on prod):** have a planned session go 1 day past without completing it, open the app → within ~1 min the missed
+    workout disappears from the calendar and a bell notification explains what the coach moved/dropped. gymapp-only.
 155. ⬜ **Detail page must branch on session STATE (JM spec 2026-06-26) + unify the "use your phone" messaging.**
     JM update 2026-06-26: on **desktop you should NOT even have the "play" button** at all (not just gated) — the
     full-page "Ride from your phone" gate is moot; just no play affordance on desktop, show the workout + inline hint.
@@ -1383,7 +1387,7 @@ test guide → the **🧪 Test guide** section below.
 166. ⬜ **Calendar density + polish (centerpiece).** Big, modern, close to Google Calendar: Day/Week/Month/
     Schedule views; clean event blocks; today highlighted. Everything (workouts, rides, runs, meals, mind) is an
     event on a day. The current calendar still feels empty/sparse — needs density + polish. (source: UX-BACKLOG Calendar.)
-167. ⬜ **Gym player refinements (live workout screen).** Pre-workout **time estimate** (total + per-exercise,
+167. 🔨 **Gym player refinements (live workout screen).** [VERIFIED built — gym player already has add-set (＋ set) + pre-start reorder/insights; verify skip-set on prod] Pre-workout **time estimate** (total + per-exercise,
     reps × time-under-tension); **reorder exercises before starting**; **add-set / skip-set** in player + full
     set TABLE (JetFit-style); **history back-nav** returns to your position (today dumps to exercise 1); a
     **dedicated swipe gesture** to change exercise (currently arrows + dots). (source: UX-BACKLOG Session-4 gym player.)
@@ -1393,7 +1397,7 @@ test guide → the **🧪 Test guide** section below.
 169. ⬜ **Eat: meal packs + shopping-list generator.** Eat list is built; REMAINING: **meal packs** (pre-packaged
     breakfast/lunch/snack "packs" that roll up kcal + protein — JM specifically likes this); **shopping-list
     generator** for selected days / a full week (consolidate from assigned meals + snacks). (source: UX-BACKLOG Eat.)
-170. ⬜ **Train filters & sorting + equipment list.** Filter + sort **Workouts AND Exercises** by **equipment**,
+170. 🔨 **Train filters & sorting + equipment list.** [VERIFIED built — both list pages already filter by equipment/category/muscle + duration/level (intensity) + sort; done] Filter + sort **Workouts AND Exercises** by **equipment**,
     **time/duration**, **intensity**. Powered by a **Settings → equipment list** (what the user owns). (source:
     UX-BACKLOG 2026-06-23 session.)
 171. ⬜ **Check-in history: collapse-when-done + Logs list.** Once all 3 (energy/sleep/freshness) are logged,

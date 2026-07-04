@@ -1,0 +1,93 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Missed-workout UX — options</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9aa2b1;--faint:#6b7280;--accent:#34e07d;--warn:#f0b145;--red:#e0555f;--bg:#0f1216;--line:#2a2f3a;--soft:#191c24}
+  *{box-sizing:border-box;margin:0}body{background:#05070a;color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:14px;max-width:440px;margin:auto}
+  .toggle{display:flex;gap:6px;margin-bottom:10px}
+  .toggle button{flex:1;padding:9px 6px;border:1px solid var(--line);background:#12151c;color:var(--dim);border-radius:10px;font-size:11.5px;font-weight:700}
+  .toggle button.on{background:var(--accent);color:#08150c;border-color:var(--accent)}
+  .cap{color:var(--dim);font-size:12px;margin:0 2px 12px;line-height:1.5}.cap b{color:var(--accent)}
+  .stage{display:none}.stage.on{display:block}
+
+  /* week strip */
+  .wk{display:flex;justify-content:space-between;background:linear-gradient(180deg,#21252f,#191c24);border:1px solid var(--line);border-radius:14px;padding:10px 8px;margin-bottom:14px}
+  .wk__d{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;font-size:11px;color:var(--dim)}
+  .wk__d.sel{color:var(--text)}
+  .wk__n{font-size:15px;font-weight:800;color:var(--text)}
+  .wk__d.sel .wk__n{background:var(--accent);color:#08150c;border-radius:9px;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+  .dot{width:7px;height:7px;border-radius:50%;background:#333a45}
+  .dot.done{background:var(--accent)} .dot.plan{background:var(--dim)} .dot.miss{background:var(--red);box-shadow:0 0 0 3px rgba(224,85,95,.18)}
+
+  .lbl{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;font-weight:800;margin:2px 2px 8px}
+  /* plan card */
+  .pc{display:flex;gap:11px;align-items:center;background:linear-gradient(180deg,#21252f,#191c24);border:1px solid var(--line);border-radius:13px;padding:11px 12px;margin-top:8px}
+  .pc__ic{flex:none;width:40px;height:40px;border-radius:10px;background:#14181f;display:flex;align-items:center;justify-content:center;font-size:19px}
+  .pc__b{flex:1;min-width:0}.pc__t{font-weight:700;font-size:14px}
+  .pc__m{font-size:12px;color:var(--dim);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .pc__m .d::before{content:'·';margin-right:6px;color:var(--line)}
+  .chip{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:999px}
+  .chip.done{color:var(--accent);background:#34e07d18;border:1px solid #34e07d44}
+  .chip.miss{color:var(--red);background:#e0555f18;border:1px solid #e0555f55}
+  .pc.missed{border-color:#e0555f44;opacity:.92}
+  .pc.missed .pc__ic{filter:grayscale(.5) opacity(.8)}
+  .btn{font:inherit;font-size:12px;font-weight:800;border-radius:9px;padding:6px 11px;border:1px solid var(--line);background:#12151c;color:var(--text)}
+  .btn.g{background:var(--accent);color:#08150c;border-color:var(--accent)}
+
+  /* B banner */
+  .ban{background:linear-gradient(180deg,#2a1a1c,#201517);border:1px solid #e0555f44;border-radius:14px;padding:13px 14px;display:flex;gap:11px;align-items:flex-start;margin-bottom:6px}
+  .ban__ic{flex:none;width:34px;height:34px;border-radius:10px;background:#e0555f1c;display:flex;align-items:center;justify-content:center;font-size:17px}
+  .ban__t{font-weight:800;font-size:14px}.ban__s{font-size:12px;color:var(--dim);margin-top:2px;line-height:1.4}
+  .mrow{display:flex;gap:10px;align-items:center;background:linear-gradient(180deg,#21252f,#191c24);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px}
+  .mrow__b{flex:1;min-width:0}.mrow__t{font-weight:650;font-size:13.5px}.mrow__m{font-size:11.5px;color:var(--dim);margin-top:2px}
+  .mrow .acts{display:flex;gap:6px}
+  /* C coach note */
+  .coach{background:linear-gradient(180deg,#16261c,#13201a);border:1px solid #34e07d3a;border-radius:12px;padding:11px 12px;margin-top:8px;display:flex;gap:10px}
+  .coach__ic{flex:none;width:30px;height:30px;border-radius:8px;background:#34e07d1c;display:flex;align-items:center;justify-content:center}
+  .coach__t{font-size:13px;line-height:1.45}.coach__t b{color:var(--accent)}
+</style>
+
+<div class="toggle">
+  <button class="on" onclick="show('A',this)">A · Red dot + label</button>
+  <button onclick="show('B',this)">B · Roll-up banner</button>
+  <button onclick="show('C',this)">C · Coach adapts</button>
+</div>
+
+<!-- shared week strip generator via class -->
+<div class="stage on" id="A">
+  <p class="cap"><b>A — red dot + "Missed" chip.</b> The week dot goes red on a past day whose plan was never completed; the plan card shows a red <b>Missed</b> chip + a muted style. Green dot = done, grey = upcoming. Purely visual.</p>
+  <div class="wk">
+    <div class="wk__d"><span class="wk__n">2</span><span class="dot done"></span><span>Mon</span></div>
+    <div class="wk__d"><span class="wk__n">3</span><span class="dot done"></span><span>Tue</span></div>
+    <div class="wk__d"><span class="wk__n">4</span><span class="dot miss"></span><span>Wed</span></div>
+    <div class="wk__d sel"><span class="wk__n">5</span><span class="dot plan"></span><span>Thu</span></div>
+    <div class="wk__d"><span class="wk__n">6</span><span class="dot plan"></span><span>Fri</span></div>
+    <div class="wk__d"><span class="wk__n">7</span><span class="dot"></span><span>Sat</span></div>
+    <div class="wk__d"><span class="wk__n">8</span><span class="dot"></span><span>Sun</span></div>
+  </div>
+  <div class="lbl">Wed, Jul 4</div>
+  <div class="pc missed"><div class="pc__ic">🚴</div><div class="pc__b"><div class="pc__t">Tempo Ride</div><div class="pc__m"><span class="chip miss">Missed</span><span class="d">45 min</span><span class="d">tempo</span></div></div></div>
+  <div class="lbl" style="margin-top:14px">Tue, Jul 3</div>
+  <div class="pc"><div class="pc__ic">🏃</div><div class="pc__b"><div class="pc__t">Easy Aerobic Run</div><div class="pc__m"><span class="chip done">✓ Done</span><span class="d">35 min</span><span class="d">6:22/km</span></div></div></div>
+</div>
+
+<div class="stage" id="B">
+  <p class="cap"><b>B — roll-up banner + actionable list.</b> A banner counts what you missed this week; each row lets you <b>Reschedule</b> (pick a new day) or <b>Skip</b> (accept it). Same family as the feedback banner. More useful, more to build.</p>
+  <div class="ban">
+    <div class="ban__ic">🔴</div>
+    <div style="flex:1"><div class="ban__t">2 sessions missed this week</div><div class="ban__s">Reschedule to keep your week on track, or skip to clear it — your coach adapts either way.</div></div>
+  </div>
+  <div class="mrow"><div class="pc__ic" style="width:34px;height:34px;font-size:16px">🚴</div><div class="mrow__b"><div class="mrow__t">Tempo Ride · Wed</div><div class="mrow__m">45 min · tempo</div></div><div class="acts"><button class="btn g">Reschedule</button><button class="btn">Skip</button></div></div>
+  <div class="mrow"><div class="pc__ic" style="width:34px;height:34px;font-size:16px">🏃</div><div class="mrow__b"><div class="mrow__t">Easy Run · Thu</div><div class="mrow__m">30 min · Z2</div></div><div class="acts"><button class="btn g">Reschedule</button><button class="btn">Skip</button></div></div>
+</div>
+
+<div class="stage" id="C">
+  <p class="cap"><b>C — missed flag + the coach reacts.</b> The visual flag (like A) PLUS: a missed session auto-pings the coach to adjust the week, and you get a note explaining what changed. A missed run actually reshapes the plan. Most value, most build.</p>
+  <div class="lbl">Wed, Jul 4</div>
+  <div class="pc missed"><div class="pc__ic">🚴</div><div class="pc__b"><div class="pc__t">Tempo Ride</div><div class="pc__m"><span class="chip miss">Missed</span><span class="d">45 min</span></div></div></div>
+  <div class="coach"><div class="coach__ic">💚</div><div class="coach__t"><b>Coach:</b> No stress on the missed tempo. I moved your quality session to <b>Saturday</b> and kept Thu/Fri easy so the week still lands right. Tap to see the updated plan.</div></div>
+  <div class="lbl" style="margin-top:14px">🔔 Notification</div>
+  <div class="pc"><div class="pc__ic">🔔</div><div class="pc__b"><div class="pc__t" style="font-weight:650;font-size:13.5px">Plan adjusted after a missed ride</div><div class="pc__m">Saturday now has your tempo work.</div></div></div>
+</div>
+
+<script>function show(id,b){document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('on',s.id===id));document.querySelectorAll('.toggle button').forEach(x=>x.classList.remove('on'));if(b)b.classList.add('on')}
+var q=new URLSearchParams(location.search).get('o');if(q)show(q)</script>
