@@ -1424,7 +1424,7 @@ test guide → the **🧪 Test guide** section below.
     Built: (a) **Day** — week scrubber strip (tap to hop days, per-day dots, today green) + Today badge on the count row;
     (b) **Week** — compact day-rows (name · count, today tinted), rest days collapse to one line → whole week fits;
     (c) **Schedule** — date-rail timeline (big day number, today badge, border-left column) + month separators.
-    Files: `src/pages/Calendar.tsx` (WeekScrubber, week/schedule rewrites), `src/styles.css` (.cal-scrub/.cal-week/.cal-agenda). 313 tests. On QA.
+    Files: `src/pages/Calendar.tsx` (WeekScrubber, week/schedule rewrites), `src/styles.css` (.cal-scrub/.cal-week/.cal-agenda). 313 tests. **On QA + prod.**
 167. 🔨 **Gym player refinements (live workout screen).** [VERIFIED built — gym player already has add-set (＋ set) + pre-start reorder/insights; verify skip-set on prod] Pre-workout **time estimate** (total + per-exercise,
     reps × time-under-tension); **reorder exercises before starting**; **add-set / skip-set** in player + full
     set TABLE (JetFit-style); **history back-nav** returns to your position (today dumps to exercise 1); a
