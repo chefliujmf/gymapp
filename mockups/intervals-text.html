@@ -1,0 +1,94 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#157 — intervals workout text: now vs proposed</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9aa2b1;--accent:#34e07d;--warn:#f0b145;--red:#e0555f;--blue:#6ea8ff;--bg:#0f1216;--line:#2a2f3a;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  *{box-sizing:border-box;margin:0}body{background:#05070a;color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:14px;max-width:460px;margin:auto}
+  h1{font-size:15px;margin:0 0 3px}
+  .sub{color:var(--dim);font-size:12px;margin-bottom:14px}
+  .panel{border:1px solid var(--line);border-radius:12px;margin-top:12px;overflow:hidden}
+  .panel__h{padding:8px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:7px}
+  .panel__h .tag{font-size:9px;font-weight:800;padding:2px 7px;border-radius:999px}
+  .now .panel__h{background:#e0555f14;color:var(--red)} .now{border-color:#e0555f44}
+  .a .panel__h{background:#34e07d14;color:var(--accent)} .a{border-color:#34e07d55}
+  .b .panel__h{background:#6ea8ff14;color:var(--blue)} .b{border-color:#6ea8ff44}
+  pre{margin:0;padding:12px;font-family:var(--mono);font-size:11.5px;line-height:1.5;color:var(--text);white-space:pre-wrap;background:#0b0e12;overflow-x:auto}
+  .cap{color:var(--dim);font-size:11.5px;padding:8px 12px;border-top:1px solid var(--line)}
+  .cap b{color:var(--text)}
+  .hd{color:var(--accent);font-weight:700} .dim{color:var(--dim)}
+</style>
+<h1>#157 · The text Platyplus pushes to the intervals workout</h1>
+<div class="sub">A sample threshold ride (10m warm-up · 4×[5m @100% / 3m easy] · 10m cool-down) with the coaching shell attached. Rides also carry a structured <code>workout_doc</code> that drives the chart — this is the readable DESCRIPTION.</div>
+
+<div class="panel now">
+  <div class="panel__h">Now — what we push <span class="tag" style="background:#e0555f22;color:var(--red)">current</span></div>
+  <pre>## Workout
+- 10m 50-65% Warm-up
+- 5m 100%
+- 3m 55%
+- 5m 100%
+- 3m 55%
+- 5m 100%
+- 3m 55%
+- 5m 100%
+- 3m 55%
+- 10m 55% Cool-down
+
+Objective: Build threshold — hold the 5-min blocks steady.
+
+## Fueling
+Carbs before + during; ~60 g/h on the bike.
+• Breakfast: Oats + banana (420 kcal) — slow carbs before
+• Lunch: Chicken rice bowl (620 kcal) — refuel + protein
+Supplements: 500 mg sodium/bottle
+
+## Mind
+Stay present on the hard blocks.
+• Box breathing (5 min) — settle before you start
+
+## Recovery
+Easy spin + stretch; protein within 30 min.
+
+## Success
+All 4 blocks at target with steady HR.
+
+## Cues
+• Smooth pedal stroke, relax the shoulders
+• Recoveries easy — let HR drop
+
+— authored in Platyplus</pre>
+  <div class="cap">Flat step list under a <b>## Workout</b> markdown header (no Warmup / <b>4x</b> / Cooldown blocks), then the <b>whole coaching brief</b> dumped in — reads as a wall, not a native workout.</div>
+</div>
+
+<div class="panel a">
+  <div class="panel__h">Proposed A — clean sections, brief below <span class="tag" style="background:#34e07d22;color:var(--accent)">recommended</span></div>
+  <pre><span class="hd">Warmup</span>
+- 10m ramp 50-65%
+
+<span class="hd">4x</span>
+- 5m 100%
+- 3m 55%
+
+<span class="hd">Cooldown</span>
+- 10m 55%
+
+<span class="dim">─────────── coach notes ───────────</span>
+Objective: build threshold — steady 5-min blocks.
+Fuel: ~60 g carbs/h on the bike; protein within 30 min.
+Cues: smooth stroke, relax shoulders; recoveries easy.
+Full plan · meals · mind → open in Platyplus</pre>
+  <div class="cap"><b>Native Warmup / 4x / Cooldown</b> blocks so the workout reads like a real one; coaching brief <b>trimmed to essentials + below a divider</b> (full detail stays in Platyplus). Keeps the step format the charts rely on. <b>Lower risk.</b></div>
+</div>
+
+<div class="panel b">
+  <div class="panel__h">Proposed B — full native, minimal notes <span class="tag" style="background:#6ea8ff22;color:var(--blue)">purist</span></div>
+  <pre><span class="hd">Warmup</span>
+- 10m ramp 50-65%
+
+<span class="hd">4x</span>
+- 5m 100% Threshold
+- 3m 55% Easy
+
+<span class="hd">Cooldown</span>
+- 10m 55%</pre>
+  <div class="cap">Pure native workout, indistinguishable from a hand-built one; the coaching brief goes ONLY in Platyplus (intervals gets just the workout + a one-line link). Cleanest, but the coach's fuel/mind/recovery no longer show in intervals. <b>Runs parse this text → higher regression risk.</b></div>
+</div>

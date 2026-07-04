@@ -82,6 +82,47 @@ export function resolveStepPct(p) {
   return { start: (p.start != null ? p.start : p.value) || 0, end: (p.end != null ? p.end : p.value) || 0 }
 }
 
+// #157 — render segments as a NATIVE intervals workout (Warmup / Nx repeats / Cooldown) so the pushed
+// text reads like a hand-built workout, not a flat "## Workout" list. Rides also carry a workout_doc (the
+// chart authority); RUNS parse THIS text, so each step keeps its "- Xm Y% pace" target (round-trip verified:
+// intervals parses "2x" + "% pace" into a repeat block with pace targets). Pure + unit-tested.
+const segSig = (s) => `${Number(s.duration) || 0}|${Number(s.powerStart) || 0}|${s.powerEnd != null ? Number(s.powerEnd) : Number(s.powerStart) || 0}`
+/** Smallest unit that tiles `work` a whole number of times → { reps, unit }; else null. */
+export function detectRepeat(work) {
+  const n = work.length
+  for (let u = 1; u <= n / 2; u++) {
+    if (n % u !== 0) continue
+    let ok = true
+    for (let i = u; i < n; i++) if (segSig(work[i]) !== segSig(work[i % u])) { ok = false; break }
+    if (ok) return { reps: n / u, unit: work.slice(0, u) }
+  }
+  return null
+}
+export function nativeWorkoutText(segs, isRun) {
+  if (!segs || !segs.length) return ''
+  const durTxt = (secs) => (secs >= 60 && secs % 60 === 0 ? `${secs / 60}m` : `${secs}s`)
+  const step = (s) => {
+    const secs = Number(s.duration) || 0, a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a
+    const tgt = isRun ? `${paceFromPowerPct(Math.round((a + b) / 2))}% pace` : (a === b ? `${a}%` : `${a}-${b}%`)
+    return `- ${durTxt(secs)} ${tgt}${s.label ? ' ' + s.label : ''}`
+  }
+  const isWarm = (s) => /warm/i.test(s.label || ''), isCool = (s) => /cool/i.test(s.label || '')
+  let w = 0, c = segs.length
+  while (w < segs.length && isWarm(segs[w])) w++
+  if (w === 0 && Number(segs[0].powerEnd) > Number(segs[0].powerStart)) w = 1 // unlabelled leading ramp = warm-up
+  while (c > w && isCool(segs[c - 1])) c--
+  const warm = segs.slice(0, w), work = segs.slice(w, c), cool = segs.slice(c)
+  const L = []
+  if (warm.length) L.push('Warmup', ...warm.map(step))
+  if (work.length) {
+    const rep = work.length > 1 ? detectRepeat(work) : null
+    if (rep && rep.reps > 1) L.push('', `${rep.reps}x`, ...rep.unit.map(step))
+    else L.push(warm.length ? '' : null, ...work.map(step))
+  }
+  if (cool.length) L.push('', 'Cooldown', ...cool.map(step))
+  return L.filter((x) => x !== null).join('\n')
+}
+
 // EXPAND nested repeat blocks ({reps, steps:[…]}) into individual segments (#293). Reads a step's
 // PACE target (runs) or POWER target (rides) — whichever intervals sent — so a run round-trips
 // without collapsing to 0 (#312).
