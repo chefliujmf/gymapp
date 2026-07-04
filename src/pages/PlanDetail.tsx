@@ -160,7 +160,7 @@ export default function PlanDetail() {
           )}
           {canPlayHere(!!ble.bridge)
             ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ Ride now</button>
-            : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to ride — that's where your sensors connect.</div>}
+            : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to ride — that's where your HR strap & trainer connect (Bluetooth works on mobile).</div>}
         </>
         )
       })()}
