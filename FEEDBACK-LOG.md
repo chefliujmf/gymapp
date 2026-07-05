@@ -31,6 +31,12 @@ test guide → the **🧪 Test guide** section below.
     + Use this ✓ / Change → city field) at `#ob-location`; new **onboarding step** "Your location". Feeds weather (#341) +
     the local-today tz fix (#347). openapi + audit. Self-validated vs mock C. On QA. gymapp-only.
 349. 🔨 **Sleep "why" was too shallow — "tracker scored 75/100" with no hours-vs-need.** JM 2026-07-04 (screenshot, Sleep 4). Fixed: `server/readiness.js` `sleep()` now ALWAYS carries `sleepHours` + `sleepNeed` (even when a device sleep SCORE drives the number, which previously dropped them); the Today "why" now leads with the actionable basis — e.g. "6.2h slept vs your ~8h need · tracker sleep score 75/100" — not just the bare score. 313 tests. **On QA + prod.** gymapp-only.
+350. ✅🔁 **Propagate every improvement to ALL impacted layers.** JM 2026-07-04: "when we improve, you need to remember to
+    update APIs, MCP, instructions, skill, memory, agent and other key elements impacted." Prompted by the #168 discovery
+    that the **coach's host MCP was ~1 week stale** — #313/#341/#343/#332 tools never reached the coach because **nothing
+    syncs `mcp/` to `xps:/home/jmf/platyplus-chat/mcp/`**. Captured durably: CLAUDE.md "change X → update Y" table now has an
+    MCP-sync row + a propagation banner; memory `platyplus-propagate-all-layers`. Host MCP synced current (all stale tools
+    now live). **TODO (follow-up): automate the `mcp/`→host rsync in the deploy pipeline** so it can't drift again.
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
@@ -1440,8 +1446,10 @@ test guide → the **🧪 Test guide** section below.
     New `eachSide` field (schema + `plan.ts` + AdHocEx) renders "each side" in CoachPlanDetail + GymPlayer. Sharpened the
     tool description + coach-engine.md (notes the gate). Equipment-grouping stays strong INSTRUCTION (goal-dependent, JM's
     "when it doesn't compromise the goal" — not hard-rejected). NOT applied to the UI quick-add (a person adding one lift
-    isn't blocked). 8 guard unit tests (`src/gym-guard.test.ts`), 321 total. ⚠️ Guard runs from `~/platyplus-chat/mcp/` on
-    the XPS host — needs a manual `mcp/` rsync there (no workflow syncs it); coach-engine.md ships in the container image.
+    isn't blocked). 8 guard unit tests (`src/gym-guard.test.ts`), 321 total. **✅ SYNCED to the coach host** — rsynced
+    `mcp/server.js` + `mcp/gym-guard.js` to `xps:/home/jmf/platyplus-chat/mcp/` (node --check OK, chowned jmf), which
+    ALSO un-stuck the ~1-week-stale host MCP (brought #313/#341/#343/#332 tools live to the coach — see #350). MCP spawns
+    per chat so it's live now on QA + prod. coach-engine.md ships in the container image (QA now, prod on promote). **On QA + prod (guard); coach-engine.md prod on promote.**
 169. ⬜ **Eat: meal packs + shopping-list generator.** Eat list is built; REMAINING: **meal packs** (pre-packaged
     breakfast/lunch/snack "packs" that roll up kcal + protein — JM specifically likes this); **shopping-list
     generator** for selected days / a full week (consolidate from assigned meals + snacks). (source: UX-BACKLOG Eat.)
