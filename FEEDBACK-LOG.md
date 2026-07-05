@@ -58,6 +58,10 @@ test guide → the **🧪 Test guide** section below.
     plan; it replied one line then went silent for a while (using MCP tools) with NOTHING showing it's still working —
     "need something to show it's reviewing." The chat-helper streams only text deltas, not tool-use, so during tool calls the
     UI looks frozen. Fix: surface coach activity (a "reviewing your plan/wellness…" typing indicator, ideally naming the tool).
+    BUILT: chat-helper + server.js forward tool_use `content_block_start` as `{tool: friendlyTool(name)}`; `Chat.tsx` shows
+    "reviewing your <thing>…". **On QA (client+server).** ⚠️ The host `chat-helper/server.mjs` emit-side sync was BLOCKED
+    (Tailscale SSH re-auth needed mid-session) — it auto-deploys on the next PROD PROMOTE (deploy.sh runner sync, #352), or
+    re-sync manually when SSH is back. Until then the client shows the generic "thinking…/still working…" (already improved).
 354. 🔨 **Jul 3 (prod, JM) shows NO Energy/Sleep/Freshness despite a check-in done (incl. in intervals).** JM 2026-07-05
     (screenshot: the check-in scales are all unselected on Fri Jul 3). Coach claimed "it's there" but it isn't shown. The
     check-in feedback was entered in INTERVALS too → Platyplus + the coach must READ the intervals check-in/wellness for the
