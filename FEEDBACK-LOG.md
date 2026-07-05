@@ -39,6 +39,13 @@ test guide → the **🧪 Test guide** section below.
     now live). **✅ Automated:** `scripts/deploy.sh` now rsyncs `mcp/` → `/home/jmf/platyplus-chat/mcp/` on every PROD
     deploy (best-effort, AFTER the app is healthy so it never fails the app deploy; chowns jmf; gated on promote since
     the host mcp dir is shared QA+prod). DEPLOY.md documents it. Takes effect next promote (already manually synced now).
+351. 🔨 **Reprocess JM's activities after every change (past · present · future) so he SEES it on real data.** JM 2026-07-04:
+    "after a change or improvements, you need to reprocess my activities so I can see changes, it's a must… so I can see how it
+    will look once launched." Standing definition-of-done step — after shipping any activity-affecting change, run a reprocess
+    for JM's account over a wide window. Mechanisms exist: `reconcileFromIcu` (safe read-sync of plans), `handle-missed`
+    (re-pair done↔planned), `POST /api/coach/run` (coach re-review — OUTWARD: writes coach notes + notifications). Plan: build
+    a one-command `scripts/reprocess-user.mjs` (reconcile + re-pair + optional coach re-review) + run it post-change. Scope of
+    the coach re-review confirmed with JM before mass-running (outward-facing). Memory `platyplus-reprocess-after-change`.
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
