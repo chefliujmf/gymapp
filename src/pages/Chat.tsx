@@ -1,10 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi, type User } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import { parseBlocks, type Inline } from '../chatFormat'
 
-interface Msg { role: 'user' | 'coach'; text: string }
+interface Msg { role: 'user' | 'coach'; text: string; ts?: number }
+
+// #358 — chat timestamp separator (best practice: a subtle time only when there's a real gap,
+// not on every message). Same day → time; yesterday/earlier → dated.
+function fmtChatTime(ts: number): string {
+  const d = new Date(ts), now = new Date()
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  if (d.toDateString() === now.toDateString()) return time
+  const y = new Date(now); y.setDate(now.getDate() - 1)
+  if (d.toDateString() === y.toDateString()) return `Yesterday · ${time}`
+  return `${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${time}`
+}
 
 // #338 — render the coach's reply with light structure (mini-headers, bullets, bold) instead of a
 // wall of text. Pure, dependency-free, no HTML injection (parseBlocks in chatFormat.ts).
@@ -77,7 +88,16 @@ export default function Chat() {
   useEffect(() => { if (onboarding) refresh().catch(() => {}) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // #356 — load the SYNCED conversation from the server so it shows on EVERY device (not just the one it
   // was typed on). sessionStorage is a fast local cache; the server copy is the source of truth for sync.
-  useEffect(() => { authApi.chatHistory().then((h) => { if (Array.isArray(h) && h.length) setMsgs(h.map((m) => ({ role: m.role, text: m.text }))) }).catch(() => {}) }, [])
+  // If the server has nothing yet but THIS device has a local conversation (typed before sync existed),
+  // migrate it up ONCE so it starts syncing to your other devices too.
+  useEffect(() => {
+    authApi.chatHistory().then((h) => {
+      if (Array.isArray(h) && h.length) { setMsgs(h.map((m) => ({ role: m.role, text: m.text, ts: m.ts }))); return }
+      let local: Msg[] = []; try { local = JSON.parse(sessionStorage.getItem('chatMsgs') || '[]') } catch { /* */ }
+      const clean = local.filter((m) => m && (m.role === 'user' || m.role === 'coach') && m.text)
+      if (clean.length) authApi.chatHistorySeed(clean).catch(() => {})
+    }).catch(() => {})
+  }, [])
 
   // Voice input — speak instead of type (great for non-technical users + onboarding).
   function toggleMic() {
@@ -102,8 +122,9 @@ export default function Chat() {
   async function send(textArg?: string) {
     const text = (textArg ?? input).trim()
     if (!text || busy) return
-    setInput(''); setMsgs((m) => [...m, { role: 'user', text }, { role: 'coach', text: '' }]); setBusy(true); setWaitedLong(false); setReviewing(null)
-    const appendDelta = (d: string) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { role: 'coach', text: c[c.length - 1].text + d }; return c })
+    const now = Date.now()
+    setInput(''); setMsgs((m) => [...m, { role: 'user', text, ts: now }, { role: 'coach', text: '', ts: now }]); setBusy(true); setWaitedLong(false); setReviewing(null)
+    const appendDelta = (d: string) => setMsgs((m) => { const c = [...m]; const last = c[c.length - 1]; c[c.length - 1] = { role: 'coach', text: last.text + d, ts: last.ts }; return c })
     // #306(b): never lock the input forever — abort a stalled/too-long coach turn so busy resets.
     const ctrl = new AbortController()
     const longTimer = setTimeout(() => setWaitedLong(true), 8000)
@@ -211,12 +232,18 @@ export default function Chat() {
         )}
         {msgs.map((m, i) => {
           const thinking = m.role === 'coach' && !m.text && i === msgs.length - 1 && busy
+          // #358 — show a time separator only on the first message or after a real gap (>15 min).
+          const prev = msgs[i - 1]
+          const showTime = !!m.ts && (i === 0 || !prev?.ts || m.ts - (prev.ts as number) > 15 * 60 * 1000)
           return (
-            <div key={i} className={'chat-msg chat-msg--' + m.role + (thinking ? ' chat-msg--typing' : '')}>
-              {m.text
-                ? (m.role === 'coach' ? <ChatBody text={m.text} /> : m.text)
-                : (thinking ? `${coach} is ${reviewing ? `reviewing ${reviewing}…` : waitedLong ? 'still working — this can take a moment…' : 'thinking…'}` : '')}
-            </div>
+            <Fragment key={i}>
+              {showTime && <div className="chat-time-sep">{fmtChatTime(m.ts as number)}</div>}
+              <div className={'chat-msg chat-msg--' + m.role + (thinking ? ' chat-msg--typing' : '')}>
+                {m.text
+                  ? (m.role === 'coach' ? <ChatBody text={m.text} /> : m.text)
+                  : (thinking ? `${coach} is ${reviewing ? `reviewing ${reviewing}…` : waitedLong ? 'still working — this can take a moment…' : 'thinking…'}` : '')}
+              </div>
+            </Fragment>
           )
         })}
         {/* #353 — coach called a tool AFTER it started replying (mid-answer): a subtle "reviewing" note. */}

@@ -82,6 +82,22 @@ test guide → the **🧪 Test guide** section below.
     ramp/"target shape" line vs intervals' blocky zone-coloured bars). "That's the standard, no ramp thing." Reverses the
     #219 true-shape ramps for the PLANNED view — render each segment as a solid bar at its target watts, coloured by zone
     (Z1..Z4/SS), matching intervals. gymapp-only.
+358. 🔨 **Chat needs timestamps (UX best practice).** JM 2026-07-05. Added a subtle time separator only on a real gap
+    (>15 min) — same-day = time, else dated ("Yesterday · 2:30 PM"). `Chat.tsx` `fmtChatTime` + `.chat-time-sep`. On QA.
+359. 🔨 **Coach-note URLs weren't clickable** (e.g. "Full plan → https://platyplus…/coach/mcp-…"). JM 2026-07-05 (QA).
+    New `src/linkify.tsx` — internal Platyplus links become in-app `<Link>`, external open a tab; applied to the plan-notes
+    render (`CoachPlanDetail`). `.linkified` accent+underline. On QA.
+360. 🔨 **Notification timestamps show DATE only — need time of day.** JM 2026-07-05 (QA, bell). `ReleaseBell` `whenLine`
+    now shows date + time from the notif `at`. On QA.
+361. 🔨 **Coach-review notifications don't link the activity / hard to follow which session.** JM 2026-07-05 (QA): a stack
+    of "Coach reviewed your ride" all dated today, no context. Fixed: the review notif now carries the SESSION date
+    (`pushNotification` accepts `date`; review passes `review.date`) → bell shows "Sun Jul 5 · reviewed 2:34 PM"; links to
+    the activity (`/activity/:id`) when the review has an activityId (else the plan). On QA. (Older reprocessed reviews that
+    lacked an activityId won't link retroactively; new ones will.)
+362. ⬜ **Learned stats need a clear "when will Computed be ready?" ETA — consistently, everywhere.** JM 2026-07-05 (QA,
+    Stats benchmarks): threshold pace shows a specific ETA ("~1 more run — needs ≥4 runs + ~25 km in 6 weeks") but FTP just
+    says "lands automatically… as intervals sees hard efforts" (no timeframe), and Max HR / Sleep need / VO₂max vary. Make
+    EVERY learned stat surface a consistent "X more days/sessions until the computed estimate lands." NEXT (not in this ship).
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),

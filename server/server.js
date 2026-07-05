@@ -1237,6 +1237,17 @@ function persistChat(user, userMsg, coachReply) {
 }
 // The conversation history for THIS user (any device loads it → same thread everywhere).
 app.get('/auth/chat/history', auth, (req, res) => res.json(req.user.chatMsgs || []))
+// Seed the synced history from a device's LOCAL copy — ONLY when the server has none yet (migrates a
+// conversation typed before sync existed; never clobbers). #356
+app.post('/auth/chat/history', auth, (req, res) => {
+  if (!Array.isArray(req.user.chatMsgs) || !req.user.chatMsgs.length) {
+    const msgs = (Array.isArray(req.body?.msgs) ? req.body.msgs : [])
+      .filter((m) => m && (m.role === 'user' || m.role === 'coach') && typeof m.text === 'string' && m.text.trim())
+      .slice(-200).map((m) => ({ role: m.role, text: m.text, ts: Number(m.ts) || Date.now() }))
+    if (msgs.length) { req.user.chatMsgs = msgs; save(store) }
+  }
+  res.json(req.user.chatMsgs || [])
+})
 
 app.post('/auth/chat', auth, async (req, res) => {
   const message = String(req.body?.message || '').trim().slice(0, 4000)
@@ -2028,7 +2039,7 @@ app.delete('/api/items/:id', apiAuth, (req, res) => { deleteItemById(req.user, r
 // Exercise catalog search — resolve a name to a real exId (with demo media).
 // Coach-activity notification: the coach posts a short note of what it just did
 // (created/adjusted the plan, reviewed a workout). Surfaces in the user's bell.
-function pushNotification(u, { title, body, items, subkind, link, score, id }) {
+function pushNotification(u, { title, body, items, subkind, link, score, id, date }) {
   if (!u.notifications) u.notifications = []
   const t = String(title || '').trim().slice(0, 120)
   if (!t) return null
@@ -2037,7 +2048,7 @@ function pushNotification(u, { title, body, items, subkind, link, score, id }) {
     id: id || ('coach-' + randomBytes(6).toString('base64url')),
     kind: 'coach',
     subkind: subkind === 'review' ? 'review' : undefined, // #233 distinguishes review vs update in the bell
-    date: new Date().toISOString().slice(0, 10),
+    date: (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) ? date : new Date().toISOString().slice(0, 10), // #361 caller can set the SESSION date
     at: new Date().toISOString(),
     title: t,
     body: typeof body === 'string' ? body.trim().slice(0, 600) : undefined,
@@ -2127,6 +2138,7 @@ app.post('/api/coach-review', apiAuth, (req, res) => {
     title: `Coach reviewed your ${review.sport || 'workout'}`,
     body: review.verdict || (review.takeaways && review.takeaways[0]) || undefined,
     score: score10 != null ? score10 : undefined,
+    date: review.date || undefined, // #361 — the SESSION date (which activity), so a stack of reviews is followable
     link: review.activityId ? `/activity/${review.activityId}` : (review.planId ? `/coach/${review.planId}` : undefined),
   })
   save(store); res.status(201).json(review)

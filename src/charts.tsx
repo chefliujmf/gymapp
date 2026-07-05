@@ -267,7 +267,9 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
           {ticks.map(([s]) => <line key={s} x1={lx(s)} x2={lx(s)} y1={padT} y2={H - padB} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
           <defs><linearGradient id="pc-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.25" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
           <path d={`${d} L${lx(pts0[pts0.length - 1][0])},${H - padB} L${lx(pts0[0][0])},${H - padB} Z`} fill="url(#pc-fill)" />
-          <path className="trend-line" pathLength={1} d={d} fill="none" stroke={color} strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          {/* #355 — static full line (no draw-in animation): a dash/pathLength reveal could leave the tail
+              undrawn, making the curve look like it "stops" partway. Always render the whole curve to 1h. */}
+          <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
           {hi != null && <>
             <line x1={lx(pts0[hi][0])} x2={lx(pts0[hi][0])} y1={0} y2={H} stroke="var(--text-dim)" strokeWidth="0.75" opacity="0.6" vectorEffect="non-scaling-stroke" />
             <circle cx={lx(pts0[hi][0])} cy={y(pts0[hi][1])} r="3.5" fill={color} stroke="var(--bg)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
@@ -319,7 +321,9 @@ export function PaceCurveChart({ secs, pace, color = 'var(--accent, #34e07d)', h
           {ticks.map(([s]) => <line key={s} x1={lx(s)} x2={lx(s)} y1={padT} y2={H - padB} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
           <defs><linearGradient id="pace-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.25" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
           <path d={`${d} L${lx(pts0[pts0.length - 1][0])},${H - padB} L${lx(pts0[0][0])},${H - padB} Z`} fill="url(#pace-fill)" />
-          <path className="trend-line" pathLength={1} d={d} fill="none" stroke={color} strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          {/* #355 — static full line (no draw-in animation): a dash/pathLength reveal could leave the tail
+              undrawn, making the curve look like it "stops" partway. Always render the whole curve to 1h. */}
+          <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
           {hi != null && <>
             <line x1={lx(pts0[hi][0])} x2={lx(pts0[hi][0])} y1={0} y2={H} stroke="var(--text-dim)" strokeWidth="0.75" opacity="0.6" vectorEffect="non-scaling-stroke" />
             <circle cx={lx(pts0[hi][0])} cy={y(pts0[hi][1])} r="3.5" fill={color} stroke="var(--bg)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />

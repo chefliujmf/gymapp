@@ -7,6 +7,16 @@ import { syncActivityNotifs } from './activityNotifs'
 
 const STATIC = allNotifications()
 
+// #360/#361 — a followable timestamp: TIME OF DAY, not just the date. For a coach review, show WHICH
+// session it's about (the session date) + when it was reviewed, so a stack of reviews is easy to follow.
+const fmtT = (iso: string) => { try { return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) } catch { return '' } }
+const fmtD = (s: string) => { try { return new Date(/T/.test(s) ? s : s + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) } catch { return s } }
+function whenLine(n: Notification): string {
+  if (n.kind === 'review' && n.date) return `${fmtD(n.date)}${n.at ? ` · reviewed ${fmtT(n.at)}` : ''}`
+  if (n.at) return `${fmtD(n.at)} · ${fmtT(n.at)}`
+  return n.date ? fmtD(n.date) : ''
+}
+
 /** Top-bar notification center. Merges release notes (static) + the user's COACH notes (server:
  * updates + reviews) + NEW-ACTIVITY notes (client-detected, #233). Tappable → the relevant screen.
  * An unread dot shows when the newest is more recent than last seen. */
@@ -61,7 +71,7 @@ export default function ReleaseBell() {
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 13, margin: '6px 0 2px' }}>{n.title}{tappable && <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}> ›</span>}</div>
                 {n.body && <p className="meta" style={{ fontSize: 11.5, margin: '0 0 2px', color: 'var(--text-dim)' }}>{n.body}</p>}
-                <div className="meta" style={{ fontSize: 11 }}>{n.date}</div>
+                <div className="meta" style={{ fontSize: 11 }}>{whenLine(n)}</div>
                 {n.chips && n.chips.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
                     {n.chips.map((c, j) => <span key={j} style={{ fontSize: 11, background: '#ffffff12', border: '1px solid var(--line)', borderRadius: 7, padding: '2px 7px' }}>{c}</span>)}

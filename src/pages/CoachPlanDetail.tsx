@@ -13,6 +13,7 @@ import { fmtPace, paceFromPowerPct } from '../running-paces'
 import { InfoDot, TrendChart, PlannedPowerBars, minuteTicks } from '../charts'
 import { fetchActivities, sportOfActivity } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
+import { linkify } from '../linkify'
 
 /** Detail view for a coach-authored Platyplus plan: the universal coaching shell
  *  (Objective · Fuel · Mind · Recovery · Success · Cues) + the sport-specific body
@@ -217,7 +218,7 @@ export default function CoachPlanDetail() {
       {/* Fallback: unstructured plans keep everything in `notes` — show it formatted so the detail
           is never empty (structured plans use the fields above/below instead). */}
       {!p.objective && !p.cues?.length && p.notes && p.notes.trim() && (
-        <div className="plansec"><span className="plansec__k">📋 Plan</span><p className="plansec__v" style={{ whiteSpace: 'pre-wrap' }}>{p.notes.replace(/\s*(#{1,3})\s*/g, '\n\n').replace(/\*\*/g, '').replace(/^\n+/, '').trim()}</p></div>
+        <div className="plansec"><span className="plansec__k">📋 Plan</span><p className="plansec__v" style={{ whiteSpace: 'pre-wrap' }}>{linkify(p.notes.replace(/\s*(#{1,3})\s*/g, '\n\n').replace(/\*\*/g, '').replace(/^\n+/, '').trim())}</p></div>
       )}
 
       {(p.fuel?.why || p.fuel?.supplements || meals.length > 0) && (
