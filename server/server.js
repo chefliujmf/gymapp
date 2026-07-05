@@ -11,7 +11,8 @@ import { randomBytes, createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, writeFileSync, unlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import {
   generateRegistrationOptions, verifyRegistrationResponse,
   generateAuthenticationOptions, verifyAuthenticationResponse,
@@ -1185,6 +1186,15 @@ data syncs.`
 // Fire the coach NON-INTERACTIVELY for a background task (e.g. a post-workout review,
 // #76). Best-effort; drains output — the POINT is the coach's MCP side-effects (it
 // saves a review / adjusts the plan / notifies). NOT the user's chat thread (no session).
+// The system prompt (~128 KB: base engine + per-sport engines + profile) is too large to pass as a
+// command-line arg — Linux caps a single argv at 128 KiB (MAX_ARG_STRLEN) → E2BIG spawn failure. Write
+// it to a temp file and use --append-system-prompt-file. (Prod goes via the chat-helper, which does the
+// same; these local spawns are the dev path.)
+function writeSysPromptFile(prompt) {
+  const f = `${tmpdir()}/coach-sp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`
+  writeFileSync(f, prompt)
+  return f
+}
 async function runCoachTask(user, message) {
   const systemPrompt = buildSystemPrompt(user)
   if (CHAT_HELPER_URL) {
@@ -1200,13 +1210,15 @@ async function runCoachTask(user, message) {
   }
   await new Promise((resolve, reject) => {
     const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: user.apiToken } } } })
-    const args = ['-p', message, '--output-format', 'stream-json', '--verbose', '--mcp-config', mcpConfig, '--allowedTools', 'mcp__platyplus', '--disallowedTools', CHAT_DENY, '--append-system-prompt', systemPrompt]
+    const spFile = writeSysPromptFile(systemPrompt)
+    const cleanup = () => { try { unlinkSync(spFile) } catch { /* gone */ } }
+    const args = ['-p', message, '--output-format', 'stream-json', '--verbose', '--mcp-config', mcpConfig, '--allowedTools', 'mcp__platyplus', '--disallowedTools', CHAT_DENY, '--append-system-prompt-file', spFile]
     const proc = spawn(CLAUDE_BIN, args, { env: process.env })
     proc.stdin?.end()
     const killer = setTimeout(() => { proc.kill('SIGKILL'); reject(new Error('coach task timeout')) }, 180000)
     proc.stdout.on('data', () => {}); proc.stderr.on('data', () => {}) // drain
-    proc.on('error', (e) => { clearTimeout(killer); reject(e) })
-    proc.on('close', () => { clearTimeout(killer); resolve() })
+    proc.on('error', (e) => { clearTimeout(killer); cleanup(); reject(e) })
+    proc.on('close', () => { clearTimeout(killer); cleanup(); resolve() })
   })
 }
 
@@ -1254,16 +1266,17 @@ app.post('/auth/chat', auth, async (req, res) => {
 
   // Dev: spawn claude locally.
   const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: req.user.apiToken } } } })
+  const spFile = writeSysPromptFile(buildSystemPrompt(req.user))
   const baseArgs = [
     '-p', message,
     '--output-format', 'stream-json', '--include-partial-messages', '--verbose',
     '--mcp-config', mcpConfig,
     '--allowedTools', 'mcp__platyplus',
     '--disallowedTools', CHAT_DENY,
-    '--append-system-prompt', buildSystemPrompt(req.user),
+    '--append-system-prompt-file', spFile,
   ]
   let done = false
-  const end = () => { if (done) return; done = true; send({ done: true }); res.end() }
+  const end = () => { if (done) return; done = true; try { unlinkSync(spFile) } catch { /* gone */ } send({ done: true }); res.end() }
   // Run claude; if a stored session id is STALE (claude's local session store can vanish across
   // restarts → "No conversation found with session ID"), drop it and retry ONCE with a fresh thread.
   const run = (resume, isRetry) => {

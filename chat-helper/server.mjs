@@ -17,8 +17,9 @@
 //   NODE_BIN_DIR        dir holding `node` so claude can spawn the MCP (added to PATH)
 import http from 'node:http'
 import { spawn } from 'node:child_process'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { writeFileSync, unlinkSync } from 'node:fs'
 
 const PORT = Number(process.env.CHAT_HELPER_PORT || 8790)
 const BIND = process.env.CHAT_HELPER_BIND || '0.0.0.0'
@@ -41,13 +42,19 @@ const server = http.createServer((req, res) => {
     const token = p.token
     if (!message || !token) { res.writeHead(400); return res.end('message+token required') }
     const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: COACH_API, PLATYPLUS_TOKEN: token } } } })
+    // The system prompt is ~128 KB (base engine + per-sport engines + profile) — too big to pass as an
+    // argv (Linux caps a single arg at 128 KiB → E2BIG spawn failure). Write it to a temp file and use
+    // --append-system-prompt-file so prompt size never crashes the coach.
+    const sysPrompt = (typeof p.systemPrompt === 'string' && p.systemPrompt.trim()) ? p.systemPrompt : coachPrompt(p.coach || 'Coach')
+    const spFile = join(tmpdir(), `coach-sp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`)
+    try { writeFileSync(spFile, sysPrompt) } catch (e) { res.writeHead(500); return res.end('sysprompt write failed: ' + e.message) }
     const args = [
       '-p', message,
       '--output-format', 'stream-json', '--include-partial-messages', '--verbose',
       '--mcp-config', mcpConfig,
       '--allowedTools', 'mcp__platyplus',
       '--disallowedTools', DENY,
-      '--append-system-prompt', (typeof p.systemPrompt === 'string' && p.systemPrompt.trim()) ? p.systemPrompt : coachPrompt(p.coach || 'Coach'),
+      '--append-system-prompt-file', spFile,
     ]
     if (p.sessionId) args.push('--resume', p.sessionId)
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' })
@@ -56,8 +63,9 @@ const server = http.createServer((req, res) => {
     const proc = spawn(CLAUDE_BIN, args, { env })
     proc.stdin?.end()
     let buf = '', err = '', done = false
+    const cleanup = () => { try { unlinkSync(spFile) } catch { /* already gone */ } }
     const killer = setTimeout(() => proc.kill('SIGKILL'), 180000)
-    const end = () => { if (done) return; done = true; clearTimeout(killer); send({ done: true }); res.end() }
+    const end = () => { if (done) return; done = true; clearTimeout(killer); cleanup(); send({ done: true }); res.end() }
     proc.stdout.on('data', (d) => {
       buf += d
       let nl
@@ -70,7 +78,7 @@ const server = http.createServer((req, res) => {
       }
     })
     proc.stderr.on('data', (d) => (err += d))
-    proc.on('error', (e) => { if (!done) { done = true; clearTimeout(killer); send({ error: 'coach unavailable: ' + e.message }); res.end() } })
+    proc.on('error', (e) => { if (!done) { done = true; clearTimeout(killer); cleanup(); send({ error: 'coach unavailable: ' + e.message }); res.end() } })
     proc.on('close', () => { if (err && !buf) send({ error: err.slice(0, 200) }); end() })
     res.on('close', () => { if (!done) { clearTimeout(killer); proc.kill('SIGKILL') } })
   })
