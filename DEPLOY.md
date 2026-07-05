@@ -23,8 +23,16 @@ empty stubs — enough to catch type/build breakage before it reaches `main`.
 **CD — automatic on merge to `main`.** `.github/workflows/deploy.yml` runs on the XPS
 **self-hosted runner** (`xps-runner`, systemd service): restore the synced catalog →
 `npm run build:app` (tsc + vite, no scrape) → `scripts/deploy.sh` (DEPLOY_LOCAL) →
-`docker compose up -d --build` → **healthcheck gate**. Merge a PR to `main` and prod
-updates itself.
+`docker compose up -d --build` → **healthcheck gate** → **coach MCP sync** (rsync `mcp/`
+→ `/home/jmf/platyplus-chat/mcp/`, #350). Merge a PR to `main` and prod updates itself.
+
+*Coach MCP sync (#350):* the coach's tools run from `/home/jmf/platyplus-chat/mcp/server.js`
+on the host (spawned per chat by the chat-helper), NOT in the app container. Nothing used to
+sync it → it drifted ~1 wk. The **prod** deploy now rsyncs `mcp/` there (best-effort, after the
+app is healthy — never fails the app deploy). It's a **shared** dir (both `platyplus-chat`
+QA:8089 + `platyplus-chat-prod` prod:8088 spawn from it), so the sync is gated on **promote**
+(prod-approved code only); the QA/staging deploy does NOT touch it. MCP is re-read per chat, so
+no service restart is needed.
 
 *Why this works without the 24 GB:* the build only needs the **3.6 MB generated
 catalog** (it's the build output — titles/kcal/paths), not the raw scrape. That catalog

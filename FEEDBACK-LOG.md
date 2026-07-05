@@ -36,7 +36,9 @@ test guide → the **🧪 Test guide** section below.
     that the **coach's host MCP was ~1 week stale** — #313/#341/#343/#332 tools never reached the coach because **nothing
     syncs `mcp/` to `xps:/home/jmf/platyplus-chat/mcp/`**. Captured durably: CLAUDE.md "change X → update Y" table now has an
     MCP-sync row + a propagation banner; memory `platyplus-propagate-all-layers`. Host MCP synced current (all stale tools
-    now live). **TODO (follow-up): automate the `mcp/`→host rsync in the deploy pipeline** so it can't drift again.
+    now live). **✅ Automated:** `scripts/deploy.sh` now rsyncs `mcp/` → `/home/jmf/platyplus-chat/mcp/` on every PROD
+    deploy (best-effort, AFTER the app is healthy so it never fails the app deploy; chowns jmf; gated on promote since
+    the host mcp dir is shared QA+prod). DEPLOY.md documents it. Takes effect next promote (already manually synced now).
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
