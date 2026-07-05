@@ -4,7 +4,7 @@ import { getPlanEvent, gymSessionFromEvent, setGymSession, matchExercise } from 
 import { eventObjective, parseGymTable, parseGymWorkout, sportOf, flattenIcuSteps, type GymTableRow } from '../intervals'
 import { MiniProfile } from '../ui'
 import { workoutSummary, structureRows, plannedSeries, plannedLoad } from '../workout-summary'
-import { TrendChart, minuteTicks } from '../charts'
+import { TrendChart, PlannedPowerBars, minuteTicks } from '../charts'
 import { setCurrentRide, canPlayHere } from '../ride'
 import { useBle } from '../BleContext'
 import { getSetting } from '../db'
@@ -144,8 +144,11 @@ export default function PlanDetail() {
           <div className="act-hero">{hero.map(([l, v]) => <div key={l} className="ht"><b>{v}</b><span>{l}</span></div>)}</div>
           {chips.length > 0 && <div className="act-chips">{chips.map(([l, v]) => <span key={l} className="act-chip"><b>{v}</b><span>{l}</span></span>)}</div>}
           <div className="tl-card" style={{ marginTop: 8 }}>
-            <div className="tl-clabel">PLANNED POWER · W · target shape</div>
-            <TrendChart series={[{ label: 'Target', data: plannedSeries(segs, rFtp), color: '#34e07d', area: true }]} height={150} axes unit=" W" xTicks={minuteTicks(totalSec)} straight minSpan={Math.max(40, Math.round(rFtp * 0.35))} />
+            <div className="tl-clabel">PLANNED POWER · W · {sport === 'cycling' ? 'by zone' : 'target shape'}</div>
+            {/* #357 — cycling shows zone-coloured COLUMNS (intervals.icu style). */}
+            {sport === 'cycling'
+              ? <PlannedPowerBars segments={segs} ftp={rFtp} height={150} />
+              : <TrendChart series={[{ label: 'Target', data: plannedSeries(segs, rFtp), color: '#34e07d', area: true }]} height={150} axes unit=" W" xTicks={minuteTicks(totalSec)} straight minSpan={Math.max(40, Math.round(rFtp * 0.35))} />}
             {sum && <div className="act-ins"><span className="tag">💡</span>{sum.mainPct >= 91 ? 'Warm up fully — first hard effort controlled, not a shock; keep recoveries easy.' : 'Hold steady targets — smooth and repeatable beats spiky.'}</div>}
           </div>
           {rows.length > 1 && (

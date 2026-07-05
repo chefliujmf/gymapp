@@ -19,6 +19,13 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 XPS_HOST="${XPS_HOST:-xps}"
 APP_DIR="${GYMAPP_DIR:-/home/jmf/gymapp}"
+# The coach's MCP tools run from here on the host (spawned per chat by the chat-helper).
+# NOTHING else syncs this → it silently drifted (~1wk stale, #350). The PROD deploy keeps it in
+# step, so promoting to prod also refreshes the coach's tools. (Not synced on the QA/staging deploy:
+# the host MCP dir is shared by both coaches, so gating it on promote keeps prod-approved code only.)
+CHAT_MCP_DIR="${CHAT_MCP_DIR:-/home/jmf/platyplus-chat/mcp}"
+# The host chat-helper bridge (spawns the coach) — another host-only component nothing syncs (#352).
+CHAT_DIR="${CHAT_DIR:-$(dirname "$CHAT_MCP_DIR")}"
 
 # BUILD_CMD lets the XPS runner use "npm run build:app" (compiles against a
 # pre-synced generated catalog, skipping the scrape it doesn't have).
@@ -64,6 +71,43 @@ wait_healthy() {
   return 1
 }
 
+# Keep the coach's host MCP tools in step with the repo (#350 — nothing else syncs it, so it drifts).
+# Best-effort + runs AFTER the app is healthy: a coach-tool sync must NEVER fail the app deploy.
+# Excludes node_modules (installed on the box) + old .bak files. No --delete (keeps host backups).
+# $1 = "local" | "remote".
+sync_coach_mcp() {
+  local runner="$1"
+  if [ "$runner" = local ]; then
+    [ -d "$CHAT_MCP_DIR" ] || { echo ">> (skip MCP sync) $CHAT_MCP_DIR absent"; return 0; }
+    echo ">> syncing coach MCP → $CHAT_MCP_DIR (#350)"
+    if rsync -a --exclude node_modules --exclude 'server.js.bak.*' mcp/ "$CHAT_MCP_DIR/"; then
+      # Runner is root; keep the coach's files jmf-owned (the chat-helper runs as jmf, needs read).
+      chown -R jmf:jmf "$CHAT_MCP_DIR" 2>/dev/null || true
+      command -v node >/dev/null 2>&1 && { node --check "$CHAT_MCP_DIR/server.js" && echo ">> coach MCP synced (server.js OK)" || echo "WARN: coach MCP server.js failed --check (#350)" >&2; } || echo ">> coach MCP synced (node not on PATH — skipped --check)"
+    else
+      echo "WARN: coach MCP rsync failed — coach tools may drift (#350)" >&2
+    fi
+    # The host chat-helper bridge (#352) — sync it too, and RESTART the coach services only when it
+    # actually changed (a restart interrupts an in-flight coach chat). Best-effort, non-fatal.
+    if [ -f "$CHAT_DIR/server.mjs" ] && [ -f chat-helper/server.mjs ] && ! cmp -s chat-helper/server.mjs "$CHAT_DIR/server.mjs"; then
+      echo ">> chat-helper changed → syncing + restarting coach services (#352)"
+      if rsync -a chat-helper/server.mjs "$CHAT_DIR/server.mjs"; then
+        chown jmf:jmf "$CHAT_DIR/server.mjs" 2>/dev/null || true
+        systemctl restart platyplus-chat platyplus-chat-prod 2>/dev/null && echo ">> coach services restarted" || echo "WARN: could not restart coach services (#352)" >&2
+      else echo "WARN: chat-helper rsync failed (#352)" >&2; fi
+    fi
+  else
+    ssh "$XPS_HOST" "[ -d '$CHAT_MCP_DIR' ]" || { echo ">> (skip MCP sync) $CHAT_MCP_DIR absent on $XPS_HOST"; return 0; }
+    echo ">> syncing coach MCP → ${XPS_HOST}:${CHAT_MCP_DIR} (#350)"
+    if rsync -az --exclude node_modules --exclude 'server.js.bak.*' mcp/ "${XPS_HOST}:${CHAT_MCP_DIR}/"; then
+      ssh "$XPS_HOST" "cd '$CHAT_MCP_DIR' && (command -v node >/dev/null 2>&1 && node --check server.js || true)" && echo ">> coach MCP synced (remote)" || echo "WARN: coach MCP --check failed (#350)" >&2
+    else
+      echo "WARN: coach MCP rsync failed — coach tools may drift (#350)" >&2
+    fi
+  fi
+  return 0
+}
+
 if [ "${DEPLOY_LOCAL:-0}" = "1" ]; then
   echo ">> deploying locally on the server ($APP_DIR)"
   rsync -a --delete dist/ "$APP_DIR/dist/"
@@ -76,6 +120,7 @@ if [ "${DEPLOY_LOCAL:-0}" = "1" ]; then
   RECREATE=""; [ -n "${AUTH_ENV:-}" ] && RECREATE="--force-recreate"
   ( cd "$APP_DIR" && docker compose up -d --build $RECREATE )
   wait_healthy local
+  sync_coach_mcp local
 else
   echo ">> syncing dist + server + compose to ${XPS_HOST}:${APP_DIR}"
   rsync -az --delete dist/ "${XPS_HOST}:${APP_DIR}/dist/"
@@ -84,6 +129,7 @@ else
   echo ">> rebuild/restart on ${XPS_HOST}"
   ssh "$XPS_HOST" "cd '$APP_DIR' && docker compose up -d --build"
   wait_healthy remote
+  sync_coach_mcp remote
 fi
 
 echo "OK: deploy complete"

@@ -11,7 +11,8 @@ import { randomBytes, createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, writeFileSync, unlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import {
   generateRegistrationOptions, verifyRegistrationResponse,
   generateAuthenticationOptions, verifyAuthenticationResponse,
@@ -1185,6 +1186,15 @@ data syncs.`
 // Fire the coach NON-INTERACTIVELY for a background task (e.g. a post-workout review,
 // #76). Best-effort; drains output — the POINT is the coach's MCP side-effects (it
 // saves a review / adjusts the plan / notifies). NOT the user's chat thread (no session).
+// The system prompt (~128 KB: base engine + per-sport engines + profile) is too large to pass as a
+// command-line arg — Linux caps a single argv at 128 KiB (MAX_ARG_STRLEN) → E2BIG spawn failure. Write
+// it to a temp file and use --append-system-prompt-file. (Prod goes via the chat-helper, which does the
+// same; these local spawns are the dev path.)
+function writeSysPromptFile(prompt) {
+  const f = `${tmpdir()}/coach-sp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`
+  writeFileSync(f, prompt)
+  return f
+}
 async function runCoachTask(user, message) {
   const systemPrompt = buildSystemPrompt(user)
   if (CHAT_HELPER_URL) {
@@ -1200,15 +1210,44 @@ async function runCoachTask(user, message) {
   }
   await new Promise((resolve, reject) => {
     const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: user.apiToken } } } })
-    const args = ['-p', message, '--output-format', 'stream-json', '--verbose', '--mcp-config', mcpConfig, '--allowedTools', 'mcp__platyplus', '--disallowedTools', CHAT_DENY, '--append-system-prompt', systemPrompt]
+    const spFile = writeSysPromptFile(systemPrompt)
+    const cleanup = () => { try { unlinkSync(spFile) } catch { /* gone */ } }
+    const args = ['-p', message, '--output-format', 'stream-json', '--verbose', '--mcp-config', mcpConfig, '--allowedTools', 'mcp__platyplus', '--disallowedTools', CHAT_DENY, '--append-system-prompt-file', spFile]
     const proc = spawn(CLAUDE_BIN, args, { env: process.env })
     proc.stdin?.end()
     const killer = setTimeout(() => { proc.kill('SIGKILL'); reject(new Error('coach task timeout')) }, 180000)
     proc.stdout.on('data', () => {}); proc.stderr.on('data', () => {}) // drain
-    proc.on('error', (e) => { clearTimeout(killer); reject(e) })
-    proc.on('close', () => { clearTimeout(killer); resolve() })
+    proc.on('error', (e) => { clearTimeout(killer); cleanup(); reject(e) })
+    proc.on('close', () => { clearTimeout(killer); cleanup(); resolve() })
   })
 }
+
+// #353 — a human phrase for the tool the coach is calling, shown as "Reviewing your …" in the UI.
+const TOOL_LABEL = { get_wellness: 'your wellness data', get_checkins: 'your check-ins', get_recent_activities: 'your recent activity', list_schedule: 'your schedule', get_weather: 'the weather', check_connections: 'your connections', search_exercises: 'the exercise library', search_recipes: 'recipes', create_workout: 'a gym session', create_ride: 'a ride', create_run: 'a run', schedule_recovery: 'recovery', schedule_supplement: 'supplements', save_coach_review: 'your review', set_activity_text: 'your activity notes', set_athlete_profile: 'your profile', set_thresholds: 'your thresholds', set_weekly_target: 'your week', save_coach_memory: 'your coaching notes', schedule_meal: 'a meal', schedule_mind: 'a mind session', notify: 'a note for you' }
+const friendlyTool = (name) => { const t = String(name || '').replace(/^mcp__platyplus__/, ''); return TOOL_LABEL[t] || t.replace(/_/g, ' ') }
+
+// #356 — persist the coach conversation server-side so it SYNCS across devices (the client used to keep
+// it in sessionStorage only → invisible on another device). Stored in the user doc (JSONB), capped.
+function persistChat(user, userMsg, coachReply) {
+  if (!coachReply || !coachReply.trim()) return
+  user.chatMsgs = Array.isArray(user.chatMsgs) ? user.chatMsgs : []
+  user.chatMsgs.push({ role: 'user', text: userMsg, ts: Date.now() }, { role: 'coach', text: coachReply, ts: Date.now() })
+  if (user.chatMsgs.length > 200) user.chatMsgs = user.chatMsgs.slice(-200)
+  save(store)
+}
+// The conversation history for THIS user (any device loads it → same thread everywhere).
+app.get('/auth/chat/history', auth, (req, res) => res.json(req.user.chatMsgs || []))
+// Seed the synced history from a device's LOCAL copy — ONLY when the server has none yet (migrates a
+// conversation typed before sync existed; never clobbers). #356
+app.post('/auth/chat/history', auth, (req, res) => {
+  if (!Array.isArray(req.user.chatMsgs) || !req.user.chatMsgs.length) {
+    const msgs = (Array.isArray(req.body?.msgs) ? req.body.msgs : [])
+      .filter((m) => m && (m.role === 'user' || m.role === 'coach') && typeof m.text === 'string' && m.text.trim())
+      .slice(-200).map((m) => ({ role: m.role, text: m.text, ts: Number(m.ts) || Date.now() }))
+    if (msgs.length) { req.user.chatMsgs = msgs; save(store) }
+  }
+  res.json(req.user.chatMsgs || [])
+})
 
 app.post('/auth/chat', auth, async (req, res) => {
   const message = String(req.body?.message || '').trim().slice(0, 4000)
@@ -1224,8 +1263,8 @@ app.post('/auth/chat', auth, async (req, res) => {
 
   // QA/prod: the container can't run the glibc claude → proxy to the host helper.
   if (CHAT_HELPER_URL) {
-    let pdone = false
-    const pend = () => { if (pdone) return; pdone = true; send({ done: true }); res.end() }
+    let pdone = false, reply = ''
+    const pend = () => { if (pdone) return; pdone = true; persistChat(req.user, message, reply); send({ done: true }); res.end() }
     try {
       const hr = await fetch(CHAT_HELPER_URL + '/chat', {
         method: 'POST',
@@ -1245,7 +1284,7 @@ app.post('/auth/chat', auth, async (req, res) => {
           let ev; try { ev = JSON.parse(data.slice(5).trim()) } catch { continue }
           if (ev.sessionId) { req.user.chatSession = ev.sessionId; save(store) } // persist, don't forward
           else if (ev.error && /no conversation found|session id/i.test(String(ev.error))) { delete req.user.chatSession; save(store); send({ error: 'Lost the thread — tap send again to start fresh.' }) } // stale session → clear so next send is fresh
-          else if (!ev.done) send(ev) // forward delta / error (our own done at the end)
+          else if (!ev.done) { if (ev.delta) reply += ev.delta; send(ev) } // forward delta / tool / error (our own done at the end); #356 accumulate the reply to persist
         }
       }
     } catch (e) { send({ error: 'coach unavailable: ' + (e.message || e) }) }
@@ -1254,16 +1293,17 @@ app.post('/auth/chat', auth, async (req, res) => {
 
   // Dev: spawn claude locally.
   const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: req.user.apiToken } } } })
+  const spFile = writeSysPromptFile(buildSystemPrompt(req.user))
   const baseArgs = [
     '-p', message,
     '--output-format', 'stream-json', '--include-partial-messages', '--verbose',
     '--mcp-config', mcpConfig,
     '--allowedTools', 'mcp__platyplus',
     '--disallowedTools', CHAT_DENY,
-    '--append-system-prompt', buildSystemPrompt(req.user),
+    '--append-system-prompt-file', spFile,
   ]
-  let done = false
-  const end = () => { if (done) return; done = true; send({ done: true }); res.end() }
+  let done = false, reply = ''
+  const end = () => { if (done) return; done = true; try { unlinkSync(spFile) } catch { /* gone */ } persistChat(req.user, message, reply); send({ done: true }); res.end() } // #356 persist for cross-device sync
   // Run claude; if a stored session id is STALE (claude's local session store can vanish across
   // restarts → "No conversation found with session ID"), drop it and retry ONCE with a fresh thread.
   const run = (resume, isRetry) => {
@@ -1279,7 +1319,8 @@ app.post('/auth/chat', auth, async (req, res) => {
         const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1)
         if (!line) continue
         let ev; try { ev = JSON.parse(line) } catch { continue }
-        if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') { sawOutput = true; send({ delta: ev.event.delta.text }) }
+        if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') { sawOutput = true; reply += ev.event.delta.text; send({ delta: ev.event.delta.text }) }
+        else if (ev.type === 'stream_event' && ev.event?.type === 'content_block_start' && ev.event.content_block?.type === 'tool_use') send({ tool: friendlyTool(ev.event.content_block.name) }) // #353
         else if (ev.type === 'result' && ev.session_id) { req.user.chatSession = ev.session_id; save(store) }
       }
     })
@@ -1301,7 +1342,7 @@ app.post('/auth/chat', auth, async (req, res) => {
   run(true, false)
 })
 // Reset the per-user conversation thread.
-app.post('/auth/chat/reset', auth, (req, res) => { delete req.user.chatSession; save(store); res.json({ ok: true }) })
+app.post('/auth/chat/reset', auth, (req, res) => { delete req.user.chatSession; delete req.user.chatMsgs; save(store); res.json({ ok: true }) }) // #356 clear synced history too
 
 // ---- coach REST API (Bearer token) ---------------------------------------
 // The cyclingcoach dual-writes each session here (rich execution detail) and to
@@ -1998,7 +2039,7 @@ app.delete('/api/items/:id', apiAuth, (req, res) => { deleteItemById(req.user, r
 // Exercise catalog search — resolve a name to a real exId (with demo media).
 // Coach-activity notification: the coach posts a short note of what it just did
 // (created/adjusted the plan, reviewed a workout). Surfaces in the user's bell.
-function pushNotification(u, { title, body, items, subkind, link, score, id }) {
+function pushNotification(u, { title, body, items, subkind, link, score, id, date }) {
   if (!u.notifications) u.notifications = []
   const t = String(title || '').trim().slice(0, 120)
   if (!t) return null
@@ -2007,7 +2048,7 @@ function pushNotification(u, { title, body, items, subkind, link, score, id }) {
     id: id || ('coach-' + randomBytes(6).toString('base64url')),
     kind: 'coach',
     subkind: subkind === 'review' ? 'review' : undefined, // #233 distinguishes review vs update in the bell
-    date: new Date().toISOString().slice(0, 10),
+    date: (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) ? date : new Date().toISOString().slice(0, 10), // #361 caller can set the SESSION date
     at: new Date().toISOString(),
     title: t,
     body: typeof body === 'string' ? body.trim().slice(0, 600) : undefined,
@@ -2097,6 +2138,7 @@ app.post('/api/coach-review', apiAuth, (req, res) => {
     title: `Coach reviewed your ${review.sport || 'workout'}`,
     body: review.verdict || (review.takeaways && review.takeaways[0]) || undefined,
     score: score10 != null ? score10 : undefined,
+    date: review.date || undefined, // #361 — the SESSION date (which activity), so a stack of reviews is followable
     link: review.activityId ? `/activity/${review.activityId}` : (review.planId ? `/coach/${review.planId}` : undefined),
   })
   save(store); res.status(201).json(review)

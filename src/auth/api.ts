@@ -141,6 +141,8 @@ export const authApi = {
   // Coach chatbot (locked-down claude -p + per-user Platyplus MCP, server-side).
   chat: (message: string) => req<{ reply: string; coach: string }>('/chat', { body: { message } }),
   chatReset: () => req<{ ok: boolean }>('/chat/reset', { method: 'POST' }),
+  chatHistory: () => req<{ role: 'user' | 'coach'; text: string; ts?: number }[]>('/chat/history'), // #356 synced across devices
+  chatHistorySeed: (msgs: { role: 'user' | 'coach'; text: string; ts?: number }[]) => req<{ role: 'user' | 'coach'; text: string; ts?: number }[]>('/chat/history', { body: { msgs } }), // #356 migrate a local convo up (once)
 
   changePassword: (current: string, newPassword: string) => req<{ ok: boolean }>('/password/change', { body: { current, newPassword } }),
   forgot: (email: string) => req<{ ok: boolean; emailSent: boolean }>('/password/forgot', { body: { email } }),

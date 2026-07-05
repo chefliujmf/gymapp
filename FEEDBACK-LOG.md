@@ -36,7 +36,68 @@ test guide → the **🧪 Test guide** section below.
     that the **coach's host MCP was ~1 week stale** — #313/#341/#343/#332 tools never reached the coach because **nothing
     syncs `mcp/` to `xps:/home/jmf/platyplus-chat/mcp/`**. Captured durably: CLAUDE.md "change X → update Y" table now has an
     MCP-sync row + a propagation banner; memory `platyplus-propagate-all-layers`. Host MCP synced current (all stale tools
-    now live). **TODO (follow-up): automate the `mcp/`→host rsync in the deploy pipeline** so it can't drift again.
+    now live). **✅ Automated:** `scripts/deploy.sh` now rsyncs `mcp/` → `/home/jmf/platyplus-chat/mcp/` on every PROD
+    deploy (best-effort, AFTER the app is healthy so it never fails the app deploy; chowns jmf; gated on promote since
+    the host mcp dir is shared QA+prod). DEPLOY.md documents it. Takes effect next promote (already manually synced now).
+351. 🔨 **Reprocess JM's activities after every change (past · present · future) so he SEES it on real data.** JM 2026-07-04:
+    "after a change or improvements, you need to reprocess my activities so I can see changes, it's a must… so I can see how it
+    will look once launched." Standing definition-of-done step — after shipping any activity-affecting change, run a reprocess
+    for JM's account over a wide window. Mechanisms exist: `reconcileFromIcu` (safe read-sync of plans), `handle-missed`
+    (re-pair done↔planned), `POST /api/coach/run` (coach re-review — OUTWARD: writes coach notes + notifications). Plan: build
+    a one-command `scripts/reprocess-user.mjs` (reconcile + re-pair + optional coach re-review) + run it post-change. Scope of
+    the coach re-review confirmed with JM before mass-running (outward-facing). Memory `platyplus-reprocess-after-change`.
+352. 🔨 **PROD COACH OUTAGE (caused + fixed) — `E2BIG` spawning the coach.** 2026-07-04, surfaced running #351's reprocess:
+    the coach `systemPrompt` (base engine 51KB + cycling engine 63KB + running + profile ≈ 128 KB) exceeds Linux
+    `MAX_ARG_STRLEN` (128 KiB per single argv) → `spawn E2BIG`, which crash-looped `platyplus-chat-prod` (coach chat down).
+    My #168 coach-engine.md growth tipped it over. **Fixed:** write the prompt to a temp file + pass `--append-system-prompt-file`
+    (verified the flag end-to-end) — in the host chat-helper (prod path) AND `server.js` runCoachTask + /auth/chat (dev);
+    temp file cleaned up. Deployed to host (`chat-helper/server.mjs` rsync + `systemctl restart`), services active, reprocess
+    re-ran cleanly (claude spawned, no E2BIG). **Also:** the chat-helper is ANOTHER host-only component nothing synced — folded
+    it into `scripts/deploy.sh` (syncs `chat-helper/server.mjs` + restarts coach services on change) + the propagate discipline.
+353. 🔨 **Coach chat needs a "reviewing/thinking" indicator.** JM 2026-07-05 (screenshot): asked the coach to readjust the
+    plan; it replied one line then went silent for a while (using MCP tools) with NOTHING showing it's still working —
+    "need something to show it's reviewing." The chat-helper streams only text deltas, not tool-use, so during tool calls the
+    UI looks frozen. Fix: surface coach activity (a "reviewing your plan/wellness…" typing indicator, ideally naming the tool).
+    BUILT: chat-helper + server.js forward tool_use `content_block_start` as `{tool: friendlyTool(name)}`; `Chat.tsx` shows
+    "reviewing your <thing>…". **On QA (client+server).** ⚠️ The host `chat-helper/server.mjs` emit-side sync was BLOCKED
+    (Tailscale SSH re-auth needed mid-session) — it auto-deploys on the next PROD PROMOTE (deploy.sh runner sync, #352), or
+    re-sync manually when SSH is back. Until then the client shows the generic "thinking…/still working…" (already improved).
+354. 🔨 **Jul 3 (prod, JM) shows NO Energy/Sleep/Freshness despite a check-in done (incl. in intervals).** JM 2026-07-05
+    (screenshot: the check-in scales are all unselected on Fri Jul 3). Coach claimed "it's there" but it isn't shown. The
+    check-in feedback was entered in INTERVALS too → Platyplus + the coach must READ the intervals check-in/wellness for the
+    day. Diagnose: is it a display bug (logged but not rendered), a missing-wellness auto-derive gap, or Platyplus not reading
+    the intervals wellness/feedback for Jul 3? Adjust the coach to see the intervals-side feedback.
+355. 🔨 **POWER CURVE line stops ~1m instead of running to 1h (prod).** JM 2026-07-05 (screenshot, ride detail → Power tab).
+    The "best avg by duration" curve draws a crisp line 1s→~1m then flattens into just the fill with no visible line to
+    5m/20m/1h — "be sure the graph line goes all the way." Same family as #344/#292/#334 chart bugs. Diagnose: does the curve
+    DATA extend past 1m (best-20min 154W is mentioned, so data exists) or does the line path/points stop? Make the line span
+    the full x-range. ROOT: `CURVE_DURATIONS` jumped 60→300 (nothing 1m–5m) so the tail was 5 sparse points = flat floor →
+    looked stopped. Fixed: densified to ~25 durations (`src/pages/ActivityDetail.tsx`). gymapp-only.
+356. 🔨 **Coach chat must SYNC across devices + ChatGPT-style threads (new chat, search, history).** JM 2026-07-05: asked
+    the coach on desktop, couldn't see it on his phone. Root: Platyplus stores only a single `chatSession` id (the claude
+    session lives on the host); the actual MESSAGES aren't persisted in the DB — the client holds them in memory, lost on
+    reload/device-switch. Reco: persist messages server-side per THREAD (DB), load on any device (sync), + thread list /
+    new-chat / search. Big feature — sync first (the real pain), threads/search next.
+357. 🔨 **Cycling PLANNED-POWER chart → zone COLUMNS like intervals.icu (no ramp).** JM 2026-07-05 (screenshots: Platyplus
+    ramp/"target shape" line vs intervals' blocky zone-coloured bars). "That's the standard, no ramp thing." Reverses the
+    #219 true-shape ramps for the PLANNED view — render each segment as a solid bar at its target watts, coloured by zone
+    (Z1..Z4/SS), matching intervals. gymapp-only.
+358. 🔨 **Chat needs timestamps (UX best practice).** JM 2026-07-05. Added a subtle time separator only on a real gap
+    (>15 min) — same-day = time, else dated ("Yesterday · 2:30 PM"). `Chat.tsx` `fmtChatTime` + `.chat-time-sep`. On QA.
+359. 🔨 **Coach-note URLs weren't clickable** (e.g. "Full plan → https://platyplus…/coach/mcp-…"). JM 2026-07-05 (QA).
+    New `src/linkify.tsx` — internal Platyplus links become in-app `<Link>`, external open a tab; applied to the plan-notes
+    render (`CoachPlanDetail`). `.linkified` accent+underline. On QA.
+360. 🔨 **Notification timestamps show DATE only — need time of day.** JM 2026-07-05 (QA, bell). `ReleaseBell` `whenLine`
+    now shows date + time from the notif `at`. On QA.
+361. 🔨 **Coach-review notifications don't link the activity / hard to follow which session.** JM 2026-07-05 (QA): a stack
+    of "Coach reviewed your ride" all dated today, no context. Fixed: the review notif now carries the SESSION date
+    (`pushNotification` accepts `date`; review passes `review.date`) → bell shows "Sun Jul 5 · reviewed 2:34 PM"; links to
+    the activity (`/activity/:id`) when the review has an activityId (else the plan). On QA. (Older reprocessed reviews that
+    lacked an activityId won't link retroactively; new ones will.)
+362. ⬜ **Learned stats need a clear "when will Computed be ready?" ETA — consistently, everywhere.** JM 2026-07-05 (QA,
+    Stats benchmarks): threshold pace shows a specific ETA ("~1 more run — needs ≥4 runs + ~25 km in 6 weeks") but FTP just
+    says "lands automatically… as intervals sees hard efforts" (no timeframe), and Max HR / Sleep need / VO₂max vary. Make
+    EVERY learned stat surface a consistent "X more days/sessions until the computed estimate lands." NEXT (not in this ship).
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),

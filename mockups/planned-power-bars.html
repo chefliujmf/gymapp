@@ -1,0 +1,59 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#357 planned power — zone columns</title>
+<style>
+  body{background:#0f1216;color:#eef1f4;font:14px/1.4 -apple-system,sans-serif;padding:20px}
+  .card{max-width:640px;margin:0 auto;background:linear-gradient(150deg,#21252f,#191c24);border:1px solid #262a33;border-radius:14px;padding:14px}
+  .lbl{font-size:11px;font-weight:800;letter-spacing:.04em;color:#9298a6;text-transform:uppercase;margin-bottom:8px}
+  .wrap{display:grid;grid-template-columns:50px 1fr;grid-template-rows:1fr 18px;column-gap:8px}
+  .y{position:relative}.y span{position:absolute;right:0;transform:translateY(-50%);font-size:10px;color:#9298a6;font-variant-numeric:tabular-nums}
+  .plot{position:relative}
+  .x{position:relative;grid-column:2}.x span{position:absolute;transform:translateX(-50%);font-size:10px;color:#9298a6}
+  .x span.is-first{transform:none}.x span.is-last{transform:translateX(-100%)}
+  .cap{max-width:640px;margin:14px auto 0;color:#9298a6;font-size:12.5px;text-align:center}
+</style>
+<div class="card">
+  <div class="lbl">PLANNED POWER · W · by zone</div>
+  <div class="wrap">
+    <div class="y" id="y"></div>
+    <div class="plot"><svg id="svg" viewBox="0 0 320 150" preserveAspectRatio="none" width="100%" height="150"></svg></div>
+    <div class="x" id="x"></div>
+  </div>
+</div>
+<div class="cap">#357 — Sunday Threshold Validation (FTP 241). Zone columns like intervals.icu (no ramp). Blue=Z1 · green=Z2 · yellow=Z3 · orange=Z4.</div>
+<script>
+const ZONE_COLORS=['#7fd1ff','#43d9a3','#ffd23f','#ff9f43','#ff6b6b','#e63946'];
+const zoneIndex=p=>p<56?0:p<76?1:p<91?2:p<106?3:p<121?4:5;
+const zoneColor=p=>ZONE_COLORS[zoneIndex(p)];
+const segPower=s=>Math.max(s.powerStart,s.powerEnd);
+const FTP=241;
+// JM's actual workout (from the intervals screenshot)
+const segs=[
+ {duration:15*60,powerStart:50,powerEnd:70,label:'Warm-up'},
+ {duration:12*60,powerStart:90,powerEnd:95,label:'Threshold rep 1'},
+ {duration:5*60,powerStart:55,powerEnd:55,label:'Easy recovery'},
+ {duration:12*60,powerStart:90,powerEnd:96,label:'Threshold rep 2'},
+ {duration:5*60,powerStart:55,powerEnd:55,label:'Easy recovery'},
+ {duration:12*60,powerStart:92,powerEnd:100,label:'Threshold rep 3'},
+ {duration:40*60,powerStart:63,powerEnd:70,label:'Endurance'},
+ {duration:10*60,powerStart:50,powerEnd:45,label:'Cool-down'},
+];
+const VW=320,H=150,P=1;
+const total=segs.reduce((a,s)=>a+s.duration,0);
+const wOf=s=>Math.round(segPower(s)/100*FTP);
+const vMax=Math.max(...segs.map(wOf),Math.round(FTP*1.1));
+// niceTicks-ish: round to 20s
+const step=Math.ceil(vMax/6/20)*20; const dMax=step*Math.ceil(vMax/step); const ticks=[];for(let v=0;v<=dMax;v+=step)ticks.push(v);
+const y=w=>P+(1-w/dMax)*(H-2*P);
+const xAt=f=>P+f*(VW-2*P);
+// y labels
+document.getElementById('y').innerHTML=ticks.map(v=>`<span style="top:${((dMax-v)/dMax)*100}%">${v} W</span>`).join('');
+// x ticks every 10m
+const xt=[];for(let m=0;m<=total/60+0.1;m+=10)xt.push({frac:Math.min(1,m*60/total),label:m>=60?`${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`:`${m}m`});
+document.getElementById('x').innerHTML=xt.map((t,i)=>`<span class="${i===0?'is-first':i===xt.length-1?'is-last':''}" style="left:${t.frac*100}%">${t.label}</span>`).join('');
+// svg
+let cum=0,svg='';
+for(const v of ticks)svg+=`<line x1="0" x2="${VW}" y1="${y(v)}" y2="${y(v)}" stroke="#262a33" stroke-width="0.5" opacity="0.5"/>`;
+for(const s of segs){const f0=cum/total;cum+=s.duration;const f1=cum/total;const x0=xAt(f0),x1=xAt(f1),w=wOf(s),yt=y(w),c=zoneColor(segPower(s));
+ svg+=`<rect x="${x0}" y="${yt}" width="${Math.max(0.4,x1-x0)}" height="${Math.max(0,(H-P)-yt)}" fill="${c}" fill-opacity="0.9"/><rect x="${x0}" y="${yt}" width="${Math.max(0.4,x1-x0)}" height="2.2" fill="${c}"/>`;}
+document.getElementById('svg').innerHTML=svg;
+</script>

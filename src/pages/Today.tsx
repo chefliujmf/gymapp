@@ -51,9 +51,11 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   // tapping a face overrides. Energy is null on cold start → stays a manual tap. #74 chips below.
   const [rdy, setRdy] = useState<Readiness | null>(null)
   const [touched, setTouched] = useState<Set<string>>(new Set())
-  // #223: only the CURRENT day gets a live readiness derivation. Past days show what was LOGGED
-  // (no auto-derive); future days never mount this card (they show a forecast instead).
-  useEffect(() => { let live = true; setRdy(null); setTouched(new Set()); if (isToday) authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day, isToday])
+  // #354: derive readiness for the SELECTED day, not just today — a past day (e.g. Jul 3) with a
+  // check-in / wellness in intervals must still show its Energy·Sleep·Freshness (JM: "the feedback was
+  // there"). The endpoint computes it for any date from that day's wellness + prior baselines. (Future
+  // days never mount this card — they show a forecast instead.)
+  useEffect(() => { let live = true; setRdy(null); setTouched(new Set()); authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day])
   // #206: overnight HRV/sleep lands in intervals HOURS late (Coros→intervals lag), so a morning
   // check shows none yet. Re-pull on app focus + a manual ⟳ so a later sync appears without a reload.
   const [refreshing, setRefreshing] = useState(false)
