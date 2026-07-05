@@ -143,6 +143,12 @@ export const authApi = {
   chatReset: () => req<{ ok: boolean }>('/chat/reset', { method: 'POST' }),
   chatHistory: () => req<{ role: 'user' | 'coach'; text: string; ts?: number }[]>('/chat/history'), // #356 synced across devices
   chatHistorySeed: (msgs: { role: 'user' | 'coach'; text: string; ts?: number }[]) => req<{ role: 'user' | 'coach'; text: string; ts?: number }[]>('/chat/history', { body: { msgs } }), // #356 migrate a local convo up (once)
+  // #363 — conversations (threads): list / open / new / delete / search, all synced.
+  chatThreads: () => req<{ activeId: string | null; threads: { id: string; title: string; at: string; preview: string; active: boolean }[] }>('/chat/threads'),
+  chatThread: (id: string) => req<{ id: string; title: string; msgs: { role: 'user' | 'coach'; text: string; ts?: number }[] }>(`/chat/threads/${id}`),
+  chatNewThread: () => req<{ id: string }>('/chat/threads', { method: 'POST' }),
+  chatDeleteThread: (id: string) => req<{ ok: boolean }>(`/chat/threads/${id}`, { method: 'DELETE' }),
+  chatSearch: (q: string) => req<{ threadId: string; title: string; at: string; snippet: string; role: string }[]>(`/chat/search?q=${encodeURIComponent(q)}`),
 
   changePassword: (current: string, newPassword: string) => req<{ ok: boolean }>('/password/change', { body: { current, newPassword } }),
   forgot: (email: string) => req<{ ok: boolean; emailSent: boolean }>('/password/forgot', { body: { email } }),

@@ -101,6 +101,14 @@ test guide → the **🧪 Test guide** section below.
     the exact trigger event. FTP → "after your next hard ride — a ~5–20 min near-max effort (no formal test)"; Max HR →
     "after your next all-out effort with a HR strap"; VO₂max cycling → "after your next hard ~5-min effort", running →
     count-based like pace. Modal Computed box shows the same ⏳ ETA as the card. 321 tests. On QA.
+363. 🔨 **Coach chat — CONVERSATIONS (threads) + search (ChatGPT/Claude-style).** JM 2026-07-05 (QA): "how will I see previous
+    conversation + search a conversation?" The #356 sync was ONE continuous thread. Built the full model (mock
+    `mockups/chat-threads.html`, JM picked the drawer): server `chatThreads` (each with its own claude `--resume` session =
+    per-conversation memory), migrates the legacy single convo into thread 1. New endpoints: `GET/POST /auth/chat/threads`,
+    `GET/DELETE /auth/chat/threads/:id`, `GET /auth/chat/search`. Client (`Chat.tsx`): top-bar 🕘 opens a **Conversations**
+    drawer (search + ＋New + day-grouped list w/ preview + delete); search highlights matches across chats; tap → open that
+    thread. `/auth/chat` now targets the ACTIVE thread's session. tsc + 321 tests + build green. **On QA — big chat change,
+    test before promote.** gymapp-only.
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
