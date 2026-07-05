@@ -1429,9 +1429,19 @@ test guide → the **🧪 Test guide** section below.
     reps × time-under-tension); **reorder exercises before starting**; **add-set / skip-set** in player + full
     set TABLE (JetFit-style); **history back-nav** returns to your position (today dumps to exercise 1); a
     **dedicated swipe gesture** to change exercise (currently arrows + dots). (source: UX-BACKLOG Session-4 gym player.)
-168. ⬜ **Coach generation quality.** Generated workouts have **no warm-up / cool-down**; should **group similar
+168. 🔨 **Coach generation quality.** Generated workouts have **no warm-up / cool-down**; should **group similar
     exercises by equipment** so you don't move around (e.g. dumbbell+bench together) when it doesn't compromise
     the goal; **Pallof press should be represented both sides**. (cyclingcoach / via MCP.) (source: UX-BACKLOG.)
+    **Diagnosis:** the coach-engine.md (l.339-348) AND the create_workout tool ALREADY require all three — but nothing
+    enforced it (`upsertPlan` only defaulted tempo), so it drifted. **JM pick 2026-07-04: REJECT & retry** (not silent
+    auto-fix) — "will the coach learn? he must be instructed to create the right things." Built a HARD gate in the COACH
+    path only (`mcp/gym-guard.js` `validateGymWorkout` → `create_workout` throws the rejection): rejects a gym plan with no
+    warm-up, no cool-down, or an unmarked single-side move — with an actionable message so the coach re-authors THAT turn.
+    New `eachSide` field (schema + `plan.ts` + AdHocEx) renders "each side" in CoachPlanDetail + GymPlayer. Sharpened the
+    tool description + coach-engine.md (notes the gate). Equipment-grouping stays strong INSTRUCTION (goal-dependent, JM's
+    "when it doesn't compromise the goal" — not hard-rejected). NOT applied to the UI quick-add (a person adding one lift
+    isn't blocked). 8 guard unit tests (`src/gym-guard.test.ts`), 321 total. ⚠️ Guard runs from `~/platyplus-chat/mcp/` on
+    the XPS host — needs a manual `mcp/` rsync there (no workflow syncs it); coach-engine.md ships in the container image.
 169. ⬜ **Eat: meal packs + shopping-list generator.** Eat list is built; REMAINING: **meal packs** (pre-packaged
     breakfast/lunch/snack "packs" that roll up kcal + protein — JM specifically likes this); **shopping-list
     generator** for selected days / a full week (consolidate from assigned meals + snacks). (source: UX-BACKLOG Eat.)

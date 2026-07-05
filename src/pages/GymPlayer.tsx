@@ -18,6 +18,7 @@ interface PlayerEx {
   mode: 'timed' | 'reps'
   seconds: number; rest: number; sets: number; reps: number; weight?: number
   group?: string
+  eachSide?: boolean // #168 unilateral — dose is per side (L + R)
   tempo?: string; tip?: string // #284
 }
 interface Session { workoutId: string; title: string; discipline: string; duration: number; exercises: PlayerEx[]; intensity?: GymIntensity }
@@ -98,7 +99,7 @@ export default function GymPlayer() {
     if (!isSession) return
     const s = getGymSession()
     if (!s) return
-    const exs: PlayerEx[] = s.exercises.map((x) => ({ ...enrich(x.name, x.exId, x.image, x.video), mode: x.mode, seconds: x.seconds, rest: x.rest, sets: x.sets, reps: x.reps, group: x.note, tempo: x.tempo, tip: x.tip }))
+    const exs: PlayerEx[] = s.exercises.map((x) => ({ ...enrich(x.name, x.exId, x.image, x.video), mode: x.mode, seconds: x.seconds, rest: x.rest, sets: x.sets, reps: x.reps, group: x.note, eachSide: x.eachSide, tempo: x.tempo, tip: x.tip }))
     const dur = Math.round(exs.reduce((a, e) => a + (e.mode === 'reps' ? e.sets * (30 + e.rest) : e.seconds + e.rest), 0) / 60)
     setW({ workoutId: s.workoutId, title: s.title, discipline: 'strength', duration: dur, exercises: exs, intensity: s.intensity })
   }, [isSession])
@@ -279,7 +280,7 @@ export default function GymPlayer() {
               <div className="thumb" style={{ width: 42, height: 42, flex: 'none' }}>{ex.image ? <img src={ex.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : '🏋️'}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h4 style={{ margin: 0 }}>{ex.name}</h4>
-                <div className="meta">{ex.mode === 'reps' ? `${ex.sets}×${ex.reps}` : `${ex.seconds}s`} · ~{Math.max(1, Math.round(estSec(ex) / 60))} min{ex.tempo ? <span className="tl-tempo"> · tempo {ex.tempo}</span> : ''}</div>
+                <div className="meta">{ex.mode === 'reps' ? `${ex.sets}×${ex.reps}` : `${ex.seconds}s`}{ex.eachSide ? ' each side' : ''} · ~{Math.max(1, Math.round(estSec(ex) / 60))} min{ex.tempo ? <span className="tl-tempo"> · tempo {ex.tempo}</span> : ''}</div>
                 {(sug || est || lastStr) && (
                   <div className="gp-ins">
                     {sug ? <span className="gp-pill gp-pill--sug">suggested <b>{sug} kg</b></span> : ex.mode === 'reps' ? <span className="gp-pill">log a weight to get a target</span> : null}
@@ -327,7 +328,7 @@ export default function GymPlayer() {
   const group = cur.kind === 'timed' || cur.kind === 'set' ? cur.ex.group : undefined
   const name = cur.kind === 'ready' ? (cur.next?.name ?? 'Get ready') : cur.kind === 'rest' ? cur.next.name : cur.ex.name
   const sub = cur.kind === 'timed' ? `Exercise ${cur.exNo} / ${totalEx}`
-    : cur.kind === 'set' ? `Set ${cur.setNo} / ${cur.sets} · target ${cur.reps} reps${cur.ex.tempo ? ` · tempo ${cur.ex.tempo}` : ''}`
+    : cur.kind === 'set' ? `Set ${cur.setNo} / ${cur.sets} · target ${cur.reps} reps${cur.ex.eachSide ? ' each side' : ''}${cur.ex.tempo ? ` · tempo ${cur.ex.tempo}` : ''}`
     : cur.kind === 'rest' ? `Up next · ${cur.nextNo} / ${totalEx}` : `Starting · ${totalEx} exercises`
   const setEntry = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 1]) : undefined
   const prevSet = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 2]) : undefined

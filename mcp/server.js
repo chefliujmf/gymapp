@@ -13,6 +13,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
+import { validateGymWorkout } from './gym-guard.js'
 
 const BASE = (process.env.PLATYPLUS_URL || 'https://platyplus.duckdns.org').replace(/\/$/, '')
 const TOKEN = process.env.PLATYPLUS_TOKEN
@@ -134,7 +135,7 @@ const COACHING = {
 }
 const coachingOf = (a) => ({ objective: a.objective, cues: a.cues, tip: a.tip, success: a.success, recovery: a.recovery, fuel: a.fuel, mind: a.mind })
 server.tool('create_workout',
-  'Schedule a strength/gym workout on a date. Platyplus is the MASTER and mirrors to intervals.icu. Re-call with the same id to UPDATE. Break the WARM-UP and COOL-DOWN into INDIVIDUAL moves — one entry each, tagged section:"warmup"/"cooldown", every one with a real library exId from search_exercises (the library has arm circles, leg swings, high knees, cat-cow, jogging in place, glute bridge, etc.). NEVER cram several movements into one "Warm-up: A, B, C" line. Main set ordered by equipment, unilateral moves both sides. Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind strategy).',
+  'Schedule a strength/gym workout on a date. Platyplus is the MASTER and mirrors to intervals.icu. Re-call with the same id to UPDATE. THREE HARD REQUIREMENTS (the tool REJECTS the plan otherwise, so build them in up front): (1) a WARM-UP and a COOL-DOWN, each broken into INDIVIDUAL moves — one entry per move, tagged section:"warmup"/"cooldown", every one with a real library exId from search_exercises (arm circles, leg swings, high knees, cat-cow, jogging in place, glute bridge, targeted stretches…); NEVER cram moves into one "Warm-up: A, B, C" line. (2) Order the MAIN set by equipment (barbell → dumbbell → cable/machine → bodyweight/trunk) so the athlete isn\'t ping-ponging stations. (3) Every single-side move (Pallof press, split squat/Bulgarian, single-arm/leg, side plank, suitcase carry, Copenhagen…) MUST be prescribed both sides — set eachSide:true (renders "each side") or write explicit left/right entries. Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind strategy).',
   {
     date: DATE,
     title: z.string(),
@@ -149,17 +150,24 @@ server.tool('create_workout',
       weight: z.number().optional().describe('kg (optional; the app auto-fills from e1RM if omitted)'),
       seconds: z.number().int().optional().describe('work seconds for timed mode'),
       rest: z.number().int().optional().describe('rest seconds (optional)'),
+      eachSide: z.boolean().optional().describe('true for a single-side move (Pallof, split squat, single-arm/leg…) — the dose is PER SIDE and renders "each side" (L + R). REQUIRED on unilateral moves or the plan is rejected.'),
       tempo: z.string().optional().describe('lifting TEMPO / time-under-tension as 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower, 1s pause, 1s lift, 0s top. Prescribe a slower eccentric (3-4s) for hypertrophy/control, faster for power. Omit if not relevant.'),
       tip: z.string().optional().describe('one short FORM cue for THIS lift, e.g. "brace hard, drive mid-foot, no bounce out of the hole"'),
-    })).min(1).describe('ordered list of exercises'),
+    })).min(1).describe('ordered list of exercises (warm-up first, then the equipment-grouped main set, then cool-down)'),
     notes: z.string().optional(),
     ...COACHING,
     id: z.string().optional().describe('omit to create (a new id is returned); pass it back to update'),
   },
-  wrap((a) => api('POST', '/api/plan', {
-    id: a.id || newId(), date: a.date, sport: 'gym', title: a.title,
-    rounds: a.rounds || 1, exercises: a.exercises, notes: a.notes || '', ...coachingOf(a),
-  })))
+  wrap((a) => {
+    // #168 — hard gate: warm-up + cool-down present, unilateral moves both sides. Reject (don't
+    // silently fix) so the coach re-authors — teaching it in-session to build the right structure.
+    const bad = validateGymWorkout(a.exercises)
+    if (bad) throw new Error(bad)
+    return api('POST', '/api/plan', {
+      id: a.id || newId(), date: a.date, sport: 'gym', title: a.title,
+      rounds: a.rounds || 1, exercises: a.exercises, notes: a.notes || '', ...coachingOf(a),
+    })
+  }))
 
 const SEGMENTS = z.array(z.object({
   minutes: z.number().positive(),
