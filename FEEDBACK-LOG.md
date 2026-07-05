@@ -46,6 +46,14 @@ test guide → the **🧪 Test guide** section below.
     (re-pair done↔planned), `POST /api/coach/run` (coach re-review — OUTWARD: writes coach notes + notifications). Plan: build
     a one-command `scripts/reprocess-user.mjs` (reconcile + re-pair + optional coach re-review) + run it post-change. Scope of
     the coach re-review confirmed with JM before mass-running (outward-facing). Memory `platyplus-reprocess-after-change`.
+352. 🔨 **PROD COACH OUTAGE (caused + fixed) — `E2BIG` spawning the coach.** 2026-07-04, surfaced running #351's reprocess:
+    the coach `systemPrompt` (base engine 51KB + cycling engine 63KB + running + profile ≈ 128 KB) exceeds Linux
+    `MAX_ARG_STRLEN` (128 KiB per single argv) → `spawn E2BIG`, which crash-looped `platyplus-chat-prod` (coach chat down).
+    My #168 coach-engine.md growth tipped it over. **Fixed:** write the prompt to a temp file + pass `--append-system-prompt-file`
+    (verified the flag end-to-end) — in the host chat-helper (prod path) AND `server.js` runCoachTask + /auth/chat (dev);
+    temp file cleaned up. Deployed to host (`chat-helper/server.mjs` rsync + `systemctl restart`), services active, reprocess
+    re-ran cleanly (claude spawned, no E2BIG). **Also:** the chat-helper is ANOTHER host-only component nothing synced — folded
+    it into `scripts/deploy.sh` (syncs `chat-helper/server.mjs` + restarts coach services on change) + the propagate discipline.
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),

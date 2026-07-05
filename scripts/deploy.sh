@@ -24,6 +24,8 @@ APP_DIR="${GYMAPP_DIR:-/home/jmf/gymapp}"
 # step, so promoting to prod also refreshes the coach's tools. (Not synced on the QA/staging deploy:
 # the host MCP dir is shared by both coaches, so gating it on promote keeps prod-approved code only.)
 CHAT_MCP_DIR="${CHAT_MCP_DIR:-/home/jmf/platyplus-chat/mcp}"
+# The host chat-helper bridge (spawns the coach) — another host-only component nothing syncs (#352).
+CHAT_DIR="${CHAT_DIR:-$(dirname "$CHAT_MCP_DIR")}"
 
 # BUILD_CMD lets the XPS runner use "npm run build:app" (compiles against a
 # pre-synced generated catalog, skipping the scrape it doesn't have).
@@ -84,6 +86,15 @@ sync_coach_mcp() {
       command -v node >/dev/null 2>&1 && { node --check "$CHAT_MCP_DIR/server.js" && echo ">> coach MCP synced (server.js OK)" || echo "WARN: coach MCP server.js failed --check (#350)" >&2; } || echo ">> coach MCP synced (node not on PATH — skipped --check)"
     else
       echo "WARN: coach MCP rsync failed — coach tools may drift (#350)" >&2
+    fi
+    # The host chat-helper bridge (#352) — sync it too, and RESTART the coach services only when it
+    # actually changed (a restart interrupts an in-flight coach chat). Best-effort, non-fatal.
+    if [ -f "$CHAT_DIR/server.mjs" ] && [ -f chat-helper/server.mjs ] && ! cmp -s chat-helper/server.mjs "$CHAT_DIR/server.mjs"; then
+      echo ">> chat-helper changed → syncing + restarting coach services (#352)"
+      if rsync -a chat-helper/server.mjs "$CHAT_DIR/server.mjs"; then
+        chown jmf:jmf "$CHAT_DIR/server.mjs" 2>/dev/null || true
+        systemctl restart platyplus-chat platyplus-chat-prod 2>/dev/null && echo ">> coach services restarted" || echo "WARN: could not restart coach services (#352)" >&2
+      else echo "WARN: chat-helper rsync failed (#352)" >&2; fi
     fi
   else
     ssh "$XPS_HOST" "[ -d '$CHAT_MCP_DIR' ]" || { echo ">> (skip MCP sync) $CHAT_MCP_DIR absent on $XPS_HOST"; return 0; }
