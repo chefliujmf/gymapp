@@ -94,10 +94,13 @@ test guide → the **🧪 Test guide** section below.
     (`pushNotification` accepts `date`; review passes `review.date`) → bell shows "Sun Jul 5 · reviewed 2:34 PM"; links to
     the activity (`/activity/:id`) when the review has an activityId (else the plan). On QA. (Older reprocessed reviews that
     lacked an activityId won't link retroactively; new ones will.)
-362. ⬜ **Learned stats need a clear "when will Computed be ready?" ETA — consistently, everywhere.** JM 2026-07-05 (QA,
+362. 🔨 **Learned stats need a clear "when will Computed be ready?" ETA — consistently, everywhere.** JM 2026-07-05 (QA,
     Stats benchmarks): threshold pace shows a specific ETA ("~1 more run — needs ≥4 runs + ~25 km in 6 weeks") but FTP just
-    says "lands automatically… as intervals sees hard efforts" (no timeframe), and Max HR / Sleep need / VO₂max vary. Make
-    EVERY learned stat surface a consistent "X more days/sessions until the computed estimate lands." NEXT (not in this ship).
+    said "lands automatically… as intervals sees hard efforts" (no timeframe), and Max HR / Sleep need / VO₂max vary. Fixed
+    (`src/Benchmarks.tsx`): every gate now answers "when" the SAME way — a COUNT where countable ("~N more runs/nights"), else
+    the exact trigger event. FTP → "after your next hard ride — a ~5–20 min near-max effort (no formal test)"; Max HR →
+    "after your next all-out effort with a HR strap"; VO₂max cycling → "after your next hard ~5-min effort", running →
+    count-based like pace. Modal Computed box shows the same ⏳ ETA as the card. 321 tests. On QA.
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
