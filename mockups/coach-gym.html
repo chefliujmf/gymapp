@@ -1,0 +1,76 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#168 coach gym quality — now vs proposed</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#262a33;
+    --warm:#f0a35e;--cool:#6cc7 e0;--gym:#5a63c8;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05070a;color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:16px}
+  .title{max-width:860px;margin:0 auto 16px;text-align:center}
+  .title h2{font-size:19px;font-weight:800}.title p{color:var(--dim);font-size:13px;margin-top:4px;max-width:640px;margin-left:auto;margin-right:auto}
+  .wrap{display:flex;gap:22px;justify-content:center;align-items:flex-start}
+  .col{width:392px}
+  .tag{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px;text-align:center}
+  .tag.now{color:var(--dim)} .tag.new{color:var(--accent)}
+  .phone{background:var(--bg);border-radius:20px;border:1px solid #1c2029;padding:16px 14px 22px}
+  .wtitle{font-size:17px;font-weight:800;margin-bottom:2px}
+  .wsub{color:var(--dim);font-size:12.5px;margin-bottom:14px}
+  .sec{font-size:12px;font-weight:800;letter-spacing:.03em;margin:16px 0 8px;display:flex;align-items:center;gap:6px}
+  .sec:first-of-type{margin-top:6px}
+  .sec.warm{color:var(--warm)} .sec.cool{color:#5ec8e0} .sec.main{color:var(--text)}
+  .ex{display:flex;align-items:center;gap:11px;background:linear-gradient(150deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:12px;padding:9px 11px;margin-bottom:7px}
+  .ex .n{width:26px;height:26px;border-radius:8px;background:#2a2f3a;color:var(--dim);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
+  .ex .b{flex:1;min-width:0}
+  .ex .b h3{font-size:14px;font-weight:700}
+  .ex .b .m{font-size:11.5px;color:var(--dim);margin-top:1px}
+  .eq{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:999px;flex:none}
+  .eq.barbell{background:#3a2f1a;color:#e0a860}.eq.dumbbell{background:#1a2f3a;color:#5ec8e0}
+  .eq.cable{background:#2f1a3a;color:#b98ae0}.eq.core{background:#1a3a2a;color:#5ee0a0}.eq.bw{background:#2a2f3a;color:#9aa8b8}
+  .flag{display:inline-block;font-size:10px;font-weight:800;color:#07140c;background:var(--accent);border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+  .bad{color:#e06a6a;font-weight:700}
+  .note{font-size:11px;color:var(--dim);margin-top:4px;font-style:italic}
+</style>
+
+<div class="title">
+  <h2>#168 · Coach gym-workout quality</h2>
+  <p>Same session, "Upper · Push". <b>Now</b>: the coach is <i>told</i> to add warm-up/cool-down, group by equipment, and write unilateral moves both-sides — but nothing enforces it, so it drifts. <b>Proposed</b>: a deterministic normalizer guarantees the structure regardless.</p>
+</div>
+
+<div class="wrap">
+  <div class="col"><div class="tag now">Now (as generated)</div>
+    <div class="phone">
+      <div class="wtitle">Upper · Push</div>
+      <div class="wsub">5 exercises · ~40 min · gym</div>
+      <div class="sec main">Exercises</div>
+      <div class="ex"><span class="n">1</span><div class="b"><h3>Barbell Bench Press</h3><div class="m">4 × 8 · 90s rest</div></div><span class="eq barbell">Barbell</span></div>
+      <div class="ex"><span class="n">2</span><div class="b"><h3>Cable Fly</h3><div class="m">3 × 12</div></div><span class="eq cable">Cable</span></div>
+      <div class="ex"><span class="n">3</span><div class="b"><h3>Dumbbell Shoulder Press</h3><div class="m">3 × 10</div></div><span class="eq dumbbell">Dumbbell</span></div>
+      <div class="ex"><span class="n">4</span><div class="b"><h3>Pallof Press <span class="bad">· side?</span></h3><div class="m">3 × 10</div></div><span class="eq core">Core</span></div>
+      <div class="ex"><span class="n">5</span><div class="b"><h3>Tricep Pushdown</h3><div class="m">3 × 15</div></div><span class="eq cable">Cable</span></div>
+      <div class="note">✗ No warm-up / cool-down · equipment ping-pongs (barbell→cable→dumbbell→cable) · Pallof one side only</div>
+    </div>
+  </div>
+
+  <div class="col"><div class="tag new">Proposed (normalized)</div>
+    <div class="phone">
+      <div class="wtitle">Upper · Push</div>
+      <div class="wsub">warm-up + 5 + cool-down · ~48 min · gym</div>
+
+      <div class="sec warm">🔥 Warm-up</div>
+      <div class="ex"><span class="n">›</span><div class="b"><h3>Arm circles</h3><div class="m">30s each direction</div></div><span class="eq bw">Bodyweight</span></div>
+      <div class="ex"><span class="n">›</span><div class="b"><h3>Band pull-apart</h3><div class="m">2 × 15</div></div><span class="eq bw">Band</span></div>
+      <div class="ex"><span class="n">›</span><div class="b"><h3>Scapular push-up</h3><div class="m">2 × 10</div></div><span class="eq bw">Bodyweight</span></div>
+
+      <div class="sec main">Main set <span style="color:var(--dim);font-weight:600;text-transform:none;letter-spacing:0">· grouped by equipment</span></div>
+      <div class="ex"><span class="n">1</span><div class="b"><h3>Barbell Bench Press</h3><div class="m">4 × 8 · 90s rest</div></div><span class="eq barbell">Barbell</span></div>
+      <div class="ex"><span class="n">2</span><div class="b"><h3>Dumbbell Shoulder Press</h3><div class="m">3 × 10</div></div><span class="eq dumbbell">Dumbbell</span></div>
+      <div class="ex"><span class="n">3</span><div class="b"><h3>Cable Fly</h3><div class="m">3 × 12</div></div><span class="eq cable">Cable</span></div>
+      <div class="ex"><span class="n">4</span><div class="b"><h3>Tricep Pushdown</h3><div class="m">3 × 15</div></div><span class="eq cable">Cable</span></div>
+      <div class="ex"><span class="n">5</span><div class="b"><h3>Pallof Press<span class="flag">each side</span></h3><div class="m">3 × 10 per side (L + R)</div></div><span class="eq core">Core</span></div>
+
+      <div class="sec cool">🧊 Cool-down</div>
+      <div class="ex"><span class="n">›</span><div class="b"><h3>Doorway pec stretch</h3><div class="m">30s each side</div></div><span class="eq bw">Bodyweight</span></div>
+      <div class="ex"><span class="n">›</span><div class="b"><h3>Child's pose</h3><div class="m">60s</div></div><span class="eq bw">Bodyweight</span></div>
+      <div class="note" style="color:var(--accent);font-style:normal">✓ Warm-up + cool-down · barbell→dumbbell→cable→core · Pallof both sides</div>
+    </div>
+  </div>
+</div>

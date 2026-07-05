@@ -15,7 +15,7 @@ export interface CoachPlan {
   ftp?: number
   segments?: Segment[]
   rounds?: number
-  exercises?: Array<{ name: string; exId?: string; mode?: 'timed' | 'reps'; seconds?: number; sets?: number; reps?: number; weight?: number; rest?: number; tempo?: string; tip?: string; section?: 'warmup' | 'main' | 'cooldown' }>
+  exercises?: Array<{ name: string; exId?: string; mode?: 'timed' | 'reps'; seconds?: number; sets?: number; reps?: number; weight?: number; rest?: number; tempo?: string; tip?: string; section?: 'warmup' | 'main' | 'cooldown'; eachSide?: boolean }>
   icuEventId?: string // set when this plan mirrors an intervals.icu event
   origin?: 'platyplus' | 'icu'
   // Structured coaching (optional; coach-authored). Meals/mind are separate calendar
@@ -82,7 +82,7 @@ export function gymSessionFromPlan(p: CoachPlan): AdHocSession {
         name: x.name, exId: lib?.id, image: lib?.image, video: lib?.video, imageFemale: lib?.imageFemale, videoFemale: lib?.videoFemale,
         mode: x.mode || 'reps', seconds: x.seconds || 0, rest: x.rest || 0, sets: x.sets || 3, reps: x.reps || 10,
         note: (x.mode || 'reps') === 'reps' ? `${x.sets || 3}×${x.reps || 10}` : undefined,
-        tempo: x.tempo, tip: x.tip,
+        eachSide: x.eachSide, tempo: x.tempo, tip: x.tip,
       })
     }
   return { workoutId: 'plan-' + p.id, title: p.title, exercises }
@@ -109,6 +109,7 @@ export function findCoachPlan(date: string, sport: string): CoachPlan | undefine
 export interface AdHocEx {
   name: string; exId?: string; image?: string; video?: string; imageFemale?: string; videoFemale?: string
   mode: 'timed' | 'reps'; seconds: number; rest: number; sets: number; reps: number; note?: string
+  eachSide?: boolean // #168 unilateral — dose is per side (L + R)
   tempo?: string; tip?: string // #284
 }
 export interface AdHocSession { workoutId: string; title: string; exercises: AdHocEx[]; intensity?: 'low' | 'moderate' | 'high' }

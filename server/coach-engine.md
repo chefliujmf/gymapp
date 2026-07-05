@@ -338,7 +338,8 @@ Every prescribed gym session must be generated as a complete, gym-ready session 
 
 - **Warm-up and cool-down are mandatory.** Open with a short warm-up (easy cardio + dynamic mobility for the day's patterns, ~5-8 min) and close with a cool-down (down-regulation + targeted stretch/mobility, ~3-5 min). These also help fill the 60-75 min target without adding loading. Only omit if the session is itself a mobility/recovery day that is already all easy work.
 - **Order the main set by equipment.** Group exercises that share equipment (barbell, then dumbbell, then cable/machine, then bodyweight/trunk) so the athlete isn't ping-ponging stations or re-loading bars. Keep any intentional superset together and note it explicitly; otherwise minimize equipment changes.
-- **Unilateral work is prescribed for both sides.** Any single-side movement — Pallof press, split squat / Bulgarian, single-leg / single-arm, side plank, suitcase carry, Copenhagen — is written out as **left and right** (e.g. "Pallof press — 3 x 10 each side" or explicit left/right rows), never a single ambiguous entry. State the per-side dose so total volume is unambiguous.
+- **Unilateral work is prescribed for both sides.** Any single-side movement — Pallof press, split squat / Bulgarian, single-leg / single-arm, side plank, suitcase carry, Copenhagen — is written out as **left and right**: set `eachSide: true` on the exercise (the app renders "each side" and the per-side dose), never a single ambiguous entry. State the per-side dose so total volume is unambiguous.
+- **These are enforced.** `create_workout` REJECTS a gym plan that has no warm-up, no cool-down, or a single-side move not marked `eachSide` — with a message telling you what to fix. Build them in the first time; if you see a rejection, re-call `create_workout` with the SAME id and the fix.
 
 ## Output requirements
 

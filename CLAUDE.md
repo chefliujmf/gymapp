@@ -55,9 +55,17 @@ See skill `platyplus-testing` + memory `platyplus-testing-workflow`.
   on-disk layout.
 
 ## When you change X, also update Y
+> **Propagate every improvement to ALL impacted layers (JM directive 2026-07-04).** When you improve a
+> capability, don't stop at the UI — trace it through and update each layer it touches: the **API**
+> (`server/server.js` + `server/openapi.json`), the coach's **MCP tools** (`mcp/server.js` → **sync to the
+> host**, see below), the coach **instructions** (`server/coach-engine*.md`), and your own **skills / memory /
+> agent prompts**. (Why: on 2026-07-04 the host MCP was found ~a week stale — #313/#341/#343/#332 tools
+> never reached the coach because nothing syncs `mcp/`. Don't let a layer drift.)
+
 | Change | Also update |
 |--------|-------------|
-| Add/modify any `/api/*` or `/auth/*` endpoint in `server/server.js` | **`server/openapi.json`** (the Swagger spec at `/api/docs`) — keep it in sync |
+| Add/modify any `/api/*` or `/auth/*` endpoint in `server/server.js` | **`server/openapi.json`** (the Swagger spec at `/api/docs`) — keep it in sync. If a coach **MCP tool** calls it, update `mcp/server.js` too (next row). |
+| **Add/modify a coach MCP tool** (`mcp/server.js`) | **⚠️ SYNC `mcp/` TO THE COACH HOST** — `rsync mcp/server.js mcp/gym-guard.js … xps:/home/jmf/platyplus-chat/mcp/` then `node --check` on the box. **NO workflow does this** — it silently drifts (was ~1 wk stale, 2026-07-04). The MCP is spawned fresh per chat (`claude -p --mcp-config … node mcp/server.js`), so the next chat picks up the new file — no service restart needed. Both `platyplus-chat` (QA:8089) + `platyplus-chat-prod` (prod:8088) share this ONE mcp dir. Keep tool behaviour in step with the `/api/*` it calls + `coach-engine*.md`. |
 | **Add a file/module under `server/`** | nothing to hand-list — `server/Dockerfile` does `COPY *.js` so it's baked in; CI builds + **smoke-tests the server image** (module-graph check). Any `server/` change **rebuilds the image** (not just `dist/`) — make sure that CI step is green before merge. (A missing-COPY once crash-looped prod.) |
 | Add a new media source/type | `scripts/build-catalog.mjs` self-host fn + gate; download via `scripts/fetch-missing-media.mjs`; upload to the XPS `media/` and redeploy |
 | **Add/replace content** (exercises, recipes, audio) | **`CONTENT.md`** — the runbook: importer → build-catalog (free-first de-dup) → host images + `npm run sync:catalog` → `content-manifest` (license/commercial) → deploy |
