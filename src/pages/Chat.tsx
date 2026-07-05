@@ -72,14 +72,16 @@ export default function Chat() {
   const [building, setBuilding] = useState(false) // tapped "build my week" → show the chat thread
   const [, force] = useState(0) // re-render after a manual ack (localStorage, not in user)
   // #306(a): persist the conversation so navigating away (e.g. to a setup page) + back doesn't wipe it.
-  const [msgs, setMsgs] = useState<Msg[]>(() => { try { return JSON.parse(sessionStorage.getItem('chatMsgs') || '[]') } catch { return [] } })
+  // #356 — local cache in localStorage (survives tab close / browser restart, unlike sessionStorage), so a
+  // conversation isn't lost and the sync-migration can still recover it. Falls back to the old sessionStorage key.
+  const [msgs, setMsgs] = useState<Msg[]>(() => { try { return JSON.parse(localStorage.getItem('chatMsgs') || sessionStorage.getItem('chatMsgs') || '[]') } catch { return [] } })
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [waitedLong, setWaitedLong] = useState(false) // #306(c): show "still working…" after a few s
   const [reviewing, setReviewing] = useState<string | null>(null) // #353: what the coach is currently reading/doing
   const [coach, setCoach] = useState('Coach')
   const [listening, setListening] = useState(false)
-  useEffect(() => { try { sessionStorage.setItem('chatMsgs', JSON.stringify(msgs)) } catch { /* quota */ } }, [msgs])
+  useEffect(() => { try { localStorage.setItem('chatMsgs', JSON.stringify(msgs)) } catch { /* quota */ } }, [msgs])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null)
   const endRef = useRef<HTMLDivElement>(null)
@@ -93,7 +95,7 @@ export default function Chat() {
   useEffect(() => {
     authApi.chatHistory().then((h) => {
       if (Array.isArray(h) && h.length) { setMsgs(h.map((m) => ({ role: m.role, text: m.text, ts: m.ts }))); return }
-      let local: Msg[] = []; try { local = JSON.parse(sessionStorage.getItem('chatMsgs') || '[]') } catch { /* */ }
+      let local: Msg[] = []; try { local = JSON.parse(localStorage.getItem('chatMsgs') || sessionStorage.getItem('chatMsgs') || '[]') } catch { /* */ }
       const clean = local.filter((m) => m && (m.role === 'user' || m.role === 'coach') && m.text)
       if (clean.length) authApi.chatHistorySeed(clean).catch(() => {})
     }).catch(() => {})
@@ -157,7 +159,7 @@ export default function Chat() {
   async function reset() {
     if (!confirm('Start a new conversation?')) return
     await authApi.chatReset().catch(() => {})
-    setMsgs([]); try { sessionStorage.removeItem('chatMsgs') } catch { /* ignore */ }
+    setMsgs([]); try { localStorage.removeItem('chatMsgs'); sessionStorage.removeItem('chatMsgs') } catch { /* ignore */ }
   }
 
   // ── #310 onboarding step flow — walk the applicable steps, open the real pages ──────────────
