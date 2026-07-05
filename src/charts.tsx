@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { zoneColor } from './zones'
+import { zoneColor, zoneName, segPower } from './zones'
 
 export type Series = { label: string; color: string; data: (number | null)[]; area?: boolean; dash?: boolean }
 
@@ -164,6 +164,56 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
       <div className="chart2__y">{yTicks.map((t, i) => <span key={i} style={{ top: `${t.f * 100}%` }}>{fv(t.v)}</span>)}</div>
       {plot}
       {xt.length > 0 && <div className="chart2__x chart2__x--abs">{xt.map((t, i) => <span key={i} style={{ left: `${t.frac * 100}%` }} className={i === 0 ? 'is-first' : i === xt.length - 1 ? 'is-last' : ''}>{t.label}</span>)}</div>}
+    </div>
+  )
+}
+
+/** #357 — a PLANNED ride as zone-coloured COLUMNS (intervals.icu style), NOT a single-colour ramped
+ *  line. Each segment is a solid bar at its target watts, coloured by its %FTP zone (Z1 recovery →
+ *  Z6). x = time (proportional to duration), y = watts. Tap a block for its target. "No ramp thing." */
+export function PlannedPowerBars({ segments, ftp = 260, height = 150 }: { segments: { duration: number; powerStart: number; powerEnd: number; label?: string }[]; ftp?: number; height?: number }) {
+  const [hi, setHi] = useState<number | null>(null)
+  const segs = (segments || []).filter((s) => s && s.duration > 0)
+  if (!segs.length) return <div className="chart-empty">No workout shape</div>
+  const total = segs.reduce((a, s) => a + s.duration, 0)
+  // Colour + height by the segment's PEAK % (segPower) — the same zone the thumbnails/PowerBlocks use,
+  // so a segment reads the same everywhere (#72). Flat block per segment = "no ramp" (JM #357).
+  const pctOf = (s: { powerStart: number; powerEnd: number }) => segPower(s)
+  const wOf = (s: { powerStart: number; powerEnd: number }) => Math.round((pctOf(s) / 100) * ftp)
+  const H = height, P = 1
+  const nice = niceTicks(0, Math.max(...segs.map(wOf), Math.round(ftp * 1.1)), Math.max(3, Math.min(9, Math.round(H / 22))))
+  const dMax = nice.max || 1
+  const y = (w: number) => P + (1 - w / dMax) * (H - 2 * P)
+  const xAt = (f: number) => P + f * (VW - 2 * P)
+  const ticks = minuteTicks(total)
+  const fmtD = (s: number) => (s >= 60 ? `${Math.round(s / 60)}m` : `${s}s`)
+  let cum = 0
+  const bars = segs.map((s) => { const f0 = cum / total; cum += s.duration; return { f0, f1: cum / total, w: wOf(s), pct: Math.round(pctOf(s)), c: zoneColor(pctOf(s)), label: s.label, dur: s.duration } })
+  const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - rect.left) / rect.width; const i = bars.findIndex((b) => fx >= b.f0 && fx <= b.f1); setHi(i >= 0 ? i : null) }
+  return (
+    <div className="chart2">
+      <div className="chart2__y">{nice.ticks.map((v, i) => <span key={i} style={{ top: `${((dMax - v) / dMax) * 100}%` }}>{Math.round(v)} W</span>)}</div>
+      <div className="trend-wrap chart2__plot" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHi(null)}>
+        <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
+          {nice.ticks.map((v, i) => <line key={'h' + i} x1={0} x2={VW} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
+          {bars.map((b, i) => {
+            const x0 = xAt(b.f0), x1 = xAt(b.f1), yt = y(b.w), w = Math.max(0.4, x1 - x0)
+            return (
+              <g key={i}>
+                <rect x={x0} y={yt} width={w} height={Math.max(0, (H - P) - yt)} fill={b.c} fillOpacity={hi == null || hi === i ? 0.9 : 0.55} />
+                <rect x={x0} y={yt} width={w} height="2.2" fill={b.c} />
+              </g>
+            )
+          })}
+        </svg>
+        {hi != null && bars[hi] && (
+          <div className="chart-tip" style={{ left: `${Math.max(13, Math.min(87, ((bars[hi].f0 + bars[hi].f1) / 2) * 100))}%` }}>
+            <span className="chart-tip__d">{bars[hi].label || zoneName(bars[hi].pct)} · {fmtD(bars[hi].dur)}</span>
+            <span style={{ color: bars[hi].c }}>{bars[hi].w} W · {bars[hi].pct}%</span>
+          </div>
+        )}
+      </div>
+      {ticks.length > 0 && <div className="chart2__x chart2__x--abs">{ticks.map((t, i) => <span key={i} style={{ left: `${t.frac * 100}%` }} className={i === 0 ? 'is-first' : i === ticks.length - 1 ? 'is-last' : ''}>{t.label}</span>)}</div>}
     </div>
   )
 }

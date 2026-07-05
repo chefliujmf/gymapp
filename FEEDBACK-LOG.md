@@ -54,6 +54,30 @@ test guide → the **🧪 Test guide** section below.
     temp file cleaned up. Deployed to host (`chat-helper/server.mjs` rsync + `systemctl restart`), services active, reprocess
     re-ran cleanly (claude spawned, no E2BIG). **Also:** the chat-helper is ANOTHER host-only component nothing synced — folded
     it into `scripts/deploy.sh` (syncs `chat-helper/server.mjs` + restarts coach services on change) + the propagate discipline.
+353. 🔨 **Coach chat needs a "reviewing/thinking" indicator.** JM 2026-07-05 (screenshot): asked the coach to readjust the
+    plan; it replied one line then went silent for a while (using MCP tools) with NOTHING showing it's still working —
+    "need something to show it's reviewing." The chat-helper streams only text deltas, not tool-use, so during tool calls the
+    UI looks frozen. Fix: surface coach activity (a "reviewing your plan/wellness…" typing indicator, ideally naming the tool).
+354. 🔨 **Jul 3 (prod, JM) shows NO Energy/Sleep/Freshness despite a check-in done (incl. in intervals).** JM 2026-07-05
+    (screenshot: the check-in scales are all unselected on Fri Jul 3). Coach claimed "it's there" but it isn't shown. The
+    check-in feedback was entered in INTERVALS too → Platyplus + the coach must READ the intervals check-in/wellness for the
+    day. Diagnose: is it a display bug (logged but not rendered), a missing-wellness auto-derive gap, or Platyplus not reading
+    the intervals wellness/feedback for Jul 3? Adjust the coach to see the intervals-side feedback.
+355. 🔨 **POWER CURVE line stops ~1m instead of running to 1h (prod).** JM 2026-07-05 (screenshot, ride detail → Power tab).
+    The "best avg by duration" curve draws a crisp line 1s→~1m then flattens into just the fill with no visible line to
+    5m/20m/1h — "be sure the graph line goes all the way." Same family as #344/#292/#334 chart bugs. Diagnose: does the curve
+    DATA extend past 1m (best-20min 154W is mentioned, so data exists) or does the line path/points stop? Make the line span
+    the full x-range. ROOT: `CURVE_DURATIONS` jumped 60→300 (nothing 1m–5m) so the tail was 5 sparse points = flat floor →
+    looked stopped. Fixed: densified to ~25 durations (`src/pages/ActivityDetail.tsx`). gymapp-only.
+356. 🔨 **Coach chat must SYNC across devices + ChatGPT-style threads (new chat, search, history).** JM 2026-07-05: asked
+    the coach on desktop, couldn't see it on his phone. Root: Platyplus stores only a single `chatSession` id (the claude
+    session lives on the host); the actual MESSAGES aren't persisted in the DB — the client holds them in memory, lost on
+    reload/device-switch. Reco: persist messages server-side per THREAD (DB), load on any device (sync), + thread list /
+    new-chat / search. Big feature — sync first (the real pain), threads/search next.
+357. 🔨 **Cycling PLANNED-POWER chart → zone COLUMNS like intervals.icu (no ramp).** JM 2026-07-05 (screenshots: Platyplus
+    ramp/"target shape" line vs intervals' blocky zone-coloured bars). "That's the standard, no ramp thing." Reverses the
+    #219 true-shape ramps for the PLANNED view — render each segment as a solid bar at its target watts, coloured by zone
+    (Z1..Z4/SS), matching intervals. gymapp-only.
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),

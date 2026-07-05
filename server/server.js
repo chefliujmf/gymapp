@@ -1222,6 +1222,22 @@ async function runCoachTask(user, message) {
   })
 }
 
+// #353 — a human phrase for the tool the coach is calling, shown as "Reviewing your …" in the UI.
+const TOOL_LABEL = { get_wellness: 'your wellness data', get_checkins: 'your check-ins', get_recent_activities: 'your recent activity', list_schedule: 'your schedule', get_weather: 'the weather', check_connections: 'your connections', search_exercises: 'the exercise library', search_recipes: 'recipes', create_workout: 'a gym session', create_ride: 'a ride', create_run: 'a run', schedule_recovery: 'recovery', schedule_supplement: 'supplements', save_coach_review: 'your review', set_activity_text: 'your activity notes', set_athlete_profile: 'your profile', set_thresholds: 'your thresholds', set_weekly_target: 'your week', save_coach_memory: 'your coaching notes', schedule_meal: 'a meal', schedule_mind: 'a mind session', notify: 'a note for you' }
+const friendlyTool = (name) => { const t = String(name || '').replace(/^mcp__platyplus__/, ''); return TOOL_LABEL[t] || t.replace(/_/g, ' ') }
+
+// #356 — persist the coach conversation server-side so it SYNCS across devices (the client used to keep
+// it in sessionStorage only → invisible on another device). Stored in the user doc (JSONB), capped.
+function persistChat(user, userMsg, coachReply) {
+  if (!coachReply || !coachReply.trim()) return
+  user.chatMsgs = Array.isArray(user.chatMsgs) ? user.chatMsgs : []
+  user.chatMsgs.push({ role: 'user', text: userMsg, ts: Date.now() }, { role: 'coach', text: coachReply, ts: Date.now() })
+  if (user.chatMsgs.length > 200) user.chatMsgs = user.chatMsgs.slice(-200)
+  save(store)
+}
+// The conversation history for THIS user (any device loads it → same thread everywhere).
+app.get('/auth/chat/history', auth, (req, res) => res.json(req.user.chatMsgs || []))
+
 app.post('/auth/chat', auth, async (req, res) => {
   const message = String(req.body?.message || '').trim().slice(0, 4000)
   if (!message) return res.status(400).json({ error: 'empty message' })
@@ -1236,8 +1252,8 @@ app.post('/auth/chat', auth, async (req, res) => {
 
   // QA/prod: the container can't run the glibc claude → proxy to the host helper.
   if (CHAT_HELPER_URL) {
-    let pdone = false
-    const pend = () => { if (pdone) return; pdone = true; send({ done: true }); res.end() }
+    let pdone = false, reply = ''
+    const pend = () => { if (pdone) return; pdone = true; persistChat(req.user, message, reply); send({ done: true }); res.end() }
     try {
       const hr = await fetch(CHAT_HELPER_URL + '/chat', {
         method: 'POST',
@@ -1257,7 +1273,7 @@ app.post('/auth/chat', auth, async (req, res) => {
           let ev; try { ev = JSON.parse(data.slice(5).trim()) } catch { continue }
           if (ev.sessionId) { req.user.chatSession = ev.sessionId; save(store) } // persist, don't forward
           else if (ev.error && /no conversation found|session id/i.test(String(ev.error))) { delete req.user.chatSession; save(store); send({ error: 'Lost the thread — tap send again to start fresh.' }) } // stale session → clear so next send is fresh
-          else if (!ev.done) send(ev) // forward delta / error (our own done at the end)
+          else if (!ev.done) { if (ev.delta) reply += ev.delta; send(ev) } // forward delta / tool / error (our own done at the end); #356 accumulate the reply to persist
         }
       }
     } catch (e) { send({ error: 'coach unavailable: ' + (e.message || e) }) }
@@ -1275,8 +1291,8 @@ app.post('/auth/chat', auth, async (req, res) => {
     '--disallowedTools', CHAT_DENY,
     '--append-system-prompt-file', spFile,
   ]
-  let done = false
-  const end = () => { if (done) return; done = true; try { unlinkSync(spFile) } catch { /* gone */ } send({ done: true }); res.end() }
+  let done = false, reply = ''
+  const end = () => { if (done) return; done = true; try { unlinkSync(spFile) } catch { /* gone */ } persistChat(req.user, message, reply); send({ done: true }); res.end() } // #356 persist for cross-device sync
   // Run claude; if a stored session id is STALE (claude's local session store can vanish across
   // restarts → "No conversation found with session ID"), drop it and retry ONCE with a fresh thread.
   const run = (resume, isRetry) => {
@@ -1292,7 +1308,8 @@ app.post('/auth/chat', auth, async (req, res) => {
         const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1)
         if (!line) continue
         let ev; try { ev = JSON.parse(line) } catch { continue }
-        if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') { sawOutput = true; send({ delta: ev.event.delta.text }) }
+        if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') { sawOutput = true; reply += ev.event.delta.text; send({ delta: ev.event.delta.text }) }
+        else if (ev.type === 'stream_event' && ev.event?.type === 'content_block_start' && ev.event.content_block?.type === 'tool_use') send({ tool: friendlyTool(ev.event.content_block.name) }) // #353
         else if (ev.type === 'result' && ev.session_id) { req.user.chatSession = ev.session_id; save(store) }
       }
     })
@@ -1314,7 +1331,7 @@ app.post('/auth/chat', auth, async (req, res) => {
   run(true, false)
 })
 // Reset the per-user conversation thread.
-app.post('/auth/chat/reset', auth, (req, res) => { delete req.user.chatSession; save(store); res.json({ ok: true }) })
+app.post('/auth/chat/reset', auth, (req, res) => { delete req.user.chatSession; delete req.user.chatMsgs; save(store); res.json({ ok: true }) }) // #356 clear synced history too
 
 // ---- coach REST API (Bearer token) ---------------------------------------
 // The cyclingcoach dual-writes each session here (rich execution detail) and to

@@ -14,7 +14,10 @@ import CoachVerdict from '../CoachVerdict'
 import FlybyMap from '../FlybyMap'
 
 // #54 Power tab: mean-max power curve + time-in-zone, computed from the watts stream.
-const CURVE_DURATIONS = [1, 5, 15, 30, 60, 300, 600, 1200, 1800, 3600]
+// #355 — densely sampled so the mean-max line reads as ONE continuous curve all the way to 1h.
+// (The old set jumped 60→300 with nothing between 1m–5m, so the tail looked like a flat floor and
+// the curve appeared to "stop" at 1m.) Durations beyond the activity length are skipped in meanMaxCurve.
+const CURVE_DURATIONS = [1, 2, 3, 5, 8, 12, 20, 30, 45, 60, 90, 120, 180, 240, 300, 420, 600, 900, 1200, 1800, 2400, 3000, 3600, 5400, 7200]
 function meanMaxCurve(watts: (number | null)[]): { secs: number[]; watts: number[] } {
   const w = watts.map((v) => (v == null ? 0 : Number(v)))
   const n = w.length

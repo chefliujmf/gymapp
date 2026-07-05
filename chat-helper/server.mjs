@@ -30,6 +30,9 @@ const COACH_API = process.env.PLATYPLUS_URL || 'http://127.0.0.1:8089'
 const NODE_BIN_DIR = process.env.NODE_BIN_DIR || join(homedir(), '.local/bin')
 const DENY = 'Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit,TodoWrite'
 const coachPrompt = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app helping ONE user (the signed-in account) manage THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When asked to schedule or change something, do it with the tools, then confirm in one short sentence what you changed. Be concise, practical and encouraging. Decline anything outside this user's training/nutrition planning.`
+// #353 — a human phrase for the tool the coach is calling, shown as "Reviewing your …" while it works.
+const TOOL_LABEL = { get_wellness: 'your wellness data', get_checkins: 'your check-ins', get_recent_activities: 'your recent activity', list_schedule: 'your schedule', get_weather: 'the weather', check_connections: 'your connections', search_exercises: 'the exercise library', search_recipes: 'recipes', create_workout: 'a gym session', create_ride: 'a ride', create_run: 'a run', schedule_recovery: 'recovery', schedule_supplement: 'supplements', save_coach_review: 'your review', set_activity_text: 'your activity notes', set_athlete_profile: 'your profile', set_thresholds: 'your thresholds', set_weekly_target: 'your week', save_coach_memory: 'your coaching notes', schedule_meal: 'a meal', schedule_mind: 'a mind session', notify: 'a note for you' }
+const friendlyTool = (name) => { const t = String(name || '').replace(/^mcp__platyplus__/, ''); return TOOL_LABEL[t] || t.replace(/_/g, ' ') }
 
 const server = http.createServer((req, res) => {
   if (req.method !== 'POST' || req.url !== '/chat') { res.writeHead(404); return res.end() }
@@ -74,6 +77,8 @@ const server = http.createServer((req, res) => {
         if (!line) continue
         let ev; try { ev = JSON.parse(line) } catch { continue }
         if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') send({ delta: ev.event.delta.text })
+        // #353 — surface tool activity so the UI can show "reviewing your …" instead of a frozen screen.
+        else if (ev.type === 'stream_event' && ev.event?.type === 'content_block_start' && ev.event.content_block?.type === 'tool_use') send({ tool: friendlyTool(ev.event.content_block.name) })
         else if (ev.type === 'result' && ev.session_id) send({ sessionId: ev.session_id })
       }
     })

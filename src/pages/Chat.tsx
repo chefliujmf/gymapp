@@ -65,6 +65,7 @@ export default function Chat() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [waitedLong, setWaitedLong] = useState(false) // #306(c): show "still working…" after a few s
+  const [reviewing, setReviewing] = useState<string | null>(null) // #353: what the coach is currently reading/doing
   const [coach, setCoach] = useState('Coach')
   const [listening, setListening] = useState(false)
   useEffect(() => { try { sessionStorage.setItem('chatMsgs', JSON.stringify(msgs)) } catch { /* quota */ } }, [msgs])
@@ -74,6 +75,9 @@ export default function Chat() {
 
   // Returning from a setup page → pull the freshest profile so completed steps tick off.
   useEffect(() => { if (onboarding) refresh().catch(() => {}) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // #356 — load the SYNCED conversation from the server so it shows on EVERY device (not just the one it
+  // was typed on). sessionStorage is a fast local cache; the server copy is the source of truth for sync.
+  useEffect(() => { authApi.chatHistory().then((h) => { if (Array.isArray(h) && h.length) setMsgs(h.map((m) => ({ role: m.role, text: m.text }))) }).catch(() => {}) }, [])
 
   // Voice input — speak instead of type (great for non-technical users + onboarding).
   function toggleMic() {
@@ -98,7 +102,7 @@ export default function Chat() {
   async function send(textArg?: string) {
     const text = (textArg ?? input).trim()
     if (!text || busy) return
-    setInput(''); setMsgs((m) => [...m, { role: 'user', text }, { role: 'coach', text: '' }]); setBusy(true); setWaitedLong(false)
+    setInput(''); setMsgs((m) => [...m, { role: 'user', text }, { role: 'coach', text: '' }]); setBusy(true); setWaitedLong(false); setReviewing(null)
     const appendDelta = (d: string) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { role: 'coach', text: c[c.length - 1].text + d }; return c })
     // #306(b): never lock the input forever — abort a stalled/too-long coach turn so busy resets.
     const ctrl = new AbortController()
@@ -116,17 +120,18 @@ export default function Chat() {
           const frame = buf.slice(0, i); buf = buf.slice(i + 2)
           const data = frame.split('\n').find((l) => l.startsWith('data:'))
           if (!data) continue
-          let ev: { coach?: string; delta?: string; error?: string }
+          let ev: { coach?: string; delta?: string; error?: string; tool?: string }
           try { ev = JSON.parse(data.slice(5).trim()) } catch { continue }
           if (ev.coach) setCoach(ev.coach)
-          if (ev.delta) appendDelta(ev.delta)
+          if (ev.tool) setReviewing(ev.tool) // #353: coach started reading/doing something
+          if (ev.delta) { setReviewing(null); appendDelta(ev.delta) } // text is flowing → stop the "reviewing" note
           if (ev.error) appendDelta('⚠️ ' + ev.error)
         }
       }
     } catch (e) {
       const msg = (e as Error).name === 'AbortError' ? 'That took too long — tap send to try again.' : ((e as Error).message || 'Coach unavailable — tap send to retry.')
       setMsgs((m) => { const c = [...m]; const last = c[c.length - 1]; if (last?.role === 'coach' && !last.text) c[c.length - 1] = { role: 'coach', text: '⚠️ ' + msg }; return c })
-    } finally { clearTimeout(longTimer); clearTimeout(killTimer); setBusy(false); setWaitedLong(false); if (onboarding || building) refresh().catch(() => {}) } // #257 pick up onboardedAt once the coach finishes
+    } finally { clearTimeout(longTimer); clearTimeout(killTimer); setBusy(false); setWaitedLong(false); setReviewing(null); if (onboarding || building) refresh().catch(() => {}) } // #257 pick up onboardedAt once the coach finishes
   }
   async function reset() {
     if (!confirm('Start a new conversation?')) return
@@ -210,10 +215,12 @@ export default function Chat() {
             <div key={i} className={'chat-msg chat-msg--' + m.role + (thinking ? ' chat-msg--typing' : '')}>
               {m.text
                 ? (m.role === 'coach' ? <ChatBody text={m.text} /> : m.text)
-                : (thinking ? `${coach} is ${waitedLong ? 'still working — this can take a moment…' : 'thinking…'}` : '')}
+                : (thinking ? `${coach} is ${reviewing ? `reviewing ${reviewing}…` : waitedLong ? 'still working — this can take a moment…' : 'thinking…'}` : '')}
             </div>
           )
         })}
+        {/* #353 — coach called a tool AFTER it started replying (mid-answer): a subtle "reviewing" note. */}
+        {busy && reviewing && msgs[msgs.length - 1]?.text ? <div className="chat-reviewing">🔎 Reviewing {reviewing}…</div> : null}
         <div ref={endRef} />
       </div>
 

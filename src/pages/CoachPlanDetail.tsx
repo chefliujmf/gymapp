@@ -3,14 +3,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getCoachPlan, gymSessionFromPlan, setGymSession, resolveDemo, estimateGymMinutes } from '../plan'
 import { calApi, type CalItem } from '../calendar'
 import { MiniProfile } from '../ui'
-import { workoutSummary, structureRows, plannedSeries, plannedLoad } from '../workout-summary'
+import { workoutSummary, structureRows, plannedLoad } from '../workout-summary'
 import { setCurrentRide, canPlayHere } from '../ride'
 import { useBle } from '../BleContext'
 import { getSetting, db } from '../db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
 import { fmtPace, paceFromPowerPct } from '../running-paces'
-import { InfoDot, TrendChart, minuteTicks } from '../charts'
+import { InfoDot, TrendChart, PlannedPowerBars, minuteTicks } from '../charts'
 import { fetchActivities, sportOfActivity } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
 
@@ -135,8 +135,11 @@ export default function CoachPlanDetail() {
           {/* #280 planned power SHAPE — dense chart standard */}
           <div className="tl-card" style={{ marginTop: 8 }}>
             {/* #331 — a RUN never shows watts: pace curve if we have a threshold pace, else the % shape. */}
-            <div className="tl-clabel">{isRun ? (thrPace ? 'PLANNED PACE · min/km · target shape' : 'PLANNED EFFORT · % of threshold · target shape') : 'PLANNED POWER · W · target shape'}</div>
-            <TrendChart series={[{ label: 'Target', data: isRun ? runShape() : plannedSeries(p.segments!, rFtp), color: '#34e07d', area: true }]} height={150} axes unit={isRun ? (thrPace ? '/km' : '%') : ' W'} fmt={isRun ? runFmt : undefined} xTicks={minuteTicks(totalSec)} straight minSpan={isRun ? 22 : Math.max(40, Math.round(rFtp * 0.35))} />
+            <div className="tl-clabel">{isRun ? (thrPace ? 'PLANNED PACE · min/km · target shape' : 'PLANNED EFFORT · % of threshold · target shape') : 'PLANNED POWER · W · by zone'}</div>
+            {/* #357 — a ride shows zone-coloured COLUMNS (intervals.icu style), not a single-colour ramp. Runs keep the pace/effort line. */}
+            {isRun
+              ? <TrendChart series={[{ label: 'Target', data: runShape(), color: '#34e07d', area: true }]} height={150} axes unit={thrPace ? '/km' : '%'} fmt={runFmt} xTicks={minuteTicks(totalSec)} straight minSpan={22} />
+              : <PlannedPowerBars segments={p.segments!} ftp={rFtp} height={150} />}
             {isRun && !thrPace && <div className="act-ins"><span className="tag">⚙</span>Set your <Link to="/profile?onboard=1#ob-numbers" style={{ color: 'var(--accent)' }}>threshold pace</Link> so these show as min/km.</div>}
             <div className="act-ins"><span className="tag">💡</span>{p.cues?.[0] || (sum && sum.mainPct >= 91 ? 'Warm up fully — the first hard effort should feel controlled, not a shock; keep recoveries easy and let HR drop.' : 'Hold steady targets — smooth and repeatable beats spiky.')}</div>
           </div>
