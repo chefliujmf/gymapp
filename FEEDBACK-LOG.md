@@ -253,7 +253,10 @@ test guide → the **🧪 Test guide** section below.
     **DONE (a)+(b):** deleted the orphan Jul-7 event (the gym is now single, Mon Jul 6, with its 11 exercises — #377 also
     resolved). ROOT of the dup: `findIcuEventsForPlan` only searched `plan.date`, so a moved event wasn't found → push
     CREATED a duplicate. Fixed `pushPlanToIcu` to also fetch our known event by `icuEventId` (any date) → it UPDATES+moves
-    the existing one instead of duplicating. 335 tests. **(c) env isolation still open — awaiting JM's decision.**
+    the existing one instead of duplicating. 335 tests. **(c) DONE — JM picked "gate QA off intervals":** `IS_STAGING`
+    (from the QA `RP_ID`/`ORIGIN`, verified prod=false/QA=true) makes staging READ-ONLY toward intervals — `pushPlanToIcu`
+    skips + `dailyAdaptTick` (scheduler) returns early on QA. Only PROD writes to the shared athlete now; QA still reconciles
+    IN. This kills the cross-env collision class at the root. ⚠️ verify prod still mirrors after deploy (IS_STAGING must be false).
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
