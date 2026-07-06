@@ -326,6 +326,11 @@ test guide → the **🧪 Test guide** section below.
     push. Trace `planToIcuEvent`/`pushPlanToIcu` (`server/icu-steps.js` + server) — likely a re-push APPENDING steps, or the
     native text + workout_doc both counting, or encodeStep double-run. **Applies to ALL sports/activities** (JM directive:
     every fix covers all impacted activities). Fix + reprocess his existing plans so none stay doubled. Coach/MCP/API/server.
+    **ROOT + FIX (verified on prod):** the native TEXT leaked into `plan.notes` via reconcile (icuEventToPlan imported
+    `ev.description` → notes), then re-doubled on push. `stripDerivedWorkout()` (pure, icu-steps.js, 4 tests) now strips it on
+    compose (`planToIcuEvent`, ride+run) + import (`icuEventToPlan`). Resynced → Jul 8 ride back to a SINGLE Warmup (1h, was
+    ~2h); stored notes self-heal on next reconcile. Propagated to memory + CLAUDE.md. 29 icu-steps tests. Coach needs no
+    change (doubling was server-side reconcile, not authoring). Applies to ride+run (gym has no native text).
     389. ⬜ **#384 + #382 (and every fix) must apply to ALL SPORTS, all activities, all the time.** JM directive 2026-07-06:
     "ensure 384 and 382 are done for all sports at all time; all fix is for all activities impacted by it." Standing rule —
     a fix isn't done until it covers ride + run + gym + mind + swim etc. and past/present/future activities. See [[platyplus-propagate-all-layers]] + [[platyplus-reprocess-after-change]].
