@@ -54,9 +54,10 @@ TSS (or RPE→TSS: moderate ~50–60/h, hard ~100/h). Check-in: subjective (ener
   builds `loads` for `today+1 .. target-1`; `forecastFreshness` in readiness.js.
 - **Skip non-session events (#366):** an intervals ATP **weekly TARGET** (category `TARGET`, e.g. "ATP W06" ~250
   TSS for the WEEK) or a NOTE is NOT a single-day load — counting it spikes ATL → false "wrecked". Filter
-  `category==='TARGET'|'NOTE'` + `/^ATP/`. Same on `/auth/readiness-projection` (the Load/Form chart). Caveat:
-  planned WORKOUTs often have `icu_training_load: null`, so their real load isn't projected yet (estimate-from-
-  workout-doc is future work).
+  `category==='TARGET'|'NOTE'` + `/^ATP/`. Same on `/auth/readiness-projection` (the Load/Form chart).
+- **Planned load is now supplied (#372):** intervals does NOT compute load for API-created workouts, so we set
+  `icu_training_load` from `plannedTss` (Coggan TSS, FTP-independent) in `planToIcuEvent`. Now both our forecast AND
+  intervals' own Form drop for a hard week (before, a 2h ride left Form ~-3 flat). Backfill: `POST /api/plans/resync`.
 - **Daily auto-adapt (#367):** `dailyAdaptTick` (server.js, QA/prod, every 30 min) runs the locked-down coach each
   morning per athlete's LOCAL tz — an EARLY pass ~4am (Form/freshness) + a REFINE pass once HRV/sleep lands — to
   proactively re-plan the rolling **14-day** horizon + notify + ask-if-uncertain. Runtime-message-driven
