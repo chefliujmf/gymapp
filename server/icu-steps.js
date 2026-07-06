@@ -143,6 +143,14 @@ export function flattenIcuStepsSrv(steps = []) {
 // TSS and hand it to intervals via icu_training_load; intervals then does the Form/CTL/ATL out-of-the-box.
 // FTP-INDEPENDENT: a %FTP / %threshold workout's TSS depends only on the percentages (the % IS the IF), so
 // no FTP lookup is needed — mirrors the client's `plannedLoad` (workout-summary.ts).
+// #378 — the "Open in Platyplus" deep-link is REGENERATED on every push, so it must NEVER be persisted in
+// plan.notes. If it leaks in (reconcile imported a pushed event's description back into notes), the next push
+// prepends ANOTHER → they accumulate; cross-env (QA + prod share the athlete) you get one prod + one QA link.
+// Strip any such line wherever notes are composed or imported. Pure + unit-tested.
+export function stripPlatyplusLinks(s) {
+  return String(s || '').replace(/^.*Open workout in Platyplus.*$/gim, '').replace(/\n{3,}/g, '\n\n').trim()
+}
+
 export function plannedTss(segments = []) {
   const segs = (segments || []).filter((x) => x && Number(x.duration) > 0)
   if (!segs.length) return null

@@ -28,7 +28,7 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss, stripPlatyplusLinks } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay } from './cycle.js' // #329
 
@@ -1505,14 +1505,14 @@ function planToIcuEvent(plan, items = []) {
     // full plan (meals/mind/recovery) stays in Platyplus via the link.
     const native = nativeWorkoutText(segs, isRun)
     if (!isRun && segs.length) ev.workout_doc = { steps: segs.flatMap((s) => encodeStep(s, false)) }
-    ev.description = [native, plan.notes, shortCoachNote(plan)].filter(Boolean).join('\n\n')
+    ev.description = [native, stripPlatyplusLinks(plan.notes), shortCoachNote(plan)].filter(Boolean).join('\n\n')
   } else {
     ev.type = 'WeightTraining'
     // #301 — DON'T mirror gym structure as text (tempo/sets can't round-trip through intervals, which
     // has no gym model). Platyplus is the canonical home for the structured workout; intervals just gets
     // a deep LINK to open it in Platyplus, plus the coach's human notes.
     const link = `${ORIGIN}/coach/${encodeURIComponent(plan.id)}`
-    ev.description = [`🏋️ Open workout in Platyplus → ${link}`, plan.notes, brief].filter(Boolean).join('\n\n')
+    ev.description = [`🏋️ Open workout in Platyplus → ${link}`, stripPlatyplusLinks(plan.notes), brief].filter(Boolean).join('\n\n')
   }
   return ev
 }
@@ -1665,7 +1665,7 @@ async function deletePlanById(user, id, actor = 'coach') {
 function icuEventToPlan(ev) {
   const date = String(ev.start_date_local || '').slice(0, 10)
   const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
-  const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: ev.description || '', origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
+  const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: stripPlatyplusLinks(ev.description || ''), origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
   if (sport === 'ride' || sport === 'run') {
     plan.segments = flattenIcuStepsSrv(ev.workout_doc?.steps || [])
   } else {
@@ -1715,6 +1715,10 @@ async function reconcileFromIcu(user, from, to) {
     const date = String(ev.start_date_local || '').slice(0, 10)
     const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
     if (planKeys.has(planKey(date, sport, ev.name))) continue
+    // #377 — our OWN gym session (it carries the Platyplus deep-link): the real exercises live in
+    // Platyplus, intervals has no gym model, so importing it here would fabricate an EMPTY-exercise shell
+    // (and, cross-env, shadow the origin env's real plan). Skip — Platyplus is canonical for gym.
+    if (sport === 'gym' && /Open workout in Platyplus/i.test(ev.description || '')) continue
     const plan = icuEventToPlan(ev)
     user.plans.push(plan); imported++
     planIds.add(plan.id); planKeys.add(planKey(plan.date, plan.sport, plan.title)) // guard against dups within this batch too

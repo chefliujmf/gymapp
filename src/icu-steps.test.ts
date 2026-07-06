@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, detectRepeat, plannedTss } from '../server/icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, detectRepeat, plannedTss, stripPlatyplusLinks } from '../server/icu-steps.js'
 
 // #312 — a RUN must target PACE (%pace), a RIDE POWER (%ftp). The bug: every ride/run emitted
 // power → intervals (and the Garmin workout it syncs) showed WATTS on runs.
@@ -157,4 +157,17 @@ describe('#372 plannedTss — supply the planned load so intervals Form projects
     expect(plannedTss([{ duration: 1200, powerStart: 100, powerEnd: 100 }]).tss).toBeCloseTo(33, 0) // 20min @ threshold ≈ 33 TSS
   })
   it('null on empty', () => expect(plannedTss([])).toBeNull())
+})
+
+describe('#378 stripPlatyplusLinks — the auto deep-link must never accumulate in notes', () => {
+  it('strips BOTH a prod + a QA link, keeps the real note', () => {
+    const polluted = '🏋️ Open workout in Platyplus → https://platyplus.duckdns.org/coach/x\n\n🏋️ Open workout in Platyplus → https://platyplus-qa.duckdns.org/coach/x\n\nMoved here from last week. TEMPO 3-1-1-0.'
+    const out = stripPlatyplusLinks(polluted)
+    expect(out).not.toMatch(/Open workout in Platyplus/)
+    expect(out).toBe('Moved here from last week. TEMPO 3-1-1-0.')
+  })
+  it('leaves clean notes untouched + handles empty', () => {
+    expect(stripPlatyplusLinks('Easy spin, keep it Z2.')).toBe('Easy spin, keep it Z2.')
+    expect(stripPlatyplusLinks('')).toBe(''); expect(stripPlatyplusLinks(null)).toBe('')
+  })
 })
