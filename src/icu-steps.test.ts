@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, detectRepeat } from '../server/icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, detectRepeat, plannedTss } from '../server/icu-steps.js'
 
 // #312 — a RUN must target PACE (%pace), a RIDE POWER (%ftp). The bug: every ride/run emitted
 // power → intervals (and the Garmin workout it syncs) showed WATTS on runs.
@@ -143,4 +143,18 @@ describe('nativeWorkoutText (#157)', () => {
     expect(detectRepeat([{ duration: 300, powerStart: 100, powerEnd: 100 }, { duration: 180, powerStart: 90, powerEnd: 90 }, { duration: 120, powerStart: 80, powerEnd: 80 }])).toBeNull()
   })
   it('empty segments → empty string', () => expect(nativeWorkoutText([], false)).toBe(''))
+})
+
+describe('#372 plannedTss — supply the planned load so intervals Form projects', () => {
+  it('a flat 1h @ 90% ≈ 81 TSS (IF 0.9)', () => {
+    const t = plannedTss([{ duration: 3600, powerStart: 90, powerEnd: 90 }])
+    expect(t.if).toBeCloseTo(0.9, 1); expect(t.tss).toBeGreaterThan(78); expect(t.tss).toBeLessThan(84)
+  })
+  it('a 2h endurance @ 65% is a real load (~80+ TSS), not flat', () => {
+    expect(plannedTss([{ duration: 7200, powerStart: 65, powerEnd: 65 }]).tss).toBeGreaterThan(80)
+  })
+  it('FTP-independent — % is the intensity factor', () => {
+    expect(plannedTss([{ duration: 1200, powerStart: 100, powerEnd: 100 }]).tss).toBeCloseTo(33, 0) // 20min @ threshold ≈ 33 TSS
+  })
+  it('null on empty', () => expect(plannedTss([])).toBeNull())
 })

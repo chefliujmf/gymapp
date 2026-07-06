@@ -163,6 +163,15 @@ test guide → the **🧪 Test guide** section below.
     `maxPerDay` — message tells the coach to COMBINE into that day's session (same id) or move it; two short same-sport rides
     should be ONE. UI path (`actor==='you'`) exempt. Also: 2 sessions of the same sport ≠ one long ride (JM). Existing doubles
     on his prod calendar cleaned via a coach dedup run. 324 tests. On QA→prod.
+372. 🔨 **Form barely drops despite a hard week — planned rides carry NO load.** JM 2026-07-06 (intervals screenshot: an
+    intense week, yet Form sits ~-3/-4 into Sat; "no way after a 2h ride my form stays at -3"). DIAGNOSIS via /tmp/audit.mjs
+    against his intervals: Ride FTP=260 is set, every planned ride has a valid `%ftp` `workout_doc`, but **`icu_training_load`
+    is `null` on all of them** → **intervals does NOT compute planned load for EXTERNALLY-created (API) workouts** — only for
+    ones built in its own planner. No per-day load → CTL/ATL/Form projection stays flat. FIX (uses intervals OUT-OF-THE-BOX,
+    per JM: we supply the number, intervals does the Form math): new pure `plannedTss(segments)` in `server/icu-steps.js`
+    (standard Coggan TSS = duration·IF²/3600·100, IF = NP%/100; **FTP-independent** — the % IS the IF, mirrors client
+    `plannedLoad`), set as `ev.icu_training_load` in `planToIcuEvent`. New `POST /api/plans/resync` re-mirrors all FUTURE
+    plans so his EXISTING ones pick up the load (no content change). 328 tests (4 new for plannedTss). On QA→prod.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client

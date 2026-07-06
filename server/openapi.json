@@ -730,6 +730,14 @@
         "responses": { "202": { "description": "coach running" }, "400": { "description": "coach not set up" } }
       }
     },
+    "/api/plans/resync": {
+      "post": {
+        "summary": "Re-mirror all FUTURE plans to intervals (Bearer, #372)",
+        "description": "Re-pushes every upcoming planned session to intervals.icu so they pick up server-side changes — notably the computed planned LOAD (icu_training_load), which intervals does NOT auto-derive for externally-created API workouts. No content change. Returns how many were synced.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "synced", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" }, "synced": { "type": "integer" }, "total": { "type": "integer" } } } } } } }
+      }
+    },
     "/api/weekly-target": {
       "post": {
         "summary": "Coach sets the week's MACRO TARGET — load/hours/focus (Bearer, #254)",
