@@ -1,0 +1,113 @@
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--line:#2a2f3a;--card1:#21252f;--card2:#191c24;
+    --sleep:#5ec8ff;--energy:#34e07d;--form:#f5b53d;--overall:#9b8cff}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+  body{background:#07090c;color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:22px 12px 60px}
+  .phone{max-width:440px;margin:0 auto}
+  .toggle{display:flex;gap:6px;margin:0 auto 14px;max-width:440px;background:#12151b;border:1px solid var(--line);border-radius:12px;padding:4px}
+  .toggle button{flex:1;padding:9px 6px;border:0;border-radius:9px;background:transparent;color:var(--text-dim);font-weight:700;font-size:12.5px;cursor:pointer}
+  .toggle button.on{background:linear-gradient(180deg,var(--card1),var(--card2));color:var(--text)}
+  .ol{max-width:440px;margin:0 auto 14px;color:var(--text-dim);font-size:12.5px;text-align:center;line-height:1.5}
+  .ol b{color:var(--accent)}
+
+  .card{background:linear-gradient(180deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:16px;padding:15px 15px 13px;margin-bottom:16px}
+  .wh{display:flex;align-items:baseline;justify-content:space-between}
+  .wh h3{font-size:15.5px;font-weight:750}
+  .wh .now{font-size:26px;font-weight:850}
+  .seg{display:flex;margin:11px 0 4px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{flex:1;padding:7px 3px;border:0;background:transparent;color:var(--text-dim);font-weight:700;font-size:12px;cursor:pointer;border-right:1px solid var(--line)}
+  .seg button:last-child{border-right:0}
+  .seg button.on{background:#1b2027;color:var(--text)}
+
+  .plot{position:relative;height:150px;margin:12px 0 2px}
+  .plot svg{width:100%;height:100%;display:block}
+  .yl{position:absolute;left:-2px;font-size:10px;color:var(--text-dim);transform:translateY(-50%)}
+  .xl{display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:3px;padding:0 2px}
+
+  .leg{display:flex;flex-direction:column;gap:2px;margin-top:11px;border-top:1px solid var(--line);padding-top:11px}
+  .lrow{display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer;border-radius:8px}
+  .lrow.dim{opacity:.4}
+  .lrow i{width:16px;height:3px;border-radius:2px;flex:0 0 16px}
+  .lrow .nm{font-size:13px;font-weight:700;flex:1}
+  .lrow .st{font-size:11.5px;color:var(--text-dim);font-variant-numeric:tabular-nums}
+  .lrow .st b{color:var(--text);font-weight:700}
+  .legmini{display:flex;gap:14px;margin-top:9px;font-size:11px;color:var(--text-dim);flex-wrap:wrap}
+  .legmini span{display:flex;align-items:center;gap:5px} .legmini i{width:13px;height:3px;border-radius:2px}
+  .foot{font-size:11px;color:var(--text-dim);margin-top:10px}
+</style>
+
+<div class="toggle">
+  <button id="ba" class="on" onclick="pick('a')">A · all lines overlaid</button>
+  <button id="bb" onclick="pick('b')">B · tap a metric to focus</button>
+</div>
+<div class="ol" id="oltext"></div>
+
+<div class="phone"><div class="card" id="card"></div></div>
+
+<script>
+// ~30 days of check-in components (1–5), 7-day-avg smoothed
+const rnd=(seed)=>{let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+function series(base,amp,seed){const r=rnd(seed);const raw=Array.from({length:30},(_,i)=>Math.max(1,Math.min(5, base+amp*Math.sin(i/4+seed)+ (r()-0.5)*1.1 )));
+  // 7-day avg
+  return raw.map((_,i)=>{const w=raw.slice(Math.max(0,i-6),i+1);return Math.round(w.reduce((a,b)=>a+b)/w.length*10)/10})}
+const M = {
+  sleep:  {nm:'😴 Sleep',  color:'var(--sleep)',  data:series(4.1,0.5,3)},
+  energy: {nm:'⚡ Energy', color:'var(--energy)', data:series(4.0,0.6,7)},
+  form:   {nm:'🔋 Form',   color:'var(--form)',   data:series(3.8,0.7,12)},
+}
+const overall = M.sleep.data.map((_,i)=>Math.round((M.sleep.data[i]+M.energy.data[i]+M.form.data[i])/3*10)/10)
+const stat=(d)=>({avg:Math.round(d.reduce((a,b)=>a+b)/d.length*10)/10,min:Math.min(...d),max:Math.max(...d)})
+const dates=['Jun 6','Jun 16','Jun 26','Jul 6']
+
+let mode='a', focus=null
+function pick(m){mode=m;focus=null;
+  document.getElementById('ba').classList.toggle('on',m==='a');
+  document.getElementById('bb').classList.toggle('on',m==='b');
+  document.getElementById('oltext').innerHTML = m==='a'
+    ? 'All three lines <b>in one graph</b> + the overall average (faint). The legend carries each metric\'s <b>avg · min · max</b>.'
+    : 'Same overlay, but <b>tap a metric</b> in the legend to spotlight just that line (the others fade) and read its numbers big.';
+  render()}
+
+function path(d, y0=5, y1=3){ // map 3..5 → plot; keep a little headroom
+  const lo=3, hi=5, n=d.length
+  const px=i=> (i/(n-1))*100
+  const py=v=> (1-(v-lo)/(hi-lo))*100
+  return d.map((v,i)=>`${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ')
+}
+
+function render(){
+  const keys=['sleep','energy','form']
+  const lines = keys.map(k=>{
+    const on = !focus || focus===k
+    return `<polyline points="${path(M[k].data)}" fill="none" stroke="${M[k].color}" stroke-width="${focus===k?3:2.2}" stroke-opacity="${on?1:0.18}" vector-effect="non-scaling-stroke"/>`
+  }).join('')
+  const overallLine = `<polyline points="${path(overall)}" fill="none" stroke="var(--overall)" stroke-width="1.4" stroke-dasharray="4 3" stroke-opacity="${focus?0.15:0.5}" vector-effect="non-scaling-stroke"/>`
+  const svg = `<svg viewBox="0 0 100 100" preserveAspectRatio="none">
+     <line x1="0" y1="0"  x2="100" y2="0"  stroke="#222732" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>
+     <line x1="0" y1="50" x2="100" y2="50" stroke="#222732" vector-effect="non-scaling-stroke"/>
+     <line x1="0" y1="100" x2="100" y2="100" stroke="#222732" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>
+     ${overallLine}${lines}</svg>`
+
+  const legend = keys.map(k=>{const s=stat(M[k].data);const on=!focus||focus===k;
+    return `<div class="lrow ${on?'':'dim'}" ${mode==='b'?`onclick="toggleFocus('${k}')"`:''}>
+      <i style="background:${M[k].color}"></i><span class="nm">${M[k].nm}</span>
+      <span class="st">avg <b>${s.avg}</b> · min ${s.min} · max ${s.max}</span></div>`}).join('')
+  const ov=stat(overall)
+  const headNow = focus? M[focus].data[M[focus].data.length-1] : ov.avg
+  const headTitle = mode==='b'&&focus? M[focus].nm.replace(/^[^ ]+ /,'') : 'Check-in breakdown'
+
+  document.getElementById('card').innerHTML = `
+    <div class="wh"><h3>📝 ${headTitle} (1–5)</h3><span class="now" style="color:${focus?M[focus].color:'var(--text)'}">${headNow}</span></div>
+    <div class="foot">Overall avg ${ov.avg} · min ${ov.min} · max ${ov.max}${mode==='b'&&!focus?' — tap a metric below to focus':''}</div>
+    <div class="plot">
+      <span class="yl" style="top:0">5</span><span class="yl" style="top:50%">4</span><span class="yl" style="top:100%">3</span>
+      ${svg}
+    </div>
+    <div class="xl">${dates.map(d=>`<span>${d}</span>`).join('')}</div>
+    <div class="leg">${legend}
+      <div class="legmini"><span><i style="background:var(--overall)"></i>overall avg (faint)</span></div>
+    </div>`
+}
+function toggleFocus(k){focus=focus===k?null:k;render()}
+pick('a')
+</script>

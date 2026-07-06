@@ -287,7 +287,7 @@ test guide → the **🧪 Test guide** section below.
     FYI/future (JM: "we will have to work on the progress page"). Rework to surface progress for the athlete's ACTUAL sports:
     cycling/running (eFTP trend, weekly TSS/hours, Form/CTL climb, PRs / power curve, VO₂max trend) + adapt the headline
     stats + streak to endurance, not just gym reps×kg. Adaptive per `user.sports`. gymapp-only. Needs a mock (options-first).
-383. ⬜ **Check-in chart: break out Sleep · Energy · Form as separate lines (same graph) + each with min/max/avg.** JM
+383. 🔨 **Check-in chart: break out Sleep · Energy · Form as separate lines (same graph) + each with min/max/avg.** JM
     2026-07-06 (Wellness "📝 Check-in (your 1–5)" screenshot): today it plots the MEAN of energy/sleep/soreness (one purple
     daily + 7-day-avg line). JM wants the overall average KEPT, PLUS Sleep, Energy, and Form(=6−soreness / readiness Freshness)
     as their OWN lines in the same graph, each showing its avg · min · max. Data's already there (`checkins` → energy/sleep/
