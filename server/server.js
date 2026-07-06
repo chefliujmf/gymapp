@@ -668,17 +668,20 @@ app.get('/auth/readiness-forecast', auth, async (req, res) => {
   const latest = [...rows].reverse().find((r) => r.ctl != null && r.atl != null)
   if (!latest) return res.json({ connected: true, future: true, available: false })
   const tsbBaseline = wellnessBaselines(rows).tsbBaseline
-  // planned TSS per day, today+1 .. target, from intervals planned events
+  // #365 — planned TSS per day for the days BEFORE the target (today+1 .. target-1). We forecast the
+  // freshness you'll carry INTO the target day (morning readiness), so we do NOT include the target
+  // day's OWN planned session — otherwise a hard workout on that day projects its own post-session
+  // fatigue (Form crashes to e.g. −29.8 → "wrecked"), which is not how recovered you'll be going in.
   const evs = await icuGet(req.user, `/athlete/${ath}/events?oldest=${today}&newest=${date}`)
   const byDay = {}
   for (const e of (Array.isArray(evs) ? evs : [])) {
     const d = (e.start_date_local || '').slice(0, 10)
-    if (d <= today || d > date) continue
+    if (d <= today || d >= date) continue // between now and the target, EXCLUSIVE of the target's own session
     const load = e.icu_training_load || e.icu_planned_training_load || 0
     if (load > 0) byDay[d] = (byDay[d] || 0) + load
   }
   const loads = []
-  for (let dd = addDays(today, 1); dd <= date; dd = addDays(dd, 1)) loads.push(byDay[dd] || 0)
+  for (let dd = addDays(today, 1); dd < date; dd = addDays(dd, 1)) loads.push(byDay[dd] || 0)
   const f = forecastFreshness({ ctl: latest.ctl, atl: latest.atl, tsbBaseline }, loads)
   res.json({ connected: true, future: true, available: true, date, daysOut: loads.length, ...f, totalPlannedLoad: Math.round(loads.reduce((a, b) => a + b, 0)), plannedDays: Object.keys(byDay).length })
 })

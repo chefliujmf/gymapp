@@ -117,7 +117,13 @@ test guide → the **🧪 Test guide** section below.
     block (pulses) that names where it'll land (here + Progress + 🔔 notification), and POLLS `coach-reviews` so the real
     verdict + takeaways (+ score) appear inline the moment they land (~1–3 min) — with a "See all coach takeaways on Progress →"
     link. Also shows an existing review on mount. `.pw-fbrev` styles. 321 tests. On QA.
-347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
+365. 🔨 **Forecast "Expected" wrongly says "likely wrecked tomorrow, Form −29.8" when it's not true.** JM 2026-07-05.
+    ROOT: `/auth/readiness-forecast` projected planned load `today+1 .. target` **INCLUSIVE** — so a hard planned session
+    ON the target day projected its OWN post-session fatigue (Form crashes to −29.8 → freshness <1.6 → "Likely wrecked").
+    But the forecast is meant to show how recovered you'll be GOING INTO the day (morning readiness). Fix: project only the
+    days BEFORE the target (`today+1 .. target-1`, exclusive of the target's own session) — `server/server.js` loop `< date`
+    + filter `d >= date`. Now a fresh athlete going into a hard day reads fresh, and it still accumulates fatigue from the
+    intervening days. +3 readiness tests (#365), 324 total. gymapp-only.
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
