@@ -230,6 +230,18 @@ test guide → the **🧪 Test guide** section below.
     "move to…" date picker on the session (mobile-friendly — DnD is fiddly on touch, so likely BOTH: long-press drag on
     desktop + a "Move" action with a day picker on mobile). Server already supports date change via `upsertPlan` (same id,
     new date → re-pushes the intervals event); this is the UI. Respect one-session/day (offer to combine/bump if target full). gymapp-only.
+380. 🔨 **Moves made IN intervals (swap gym↔ride across days) must mirror back to Platyplus on "update".** JM 2026-07-06:
+    moved his gym to tomorrow + tomorrow's ride to today IN intervals, expects the Update/Refresh button to pull that into
+    Platyplus. TENSION: the model is **Platyplus-WINS** (`reconcileFromIcu` refreshes only icu-origin plans' title/notes/
+    segments — NOT date; Platyplus-origin plans are never overwritten → a Platyplus push would move it BACK). And #377 now
+    SKIPS importing gym events carrying our link → a gym MOVE in intervals wouldn't be detected. FIX (bidirectional SCHEDULE
+    sync): when an OWNED event's DATE changed in intervals, update the plan's date (mirror the move) for ALL origins, and
+    still allow a gym owned-plan's date to update despite the #377 skip (skip only NEW-shell imports, not date-refresh of an
+    already-owned plan). Also: what does the "update button" trigger today? Wire it to call `reconcileFromIcu`. Needs a small
+    design decision (which side wins on a same-session conflict) — likely "last edited wins" or "intervals move wins for date". gymapp.
+    **JM PICKED "intervals move wins for the DAY".** DONE: `reconcileFromIcu` owned-event block now adopts the intervals
+    `start_date_local` for the plan's date on EVERY origin (content stays Platyplus-owned unless icu-origin); `refreshed++`
+    → saves. Runs on every Today/Calendar load (so Refresh mirrors it). 335 tests.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client

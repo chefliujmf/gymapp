@@ -1701,10 +1701,18 @@ async function reconcileFromIcu(user, from, to) {
       // edits to the workout (and the #217 power_zone fix) propagate. icu-origin ONLY:
       // platyplus-origin plans are master and never overwritten. Completion/feedback untouched.
       const existing = user.plans.find((p) => p.icuEventId === ev.id)
-      if (existing && existing.origin === 'icu') {
-        const fresh = icuEventToPlan(ev)
-        const sig = (p) => JSON.stringify([p.title, p.notes, p.segments])
-        if (sig(existing) !== sig(fresh)) { existing.title = fresh.title; existing.notes = fresh.notes; existing.segments = fresh.segments; existing.updatedAt = Date.now(); refreshed++ }
+      if (existing) {
+        // #380 — a MOVE made IN intervals WINS FOR THE DAY (JM's pick): adopt the new date so a reschedule
+        // done on the intervals calendar mirrors back to Platyplus. Applies to EVERY origin (incl. gym — the
+        // #377 skip is only for NEW-shell imports, not a date-refresh of an already-owned plan). Content
+        // (exercises/steps/title) stays Platyplus-owned unless the plan itself originated in intervals.
+        const icuDate = String(ev.start_date_local || '').slice(0, 10)
+        if (icuDate && icuDate !== existing.date) { existing.date = icuDate; existing.updatedAt = Date.now(); refreshed++ }
+        if (existing.origin === 'icu') {
+          const fresh = icuEventToPlan(ev)
+          const sig = (p) => JSON.stringify([p.title, p.notes, p.segments])
+          if (sig(existing) !== sig(fresh)) { existing.title = fresh.title; existing.notes = fresh.notes; existing.segments = fresh.segments; existing.updatedAt = Date.now(); refreshed++ }
+        }
       }
       continue
     }
