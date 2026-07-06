@@ -199,6 +199,12 @@ test guide → the **🧪 Test guide** section below.
     cycling engine "verify the week TOTAL" line. THEN JM chose "rebalance now" → ran a targeted `/api/coach/run`: coach cut
     the week **441→~250 TSS**, dropped Sunday's threshold (no back-to-back), long ride 120→90min endurance, Fri tempo→easy,
     kept ONE quality day; Form peak now **-7.7** (was -22). Coach notified JM in-app. 332 tests.
+376. ⬜ **Load & Form charts have a GAP — the line stops ~Jun 24 and a disconnected segment restarts Jun 24→Jul 20.** JM
+    2026-07-06 (Fitness/Fatigue + Form screenshots): the historical (solid) line ends ~Jun 24, then the projected (dashed)
+    line starts later with a visible break — not continuous. Today is Jul 6, so it's odd the ACTUAL line stops Jun 24 AND
+    the projection doesn't start at today. Likely: historical + projected series are two arrays that don't share the join
+    point (projection should begin exactly at history's last real point), and/or a date-range mismatch leaves Jun 24–today
+    uncovered. REVIEW ALL the Stats graphs for the same discontinuity. gymapp-only.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client

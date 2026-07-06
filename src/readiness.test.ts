@@ -45,12 +45,16 @@ describe('baselines — cold-start gate', () => {
   })
 })
 
-// #375 — weekly load budget vs CTL, so the coach doesn't plan 2× sustainable.
+// #375 — weekly load budget is a BAND: reach the green productive zone, don't sit under it or blow past it.
 describe('weeklyLoadBudget', () => {
-  it('CTL 32 → ~224 sustainable, ~256 build, ~288 cap (441 is ~2× the build — an over-cook)', () => {
+  it('CTL 32 → flat 224, build 288, hard 352, overload cap 384', () => {
     const b = weeklyLoadBudget(32)
-    expect(b.sustainable).toBe(224); expect(b.build).toBe(256); expect(b.cap).toBe(288)
-    expect(441).toBeGreaterThan(b.cap * 1.5) // JM's planned week was well past the cap
+    expect(b.sustainable).toBe(224); expect(b.build).toBe(288); expect(b.hard).toBe(352); expect(b.cap).toBe(384)
+  })
+  it('a ~250 TSS week is only maintenance (near flat, grey Form) — a real build is higher', () => {
+    const b = weeklyLoadBudget(32)
+    expect(250).toBeLessThan(b.build) // the #375 over-correction sat below the productive band
+    expect(441).toBeGreaterThan(b.cap) // the original over-cook was past the overload cap
   })
   it('null for missing/zero CTL', () => {
     expect(weeklyLoadBudget(null)).toBeNull(); expect(weeklyLoadBudget(0)).toBeNull()
