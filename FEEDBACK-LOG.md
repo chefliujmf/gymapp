@@ -314,6 +314,11 @@ test guide → the **🧪 Test guide** section below.
     date range, so either they're not discoverable or the top "needs feedback" card ignores them. FIX: label the entry with
     its real sport + title + full date (not bare "Activity · Sat"); make the filters/sort obviously apply to everything incl.
     the feedback card; confirm sort-by-date works. gymapp-only.
+387. ⬜ **"Missing feedback" should be a HEADLINE, not buried in History.** JM 2026-07-06: the "N session(s) still need your
+    feedback" banner lives inside History/Logs — but post-workout feedback drives the coach's review + plan adaptation, so it
+    should be surfaced prominently (a headline on Today, and/or a badge/nudge on the Coach FAB or the top bar), not hidden a
+    tab away. Plan: show a compact "N to review → " card near the top of Today (links to the oldest one), reusing
+    `incompleteFeedback(acts)`; keep the History list too. Consider a count badge on the nav. gymapp-only. Small mock/confirm.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
