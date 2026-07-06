@@ -211,7 +211,7 @@ test guide → the **🧪 Test guide** section below.
     cycling engine "verify the week TOTAL" line. THEN JM chose "rebalance now" → ran a targeted `/api/coach/run`: coach cut
     the week **441→~250 TSS**, dropped Sunday's threshold (no back-to-back), long ride 120→90min endurance, Fri tempo→easy,
     kept ONE quality day; Form peak now **-7.7** (was -22). Coach notified JM in-app. 332 tests.
-376. ⬜ **Load & Form charts have a GAP — the line stops ~Jun 24 and a disconnected segment restarts Jun 24→Jul 20.** JM
+376. 🔨 **Load & Form charts have a GAP — the line stops ~Jun 24 and a disconnected segment restarts Jun 24→Jul 20.** JM
     2026-07-06 (Fitness/Fatigue + Form screenshots): the historical (solid) line ends ~Jun 24, then the projected (dashed)
     line starts later with a visible break — not continuous. Today is Jul 6, so it's odd the ACTUAL line stops Jun 24 AND
     the projection doesn't start at today. Likely: historical + projected series are two arrays that don't share the join
@@ -228,6 +228,13 @@ test guide → the **🧪 Test guide** section below.
     tail intervals hasn't finalised) sitting BETWEEN the solid history and the dashed projection. FIX: `Fitness.tsx` now
     TRIMS trailing dataless days (`fitness==null && fatigue==null`) so history ends at its last REAL point → projection
     joins seamlessly. If it STILL shows after this + a refresh, it's the PWA cache (instrument the live client next).
+    ✅ ROOT CAUSE (2026-07-06, JM: "worked for fitness & fatigue, not form"): I RENDERED the real `TrendChart` with JM's
+    real data (esbuild+react-dom/server → PNG) and PROVED all 4 lines are continuous to the projection end — NO gap in any.
+    The Form line only *looked* broken because its colour was `fz.color` (the current zone → **grey #9aa3b2**), and in the
+    projected region a grey line sits over the grey neutral band + the grey "today" shading = invisible. Fitness/Fatigue are
+    vivid blue/purple so they read fine. FIX: Form line is now **`var(--text)` (bright white)** — stands out over every band +
+    the shading, so the projection is unmistakable. Verified via faithful render (grey vs white side-by-side). Lesson: don't
+    colour a trend LINE the same neutral as its background bands; the bands carry the zone, the line carries the trajectory.
 377. 🔨 **Gym workout doesn't render its exercises in Platyplus (coach plan detail shows title + blurb, then BLANK).** JM
     2026-07-06 (prod screenshot): the "Upper-Body & Trunk Strength" gym session opens to the title + one-line coach note,
     then nothing — the exercise list (DB Bench, Lat Pulldown, Face Pull, Pallof, Dead Bug…) is missing, even though it IS
@@ -349,6 +356,14 @@ test guide → the **🧪 Test guide** section below.
     (b) fill days past the planned horizon with the athlete's rolling avg load (a "if you hold this" projection), clearly
     labelled; optionally (c) bump the coach's planning horizon. The To filter caps history at today (correct — no wellness
     past today); a longer PROJECTION auto-extends the axis, so the filter needn't change. Ask JM the horizon (4/6 wk / to a race). gymapp.
+    ✅ SHIPPED as **4 weeks** (JM's pick): `readinessProjection(28)`; endpoint fills days past the last PLANNED event with a
+    HELD load (`heldLoad = round(latest.ctl)`) → an "if you keep training like this" tail, labelled via an ⓘ on the Form note.
+392. 🔨 **Expanded-chart modal (⤢ Load/Form) — the ✕ won't close it; you get stuck in the fullscreen chart.** JM 2026-07-06
+    (Form modal screenshot: "once a graph is open, cannot click on the X to close it"). On mobile the panel is near-fullscreen
+    so there's barely any backdrop to tap as a fallback, and the ✕ tap wasn't landing reliably. FIX (`charts.tsx` `ChartModal`
+    + `styles.css`): closes **3 ways now — ✕, tap-outside, and Escape**; the head is `position:sticky; z-index:3` (its own
+    stacking layer, always above the chart's scrub/pointer area so the chart can never intercept the close tap) with
+    `touch-action:manipulation` on the ✕ (no 300ms tap delay / double-tap zoom); body scroll locked while open. gymapp-only.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
