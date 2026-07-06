@@ -1589,6 +1589,17 @@ function withDefaultTempo(x) {
 async function upsertPlan(user, body, actor = 'coach') {
   const err = validatePlan(body); if (err) return { status: 400, body: { error: err } }
   const i = user.plans.findIndex((p) => p.id === body.id)
+  // #371 — ENFORCE the athlete's max sessions/day for COACH-created plans (the UI path uses actor 'you' and
+  // is exempt — a person can double-book if they want). Instruction alone drifted: the coach was stacking two
+  // same-sport rides on a day (max 1). REJECT a NEW session on a day already at the cap → it must COMBINE into
+  // the existing session (same id = update) or move to a free day. Doesn't block updates (same id).
+  if (actor === 'coach' && i < 0) {
+    const maxPerDay = Math.max(1, Number(user.info?.maxPerDay) || 1)
+    const sameDay = (user.plans || []).filter((p) => p.date === body.date)
+    if (sameDay.length >= maxPerDay) {
+      return { status: 409, body: { error: `Rejected — ${body.date} already has ${sameDay.length} session(s) and the athlete's max is ${maxPerDay}/day (${sameDay.map((p) => `"${p.title}"`).join(', ')}). Do NOT stack sessions: either COMBINE this into that day's existing session (re-call create_* with THAT session's id to make it one longer/richer workout) or move it to a free day. Two short rides of the same sport should be ONE session, not two.` } }
+    }
+  }
   const plan = {
     id: body.id, date: body.date, sport: body.sport, title: body.title,
     notes: body.notes || '', updatedAt: Date.now(),

@@ -156,7 +156,13 @@ test guide → the **🧪 Test guide** section below.
     the exposed `updateSW(true)` (activates a newer bundle if one's waiting → picks up post-deploy changes, #200) then reloads
     (1.5s fallback reload if no new SW). Shown on DESKTOP only (`@media (hover:hover) and (pointer:fine)`) since mobile
     swipes. gymapp-only.
-    UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
+371. 🔨 **Coach double-booked days (2 same-sport rides/day) despite max 1/day.** JM 2026-07-06 (intervals screenshot: Wed 8
+    = "Sweet Spot 2×15 — FTP Builder" + "Sweet Spot 2×15"; Fri 10 + Sat 11 similar). The one-per-day rule IS in the coach
+    prompt (server.js:1113) + the #367 daily-adapt msg, but instruction drifted (same lesson as #168). ENFORCED server-side:
+    `upsertPlan` now REJECTS (409) a NEW **coach**-created session (`actor==='coach'`, `i<0`) on a day already at the athlete's
+    `maxPerDay` — message tells the coach to COMBINE into that day's session (same id) or move it; two short same-sport rides
+    should be ONE. UI path (`actor==='you'`) exempt. Also: 2 sessions of the same sport ≠ one long ride (JM). Existing doubles
+    on his prod calendar cleaned via a coach dedup run. 324 tests. On QA→prod.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
