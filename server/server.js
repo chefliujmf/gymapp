@@ -1226,32 +1226,85 @@ async function runCoachTask(user, message) {
 const TOOL_LABEL = { get_wellness: 'your wellness data', get_checkins: 'your check-ins', get_recent_activities: 'your recent activity', list_schedule: 'your schedule', get_weather: 'the weather', check_connections: 'your connections', search_exercises: 'the exercise library', search_recipes: 'recipes', create_workout: 'a gym session', create_ride: 'a ride', create_run: 'a run', schedule_recovery: 'recovery', schedule_supplement: 'supplements', save_coach_review: 'your review', set_activity_text: 'your activity notes', set_athlete_profile: 'your profile', set_thresholds: 'your thresholds', set_weekly_target: 'your week', save_coach_memory: 'your coaching notes', schedule_meal: 'a meal', schedule_mind: 'a mind session', notify: 'a note for you' }
 const friendlyTool = (name) => { const t = String(name || '').replace(/^mcp__platyplus__/, ''); return TOOL_LABEL[t] || t.replace(/_/g, ' ') }
 
-// #356 — persist the coach conversation server-side so it SYNCS across devices (the client used to keep
-// it in sessionStorage only → invisible on another device). Stored in the user doc (JSONB), capped.
+// #363 — coach conversations as THREADS (ChatGPT/Claude-style): named + searchable, each keeping its own
+// claude --resume session (per-conversation memory), all persisted server-side so they SYNC across devices
+// (#356). The pre-threads single conversation (chatMsgs) migrates into the first thread. `chatMsgs` is kept
+// as a mirror of the ACTIVE thread for backward compat.
+const chatTitleOf = (msgs) => { const u = (msgs || []).find((m) => m.role === 'user'); return u ? String(u.text).replace(/\s+/g, ' ').trim().slice(0, 60) : '' }
+function ensureThreads(user) {
+  if (!Array.isArray(user.chatThreads)) user.chatThreads = []
+  if (!user.chatThreads.length && Array.isArray(user.chatMsgs) && user.chatMsgs.length) {
+    user.chatThreads.push({ id: newId(), title: chatTitleOf(user.chatMsgs), sessionId: user.chatSession || null, msgs: user.chatMsgs, createdAt: Date.now(), updatedAt: Date.now() })
+    user.chatThreadId = user.chatThreads[0].id
+  }
+  return user.chatThreads
+}
+function activeThread(user) {
+  ensureThreads(user)
+  let t = user.chatThreads.find((x) => x.id === user.chatThreadId)
+  if (!t) t = user.chatThreads.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0] || null
+  if (!t) { t = { id: newId(), title: '', sessionId: null, msgs: [], createdAt: Date.now(), updatedAt: Date.now() }; user.chatThreads.unshift(t) }
+  user.chatThreadId = t.id
+  user.chatMsgs = t.msgs // compat mirror
+  return t
+}
+const threadSummary = (t, activeId) => { const last = (t.msgs || [])[(t.msgs || []).length - 1]; return { id: t.id, title: t.title || 'New conversation', at: new Date(t.updatedAt || t.createdAt || Date.now()).toISOString(), preview: last ? String(last.text).replace(/\s+/g, ' ').trim().slice(0, 90) : '', active: t.id === activeId } }
+
+// persist a completed turn into the ACTIVE thread (append + auto-title + touch updatedAt). #363
 function persistChat(user, userMsg, coachReply) {
   if (!coachReply || !coachReply.trim()) return
-  user.chatMsgs = Array.isArray(user.chatMsgs) ? user.chatMsgs : []
-  user.chatMsgs.push({ role: 'user', text: userMsg, ts: Date.now() }, { role: 'coach', text: coachReply, ts: Date.now() })
-  if (user.chatMsgs.length > 200) user.chatMsgs = user.chatMsgs.slice(-200)
+  const t = activeThread(user)
+  t.msgs.push({ role: 'user', text: userMsg, ts: Date.now() }, { role: 'coach', text: coachReply, ts: Date.now() })
+  if (t.msgs.length > 400) t.msgs = t.msgs.slice(-400)
+  if (!t.title) t.title = chatTitleOf(t.msgs)
+  t.updatedAt = Date.now()
+  user.chatMsgs = t.msgs
   save(store)
 }
-// The conversation history for THIS user (any device loads it → same thread everywhere).
-app.get('/auth/chat/history', auth, (req, res) => res.json(req.user.chatMsgs || []))
-// Seed the synced history from a device's LOCAL copy — ONLY when the server has none yet (migrates a
-// conversation typed before sync existed; never clobbers). #356
+
+// list conversations (newest first) + which is active
+app.get('/auth/chat/threads', auth, (req, res) => { ensureThreads(req.user); res.json({ activeId: req.user.chatThreadId || null, threads: (req.user.chatThreads || []).slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).map((t) => threadSummary(t, req.user.chatThreadId)) }) })
+// open a conversation (makes it active) → its messages
+app.get('/auth/chat/threads/:id', auth, (req, res) => { ensureThreads(req.user); const t = (req.user.chatThreads || []).find((x) => x.id === req.params.id); if (!t) return res.status(404).json({ error: 'no such conversation' }); req.user.chatThreadId = t.id; req.user.chatMsgs = t.msgs; save(store); res.json({ id: t.id, title: t.title || '', msgs: t.msgs || [] }) })
+// new conversation (fresh claude session) → becomes active
+app.post('/auth/chat/threads', auth, (req, res) => { ensureThreads(req.user); const t = { id: newId(), title: '', sessionId: null, msgs: [], createdAt: Date.now(), updatedAt: Date.now() }; req.user.chatThreads.unshift(t); req.user.chatThreadId = t.id; req.user.chatMsgs = []; save(store); res.status(201).json({ id: t.id }) })
+app.delete('/auth/chat/threads/:id', auth, (req, res) => { ensureThreads(req.user); req.user.chatThreads = (req.user.chatThreads || []).filter((x) => x.id !== req.params.id); if (req.user.chatThreadId === req.params.id) { const nt = req.user.chatThreads.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0]; req.user.chatThreadId = nt ? nt.id : null; req.user.chatMsgs = nt ? nt.msgs : [] } save(store); res.json({ ok: true }) })
+// search ACROSS all conversations → matching snippets (title + a window around the hit). #363
+app.get('/auth/chat/search', auth, (req, res) => {
+  ensureThreads(req.user)
+  const q = String(req.query.q || '').trim().toLowerCase()
+  if (q.length < 2) return res.json([])
+  const out = []
+  for (const t of (req.user.chatThreads || []).slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))) {
+    for (const m of t.msgs || []) {
+      const txt = String(m.text || ''); const i = txt.toLowerCase().indexOf(q)
+      if (i < 0) continue
+      const snippet = (i > 24 ? '…' : '') + txt.slice(Math.max(0, i - 24), i + q.length + 44).replace(/\s+/g, ' ').trim() + '…'
+      out.push({ threadId: t.id, title: t.title || 'New conversation', at: new Date(t.updatedAt || Date.now()).toISOString(), snippet, role: m.role })
+      if (out.length >= 40) return res.json(out)
+    }
+  }
+  res.json(out)
+})
+
+// The ACTIVE conversation's messages (any device loads it → same thread everywhere). #356
+app.get('/auth/chat/history', auth, (req, res) => { const t = activeThread(req.user); save(store); res.json(t.msgs || []) })
+// Seed the ACTIVE thread from a device's LOCAL copy — ONLY when it's empty (migrates a pre-sync convo). #356
 app.post('/auth/chat/history', auth, (req, res) => {
-  if (!Array.isArray(req.user.chatMsgs) || !req.user.chatMsgs.length) {
+  const t = activeThread(req.user)
+  if (!t.msgs.length) {
     const msgs = (Array.isArray(req.body?.msgs) ? req.body.msgs : [])
       .filter((m) => m && (m.role === 'user' || m.role === 'coach') && typeof m.text === 'string' && m.text.trim())
-      .slice(-200).map((m) => ({ role: m.role, text: m.text, ts: Number(m.ts) || Date.now() }))
-    if (msgs.length) { req.user.chatMsgs = msgs; save(store) }
+      .slice(-400).map((m) => ({ role: m.role, text: m.text, ts: Number(m.ts) || Date.now() }))
+    if (msgs.length) { t.msgs.push(...msgs); if (!t.title) t.title = chatTitleOf(t.msgs); t.updatedAt = Date.now(); req.user.chatMsgs = t.msgs; save(store) }
   }
-  res.json(req.user.chatMsgs || [])
+  res.json(t.msgs || [])
 })
 
 app.post('/auth/chat', auth, async (req, res) => {
   const message = String(req.body?.message || '').trim().slice(0, 4000)
   if (!message) return res.status(400).json({ error: 'empty message' })
+  const thread = activeThread(req.user) // #363 — this turn belongs to the active conversation (its own claude session)
   // Stream tokens to the client over SSE.
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
@@ -1269,7 +1322,7 @@ app.post('/auth/chat', auth, async (req, res) => {
       const hr = await fetch(CHAT_HELPER_URL + '/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-chat-secret': CHAT_HELPER_SECRET },
-        body: JSON.stringify({ message, token: req.user.apiToken, coach: req.user.coachName || 'Coach', systemPrompt: buildSystemPrompt(req.user), sessionId: req.user.chatSession }),
+        body: JSON.stringify({ message, token: req.user.apiToken, coach: req.user.coachName || 'Coach', systemPrompt: buildSystemPrompt(req.user), sessionId: thread.sessionId }),
       })
       if (!hr.ok || !hr.body) { send({ error: 'coach unavailable (' + hr.status + ')' }); return pend() }
       const reader = hr.body.getReader(); const dec = new TextDecoder(); let hbuf = ''
@@ -1282,8 +1335,8 @@ app.post('/auth/chat', auth, async (req, res) => {
           const data = hbuf.slice(0, i).split('\n').find((l) => l.startsWith('data:')); hbuf = hbuf.slice(i + 2)
           if (!data) continue
           let ev; try { ev = JSON.parse(data.slice(5).trim()) } catch { continue }
-          if (ev.sessionId) { req.user.chatSession = ev.sessionId; save(store) } // persist, don't forward
-          else if (ev.error && /no conversation found|session id/i.test(String(ev.error))) { delete req.user.chatSession; save(store); send({ error: 'Lost the thread — tap send again to start fresh.' }) } // stale session → clear so next send is fresh
+          if (ev.sessionId) { thread.sessionId = ev.sessionId; save(store) } // #363 persist per-thread, don't forward
+          else if (ev.error && /no conversation found|session id/i.test(String(ev.error))) { thread.sessionId = null; save(store); send({ error: 'Lost the thread — tap send again to start fresh.' }) } // stale session → clear so next send is fresh
           else if (!ev.done) { if (ev.delta) reply += ev.delta; send(ev) } // forward delta / tool / error (our own done at the end); #356 accumulate the reply to persist
         }
       }
@@ -1307,7 +1360,7 @@ app.post('/auth/chat', auth, async (req, res) => {
   // Run claude; if a stored session id is STALE (claude's local session store can vanish across
   // restarts → "No conversation found with session ID"), drop it and retry ONCE with a fresh thread.
   const run = (resume, isRetry) => {
-    const args = resume && req.user.chatSession ? [...baseArgs, '--resume', req.user.chatSession] : baseArgs
+    const args = resume && thread.sessionId ? [...baseArgs, '--resume', thread.sessionId] : baseArgs
     const proc = spawn(CLAUDE_BIN, args, { env: process.env })
     proc.stdin?.end() // close stdin (EOF) so claude doesn't wait for piped input
     const killer = setTimeout(() => proc.kill('SIGKILL'), 180000)
@@ -1321,7 +1374,7 @@ app.post('/auth/chat', auth, async (req, res) => {
         let ev; try { ev = JSON.parse(line) } catch { continue }
         if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') { sawOutput = true; reply += ev.event.delta.text; send({ delta: ev.event.delta.text }) }
         else if (ev.type === 'stream_event' && ev.event?.type === 'content_block_start' && ev.event.content_block?.type === 'tool_use') send({ tool: friendlyTool(ev.event.content_block.name) }) // #353
-        else if (ev.type === 'result' && ev.session_id) { req.user.chatSession = ev.session_id; save(store) }
+        else if (ev.type === 'result' && ev.session_id) { thread.sessionId = ev.session_id; save(store) }
       }
     })
     proc.stderr.on('data', (d) => (err += d))
@@ -1330,7 +1383,7 @@ app.post('/auth/chat', auth, async (req, res) => {
       clearTimeout(killer)
       // Stale-session recovery: clear the bad id and retry fresh, once, before surfacing anything.
       if (!isRetry && resume && !sawOutput && /no conversation found|session id/i.test(err)) {
-        delete req.user.chatSession; save(store); return run(false, true)
+        thread.sessionId = null; save(store); return run(false, true)
       }
       if (err && !sawOutput) send({ error: err.slice(0, 200) })
       end()
@@ -1342,7 +1395,8 @@ app.post('/auth/chat', auth, async (req, res) => {
   run(true, false)
 })
 // Reset the per-user conversation thread.
-app.post('/auth/chat/reset', auth, (req, res) => { delete req.user.chatSession; delete req.user.chatMsgs; save(store); res.json({ ok: true }) }) // #356 clear synced history too
+// #363 — "reset" now starts a NEW conversation (a fresh thread), leaving past ones in the history.
+app.post('/auth/chat/reset', auth, (req, res) => { ensureThreads(req.user); const t = { id: newId(), title: '', sessionId: null, msgs: [], createdAt: Date.now(), updatedAt: Date.now() }; req.user.chatThreads.unshift(t); req.user.chatThreadId = t.id; req.user.chatMsgs = []; delete req.user.chatSession; save(store); res.json({ ok: true, id: t.id }) })
 
 // ---- coach REST API (Bearer token) ---------------------------------------
 // The cyclingcoach dual-writes each session here (rich execution detail) and to

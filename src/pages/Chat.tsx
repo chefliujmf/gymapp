@@ -17,6 +17,16 @@ function fmtChatTime(ts: number): string {
   return `${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${time}`
 }
 
+// #363 — conversation-list helpers: day buckets, a compact relative time, and query highlighting.
+const chatDayBucket = (iso: string) => { const d = new Date(iso), now = new Date(); if (d.toDateString() === now.toDateString()) return 'Today'; const y = new Date(now); y.setDate(now.getDate() - 1); if (d.toDateString() === y.toDateString()) return 'Yesterday'; return 'Earlier' }
+const fmtRel = (iso: string) => { const d = new Date(iso), now = new Date(); return d.toDateString() === now.toDateString() ? d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) }
+function hlSnippet(text: string, q: string): React.ReactNode[] {
+  if (!q) return [text]
+  const out: React.ReactNode[] = []; const lo = text.toLowerCase(), ql = q.toLowerCase(); let i = 0, idx: number
+  while ((idx = lo.indexOf(ql, i)) >= 0) { if (idx > i) out.push(text.slice(i, idx)); out.push(<mark key={idx} className="chat-hl">{text.slice(idx, idx + q.length)}</mark>); i = idx + q.length }
+  out.push(text.slice(i)); return out
+}
+
 // #338 — render the coach's reply with light structure (mini-headers, bullets, bold) instead of a
 // wall of text. Pure, dependency-free, no HTML injection (parseBlocks in chatFormat.ts).
 function Spans({ spans }: { spans: Inline[] }) {
@@ -79,6 +89,11 @@ export default function Chat() {
   const [busy, setBusy] = useState(false)
   const [waitedLong, setWaitedLong] = useState(false) // #306(c): show "still working…" after a few s
   const [reviewing, setReviewing] = useState<string | null>(null) // #353: what the coach is currently reading/doing
+  // #363 — conversations (threads) drawer + search
+  const [showThreads, setShowThreads] = useState(false)
+  const [threads, setThreads] = useState<{ id: string; title: string; at: string; preview: string; active: boolean }[]>([])
+  const [search, setSearch] = useState('')
+  const [results, setResults] = useState<{ threadId: string; title: string; at: string; snippet: string }[]>([])
   const [coach, setCoach] = useState('Coach')
   const [listening, setListening] = useState(false)
   useEffect(() => { try { localStorage.setItem('chatMsgs', JSON.stringify(msgs)) } catch { /* quota */ } }, [msgs])
@@ -156,11 +171,24 @@ export default function Chat() {
       setMsgs((m) => { const c = [...m]; const last = c[c.length - 1]; if (last?.role === 'coach' && !last.text) c[c.length - 1] = { role: 'coach', text: '⚠️ ' + msg }; return c })
     } finally { clearTimeout(longTimer); clearTimeout(killTimer); setBusy(false); setWaitedLong(false); setReviewing(null); if (onboarding || building) refresh().catch(() => {}) } // #257 pick up onboardedAt once the coach finishes
   }
-  async function reset() {
-    if (!confirm('Start a new conversation?')) return
-    await authApi.chatReset().catch(() => {})
-    setMsgs([]); try { localStorage.removeItem('chatMsgs'); sessionStorage.removeItem('chatMsgs') } catch { /* ignore */ }
+  // #363 — conversations: open the drawer, switch/create/delete a thread, search across all of them.
+  const clearLocal = () => { try { localStorage.removeItem('chatMsgs'); sessionStorage.removeItem('chatMsgs') } catch { /* ignore */ } }
+  async function openThreads() { setShowThreads(true); setSearch(''); setResults([]); try { setThreads((await authApi.chatThreads()).threads) } catch { /* */ } }
+  async function openThread(id: string) { try { const t = await authApi.chatThread(id); setMsgs((t.msgs || []).map((m) => ({ role: m.role, text: m.text, ts: m.ts }))) } catch { /* */ } setShowThreads(false) }
+  async function newThread() { try { await authApi.chatNewThread() } catch { /* */ } setMsgs([]); clearLocal(); setShowThreads(false) }
+  async function delThread(id: string, e: React.MouseEvent) {
+    e.stopPropagation(); if (!confirm('Delete this conversation?')) return
+    try { await authApi.chatDeleteThread(id) } catch { /* */ }
+    const r = await authApi.chatThreads().catch(() => null); if (r) setThreads(r.threads)
+    // if we deleted the open one, reload whatever is now active
+    authApi.chatHistory().then((h) => setMsgs((Array.isArray(h) ? h : []).map((m) => ({ role: m.role, text: m.text, ts: m.ts })))).catch(() => {})
   }
+  // debounced search across conversations
+  useEffect(() => {
+    if (search.trim().length < 2) { setResults([]); return }
+    let live = true; const h = setTimeout(() => { authApi.chatSearch(search.trim()).then((r) => { if (live) setResults(r) }).catch(() => {}) }, 250)
+    return () => { live = false; clearTimeout(h) }
+  }, [search])
 
   // ── #310 onboarding step flow — walk the applicable steps, open the real pages ──────────────
   if (onboarding && !building && user) {
@@ -216,9 +244,49 @@ export default function Chat() {
     <div className="chat">
       <div className="chat-top">
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
+        <button className="icon-btn" onClick={openThreads} aria-label="Conversations" title="Conversations">🕘</button>
         <div className="chat-title">{coach}<span>your coach</span></div>
-        <button className="icon-btn" onClick={reset} aria-label="New conversation" title="New conversation">↻</button>
+        <button className="icon-btn" onClick={newThread} aria-label="New conversation" title="New conversation">＋</button>
       </div>
+
+      {/* #363 — conversations drawer: search + New + past chats (day-grouped), all synced. */}
+      {showThreads && (
+        <div className="chat-threads">
+          <div className="chat-threads__h">
+            <button className="icon-btn" onClick={() => setShowThreads(false)} aria-label="Close">‹</button>
+            <b>Conversations</b>
+            <button className="chat-threads__new" onClick={newThread}>＋ New</button>
+          </div>
+          <div className="chat-threads__search"><span>🔍</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search conversations…" autoFocus /></div>
+          <div className="chat-threads__list">
+            {search.trim().length >= 2 ? (
+              results.length ? (<>
+                <div className="chat-threads__hint">{results.length} match{results.length === 1 ? '' : 'es'}</div>
+                {results.map((r, i) => (
+                  <button key={i} className="chat-conv" onClick={() => openThread(r.threadId)}>
+                    <div className="chat-conv__t"><b>{r.title}</b><time>{fmtRel(r.at)}</time></div>
+                    <div className="chat-conv__pv">{hlSnippet(r.snippet, search.trim())}</div>
+                  </button>
+                ))}
+              </>) : <p className="chat-threads__empty">No matches for “{search.trim()}”.</p>
+            ) : (
+              threads.length ? threads.map((t, i) => {
+                const bucket = chatDayBucket(t.at)
+                const header = i === 0 || chatDayBucket(threads[i - 1].at) !== bucket
+                return (
+                  <div key={t.id}>
+                    {header && <div className="chat-threads__day">{bucket}</div>}
+                    <button className={'chat-conv' + (t.active ? ' chat-conv--active' : '')} onClick={() => openThread(t.id)}>
+                      <div className="chat-conv__t"><b>{t.title}</b><time>{fmtRel(t.at)}</time><span className="chat-conv__x" role="button" aria-label="Delete" onClick={(e) => delThread(t.id, e)}>✕</span></div>
+                      {t.preview && <div className="chat-conv__pv">{t.preview}</div>}
+                    </button>
+                  </div>
+                )
+              }) : <p className="chat-threads__empty">No conversations yet — start one below.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="chat-body">
         {msgs.length === 0 && (

@@ -1,0 +1,95 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coach — conversations + search</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#262a33;--soft:#161a22}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05070a;color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:18px 12px 40px}
+  .row{display:flex;gap:20px;justify-content:center;flex-wrap:wrap}
+  .col{width:390px}
+  .cap{text-align:center;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);margin-bottom:8px}
+  .phone{background:var(--bg);border-radius:22px;border:1px solid #1c2029;overflow:hidden;height:720px;display:flex;flex-direction:column;position:relative}
+  .top{display:flex;align-items:center;gap:8px;padding:14px 14px 10px;border-bottom:1px solid var(--line)}
+  .icon{width:34px;height:34px;border-radius:10px;background:#1b1f28;border:1px solid var(--line);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+  .ttl{flex:1}.ttl b{font-size:16px;font-weight:800;display:block}.ttl span{font-size:11.5px;color:var(--dim)}
+  /* drawer */
+  .drawer{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column}
+  .dh{display:flex;align-items:center;gap:8px;padding:14px 14px 12px}
+  .dh b{flex:1;font-size:17px;font-weight:800}
+  .newbtn{background:var(--accent);color:#07140c;font-weight:800;font-size:13px;border:0;border-radius:10px;padding:8px 13px}
+  .search{margin:2px 14px 10px;display:flex;align-items:center;gap:8px;background:var(--soft);border:1px solid var(--line);border-radius:11px;padding:9px 12px}
+  .search input{flex:1;background:none;border:0;color:var(--text);font-size:14px;outline:none}
+  .search input::placeholder{color:var(--dim)}
+  .list{flex:1;overflow-y:auto;padding:2px 8px 14px}
+  .conv{padding:11px 10px;border-radius:12px;cursor:pointer}
+  .conv:hover,.conv.active{background:#171b23}
+  .conv .ct{display:flex;align-items:baseline;gap:8px}
+  .conv .ct b{flex:1;font-size:14.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .conv .ct time{font-size:11px;color:var(--dim);flex:none}
+  .conv .pv{font-size:12.5px;color:var(--dim);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .conv .pv mark{background:transparent;color:var(--accent);font-weight:700}
+  .daygroup{font-size:11px;font-weight:800;text-transform:uppercase;color:var(--dim);letter-spacing:.04em;padding:12px 10px 4px}
+  .hint{font-size:11px;color:var(--dim);text-align:center;padding:8px 14px}
+  /* chat body (context) */
+  .body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:82%;padding:10px 13px;border-radius:15px;font-size:14px;line-height:1.4}
+  .msg.u{align-self:flex-end;background:linear-gradient(120deg,#34e07d,#24b866);color:#062011;border-bottom-right-radius:5px}
+  .msg.c{align-self:flex-start;background:var(--soft);border:1px solid var(--line);border-bottom-left-radius:5px}
+  .sep{align-self:center;font-size:11px;color:var(--dim);font-weight:600;margin:4px 0}
+  .inp{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+  .inp .box{flex:1;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:10px 12px;color:var(--dim);font-size:14px}
+  .send{width:40px;height:40px;border-radius:12px;background:var(--accent);color:#07140c;font-weight:800;border:0;font-size:18px}
+</style>
+
+<div class="row">
+  <!-- A: chat with a history button -->
+  <div class="col"><div class="cap">Chat — new "history" button</div>
+    <div class="phone">
+      <div class="top"><div class="icon">‹</div><div class="icon">🕘</div><div class="ttl"><b>Tadej</b><span>your coach</span></div><div class="icon">＋</div></div>
+      <div class="body">
+        <div class="sep">Today · 2:14 PM</div>
+        <div class="msg u">can you readjust my training plan? i feel good today</div>
+        <div class="msg c">Let me pull up your plan, recent activity and wellness so I adjust from real data… <b>Bumped Thursday to a threshold set</b> and kept the weekend endurance.</div>
+        <div class="sep">3:02 PM</div>
+        <div class="msg u">what's the weather for tomorrow's ride?</div>
+        <div class="msg c">~29°C, light wind — <b>judge by feel</b>, 500–750 ml/h + electrolytes.</div>
+      </div>
+      <div class="inp"><div class="box">Message Tadej…</div><button class="send">↑</button></div>
+    </div>
+  </div>
+
+  <!-- B: conversations drawer + search -->
+  <div class="col"><div class="cap">🕘 Conversations + search</div>
+    <div class="phone">
+      <div class="drawer">
+        <div class="dh"><div class="icon">‹</div><b>Conversations</b><button class="newbtn">＋ New</button></div>
+        <div class="search">🔍 <input placeholder="Search conversations…" value=""></div>
+        <div class="list">
+          <div class="daygroup">Today</div>
+          <div class="conv active"><div class="ct"><b>Readjust my plan — feeling good</b><time>2:14 PM</time></div><div class="pv">~29°C, light wind — judge by feel, 500–750 ml/h…</div></div>
+          <div class="conv"><div class="ct"><b>3 high-protein dinners</b><time>11:40 AM</time></div><div class="pv">Here are 3: tofu shakshuka, green-pea pasta…</div></div>
+          <div class="daygroup">Yesterday</div>
+          <div class="conv"><div class="ct"><b>Why is my FTP not computed?</b><time>Jul 4</time></div><div class="pv">eFTP lands after a hard ~5–20 min effort…</div></div>
+          <div class="conv"><div class="ct"><b>Move Friday's ride to Sunday</b><time>Jul 4</time></div><div class="pv">Done — Sunday now has the threshold validation…</div></div>
+          <div class="daygroup">Earlier</div>
+          <div class="conv"><div class="ct"><b>Set up my running paces</b><time>Jul 2</time></div><div class="pv">Your threshold pace is ~4:57/km — easy runs…</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C: search active -->
+  <div class="col"><div class="cap">Search "protein" — matches inside chats</div>
+    <div class="phone">
+      <div class="drawer">
+        <div class="dh"><div class="icon">‹</div><b>Search</b><button class="newbtn">＋ New</button></div>
+        <div class="search" style="border-color:var(--accent)">🔍 <input placeholder="Search…" value="protein" style="color:var(--text)"></div>
+        <div class="hint">3 matches in 2 conversations</div>
+        <div class="list">
+          <div class="conv"><div class="ct"><b>3 high-protein dinners</b><time>Today</time></div><div class="pv">…tofu shakshuka ~28g <mark>protein</mark>, green-pea pasta…</div></div>
+          <div class="conv"><div class="ct"><b>Eat: refuel a big day</b><time>Jul 3</time></div><div class="pv">…recovery plate with carbs + 25–35g <mark>protein</mark>…</div></div>
+          <div class="conv"><div class="ct"><b>Eat: refuel a big day</b><time>Jul 3</time></div><div class="pv">…aim ~1.8 g/kg <mark>protein</mark> on hard days…</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
