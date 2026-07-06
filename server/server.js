@@ -28,7 +28,7 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss, stripPlatyplusLinks } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss, stripPlatyplusLinks, stripDerivedWorkout } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay } from './cycle.js' // #329
 
@@ -1511,7 +1511,7 @@ function planToIcuEvent(plan, items = []) {
     // full plan (meals/mind/recovery) stays in Platyplus via the link.
     const native = nativeWorkoutText(segs, isRun)
     if (!isRun && segs.length) ev.workout_doc = { steps: segs.flatMap((s) => encodeStep(s, false)) }
-    ev.description = [native, stripPlatyplusLinks(plan.notes), shortCoachNote(plan)].filter(Boolean).join('\n\n')
+    ev.description = [native, stripDerivedWorkout(stripPlatyplusLinks(plan.notes)), shortCoachNote(plan)].filter(Boolean).join('\n\n')
   } else {
     ev.type = 'WeightTraining'
     // #301 — DON'T mirror gym structure as text (tempo/sets can't round-trip through intervals, which
@@ -1678,7 +1678,7 @@ async function deletePlanById(user, id, actor = 'coach') {
 function icuEventToPlan(ev) {
   const date = String(ev.start_date_local || '').slice(0, 10)
   const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
-  const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: stripPlatyplusLinks(ev.description || ''), origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
+  const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: stripDerivedWorkout(stripPlatyplusLinks(ev.description || '')), origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
   if (sport === 'ride' || sport === 'run') {
     plan.segments = flattenIcuStepsSrv(ev.workout_doc?.steps || [])
   } else {
