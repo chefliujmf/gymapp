@@ -68,6 +68,25 @@ describe('freshness (ACWR + TSB)', () => {
   })
 })
 
+describe('#365 forecast = MORNING readiness (exclude the target day’s own session)', () => {
+  const state = { ctl: 55, atl: 55 } // balanced, Form ~0 today
+  it('a fresh athlete going INTO a day (no load before it) stays fresh — not "wrecked"', () => {
+    const f = forecastFreshness(state, []) // no intervening planned load → morning readiness ≈ today
+    expect(f.form).toBeCloseTo(0, 0)
+    expect(f.freshness).toBeGreaterThanOrEqual(3.7)
+  })
+  it("(why we exclude it) including that day's own hard session WOULD crash Form → false 'wrecked'", () => {
+    const withOwnSession = forecastFreshness(state, [260]) // the OLD behaviour: projects post-session fatigue
+    const goingIn = forecastFreshness(state, []) // the FIX: morning readiness
+    expect(withOwnSession.form).toBeLessThan(-20)
+    expect(withOwnSession.freshness!).toBeLessThan(goingIn.freshness! - 1.2) // dramatically lower — that was the false "wrecked"
+  })
+  it('accumulates the fatigue of the days BEFORE the target', () => {
+    const twoHardDaysBefore = forecastFreshness(state, [200, 200])
+    expect(twoHardDaysBefore.form).toBeLessThan(forecastFreshness(state, [200]).form)
+  })
+})
+
 describe('energy (lnRMSSD-z + sleep + RHR-z + subjective)', () => {
   const hrvBaseline = meanSd(Array.from({ length: 30 }, () => Math.log(50))) // mean ln50, but sd 0...
   // build a baseline with spread so z-scores are meaningful
