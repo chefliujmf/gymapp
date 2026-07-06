@@ -721,6 +721,15 @@
         "responses": { "202": { "description": "coach running" }, "400": { "description": "message required / coach not set up" } }
       }
     },
+    "/api/coach/daily-adapt": {
+      "post": {
+        "summary": "Run the DAILY morning auto-adaptation now (Bearer, #367)",
+        "description": "Fires the coach's daily plan-adaptation pass (normally scheduled ~4am local + a refine pass once HRV/sleep lands). 'pass' = 'early' | 'refine'. Async (202). Used for on-demand testing.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": false, "content": { "application/json": { "schema": { "type": "object", "properties": { "pass": { "type": "string", "enum": ["early", "refine"] } } } } } },
+        "responses": { "202": { "description": "coach running" }, "400": { "description": "coach not set up" } }
+      }
+    },
     "/api/weekly-target": {
       "post": {
         "summary": "Coach sets the week's MACRO TARGET — load/hours/focus (Bearer, #254)",
