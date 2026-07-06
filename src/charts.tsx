@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { zoneColor, zoneName, segPower } from './zones'
 
 export type Series = { label: string; color: string; data: (number | null)[]; area?: boolean; dash?: boolean }
@@ -224,12 +224,20 @@ export function PlannedPowerBars({ segments, ftp = 260, height = 150 }: { segmen
   )
 }
 
-/** Fullscreen overlay to view a chart in detail. */
+/** Fullscreen overlay to view a chart in detail. Close via ✕, tap-outside, or Escape.
+ * Body scroll is locked while open so the page behind doesn't move (mobile). */
 export function ChartModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+  }, [onClose])
   return (
     <div className="chart-modal" onClick={onClose} role="dialog" aria-modal="true">
       <div className="chart-modal__panel" onClick={(e) => e.stopPropagation()}>
-        <div className="chart-modal__head"><h3>{title}</h3><button className="icon-btn" onClick={onClose} aria-label="Close">✕</button></div>
+        <div className="chart-modal__head"><h3>{title}</h3><button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button></div>
         {children}
       </div>
     </div>
