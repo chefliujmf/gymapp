@@ -82,6 +82,14 @@ Platyplus auto-derives the check-in's **Sleep · Freshness · Energy** as a pers
 wellness (CTL/ATL/Form, HRV, RHR, sleep) + the check-in; manual tap always overrides. Research + formulas +
 build plan → **`docs/readiness-scores.md`**; operational summary → the **`platyplus-readiness-scores`** skill;
 memory `platyplus-readiness-model`. Build the math as a pure, unit-tested `server/readiness.js`. (#158/#159)
+- **Forecast = MORNING readiness** (`/auth/readiness-forecast`, #365): project planned load for the days
+  BEFORE the target only (exclude the target's own session — else a hard day projects its own post-session
+  fatigue → false "wrecked"). And **skip non-session events** — an intervals ATP **weekly TARGET** (category
+  `TARGET`, e.g. "ATP W06" ~250 TSS/wk) or NOTE is NOT a single-day load (#366). Same filter on `/auth/readiness-projection`.
+- **Daily auto-adapt (#367):** an in-process scheduler (`dailyAdaptTick`, QA/prod, ticks every 30 min) has the
+  coach proactively re-plan the rolling **14-day** horizon each morning per athlete's LOCAL tz — an EARLY pass
+  ~4am (Form/freshness) + a REFINE pass once HRV/sleep lands. Runtime-message-driven (`dailyAdaptMsg`), NOT in
+  `coach-engine.md` (keeps the ~128 KB systemPrompt under the argv limit, #352). Manual: `POST /api/coach/daily-adapt`.
 
 ## Tools / scripts (keep current)
 - `scripts/build-catalog.mjs` — builds `src/data/generated/*` from `downloaded_pages/`. Self-hosts all media + runs the independence gate.

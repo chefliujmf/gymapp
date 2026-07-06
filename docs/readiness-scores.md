@@ -222,5 +222,31 @@ Then the same piecewise 0–100 → 1–5 map as Sleep.
 
 By integrating these, the app becomes a predictive physiological engine, not a data logger.
 
+## Forecast + daily auto-adapt (BUILT)
+
+**Freshness is the only score forecastable ahead** — Energy/Sleep depend on HRV/sleep that haven't happened.
+`GET /auth/readiness-forecast?date=X` projects Form over the PLANNED load and maps to expected Freshness 1–5 +
+a label (the Today "Expected" ForecastCard). Two rulings from real-data debugging:
+
+- **It's MORNING readiness (#365).** Project planned load for the days BEFORE the target ONLY — EXCLUDE the target
+  day's own session. Otherwise a hard planned day projects its OWN post-session fatigue (Form crashes to e.g. −29.8),
+  which is how tired you'll be *after* the workout, not how recovered you are *going into* it → false "wrecked."
+  `forecastFreshness(state, loadsBeforeTarget)` in `server/readiness.js`; the endpoint builds `loads` = `today+1 .. target-1`.
+- **Skip non-session markers (#366).** An intervals **ATP weekly TARGET** (category `TARGET`, e.g. "ATP W06 - …",
+  ~250 TSS for the *whole week*) or a `NOTE` is NOT a single-day load. Counting it as one day spikes ATL → false
+  "wrecked." Filter `category === 'TARGET' | 'NOTE'` + `/^ATP/` in both `/auth/readiness-forecast` and
+  `/auth/readiness-projection` (the forward Load/Form chart). Matches the app's existing ATP filter (`cleanEvents`/`isAtp`).
+  Caveat: planned WORKOUTs often have `icu_training_load: null` → their real load isn't projected yet (estimating it
+  from the workout doc is a later enhancement).
+
+**Daily auto-adapt (#367).** `dailyAdaptTick` (in `server/server.js`, QA/prod only, ticks every 30 min) runs the
+locked-down coach each morning in the athlete's LOCAL timezone: an **EARLY pass ~4am** (decides from Form/Freshness,
+always available) + a **REFINE pass** once today's HRV/sleep/RHR has actually landed in intervals. Each pass has the
+coach proactively re-plan the rolling **14-day** horizon to match readiness + goals/frequency/availability, notify a
+one-line summary, and ASK via `notify` only when a material call is uncertain — so the athlete never has to ask daily.
+Guarded once-per-pass-per-day (`user.dailyAdapt`). Runtime-message-driven (`dailyAdaptMsg`), deliberately kept OUT of
+`coach-engine.md` to keep the ~128 KB systemPrompt under the Linux argv limit (E2BIG, #352). Manual/on-demand:
+`POST /api/coach/daily-adapt` (`pass` = early|refine).
+
 ### Sources (63)
 Garmin (HRV Status, Sleep Tracking, Training Readiness, Body Battery), WHOOP (Recovery, HRV, API, member averages), Oura (Readiness, Sleep Score), Google Health (Sleep/Readiness), intervals.icu (Training Monitor), TrainingPeaks (ATL/CTL/TSB, TSS, NP/IF), ACWR research (Griffin; Athlytics; Sams), HRV reviews (PMC, AHA, Elite HRV, HRV4Training, Morpheus), Ultrahuman Sleep 2.0, and others. Full list in the Drive original.
