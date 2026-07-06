@@ -205,6 +205,26 @@ test guide → the **🧪 Test guide** section below.
     the projection doesn't start at today. Likely: historical + projected series are two arrays that don't share the join
     point (projection should begin exactly at history's last real point), and/or a date-range mismatch leaves Jun 24–today
     uncovered. REVIEW ALL the Stats graphs for the same discontinuity. gymapp-only.
+    UPDATE (diag): pulled JM's real data — history is COMPLETE to today (Jul 6), projection is contiguous (Jul 7-20),
+    and the merge join is provably at the same index. So the on-screen gap is NOT data — likely a STALE PWA bundle
+    (projection code unchanged since #248; I shipped ~5 bundles today). Ask JM to hard-refresh / use the Refresh button;
+    if it persists, dig into the live render. Also harden: only append projection when viewing up-to-today.
+377. 🔨 **Gym workout doesn't render its exercises in Platyplus (coach plan detail shows title + blurb, then BLANK).** JM
+    2026-07-06 (prod screenshot): the "Upper-Body & Trunk Strength" gym session opens to the title + one-line coach note,
+    then nothing — the exercise list (DB Bench, Lat Pulldown, Face Pull, Pallof, Dead Bug…) is missing, even though it IS
+    in the intervals description. The exercises are either not saved as structured `exercises` (coach put them in notes) or
+    the `/coach/:id` / `/plan/:id` render drops them for gym. gymapp-only.
+378. 🔨 **Intervals event has the "Open in Platyplus" link TWICE — prod AND QA (shared athlete i28814).** JM 2026-07-06
+    (intervals screenshot): the gym event description shows two "Open workout in Platyplus →" links, one
+    `platyplus.duckdns.org/coach/…` (prod) + one `platyplus-qa.duckdns.org/coach/…` (QA). Root cause: QA + prod share the
+    same real intervals athlete, and BOTH environments annotate the same event with their OWN base URL. Fix: QA must NOT
+    write the Platyplus deep-link into the shared athlete's events (only prod annotates), or de-dupe/strip prior links
+    before writing, or gate the link on the prod base URL. Also the gym "workout" renders an empty 0w power chart in
+    intervals (gym has no power) — consider not pushing a workout_doc/power for gym. gymapp + infra.
+    **CODE FIX (both #377+#378):** pure `stripPlatyplusLinks()` in `icu-steps.js` (unit-tested) applied wherever notes
+    are composed (`planToIcuEvent` ride+gym) or imported (`icuEventToPlan`) → link can't accumulate; and reconcile now
+    SKIPS importing a gym event carrying the Platyplus link (it's ours; intervals has no exercises → empty shell). Still
+    TODO: clean the 3 already-corrupted plans' stored notes + have the coach re-author their exercises. 25 icu-steps tests.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
