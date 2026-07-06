@@ -287,6 +287,20 @@ test guide → the **🧪 Test guide** section below.
     FYI/future (JM: "we will have to work on the progress page"). Rework to surface progress for the athlete's ACTUAL sports:
     cycling/running (eFTP trend, weekly TSS/hours, Form/CTL climb, PRs / power curve, VO₂max trend) + adapt the headline
     stats + streak to endurance, not just gym reps×kg. Adaptive per `user.sports`. gymapp-only. Needs a mock (options-first).
+383. ⬜ **Check-in chart: break out Sleep · Energy · Form as separate lines (same graph) + each with min/max/avg.** JM
+    2026-07-06 (Wellness "📝 Check-in (your 1–5)" screenshot): today it plots the MEAN of energy/sleep/soreness (one purple
+    daily + 7-day-avg line). JM wants the overall average KEPT, PLUS Sleep, Energy, and Form(=6−soreness / readiness Freshness)
+    as their OWN lines in the same graph, each showing its avg · min · max. Data's already there (`checkins` → energy/sleep/
+    soreness per day). Plan: a multi-series variant of `WTrend`/`MetricCard` in `Wellness.tsx` — 3 component lines (7-day avg,
+    distinct colors) + overall avg (faint), legend with per-metric avg/min/max. Readability trade-off (3-4 lines on a 1–5
+    scale) → mock overlay-all vs segmented-focus. gymapp-only. Needs a mock (options-first). **JM PICKED B (overlay + tap-to-focus).** Building.
+384. ⬜ **Coach authored an INVALID range — cool-down "143-117" (high number first) + a "rest" interval with no range.** JM
+    2026-07-06 (for-after): a range must read low→high (or be a proper ramp-down, not "143-117" backwards); a "rest" interval
+    came through with no range at all. Fix the COACH + MCP validation: (a) normalize/reject descending numeric ranges (swap
+    or flag), (b) require a valid target on every non-rest step + a proper form for REST (e.g. explicit 0/recovery, not a bad
+    range), (c) add more format-validation mechanisms so bad shapes can't reach intervals. Likely in `validateGymWorkout` /
+    the SEGMENTS schema (`mcp/server.js`) + `icu-steps.js` encode + the coach-engine workout-format rules. Trace the real
+    round-trip. gymapp coach + MCP + server. Needs its own pass.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
