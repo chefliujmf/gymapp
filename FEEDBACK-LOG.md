@@ -237,11 +237,16 @@ test guide → the **🧪 Test guide** section below.
     are composed (`planToIcuEvent` ride+gym) or imported (`icuEventToPlan`) → link can't accumulate; and reconcile now
     SKIPS importing a gym event carrying the Platyplus link (it's ours; intervals has no exercises → empty shell). Still
     TODO: clean the 3 already-corrupted plans' stored notes + have the coach re-author their exercises. 25 icu-steps tests.
-379. ⬜ **Move a planned activity from one day to another (drag & drop?).** JM 2026-07-06: wants to reschedule a session by
+379. 🔨 **Move a planned activity from one day to another (drag & drop?).** JM 2026-07-06: wants to reschedule a session by
     dragging it to a different day on the calendar. Needs a MOCK (options-first): drag-drop on the Plan/calendar grid vs a
     "move to…" date picker on the session (mobile-friendly — DnD is fiddly on touch, so likely BOTH: long-press drag on
     desktop + a "Move" action with a day picker on mobile). Server already supports date change via `upsertPlan` (same id,
     new date → re-pushes the intervals event); this is the UI. Respect one-session/day (offer to combine/bump if target full). gymapp-only.
+    **BUILT — JM picked the QUICK PICKER (mobile-first, not drag):** `MovePicker.tsx` + pure `move-dates.ts` (13 tests). Tap a
+    session → "Move to another day…" → one-tap shortcuts (Tomorrow / In 2 days / This weekend / Next week, each showing the
+    date) + This-week/Next-week day strip (current day purple, FULL days amber dot). Full day → inline "combine or move it"
+    confirm. Move = `savePlan/saveItem` (same id + new date → re-push). **Undo bar** after each move. icu-origin events show a
+    disabled "edit in intervals" row. 365 tests. On QA→prod. (Drag on desktop week-view = possible later enhancement.)
 380. 🔨 **Moves made IN intervals (swap gym↔ride across days) must mirror back to Platyplus on "update".** JM 2026-07-06:
     moved his gym to tomorrow + tomorrow's ride to today IN intervals, expects the Update/Refresh button to pull that into
     Platyplus. TENSION: the model is **Platyplus-WINS** (`reconcileFromIcu` refreshes only icu-origin plans' title/notes/
