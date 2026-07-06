@@ -113,11 +113,14 @@ export default function Fitness() {
   const projOn = !!(proj?.available && proj.ctl?.length)
   const fut = projOn ? proj!.dates!.map((d) => new Date(d + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })) : []
   const dates = [...pastDates, ...fut]
-  // #376 — draw history+projection as ONE continuous solid+area line (`full`) so the fill/line can NEVER
-  // break at the "today" seam (the pad+projLine split showed a gap on the wide desktop even with complete
-  // data). `projLine` stays ONLY as a thin DASHED overlay marking the projected tail on top of that line.
+  // #376 — EVERY chart draws history+projection as ONE continuous solid+area line (`full`): history values
+  // then the projected tail (Fitness←ctl, Fatigue←atl, Form←form, Load←planned loads). No split series, no
+  // dashed overlay → a gap is structurally impossible, and all four charts share the SAME x-axis (they all
+  // have the same length now, so the axis + the "today" divider line up across them — the Load chart used to
+  // stop at today while the others ran to +14d, which read as a gap/mismatch vs the To date).
   const full = (a: (number | null)[], p?: number[]) => (projOn && p ? [...a, ...p] : a)
-  const projLine = (a: (number | null)[], p?: number[]) => projOn && p ? [...Array(Math.max(0, pastDates.length - 1)).fill(null), last(a), ...p] : []
+  // frac of "today" (the last real point) so each chart draws a divider + shades the projected tail.
+  const todayFrac = projOn && dates.length > 1 ? (pastDates.length - 1) / (dates.length - 1) : undefined
 
   return (
     <div>
@@ -144,28 +147,26 @@ export default function Fitness() {
               </div>
 
               <div className="card chart-card" style={{ padding: '12px 14px' }}>
-                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Fitness & Fatigue', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} series={[{ label: 'Fitness', color: '#4aa3ff', data: full(s.fitness, proj?.ctl), area: true }, { label: 'Fatigue', color: '#c061ff', data: full(s.fatigue, proj?.atl) }, ...(projOn ? [{ label: 'Fitness·proj', color: '#4aa3ff', data: projLine(s.fitness, proj!.ctl), dash: true }, { label: 'Fatigue·proj', color: '#c061ff', data: projLine(s.fatigue, proj!.atl), dash: true }] : [])]} /> })}>⤢</button>
-                <div className="fit-legend"><span style={{ color: '#4aa3ff' }}>● Fitness</span><span style={{ color: '#c061ff' }}>● Fatigue</span>{projOn && <span className="meta">- - projected</span>}</div>
-                <TrendChart height={170} axes labels={dates} series={[
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Fitness & Fatigue', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} today={todayFrac} series={[{ label: 'Fitness', color: '#4aa3ff', data: full(s.fitness, proj?.ctl), area: true }, { label: 'Fatigue', color: '#c061ff', data: full(s.fatigue, proj?.atl) }]} /> })}>⤢</button>
+                <div className="fit-legend"><span style={{ color: '#4aa3ff' }}>● Fitness</span><span style={{ color: '#c061ff' }}>● Fatigue</span>{projOn && <span className="meta">▒ projected →</span>}</div>
+                <TrendChart height={170} axes labels={dates} today={todayFrac} series={[
                   { label: 'Fitness', color: '#4aa3ff', data: full(s.fitness, proj?.ctl), area: true },
                   { label: 'Fatigue', color: '#c061ff', data: full(s.fatigue, proj?.atl) },
-                  // dashed overlay marks the projected tail ON TOP of the continuous line above (no gap possible).
-                  ...(projOn ? [{ label: 'Fitness·proj', color: '#4aa3ff', data: projLine(s.fitness, proj!.ctl), dash: true }, { label: 'Fatigue·proj', color: '#c061ff', data: projLine(s.fatigue, proj!.atl), dash: true }] : []),
                 ]} />
                 <p className="fit-insight">{fitnessInsight(s.fitness)} <span className="meta">· Fitness {statLine(s.fitness)}</span></p>
               </div>
 
               <div className="card chart-card" style={{ padding: '12px 14px', marginTop: 12 }}>
-                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Form', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: full(s.form, proj?.form) }, ...(projOn ? [{ label: 'Form·proj', color: fz.color, data: projLine(s.form, proj!.form), dash: true }] : [])]} /> })}>⤢</button>
-                <div className="fit-legend"><span style={{ color: fz.color }}>● Form</span><span style={{ color: '#34e07d' }}>● optimal zone</span>{projOn && <span className="meta">- - projected</span>}</div>
-                <TrendChart height={130} axes labels={dates} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: full(s.form, proj?.form) }, ...(projOn ? [{ label: 'Form·proj', color: fz.color, data: projLine(s.form, proj!.form), dash: true }] : [])]} />
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Form', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} today={todayFrac} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: full(s.form, proj?.form) }]} /> })}>⤢</button>
+                <div className="fit-legend"><span style={{ color: fz.color }}>● Form</span><span style={{ color: '#34e07d' }}>● optimal zone</span>{projOn && <span className="meta">▒ projected →</span>}</div>
+                <TrendChart height={130} axes labels={dates} today={todayFrac} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: full(s.form, proj?.form) }]} />
                 <p className="fit-insight">{formInsight(last(s.form))} <span className="meta">· Form {statLine(s.form)}</span>{projOn && proj!.form!.length ? <span className="meta"> · projected → {proj!.form![proj!.form!.length - 1]} in {fut.length}d</span> : null}</p>
               </div>
 
               <div className="card chart-card" style={{ padding: '12px 14px', marginTop: 12 }}>
-                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Training load / day', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} series={[{ label: 'Load', color: '#9b6bff', data: s.load, area: true }]} /> })}>⤢</button>
+                <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Training load / day', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} today={todayFrac} series={[{ label: 'Load', color: '#9b6bff', data: full(s.load, proj?.loads), area: true }]} /> })}>⤢</button>
                 <div className="fit-legend"><span style={{ color: '#9b6bff' }}>● Training load / day<InfoDot text="How hard each day was — TSS (duration × intensity). Higher = harder day." /></span></div>
-                <TrendChart height={130} axes labels={dates} series={[{ label: 'Load', color: '#9b6bff', data: s.load, area: true }]} />
+                <TrendChart height={130} axes labels={dates} today={todayFrac} series={[{ label: 'Load', color: '#9b6bff', data: full(s.load, proj?.loads), area: true }]} />
                 <p className="fit-insight">{loadInsight(s.load)}</p>
               </div>
               {/* sleep/HRV/resting-HR/weight moved to their own page (#194a) */}
