@@ -39,6 +39,12 @@ const PORT = Number(process.env.PORT || 80)
 const RP_ID = process.env.RP_ID || 'platyplus.duckdns.org'
 const ORIGIN = process.env.ORIGIN || `https://${RP_ID}`
 const RP_NAME = 'Platyplus'
+// #381 — QA/staging shares JM's ONE REAL intervals athlete (i28814) with prod (single intervals account).
+// Both envs pushing/scheduling to it collided on the shared calendar → duplicate events, double "Open in
+// Platyplus" links, empty gym shells (#377/#378/#381). Fix (JM's pick): staging is READ-ONLY toward
+// intervals — it never MIRRORS plans out (pushPlanToIcu) and never runs the auto-scheduler. Only prod
+// writes. QA still reconciles IN (read) so it shows the calendar. Detected from the QA RP_ID/ORIGIN.
+const IS_STAGING = process.env.STAGING === '1' || /-qa\.|staging/i.test(`${RP_ID} ${ORIGIN}`)
 const COOKIE = 'gymapp_sess'
 const ICU = 'https://intervals.icu'
 
@@ -1536,6 +1542,7 @@ const stripIcuInstance = (s) => String(s || '').replace(/:\d{4}-\d{2}-\d{2}$/, '
 //   • else update our event (or adopt a foreign one — the other coach's — without duplicating).
 async function pushPlanToIcu(user, plan) {
   if (!user.icuKey) return { skipped: 'no intervals key' }
+  if (IS_STAGING) return { skipped: 'staging (read-only toward intervals — only prod mirrors, #381)' }
   const ath = user.icuAthlete || 'i28814'
   const delEvent = async (id) => { try { await icuFetch(user, `/athlete/${ath}/events/${id}`, { method: 'DELETE' }) } catch { /* best effort */ } }
   const mineId = plan.icuEventId ? String(plan.icuEventId) : null
@@ -2366,6 +2373,7 @@ async function runDailyAdapt(user, pass) {
 }
 // One scheduler tick: fire the due pass for each coached athlete. Called every ~30 min.
 async function dailyAdaptTick() {
+  if (IS_STAGING) return // #381 — the auto-scheduler must not run on QA (it would re-plan + collide on the shared prod athlete)
   for (const user of store.users || []) {
     if (!user.icuKey || !user.coachProfile || !String(user.coachProfile).trim()) continue
     const tz = user.icuTimezone || 'UTC'
