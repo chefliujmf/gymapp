@@ -1541,6 +1541,12 @@ async function pushPlanToIcu(user, plan) {
   const mineId = plan.icuEventId ? String(plan.icuEventId) : null
 
   const matches = await findIcuEventsForPlan(user, plan)
+  // #381 — the event may have been MOVED to another day IN intervals; findIcuEventsForPlan only searches
+  // plan.date, so it wouldn't find it → case (3) would CREATE A DUPLICATE (JM saw the gym on two days).
+  // Also fetch our known event by id (any date) so we UPDATE+move the existing one instead of duplicating.
+  if (mineId && !matches.some((e) => String(e.id) === mineId)) {
+    try { const rr = await icuFetch(user, `/athlete/${ath}/events/${mineId}`); if (rr.ok) { const em = await rr.json(); if (em && em.id) matches.push(em) } } catch { /* event gone — fall through to create */ }
+  }
   // OUR events = external_id matches this plan's id — either exactly, or minus the ":date" instance
   // suffix. (#301 mirror fix: some ids already END in a date, so the stripped form wouldn't match and
   // the event was mis-read as "foreign" → never updated.)
