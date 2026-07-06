@@ -301,7 +301,7 @@ test guide → the **🧪 Test guide** section below.
     range), (c) add more format-validation mechanisms so bad shapes can't reach intervals. Likely in `validateGymWorkout` /
     the SEGMENTS schema (`mcp/server.js`) + `icu-steps.js` encode + the coach-engine workout-format rules. Trace the real
     round-trip. gymapp coach + MCP + server. Needs its own pass.
-385. ⬜ **Make per-sport benchmark displays CONSISTENT with the polished Global "Your benchmarks" (#374).** JM 2026-07-06:
+385. 🔨 **Make per-sport benchmark displays CONSISTENT with the polished Global "Your benchmarks" (#374).** JM 2026-07-06:
     "I love the global section" — wants the SAME treatment on the per-sport pages. Global (`BenchmarksCard`) now has method
     chips + colorful confidence bars + tap-for-science (#374); but the **Cycling** page shows plain "VO₂max (est.) / eFTP —
     No data yet" cards and the **Running** page shows plain Threshold/VDOT/VO₂max cards — inconsistent + less informative.
