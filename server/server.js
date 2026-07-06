@@ -719,10 +719,17 @@ app.get('/auth/readiness-projection', auth, async (req, res) => {
     const load = e.icu_training_load || e.icu_planned_training_load || 0
     if (load > 0) byDay[d] = (byDay[d] || 0) + load
   }
+  // #391 — extend the forecast to ~4 weeks. The coach only plans ~2 wks ahead, so PAST the last planned day
+  // we assume the athlete HOLDS their recent average daily load (≈ CTL) — a "if you keep training like this"
+  // projection. Without it, unplanned future days = 0 load → Form falsely shoots up (fresh from doing
+  // nothing). `plannedThrough` marks where the real plan ends so the client can label the held-load tail.
+  const plannedDates = Object.keys(byDay).sort()
+  const plannedThrough = plannedDates.length ? plannedDates[plannedDates.length - 1] : today
+  const heldLoad = Math.max(0, Math.round(latest.ctl)) // recent avg daily training stress
   const dates = [], loads = []
-  for (let dd = addDays(today, 1); dd <= end; dd = addDays(dd, 1)) { dates.push(dd); loads.push(byDay[dd] || 0) }
+  for (let dd = addDays(today, 1); dd <= end; dd = addDays(dd, 1)) { dates.push(dd); loads.push(dd <= plannedThrough ? (byDay[dd] || 0) : heldLoad) }
   const series = projectFormSeries({ ctl: latest.ctl, atl: latest.atl }, loads)
-  res.json({ connected: true, available: true, dates, loads, ctl: series.map((s) => s.ctl), atl: series.map((s) => s.atl), form: series.map((s) => s.form) })
+  res.json({ connected: true, available: true, dates, loads, plannedThrough, ctl: series.map((s) => s.ctl), atl: series.map((s) => s.atl), form: series.map((s) => s.form) })
 })
 
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads
