@@ -981,6 +981,15 @@ select.search { appearance: none; -webkit-appearance: none; }
 .pw-fbsum__tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .pw-tag { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: #ffffff10; border: 1px solid #ffffff1c; color: var(--text-dim, #9298a6); }
 .pw-fbsum__note { margin: 8px 0 0; font-style: italic; color: var(--text-dim, #9298a6); line-height: 1.45; }
+/* #364 — coach review / "reviewing…" block under the submitted feedback */
+.pw-fbrev { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: rgba(52,224,125,.07); border: 1px solid rgba(52,224,125,.28); color: var(--text, #eef1f4); }
+.pw-fbrev--pending { background: rgba(255,255,255,.04); border-color: var(--line, #262a33); }
+.pw-fbrev--pending .pw-fbrev__h { animation: chat-rev-pulse 1.4s ease-in-out infinite; }
+.pw-fbrev__h { font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.pw-fbrev__score { font-size: 11px; font-weight: 800; color: #07140c; background: var(--accent, #34e07d); border-radius: 999px; padding: 1px 8px; }
+.pw-fbrev__v { margin: 5px 0 0; font-size: 12.5px; color: var(--text-dim, #9298a6); line-height: 1.45; font-style: normal; }
+.pw-fbrev__l { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: var(--text, #eef1f4); }
+.pw-fbrev__link { display: inline-block; margin-top: 6px; color: var(--accent, #34e07d); font-size: 12px; font-weight: 700; }
 /* #273 post-workout: coach verdict card */
 .pw-verdict { border: 1px solid #34e07d55; background: linear-gradient(#1a2a20, #161c22); margin: 8px 0 10px; }
 .pw-vtop { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
