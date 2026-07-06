@@ -301,6 +301,19 @@ test guide → the **🧪 Test guide** section below.
     range), (c) add more format-validation mechanisms so bad shapes can't reach intervals. Likely in `validateGymWorkout` /
     the SEGMENTS schema (`mcp/server.js`) + `icu-steps.js` encode + the coach-engine workout-format rules. Trace the real
     round-trip. gymapp coach + MCP + server. Needs its own pass.
+385. ⬜ **Make per-sport benchmark displays CONSISTENT with the polished Global "Your benchmarks" (#374).** JM 2026-07-06:
+    "I love the global section" — wants the SAME treatment on the per-sport pages. Global (`BenchmarksCard`) now has method
+    chips + colorful confidence bars + tap-for-science (#374); but the **Cycling** page shows plain "VO₂max (est.) / eFTP —
+    No data yet" cards and the **Running** page shows plain Threshold/VDOT/VO₂max cards — inconsistent + less informative.
+    Reuse `BenchmarksCard` (or its card style) on `CyclingStats`/`RunningStats`, filtered to that sport's benchmarks, so
+    they match Global. Also the "No data yet" for a 3-mo range is confusing (the value exists in Stats). gymapp-only. Likely
+    direct reuse of the #374 component — small mock/confirm.
+386. ⬜ **History page: the "Activity · Sat" entry is vague + filters/sorting unclear.** JM 2026-07-06 (History screenshot):
+    a session needing feedback shows only "Activity · Sat" (no sport name/title/date) → confusing what it is. JM also asked
+    "no filters (sports type?), sorting (by date?)" — the page DOES have All/Ride/Run/Gym/Mind filters + a Newest sort +
+    date range, so either they're not discoverable or the top "needs feedback" card ignores them. FIX: label the entry with
+    its real sport + title + full date (not bare "Activity · Sat"); make the filters/sort obviously apply to everything incl.
+    the feedback card; confirm sort-by-date works. gymapp-only.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client

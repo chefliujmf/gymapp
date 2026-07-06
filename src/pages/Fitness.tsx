@@ -146,11 +146,11 @@ export default function Fitness() {
                 <TrendChart height={170} axes labels={dates} series={[
                   { label: 'Fitness', color: '#4aa3ff', data: pad(s.fitness), area: true },
                   { label: 'Fatigue', color: '#c061ff', data: pad(s.fatigue) },
-                  ...(projOn ? [{ label: 'Fitness·proj', color: '#4aa3ff', data: projLine(s.fitness, proj!.ctl), dash: true }, { label: 'Fatigue·proj', color: '#c061ff', data: projLine(s.fatigue, proj!.atl), dash: true }] : []),
+                  // #376 — give the projection its OWN area fill so the blue fill runs UNBROKEN through the
+                  // solid→dashed handoff (the fill cliff at "today" read as a gap on the wide desktop chart).
+                  ...(projOn ? [{ label: 'Fitness·proj', color: '#4aa3ff', data: projLine(s.fitness, proj!.ctl), dash: true, area: true }, { label: 'Fatigue·proj', color: '#c061ff', data: projLine(s.fatigue, proj!.atl), dash: true }] : []),
                 ]} />
                 <p className="fit-insight">{fitnessInsight(s.fitness)} <span className="meta">· Fitness {statLine(s.fitness)}</span></p>
-                {/* #376 TEMP diagnostic — remove once the desktop gap is pinpointed. Its very presence proves the new bundle loaded. */}
-                <p className="meta" style={{ fontSize: 10, opacity: 0.65, letterSpacing: '.2px' }}>⚙︎ diag v2 · hist {pastDates.length} · lastReal {(() => { for (let i = s.fitness.length - 1; i >= 0; i--) if (s.fitness[i] != null) return dates[i]; return '—' })()} · nullTail {(() => { let c = 0; for (let i = s.fitness.length - 1; i >= 0 && s.fitness[i] == null; i--) c++; return c })()} · proj {projOn ? `${proj!.dates?.[0]}→${proj!.dates?.[(proj!.dates?.length || 1) - 1]} n${proj!.ctl?.length}` : 'OFF'}</p>
               </div>
 
               <div className="card chart-card" style={{ padding: '12px 14px', marginTop: 12 }}>
