@@ -603,6 +603,8 @@ app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user,
 // tomorrow-forecast near local midnight isn't mistaken for today (e.g. 8pm Montreal = next-day UTC).
 // Caches the tz on the user (stable); falls back to UTC.
 function localTodayInTz(tz) { try { return new Date().toLocaleDateString('en-CA', { timeZone: tz || 'UTC' }) } catch { return new Date().toISOString().slice(0, 10) } }
+// #367 — the athlete's LOCAL hour (0–23) in their intervals timezone, for the morning auto-adapt scheduler.
+function localHourInTz(tz) { try { return parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: tz || 'UTC', hour: '2-digit', hour12: false }).format(new Date()), 10) % 24 } catch { return new Date().getUTCHours() } }
 async function athleteToday(user) {
   if (!user.icuTimezone && user.icuKey) {
     try { const me = await icuGet(user, `/athlete/${user.icuAthlete || 'i28814'}`); if (me && me.timezone) { user.icuTimezone = me.timezone; save(store) } } catch { /* fall back to UTC */ }
@@ -2309,6 +2311,47 @@ app.use((err, req, res, next) => {
 process.on('unhandledRejection', (e) => console.error(`[unhandledRejection] ${e?.stack || e}`))
 process.on('uncaughtException', (e) => console.error(`[uncaughtException] ${e?.stack || e}`))
 
+// #367 — DAILY auto-adapt: each morning the coach proactively re-plans the rolling ~2-week horizon from
+// the athlete's readiness, so JM doesn't have to ask. TWO passes (JM's pick): an EARLY pass ~4am local
+// (Form/freshness are always available), then a REFINE pass once overnight HRV/sleep/RHR lands in
+// intervals. Runs in-process (single instance); guarded once-per-pass-per-day via user.dailyAdapt.
+const DAILY_HORIZON = 14 // days the coach keeps populated + adapted ahead
+function dailyAdaptMsg(today, pass) {
+  const head = pass === 'refine'
+    ? `Daily auto-adaptation — REFINE pass (${today}). Their overnight HRV/sleep/resting-HR has now LANDED in intervals — read it (get_wellness) + their check-in (get_checkins). If it changes today's readiness vs earlier, refine; if nothing meaningful changed, don't churn the plan.`
+    : `Daily auto-adaptation — EARLY pass (${today}). Overnight HRV/sleep from their watch usually ISN'T synced this early, so decide from their FRESHNESS / Form (CTL−ATL, always available — get_wellness) + their latest check-in (get_checkins). You'll get a refine pass later once HRV/sleep lands.`
+  return `${head} Then PROACTIVELY adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule): ease / harden / shift / add sessions so the rolling ~2-week plan matches how they're recovering AND their goals, weekly frequency + availability. Keep ~${DAILY_HORIZON} days populated ahead (fill gaps toward their target frequency; never double-book a day / exceed their max sessions per day). If a MATERIAL call is uncertain (e.g. several run-down days → cut this week's volume? a race clash?), use notify to ASK them rather than guess. When you change things, notify ONE short line of what changed + why. Don't ask trivial questions — decide and act; ask only when it truly matters. Be concise.`
+}
+async function runDailyAdapt(user, pass) {
+  try { await runCoachTask(user, dailyAdaptMsg(await athleteToday(user), pass)) } catch (e) { console.error(`[daily-adapt ${pass}] ${user.username || ''} ${e.message || e}`) }
+}
+// One scheduler tick: fire the due pass for each coached athlete. Called every ~30 min.
+async function dailyAdaptTick() {
+  for (const user of store.users || []) {
+    if (!user.icuKey || !user.coachProfile || !String(user.coachProfile).trim()) continue
+    const tz = user.icuTimezone || 'UTC'
+    const today = localTodayInTz(tz), hour = localHourInTz(tz)
+    user.dailyAdapt = user.dailyAdapt || {}
+    try {
+      if (hour >= 4 && hour < 11 && user.dailyAdapt.early !== today) { // EARLY pass — from ~4am local, once/day
+        user.dailyAdapt.early = today; save(store); runDailyAdapt(user, 'early'); continue
+      }
+      // REFINE pass — after the early pass, once today's HRV/sleep/RHR has actually landed in intervals.
+      if (user.dailyAdapt.early === today && user.dailyAdapt.refine !== today && hour >= 6 && hour < 23) {
+        const w = await icuGet(user, `/athlete/${user.icuAthlete || 'i28814'}/wellness?oldest=${today}&newest=${today}`).catch(() => null)
+        const row = Array.isArray(w) ? w.find((d) => d.id === today) : null
+        if (row && (row.hrv != null || row.sleepSecs != null || row.restingHR != null)) { user.dailyAdapt.refine = today; save(store); runDailyAdapt(user, 'refine') }
+      }
+    } catch (e) { console.error(`[daily-adapt tick] ${user.username || ''} ${e.message || e}`) }
+  }
+}
+// Run the daily adaptation on demand (testing / "adapt now"). #367
+app.post('/api/coach/daily-adapt', apiAuth, (req, res) => {
+  if (!req.user.coachProfile || !String(req.user.coachProfile).trim()) return res.status(400).json({ error: 'coach not set up (no coachProfile)' })
+  runDailyAdapt(req.user, req.body?.pass === 'refine' ? 'refine' : 'early')
+  res.status(202).json({ ok: true, running: true })
+})
+
 // Startup: connect Postgres → load the cache → seed/defaults → listen. (#DB migration)
 async function start() {
   if (USE_PG) {
@@ -2329,5 +2372,11 @@ async function start() {
   if (!store.sessionSecret) console.error('[boot] CRITICAL: the session key is missing — every sign-in will fail until this is fixed.')
   console.log(`[boot] Ready on the ${USE_PG ? 'Postgres' : 'file'} store with ${store.users.length} user account(s). Session key ${store.sessionSecret ? 'loaded' : 'MISSING'}.`)
   app.listen(PORT, () => console.log(`gymapp listening on :${PORT} (rpID ${RP_ID}) [${USE_PG ? 'postgres' : 'file'}, ${store.users.length} users]`))
+  // #367 — daily morning auto-adapt scheduler (QA/prod only; CI has no DB/coach). Tick every 30 min so
+  // the EARLY (~4am local) and REFINE (once HRV/sleep lands) passes fire at the right local time per user.
+  if (USE_PG) {
+    setInterval(() => dailyAdaptTick().catch((e) => console.error('[daily-adapt] ' + (e.message || e))), 30 * 60 * 1000)
+    setTimeout(() => dailyAdaptTick().catch(() => {}), 90 * 1000) // a first pass shortly after boot (guarded once/day)
+  }
 }
 start().catch((e) => { console.error('FATAL startup failed:', e); process.exit(1) })

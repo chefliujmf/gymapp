@@ -136,6 +136,13 @@ test guide → the **🧪 Test guide** section below.
     scheduled trigger that, once the morning wellness (energy/sleep/HRV) is in (~4am), has the coach ADAPT the plan
     automatically + frequently — JM shouldn't have to ask daily. Define the planning HORIZON (JM suggests ~2 weeks ahead).
     Coach adapts the full plan proactively; if unsure, it can ASK. (Extends the check-in trigger #65 into a scheduled cron.)
+    **JM picks (2026-07-05): "4am + re-check later", horizon = 2 weeks.** BUILT (`server/server.js`): an in-process daily
+    scheduler (ticks every 30 min, QA/prod only) fires per athlete in their LOCAL tz — an **EARLY pass ~4am** (decides from
+    Form/freshness, always available) + a **REFINE pass** once today's HRV/sleep/RHR actually lands in intervals. Each pass
+    runs the locked-down coach with a "proactively adapt the rolling 14-day plan to readiness + goals/frequency/availability,
+    notify what changed, and ASK via notify only if a material call is uncertain" instruction. Guarded once-per-pass-per-day
+    (`user.dailyAdapt`). Manual trigger `POST /api/coach/daily-adapt` (+openapi) for testing. Kept OUT of coach-engine.md
+    (E2BIG prompt-size risk, #352) — the instruction is self-contained. 324 tests. On QA.
 368. 🔎 **Availability page (Profile) — great in PROD, worse in QA; KEEP prod's version.** JM 2026-07-05. INVESTIGATED: `dev`
     == `main` (empty `git log origin/main..dev`) and `src/Availability.tsx` uses dedicated `avail-*` classes I never touched
     this session — so QA + prod run IDENTICAL availability code + CSS. ⇒ almost certainly a **stale QA PWA bundle** (#200):
