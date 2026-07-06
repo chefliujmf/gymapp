@@ -242,6 +242,18 @@ test guide → the **🧪 Test guide** section below.
     **JM PICKED "intervals move wins for the DAY".** DONE: `reconcileFromIcu` owned-event block now adopts the intervals
     `start_date_local` for the plan's date on EVERY origin (content stays Platyplus-owned unless icu-origin); `refreshed++`
     → saves. Runs on every Today/Calendar load (so Refresh mirrors it). 335 tests.
+381. 🔨 **Gym session is DUPLICATED across days (Mon 06 + Tue 07, both empty).** JM 2026-07-06 (intervals screenshot):
+    "Upper-Body & Trunk Strength" shows on TWO days. Chain: JM moved the gym to Tue in intervals (#380) → but a coach
+    re-run / Platyplus push re-created it on Mon → 2 empty shells. This + #377/#378 all trace to ONE root: **QA + prod
+    share the real intervals athlete i28814**, and BOTH run the #367 scheduler + push to it, so they duplicate/collide on
+    the shared calendar. DIG (JM's pick): (a) de-dupe the existing gym now; (b) fix the create/dedup path (the max-per-day
+    409 keys on date only — a cross-env or moved dup slips through; reconcile should collapse same-id/same-session dups);
+    (c) **the real fix = ENV ISOLATION — QA must not write to the shared athlete** (separate test athlete, or gate the
+    push + scheduler off on staging). Needs a decision. gymapp + infra.
+    **DONE (a)+(b):** deleted the orphan Jul-7 event (the gym is now single, Mon Jul 6, with its 11 exercises — #377 also
+    resolved). ROOT of the dup: `findIcuEventsForPlan` only searched `plan.date`, so a moved event wasn't found → push
+    CREATED a duplicate. Fixed `pushPlanToIcu` to also fetch our known event by `icuEventId` (any date) → it UPDATES+moves
+    the existing one instead of duplicating. 335 tests. **(c) env isolation still open — awaiting JM's decision.**
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
