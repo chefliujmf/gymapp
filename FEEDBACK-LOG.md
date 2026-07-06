@@ -340,6 +340,15 @@ test guide → the **🧪 Test guide** section below.
     independence gate — HOST the images on the XPS, NEVER hotlink 3rd-party per the invariant) → `npm run sync:catalog` →
     content-manifest (license/commercial flags — check ToS before scraping) → deploy. Tag by meal type / cuisine / diet /
     macros / time so the coach's `search_recipes` can pick well. Parked until JM prioritizes. gymapp content.
+391. ⬜ **Forecast/projection only goes 14 days — extend it (+ the To filter caps at today).** JM 2026-07-06 (Load & Form):
+    "wish the coach would project more than that." The projection = 14d (`readinessProjection(14)`, endpoint caps at 28);
+    the To date-picker `max=today`. TRADE-OFF: the forecast is driven by PLANNED load, and the coach only keeps ~14 days
+    populated (#367 DAILY_HORIZON=14) — naively extending to 6 wk shows Form RISING (falsely fresh) because there's no
+    planned load past day 14 (→ CTL/ATL decay to 0). So a longer forecast needs unplanned future days to assume a HELD load
+    (recent avg daily TSS or a maintenance target), else it lies. Plan: (a) raise the endpoint cap + `readinessProjection(N)`;
+    (b) fill days past the planned horizon with the athlete's rolling avg load (a "if you hold this" projection), clearly
+    labelled; optionally (c) bump the coach's planning horizon. The To filter caps history at today (correct — no wellness
+    past today); a longer PROJECTION auto-extends the axis, so the filter needn't change. Ask JM the horizon (4/6 wk / to a race). gymapp.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
