@@ -1459,16 +1459,18 @@ select.search { appearance: none; -webkit-appearance: none; }
 .bm-card { padding: 13px 14px; margin-bottom: 12px; }
 .bm-card__h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .bm-card__h h3 { margin: 0; font-size: 14px; }
-.bm-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-.bm-cell { background: #14181f; border: 1px solid var(--line); border-radius: 10px; padding: 8px 9px; }
-.bm-cell__l { font-size: 9.5px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+/* #374 — 2-col (was 3): the cards are taller now (method chip + confidence bar), so 2 columns fit content on ~430px. */
+.bm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.bm-cell { background: #171b23; border: 1px solid var(--line); border-radius: 13px; padding: 11px 12px; }
+.bm-cell__l { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
 .bm-tag { font-size: 8px; font-weight: 800; border-radius: 999px; padding: 1px 5px; border: 1px solid; }
 .bm-tag--you { color: #9b8cff; border-color: rgba(155,140,255,.4); }
 .bm-tag--icu { color: var(--accent); border-color: rgba(52,224,125,.4); }
 .bm-tag--est { color: #5ec8ff; border-color: rgba(94,200,255,.4); }
-.bm-cell__v { background: none; border: 0; color: var(--text); font-size: 18px; font-weight: 800; padding: 2px 0 0; cursor: pointer; text-align: left; }
+/* #374 — bright, high-contrast value (contrast fix from the mock). */
+.bm-cell__v { background: none; border: 0; color: var(--text); font-size: 28px; font-weight: 850; letter-spacing: -.6px; padding: 5px 0 0; cursor: pointer; text-align: left; }
 .bm-cell__v:disabled { cursor: default; }
-.bm-cell__u { font-size: 10px; color: var(--text-dim); font-weight: 600; margin-left: 2px; }
+.bm-cell__u { font-size: 13px; color: var(--text-dim); font-weight: 600; margin-left: 3px; }
 .bm-cell__in { width: 100%; background: #0f1216; border: 1px solid var(--accent); border-radius: 6px; color: var(--text); font-size: 16px; font-weight: 800; padding: 2px 6px; margin-top: 2px; }
 .bm-trends { display: block; text-align: right; font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 9px; }
 /* #235 — settings toggle row */
@@ -1500,6 +1502,44 @@ select.search { appearance: none; -webkit-appearance: none; }
 .bseg--3 button + button { border-left: 1px solid var(--line); }
 .bsheet__hint { font-size: 12px; color: var(--text-dim); line-height: 1.4; margin: 8px 2px 2px; }
 .bsheet__save { width: 100%; margin-top: 14px; border: 0; border-radius: 999px; padding: 12px; font-weight: 800; font-size: 15px; color: #06281a; background: linear-gradient(90deg,#46e08a,#34c873); cursor: pointer; }
+/* #374 — enriched benchmark cards: method chip + colorful confidence bar on every stat, and the
+   detail-sheet "science" (methods list, narrative, sharpen callout). Mirrors mockups/benchmark-cards.html. */
+.bm-chip { display: inline-block; font-size: 9.5px; font-weight: 800; letter-spacing: .3px; color: var(--icu, #5ec8ff); background: rgba(94,200,255,.12); border: 1px solid rgba(94,200,255,.25); border-radius: 6px; padding: 2px 6px; margin-top: 9px; }
+/* confidence / learning bar — thin bar + one-line label, three gradient classes */
+.bm-conf { margin-top: 9px; }
+.bm-conf .bm-bar { height: 5px; }
+.bm-bar { border-radius: 4px; background: #242a34; overflow: hidden; }
+.bm-bar > i { display: block; height: 100%; border-radius: 4px; }
+.bm-g-learn > i { background: linear-gradient(90deg,#5ec8ff,#34e07d); }
+.bm-g-strong > i { background: linear-gradient(90deg,#34e07d,#7ef0a8); }
+.bm-g-need > i { background: linear-gradient(90deg,#f5b53d,#f58d3d); }
+.bm-lt { font-size: 10px; font-weight: 700; margin-top: 5px; letter-spacing: .2px; }
+.bm-lt--learn { color: #7fd8ff; }
+.bm-lt--strong { color: var(--accent, #34e07d); }
+.bm-lt--need { color: var(--amber, #f5b53d); }
+/* bigger confidence bar for the detail sheet */
+.bm-conf2 { margin: 2px 2px 8px; }
+.bm-conf2 .bm-bar { height: 7px; border-radius: 5px; }
+.bm-conf2 .bm-bar > i { border-radius: 5px; }
+.bm-conf2 .bm-lt { font-size: 11.5px; font-weight: 750; margin-top: 7px; }
+/* plain-language "how it's computed" paragraph */
+.bm-narr { margin: 12px 2px 2px; font-size: 13px; line-height: 1.55; color: #c9ced6; }
+.bm-narr b { color: var(--text); }
+/* "The science · N methods" — method rows + which one is IN USE */
+.bm-sci { margin: 14px 2px 4px; border-top: 1px solid var(--line); padding-top: 12px; }
+.bm-sci h4 { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
+.bm-mrow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(42,47,58,.55); }
+.bm-mrow:last-child { border-bottom: 0; }
+.bm-mn { flex: 1; font-size: 12.5px; color: var(--text); }
+.bm-mn small { color: var(--text-dim); font-size: 11px; display: block; margin-top: 1px; }
+.bm-mn.dim { color: var(--text-dim); }
+.bm-mv { font-size: 15px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.bm-mv.dim { color: var(--text-dim); }
+.bm-mrow.use .bm-mv { color: var(--icu, #5ec8ff); }
+.bm-use-tag { font-size: 9px; font-weight: 800; color: var(--icu, #5ec8ff); background: rgba(94,200,255,.14); border-radius: 5px; padding: 2px 6px; letter-spacing: .3px; }
+/* "Sharpen it" callout — the concrete trigger to raise confidence */
+.bm-sharpen { margin: 12px 2px 2px; background: rgba(52,224,125,.07); border: 1px solid rgba(52,224,125,.22); border-radius: 11px; padding: 10px 12px; font-size: 12px; color: #bfeecf; line-height: 1.45; }
+.bm-sharpen b { color: var(--accent, #34e07d); }
 /* #226 — shared date-range filter (presets prefill the always-visible From/To) */
 .drf { margin-bottom: 12px; }
 .drf .chips { margin-bottom: 8px; }

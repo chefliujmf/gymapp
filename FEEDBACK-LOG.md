@@ -179,13 +179,25 @@ test guide → the **🧪 Test guide** section below.
     min/max he's known. Plan: `server/readiness.js` `baselines()` also returns `hrvMin`/`hrvMax` (raw ms) from history;
     expose in the readiness response; Today.tsx energy `why` renders "HRV 42 ms (your range 28–58)". Same treatment fits
     resting HR. gymapp-only. **On prod** (Energy ⓘ now reads "HRV NN ms (your range lo–hi) … resting HR NN (range lo–hi)").
-374. ⬜ **Learned-stat cards: COMPACT summary, details on SELECT + always say WHEN/how-often/based-on-what.** JM 2026-07-06
+374. 🔨 **Learned-stat cards: COMPACT summary, details on SELECT + always say WHEN/how-often/based-on-what.** JM 2026-07-06
     (Global benchmarks screenshot): the "Your benchmarks" cards (VO₂max, FTP, Threshold Pace, Max HR, Sleep Need) — the
     inline explanation should be COMPACT; the full detail belongs in a tap-to-open view. AND not all cards say how long
     until it's estimated (how many days/workouts), how often it updates, and on what. **VO₂max is the worst example** —
     just "51.1 · tap to switch", no word on HOW it's computed, WHEN, BASED ON WHAT, how FREQUENT, or when it'll next
     compute. FTP + Threshold already have a good ⏳ "after your next hard ride / after ~1 more run" line — bring that
     clarity to ALL of them, but move the long copy into the detail view. Needs a MOCK (options-first). gymapp-only.
+    **JM REFINED (2026-07-06, on mock v1):** (1) CONTRAST BUG — the big value numbers are dark on grey, "barely see them"
+    (the `.bm-cell__v` / `.cv` needs a bright color). (2) He LOVES the sleep "learning · 18/21 nights" colorful bar → wants
+    that **confidence/learning bar on EVERY benchmark** (VO₂max, FTP, threshold, HR), each showing data-sufficiency toward a
+    reliable estimate. (3) "Vo2Max the only way to update it? … there must be more SCIENCE" — wants MULTIPLE/advanced compute
+    methods surfaced, not one. NOTE: the app ALREADY multi-estimates VO₂max (cyclingVo2max MAP + runningVo2max VDOT +
+    hrRatioVo2max 15.3×HRmax/HRrest → `headlineVo2max` blends w/ confidence) — just shows one number. Plan: detail sheet
+    shows each method's estimate + which drives + confidence + "to sharpen: <trigger>"; add more estimators where thin (FTP:
+    eFTP + 20-min×0.95 + CP; pace: Critical Speed + VDOT; HR: observed + intervals ceiling). Mock v2 → confirm.
+    **BUILT (Option B, JM approved):** `Benchmarks.tsx` + `styles.css` + new pure `benchmark-confidence.ts` (per-stat
+    {pct,cls,label}, 17 tests). Every card: bright value (2-col grid), a method chip, + a colorful confidence/learning bar
+    (learn=blue-green / strong=green / need=amber). Detail sheet: confidence bar + plain-language + "The science · N methods"
+    (VO2max computes MAP + HR-ratio + VDOT live, marks IN USE) + "Sharpen it" callout. 352 tests green. On QA-prod.
 375. 🔨 **Coach OVER-PLANNED the week — ~2× sustainable load, no overload framing (root cause = #372 null loads).** JM
     2026-07-06 ("too many crazy workouts this week? normal?"). AUDIT of his real prod week (Mon Jul6–Sun Jul12): 6 rides +
     1 gym, planned **441 TSS** vs ~**225 sustainable** at his CTL≈32 (CTL×7) — a ~1.9 ramp, with **two back-to-back
