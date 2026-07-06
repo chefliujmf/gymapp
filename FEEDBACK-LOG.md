@@ -108,7 +108,15 @@ test guide → the **🧪 Test guide** section below.
     `GET/DELETE /auth/chat/threads/:id`, `GET /auth/chat/search`. Client (`Chat.tsx`): top-bar 🕘 opens a **Conversations**
     drawer (search + ＋New + day-grouped list w/ preview + delete); search highlights matches across chats; tap → open that
     thread. `/auth/chat` now targets the ACTIVE thread's session. tsc + 321 tests + build green. **On QA — big chat change,
-    test before promote.** gymapp-only.
+    test before promote.** gymapp-only. **✅ Promoted to prod (JM 2026-07-05).** ⚠️ JM's prod `chatMsgs`/`chatThreads` = 0
+    server-side — today's prod convo is only in his DESKTOP cache; to save it he must open the coach on that desktop (client
+    seeds localStorage→server thread 1). Guidance given.
+364. 🔨 **After submitting post-workout feedback, show "coach is reviewing" + WHERE the review lands.** JM 2026-07-05: wants a
+    note/section after entering feedback that the coach is currently reviewing, and where the takeaways will appear. Built in
+    `src/ActivityFeedback.tsx` (the shared feedback form): after Save it shows a "🔎 Your coach is reviewing this session…"
+    block (pulses) that names where it'll land (here + Progress + 🔔 notification), and POLLS `coach-reviews` so the real
+    verdict + takeaways (+ score) appear inline the moment they land (~1–3 min) — with a "See all coach takeaways on Progress →"
+    link. Also shows an existing review on mount. `.pw-fbrev` styles. 321 tests. On QA.
 347. 🔨 **"Not enough training data to forecast Saturday Jul 4" on prod for Xenia — but she HAS data.** JM 2026-07-04
     (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),

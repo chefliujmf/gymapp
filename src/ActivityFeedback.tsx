@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { authApi } from './auth/api'
+import { Link } from 'react-router-dom'
+import { authApi, type CoachReview } from './auth/api'
 import { FEEL, RPE, FIELDS } from './pages/PostWorkout'
 
 // #273/#285 — post-workout feedback capture for ANY completed session (device activity or gym),
@@ -14,15 +15,48 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
   const [fromIcu, setFromIcu] = useState(false)
   const [editing, setEditing] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [review, setReview] = useState<CoachReview | null>(null) // #364 the coach's review of THIS session
+  const [reviewing, setReviewing] = useState(false) // #364 "coach is reviewing…" right after you submit
+  // Match the coach review for this session (by date + sport; gym reviews may omit sport).
+  const matchReview = (rs: CoachReview[]) => rs.find((r) => r.date === date && (r.sport === sport || (!r.sport && sport === 'gym'))) || null
   useEffect(() => {
     authApi.getActivityFeedback(id).then((f) => {
       if (f) { setFeel(f.feel); setRpe(f.rpe); setFields(f.fields || {}); setNote(f.note || ''); setSaved(true) }
       else if (icuExisting || icuNote) { setFeel(icuExisting?.feel); setRpe(icuExisting?.rpe); setFields(icuExisting?.fields || {}); if (icuNote) setNote(icuNote); setSaved(true); setFromIcu(true) } // already logged in intervals — show it, don't ask again
     }).catch(() => {}).finally(() => setLoaded(true))
+    authApi.coachReviews().then((rs) => setReview(matchReview(rs))).catch(() => {}) // #364 show an existing review if there is one
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, icuExisting, icuNote])
   const sportFields = FIELDS[sport] || FIELDS.gym
-  async function save() { await authApi.activityFeedback(id, { feel, rpe, fields, note, sport, date }).catch(() => {}); setSaved(true); setEditing(false) }
+  // #364 — after saving, tell the athlete the coach IS reviewing + poll so the takeaways appear here
+  // (no reload) the moment they land — the coach review runs async server-side (~1–3 min).
+  async function save() {
+    const prevAt = review?.at || ''
+    await authApi.activityFeedback(id, { feel, rpe, fields, note, sport, date }).catch(() => {})
+    setSaved(true); setEditing(false); setReviewing(true)
+    let tries = 0
+    const poll = () => authApi.coachReviews().then((rs) => {
+      const m = matchReview(rs)
+      if (m && m.at > prevAt) { setReview(m); setReviewing(false); return } // a FRESH review landed
+      if (++tries < 20) setTimeout(poll, 10000); else setReviewing(false)
+    }).catch(() => { if (++tries < 20) setTimeout(poll, 10000); else setReviewing(false) })
+    setTimeout(poll, 7000)
+  }
+  // #364 — the review / "reviewing…" block shown under the collapsed feedback, so you always know
+  // the coach saw it + WHERE the takeaways will appear.
+  const score10 = review && review.score != null ? (review.score > 10 ? Math.round(review.score / 10) : review.score) : null
+  const reviewBlock = review ? (
+    <div className="pw-fbrev">
+      <div className="pw-fbrev__h">💬 Your coach reviewed this{score10 != null ? <span className="pw-fbrev__score">{score10}/10</span> : null}</div>
+      {review.verdict && <p className="pw-fbrev__v">{review.verdict}</p>}
+      {review.takeaways && review.takeaways.length > 0 && <ul className="pw-fbrev__l">{review.takeaways.slice(0, 3).map((t, i) => <li key={i}>{t}</li>)}</ul>}
+      <Link to="/progress" className="pw-fbrev__link">See all coach takeaways on Progress →</Link>
+    </div>
+  ) : reviewing ? (
+    <div className="pw-fbrev pw-fbrev--pending"><div className="pw-fbrev__h">🔎 Your coach is reviewing this session…</div><p className="pw-fbrev__v">Takeaways will appear <b>right here</b>, on <Link to="/progress" className="pw-fbrev__link">Progress</Link>, and as a 🔔 notification — usually within a minute or two.</p></div>
+  ) : saved ? (
+    <div className="pw-fbrev pw-fbrev--pending"><p className="pw-fbrev__v">Your coach's takeaways will show <b>here</b> + on <Link to="/progress" className="pw-fbrev__link">Progress</Link> + as a 🔔 notification.</p></div>
+  ) : null
   if (!loaded) return null
   if (saved && !editing) {
     const feelF = FEEL.find(([l]) => l === feel)?.[1]
@@ -37,6 +71,7 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
         <div className="pw-fbsum__hl">{headline || '—'}</div>
         {tags.length > 0 && <div className="pw-fbsum__tags">{tags.map((t, i) => <span key={i} className="pw-tag">{t}</span>)}</div>}
         {note && <p className="pw-fbsum__note">“{note}”</p>}
+        {reviewBlock}
       </div>
     )
   }
