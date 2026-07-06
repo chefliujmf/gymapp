@@ -235,6 +235,15 @@ test guide → the **🧪 Test guide** section below.
     vivid blue/purple so they read fine. FIX: Form line is now **`var(--text)` (bright white)** — stands out over every band +
     the shading, so the projection is unmistakable. Verified via faithful render (grey vs white side-by-side). Lesson: don't
     colour a trend LINE the same neutral as its background bands; the bands carry the zone, the line carries the trajectory.
+    ✅ ROOT CAUSE 2 — the DESKTOP "lines stop at different points" (JM on QA 2026-07-06: "some lines go further than others,
+    load goes to Jul 14 but not the others"). Rendered the real charts at DESKTOP width (1480px) and REPRODUCED it: Fatigue
+    stopped ~Jun 12, Form ~Jun 5, Fitness reached Aug 3 — impossible from data (119 continuous pts). Cause: the `.trend-line`
+    **draw-in animation** (`stroke-dasharray:1; stroke-dashoffset:1; pathLength=1; animation:trend-draw`) — a dash reveal
+    that, under the non-uniform SVG stretch (`preserveAspectRatio=none`) at WIDE width, strands each line mid-draw at a
+    different x. Same bug class as #355 (already removed from the power/pace CURVES). FIX: trend lines render **STATIC** now
+    (removed class + `pathLength` + the CSS animation/keyframes). Re-render with anim off → all 4 lines continuous to Aug 3.
+    Why mobile hid it: the narrow chart completed the reveal before the screenshot. Don't re-add a dash-reveal to trend lines.
+    (Separate, STILL OPEN → see #393: weeks 3–4 are a FLAT held-load tail, not a real coach plan.)
 377. 🔨 **Gym workout doesn't render its exercises in Platyplus (coach plan detail shows title + blurb, then BLANK).** JM
     2026-07-06 (prod screenshot): the "Upper-Body & Trunk Strength" gym session opens to the title + one-line coach note,
     then nothing — the exercise list (DB Bench, Lat Pulldown, Face Pull, Pallof, Dead Bug…) is missing, even though it IS
@@ -364,6 +373,17 @@ test guide → the **🧪 Test guide** section below.
     + `styles.css`): closes **3 ways now — ✕, tap-outside, and Escape**; the head is `position:sticky; z-index:3` (its own
     stacking layer, always above the chart's scrub/pointer area so the chart can never intercept the close tap) with
     `touch-action:manipulation` on the ✕ (no 300ms tap delay / double-tap zoom); body scroll locked while open. gymapp-only.
+393. ⬜ **Make the 4-week forecast REAL, not a flat held-load tail — "adjust the coach to forecast that."** JM 2026-07-06
+    (QA, after the #376 animation fix): the axis runs 4 wks but weeks 3–4 are a FLAT held-load line (`heldLoad = round(CTL)`
+    ≈ 32 TSS EVERY day past the coach's ~14-day plan, server.js:728/730) → CTL holds flat, ATL→32, Form→0. It reaches Aug 3
+    now but looks lifeless/pointless ("what's the point of the graph going further than the lines"). JM wants the COACH to
+    actually forecast 4 weeks. DESIGN (needs JM's pick, mock first): (A) bump `DAILY_HORIZON` 14→28 so the coach plans real
+    sessions 4 wks out (real forecast, but +churn — daily-adapt re-plans them, plans that far are speculative); (B) periodized
+    EXTRAPOLATION — past the plan, repeat the athlete's recent WEEKLY pattern (rest days + a gentle progressive ramp) instead
+    of flat 32/day, labelled "projected" (realistic-looking, zero coach churn); (C) coach authors WEEKLY LOAD BLOCKS
+    (build/build/peak/recover periodization) for 4 wks + the projection distributes each week's target across its days (real
+    coach INTENT, less churn than daily planning) — the training-science-correct answer. Recommend C (or B as a quick win).
+    Touches `readiness.js`/`server.js` projection + maybe coach horizon + `coach-engine-*.md`. gymapp + coach. See [[platyplus-readiness-model]].
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client

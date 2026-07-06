@@ -817,8 +817,9 @@ select.search { appearance: none; -webkit-appearance: none; }
 /* Fitness / trends page */
 .trend { display: block; overflow: visible; }
 .trend-wrap { position: relative; touch-action: pan-y; cursor: crosshair; }
-.trend-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: trend-draw 0.55s ease-out forwards; }
-@keyframes trend-draw { to { stroke-dashoffset: 0; } }
+/* #376/#355 — trend lines render STATIC (no draw-in). A stroke-dashoffset/pathLength reveal under the
+   non-uniform stretch (preserveAspectRatio=none) strands the line mid-draw → looks like it "stops" partway,
+   each line at a different x. Removed. Don't re-add a dash-reveal animation to trend lines. */
 .chart-tip { position: absolute; top: 2px; transform: translateX(-50%); background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 5px 9px; font-size: 11px; font-weight: 700; display: flex; flex-direction: column; gap: 1px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.4); z-index: 3; }
 .chart-tip__d { color: var(--text-dim); font-weight: 600; }
 /* gridded axis layout: y labels gutter + plot + x labels row. #286: wider gutter (breathing
