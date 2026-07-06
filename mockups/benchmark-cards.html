@@ -1,0 +1,133 @@
+<style>
+  :root{
+    --text:#eef1f4; --text-dim:#9298a6; --accent:#34e07d; --bg:#0f1216;
+    --icu:#5ec8ff; --you:#9b8cff; --line:#2a2f3a; --amber:#f5b53d;
+    --card1:#21252f; --card2:#191c24;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+  body{background:#07090c;color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:22px 12px 60px}
+  .phone{max-width:430px;margin:0 auto}
+  .banner{max-width:430px;margin:0 auto 16px;background:linear-gradient(180deg,#1a2230,#141a24);border:1px solid #2b3a4d;border-radius:12px;padding:11px 14px;font-size:12.5px;color:#bcd4ea;line-height:1.5}
+  .banner b{color:var(--accent)}
+
+  .card{background:linear-gradient(180deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:16px;padding:15px 15px 13px;margin-bottom:16px}
+  .bm-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .bm-h h3{font-size:16px;font-weight:750;letter-spacing:.1px}
+  .pill{font-size:11px;font-weight:700;color:var(--accent);border:1px solid rgba(52,224,125,.35);border-radius:20px;padding:3px 9px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .cell{background:#171b23;border:1px solid var(--line);border-radius:13px;padding:11px 12px;text-align:left;cursor:pointer}
+  .cell:active{transform:scale(.985)}
+  .cl{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim)}
+  .tag{font-size:9px;font-weight:800;letter-spacing:.3px;padding:2px 5px;border-radius:5px;text-transform:uppercase;color:var(--icu);background:rgba(94,200,255,.13)}
+  /* CONTRAST FIX — the value is bright, not black-on-grey */
+  .cv{font-size:28px;font-weight:850;margin-top:5px;letter-spacing:-.6px;color:var(--text)}
+  .cv .u{font-size:13px;font-weight:600;color:var(--text-dim);margin-left:3px}
+  .chip{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.3px;color:var(--icu);background:rgba(94,200,255,.12);border:1px solid rgba(94,200,255,.25);border-radius:6px;padding:2px 6px;margin-top:9px}
+  /* confidence / learning bar — on EVERY stat */
+  .conf{margin-top:9px}
+  .conf .bar{height:5px;border-radius:4px;background:#242a34;overflow:hidden}
+  .conf .bar > i{display:block;height:100%;border-radius:4px}
+  .conf .lt{font-size:10px;font-weight:700;margin-top:5px;letter-spacing:.2px}
+  .g-learn > i{background:linear-gradient(90deg,#5ec8ff,#34e07d)}
+  .g-strong > i{background:linear-gradient(90deg,#34e07d,#7ef0a8)}
+  .g-need > i{background:linear-gradient(90deg,#f5b53d,#f58d3d)}
+  .lt.learn{color:#7fd8ff} .lt.strong{color:var(--accent)} .lt.need{color:var(--amber)}
+  .note{font-size:11.5px;color:var(--text-dim);margin-top:13px;line-height:1.45}
+
+  /* detail sheet */
+  .cap{max-width:430px;margin:20px auto 8px;color:var(--text-dim);font-size:12px;text-align:center}
+  .sheet{background:linear-gradient(180deg,#242935,#181b22);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+  .sh-h{display:flex;align-items:baseline;justify-content:space-between;padding:15px 16px 13px;border-bottom:1px solid var(--line)}
+  .sh-h h3{font-size:17px;font-weight:750}
+  .sh-h .big{font-size:26px;font-weight:850;color:var(--icu)}
+  .sh-h .big .u{font-size:14px;color:var(--text-dim);font-weight:600}
+  .conf2{padding:13px 16px 4px}
+  .conf2 .bar{height:7px;border-radius:5px;background:#242a34;overflow:hidden}
+  .conf2 .bar > i{display:block;height:100%;border-radius:5px}
+  .conf2 .lt{font-size:11.5px;font-weight:750;margin-top:7px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px 16px 4px}
+  .two .o{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#12151b}
+  .two .o.on{border-color:var(--icu);box-shadow:0 0 0 1px rgba(94,200,255,.35) inset}
+  .two .o.onyou.on{border-color:var(--you);box-shadow:0 0 0 1px rgba(155,140,255,.35) inset}
+  .ol{font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim)}
+  .ov{font-size:21px;font-weight:800;margin-top:3px}
+  .ov.icu{color:var(--icu)} .ov.you{color:var(--you)}
+  .os{font-size:10px;color:var(--text-dim);margin-top:3px}
+  .narr{margin:12px 16px 2px;font-size:13px;line-height:1.55;color:#c9ced6}
+  .narr b{color:var(--text)}
+  .sci{margin:14px 16px 4px;border-top:1px solid var(--line);padding-top:12px}
+  .sci h4{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px}
+  .mrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(42,47,58,.55)}
+  .mrow:last-child{border-bottom:0}
+  .mrow .mn{flex:1;font-size:12.5px;color:var(--text)}
+  .mrow .mn small{color:var(--text-dim);font-size:11px;display:block;margin-top:1px}
+  .mrow .mv{font-size:15px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+  .mrow.use .mv{color:var(--icu)}
+  .mrow .use-tag{font-size:9px;font-weight:800;color:var(--icu);background:rgba(94,200,255,.14);border-radius:5px;padding:2px 6px;letter-spacing:.3px}
+  .mrow .dim{color:var(--text-dim)}
+  .sharpen{margin:12px 16px 2px;background:rgba(52,224,125,.07);border:1px solid rgba(52,224,125,.22);border-radius:11px;padding:10px 12px;font-size:12px;color:#bfeecf;line-height:1.45}
+  .sharpen b{color:var(--accent)}
+  .seg{display:flex;margin:14px 16px 4px;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .seg button{flex:1;padding:9px 4px;border:0;background:transparent;color:var(--text-dim);font-weight:750;font-size:12.5px;cursor:pointer;border-right:1px solid var(--line)}
+  .seg button:last-child{border-right:0}
+  .seg button.on{background:rgba(94,200,255,.12);color:var(--icu)}
+  .save{margin:12px 16px 16px;display:block;width:calc(100% - 32px);padding:12px;border:0;border-radius:12px;background:var(--accent);color:#06210f;font-weight:800;font-size:14.5px;cursor:pointer}
+</style>
+
+<div class="banner">📊 <b>#374 — Option B, refined</b>: bright numbers (contrast fixed), a colorful <b>confidence bar on every stat</b> (like Sleep), method chip on the card, and the <b>real science</b> — every method + which one drives + how to sharpen it — in the detail.</div>
+
+<div class="phone">
+  <div class="card">
+    <div class="bm-h"><h3>Your benchmarks</h3><span class="pill">⇄ intervals</span></div>
+    <div class="grid" id="grid"></div>
+    <p class="note">Each shows your <b>chosen</b> value + how confident the estimate is. Tap for the science behind it, and to switch manual ↔ computed.</p>
+  </div>
+
+  <div class="cap">↓ tap VO₂max → the science ↓</div>
+  <div id="sheet"></div>
+</div>
+
+<script>
+  const STATS = [
+    { key:'vo2max', label:'VO₂max', val:'51', unit:'', chip:'MAP', conf:{pct:66,cls:'learn',txt:'Good confidence'} },
+    { key:'ftp', label:'FTP', val:'260', unit:'W', chip:'eFTP', conf:{pct:90,cls:'strong',txt:'Strong'} },
+    { key:'thresholdPace', label:'Threshold pace', val:'4:57', unit:'/km', chip:'Critical Speed', conf:{pct:60,cls:'learn',txt:'Learning · 3 / 4 runs'} },
+    { key:'maxHr', label:'Max HR', val:'185', unit:'bpm', chip:'Observed', conf:{pct:45,cls:'need',txt:'Needs a max effort'} },
+    { key:'sleepNeed', label:'Sleep need', val:'9', unit:'h', chip:'Learning', conf:{pct:85,cls:'learn',txt:'Learning · 18 / 21 nights'} },
+  ]
+
+  document.getElementById('grid').innerHTML = STATS.map(s => `
+    <button class="cell">
+      <div class="cl">${s.label}<span class="tag">auto</span></div>
+      <div class="cv">${s.val}${s.unit?`<span class="u">${s.unit}</span>`:''}</div>
+      <span class="chip">${s.chip}</span>
+      <div class="conf">
+        <div class="bar g-${s.conf.cls}"><i style="width:${s.conf.pct}%"></i></div>
+        <div class="lt ${s.conf.cls}">${s.conf.txt}</div>
+      </div>
+    </button>`).join('')
+
+  // VO₂max detail — the SCIENCE (real methods from the codebase)
+  document.getElementById('sheet').innerHTML = `
+    <div class="sheet">
+      <div class="sh-h"><h3>VO₂max</h3><span class="big">51</span></div>
+      <div class="conf2">
+        <div class="bar g-learn"><i style="width:66%"></i></div>
+        <div class="lt learn" style="color:#7fd8ff">Good confidence — blended from 2 methods</div>
+      </div>
+      <div class="two">
+        <div class="o on"><div class="ol">Computed</div><div class="ov icu">51</div><div class="os">blended, best method</div></div>
+        <div class="o onyou"><div class="ol">Manual</div><div class="ov you">—</div><div class="os">your value</div></div>
+      </div>
+      <div class="narr">Estimated from your <b>best 5-minute bike power</b> (your MAP), cross-checked against your heart-rate profile. It re-computes automatically — no lab or ramp test needed.</div>
+      <div class="sci">
+        <h4>The science · 3 methods</h4>
+        <div class="mrow use"><div class="mn">Cycling MAP<small>power-based · 10.8 × MAP/kg + 7</small></div><span class="use-tag">IN USE</span><div class="mv">51</div></div>
+        <div class="mrow"><div class="mn">HR-ratio<small>submax · 15.3 × HRmax/HRrest</small></div><div class="mv">52</div></div>
+        <div class="mrow"><div class="mn dim">Running VDOT<small>pace-based · needs ≥4 runs</small></div><div class="mv dim">—</div></div>
+      </div>
+      <div class="sharpen">💪 <b>Sharpen it:</b> a hard ~5-min near-max effort refreshes your MAP → the estimate tightens to <b>High confidence</b>.</div>
+      <div class="seg"><button>Manual</button><button class="on">Auto</button><button>Computed</button></div>
+      <button class="save">Done</button>
+    </div>`
+</script>
