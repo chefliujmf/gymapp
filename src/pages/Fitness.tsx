@@ -76,7 +76,17 @@ export default function Fitness() {
   const { user } = useAuth()
   const [from, setFrom] = useState(localISO(new Date(Date.now() - 90 * 86400000)))
   const [to, setTo] = useState(localISO())
-  const [rows, setRows] = useState<IcuWellness[] | null>(null)
+  const [rawRows, setRawRows] = useState<IcuWellness[] | null>(null)
+  // #376 — trim trailing days that have no CTL/ATL yet. intervals can return the freshest day(s) — or a
+  // range ending "today" before it has finalised them — with NULL fitness/fatigue; those null tail-rows
+  // then sit BETWEEN the solid history and the dashed projection, showing as a visible GAP ("the line
+  // stops and restarts"). End the history at its last REAL point so the projection joins seamlessly.
+  const rows = useMemo(() => {
+    if (rawRows == null) return null
+    let e = rawRows.length
+    while (e > 0 && rawRows[e - 1].fitness == null && rawRows[e - 1].fatigue == null) e--
+    return rawRows.slice(0, e)
+  }, [rawRows])
   const [proj, setProj] = useState<Awaited<ReturnType<typeof authApi.readinessProjection>> | null>(null) // #248
   const [modal, setModal] = useState<{ title: string; node: ReactNode } | null>(null)
   const sports = user?.sports || []
@@ -85,8 +95,8 @@ export default function Fitness() {
   useEffect(() => {
     if (!from || !to) return
     const [f, t] = from <= to ? [from, to] : [to, from] // forgiving: auto-swap reversed range
-    setRows(null)
-    fetchWellness(f, t).then(setRows).catch(() => setRows([]))
+    setRawRows(null)
+    fetchWellness(f, t).then(setRawRows).catch(() => setRawRows([]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to])
   useEffect(() => { if (isEndurance && user?.hasIcuKey) authApi.readinessProjection(14).then(setProj).catch(() => {}) }, [isEndurance, user?.hasIcuKey])

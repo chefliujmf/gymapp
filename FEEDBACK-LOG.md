@@ -221,6 +221,13 @@ test guide → the **🧪 Test guide** section below.
     and the merge join is provably at the same index. So the on-screen gap is NOT data — likely a STALE PWA bundle
     (projection code unchanged since #248; I shipped ~5 bundles today). Ask JM to hard-refresh / use the Refresh button;
     if it persists, dig into the live render. Also harden: only append projection when viewing up-to-today.
+    UPDATE 2 (JM refreshed, gap PERSISTS → not stale bundle): traced JM's EXACT client responses (minted his session on
+    the box): projection = clean 14d Jul7-20 (dates/ctl/atl/form all len 14); wellness = 91 contiguous rows to today, ZERO
+    trailing nulls. A render repro proved the current merge draws THAT continuously (history-end + projection-start both at
+    index 90, connected). So a BLANK gap is only possible from **trailing null-CTL tail rows** in the RENDERED range (a range
+    tail intervals hasn't finalised) sitting BETWEEN the solid history and the dashed projection. FIX: `Fitness.tsx` now
+    TRIMS trailing dataless days (`fitness==null && fatigue==null`) so history ends at its last REAL point → projection
+    joins seamlessly. If it STILL shows after this + a refresh, it's the PWA cache (instrument the live client next).
 377. 🔨 **Gym workout doesn't render its exercises in Platyplus (coach plan detail shows title + blurb, then BLANK).** JM
     2026-07-06 (prod screenshot): the "Upper-Body & Trunk Strength" gym session opens to the title + one-line coach note,
     then nothing — the exercise list (DB Bench, Lat Pulldown, Face Pull, Pallof, Dead Bug…) is missing, even though it IS
