@@ -171,12 +171,14 @@ test guide → the **🧪 Test guide** section below.
     per JM: we supply the number, intervals does the Form math): new pure `plannedTss(segments)` in `server/icu-steps.js`
     (standard Coggan TSS = duration·IF²/3600·100, IF = NP%/100; **FTP-independent** — the % IS the IF, mirrors client
     `plannedLoad`), set as `ev.icu_training_load` in `planToIcuEvent`. New `POST /api/plans/resync` re-mirrors all FUTURE
-    plans so his EXISTING ones pick up the load (no content change). 328 tests (4 new for plannedTss). On QA→prod.
-373. ⬜ **Energy (i) should show the ACTUAL numbers — current HRV vs known min/max.** JM 2026-07-06: the Energy readiness
+    plans so his EXISTING ones pick up the load (no content change). 328 tests (4 new for plannedTss). **On prod — VERIFIED
+    end-to-end:** resynced his 13 plans, `icu_training_load` now 41/64/40/73/112/111, and his Form projection went from
+    FLAT (-3.2 Sun) to a truthful **-22.2 Sun**. Round-trip on a throwaway event confirmed intervals stores + models it.
+373. 🔨 **Energy (i) should show the ACTUAL numbers — current HRV vs known min/max.** JM 2026-07-06: the Energy readiness
     ⓘ currently reads "HRV +0.4 vs your baseline" (a z-score sign) — JM wants the concrete range: his current HRV vs the
     min/max he's known. Plan: `server/readiness.js` `baselines()` also returns `hrvMin`/`hrvMax` (raw ms) from history;
     expose in the readiness response; Today.tsx energy `why` renders "HRV 42 ms (your range 28–58)". Same treatment fits
-    resting HR. gymapp-only.
+    resting HR. gymapp-only. **On prod** (Energy ⓘ now reads "HRV NN ms (your range lo–hi) … resting HR NN (range lo–hi)").
 374. ⬜ **Learned-stat cards: COMPACT summary, details on SELECT + always say WHEN/how-often/based-on-what.** JM 2026-07-06
     (Global benchmarks screenshot): the "Your benchmarks" cards (VO₂max, FTP, Threshold Pace, Max HR, Sleep Need) — the
     inline explanation should be COMPACT; the full detail belongs in a tap-to-open view. AND not all cards say how long
@@ -184,7 +186,7 @@ test guide → the **🧪 Test guide** section below.
     just "51.1 · tap to switch", no word on HOW it's computed, WHEN, BASED ON WHAT, how FREQUENT, or when it'll next
     compute. FTP + Threshold already have a good ⏳ "after your next hard ride / after ~1 more run" line — bring that
     clarity to ALL of them, but move the long copy into the detail view. Needs a MOCK (options-first). gymapp-only.
-375. ⬜ **Coach OVER-PLANNED the week — ~2× sustainable load, no overload framing (root cause = #372 null loads).** JM
+375. 🔨 **Coach OVER-PLANNED the week — ~2× sustainable load, no overload framing (root cause = #372 null loads).** JM
     2026-07-06 ("too many crazy workouts this week? normal?"). AUDIT of his real prod week (Mon Jul6–Sun Jul12): 6 rides +
     1 gym, planned **441 TSS** vs ~**225 sustainable** at his CTL≈32 (CTL×7) — a ~1.9 ramp, with **two back-to-back
     110-TSS days** (Sat 112 + Sun 111). Projected Form once #372 loads flow in ≈ **-25 by Sunday** (not the -3 intervals
@@ -192,6 +194,11 @@ test guide → the **🧪 Test guide** section below.
     signal that the week was 2× — it couldn't see its own ramp. FIX: (a) #372 gives the coach load visibility; (b) add a
     coach guardrail — cap weekly ramp vs CTL (≤ ~1.3× / weekly TSS ≲ CTL×7–8) UNLESS a deliberate, communicated overload
     block + a following recovery week; avoid back-to-back long-hard days for a CTL-32 athlete. Coach-engine + planning logic.
+    **DONE + on prod:** pure `weeklyLoadBudget(ctl)` (CTL×7 flat / ×8 build / ×9 cap, unit-tested), CTL stashed in
+    `/auth/readiness`, `buildSystemPrompt` injects a `# WEEKLY LOAD BUDGET` section (concrete numbers when CTL known),
+    cycling engine "verify the week TOTAL" line. THEN JM chose "rebalance now" → ran a targeted `/api/coach/run`: coach cut
+    the week **441→~250 TSS**, dropped Sunday's threshold (no back-to-back), long ride 120→90min endurance, Fri tempo→easy,
+    kept ONE quality day; Form peak now **-7.7** (was -22). Coach notified JM in-app. 332 tests.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
