@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { lnRMSSD, meanSd, zTo5, score100To5, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, projectFormSeries, forecastFreshness, estimateVo2max as estimateVo2maxSrv, bestVo2maxEstimate, hrRatioVo2max } from '../server/readiness.js'
+import { lnRMSSD, meanSd, zTo5, score100To5, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, projectFormSeries, forecastFreshness, estimateVo2max as estimateVo2maxSrv, bestVo2maxEstimate, hrRatioVo2max, weeklyLoadBudget } from '../server/readiness.js'
 
 // #195 readiness math, grounded in docs/readiness-scores.md (WHOOP deep-dive 2026-06-28).
 
@@ -42,6 +42,18 @@ describe('baselines — cold-start gate', () => {
   it('range is null when there is no HRV history', () => {
     const b = baselines([{ date: 'a', restingHR: 55 }])
     expect(b.hrvMin).toBeNull(); expect(b.hrvMax).toBeNull()
+  })
+})
+
+// #375 — weekly load budget vs CTL, so the coach doesn't plan 2× sustainable.
+describe('weeklyLoadBudget', () => {
+  it('CTL 32 → ~224 sustainable, ~256 build, ~288 cap (441 is ~2× the build — an over-cook)', () => {
+    const b = weeklyLoadBudget(32)
+    expect(b.sustainable).toBe(224); expect(b.build).toBe(256); expect(b.cap).toBe(288)
+    expect(441).toBeGreaterThan(b.cap * 1.5) // JM's planned week was well past the cap
+  })
+  it('null for missing/zero CTL', () => {
+    expect(weeklyLoadBudget(null)).toBeNull(); expect(weeklyLoadBudget(0)).toBeNull()
   })
 })
 

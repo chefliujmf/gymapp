@@ -26,7 +26,7 @@ const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
-import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate } from './readiness.js'
+import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
@@ -639,6 +639,8 @@ app.get('/auth/readiness', auth, async (req, res) => {
   // #236: stash the latest resting HR + eFTP so the coach's computed VO₂max/FTP match the app.
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { req.user.restingHR = rows[i].restingHR; break }
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { req.user.eftp = Math.round(rows[i].eftp); break }
+  // #375 — stash the latest CTL/ATL so the coach's system prompt can state a concrete WEEKLY LOAD BUDGET.
+  for (let i = rows.length - 1; i >= 0; i--) if (rows[i].fitness != null) { req.user.ctl = Math.round(rows[i].fitness); if (rows[i].fatigue != null) req.user.atl = Math.round(rows[i].fatigue); break }
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i].weight != null) { req.user.weight = Math.round(rows[i].weight * 10) / 10; break } // #265
   // #256 port (per-athlete LEARNED baselines): stash this athlete's own 60-day HRV/RHR norm so the
   // COACH interprets today's reading as a deviation from THEIR baseline, not textbook absolutes.
@@ -1111,6 +1113,10 @@ function buildSystemPrompt(user) {
   // calendar day beyond this cap unless the athlete explicitly opts into doubles.
   const maxPerDay = Math.max(1, Number(user.info?.maxPerDay) || 1)
   p += `\n\n# ONE SESSION PER DAY (max ${maxPerDay}/day): the athlete trains at most ${maxPerDay} session${maxPerDay > 1 ? 's' : ''} per calendar day. ${maxPerDay === 1 ? 'Do NOT schedule two workouts on the same day (no gym + run, no ride + run together) — spread sessions across different days. If two efforts must share a day because time is tight, ask first or fold them into ONE combined session.' : `Never exceed ${maxPerDay} on any single day, and only double up when it genuinely serves the plan (e.g. AM/PM split).`} Respect their weekly availability + rest days when spacing them.`
+  // #375 — WEEKLY LOAD BUDGET so the coach doesn't over-cook a week (it planned ~2× sustainable when it
+  // couldn't see planned loads; #372 fixed the visibility, this states the budget). Uses the stashed CTL.
+  const budget = weeklyLoadBudget(user.ctl)
+  p += `\n\n# WEEKLY LOAD BUDGET (do NOT over-cook the week): a sustainable week ≈ CTL×7 TSS (holds fitness flat); a healthy progressive BUILD is ~CTL×8. ${budget ? `Right now their CTL≈${user.ctl} → aim ~${budget.build} TSS this week, HARD CAP ~${budget.cap}.` : `Read their CTL with get_wellness first, then budget = CTL×7 (flat) to CTL×8 (build).`} Before you finalise a week, ADD UP the planned sessions' load — list_schedule now shows each session's TSS — and if the week's total exceeds the cap, CUT it (shorten the long ride, drop or ease a hard day). Alternate hard/easy: NEVER put two long-or-hard days back-to-back, and keep easy days genuinely easy. Only blow past the cap for a DELIBERATE overload block — and then say so out loud AND schedule a recovery/deload week straight after. Sanity-check the Form forecast: a normal week shouldn't project Form below about −20.`
   // #341 — weather-aware coaching for OUTDOOR sessions.
   p += `\n\n# WEATHER (outdoor sessions): before planning or confirming an outdoor run/ride — especially in heat or cold — call get_weather (date = the session day). In the heat, DERATE: judge easy days by feel/HR (pace/power hold at a higher cost), trim quality targets, add hydration/electrolyte + fueling notes, prefer the cool hour or shade, and move a hard session indoors when it's extreme. Cold → longer warm-up + layers; strong wind → ride to effort not speed; likely rain → grip/visibility or indoors. Fold it into the plan/notes, don't just report it. If it returns needsLocation, ask their city once.`
   // #323 — the athlete's OWN goal & identity. This is what makes the plan theirs; center on it and
