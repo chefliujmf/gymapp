@@ -145,7 +145,9 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
                   <path d={`${path} L${last[0]},${H - P} L${pts[0][0]},${H - P} Z`} fill={`url(#${uid}-${si})`} />
                 </>
               )}
-              <path className={s.dash ? undefined : 'trend-line'} pathLength={1} d={path} fill="none" stroke={s.color} strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s.dash ? '4 4' : undefined} strokeOpacity={s.dash ? 0.75 : 1} vectorEffect="non-scaling-stroke" />
+              {/* #376/#355 — NO draw-in animation: the dash/pathLength reveal strands the line mid-draw under
+                  the non-uniform SVG stretch (looked like Form/Fatigue "stopped" partway, each at a different x). Static. */}
+              <path d={path} fill="none" stroke={s.color} strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s.dash ? '4 4' : undefined} strokeOpacity={s.dash ? 0.75 : 1} vectorEffect="non-scaling-stroke" />
               {!s.dash && <circle cx={last[0]} cy={last[1]} r="3" fill={s.color} vectorEffect="non-scaling-stroke" />}
               {hi != null && s.data[hi] != null && <circle cx={x(hi)} cy={y(s.data[hi] as number)} r="3.5" fill={s.color} stroke="var(--bg)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
             </g>
