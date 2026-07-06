@@ -92,6 +92,17 @@ export function freshness({ atl, ctl, form, tsbBaseline } = {}) {
   return { score: clamp(round1(score), 1, 5), acwr: acwr == null ? null : round1(acwr), tsb: tsb == null ? null : round1(tsb), personalZ: personalZ == null ? null : round1(personalZ) }
 }
 
+// #375 — WEEKLY LOAD BUDGET. A week ≈ CTL×7 TSS holds fitness flat; a healthy progressive BUILD is ~CTL×8
+// (ramps CTL ~+1/wk). Much past ~CTL×9 in ONE week spikes ATL and craters Form (overreaching). Gives the
+// coach a concrete budget so it doesn't plan 2× sustainable (root cause of #375: with #372 loads now set,
+// the coach can finally SEE the week's total and stay inside this). Not a hard clamp — a deliberate overload
+// block may exceed it, but must then be named + followed by recovery.
+export function weeklyLoadBudget(ctl) {
+  if (ctl == null || !(Number(ctl) > 0)) return null
+  const c = Number(ctl)
+  return { sustainable: Math.round(c * 7), build: Math.round(c * 8), cap: Math.round(c * 9) }
+}
+
 // ENERGY (1–5) — acute autonomic readiness. Minimum dataset = HRV baseline + sleep; without an HRV
 // baseline we return null (cold start) so the UI keeps the manual tap.
 // #315 — population fallback baselines so a NEW athlete (no 14-day personal baseline yet) still gets
