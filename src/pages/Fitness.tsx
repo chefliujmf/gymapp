@@ -99,7 +99,7 @@ export default function Fitness() {
     fetchWellness(f, t).then(setRawRows).catch(() => setRawRows([]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to])
-  useEffect(() => { if (isEndurance && user?.hasIcuKey) authApi.readinessProjection(14).then(setProj).catch(() => {}) }, [isEndurance, user?.hasIcuKey])
+  useEffect(() => { if (isEndurance && user?.hasIcuKey) authApi.readinessProjection(28).then(setProj).catch(() => {}) }, [isEndurance, user?.hasIcuKey]) // #391 — 4-week forecast
 
   const s = useMemo(() => {
     const r = rows || []
@@ -160,7 +160,7 @@ export default function Fitness() {
                 <button className="chart-expand" aria-label="Expand chart" onClick={() => setModal({ title: 'Form', node: <TrendChart height={Math.min(360, window.innerHeight * 0.5)} axes labels={dates} today={todayFrac} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: full(s.form, proj?.form) }]} /> })}>⤢</button>
                 <div className="fit-legend"><span style={{ color: fz.color }}>● Form</span><span style={{ color: '#34e07d' }}>● optimal zone</span>{projOn && <span className="meta">▒ projected →</span>}</div>
                 <TrendChart height={130} axes labels={dates} today={todayFrac} bands={FORM_BANDS} series={[{ label: 'Form', color: fz.color, data: full(s.form, proj?.form) }]} />
-                <p className="fit-insight">{formInsight(last(s.form))} <span className="meta">· Form {statLine(s.form)}</span>{projOn && proj!.form!.length ? <span className="meta"> · projected → {proj!.form![proj!.form!.length - 1]} in {fut.length}d</span> : null}</p>
+                <p className="fit-insight">{formInsight(last(s.form))} <span className="meta">· Form {statLine(s.form)}</span>{projOn && proj!.form!.length ? <span className="meta"> · projected → {proj!.form![proj!.form!.length - 1]} in {fut.length}d <InfoDot text="Forecast from your planned sessions (~2 wks); past that it assumes you HOLD your recent average training load — a 'if you keep training like this' trend, not a fixed plan." /></span> : null}</p>
               </div>
 
               <div className="card chart-card" style={{ padding: '12px 14px', marginTop: 12 }}>

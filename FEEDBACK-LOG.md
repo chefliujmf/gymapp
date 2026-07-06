@@ -340,7 +340,7 @@ test guide → the **🧪 Test guide** section below.
     independence gate — HOST the images on the XPS, NEVER hotlink 3rd-party per the invariant) → `npm run sync:catalog` →
     content-manifest (license/commercial flags — check ToS before scraping) → deploy. Tag by meal type / cuisine / diet /
     macros / time so the coach's `search_recipes` can pick well. Parked until JM prioritizes. gymapp content.
-391. ⬜ **Forecast/projection only goes 14 days — extend it (+ the To filter caps at today).** JM 2026-07-06 (Load & Form):
+391. 🔨 **Forecast/projection only goes 14 days — extend it (+ the To filter caps at today).** JM 2026-07-06 (Load & Form):
     "wish the coach would project more than that." The projection = 14d (`readinessProjection(14)`, endpoint caps at 28);
     the To date-picker `max=today`. TRADE-OFF: the forecast is driven by PLANNED load, and the coach only keeps ~14 days
     populated (#367 DAILY_HORIZON=14) — naively extending to 6 wk shows Form RISING (falsely fresh) because there's no
