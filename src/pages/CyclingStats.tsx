@@ -7,6 +7,7 @@ import { PowerCurveChart, InfoDot, bestAt } from '../charts'
 import { hasModule } from '../modules'
 import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
 import { MiniCard, last } from './Fitness'
+import { BenchmarksCard } from '../Benchmarks'
 
 // #225 — Cycling per-sport stats: power curve · eFTP · VO₂max · W/kg. Split out of /fitness (which
 // is now global Load & Form only).
@@ -30,8 +31,7 @@ export default function CyclingStats() {
   const s = useMemo(() => {
     const r = rows || []
     const col = (k: keyof IcuWellness) => r.map((d) => d[k] as number | null)
-    const vo2 = r.map((d) => (d.eftp && d.weight ? Math.round((10.8 * d.eftp / d.weight + 7) * 10) / 10 : null))
-    return { eftp: col('eftp'), weight: col('weight'), vo2 }
+    return { eftp: col('eftp'), weight: col('weight') }
   }, [rows])
 
   return (
@@ -46,14 +46,15 @@ export default function CyclingStats() {
         <p className="meta">Connect intervals.icu in <span style={{ color: 'var(--accent)' }}>Profile</span> to see your power curve & FTP.</p>
       ) : (
         <>
+          {/* #385 — same polished benchmark cards as Global, filtered to cycling (FTP · VO₂max · Max HR). */}
+          <BenchmarksCard only={['ftp', 'vo2max', 'maxHr']} />
           <DateRangeFilter presets={TRAINING_PRESETS} from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
           {rows === null ? <p className="meta">Loading…</p> : (
             <>
+              {/* eFTP TREND over the range (the benchmark card shows the current value + confidence; this is the history). */}
               <div className="fit-grid">
-                <MiniCard title="VO₂max (est.)" value={last(s.vo2)} hint="Aerobic engine size (ml/kg/min). Higher = fitter. Estimated from eFTP ÷ weight." series={{ label: '', color: '#34e07d', data: s.vo2, area: true }} />
-                <MiniCard title="eFTP" value={last(s.eftp)} unit=" W" hint="Estimated threshold power — watts you can hold ~1 hour. Higher = stronger." series={{ label: '', color: '#ffb020', data: s.eftp }} />
+                <MiniCard title="eFTP trend" value={last(s.eftp)} unit=" W" hint="Estimated threshold power — watts you can hold ~1 hour. Higher = stronger. The line is your trend over this range." series={{ label: '', color: '#ffb020', data: s.eftp }} />
               </div>
-              <p className="meta" style={{ margin: '-4px 2px 8px' }}>Cycling VO₂max is a <b style={{ color: '#f0b145' }}>rough estimate</b> from power ÷ weight — conservative, usually lower than running. Tap VO₂max in <a href="/stats" style={{ color: 'var(--accent)' }}>Stats</a> to enter a measured value.</p>
               {pc ? (
                 <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
                   <div className="fit-legend"><span style={{ color: '#34e07d' }}>● Power curve<InfoDot text="The most power (watts) you can hold for each duration — sprints on the left (seconds), endurance on the right (hours). Push a line up = you got stronger at that effort." /></span></div>

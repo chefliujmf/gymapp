@@ -15,7 +15,8 @@ import { vo2maxConfidence, ftpConfidence, thresholdPaceConfidence, maxHrConfiden
 // every stat), and the detail sheet gains a confidence bar, a plain-language narrative, "The science ·
 // N methods" (computed live for VO₂max), and a "Sharpen it" callout. See mockups/benchmark-cards.html.
 type Pref = 'manual' | 'computed' | 'auto' // #277 auto = use computed once it's ready, manual until then
-type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed' // #337 sleep joins the picker
+// #385 — exported so per-sport Stats pages can pass `only` to show the same polished cards, filtered.
+export type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed' // #337 sleep joins the picker
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n))
 const numParse = (lo: number, hi: number) => (s: string) => { const n = Number(s); return Number.isFinite(n) && n > 0 ? clamp(n, lo, hi) : null }
 
@@ -100,7 +101,8 @@ function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; p
   )
 }
 
-export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: boolean }) {
+// #385 — `only` filters the cards to the given keys (in that order); undefined = all 5 (unchanged).
+export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLink?: boolean; only?: Key[] }) {
   const { user, refresh } = useAuth()
   const [pull, setPull] = useState<IcuAthletePull | null>(null)
   const [hrRest, setHrRest] = useState<number | null>(null)
@@ -233,6 +235,9 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
       sharpen: 'wear your tracker to sleep a few more nights → we learn the duration your body recovers best on.',
     },
   ]
+  // #385 — when `only` is passed, keep just those keys, in the requested order; else show all 5.
+  const shown = only ? only.map((k) => defs.find((d) => d.key === k)).filter((d): d is StatDef => !!d) : defs
+  const showsFtp = shown.some((d) => d.key === 'ftp')
   // #277: default is AUTO — prefer the computed estimate once it's ready, manual until then.
   const prefOf = (d: StatDef): Pref => user?.statPrefs?.[d.key] ?? 'auto'
   const inUse = (d: StatDef): number | null => { const p = prefOf(d); return p === 'manual' ? (d.manual ?? d.computed) : (d.computed ?? d.manual) } // computed/auto prefer computed, fall back to manual
@@ -244,7 +249,7 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
     <div className="card bm-card">
       <div className="bm-card__h"><h3>Your benchmarks</h3>{connected && <span className="sync-pill">⇄ intervals</span>}</div>
       <div className="bm-grid">
-        {defs.map((d) => {
+        {shown.map((d) => {
           const v = inUse(d), p = prefOf(d), src = activeSrc(d)
           const tag = p === 'auto' ? `auto · ${src}` : p
           return (
@@ -258,7 +263,7 @@ export function BenchmarksCard({ showTrendsLink = false }: { showTrendsLink?: bo
           )
         })}
       </div>
-      <p className="bm-note">Each shows your <b>chosen</b> value + how confident the estimate is. Tap for the science behind it, and to switch manual ↔ computed. FTP's eFTP trend is on the <Link to="/cycling-stats">Cycling</Link> page.</p>
+      <p className="bm-note">Each shows your <b>chosen</b> value + how confident the estimate is. Tap for the science behind it, and to switch manual ↔ computed.{showsFtp && <> FTP's eFTP trend is on the <Link to="/cycling-stats">Cycling</Link> page.</>}</p>
       {showTrendsLink && <Link to="/stats" className="bm-trends">See trends &amp; race predictions in Stats ›</Link>}
       {openDef && <Sheet def={openDef} prefer={prefOf(openDef)} onPref={(p) => authApi.saveProfile({ statPrefs: { [openDef.key]: p } }).then(() => refresh()).catch(() => {})} onSaveManual={(v) => { if (v != null) openDef.save(v) }} onClose={() => setOpen(null)} />}
     </div>

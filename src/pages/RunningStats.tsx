@@ -3,12 +3,12 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, parsePace, type RunVolume } from '../running-paces'
-import { runningVo2max, confLabel } from '../vo2max-submax'
+import { runningVo2max } from '../vo2max-submax'
 import { fetchWellness } from '../intervals'
 import { setSetting } from '../db'
 import { authApi } from '../auth/api'
 import { TrendChart, InfoDot } from '../charts'
-import { MiniCard } from './Fitness' // reused card shell (no series → just the value)
+import { BenchmarksCard } from '../Benchmarks'
 
 // #275 — editable threshold-pace cell (tap to edit here, syncs to intervals like Profile does).
 function ThresholdCell({ pace, onSave }: { pace: number | null; onSave: (sec: number | null) => void }) {
@@ -84,14 +84,13 @@ export default function RunningStats() {
         <p className="meta">Set your <Link to="/profile" style={{ color: 'var(--accent)' }}>threshold pace</Link> (the ~1 h race pace you can hold) to unlock Daniels zones, VDOT & race predictions.</p>
       ) : (
         <>
-          <div className="fit-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+          {/* #385 — same polished benchmark cards as Global, filtered to running (Threshold pace · VO₂max · Max HR). */}
+          <BenchmarksCard only={['thresholdPace', 'vo2max', 'maxHr']} />
+          {/* Quick inline threshold-pace editor (the benchmark card shows current + confidence; this is the fast tap-to-edit that drives zones & predictions below). */}
+          <div className="fit-grid" style={{ gridTemplateColumns: '1fr' }}>
             <ThresholdCell pace={pace} onSave={saveRunPace} />
-            <MiniCard title="VDOT" value={vdot} hint="Daniels' running fitness score (≈ running VO₂max)." />
-            <MiniCard title="VO₂max" value={vo2 ? vo2.value : null} hint="Running VO₂max — submaximal estimate from your pace + max/resting HR; no max test needed." />
           </div>
-          {vo2 && <p className="meta" style={{ margin: '10px 2px 4px' }}>VO₂max <b>{vo2.value}</b> · <b style={{ color: vo2.confidence === 'high' ? 'var(--accent)' : vo2.confidence === 'medium' ? '#5ec8ff' : '#f0b145' }}>{confLabel(vo2.confidence)}</b> from {vo2.source}. Tap VO₂max in <Link to="/stats" style={{ color: 'var(--accent)' }}>Stats</Link> to enter a measured value.</p>}
-          {vo2 && hrRatioMismatch && <p className="meta" style={{ margin: '0 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
-          <p className="meta" style={{ margin: '4px 2px 10px' }}>Threshold pace <b>{pace ? `${fmtPace(pace)}/km` : '—'}</b> · edit it in <Link to="/profile" style={{ color: 'var(--accent)' }}>Profile</Link> (syncs to intervals).</p>
+          {vo2 && hrRatioMismatch && <p className="meta" style={{ margin: '10px 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
 
           {zones && (
             <>
