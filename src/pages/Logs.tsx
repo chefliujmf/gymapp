@@ -21,6 +21,10 @@ const normType = (d?: string) => { const s = String(d || '').toLowerCase(); retu
 // emoji for a discipline/sport so every History row reads at a glance
 const SPORT_EMOJI: Record<string, string> = { cycling: '🚴', ride: '🚴', running: '🏃', run: '🏃', strength: '🏋️', gym: '🏋️', swimming: '🏊', swim: '🏊', walking: '🚶', walk: '🚶', yoga: '🧘', pilates: '🧘', meditation: '🧠' }
 const emojiFor = (s?: string) => SPORT_EMOJI[String(s || '').toLowerCase()] || '✦'
+// #386 — a device activity often has no `name`; "Activity · Sat" told JM nothing. Fall back to a readable
+// SPORT name (+ a full date, below) so every row says what it is and exactly when.
+const SPORT_NAME: Record<string, string> = { gym: 'Strength session', strength: 'Strength session', ride: 'Ride', cycling: 'Ride', run: 'Run', running: 'Run', swim: 'Swim', swimming: 'Swim', walk: 'Walk', walking: 'Walk', yoga: 'Yoga', pilates: 'Pilates', meditation: 'Mind session' }
+const nameFor = (s?: string) => SPORT_NAME[String(s || '').toLowerCase()] || 'Session'
 
 // A Platyplus endurance/manual log (no sets) — compact stat line + source tag (#130).
 function ActivityLogCard({ log }: { log: WorkoutLog }) {
@@ -49,7 +53,7 @@ function IncompleteFeedbackBanner({ acts }: { acts: IcuActivity[] }) {
   const gaps = incompleteFeedback(acts)
   if (!gaps.length) return null
   const show = gaps.slice(0, 6)
-  const dayLabel = (iso?: string) => (iso ? new Date(iso).toLocaleDateString(undefined, { weekday: 'short' }) : '')
+  const dayLabel = (iso?: string) => (iso ? new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '')
   return (
     <div className="fbgap">
       <div className="fbban">
@@ -63,7 +67,7 @@ function IncompleteFeedbackBanner({ acts }: { acts: IcuActivity[] }) {
         <Link key={String(act.id)} to={`/activity/${act.id}`} className="fbrow">
           <div className="fbrow__th">{SPORT_EMOJI[sportOfActivity(act)] || '⏱️'}</div>
           <div className="fbrow__b">
-            <div className="fbrow__t">{act.name || 'Activity'} · {dayLabel(act.start_date_local)}</div>
+            <div className="fbrow__t">{act.name || nameFor(sportOfActivity(act))} · {dayLabel(act.start_date_local)}</div>
             <div className="fbrow__m">{status.missing.map((m) => <span key={m} className="fbmiss">{m}</span>)}</div>
             <div className="fbprog"><i style={{ width: `${Math.max(6, status.pct)}%` }} /></div>
           </div>
@@ -81,7 +85,7 @@ function DeviceActivityCard({ a }: { a: IcuActivity }) {
     <>
       <div className="hist-row">
         <span className="hist-ic">{emojiFor(sportOfActivity(a))}</span>
-        <div className="hist-body"><h3>{a.name || 'Activity'}</h3></div>
+        <div className="hist-body"><h3>{a.name || nameFor(sportOfActivity(a))}</h3></div>
         <span className="src-tag src-dev">from intervals</span>
         {a.id && <span className="hist-row__ch" aria-hidden="true">›</span>}
       </div>
