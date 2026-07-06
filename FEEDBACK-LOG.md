@@ -172,6 +172,11 @@ test guide → the **🧪 Test guide** section below.
     (standard Coggan TSS = duration·IF²/3600·100, IF = NP%/100; **FTP-independent** — the % IS the IF, mirrors client
     `plannedLoad`), set as `ev.icu_training_load` in `planToIcuEvent`. New `POST /api/plans/resync` re-mirrors all FUTURE
     plans so his EXISTING ones pick up the load (no content change). 328 tests (4 new for plannedTss). On QA→prod.
+373. ⬜ **Energy (i) should show the ACTUAL numbers — current HRV vs known min/max.** JM 2026-07-06: the Energy readiness
+    ⓘ currently reads "HRV +0.4 vs your baseline" (a z-score sign) — JM wants the concrete range: his current HRV vs the
+    min/max he's known. Plan: `server/readiness.js` `baselines()` also returns `hrvMin`/`hrvMax` (raw ms) from history;
+    expose in the readiness response; Today.tsx energy `why` renders "HRV 42 ms (your range 28–58)". Same treatment fits
+    resting HR. gymapp-only.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client

@@ -32,6 +32,17 @@ describe('baselines — cold-start gate', () => {
     expect(b.hrvBaseline.mean).toBeCloseTo(Math.log(50), 5)
     expect(b.nHrv).toBe(20)
   })
+  // #373 — the raw known min/max range shown in the Energy ⓘ.
+  it('reports the raw HRV + RHR min/max range (even below the baseline gate)', () => {
+    const hist = [{ date: 'a', hrv: 28, restingHR: 61 }, { date: 'b', hrv: 58, restingHR: 48 }, { date: 'c', hrv: 42, restingHR: 54 }]
+    const b = baselines(hist)
+    expect(b.hrvMin).toBe(28); expect(b.hrvMax).toBe(58)
+    expect(b.rhrMin).toBe(48); expect(b.rhrMax).toBe(61)
+  })
+  it('range is null when there is no HRV history', () => {
+    const b = baselines([{ date: 'a', restingHR: 55 }])
+    expect(b.hrvMin).toBeNull(); expect(b.hrvMax).toBeNull()
+  })
 })
 
 describe('freshness (ACWR + TSB)', () => {

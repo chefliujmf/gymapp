@@ -47,6 +47,7 @@ export const MIN_BASELINE_DAYS = 14 // below this we can't trust a personal base
 // history: [{ date, hrv, restingHR }, ...] (older → newer). Excludes today's row ideally.
 export function baselines(history = []) {
   const lnHrv = history.map((w) => lnRMSSD(w && w.hrv)).filter((x) => x != null)
+  const rawHrv = history.map((w) => (w && w.hrv != null ? Number(w.hrv) : null)).filter((x) => x != null && x > 0) // raw rmssd ms, for the range shown to the athlete (#373)
   const rhr = history.map((w) => (w && w.restingHR != null ? w.restingHR : null)).filter((x) => x != null)
   const tsb = history.map((w) => (!w ? null : w.form != null ? w.form : (w.fitness != null && w.fatigue != null ? w.fitness - w.fatigue : null))).filter((x) => x != null)
   return {
@@ -54,6 +55,9 @@ export function baselines(history = []) {
     rhrBaseline: rhr.length >= MIN_BASELINE_DAYS ? meanSd(rhr) : null,
     tsbBaseline: tsb.length >= MIN_BASELINE_DAYS ? meanSd(tsb) : null, // #207 personal load range
     hrvCV7: coefVar(history.slice(-7).map((w) => lnRMSSD(w && w.hrv))), // 7-day volatility (overtraining lever)
+    // #373 — the actual KNOWN range (raw ms), so the Energy ⓘ can show "HRV 42 (your range 28–58)".
+    hrvMin: rawHrv.length ? Math.round(Math.min(...rawHrv)) : null, hrvMax: rawHrv.length ? Math.round(Math.max(...rawHrv)) : null,
+    rhrMin: rhr.length ? Math.round(Math.min(...rhr)) : null, rhrMax: rhr.length ? Math.round(Math.max(...rhr)) : null,
     nHrv: lnHrv.length, nRhr: rhr.length, nTsb: tsb.length,
   }
 }
@@ -247,5 +251,5 @@ export function readiness(history = [], today = {}, { sleepNeed = 8, subjective,
     // personalised (so it shows "building · N more nights", not a blank).
     if (en.provisional) en.needDays = Math.max(1, MIN_BASELINE_DAYS - base.nHrv)
   }
-  return { sleep: sl, freshness: fr, energy: en, calibration: off, baseline: { nHrv: base.nHrv, nRhr: base.nRhr, hrvCV7: base.hrvCV7 == null ? null : round1(base.hrvCV7) } }
+  return { sleep: sl, freshness: fr, energy: en, calibration: off, baseline: { nHrv: base.nHrv, nRhr: base.nRhr, hrvCV7: base.hrvCV7 == null ? null : round1(base.hrvCV7), hrvMin: base.hrvMin, hrvMax: base.hrvMax, rhrMin: base.rhrMin, rhrMax: base.rhrMax } }
 }

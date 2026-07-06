@@ -81,9 +81,19 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
       if (rdy.sleep.sleepScore != null) sp.push(`tracker sleep score ${rdy.sleep.sleepScore}/100`)
       why.sleep = sp.join(' · ') || 'from your check-in'
     }
-    if (rdy.energy) { calc.energy = Math.round(rdy.energy.score); why.energy = rdy.energy.provisional
-      ? `first estimate from today's HRV, sleep ${rdy.sleep?.score ?? '—'}/5 & resting HR — I'm still learning your personal baseline (~${rdy.energy.needDays ?? 14} more nights to personalise)`
-      : `HRV ${sgn(rdy.energy.hrvZ)} vs your baseline, sleep ${rdy.sleep?.score ?? '—'}/5, resting HR ${sgn(rdy.energy.rhrZ)}${rdy.energy.guard ? ' (HRV high but RHR raised → eased)' : ''}` }
+    if (rdy.energy) { calc.energy = Math.round(rdy.energy.score)
+      // #373 — show the ACTUAL numbers: today's HRV/RHR vs the athlete's own known min–max range
+      // (falls back to the ± z-score sense until there's enough history for a range).
+      const t = rdy.today, b = rdy.baseline
+      const hrvTxt = t?.hrv != null && b?.hrvMin != null && b?.hrvMax != null
+        ? `HRV ${Math.round(t.hrv)} ms (your range ${b.hrvMin}–${b.hrvMax})`
+        : `HRV ${sgn(rdy.energy.hrvZ)} vs your baseline`
+      const rhrTxt = t?.restingHR != null && b?.rhrMin != null && b?.rhrMax != null
+        ? `resting HR ${Math.round(t.restingHR)} (range ${b.rhrMin}–${b.rhrMax})`
+        : `resting HR ${sgn(rdy.energy.rhrZ)}`
+      why.energy = rdy.energy.provisional
+        ? `first estimate from today's HRV, sleep ${rdy.sleep?.score ?? '—'}/5 & resting HR — I'm still learning your personal baseline (~${rdy.energy.needDays ?? 14} more nights to personalise)`
+        : `${hrvTxt}, sleep ${rdy.sleep?.score ?? '—'}/5, ${rhrTxt}${rdy.energy.guard ? ' (HRV high but RHR raised → eased)' : ''}` }
     if (rdy.freshness) { calc.soreness = 6 - Math.round(rdy.freshness.score); const pz = rdy.freshness.personalZ; const vsYou = pz == null ? '' : `, ${pz < -0.5 ? 'more loaded than your usual' : pz > 0.5 ? 'fresher than your usual' : 'about your usual'}`; why.soreness = `training load — Form ${rdy.freshness.tsb ?? '—'}, acute-vs-chronic ${rdy.freshness.acwr ?? '—'}${vsYou}` }
   }
   // Auto-fill any UNANSWERED row from the data-derived value; tapping a face overrides.
