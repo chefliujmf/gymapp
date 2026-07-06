@@ -269,6 +269,12 @@ test guide → the **🧪 Test guide** section below.
     (from the QA `RP_ID`/`ORIGIN`, verified prod=false/QA=true) makes staging READ-ONLY toward intervals — `pushPlanToIcu`
     skips + `dailyAdaptTick` (scheduler) returns early on QA. Only PROD writes to the shared athlete now; QA still reconciles
     IN. This kills the cross-env collision class at the root. ⚠️ verify prod still mirrors after deploy (IS_STAGING must be false).
+382. ⬜ **Progress page is EMPTY / gym-only — irrelevant for a cyclist.** JM 2026-07-06 (screenshot): the Progress page shows
+    "0 VOLUME · THIS WEEK", "🔥 0 DAY STREAK", "1 session · 11 min · 0 this week", an empty "Weekly volume · 9 wk" chart, and
+    a nonsensical "Peak 1 kg". It's built around STRENGTH/gym volume (kg), but JM trains mostly on the bike → nothing to show.
+    FYI/future (JM: "we will have to work on the progress page"). Rework to surface progress for the athlete's ACTUAL sports:
+    cycling/running (eFTP trend, weekly TSS/hours, Form/CTL climb, PRs / power curve, VO₂max trend) + adapt the headline
+    stats + streak to endurance, not just gym reps×kg. Adaptive per `user.sports`. gymapp-only. Needs a mock (options-first).
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
