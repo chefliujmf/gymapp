@@ -308,7 +308,7 @@ test guide → the **🧪 Test guide** section below.
     Reuse `BenchmarksCard` (or its card style) on `CyclingStats`/`RunningStats`, filtered to that sport's benchmarks, so
     they match Global. Also the "No data yet" for a 3-mo range is confusing (the value exists in Stats). gymapp-only. Likely
     direct reuse of the #374 component — small mock/confirm.
-386. ⬜ **History page: the "Activity · Sat" entry is vague + filters/sorting unclear.** JM 2026-07-06 (History screenshot):
+386. 🔨 **History page: the "Activity · Sat" entry is vague + filters/sorting unclear.** JM 2026-07-06 (History screenshot):
     a session needing feedback shows only "Activity · Sat" (no sport name/title/date) → confusing what it is. JM also asked
     "no filters (sports type?), sorting (by date?)" — the page DOES have All/Ride/Run/Gym/Mind filters + a Newest sort +
     date range, so either they're not discoverable or the top "needs feedback" card ignores them. FIX: label the entry with
