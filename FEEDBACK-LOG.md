@@ -177,6 +177,21 @@ test guide → the **🧪 Test guide** section below.
     min/max he's known. Plan: `server/readiness.js` `baselines()` also returns `hrvMin`/`hrvMax` (raw ms) from history;
     expose in the readiness response; Today.tsx energy `why` renders "HRV 42 ms (your range 28–58)". Same treatment fits
     resting HR. gymapp-only.
+374. ⬜ **Learned-stat cards: COMPACT summary, details on SELECT + always say WHEN/how-often/based-on-what.** JM 2026-07-06
+    (Global benchmarks screenshot): the "Your benchmarks" cards (VO₂max, FTP, Threshold Pace, Max HR, Sleep Need) — the
+    inline explanation should be COMPACT; the full detail belongs in a tap-to-open view. AND not all cards say how long
+    until it's estimated (how many days/workouts), how often it updates, and on what. **VO₂max is the worst example** —
+    just "51.1 · tap to switch", no word on HOW it's computed, WHEN, BASED ON WHAT, how FREQUENT, or when it'll next
+    compute. FTP + Threshold already have a good ⏳ "after your next hard ride / after ~1 more run" line — bring that
+    clarity to ALL of them, but move the long copy into the detail view. Needs a MOCK (options-first). gymapp-only.
+375. ⬜ **Coach OVER-PLANNED the week — ~2× sustainable load, no overload framing (root cause = #372 null loads).** JM
+    2026-07-06 ("too many crazy workouts this week? normal?"). AUDIT of his real prod week (Mon Jul6–Sun Jul12): 6 rides +
+    1 gym, planned **441 TSS** vs ~**225 sustainable** at his CTL≈32 (CTL×7) — a ~1.9 ramp, with **two back-to-back
+    110-TSS days** (Sat 112 + Sun 111). Projected Form once #372 loads flow in ≈ **-25 by Sunday** (not the -3 intervals
+    shows now with null loads). WHY the coach over-cooked it: planned loads were **null** (#372), so the coach had NO TSS
+    signal that the week was 2× — it couldn't see its own ramp. FIX: (a) #372 gives the coach load visibility; (b) add a
+    coach guardrail — cap weekly ramp vs CTL (≤ ~1.3× / weekly TSS ≲ CTL×7–8) UNLESS a deliberate, communicated overload
+    block + a following recovery week; avoid back-to-back long-hard days for a CTL-32 athlete. Coach-engine + planning logic.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
