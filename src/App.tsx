@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
-import { Home, CalendarDays, Dumbbell, BarChart3, Salad, MessageCircle } from 'lucide-react'
+import { Home, CalendarDays, Dumbbell, BarChart3, Salad, MessageCircle, RotateCw } from 'lucide-react'
 import AccountMenu from './auth/AccountMenu'
 import ReleaseBell from './ReleaseBell'
 import PromoteButton from './PromoteButton'
@@ -15,6 +16,19 @@ const tabs = [
   { to: '/stats', label: 'Stats', icon: <BarChart3 strokeWidth={1.75} />, end: false, match: /^\/(stats|fitness|strength|progress|logs)/ },
 ]
 
+// #370 — a Refresh for the installed DESKTOP PWA (no address bar / pull-to-refresh there). Pulls a newer
+// bundle if one's waiting (post-deploy, #200) then reloads. Hidden on touch devices (mobile swipes to refresh).
+function RefreshButton() {
+  const [busy, setBusy] = useState(false)
+  const refresh = () => {
+    if (busy) return
+    setBusy(true)
+    try { (window as unknown as { __pwaUpdate?: (r?: boolean) => Promise<void> }).__pwaUpdate?.(true) } catch { /* no SW */ }
+    setTimeout(() => window.location.reload(), 1200) // reload even when no new bundle is waiting
+  }
+  return <button className="refresh-btn" onClick={refresh} aria-label="Refresh" title="Refresh the app"><RotateCw size={17} className={busy ? 'spin' : undefined} /></button>
+}
+
 export default function App() {
   const { pathname } = useLocation()
   // Hide chrome on detail/player pages for an immersive view.
@@ -27,7 +41,7 @@ export default function App() {
           <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=4" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</Link>
           {/* Top-right is the status cluster only: notifications + account (Coach moved to the FAB). */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <PromoteButton /><ReleaseBell /><AccountMenu />
+            <RefreshButton /><PromoteButton /><ReleaseBell /><AccountMenu />
           </div>
         </header>
       )}

@@ -30,7 +30,9 @@ const updateSW = registerSW({
     window.addEventListener('online', check)
   },
 })
-void updateSW
+// #370 — expose the PWA updater so the desktop "Refresh" button can pull a newer bundle (if one's
+// waiting) before reloading, not just re-run the cached one.
+;(window as unknown as { __pwaUpdate?: (reload?: boolean) => Promise<void> }).__pwaUpdate = updateSW
 import App from './App'
 import Today from './pages/Today'
 import Admin from './pages/Admin'

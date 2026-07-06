@@ -148,8 +148,14 @@ test guide → the **🧪 Test guide** section below.
     this session — so QA + prod run IDENTICAL availability code + CSS. ⇒ almost certainly a **stale QA PWA bundle** (#200):
     hard-refresh QA and it should match prod. If it still differs after a hard refresh, need a screenshot of both (could be
     data-driven — QA vs prod are separate DBs). No code change made. gymapp-only.
-369. ⬜ **Chip/"Completed" badge overlaps the activity TITLE on mobile (Android).** JM 2026-07-05. CSS layout bug — the status
-    chip sits over the title on narrow screens. Fix the overlap.
+369. 🔨 **Chip/"Completed" badge overlaps the activity TITLE on mobile (Android).** JM 2026-07-05. CSS layout bug — the status
+    chip sits over the title on narrow screens. Fixed: `.card--done .eyebrow, .card--done h3 { padding-right: 112px }` so the
+    absolute corner badge never overlaps. On prod. gymapp-only.
+370. 🔨 **Desktop needs a REFRESH button (installed PWA, no address bar).** JM 2026-07-06: installed the PWA in Chrome, no way
+    to refresh; mobile is fine (pull-to-refresh). Added a ↻ Refresh button in the header status cluster (`App.tsx`) — calls
+    the exposed `updateSW(true)` (activates a newer bundle if one's waiting → picks up post-deploy changes, #200) then reloads
+    (1.5s fallback reload if no new SW). Shown on DESKTOP only (`@media (hover:hover) and (pointer:fine)`) since mobile
+    swipes. gymapp-only.
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
