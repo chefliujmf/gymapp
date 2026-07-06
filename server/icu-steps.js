@@ -151,6 +151,21 @@ export function stripPlatyplusLinks(s) {
   return String(s || '').replace(/^.*Open workout in Platyplus.*$/gim, '').replace(/\n{3,}/g, '\n\n').trim()
 }
 
+// #388 — the native workout TEXT (Warmup / Nx / "- 12m 90% Sweet Spot" / Cooldown) is REGENERATED on every
+// push from the segments, so — like the deep-link (#378) — it must NEVER be persisted in plan.notes. When
+// reconcile imported a pushed event's description back into notes, the native block leaked in; the next push
+// then wrote native + (native-in-notes) → the workout appeared TWICE in intervals (a 1h ride rendered ~2h).
+// Strip the derived block wherever notes are composed or imported. Only removes lines that are unmistakably
+// workout steps (a duration + a %/pace target) or section/repeat headers — real prose notes are untouched.
+export function stripDerivedWorkout(s) {
+  return String(s || '')
+    .replace(/^\s*(warmup|cooldown|cool-?down|warm-?up)\s*$/gim, '') // section headers
+    .replace(/^\s*\d+\s*x\s*$/gim, '')                               // repeat header e.g. "2x"
+    .replace(/^\s*-\s*\d+\s*[ms]\b.*?(%|pace|watts?|\bw\b).*$/gim, '') // "- 15m 90% Sweet Spot" / "- 30s 110% pace"
+    .replace(/^\s*##?\s*workout.*$/gim, '')                          // legacy "## Workout" header
+    .replace(/\n{3,}/g, '\n\n').trim()
+}
+
 export function plannedTss(segments = []) {
   const segs = (segments || []).filter((x) => x && Number(x.duration) > 0)
   if (!segs.length) return null

@@ -314,6 +314,21 @@ test guide → the **🧪 Test guide** section below.
     date range, so either they're not discoverable or the top "needs feedback" card ignores them. FIX: label the entry with
     its real sport + title + full date (not bare "Activity · Sat"); make the filters/sort obviously apply to everything incl.
     the feedback card; confirm sort-by-date works. gymapp-only.
+387. ⬜ **"Missing feedback" should be a HEADLINE, not buried in History.** JM 2026-07-06: the "N session(s) still need your
+    feedback" banner lives inside History/Logs — but post-workout feedback drives the coach's review + plan adaptation, so it
+    should be surfaced prominently (a headline on Today, and/or a badge/nudge on the Coach FAB or the top bar), not hidden a
+    tab away. Plan: show a compact "N to review → " card near the top of Today (links to the oldest one), reusing
+    `incompleteFeedback(acts)`; keep the History list too. Consider a count badge on the nav. gymapp-only. Small mock/confirm.
+388. 🔨 **Pushed workout is DOUBLED in intervals — 1h1m in Platyplus renders as ~2h (steps repeated).** JM 2026-07-06
+    (Platyplus vs intervals screenshots of "Sweet Spot 2×15 — FTP Builder", Wed Jul 8): Platyplus = 61 min / 64 TSS / IF .79;
+    intervals shows the SAME event but the workout_doc steps are DUPLICATED — Warmup·Opener·Easy·SS·Recovery·SS·Cooldown then
+    Warmup again… graph runs to ~1:56 (≈2×). `icu_training_load` (64) is right, but the `workout_doc.steps` got doubled on
+    push. Trace `planToIcuEvent`/`pushPlanToIcu` (`server/icu-steps.js` + server) — likely a re-push APPENDING steps, or the
+    native text + workout_doc both counting, or encodeStep double-run. **Applies to ALL sports/activities** (JM directive:
+    every fix covers all impacted activities). Fix + reprocess his existing plans so none stay doubled. Coach/MCP/API/server.
+    389. ⬜ **#384 + #382 (and every fix) must apply to ALL SPORTS, all activities, all the time.** JM directive 2026-07-06:
+    "ensure 384 and 382 are done for all sports at all time; all fix is for all activities impacted by it." Standing rule —
+    a fix isn't done until it covers ride + run + gym + mind + swim etc. and past/present/future activities. See [[platyplus-propagate-all-layers]] + [[platyplus-reprocess-after-change]].
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client

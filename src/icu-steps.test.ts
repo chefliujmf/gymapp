@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, detectRepeat, plannedTss, stripPlatyplusLinks } from '../server/icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, detectRepeat, plannedTss, stripPlatyplusLinks, stripDerivedWorkout } from '../server/icu-steps.js'
 
 // #312 — a RUN must target PACE (%pace), a RIDE POWER (%ftp). The bug: every ride/run emitted
 // power → intervals (and the Garmin workout it syncs) showed WATTS on runs.
@@ -169,5 +169,23 @@ describe('#378 stripPlatyplusLinks — the auto deep-link must never accumulate 
   it('leaves clean notes untouched + handles empty', () => {
     expect(stripPlatyplusLinks('Easy spin, keep it Z2.')).toBe('Easy spin, keep it Z2.')
     expect(stripPlatyplusLinks('')).toBe(''); expect(stripPlatyplusLinks(null)).toBe('')
+  })
+})
+
+describe('#388 stripDerivedWorkout — the native workout text must never persist in notes (it doubled rides)', () => {
+  const native = 'Warmup\n- 12m 50-72% Warm-up\n\n2x\n- 15m 90% Sweet Spot\n- 5m 58% Recovery\n\nCooldown\n- 8m 55-42% Cool-down'
+  it('strips a full native block (headers + step lines)', () => {
+    expect(stripDerivedWorkout(native)).toBe('')
+  })
+  it('strips the leaked native but KEEPS real prose notes', () => {
+    const polluted = native + '\n\nFocus on smooth pedaling and stay aero on the sweet-spot blocks.'
+    expect(stripDerivedWorkout(polluted)).toBe('Focus on smooth pedaling and stay aero on the sweet-spot blocks.')
+  })
+  it('run pace steps + legacy header too', () => {
+    expect(stripDerivedWorkout('## Workout\n- 10m 90% pace\n- 5m 110% pace')).toBe('')
+  })
+  it('leaves a plain note alone + handles empty', () => {
+    expect(stripDerivedWorkout('Recovery week — keep it easy, listen to your legs.')).toBe('Recovery week — keep it easy, listen to your legs.')
+    expect(stripDerivedWorkout('')).toBe(''); expect(stripDerivedWorkout(null)).toBe('')
   })
 })
