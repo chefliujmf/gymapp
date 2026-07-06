@@ -124,7 +124,25 @@ test guide → the **🧪 Test guide** section below.
     days BEFORE the target (`today+1 .. target-1`, exclusive of the target's own session) — `server/server.js` loop `< date`
     + filter `d >= date`. Now a fresh athlete going into a hard day reads fresh, and it still accumulates fatigue from the
     intervening days. +3 readiness tests (#365), 324 total. gymapp-only.
-    (screenshot). VERIFIED NOT a data problem: her intervals wellness has CTL/ATL every day incl. Jul 4. Root cause =
+366. 🔨 **#365 fixed tomorrow but Jul 7 still reads "wrecked" — REAL root found.** JM 2026-07-05. Pulled JM's live intervals
+    data (scratchpad/fc.mjs): the "250 TSS on Jul 6" driving the crash is an event **"ATP W06 - Recovery consolidation",
+    category `TARGET`** = an intervals Annual-Training-Plan **WEEKLY** target (~250 TSS for the whole week), NOT a single-day
+    session. The forecast summed it as one day's load → ATL spike → false "wrecked". (His actual planned workouts that day
+    have `icu_training_load: null`.) Fix: both `/auth/readiness-forecast` + `/auth/readiness-projection` now **skip
+    `category === 'TARGET' | 'NOTE'` + `/^ATP/` events** (matches the app's existing ATP filter, `cleanEvents`/`isAtp`).
+    324 tests + build. gymapp-only. FOLLOW-UP idea: planned WORKOUTs lack a load field → the forecast can't project their
+    real load yet (shows fresh); estimating it from the workout doc is a later enhancement.
+367. ⬜ **DAILY auto-adapt: coach re-plans every morning (~4am) from energy/sleep/HRV, no need to ask.** JM 2026-07-05: a
+    scheduled trigger that, once the morning wellness (energy/sleep/HRV) is in (~4am), has the coach ADAPT the plan
+    automatically + frequently — JM shouldn't have to ask daily. Define the planning HORIZON (JM suggests ~2 weeks ahead).
+    Coach adapts the full plan proactively; if unsure, it can ASK. (Extends the check-in trigger #65 into a scheduled cron.)
+368. 🔎 **Availability page (Profile) — great in PROD, worse in QA; KEEP prod's version.** JM 2026-07-05. INVESTIGATED: `dev`
+    == `main` (empty `git log origin/main..dev`) and `src/Availability.tsx` uses dedicated `avail-*` classes I never touched
+    this session — so QA + prod run IDENTICAL availability code + CSS. ⇒ almost certainly a **stale QA PWA bundle** (#200):
+    hard-refresh QA and it should match prod. If it still differs after a hard refresh, need a screenshot of both (could be
+    data-driven — QA vs prod are separate DBs). No code change made. gymapp-only.
+369. ⬜ **Chip/"Completed" badge overlaps the activity TITLE on mobile (Android).** JM 2026-07-05. CSS layout bug — the status
+    chip sits over the title on narrow screens. Fix the overlap.
     UTC-vs-LOCAL timezone: the server computes "today" as `new Date().toISOString().slice(0,10)` = **UTC** (2026-07-04),
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"

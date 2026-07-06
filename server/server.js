@@ -677,6 +677,9 @@ app.get('/auth/readiness-forecast', auth, async (req, res) => {
   for (const e of (Array.isArray(evs) ? evs : [])) {
     const d = (e.start_date_local || '').slice(0, 10)
     if (d <= today || d >= date) continue // between now and the target, EXCLUSIVE of the target's own session
+    // #366 — SKIP non-session markers: an ATP WEEKLY TARGET (category TARGET, e.g. "ATP W06", ~250 TSS for the
+    // whole WEEK) or a NOTE is NOT a single-day load. Counting it as one day spiked ATL → false "wrecked".
+    if (e.category === 'TARGET' || e.category === 'NOTE' || /^ATP\b/i.test(e.name || '')) continue
     const load = e.icu_training_load || e.icu_planned_training_load || 0
     if (load > 0) byDay[d] = (byDay[d] || 0) + load
   }
@@ -702,6 +705,7 @@ app.get('/auth/readiness-projection', auth, async (req, res) => {
   for (const e of (Array.isArray(evs) ? evs : [])) {
     const d = (e.start_date_local || '').slice(0, 10)
     if (d <= today || d > end) continue
+    if (e.category === 'TARGET' || e.category === 'NOTE' || /^ATP\b/i.test(e.name || '')) continue // #366 — not a single-day load (ATP weekly target / note)
     const load = e.icu_training_load || e.icu_planned_training_load || 0
     if (load > 0) byDay[d] = (byDay[d] || 0) + load
   }

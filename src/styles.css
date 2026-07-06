@@ -1096,6 +1096,9 @@ select.search { appearance: none; -webkit-appearance: none; }
 .today-entry > .entry-kebab { position: absolute; top: 12px; right: 12px; z-index: 2; }
 
 /* Unmistakable "done" badge — top-right, just left of the ⋯ kebab (#46/#52). */
+/* #369 — reserve room at the top-right so the absolute "✓ Completed" corner badge never overlaps the
+   title/eyebrow on narrow (Android) screens. Scoped to done cards, which are the ones that show it. */
+.card--done .eyebrow, .card--done h3 { padding-right: 112px; }
 .today-entry > .done-badge {
   position: absolute; top: 12px; right: 54px; z-index: 2;
   display: inline-flex; align-items: center; gap: 4px;
