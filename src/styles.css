@@ -1144,6 +1144,12 @@ select.search { appearance: none; -webkit-appearance: none; }
 
 /* ---- account menu (avatar + chevron dropdown) -------------------------- */
 .acct { position: relative; }
+/* #370 — desktop-only Refresh (installed PWA has no reload; mobile pulls to refresh). */
+.refresh-btn { display: none; width: 34px; height: 34px; border-radius: 999px; border: 1px solid var(--border, #2a2e38); background: var(--card, #1b1e26); color: var(--text-dim, #9298a6); align-items: center; justify-content: center; cursor: pointer; }
+.refresh-btn:hover { color: var(--text, #eef1f4); border-color: var(--accent, #34e07d); }
+@media (hover: hover) and (pointer: fine) { .refresh-btn { display: inline-flex; } }
+.refresh-btn .spin { animation: refresh-spin 0.8s linear infinite; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
 .acct__trigger {
   display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px 3px 3px;
   background: var(--card, #1b1e26); border: 1px solid var(--border, #2a2e38);

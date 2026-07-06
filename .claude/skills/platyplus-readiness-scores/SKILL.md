@@ -46,6 +46,22 @@ TSS (or RPE→TSS: moderate ~50–60/h, hard ~100/h). Check-in: subjective (ener
 - **High load + Sleep <3 sustained** = non-functional overreaching; CTL math lies (no Deep-Sleep supercompensation).
 - **7-day HRV CV rising** (baseline normal) = losing homeostasis → pre-emptively lower Energy.
 
+## Forecast (future days) + daily auto-adapt
+- **Freshness is the only score forecastable ahead** (Energy/Sleep need HRV/sleep that haven't happened yet).
+  `GET /auth/readiness-forecast?date=X` projects Form over PLANNED load → expected Freshness 1–5 + label (ForecastCard).
+- **It's MORNING readiness (#365):** project the planned load for the days BEFORE the target ONLY — exclude the
+  target day's OWN session (else a hard day projects its own post-session fatigue → false "wrecked"). The endpoint
+  builds `loads` for `today+1 .. target-1`; `forecastFreshness` in readiness.js.
+- **Skip non-session events (#366):** an intervals ATP **weekly TARGET** (category `TARGET`, e.g. "ATP W06" ~250
+  TSS for the WEEK) or a NOTE is NOT a single-day load — counting it spikes ATL → false "wrecked". Filter
+  `category==='TARGET'|'NOTE'` + `/^ATP/`. Same on `/auth/readiness-projection` (the Load/Form chart). Caveat:
+  planned WORKOUTs often have `icu_training_load: null`, so their real load isn't projected yet (estimate-from-
+  workout-doc is future work).
+- **Daily auto-adapt (#367):** `dailyAdaptTick` (server.js, QA/prod, every 30 min) runs the locked-down coach each
+  morning per athlete's LOCAL tz — an EARLY pass ~4am (Form/freshness) + a REFINE pass once HRV/sleep lands — to
+  proactively re-plan the rolling **14-day** horizon + notify + ask-if-uncertain. Runtime-message-driven
+  (`dailyAdaptMsg`), kept OUT of `coach-engine.md` (E2BIG systemPrompt-size, #352). Test via `POST /api/coach/daily-adapt`.
+
 ## Build pattern
 Put the math in a PURE server module `server/readiness.js` (no side effects → unit-test in `src/*.test.ts`):
 `freshness(ctl,atl)`, `energy({hrvZ,sleep100,rhrZ,subjective})`, `sleep100(...)`, `to1_5(s)`, `ewma/z/swc`.
