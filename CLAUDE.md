@@ -76,6 +76,8 @@ See skill `platyplus-testing` + memory `platyplus-testing-workflow`.
 | New UX feature using the calendar | use `calApi` (`src/calendar.ts`); document new endpoints in openapi.json |
 | **Add a sport the coach should know** | add a row to `SPORT_ENGINES` in `server/server.js` + a `server/coach-engine-<sport>.md` (ONE engine per sport — cycling=FTP power, running=Daniels pace; gated by `user.sports`) |
 | **Change run/ride pace mapping** (`PACE_ANCHORS`) | keep `server/icu-steps.js` **and** `src/running-paces.ts` IN SYNC; anchors are DERIVED from the Daniels curves in `running-paces.ts` (not hand-guessed) — re-verify + update `src/icu-steps.test.ts`. Easy/recovery is enforced by `clampEasyEfforts` (both files' guard) |
+| **Change how a planned workout maps to intervals** (`planToIcuEvent`, `plannedTss` in `server/icu-steps.js`) | intervals does **NOT** compute planned load for externally-created (API) workouts — we compute Coggan **TSS** (`plannedTss`, FTP-independent: the % IS the IF) and set `ev.icu_training_load` so intervals does Form/CTL/ATL out-of-the-box. Keep it consistent with the client `plannedLoad` (`src/workout-summary.ts`); update `src/icu-steps.test.ts`. Backfill existing plans via `POST /api/plans/resync`. (#372) |
+| **Coach must respect max sessions/day** | enforced 3 ways, keep in sync: dynamic prompt (`buildSystemPrompt` `# ONE SESSION PER DAY`), daily-adapt msg, and the **server 409 guard** in `upsertPlan` (rejects a NEW coach session on a full day — combine into that day's id or move it). MCP `create_ride/run/workout` descriptions say so too. `user.info.maxPerDay` (default 1). (#371) |
 
 ## Readiness engine — our own WHOOP (since 2026-06-26)
 Platyplus auto-derives the check-in's **Sleep · Freshness · Energy** as a personal **1–5** from intervals
@@ -90,6 +92,9 @@ memory `platyplus-readiness-model`. Build the math as a pure, unit-tested `serve
   coach proactively re-plan the rolling **14-day** horizon each morning per athlete's LOCAL tz — an EARLY pass
   ~4am (Form/freshness) + a REFINE pass once HRV/sleep lands. Runtime-message-driven (`dailyAdaptMsg`), NOT in
   `coach-engine.md` (keeps the ~128 KB systemPrompt under the argv limit, #352). Manual: `POST /api/coach/daily-adapt`.
+- **Planned LOAD makes Form real (#372):** the forecast + intervals' own Form only drop when planned sessions carry
+  load. intervals does NOT compute it for API workouts, so `planToIcuEvent` sets `icu_training_load` from `plannedTss`.
+  Without it a hard week projected FLAT (~-3 Form). Backfill after a mapping change: `POST /api/plans/resync`.
 
 ## Tools / scripts (keep current)
 - `scripts/build-catalog.mjs` — builds `src/data/generated/*` from `downloaded_pages/`. Self-hosts all media + runs the independence gate.

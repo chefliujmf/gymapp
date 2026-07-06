@@ -136,3 +136,26 @@ export function flattenIcuStepsSrv(steps = []) {
   for (const s of steps) walk(s)
   return out
 }
+
+// #372 — planned TSS from segments. intervals does NOT compute planned load for EXTERNALLY-created (API)
+// workouts (only for ones built in its own planner) — verified: valid %ftp workout_doc + FTP 260, yet
+// icu_training_load stays null → Form projects FLAT despite a hard week. So we compute the standard Coggan
+// TSS and hand it to intervals via icu_training_load; intervals then does the Form/CTL/ATL out-of-the-box.
+// FTP-INDEPENDENT: a %FTP / %threshold workout's TSS depends only on the percentages (the % IS the IF), so
+// no FTP lookup is needed — mirrors the client's `plannedLoad` (workout-summary.ts).
+export function plannedTss(segments = []) {
+  const segs = (segments || []).filter((x) => x && Number(x.duration) > 0)
+  if (!segs.length) return null
+  const totalSec = segs.reduce((a, x) => a + (Number(x.duration) || 0), 0)
+  const w = [] // 10s samples of the target intensity % (interpolate ramps)
+  for (const s of segs) {
+    const dur = Math.round(Number(s.duration) || 0)
+    const p0 = Number(s.powerStart) || 0, p1 = s.powerEnd != null ? Number(s.powerEnd) : p0
+    const n = Math.max(1, Math.round(dur / 10))
+    for (let i = 0; i < n; i++) { const f = n > 1 ? i / (n - 1) : 0; w.push(p0 + (p1 - p0) * f) }
+  }
+  let sum4 = 0, cnt = 0 // NP% = 4th-root of the mean of the 30s rolling avg^4; IF = NP% / 100
+  for (let i = 0; i < w.length; i++) { const a = w.slice(Math.max(0, i - 2), i + 1); const avg = a.reduce((x, y) => x + y, 0) / a.length; sum4 += Math.pow(avg, 4); cnt++ }
+  const IF = (cnt ? Math.pow(sum4 / cnt, 0.25) : 0) / 100
+  return { if: Math.round(IF * 100) / 100, tss: Math.round((totalSec * IF * IF) / 3600 * 100) }
+}

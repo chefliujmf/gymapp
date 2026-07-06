@@ -28,7 +28,7 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay } from './cycle.js' // #329
 
@@ -1481,6 +1481,10 @@ function planToIcuEvent(plan, items = []) {
     const segs = clampEasyEfforts(plan.title, plan.segments || []).segments // #331c last-line guard on the push (covers pre-guard plans on re-sync)
     ev.type = plan.sport === 'ride' ? 'Ride' : 'Run'
     ev.moving_time = segs.reduce((s, x) => s + (Number(x.duration) || 0), 0)
+    // #372 — supply the planned LOAD (Coggan TSS from the %targets) so intervals' Form/CTL/ATL PROJECTS the
+    // fatigue. intervals doesn't compute planned load for API-created workouts, so ours stayed null → flat Form.
+    const tss = plannedTss(segs)
+    if (tss && tss.tss > 0) ev.icu_training_load = tss.tss
     // CRITICAL: intervals only MODELS a ride/run (chart, planned load, Wahoo steps) when the
     // event carries a top-level `time_target` (total seconds) alongside moving_time + workout_doc.
     // Without it the event stores UNMODELED → empty chart. (TODO P1f: also emit native workout
@@ -2361,6 +2365,16 @@ app.post('/api/coach/daily-adapt', apiAuth, (req, res) => {
   if (!req.user.coachProfile || !String(req.user.coachProfile).trim()) return res.status(400).json({ error: 'coach not set up (no coachProfile)' })
   runDailyAdapt(req.user, req.body?.pass === 'refine' ? 'refine' : 'early')
   res.status(202).json({ ok: true, running: true })
+})
+// #372 — re-mirror all FUTURE plans to intervals so they pick up the computed planned LOAD (or any
+// push-format change). No content change — just re-pushes via pushPlanToIcu. Bearer.
+app.post('/api/plans/resync', apiAuth, async (req, res) => {
+  const today = await athleteToday(req.user)
+  const future = (req.user.plans || []).filter((p) => p.date && p.date >= today)
+  let synced = 0
+  for (const plan of future) { try { await pushPlanToIcu(req.user, plan); synced++ } catch { /* best effort */ } }
+  save(store)
+  res.json({ ok: true, synced, total: future.length })
 })
 
 // Startup: connect Postgres → load the cache → seed/defaults → listen. (#DB migration)

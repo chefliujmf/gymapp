@@ -135,7 +135,7 @@ const COACHING = {
 }
 const coachingOf = (a) => ({ objective: a.objective, cues: a.cues, tip: a.tip, success: a.success, recovery: a.recovery, fuel: a.fuel, mind: a.mind })
 server.tool('create_workout',
-  'Schedule a strength/gym workout on a date. Platyplus is the MASTER and mirrors to intervals.icu. Re-call with the same id to UPDATE. THREE HARD REQUIREMENTS (the tool REJECTS the plan otherwise, so build them in up front): (1) a WARM-UP and a COOL-DOWN, each broken into INDIVIDUAL moves — one entry per move, tagged section:"warmup"/"cooldown", every one with a real library exId from search_exercises (arm circles, leg swings, high knees, cat-cow, jogging in place, glute bridge, targeted stretches…); NEVER cram moves into one "Warm-up: A, B, C" line. (2) Order the MAIN set by equipment (barbell → dumbbell → cable/machine → bodyweight/trunk) so the athlete isn\'t ping-ponging stations. (3) Every single-side move (Pallof press, split squat/Bulgarian, single-arm/leg, side plank, suitcase carry, Copenhagen…) MUST be prescribed both sides — set eachSide:true (renders "each side") or write explicit left/right entries. Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind strategy).',
+  'Schedule a strength/gym workout on a date. Platyplus is the MASTER and mirrors to intervals.icu. Re-call with the same id to UPDATE. THREE HARD REQUIREMENTS (the tool REJECTS the plan otherwise, so build them in up front): (1) a WARM-UP and a COOL-DOWN, each broken into INDIVIDUAL moves — one entry per move, tagged section:"warmup"/"cooldown", every one with a real library exId from search_exercises (arm circles, leg swings, high knees, cat-cow, jogging in place, glute bridge, targeted stretches…); NEVER cram moves into one "Warm-up: A, B, C" line. (2) Order the MAIN set by equipment (barbell → dumbbell → cable/machine → bodyweight/trunk) so the athlete isn\'t ping-ponging stations. (3) Every single-side move (Pallof press, split squat/Bulgarian, single-arm/leg, side plank, suitcase carry, Copenhagen…) MUST be prescribed both sides — set eachSide:true (renders "each side") or write explicit left/right entries. Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind strategy). ONE SESSION/DAY: the app REJECTS (409) a 2nd session on a day already at the athlete\'s max — re-call with that day\'s existing id to fold moves in, or move it to a free day.',
   {
     date: DATE,
     title: z.string(),
@@ -183,12 +183,12 @@ const makeEndurance = (sport) => wrap((a) => api('POST', '/api/plan', {
 }))
 
 server.tool('create_ride',
-  'Schedule a structured bike workout (power intervals). Platyplus is master; mirrors to intervals.icu as a real workout (steps → head unit/trainer). Re-call with same id to update. Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind).',
+  'Schedule a structured bike workout (power intervals). Platyplus is master; mirrors to intervals.icu as a real workout (steps → head unit/trainer). Re-call with same id to update. ONE SESSION/DAY: the app REJECTS (409) a 2nd session on a day already at the athlete\'s max — never book two short rides; COMBINE into that day\'s existing session (re-call with its id) or move it to a free day. The app auto-computes the planned LOAD (TSS) from your segments and sends it to intervals so Form/CTL/ATL project correctly — you do NOT set load. Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind).',
   { date: DATE, title: z.string(), ftp: z.number().optional().describe('override FTP in watts'), segments: SEGMENTS, notes: z.string().optional(), ...COACHING, id: z.string().optional() },
   makeEndurance('ride'))
 
 server.tool('create_run',
-  'Schedule a structured run. Coach it the RUNNING way — Daniels E/M/T/I/R off threshold PACE (see SEGMENTS for the zones), not by bike power. The app converts each segment % to the athlete\'s real min/km. Re-call with same id to update. Optionally attach the coaching shell.',
+  'Schedule a structured run. Coach it the RUNNING way — Daniels E/M/T/I/R off threshold PACE (see SEGMENTS for the zones), not by bike power. The app converts each segment % to the athlete\'s real min/km. Re-call with same id to update. ONE SESSION/DAY: the app REJECTS (409) a 2nd session on a day already at the athlete\'s max — COMBINE into that day\'s existing session (re-call with its id) or move it. The app auto-computes the planned LOAD (TSS) and sends it to intervals so Form projects — you do NOT set load. Optionally attach the coaching shell.',
   { date: DATE, title: z.string(), ftp: z.number().optional(), segments: SEGMENTS, notes: z.string().optional(), ...COACHING, id: z.string().optional() },
   makeEndurance('run'))
 
