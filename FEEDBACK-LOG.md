@@ -334,6 +334,12 @@ test guide → the **🧪 Test guide** section below.
     389. ⬜ **#384 + #382 (and every fix) must apply to ALL SPORTS, all activities, all the time.** JM directive 2026-07-06:
     "ensure 384 and 382 are done for all sports at all time; all fix is for all activities impacted by it." Standing rule —
     a fix isn't done until it covers ride + run + gym + mind + swim etc. and past/present/future activities. See [[platyplus-propagate-all-layers]] + [[platyplus-reprocess-after-change]].
+390. ⬜ **(FUTURE / idea) Collect recipes into the Eat library — Make Good Food + HelloFresh.** JM 2026-07-06: scrape/import
+    ALL recipes from **www.makegoodfood.ca/recipes** AND **www.hellofresh.ca/recipes** into our recipe catalog "with tags and
+    all" + **pictures**. Follow `CONTENT.md` runbook: importer → `build-catalog.mjs` (free-first de-dup + the media
+    independence gate — HOST the images on the XPS, NEVER hotlink 3rd-party per the invariant) → `npm run sync:catalog` →
+    content-manifest (license/commercial flags — check ToS before scraping) → deploy. Tag by meal type / cuisine / diet /
+    macros / time so the coach's `search_recipes` can pick well. Parked until JM prioritizes. gymapp content.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
