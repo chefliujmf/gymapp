@@ -82,7 +82,7 @@ const range = (series: Series[], minSpan?: number) => {
 
 /** Smooth multi-series line chart: gradient area, draw-in animation, and tap/hover
  * scrubbing with a tooltip. Responsive (stretches to width). */
-export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover, bands, cursor, xTicks, straight = false, minSpan, invert = false }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void; bands?: { from: number; to: number; color: string }[]; cursor?: number | null; xTicks?: { frac: number; label: string }[]; straight?: boolean; minSpan?: number; invert?: boolean }) {
+export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', fmt, axes = false, onHover, bands, cursor, xTicks, straight = false, minSpan, invert = false, today }: { series: Series[]; labels?: string[]; height?: number; pad?: number; unit?: string; fmt?: (v: number) => string; axes?: boolean; onHover?: (i: number | null) => void; bands?: { from: number; to: number; color: string }[]; cursor?: number | null; xTicks?: { frac: number; label: string }[]; straight?: boolean; minSpan?: number; invert?: boolean; today?: number }) {
   const uid = useId()
   const [hi_, setHi] = useState<number | null>(null)
   // `cursor` makes the chart CONTROLLED — used to sync several stacked charts to one
@@ -123,6 +123,12 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
         })}
         {gridYs.map((yy, gi) => <line key={gi} x1={0} x2={VW} y1={yy} y2={yy} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
         {axes && xt.map((t, ti) => <line key={'v' + ti} x1={xAt(t.frac)} x2={xAt(t.frac)} y1={P} y2={H - P} stroke="var(--line)" strokeWidth="0.5" opacity="0.22" />)}
+        {/* #376 — a "today" divider + faint shading over the projected region, so the future is unmistakable
+            even when a line (e.g. slow-moving Fitness/CTL) is nearly flat there. */}
+        {today != null && today > 0 && today < 1 && <>
+          <rect x={xAt(today)} width={VW - xAt(today)} y={0} height={H} fill="var(--text-dim)" opacity={0.06} />
+          <line x1={xAt(today)} x2={xAt(today)} y1={P} y2={H - P} stroke="var(--text-dim)" strokeWidth="1" strokeDasharray="3 3" opacity={0.55} vectorEffect="non-scaling-stroke" />
+        </>}
         {series.map((s, si) => {
           const pts = s.data.map((v, i) => (v == null ? null : [x(i), y(v)] as [number, number])).filter(Boolean) as [number, number][]
           if (!pts.length) return null
