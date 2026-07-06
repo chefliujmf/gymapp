@@ -225,6 +225,11 @@ test guide → the **🧪 Test guide** section below.
     are composed (`planToIcuEvent` ride+gym) or imported (`icuEventToPlan`) → link can't accumulate; and reconcile now
     SKIPS importing a gym event carrying the Platyplus link (it's ours; intervals has no exercises → empty shell). Still
     TODO: clean the 3 already-corrupted plans' stored notes + have the coach re-author their exercises. 25 icu-steps tests.
+379. ⬜ **Move a planned activity from one day to another (drag & drop?).** JM 2026-07-06: wants to reschedule a session by
+    dragging it to a different day on the calendar. Needs a MOCK (options-first): drag-drop on the Plan/calendar grid vs a
+    "move to…" date picker on the session (mobile-friendly — DnD is fiddly on touch, so likely BOTH: long-press drag on
+    desktop + a "Move" action with a day picker on mobile). Server already supports date change via `upsertPlan` (same id,
+    new date → re-pushes the intervals event); this is the UI. Respect one-session/day (offer to combine/bump if target full). gymapp-only.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
