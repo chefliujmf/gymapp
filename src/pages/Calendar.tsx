@@ -10,6 +10,8 @@ import { localISO } from '../date'
 import { Plus, ChevronLeft, ChevronRight, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet, colorFor, iconFor, type SheetType } from './AddSheet'
+import { MovePicker } from './MovePicker'
+import { useAuth } from '../auth/AuthContext'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -32,8 +34,14 @@ type Entry = { k: 'plan'; plan: CoachPlan } | { k: 'event'; ev: IcuEvent } | { k
 // Substitute is type-locked to the replaced entry; map an Entry → the AddSheet's pre-selected type.
 const lockTypeOf = (e: Entry): SheetType => (e.k === 'plan' ? e.plan.sport : e.k === 'item' ? e.item.type : e.ev.type === 'Run' ? 'run' : e.ev.type === 'WeightTraining' ? 'gym' : 'ride') as SheetType
 
+// #379 — a plan/item entry carries a stable id + date, so moving = re-save with a new date.
+// icu-origin events (read-only, intervals-owned) can't be moved from here — edit them in intervals.
+const movableId = (e: Entry): string | null => (e.k === 'plan' ? e.plan.id : e.k === 'item' ? e.item.id : null)
+
 export default function Calendar() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const maxPerDay = Math.max(1, Number((user?.info as { maxPerDay?: number } | undefined)?.maxPerDay) || 1)
   const [params, setSearchParams] = useSearchParams()
   const now = new Date()
   const qDay = params.get('d')
@@ -49,6 +57,9 @@ export default function Calendar() {
   const [rideTemplates, setRideTemplates] = useState<RideTemplate[]>([])
   const [ftp, setFtp] = useState(260)
   const [sheet, setSheet] = useState<{ date: string; replacing?: Entry } | null>(null)
+  // #379 — the move "quick picker" sheet + the post-move Undo bar (auto-dismisses).
+  const [moving, setMoving] = useState<{ e: Entry; from: string } | null>(null)
+  const [undo, setUndo] = useState<{ e: Entry; from: string; to: string } | null>(null)
   const todayISO = localISO()
 
   const changeView = (v: View) => { setView(v); setSetting('calView', v); try { localStorage.setItem('calView', v) } catch { /* ignore */ } }
@@ -70,6 +81,8 @@ export default function Calendar() {
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
   }, [range])
   useEffect(() => { reload() }, [reload])
+  // #379 — auto-dismiss the Undo bar after 7s.
+  useEffect(() => { if (!undo) return; const t = setTimeout(() => setUndo(null), 7000); return () => clearTimeout(t) }, [undo])
   useEffect(() => { listTemplates().then(setTemplates); listRideTemplates().then(setRideTemplates); getSetting('ftp').then((v) => v && setFtp(Number(v))) }, [])
   // Arriving from Today's "Add"/"Substitute" (?add=1) opens the add sheet straight away
   // so it's a single tap, not land-on-Plan-then-click-Add (#56/#57). Runs once.
@@ -90,6 +103,14 @@ export default function Calendar() {
   const kindOf = (e: Entry) => (e.k === 'plan' ? e.plan.sport : e.k === 'event' ? sportOf(e.ev) : e.item.type)
   // intervals.icu Annual-Training-Plan phase markers ("ATP W06 - …") aren't actual workouts.
   const isAtp = (e: Entry) => e.k === 'event' && (/^ATP\b/i.test(e.ev.name) || e.ev.category === 'NOTE')
+  // #379 — a "session" for the max/day (full-day) rule = a real workout (ride/run/gym plan or icu
+  // event), NOT a meal/mind/note/recovery item. ATP markers don't count either.
+  const isSession = (e: Entry): boolean => !isAtp(e) && (e.k === 'plan' || e.k === 'event')
+  // Identity across a reload (objects differ) — plans/items by id, events by id.
+  const sameEntry = (a: Entry, b: Entry): boolean =>
+    a.k === b.k && (a.k === 'plan' ? a.plan.id === (b as Extract<Entry, { k: 'plan' }>).plan.id
+      : a.k === 'item' ? a.item.id === (b as Extract<Entry, { k: 'item' }>).item.id
+        : String(a.ev.id) === String((b as Extract<Entry, { k: 'event' }>).ev.id))
 
   async function delEntry(e: Entry, confirmEvent = true) {
     if (e.k === 'plan') await calApi.delPlan(e.plan.id)
@@ -100,6 +121,23 @@ export default function Calendar() {
       try { await deleteEvent(e.ev.id) } catch { alert('Could not remove that intervals event.'); return }
     }
     reload()
+  }
+  // #379 — MOVE a plan/item to another day. Same id + new date → the server UPDATES it (upsertPlan/
+  // upsertItem key on id) and re-pushes the intervals mirror; the whole payload is preserved via spread.
+  // The UI path is exempt from the coach 409 max/day guard (a person can double-book on purpose).
+  // `showUndo` is off for the Undo-bar's own reverse move (so undoing doesn't spawn another bar).
+  async function moveEntry(e: Entry, to: string, showUndo = true) {
+    const from = e.k === 'plan' ? e.plan.date : e.k === 'item' ? e.item.date : ''
+    if (!from || to === from) return
+    if (e.k === 'plan') await calApi.savePlan({ ...e.plan, date: to })
+    else if (e.k === 'item') await calApi.saveItem({ ...e.item, date: to })
+    else return // icu events aren't moved from here
+    await reload()
+    if (showUndo) {
+      // Re-point the entry at its new date so Undo reverses correctly, then auto-dismiss.
+      const moved: Entry = e.k === 'plan' ? { k: 'plan', plan: { ...e.plan, date: to } } : { k: 'item', item: { ...e.item, date: to } }
+      setUndo({ e: moved, from, to })
+    }
   }
   function openEntry(e: Entry) {
     if (e.k === 'plan') navigate(`/coach/${e.plan.id}`) // open the rich detail (aim/tempo/structure); Start is in there
@@ -133,7 +171,13 @@ export default function Calendar() {
           <span className={'cal-chip cal-chip--grad cal-chip--' + (segs.length ? 'chart' : mod)}>{atp ? <Flag size={15} /> : photo ? <img src={photo} alt="" /> : segs.length ? <MiniProfile segs={segs} /> : iconFor(kind)}</span>
           <span className="card-body"><h3>{titleOf(e)}</h3>{act ? <DoneStats a={act} /> : e.k === 'item' && e.item.type === 'note' && e.item.notes ? <div className="meta" style={{ whiteSpace: 'normal' }}>{e.item.notes}</div> : <div className="meta">{atp ? 'Training block · plan' : subOf(e)}</div>}</span>
         </button>
-        <EntryMenu title={titleOf(e)} onSubstitute={() => setSheet({ date: day, replacing: e })} onRemove={() => delEntry(e)} />
+        <EntryMenu
+          title={titleOf(e)}
+          onMove={movableId(e) ? () => setMoving({ e, from: day }) : undefined}
+          moveHint={movableId(e) ? undefined : 'edit this one in intervals'}
+          onSubstitute={() => setSheet({ date: day, replacing: e })}
+          onRemove={() => delEntry(e)}
+        />
       </div>
     )
   }
@@ -292,6 +336,36 @@ export default function Calendar() {
       )}
 
       {sheet && <AddSheet date={sheet.date} substitute={!!sheet.replacing} lockType={sheet.replacing ? lockTypeOf(sheet.replacing) : undefined} ftp={ftp} templates={templates} rideTemplates={rideTemplates} onClose={() => setSheet(null)} onAdd={reload} onReplaced={() => { if (sheet.replacing) delEntry(sheet.replacing, false); setSheet(null) }} />}
+
+      {/* #379 — the "quick picker": move a plan/item to another day. Full days (≥ maxPerDay sessions,
+          excluding this entry) get an amber dot + warn; picking one asks to combine or bump. */}
+      {moving && (() => {
+        const busy = new Set<string>()
+        // Only the session's own week + the next week are pickable, so only those days can be "full".
+        for (const d of [...weekDays(moving.from), ...weekDays(addDays(startOfWeek(moving.from), 7))]) {
+          const sessions = entriesFor(d).filter((x) => isSession(x) && !sameEntry(x, moving.e))
+          if (sessions.length >= maxPerDay) busy.add(d)
+        }
+        return (
+          <MovePicker
+            title={titleOf(moving.e)}
+            kind={kindOf(moving.e) as string}
+            fromISO={moving.from}
+            todayISO={todayISO}
+            busyDays={busy}
+            maxPerDay={maxPerDay}
+            onMove={(to) => { const e = moving.e; setMoving(null); moveEntry(e, to) }}
+            onClose={() => setMoving(null)}
+          />
+        )
+      })()}
+
+      {undo && (
+        <div className="mv-undo">
+          <span>✓ Moved to <b>{fmtShort(undo.to)}</b></span>
+          <button onClick={() => { const u = undo; setUndo(null); moveEntry(u.e, u.from, false) }}>Undo</button>
+        </div>
+      )}
     </div>
   )
 }
