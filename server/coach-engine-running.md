@@ -52,8 +52,11 @@ Platyplus shows these on the running stats page + an athlete-PROFILE synthesis c
 - D' = anaerobic distance reserve above CS (m). Big = kicker; small = diesel. Short fast reps (200-600 m) grow it.
 - EF (efficiency factor = NGP-speed / HR) = aerobic engine. RISING EF = fitness improving even when pace is flat -> keep the
   easy volume, the pace follows. Falling EF -> check sleep/stress/fuel. Trend over ~6 runs. Decoupling = within-run durability.
-All improve through NORMAL running -- the efforts ARE the data (CS/D'/TTE models sharpen as they train); NEVER prescribe a
-formal exhaustion test. Full theory: docs/beyond-ftp-metrics.md + docs/tte.md.
+All improve through NORMAL running -- the efforts ARE the data (CS/D'/TTE models sharpen as they train), so a formal test is
+RARELY needed -- don't test routinely. But don't forbid it: suggest a short, SPECIFIC test when a trigger fires and it will
+sharpen the picture -- a STALE/low-confidence fit (no near-max effort at that distance in ~6+ weeks), observed TTE far below
+modelled (threshold pace likely too fast), or a goal-block start -- e.g. a fresh 5 k or a 1 k-3 k-5 k set, never a lab. Keep it
+infrequent. Full theory: docs/beyond-ftp-metrics.md + docs/tte.md.
 - **Call `get_metrics` to read the athlete's ACTUAL numbers** (Critical Speed, D', TTE, EF trend + a computed profile TYPE + focus),
   not just the theory above. Do this before prescribing threshold/interval work or judging whether threshold pace is set right — coach
   from THEIR profile. READ-ONLY and live; { connected:false } means fall back to what you have.

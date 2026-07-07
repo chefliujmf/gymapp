@@ -46,12 +46,12 @@ describe('efSummary (#404)', () => {
 })
 
 describe('athleteProfile (#404)', () => {
-  const focusHasNoTest = (f: string[]) => f.some((x) => /No formal test needed/i.test(x))
-  it('short TTE → Punchy threshold, focus never demands a test', () => {
+  const focusEffortsAreData = (f: string[]) => f.some((x) => /efforts ARE the data/i.test(x) && /only if the fit goes stale/i.test(x))
+  it('short TTE → Punchy threshold, focus leans on efforts (test only if stale, not "never") — #408', () => {
     const p = srv.athleteProfile({ sport: 'cycling', tte: 12 * 60, threshold: 260, eftp: 253, reserveKj: 17, reserveBig: 20 })
     expect(p.type).toBe('Punchy threshold')
     expect(p.tteMin).toBeCloseTo(12)
-    expect(focusHasNoTest(p.focus)).toBe(true)
+    expect(focusEffortsAreData(p.focus)).toBe(true)
   })
   it('long TTE + big reserve → All-rounder; long TTE + small reserve → Diesel engine', () => {
     expect(srv.athleteProfile({ sport: 'cycling', tte: 50 * 60, reserveKj: 25, reserveBig: 20 }).type).toBe('All-rounder')

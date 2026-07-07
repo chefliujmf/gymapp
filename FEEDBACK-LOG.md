@@ -486,8 +486,9 @@ test guide → the **🧪 Test guide** section below.
     curve fetches) + an MCP `get_metrics`/extend `get_wellness` so daily-adapt + chat reason with the real profile. gymapp + coach.
     ✅ BUILT: `server/perf-metrics.js` (mirrors src/tte.ts + src/athlete-profile.ts — parity unit-tested, src/perf-metrics.test.ts,
     8 pass) + `GET /api/athlete-metrics` (apiAuth, per-sport ftp/eftp/cp/wPrimeKj/tteSec/ef/profile from the 365-d power/pace curves)
-    + MCP `get_metrics` tool (mcp/server.js) + openapi + a "call get_metrics" pointer in BOTH coach-engine cycling & running. ⚠️ after
-    QA deploy: verify /api/athlete-metrics returns real numbers, then MANUAL `rsync mcp/` to the host (nothing syncs it, [[platyplus-propagate-all-layers]]).
+    + MCP `get_metrics` tool (mcp/server.js) + openapi + a "call get_metrics" pointer in BOTH coach-engine cycling & running.
+    ✅ LIVE-VERIFIED on QA (HTTP 200): cycling {ftp 260, eftp 253, cp 248, W′ 17.1, TTE 12:00, EF 1.104↓, "Punchy threshold"} +
+    running {4:57, CS 5:21, D′ 148m}; focus line renders. `mcp/` rsynced to /home/jmf/platyplus-chat (parses). Awaiting JM ✅ on QA.
 405. 🔨 **Sleep-need "9" looked defaulted — surface the raw best-nights avg in the sheet.** JM 2026-07-07: "how do you know it's 9?
     what is the calculation? why not 8.97h or 9.2?" It IS computed (`estimateSleepNeed`, src/sleep.ts): over his 58 sleep+HRV nights,
     average the sleep on the **19 best-HRV (best-recovery) nights** = **8.94h raw** → snapped to the nearest ¼ h = **9:00** (an
@@ -501,6 +502,23 @@ test guide → the **🧪 Test guide** section below.
     a FALSE source. Fix (better than removing): the narr now follows `vo2head.source` (the same signal as the IN USE badge) with 3
     branches — **MAP** (bike power) / **VDOT** (run pace) / **HR-profile** (submax proxy) + a generic fallback. The subtitle already
     used the real source. tsc clean. gymapp-only.
+407. ⬜ **Best-efforts SEASON-COMPARISON table (expands #400) — This season vs Last season vs … vs All time.** JM 2026-07-07
+    (intervals screenshot of his own data): after #404 ("metrics look amazing"), wants the intervals-style best-efforts grid.
+    Spec: (a) columns = **This season · Last season · [older] · All time** (best highlighted), each cell = **power (W) + W/kg**
+    (cycling) / time + /km (running); (b) **cycling durations must go LONG — 1h,2h,3h,4h,5h,6h,8h — not stop at 20m** (plus 5s/60s/5m/20m);
+    (c) **running is DISTANCE-based — 400m,1k,5k,10k** (not just 400m/1k); (d) integrate the METRIC rows too — **FTP·CP·W′·EF·MAP·TTE·VO₂max·CS**
+    — with W/kg. THE design problem = **mobile**: his reference is a 9-col desktop table; the no-horizontal-scroll rule needs a plan
+    (sticky-label scroll table / 2-col + season toggle / This-vs-All-time). MOCK 3 layouts first. Data: intervals power-curves/pace-curves
+    accept multiple `curves=` specs (per-season date ranges) + per-curve `powerModels` (per-season CP/W′/FTP). Supersedes #400's 2-col design.
+    gymapp-only (+ maybe a curve-fetch tweak). See [[platyplus-chart-standard]] · options-first.
+408. 🔨 **Drop the absolute "never demand a test" — allow an OCCASIONAL, TRIGGERED test.** JM 2026-07-07: "remove the never demand a
+    test, I'll do it if really needed but not too frequent, and if there's a way to know [when to] do one then let's do that instead."
+    #403/#404 baked a dogmatic "NEVER prescribe a test / no formal test needed" into the coach brain, athlete-profile, docs. Reframe (all
+    layers): efforts are the PRIMARY data so a formal test is RARELY needed — but suggest a short, SPECIFIC test when a TRIGGER fires:
+    model fit low-confidence/STALE (no near-max effort at that duration in ~6+ wks), observed TTE ≪ modelled (FTP/threshold anchor off),
+    or a goal-block start. Give the coach that rule = the "way to know". Touch: `src/athlete-profile.ts` + `server/perf-metrics.js` (mirror,
+    focus line) + coach-engine cycling & running + docs/beyond-ftp-metrics.md + the 2 unit tests + memory. Server-only → QA auto-deploy
+    (no mcp rsync; mcp/server.js unchanged). gymapp + coach.
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
     passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");

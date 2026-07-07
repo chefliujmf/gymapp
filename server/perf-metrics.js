@@ -64,6 +64,6 @@ export function athleteProfile(inp) {
   else focus.push(cyc ? 'Alternate a threshold-endurance week (3×20 @ 90–95%) with an FTP week (4×10 @ 100–105%).' : 'Alternate threshold-endurance with 5 k-pace intervals.')
   if (!bigReserve) focus.push(cyc ? 'Weekly short-sprint set (30 s–3 min) for W′.' : 'Weekly short fast reps (200–600 m) for D′.')
   focus.push(cyc ? 'Aerobic volume underneath → rising EF + higher future FTP.' : 'Easy aerobic volume → rising EF + future pace.')
-  focus.push('No formal test needed — the efforts ARE the data; the models sharpen as they train.')
+  focus.push('Mostly the efforts ARE the data — the CP/W′/TTE models sharpen as they train; a short benchmark test only if the fit goes stale.')
   return { type, badge, summary, tteMin, focus }
 }

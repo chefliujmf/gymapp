@@ -1,6 +1,6 @@
 // #403 — the ATHLETE PROFILE synthesis: read FTP·TTE·CP·W′·EF (cycling) / threshold·TTE·CS·D′·EF (running)
 // TOGETHER and say (a) what kind of athlete you are, (b) a coach read per metric, and (c) what the coach will
-// work on — all improvable through NORMAL training, no crazy exhaustion tests. Pure + unit-tested.
+// work on — improvable mostly through NORMAL training (a short benchmark test only if the model goes stale). Pure + unit-tested.
 // Framework: "high FTP + short TTE = fragile/punchy · moderate FTP + long TTE = diesel" (beyond-FTP sources).
 
 export type Trend = 'up' | 'down' | 'flat' | null
@@ -37,11 +37,11 @@ export function athleteProfile(inp: ProfileInputs): AthleteProfileResult {
     r: inp.eftp != null && inp.cp != null && ((cyc && inp.threshold > inp.cp + 4) || (!cyc && inp.threshold < inp.cp - 8))
       ? `Sits ${cyc ? 'above' : 'faster than'} your ${cyc ? 'CP' : 'critical speed'} — a touch optimistic; the coach nudges it toward your ${cyc ? 'eFTP' : 'modelled'} value.`
       : `In line with your ${cyc ? 'CP' : 'critical speed'} — a fair threshold.` })
-  if (inp.tte != null) reads.push({ k: 'TTE', v: `${mmss(inp.tte)}`, r: shortTte ? `The big lever. Normal is 30–70 min — yours is short, so build threshold endurance (no test — long tempo does it).` : longTte ? `Long — excellent fatigue resistance. Now push the ceiling.` : `Reasonable — keep extending it with tempo.` })
+  if (inp.tte != null) reads.push({ k: 'TTE', v: `${mmss(inp.tte)}`, r: shortTte ? `The big lever. Normal is 30–70 min — yours is short, so build threshold endurance (long tempo does it).` : longTte ? `Long — excellent fatigue resistance. Now push the ceiling.` : `Reasonable — keep extending it with tempo.` })
   if (inp.reserveKj != null) reads.push({ k: cyc ? 'W′' : 'D′', v: cyc ? `${inp.reserveKj} kJ` : `${inp.reserveKj} m`, r: bigReserve ? `Big anaerobic battery — a real weapon for surges & sprints.` : `Moderate — enough to cover surges, not a pure sprinter.` })
   if (inp.ef != null) reads.push({ k: 'EF', v: `${inp.efTrend === 'up' ? '↑ ' : inp.efTrend === 'down' ? '↓ ' : ''}${inp.ef.toFixed(2)}`, r: inp.efTrend === 'up' ? `Rising — your aerobic engine is improving even if ${cyc ? 'FTP' : 'pace'} is flat. Stay the course.` : inp.efTrend === 'down' ? `Slipping — check sleep/stress/fuelling before adding load.` : `Steady — a stable aerobic base.` })
 
-  // what the coach will work on — everything here is TRAINING, no exhaustion tests.
+  // what the coach will work on — everything here is TRAINING; a formal test only if the model goes stale.
   const focus: string[] = []
   if (shortTte) {
     focus.push(cyc ? 'Extensive threshold — 3×15–20 min @ 90–95% FTP → turn power into staying power (grows TTE).' : 'Extensive threshold runs — 3×15–20 min @ threshold → build the duration you can hold pace.')
@@ -53,6 +53,6 @@ export function athleteProfile(inp: ProfileInputs): AthleteProfileResult {
   }
   if (!bigReserve) focus.push(cyc ? 'Keep the punch — a weekly short-sprint set (30 s–3 min) holds/grows W′.' : 'Keep the kick — weekly short fast reps (200–600 m) hold/grow D′.')
   focus.push(cyc ? 'Aerobic volume underneath — feeds a rising EF and a higher future FTP.' : 'Easy aerobic volume underneath — feeds a rising EF and future pace.')
-  focus.push('No formal test needed — these efforts ARE the data: your CP/W′/TTE models sharpen as you do them.')
+  focus.push('Mostly the efforts ARE the data — your CP/W′/TTE models sharpen as you do them; a short benchmark test only if the fit goes stale.')
   return { type, emoji, badge, summary, reads, focus }
 }
