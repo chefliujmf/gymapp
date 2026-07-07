@@ -29,7 +29,7 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from '.
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads } from './readiness.js'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss, stripPlatyplusLinks, stripDerivedWorkout } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay } from './cycle.js' // #329
 
@@ -1766,7 +1766,8 @@ async function reconcileFromIcu(user, from, to) {
   // PLATYPLUS-WINS dedup key: same day + sport + title ⇒ it's the same session.
   const planKey = (date, sport, title) => `${date}|${sport}|${String(title || '').trim().toLowerCase()}`
   const planKeys = new Set(user.plans.map((p) => planKey(p.date, p.sport, p.title)))
-  let imported = 0, refreshed = 0
+  let imported = 0, refreshed = 0, gcDeleted = 0
+  const orphanCandidates = [] // #414 — our pushed events that no plan claims; deleted AFTER the loop, fail-safe-guarded
   for (const ev of events || []) {
     if (ev.category && ev.category !== 'WORKOUT') continue
     if (!['Ride', 'Run', 'WeightTraining'].includes(ev.type)) continue
@@ -1797,13 +1798,33 @@ async function reconcileFromIcu(user, from, to) {
     const date = String(ev.start_date_local || '').slice(0, 10)
     const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
     if (planKeys.has(planKey(date, sport, ev.name))) continue
-    // #377 — our OWN gym session (it carries the Platyplus deep-link): the real exercises live in
-    // Platyplus, intervals has no gym model, so importing it here would fabricate an EMPTY-exercise shell
-    // (and, cross-env, shadow the origin env's real plan). Skip — Platyplus is canonical for gym.
-    if (sport === 'gym' && /Open workout in Platyplus/i.test(ev.description || '')) continue
+    // #377/#414 — an event WE pushed (external_id = a Platyplus plan id; gym also carries the "Open workout in
+    // Platyplus" deep-link) that reached HERE means no current plan claims it — not by icuEventId (1773), not by
+    // external_id/id (1795), not by day+sport+title (1799). That's an ORPHAN: a leftover from a move/re-plan whose
+    // cleanup (deleteIcuEvent) never fired. Gym → renders as an empty-exercise shell (Xenia's bug); any sport →
+    // would re-import as a PHANTOM plan below. Collect it now; the DELETE happens after the loop, fail-safe-guarded
+    // (JM warned: a user's workouts can be 100% coach-made, so this matches ALL their events — never mass-delete).
+    // Either way DON'T re-import it as a plan. Genuine intervals-origin workouts (athlete-created, NO external_id)
+    // fall through and import normally below.
+    if (isPlatyplusPushedEvent(ev)) { orphanCandidates.push(ev); continue }
     const plan = icuEventToPlan(ev)
     user.plans.push(plan); imported++
     planIds.add(plan.id); planKeys.add(planKey(plan.date, plan.sport, plan.title)) // guard against dups within this batch too
+  }
+  // #414 — ORPHAN GC, made FAIL-SAFE. JM: a user's planned workouts can be 100% coach-made, so
+  // isPlatyplusPushedEvent matches ALL their events → the ONLY thing keeping a real UPCOMING session alive is the
+  // "a plan claims it" logic above. So NEVER mass-delete: (a) do nothing if NO plans are loaded (a stale/empty
+  // load must not read as "everything is orphaned"), and (b) CAP deletions per run — a genuine move/re-plan leaves
+  // 1-2 orphans; a large batch signals a bad plan state, so skip + warn rather than delete. PROD-only.
+  if (!IS_STAGING && orphanCandidates.length) {
+    const MAX_GC = 4
+    if (user.plans.length === 0 || orphanCandidates.length > MAX_GC) {
+      console.warn(`[reconcile #414] orphan-GC SKIPPED for ${user.username}: ${orphanCandidates.length} candidate(s) vs ${user.plans.length} plan(s) — refusing to mass-delete (likely stale plan state).`)
+    } else {
+      for (const ev of orphanCandidates) {
+        try { const r = await icuFetch(user, `/athlete/${ath}/events/${ev.id}`, { method: 'DELETE' }); if (r.ok) gcDeleted++ } catch { /* best effort */ }
+      }
+    }
   }
   // Deletion mirror (#150) + replaced-plan cleanup (#185): drop a stored plan whose
   // intervals mirror is gone — icu-origin always, platyplus-origin ONLY when a live
@@ -1816,9 +1837,9 @@ async function reconcileFromIcu(user, from, to) {
   const before = user.plans.length
   user.plans = user.plans.filter((p) => !planDroppedByReconcile(p, { liveIds: liveIcuIds, liveSlots, from, to }))
   const dropped = before - user.plans.length
-  if (imported || dropped) audit(user, { actor: 'sync', action: 'Synced from intervals', target: '', detail: [imported && `${imported} imported`, dropped && `${dropped} removed`, refreshed && `${refreshed} refreshed`].filter(Boolean).join(' · '), kind: 'sync' }) // #232
-  if (imported || dropped || refreshed) save(store)
-  return { imported, dropped, refreshed, scanned: (events || []).length }
+  if (imported || dropped || gcDeleted) audit(user, { actor: 'sync', action: 'Synced from intervals', target: '', detail: [imported && `${imported} imported`, dropped && `${dropped} removed`, gcDeleted && `${gcDeleted} orphan${gcDeleted > 1 ? 's' : ''} cleaned`, refreshed && `${refreshed} refreshed`].filter(Boolean).join(' · '), kind: 'sync' }) // #232/#414
+  if (imported || dropped || refreshed || gcDeleted) save(store)
+  return { imported, dropped, refreshed, gcDeleted, scanned: (events || []).length }
 }
 
 // ---- calendar items (meal/mind/note) — shared by the UI (/auth) and API (/api).

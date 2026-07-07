@@ -559,7 +559,27 @@ test guide → the **🧪 Test guide** section below.
     inherited as i28814). Her OTHER gym plans DO populate (Jul 11/15/18 = 12 exercises each), so it's NOT an empty-exercises generation bug.
     So the empty card is either (a) the Today page renders a gym-workout card when there is NO plan for that day, or (b) on QA an
     intervals SHELL surfaces from the shared i28814 athlete (she has no key). NEED from JM to pinpoint: which ENV (QA vs prod) + a
-    screenshot of the empty card + confirm it's on HER login. gymapp (Today.tsx render / intervals shell). 
+    screenshot of the empty card + confirm it's on HER login. gymapp (Today.tsx render / intervals shell).
+    ✅ ROOT CAUSE FOUND (prod, her login): Xenia's OWN athlete **i628280** has a Jul-7 event "Full-Body Dumbbell + Band Strength"
+    (WeightTraining, **platyLink=true** — Platyplus pushed it) but there is **NO Platyplus plan for Jul 7** in the DB (her plans: Jul
+    3·11·15·18). So it's an **ORPHANED intervals event** — the plan was moved/removed but its intervals event wasn't deleted → Today
+    surfaces the shell with no exercises = empty gym. SAME root cause as #412 (a move/reschedule doesn't clean up the old intervals
+    event). IMMEDIATE FIX: delete the orphaned Jul-7 event from i628280 (awaiting JM OK — outward write to her intervals). SYSTEMIC FIX
+    (=#412): on move/delete, remove the prior intervals event by icuEventId; and reconcile must not surface a platyLink gym event that
+    has no plan. Ties [[platyplus-integrations]] #377/#380.
+    ✅ CONFIRMED coach-side (JM: "my wife asked the coach to update, so a bug on the coach side?"). Cross-ref of Xenia's plan
+    `icuEventId`s vs her i628280 events found **TWO ORPHANS** referenced by NO plan: Jul-7 gym `120157324` + Jul-10 run `120872923`.
+    The coach's re-plan created new events (12089xxx/12087xxx) but removed the old plans WITHOUT `deleteIcuEvent` firing (so the old
+    events lingered). REAL FIX = a **reconcile-time orphan GC**: when reconciling, any intervals event that carries our platyLink but
+    matches NO current plan by `icuEventId` gets DELETED (self-heals regardless of how the orphan arose) — PROD-only (IS_STAGING read-only).
+    Plus harden the re-plan/move path to always `deleteIcuEvent` on plan removal.
+    ✅ DONE: (1) IMMEDIATE — deleted the 2 orphans from i628280 (platyLink-guarded so an athlete-created event is never
+    touched); Xenia's Jul-7 empty gym is gone. (2) SYSTEMIC — orphan-GC added to `reconcileFromIcu`: `isPlatyplusPushedEvent(ev)`
+    (server/icu-steps.js — external_id set OR gym deep-link; unit-tested, 33 pass incl. FALSE-for-athlete-event) marks our pushes; one
+    that no plan claims (by icuEventId/external_id/day+sport+title) is collected + DELETED after the loop. ⚠️ **FAIL-SAFE per JM's warning
+    ("Xenia never created any workout herself — all coach-made, be careful"):** since the gate then matches ALL her events, the GC (a)
+    does NOTHING if `user.plans` is empty, and (b) CAPS at 4 deletions/run — a bigger batch = stale plan state → skip + `console.warn`,
+    never mass-delete. PROD-only (IS_STAGING skips). Deploys to prod on the next promote; QA won't act (read-only). gymapp + coach-sync.
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
     passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");
     (2) server derives local today from the athlete's intervals timezone; (3) client-only message fix. Note: the readiness

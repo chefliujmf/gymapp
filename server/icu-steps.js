@@ -182,3 +182,14 @@ export function plannedTss(segments = []) {
   const IF = (cnt ? Math.pow(sum4 / cnt, 0.25) : 0) / 100
   return { if: Math.round(IF * 100) / 100, tss: Math.round((totalSec * IF * IF) / 3600 * 100) }
 }
+
+// #414 — did PLATYPLUS push this intervals event? Every event we create carries `external_id = <plan id>`
+// (composeIcuEvent), and gym events also carry the "Open workout in Platyplus" deep-link. Athlete-created
+// events (from the intervals calendar, a watch, or Strava-planned) have NEITHER. This is the SAFETY-CRITICAL
+// gate for the orphan GC (reconcileFromIcu, #414): an event we pushed that no plan claims is a leftover to
+// delete; an athlete's own event must NEVER match. Pure + unit-tested.
+export function isPlatyplusPushedEvent(ev) {
+  if (!ev || typeof ev !== 'object') return false
+  if (ev.external_id != null && String(ev.external_id).trim() !== '') return true
+  return ev.type === 'WeightTraining' && /Open workout in Platyplus/i.test(ev.description || '')
+}

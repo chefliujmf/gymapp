@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, detectRepeat, plannedTss, stripPlatyplusLinks, stripDerivedWorkout } from '../server/icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, detectRepeat, plannedTss, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from '../server/icu-steps.js'
 
 // #312 — a RUN must target PACE (%pace), a RIDE POWER (%ftp). The bug: every ride/run emitted
 // power → intervals (and the Garmin workout it syncs) showed WATTS on runs.
@@ -187,5 +187,30 @@ describe('#388 stripDerivedWorkout — the native workout text must never persis
   it('leaves a plain note alone + handles empty', () => {
     expect(stripDerivedWorkout('Recovery week — keep it easy, listen to your legs.')).toBe('Recovery week — keep it easy, listen to your legs.')
     expect(stripDerivedWorkout('')).toBe(''); expect(stripDerivedWorkout(null)).toBe('')
+  })
+})
+
+// #414 — the orphan-GC safety gate. MUST be true for events Platyplus pushed, and — critically — MUST be false
+// for an athlete's OWN intervals event, or the GC could delete real workouts (JM: a user's workouts can be 100%
+// coach-made, so this is the last line of defence together with the "a plan claims it" checks + the count cap).
+describe('isPlatyplusPushedEvent (#414)', () => {
+  it('true when we set external_id (any sport)', () => {
+    expect(isPlatyplusPushedEvent({ type: 'Ride', external_id: 'mcp-ab12', description: '' })).toBe(true)
+    expect(isPlatyplusPushedEvent({ type: 'Run', external_id: 'plan_9', description: 'x' })).toBe(true)
+    expect(isPlatyplusPushedEvent({ type: 'WeightTraining', external_id: 'g1' })).toBe(true)
+  })
+  it('true for our gym via the deep-link even without external_id', () => {
+    expect(isPlatyplusPushedEvent({ type: 'WeightTraining', description: '🏋️ Open workout in Platyplus → https://platyplus.duckdns.org/coach/g1' })).toBe(true)
+  })
+  it('FALSE for an athlete-created event (no external_id, no deep-link) — never delete their own', () => {
+    expect(isPlatyplusPushedEvent({ type: 'Ride', description: 'Morning spin' })).toBe(false)
+    expect(isPlatyplusPushedEvent({ type: 'WeightTraining', description: 'Leg day at the gym' })).toBe(false)
+    expect(isPlatyplusPushedEvent({ type: 'Run', external_id: '' })).toBe(false)
+    expect(isPlatyplusPushedEvent({ type: 'Run', external_id: '   ' })).toBe(false)
+  })
+  it('FALSE on junk input', () => {
+    expect(isPlatyplusPushedEvent(null)).toBe(false)
+    expect(isPlatyplusPushedEvent(undefined)).toBe(false)
+    expect(isPlatyplusPushedEvent('nope')).toBe(false)
   })
 })
