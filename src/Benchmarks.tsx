@@ -6,6 +6,7 @@ import { fmtPace, parsePace } from './running-paces'
 import { fetchWellness, fetchPowerCurve, fetchPaceCurve, type PowerCurve, type PaceCurve } from './intervals'
 import { estimateSleepNeed } from './sleep'
 import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from './tte'
+import { athleteProfile } from './athlete-profile'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, confLabel } from './vo2max-submax'
 import { vo2maxConfidence, ftpConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, modelFitConfidence, type Confidence } from './benchmark-confidence'
 
@@ -109,7 +110,7 @@ function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; p
 }
 
 // #385 — `only` filters the cards to the given keys (in that order); undefined = all 5 (unchanged).
-export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLink?: boolean; only?: Key[] }) {
+export function BenchmarksCard({ showTrendsLink = false, only, profile }: { showTrendsLink?: boolean; only?: Key[]; profile?: 'cycling' | 'running' }) {
   const { user, refresh } = useAuth()
   const [pull, setPull] = useState<IcuAthletePull | null>(null)
   const [hrRest, setHrRest] = useState<number | null>(null)
@@ -170,6 +171,10 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
   const wPrimeKj = powerCurve?.wPrime != null ? Math.round(powerCurve.wPrime / 100) / 10 : null // kJ, 0.1 precision
   const csPace = paceCurve?.cs != null && paceCurve.cs > 0 ? Math.round(1000 / paceCurve.cs) : null // sec/km
   const dPrimeM = paceCurve?.dPrime != null ? Math.round(paceCurve.dPrime) : null // metres
+  // #403 — athlete-profile synthesis (rendered when a per-sport page passes `profile`). EF wires in Phase 2.
+  const prof = profile ? athleteProfile(profile === 'cycling'
+    ? { sport: 'cycling', threshold: ftpManual, eftp, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20 }
+    : { sport: 'running', threshold: paceManual ?? paceEst, eftp: paceEst, tte: tteRun, cp: csPace, reserveKj: dPrimeM, reserveBig: 200 }) : null
 
   const saveSport = (group: 'cycling' | 'running', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
   // #337 — "when will the computed estimate land?" straight from our theory gates, so nothing just says
@@ -336,6 +341,14 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
         })}
       </div>
       <p className="bm-note">Each shows your <b>chosen</b> value + how confident the estimate is. Tap for the science behind it, and to switch manual ↔ computed.{showsFtp && <> FTP's eFTP trend is on the <Link to="/cycling-stats">Cycling</Link> page.</>}</p>
+      {prof && (
+        <div className="prof">
+          <div className="prof__type">{prof.emoji} {prof.type} <span className="prof__badge">{prof.badge}</span></div>
+          <div className="prof__say">{prof.summary}</div>
+          {prof.reads.map((m) => <div key={m.k} className="prof__m"><div className="prof__mk"><span className="k">{m.k}</span><b>{m.v}</b></div><div className="r">{m.r}</div></div>)}
+          <div className="prof__foc"><h4>🎯 What your coach will work on</h4><ul>{prof.focus.map((f, i) => <li key={i}>{f}</li>)}</ul></div>
+        </div>
+      )}
       {showTrendsLink && <Link to="/stats" className="bm-trends">See trends &amp; race predictions in Stats ›</Link>}
       {openDef && <Sheet def={openDef} prefer={prefOf(openDef)} onPref={(p) => authApi.saveProfile({ statPrefs: { [openDef.key]: p } }).then(() => refresh()).catch(() => {})} onSaveManual={(v) => { if (v != null) openDef.save(v) }} onClose={() => setOpen(null)} />}
     </div>
