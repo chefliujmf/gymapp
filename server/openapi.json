@@ -1151,6 +1151,14 @@
         "responses": { "200": { "description": "{ connected, activities[] }" } }
       }
     },
+    "/api/athlete-metrics": {
+      "get": {
+        "summary": "#404 — the athlete's COMPUTED performance profile per sport, model-derived from their power/pace curve (no test). Cycling: { ftp, eftp, cp, wPrimeKj, tteSec, ef:{latest,trend,deltaPct}, profile:{type,badge,summary,tteMin,focus[]} }. Running: { thresholdPaceSec, csPaceSec, dPrimeM, tteSec, ef, profile }. { connected:false } if intervals isn't linked. Backs the MCP get_metrics tool so the coach reasons from real values.",
+        "tags": ["intervals"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "{ connected, cycling?, running? }" } }
+      }
+    },
     "/api/weather": {
       "get": {
         "summary": "#341 — the day's forecast + coaching guidance (heat derating, hydration, cold, wind, rain) for the athlete's location (Open-Meteo, free/no-key). Location is derived from recent GPS activities. { available:false, needsLocation:true } if unknown.",

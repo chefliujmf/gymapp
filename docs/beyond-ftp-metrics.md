@@ -20,7 +20,7 @@ same CP perform very differently by W′.
 **How CP & W′ are calculated** (High North): the 2-parameter critical-power model fits **Work = CP·t + W′** across
 maximal efforts of different durations (classically a ~3-min and ~12-min max, or the whole power-duration curve).
 So `P(t) = CP + W′/t`, and **TTE at a power P = W′ / (P − CP)**. Platyplus reads CP/W′ (and CS/D′) straight from
-intervals' maintained model fit — **no formal test**; they sharpen as the athlete does varied hard efforts.
+intervals' maintained model fit — **rarely need a formal test**; they sharpen as the athlete does varied hard efforts.
 
 ## TTE — see `docs/tte.md`
 Time to hold FTP/threshold (normal 30–70 min). Derived from CP/W′: `W′/(FTP−CP)`. A short TTE = a training target
@@ -37,11 +37,14 @@ quality** (power per heartbeat). Masters ~1.4–2.0; the **absolute value matter
 - **Aerobic decoupling (Pw:HR)** = within-ride durability (1st vs 2nd half). EF is the long-arc metric; decoupling
   is the durability check.
 
-## How the COACH should use all this (no crazy tests)
+## How the COACH should use all this (rarely a test)
 1. **Read them together → an athlete TYPE**, not one number. Platyplus computes this (profile card): FTP·TTE·CP·W′·EF
    → Punchy-threshold / Diesel / All-rounder / Puncheur + a per-metric read + a training focus.
 2. **Everything improves through NORMAL training** — the efforts ARE the data (the CP/W′ model + TTE sharpen as
-   they train). Never demand a formal exhaustion test.
+   they train), so a formal test is **rarely** needed. Don't test routinely, but don't forbid it: suggest a short,
+   SPECIFIC test only when a **trigger** fires — the model fit is low-confidence or **stale** (no near-max effort at
+   that duration in ~6+ weeks), observed TTE is far below the modelled value (the FTP/threshold anchor is off), or a
+   goal block is starting. Then prescribe the exact effort (a ~5-min all-out, a 10–20 min for eFTP, a fresh 5 k) — never a lab. Keep it infrequent.
 3. **Prescription by profile:**
    - Short TTE / punchy → **extensive threshold** (3×15–20 / 3×24 / 4×15 min @ 90–95% FTP; runs @ threshold) to
      build fatigue resistance; ease FTP toward eFTP/CP if it's optimistic.

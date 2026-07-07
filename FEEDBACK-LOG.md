@@ -480,11 +480,106 @@ test guide → the **🧪 Test guide** section below.
     — TYPE + per-metric coach read + no-test training focus, rendered by `BenchmarksCard profile=`. Phase 4 (propagate): docs/beyond-ftp-metrics.md
     (+ highnorth CP-calc cite) + coach-engine cycling & running sections + openapi (cp/wPrime/cs/dPrime) + memory [[platyplus-beyond-ftp-metrics]].
     JM's Qs answered inline: CP/W′/EF separate (not under TTE); improve without tests (the efforts ARE the data); profile = "Punchy threshold".
-404. ⬜ **Expose the computed CP/W′/EF/TTE/PROFILE to the COACH (MCP read tool).** From #403: the coach-engine now has the THEORY,
+404. 🔨 **Expose the computed CP/W′/EF/TTE/PROFILE to the COACH (MCP read tool).** From #403: the coach-engine now has the THEORY,
     but no MCP tool returns the athlete's actual VALUES (CP 248, W′ 17.1, EF trend, TTE 12 min, profile type) — so the coach reasons
     from theory, not JM's numbers. Build: a server endpoint computing them (port `tte.js`/`athlete-profile` server-side or reuse the
     curve fetches) + an MCP `get_metrics`/extend `get_wellness` so daily-adapt + chat reason with the real profile. gymapp + coach.
-    {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
+    ✅ BUILT: `server/perf-metrics.js` (mirrors src/tte.ts + src/athlete-profile.ts — parity unit-tested, src/perf-metrics.test.ts,
+    8 pass) + `GET /api/athlete-metrics` (apiAuth, per-sport ftp/eftp/cp/wPrimeKj/tteSec/ef/profile from the 365-d power/pace curves)
+    + MCP `get_metrics` tool (mcp/server.js) + openapi + a "call get_metrics" pointer in BOTH coach-engine cycling & running.
+    ✅ LIVE-VERIFIED on QA (HTTP 200): cycling {ftp 260, eftp 253, cp 248, W′ 17.1, TTE 12:00, EF 1.104↓, "Punchy threshold"} +
+    running {4:57, CS 5:21, D′ 148m}; focus line renders. `mcp/` rsynced to /home/jmf/platyplus-chat (parses). Awaiting JM ✅ on QA.
+405. 🔨 **Sleep-need "9" looked defaulted — surface the raw best-nights avg in the sheet.** JM 2026-07-07: "how do you know it's 9?
+    what is the calculation? why not 8.97h or 9.2?" It IS computed (`estimateSleepNeed`, src/sleep.ts): over his 58 sleep+HRV nights,
+    average the sleep on the **19 best-HRV (best-recovery) nights** = **8.94h raw** → snapped to the nearest ¼ h = **9:00** (an
+    actionable target; his all-nights avg is only 8.75h so he runs a small deficit). The round "9" read as a hardcoded default.
+    JM picked "show the raw in the sheet". Built: `estimateSleepNeed` now also returns `suggestedRaw` (unrounded) + `topNights`;
+    the Sleep-need benchmark narr shows "Your N best-recovery nights averaged X h → rounded to a 9 h target", sci row says "avg of
+    your N top-HRV nights". Unit test added (src/sleep.test.ts, 6 pass). gymapp-only.
+406. 🔨 **VO₂max sheet said "bike power" even for a non-cyclist — key the prose to the method actually in use.** JM 2026-07-07:
+    "this works for me (best 5-min bike power) but if another user doesn't bike, the VO₂max is based on… what? maybe remove the bike
+    mention?" The narr was keyed to `doesCycle` (a sport flag), so a non-biker — or a biker whose current number came from HR — read
+    a FALSE source. Fix (better than removing): the narr now follows `vo2head.source` (the same signal as the IN USE badge) with 3
+    branches — **MAP** (bike power) / **VDOT** (run pace) / **HR-profile** (submax proxy) + a generic fallback. The subtitle already
+    used the real source. tsc clean. gymapp-only.
+407. ⬜ **Best-efforts SEASON-COMPARISON table (expands #400) — This season vs Last season vs … vs All time.** JM 2026-07-07
+    (intervals screenshot of his own data): after #404 ("metrics look amazing"), wants the intervals-style best-efforts grid.
+    Spec: (a) columns = **This season · Last season · [older] · All time** (best highlighted), each cell = **power (W) + W/kg**
+    (cycling) / time + /km (running); (b) **cycling durations must go LONG — 1h,2h,3h,4h,5h,6h,8h — not stop at 20m** (plus 5s/60s/5m/20m);
+    (c) **running is DISTANCE-based — 400m,1k,5k,10k** (not just 400m/1k); (d) integrate the METRIC rows too — **FTP·CP·W′·EF·MAP·TTE·VO₂max·CS**
+    — with W/kg. THE design problem = **mobile**: his reference is a 9-col desktop table; the no-horizontal-scroll rule needs a plan
+    (sticky-label scroll table / 2-col + season toggle / This-vs-All-time). MOCK 3 layouts first. Data: intervals power-curves/pace-curves
+    accept multiple `curves=` specs (per-season date ranges) + per-curve `powerModels` (per-season CP/W′/FTP). Supersedes #400's 2-col design.
+    gymapp-only (+ maybe a curve-fetch tweak). See [[platyplus-chart-standard]] · options-first. 🔨 MOCKED 3 layouts (mockups/best-efforts-table.html,
+    real data 5s→8h + metric rows). **JM picked: "A for the list of metrics, B to compare"** + (new Q) **overlay 2 seasons on the power-curve
+    CHART**. DECISION = combined section, one "Compare to" control drives all: (1) **curve chart overlays 2 season lines** (This + picked —
+    intervals compare view; TrendChart multi-series); (2) **table has an [All seasons | Compare] toggle** — All = layout A full scroll table
+    (every season × every metric, label col pinned, page never scrolls), Compare = layout B (This vs picked + Δ-to-PR). Data: garbage-filter
+    pace buckets (all-time 400m/1k came back 0:02/0:08 → reject pace <2:30/km). Build after the combined mock is approved.
+408. 🔨 **Drop the absolute "never demand a test" — allow an OCCASIONAL, TRIGGERED test.** JM 2026-07-07: "remove the never demand a
+    test, I'll do it if really needed but not too frequent, and if there's a way to know [when to] do one then let's do that instead."
+    #403/#404 baked a dogmatic "NEVER prescribe a test / no formal test needed" into the coach brain, athlete-profile, docs. Reframe (all
+    layers): efforts are the PRIMARY data so a formal test is RARELY needed — but suggest a short, SPECIFIC test when a TRIGGER fires:
+    model fit low-confidence/STALE (no near-max effort at that duration in ~6+ wks), observed TTE ≪ modelled (FTP/threshold anchor off),
+    or a goal-block start. Give the coach that rule = the "way to know". Touch: `src/athlete-profile.ts` + `server/perf-metrics.js` (mirror,
+    focus line) + coach-engine cycling & running + docs/beyond-ftp-metrics.md + the 2 unit tests + memory. Server-only → QA auto-deploy
+    (no mcp rsync; mcp/server.js unchanged). gymapp + coach.
+409. 🔨 **"Finish setting up" checklist keeps REAPPEARING though setup was done long ago.** JM 2026-07-07 (QA, screenshot 3/6).
+    ROOT CAUSE (diagnosed, NOT a detection bug): (a) **Strava step = localStorage ack** (`getAck('strava')`, SetupChecklist.tsx) —
+    per-DOMAIN + per-device, so a prod ack never shows on the QA domain and any storage-clear resets it → the card can NEVER hit 6/6
+    → nags forever (affects prod too on a new device). (b) **equipment + availability read `user.info.*` from the QA Postgres, which
+    is SEPARATE from prod** — JM set them on prod (equip=5, full weekly avail) so QA's DB genuinely lacks them (info keys on QA:
+    lat/lon/sex/sports/coachName/sleepNeed only). FIX: persist the Strava ack SERVER-side (`info.stravaAcked` via saveProfile, like
+    Availability does) + copy JM's prod equip/avail → QA (one-time). Then 6/6 → hides durably. (Optional: a server-persisted dismiss.) gymapp-only.
+410. 🔨 **Best-efforts mock rework (JM critiques the combined mock).** JM 2026-07-07: "why does Compare REMOVE metrics like CP? why 2
+    tabs when the first tab already shows the other seasons? doesn't fit; and the graph Compare-to pills (All time / Last season) show
+    both curves but clicking does nothing." Valid: (1) the Compare (B) table dropped the metric rows — KEEP metrics always; (2) the
+    [All seasons | Compare] 2-tab is redundant — the full table already shows all seasons → DROP the tabs, ONE full table (all seasons ×
+    all metrics, A-style scroll); (3) the graph "Compare to" pills must ACTUALLY switch the overlaid 2nd curve (mock hardcoded All-time).
+    Rework mockups/best-efforts-full.html + fetch a real last-season curve so the pills do something. gymapp-only.
+411. 🔨 **Workout detail: the "Mind" section body is EMPTY while its content hides behind a "why" chip.** JM 2026-07-07 (screenshot):
+    "don't get the Mind — the section is empty but the why is a chip to click." Fuel shows its text inline (+ a why chip); Mind shows only
+    a "why ⓘ" chip with no body, so it reads as broken/empty (the real "Mental focus — Restraint…" is buried in the why sheet). FIX: if a
+    section has no inline body, show its content in the body (not only behind "why"), OR hide the empty section header. gymapp-only.
+412. ⬜ **(FOR LATER) Moving a session between days FAILS / DUPLICATES + the "Substitute" picker is empty.** JM 2026-07-07 (QA):
+    "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
+    Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
+    exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
+    icuEventId, not create — ties [[platyplus-integrations]] sync #380 planToIcuEvent/reconcile "intervals-move-wins for the DAY";
+    also the past-day/paired-activity guard). (2) the "Substitute on Jul 9" modal (screenshot) shows a "Search ride…" field over a wall
+    of EMPTY skeleton rows that never populate — the ride list isn't loading. Repro on QA. Investigate the move/upsert dedup + the
+    substitute picker's data fetch. gymapp (+ maybe intervals sync). JM: FOR LATER.
+413. 🔨 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
+    in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
+    FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL
+    grid now shows ONLY cross-sport benchmarks — **VO₂max · Max HR · Sleep**. FTP stays on the Cycling stats page, threshold pace on Running
+    (both already via `only=[…]`). tsc clean. gymapp-only.
+414. ⬜ **Xenia's (wife) "gym workout for today" shows EMPTY.** JM 2026-07-07. INVESTIGATED: Xenia has **no plan at all for 2026-07-07**
+    on prod (5U3WYwwwkI6X — only a run Jul 6, then gym Jul 11) NOR staging (DYo0FuzIvn6w — 0 plans, no icu_key, no sports, icu_athlete
+    inherited as i28814). Her OTHER gym plans DO populate (Jul 11/15/18 = 12 exercises each), so it's NOT an empty-exercises generation bug.
+    So the empty card is either (a) the Today page renders a gym-workout card when there is NO plan for that day, or (b) on QA an
+    intervals SHELL surfaces from the shared i28814 athlete (she has no key). NEED from JM to pinpoint: which ENV (QA vs prod) + a
+    screenshot of the empty card + confirm it's on HER login. gymapp (Today.tsx render / intervals shell).
+    ✅ ROOT CAUSE FOUND (prod, her login): Xenia's OWN athlete **i628280** has a Jul-7 event "Full-Body Dumbbell + Band Strength"
+    (WeightTraining, **platyLink=true** — Platyplus pushed it) but there is **NO Platyplus plan for Jul 7** in the DB (her plans: Jul
+    3·11·15·18). So it's an **ORPHANED intervals event** — the plan was moved/removed but its intervals event wasn't deleted → Today
+    surfaces the shell with no exercises = empty gym. SAME root cause as #412 (a move/reschedule doesn't clean up the old intervals
+    event). IMMEDIATE FIX: delete the orphaned Jul-7 event from i628280 (awaiting JM OK — outward write to her intervals). SYSTEMIC FIX
+    (=#412): on move/delete, remove the prior intervals event by icuEventId; and reconcile must not surface a platyLink gym event that
+    has no plan. Ties [[platyplus-integrations]] #377/#380.
+    ✅ CONFIRMED coach-side (JM: "my wife asked the coach to update, so a bug on the coach side?"). Cross-ref of Xenia's plan
+    `icuEventId`s vs her i628280 events found **TWO ORPHANS** referenced by NO plan: Jul-7 gym `120157324` + Jul-10 run `120872923`.
+    The coach's re-plan created new events (12089xxx/12087xxx) but removed the old plans WITHOUT `deleteIcuEvent` firing (so the old
+    events lingered). REAL FIX = a **reconcile-time orphan GC**: when reconciling, any intervals event that carries our platyLink but
+    matches NO current plan by `icuEventId` gets DELETED (self-heals regardless of how the orphan arose) — PROD-only (IS_STAGING read-only).
+    Plus harden the re-plan/move path to always `deleteIcuEvent` on plan removal.
+    ✅ DONE: (1) IMMEDIATE — deleted the 2 orphans from i628280 (platyLink-guarded so an athlete-created event is never
+    touched); Xenia's Jul-7 empty gym is gone. (2) SYSTEMIC — orphan-GC added to `reconcileFromIcu`: `isPlatyplusPushedEvent(ev)`
+    (server/icu-steps.js — external_id set OR gym deep-link; unit-tested, 33 pass incl. FALSE-for-athlete-event) marks our pushes; one
+    that no plan claims (by icuEventId/external_id/day+sport+title) is collected + DELETED after the loop. ⚠️ **FAIL-SAFE per JM's warning
+    ("Xenia never created any workout herself — all coach-made, be careful"):** since the gate then matches ALL her events, the GC (a)
+    does NOTHING if `user.plans` is empty, and (b) CAPS at 4 deletions/run — a bigger batch = stale plan state → skip + `console.warn`,
+    never mass-delete. PROD-only (IS_STAGING skips). Deploys to prod on the next promote; QA won't act (read-only). gymapp + coach-sync.
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
     passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");
     (2) server derives local today from the athlete's intervals timezone; (3) client-only message fix. Note: the readiness

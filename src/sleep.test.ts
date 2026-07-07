@@ -23,6 +23,18 @@ describe('estimateSleepNeed (#304)', () => {
     expect(e.suggested).not.toBeNull()
     expect(e.suggested!).toBeGreaterThanOrEqual(8.5)
   })
+  it('exposes the raw best-nights avg + count so the round target is not opaque (2026-07-07)', () => {
+    const e = estimateSleepNeed(many(30, (i) => { const s = 7 + (i % 5) * 0.5; return day(s, 20 + s * 4) }))
+    expect(e.topNights).toBe(10) // best-recovery third of 30
+    expect(e.suggestedRaw).not.toBeNull()
+    // suggested is suggestedRaw snapped to the nearest ¼ h
+    expect(Math.abs(e.suggested! - e.suggestedRaw!)).toBeLessThanOrEqual(0.125)
+  })
+  it('has no raw/topNights while still learning', () => {
+    const e = estimateSleepNeed(many(10, () => day(7.5, 40)))
+    expect(e.suggestedRaw).toBeNull()
+    expect(e.topNights).toBe(0)
+  })
   it('flags trainOften on high average load', () => {
     expect(estimateSleepNeed(many(25, () => day(7.5, 40, 70))).trainOften).toBe(true)
     expect(estimateSleepNeed(many(25, () => day(7.5, 40, 10))).trainOften).toBe(false)
