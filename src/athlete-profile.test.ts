@@ -11,7 +11,7 @@ describe('athleteProfile', () => {
     expect(p.focus.some((f) => /eFTP \(253/.test(f))).toBe(true) // nudge FTP toward eFTP
     expect(p.focus.some((f) => /efforts ARE the data/i.test(f))).toBe(true)
     expect(p.focus.some((f) => /only if the fit goes stale/i.test(f))).toBe(true) // #408: not "never", triggered
-    expect(p.reads.find((r) => r.k === 'TTE')?.r).toMatch(/big lever/i)
+    expect(p.reads.find((r) => r.k === 'TTE')?.r).toMatch(/biggest lever/i)
     expect(p.reads.find((r) => r.k === 'EF')?.r).toMatch(/rising/i)
   })
   it('long TTE + small reserve → diesel engine, focus on raising the ceiling', () => {

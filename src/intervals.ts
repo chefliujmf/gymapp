@@ -217,6 +217,14 @@ export interface IcuWellness {
   sleepScore: number | null // 0-100 from a sleep tracker (Garmin/Oura/…), when present
 }
 /** Recent wellness/fitness series from intervals.icu (read-only). Empty on no key/error. */
+// #420 — intervals nests eFTP per-sport in `sportInfo` (e.g. [{type:'Ride', eftp:241, wPrime, pMax}]), NOT a
+// top-level `eftp` field — so the eFTP trend was always empty ("No data yet"). Pull the Ride entry's eftp.
+function rideEftp(d: unknown): number | null {
+  const si = (d as { sportInfo?: { type?: string; eftp?: number }[] })?.sportInfo
+  if (!Array.isArray(si)) return null
+  const ride = si.find((x) => x?.type === 'Ride') || si[0]
+  return typeof ride?.eftp === 'number' ? ride.eftp : null
+}
 export async function fetchWellness(oldest: string, newest: string): Promise<IcuWellness[]> {
   const { apiKey, athleteId, serverKey } = await getIcuConfig()
   if (!apiKey && !serverKey) return []
@@ -228,7 +236,7 @@ export async function fetchWellness(oldest: string, newest: string): Promise<Icu
       date: String(d.id),
       fitness: d.ctl ?? null, fatigue: d.atl ?? null,
       form: d.ctl != null && d.atl != null ? Math.round((d.ctl - d.atl) * 10) / 10 : null,
-      load: d.ctlLoad ?? d.atlLoad ?? null, eftp: d.eftp ?? (d as Record<string, number>).icu_eftp ?? null,
+      load: d.ctlLoad ?? d.atlLoad ?? null, eftp: rideEftp(d) ?? d.eftp ?? (d as Record<string, number>).icu_eftp ?? null,
       weight: d.weight ?? null, restingHR: d.restingHR ?? null,
       hrv: d.hrv ?? d.hrvSDNN ?? null, sleepHours: d.sleepSecs ? Math.round((d.sleepSecs / 3600) * 10) / 10 : null,
       sleepScore: d.sleepScore ?? null,
