@@ -86,6 +86,39 @@ export async function fetchPowerCurve(days: number): Promise<PowerCurve | null> 
   } catch { return null }
 }
 
+export interface PaceCurve { secs: number[]; pace: number[]; dist: number[] } // aligned: duration(s) · pace(sec/km) · distance(m)
+/** Running mean-max PACE curve from intervals.icu (#396). intervals indexes it by DISTANCE
+ * (`distance[]` m + `values[]` = seconds to cover each), so we derive duration + pace(sec/km) and
+ * sort by duration to mirror the cycling power curve. Read-only; null on no key/error/empty. */
+export async function fetchPaceCurve(days: number): Promise<PaceCurve | null> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return null
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}/pace-curves?curves=${days}d&type=Run`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return null
+    const data = await res.json()
+    const curve = data?.list?.[0] || (Array.isArray(data) ? data[0] : data)
+    const dist: number[] = curve?.distance || [], val: number[] = curve?.values || []
+    if (!dist.length || !val.length) return null
+    // point per bucket: duration = time to cover the distance, pace = sec/km. Sort by duration; dedupe (keep fastest).
+    const pts = [] as { s: number; p: number; d: number }[]
+    for (let i = 0; i < dist.length; i++) if (dist[i] > 0 && val[i] > 0) pts.push({ s: Math.round(val[i]), p: Math.round((val[i] / dist[i]) * 1000), d: dist[i] })
+    pts.sort((a, b) => a.s - b.s)
+    const secs: number[] = [], pace: number[] = [], dm: number[] = []
+    for (const pt of pts) {
+      if (secs.length && pt.s === secs[secs.length - 1]) { if (pt.p < pace[pace.length - 1]) { pace[pace.length - 1] = pt.p; dm[dm.length - 1] = pt.d } }
+      else { secs.push(pt.s); pace.push(pt.p); dm.push(pt.d) }
+    }
+    return secs.length >= 2 ? { secs, pace, dist: dm } : null
+  } catch { return null }
+}
+/** Best pace (sec/km) at the distance bucket nearest `meters` — for the pace-curve chips (1k/5k/10k). */
+export function bestPaceAtDist(pc: PaceCurve, meters: number): number | null {
+  let bi = -1, bd = Infinity
+  for (let i = 0; i < pc.dist.length; i++) { const d = Math.abs(pc.dist[i] - meters); if (d < bd) { bd = d; bi = i } }
+  return bi >= 0 && bd <= meters * 0.15 ? pc.pace[bi] : null // within 15% of the target distance
+}
+
 /** A day of intervals.icu wellness/fitness (for the Fitness/trends page). */
 export interface IcuWellness {
   date: string // YYYY-MM-DD

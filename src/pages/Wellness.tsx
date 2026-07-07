@@ -5,7 +5,8 @@ import { fetchWellness, type IcuWellness } from '../intervals'
 import { authApi, type Checkin } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import { DateRangeFilter, RECOVERY_PRESETS } from '../DateRange'
-import { wellnessInsights } from '../wellness-insights'
+import { wellnessInsights, type Insight } from '../wellness-insights'
+import { TrendChart } from '../charts'
 
 // #194a — Wellness stats page: sleep / HRV / resting-HR / weight trends from intervals + the
 // check-in trend. Charts have axes, a 7-day moving average, and a min–max band (mock B). Shared
@@ -35,53 +36,26 @@ function movingAvg(data: (number | null)[], w = 7): (number | null)[] {
   })
 }
 
-/** Rich trend chart — Y axis (min/mid/max), dated X axis, faint daily line, bold 7-day average,
- *  shaded min–max band with dashed bounds. Geometry in a 0–100 stretchable SVG; ALL text is an
- *  HTML overlay (so labels stay crisp — no font-stretch — and are placed to avoid collisions). #194 mock B. */
-function WTrend({ data, dates, color, unit = '' }: { data: (number | null)[]; dates: string[]; color: string; unit?: string }) {
-  const pts = data.map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v != null)
-  if (pts.length < 2) return <p className="meta" style={{ margin: '8px 2px' }}>Not enough data in this range.</p>
-  const vals = pts.map((p) => p.v)
-  const mn = Math.min(...vals), mx = Math.max(...vals), rng = mx - mn || 1, mid = round1((mn + mx) / 2)
-  const n = data.length
-  const px = (i: number) => (n > 1 ? (i / (n - 1)) * 100 : 0)
-  const py = (v: number) => (1 - (v - mn) / rng) * 100 // 0 = top, 100 = bottom
-  const mavPts = movingAvg(data).map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v != null)
-  const line = (arr: { v: number; i: number }[]) => arr.map((p) => `${px(p.i).toFixed(2)},${py(p.v).toFixed(2)}`).join(' ')
-  const xTicks = [0, Math.floor((n - 1) / 3), Math.floor(((n - 1) * 2) / 3), n - 1]
-  return (
-    <div className="wt">
-      <div className="wt__plot">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="wt__svg" aria-hidden="true">
-          <rect x={0} y={0} width={100} height={100} fill={color} fillOpacity={0.07} />
-          <line x1={0} y1={py(mid)} x2={100} y2={py(mid)} stroke="#222732" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          <line x1={0} y1={0} x2={100} y2={0} stroke={color} strokeDasharray="3 3" strokeOpacity={0.55} vectorEffect="non-scaling-stroke" />
-          <line x1={0} y1={100} x2={100} y2={100} stroke={color} strokeDasharray="3 3" strokeOpacity={0.55} vectorEffect="non-scaling-stroke" />
-          <polyline points={line(pts)} fill="none" stroke={color} strokeWidth={1} strokeOpacity={0.32} vectorEffect="non-scaling-stroke" />
-          <polyline points={line(mavPts)} fill="none" stroke={color} strokeWidth={2.2} vectorEffect="non-scaling-stroke" />
-        </svg>
-        {/* y-axis labels (HTML, crisp) */}
-        <span className="wt__y" style={{ top: '0%' }}>{round1(mx)}</span>
-        <span className="wt__y" style={{ top: '50%' }}>{mid}</span>
-        <span className="wt__y" style={{ top: '100%' }}>{round1(mn)}</span>
-        {/* min/max value labels, kept off the x-axis row */}
-        <span className="wt__mm wt__mm--max" style={{ color }}>max {mx}{unit}</span>
-        <span className="wt__mm wt__mm--min" style={{ color }}>min {mn}{unit}</span>
-      </div>
-      <div className="wt__x">{xTicks.map((i) => <span key={i}>{dates[i] || ''}</span>)}</div>
-    </div>
-  )
-}
+// (#395) WTrend removed — the bespoke axis-less polyline is replaced by the shared TrendChart in MetricCard
+// (hover + tooltip + the one-chart standard). `movingAvg`/`seriesStats` above are still used.
 
-function MetricCard({ title, data, dates, color, unit = '' }: { title: string; data: (number | null)[]; dates: string[]; color: string; unit?: string }) {
+// #395 — Wellness metric card now uses the SHARED TrendChart (hover scrubber + tooltip showing the date +
+// value, axes) — same standard as Load & Form — with the daily as a faint underlay, the 7-day average bold,
+// and the coach-voice insight for THIS metric under the chart (consistent with the Fitness charts).
+function MetricCard({ title, data, dates, color, unit = '', insight }: { title: string; data: (number | null)[]; dates: string[]; color: string; unit?: string; insight?: Insight | null }) {
   const vals = data.filter((v): v is number => v != null)
   const now = vals.length ? vals[vals.length - 1] : null
   const avg = vals.length ? round1(vals.reduce((a, b) => a + b, 0) / vals.length) : null
+  const mav = useMemo(() => movingAvg(data), [data])
+  const labels = useMemo(() => dates.map((d) => new Date(d + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })), [dates])
   return (
     <div className="card wcard">
       <div className="wcard__h"><h3>{title}</h3><span className="wcard__now">{now ?? '—'}<small>{unit}</small></span></div>
       {vals.length ? <div className="wcard__sub">avg {avg}{unit} · min {Math.min(...vals)} · max {Math.max(...vals)}</div> : null}
-      <WTrend data={data} dates={dates} color={color} unit={unit} />
+      {vals.length >= 2
+        ? <TrendChart height={130} axes labels={labels} unit={unit} series={[{ label: 'daily', color, data, faint: true }, { label: '7-day avg', color, data: mav }]} />
+        : <p className="meta" style={{ margin: '8px 2px' }}>Not enough data in this range.</p>}
+      {insight && <p className="fit-insight">{insight.emoji} {insight.text}{insight.tip ? <span className="meta"> · 💡 {insight.tip}</span> : null}</p>}
       <div className="wcard__leg"><span><i style={{ borderColor: color, opacity: 0.4 }} />daily</span><span><i style={{ borderColor: color }} />7-day average</span></div>
     </div>
   )
@@ -236,23 +210,14 @@ export default function Wellness() {
       {!connected && <p className="meta" style={{ margin: '0 2px 10px' }}>Connect intervals.icu in <span style={{ color: 'var(--accent)' }}>Profile</span> for sleep / HRV / resting-HR / weight trends. Your check-in trend shows below regardless.</p>}
       {rows === null ? <p className="meta">Loading…</p> : (
         <>
-          {insights.length > 0 && (
-            <div className="card wcoach">
-              <div className="wcoach__h">💬 Coach insights</div>
-              {insights.map((i) => (
-                <div key={i.metric} className="wcoach__row">
-                  <div className="wcoach__t"><b>{i.emoji} {i.metric}.</b> {i.text}</div>
-                  {i.tip && <div className="wcoach__tip">💡 {i.tip}</div>}
-                </div>
-              ))}
-            </div>
-          )}
+          {/* #395 — each metric's coach insight now lives UNDER its own chart (consistent with the Fitness
+              charts), so the separate combined "Coach insights" card is gone (was redundant). */}
           {connected && anyWellness && (
             <>
-              <MetricCard title="😴 Sleep" data={view.sleep} dates={view.dates} color="#5ec8ff" unit="h" />
-              <MetricCard title="💓 HRV" data={view.hrv} dates={view.dates} color="#34e07d" />
-              <MetricCard title="❤️ Resting HR" data={view.rhr} dates={view.dates} color="#ff8fb1" />
-              <MetricCard title="⚖️ Weight" data={view.weight} dates={view.dates} color="#f0b145" unit="kg" />
+              <MetricCard title="😴 Sleep" data={view.sleep} dates={view.dates} color="#5ec8ff" unit="h" insight={insights.find((i) => i.metric === 'Sleep')} />
+              <MetricCard title="💓 HRV" data={view.hrv} dates={view.dates} color="#34e07d" insight={insights.find((i) => i.metric === 'HRV')} />
+              <MetricCard title="❤️ Resting HR" data={view.rhr} dates={view.dates} color="#ff8fb1" insight={insights.find((i) => i.metric === 'Resting HR')} />
+              <MetricCard title="⚖️ Weight" data={view.weight} dates={view.dates} color="#f0b145" unit="kg" insight={insights.find((i) => i.metric === 'Weight')} />
             </>
           )}
           {connected && !anyWellness && <p className="meta">No sleep/HRV/weight in this range — they sync in from your device via intervals.</p>}
