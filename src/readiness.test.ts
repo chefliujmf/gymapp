@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { lnRMSSD, meanSd, zTo5, score100To5, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, projectFormSeries, forecastFreshness, estimateVo2max as estimateVo2maxSrv, bestVo2maxEstimate, hrRatioVo2max, weeklyLoadBudget } from '../server/readiness.js'
+import { lnRMSSD, meanSd, zTo5, score100To5, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, projectFormSeries, forecastFreshness, estimateVo2max as estimateVo2maxSrv, bestVo2maxEstimate, hrRatioVo2max, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads } from '../server/readiness.js'
 
 // #195 readiness math, grounded in docs/readiness-scores.md (WHOOP deep-dive 2026-06-28).
 
@@ -304,6 +304,56 @@ describe('estimateVo2max (server, parity with client)', () => {
   it('cycling Coggan', () => expect(estimateVo2maxSrv({ ftp: 260, weightKg: 76 }).value).toBeCloseTo(10.8 * 260 / 76 + 7, 1))
   it('takes the higher of cycling vs VDOT', () => expect(estimateVo2maxSrv({ ftp: 260, weightKg: 76, vdot: 50 }).value).toBe(50))
   it('null without inputs', () => expect(estimateVo2maxSrv({})).toBeNull())
+})
+
+// #393 — periodized 4-week load forecast (real weekly blocks past the coach's detailed plan, not a flat tail).
+describe('isoMonday', () => {
+  it('snaps to the Monday on/before a date', () => {
+    expect(isoMonday('2026-07-08')).toBe('2026-07-06') // Wed → Mon Jul 6
+    expect(isoMonday('2026-07-06')).toBe('2026-07-06') // Mon → itself
+    expect(isoMonday('2026-07-05')).toBe('2026-06-29') // Sun → prior Mon
+  })
+})
+describe('defaultLoadPlan', () => {
+  it('build·build·peak·recovery cycle sized off CTL budget', () => {
+    const p = defaultLoadPlan(32, '2026-07-06', 4)
+    expect(p).toHaveLength(4)
+    expect(p.map((b: { phase: string }) => b.phase)).toEqual(['build', 'build', 'peak', 'recovery'])
+    expect(p[0].target).toBe(32 * 9)   // build = ctl×9
+    expect(p[2].target).toBe(32 * 11)  // peak  = ctl×11
+    expect(p[3].target).toBeLessThan(p[0].target) // recovery is lighter
+    expect(p[1].weekStart).toBe('2026-07-13') // consecutive Mondays
+  })
+  it('no CTL → empty (falls back to held-load upstream)', () => expect(defaultLoadPlan(0, '2026-07-06')).toEqual([]))
+})
+describe('recentRestDows', () => {
+  it('detects a consistent rest day-of-week', () => {
+    const loads: Record<string, number> = {}
+    // 4 Mondays rest (0), other days loaded
+    for (const d of ['2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29']) loads[d] = 0 // Mondays
+    for (const d of ['2026-06-09', '2026-06-16', '2026-06-23', '2026-06-10', '2026-06-17']) loads[d] = 60
+    expect(recentRestDows(loads)).toContain(1) // Monday
+  })
+  it('falls back to [1] with no clear pattern', () => expect(recentRestDows({})).toEqual([1]))
+})
+describe('periodizedLoads', () => {
+  const blocks = [{ weekStart: '2026-07-06', target: 350 }, { weekStart: '2026-07-13', target: 240 }]
+  it('distributes each week ≈ its target, rest days = 0', () => {
+    const m = periodizedLoads('2026-07-06', '2026-07-12', blocks, { restDows: [1] }) // Mon rest
+    expect(m['2026-07-06']).toBe(0) // Monday rest
+    const sum = (Object.values(m) as number[]).reduce((a, b) => a + b, 0)
+    expect(sum).toBeGreaterThan(330); expect(sum).toBeLessThan(370) // ≈ 350
+  })
+  it('weekends weighted heavier than weekdays', () => {
+    const m = periodizedLoads('2026-07-06', '2026-07-12', blocks, { restDows: [1] })
+    expect(m['2026-07-11']).toBeGreaterThan(m['2026-07-07']) // Sat > Tue
+  })
+  it('uses the nearest prior block for a week with no target + clips to [from,to]', () => {
+    const m = periodizedLoads('2026-07-20', '2026-07-26', blocks, { restDows: [1] }) // past both blocks → uses 240
+    expect(Object.keys(m)).toHaveLength(7)
+    expect((Object.values(m) as number[]).reduce((a, b) => a + b, 0)).toBeGreaterThan(200)
+  })
+  it('empty blocks → empty map (upstream falls back to held-load)', () => expect(periodizedLoads('2026-07-06', '2026-07-12', [])).toEqual({}))
 })
 
 // #236 — server-side best VO₂max (coach's "computed"), matches the client submax.

@@ -235,6 +235,57 @@ export function projectFormSeries({ ctl = 0, atl = 0 } = {}, plannedLoads = []) 
   return plannedLoads.map((load) => { const L = load > 0 ? load : 0; c = c + (L - c) / 42; a = a + (L - a) / 7; const rc = round1(c), ra = round1(a); return { ctl: rc, atl: ra, form: round1(rc - ra) } })
 }
 
+// --- periodized 4-week load forecast (#393) -------------------------------
+// Past the coach's detailed ~2-week plan, the forecast used a FLAT held-load (≈CTL every day) which read
+// as lifeless. Instead we project the coach's periodized WEEKLY LOAD BLOCKS (build/peak/recovery), each
+// week's TSS target spread across its training days with the athlete's real rest pattern. Pure + tz-stable
+// (date-only strings, noon-UTC so DST can't shift a day).
+const _dow = (d) => new Date(d + 'T12:00:00Z').getUTCDay()           // 0=Sun..6=Sat
+const _addDays = (d, n) => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10) }
+/** ISO Monday (0=Mon week) on/before `d`, as 'YYYY-MM-DD'. */
+export function isoMonday(d) { const wd = (_dow(d) + 6) % 7; return _addDays(d, -wd) }
+
+/** A sensible DEFAULT periodized weekly-load plan from CTL — a repeating 4-week block
+ *  (build · build · peak · recovery) sized off `weeklyLoadBudget`. The coach OVERRIDES this with its own
+ *  authored blocks (user.info.loadPlan); this is the seed + fallback so the forecast is never flat. */
+export function defaultLoadPlan(ctl, firstMonday, weeks = 6) {
+  const b = weeklyLoadBudget(ctl)
+  if (!b || !firstMonday) return []
+  const cycle = [{ t: b.build, p: 'build' }, { t: b.build, p: 'build' }, { t: b.hard, p: 'peak' }, { t: Math.round(b.sustainable * 0.8), p: 'recovery' }]
+  const out = []
+  for (let i = 0; i < weeks; i++) { const c = cycle[i % cycle.length]; out.push({ weekStart: _addDays(firstMonday, i * 7), target: c.t, phase: c.p }) }
+  return out
+}
+
+/** The athlete's typical REST day-of-weeks (0=Sun) from recent daily loads — a DOW that's ~0 load ≥60% of
+ *  the time. `loadsByDate` = {'YYYY-MM-DD': tss}. Falls back to [1] (Monday) when there's no clear pattern. */
+export function recentRestDows(loadsByDate = {}) {
+  const seen = {}, rest = {}
+  for (const [d, L] of Object.entries(loadsByDate)) { const wd = _dow(d); seen[wd] = (seen[wd] || 0) + 1; if (!(Number(L) > 5)) rest[wd] = (rest[wd] || 0) + 1 }
+  const out = []
+  for (let wd = 0; wd < 7; wd++) if (seen[wd] >= 2 && (rest[wd] || 0) / seen[wd] >= 0.6) out.push(wd)
+  return out.length ? out : [1]
+}
+
+/** Spread periodized weekly-load blocks into a daily TSS map for [from..to] (inclusive, date strings).
+ *  Each week's `target` is distributed across its NON-rest days; weekend days (Sat/Sun) weighted heavier
+ *  (long endurance). blocks: [{weekStart:isoMonday, target}]; a week with no block uses the nearest prior. */
+export function periodizedLoads(from, to, blocks, { restDows = [1], weekendBoost = 1.35 } = {}) {
+  if (!blocks || !blocks.length || from > to) return {}
+  const byWeek = {}; for (const b of blocks) if (b && b.weekStart != null && b.target != null) byWeek[b.weekStart] = Math.max(0, Number(b.target) || 0)
+  const weeks = Object.keys(byWeek).sort()
+  if (!weeks.length) return {}
+  const targetFor = (mon) => { let last = byWeek[weeks[0]]; for (const w of weeks) { if (w <= mon) last = byWeek[w]; else break } return last }
+  const out = {}
+  for (let mon = isoMonday(from); mon <= isoMonday(to); mon = _addDays(mon, 7)) {
+    const target = targetFor(mon)
+    const days = []; let wsum = 0
+    for (let i = 0; i < 7; i++) { const date = _addDays(mon, i); const wd = _dow(date); const w = restDows.includes(wd) ? 0 : (wd === 0 || wd === 6 ? weekendBoost : 1); days.push({ date, w }); wsum += w }
+    for (const dd of days) if (dd.date >= from && dd.date <= to) out[dd.date] = wsum > 0 ? Math.round((dd.w / wsum) * target) : 0
+  }
+  return out
+}
+
 /** Expected freshness (1–5) at a future date: project Form over the planned loads, then map.
  *  `plannedLoads` = TSS per day from the day AFTER `current` up to and including the target. */
 export function forecastFreshness({ ctl, atl, tsbBaseline } = {}, plannedLoads = []) {

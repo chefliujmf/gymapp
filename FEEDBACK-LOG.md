@@ -373,7 +373,7 @@ test guide → the **🧪 Test guide** section below.
     + `styles.css`): closes **3 ways now — ✕, tap-outside, and Escape**; the head is `position:sticky; z-index:3` (its own
     stacking layer, always above the chart's scrub/pointer area so the chart can never intercept the close tap) with
     `touch-action:manipulation` on the ✕ (no 300ms tap delay / double-tap zoom); body scroll locked while open. gymapp-only.
-393. ⬜ **Make the 4-week forecast REAL, not a flat held-load tail — "adjust the coach to forecast that."** JM 2026-07-06
+393. 🔨 **Make the 4-week forecast REAL, not a flat held-load tail — "adjust the coach to forecast that."** JM 2026-07-06
     (QA, after the #376 animation fix): the axis runs 4 wks but weeks 3–4 are a FLAT held-load line (`heldLoad = round(CTL)`
     ≈ 32 TSS EVERY day past the coach's ~14-day plan, server.js:728/730) → CTL holds flat, ATL→32, Form→0. It reaches Aug 3
     now but looks lifeless/pointless ("what's the point of the graph going further than the lines"). JM wants the COACH to
@@ -384,6 +384,18 @@ test guide → the **🧪 Test guide** section below.
     (build/build/peak/recover periodization) for 4 wks + the projection distributes each week's target across its days (real
     coach INTENT, less churn than daily planning) — the training-science-correct answer. Recommend C (or B as a quick win).
     Touches `readiness.js`/`server.js` projection + maybe coach horizon + `coach-engine-*.md`. gymapp + coach. See [[platyplus-readiness-model]].
+    ✅ SHIPPED (JM picked "coach weekly blocks" + "mirrored"). KEY discovery: JM already has a 31-week intervals **ATP**
+    (category=TARGET events, `load_target`, e.g. "ATP W08 - Threshold overload" 430). So the forecast READS his real
+    periodization from the ATP instead of a made-up default — inherently "mirrored" (intervals IS the source). Built:
+    pure `isoMonday`/`defaultLoadPlan`/`recentRestDows`/`periodizedLoads` in `readiness.js` (12 unit tests); the
+    `/auth/readiness-projection` endpoint now, past the detailed ~2-wk plan, spreads each week's ATP `load_target` across
+    the athlete's real training days (rest DOWs from recent history, weekend-weighted) — priority coach-authored
+    (`user.info.loadPlan`) > ATP > CTL-sized default; returns `loadPlan`/`planSource`. Verified on JM's real data: W08/W09
+    overload (430/460) → W10 recovery (260), Form dips to −24 through the overload block then freshens — actionable, not
+    flat. Client InfoDot updated. ⬜ FOLLOW-UP (#394): let the COACH author/adjust the ATP blocks from chat (POST
+    `/api/coach/load-plan` + write `load_target` back to the ATP TARGET events + MCP tool + coach-engine) — the forecast
+    already reads them; this adds coach-side EDITING. Also: the coach should FLAG that JM's ATP overload weeks (×13–14 CTL)
+    exceed the ×12 cap (Form → −24). gymapp + coach.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
