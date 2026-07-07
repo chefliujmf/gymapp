@@ -570,6 +570,14 @@ test guide → the **🧪 Test guide** section below.
     Strength — Rain Day" from a rainy forecast. FIXED (2 layers): the **coach identity** (`coachIdentity`, server.js) + the **get_weather MCP
     tool desc** (mcp/server.js) now say: TITLE + describe every workout by its TRAINING content/purpose, NEVER the weather/theme ("Rain Day",
     "Hot Day"); weather only informs indoor/outdoor + intensity + fuel. ⚠️ MCP change → rsync `mcp/` to the host. gymapp + coach.
+420. 🔨 **Season-compare polish (QA review of #407).** JM 2026-07-07, per-point: (1) `.sc-card` (power curve + best-efforts) **lacks
+    padding** — title flush to the edge; add card padding. (2) the **"TIME"/"Dist" header is misaligned** — left-align the label column
+    header. (3) **TWO power-curve graphs now (old single-range + new overlay) = BAD** → REMOVE the old single-range curve card; the
+    2-season overlay IS the power curve. Same for Running's pace curve. (4) **metrics MISSING (e.g. VO₂max)** in the compare table — add
+    per-season VO₂max (from the season's best 5-min MAP + weight) alongside eFTP/CP/W′. (5) **EF trend is buried at the very bottom after
+    best-efforts** → reorder: trends (eFTP, EF) together, season-compare last (or EF above it). (6) **eFTP-trend MiniCard renders a
+    partial/empty square though data exists** — investigate. (7) apply ALL of the above to the **Running** section too. (8) SEPARATE: the
+    **Fitness page Form/Load charts have a "Wellness →" link — remove it.** gymapp-only.
 411. 🔨 **Workout detail: the "Mind" section body is EMPTY while its content hides behind a "why" chip.** JM 2026-07-07 (screenshot):
     "don't get the Mind — the section is empty but the why is a chip to click." Fuel shows its text inline (+ a why chip); Mind shows only
     a "why ⓘ" chip with no body, so it reads as broken/empty (the real "Mental focus — Restraint…" is buried in the why sheet). FIX: if a

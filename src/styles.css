@@ -1707,7 +1707,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .act-row--disabled:active { transform: none; }
 
 /* #407 — season comparison (curve overlay + compare table + picker) */
-.sc-card { margin-bottom: 14px; }
+.sc-card { margin-bottom: 14px; padding: 12px 14px; } /* #420 — match the other stat cards' padding */
 .sc-load { color: var(--text-dim); font-size: 13px; padding: 8px 2px; }
 .sc-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
 .sc-legend { display: flex; gap: 16px; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
@@ -1721,6 +1721,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .sc-table { border-collapse: collapse; width: 100%; }
 .sc-table th, .sc-table td { padding: 7px 8px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sc-table thead th { color: var(--text-dim); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; border-bottom: 1px solid var(--line); }
+.sc-table thead th:first-child { text-align: left; } /* #420 — the Time/Dist label header aligns with the row labels */
 .sc-table thead th.sc-blue { color: var(--blue, #5aa9ff); }
 .sc-table tbody td { border-bottom: 1px solid #1c2029; font-size: 12.5px; }
 .sc-table td.sc-lbl { text-align: left; font-weight: 700; color: var(--text); }
