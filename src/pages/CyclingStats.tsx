@@ -6,7 +6,17 @@ import { useAuth } from '../auth/AuthContext'
 import { TrendChart, InfoDot } from '../charts'
 import { hasModule } from '../modules'
 import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
-import { MiniCard, last } from './Fitness'
+import { last } from './Fitness'
+
+// #420 — one plain-language takeaway for the eFTP trend (matches the EF-chart insight style).
+function eftpInsight(a: (number | null)[]): string {
+  const vals = a.filter((v): v is number => v != null)
+  if (vals.length < 2) return 'Your eFTP will trend here as intervals reads it from your hard efforts.'
+  const first = vals[0], lastV = vals[vals.length - 1], d = Math.round(lastV - first)
+  return d > 3 ? `📈 eFTP is up ${d} W over this range — your threshold is climbing.`
+    : d < -3 ? `📉 eFTP has eased ${-d} W — normal in a base/recovery block; it rebounds with sharper efforts.`
+      : `➡️ eFTP is holding steady around ${Math.round(lastV)} W.`
+}
 import { BenchmarksCard } from '../Benchmarks'
 import SeasonCompare from '../SeasonCompare'
 
@@ -56,10 +66,14 @@ export default function CyclingStats() {
           <DateRangeFilter presets={TRAINING_PRESETS} from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
           {rows === null ? <p className="meta">Loading…</p> : (
             <>
-              {/* eFTP TREND over the range (the benchmark card shows the current value + confidence; this is the history). */}
-              <div className="fit-grid">
-                <MiniCard title="eFTP trend" value={last(s.eftp)} unit=" W" hint="Estimated threshold power — watts you can hold ~1 hour. Higher = stronger. The line is your trend over this range." series={{ label: '', color: '#ffb020', data: s.eftp }} />
-              </div>
+              {/* #420 — eFTP trend as a FULL-WIDTH standard chart (axes + labels + insight), matching EF below. */}
+              {s.eftp.some((v) => v != null) && (
+                <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
+                  <div className="fit-legend"><span style={{ color: '#ffb020' }}>● eFTP trend<InfoDot text="Estimated threshold power — the watts you can hold ~1 hour. intervals re-reads it from every hard effort; it holds its value between updates. The line is your trend over this range." /></span></div>
+                  <TrendChart series={[{ label: 'eFTP', color: '#ffb020', data: s.eftp, area: true }]} height={120} axes unit=" W" labels={(rows || []).map((d) => new Date(d.date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))} />
+                  <p className="fit-insight">{eftpInsight(s.eftp)}</p>
+                </div>
+              )}
               {/* #403 — Efficiency Factor: aerobic engine (power ÷ HR), rising = fitter even when FTP is flat. */}
               {ef && ef.points.length >= 2 && (
                 <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
