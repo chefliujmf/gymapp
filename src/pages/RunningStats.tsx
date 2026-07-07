@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
@@ -20,6 +20,8 @@ const ZONES: [keyof ReturnType<typeof paceZones>, string, string][] = [
   ['interval', 'Interval', 'VO₂max efforts'],
   ['rep', 'Rep', 'speed & economy'],
 ]
+// #398 — a cool→warm effort spectrum (easy = recovery blue … rep = redline), matching the pace-curve/zone UX.
+const ZONE_COLORS: Record<string, string> = { easy: '#5ec8ff', marathon: '#34e07d', threshold: '#f5b53d', interval: '#ff8f3d', rep: '#ff5d5d' }
 
 export default function RunningStats() {
   const navigate = useNavigate()
@@ -92,17 +94,8 @@ export default function RunningStats() {
             </div>
           )}
 
-          {zones && (
-            <>
-              <div className="stat-sub">Training pace zones <span className="meta">· target min/km</span></div>
-              <div className="zlist">
-                {ZONES.map(([k, name, purpose]) => (
-                  <div className="zrow" key={k}><span className="zname"><span className="zname-top">{name}</span><span className="zpurpose">{purpose}</span></span><span className="zpace">{zStr(k)}<span className="zunit">/km</span></span></div>
-                ))}
-              </div>
-            </>
-          )}
-
+          {/* #398 — race predictions sit right under the pace curve (both are "what you can do"); the training
+              zones ("how to train") follow, colour-coded as a cool→warm effort spectrum. */}
           {preds && marathon && (
             <>
               <div className="stat-sub">Race predictions <span className="meta">· times your VDOT projects</span></div>
@@ -114,6 +107,17 @@ export default function RunningStats() {
                   <span className="zname"><span className="zname-top">Marathon <span className="range-badge">range</span></span><span className="zpurpose">potential → realistic</span></span>
                   <span className="zpace zpace--mar">{fmtTime(marathon.potentialSec)}–{fmtTime(marathon.realisticSec)}<span className="zsub">{fmtPace(marathon.potentialPace)}–{fmtPace(marathon.realisticPace)}/km</span></span>
                 </div>
+              </div>
+            </>
+          )}
+
+          {zones && (
+            <>
+              <div className="stat-sub">Training pace zones <span className="meta">· target min/km · cool → hard</span></div>
+              <div className="zlist">
+                {ZONES.map(([k, name, purpose]) => (
+                  <div className="zrow zrow--pace" key={k} style={{ '--zc': ZONE_COLORS[k] } as CSSProperties}><span className="zname"><span className="zname-top">{name}</span><span className="zpurpose">{purpose}</span></span><span className="zpace" style={{ color: ZONE_COLORS[k] }}>{zStr(k)}<span className="zunit">/km</span></span></div>
+                ))}
               </div>
             </>
           )}

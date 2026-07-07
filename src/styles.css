@@ -475,6 +475,9 @@ select.search { appearance: none; -webkit-appearance: none; }
 .zpurpose { font-size: 10px; font-weight: 500; color: var(--text-dim); }
 .zpace { flex: none; font-size: 15px; font-weight: 800; color: var(--text); white-space: nowrap; }
 .zpace .zunit { font-size: 10px; font-weight: 600; color: var(--text-dim); margin-left: 2px; }
+/* #398 — training pace zones colour-coded by effort (cool→warm): a left accent bar + the pace in-colour. */
+.zrow--pace { position: relative; overflow: hidden; padding-left: 14px; }
+.zrow--pace::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--zc); }
 /* #216 — marathon realism range */
 .zrow--mar { border-color: rgba(240,177,69,.4); background: rgba(240,177,69,.06); }
 .zname-top { display: flex; align-items: center; gap: 6px; }

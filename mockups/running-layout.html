@@ -1,0 +1,92 @@
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--line:#2a2f3a;--card:linear-gradient(#21252f,#191c24)}
+  *{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--text);padding:16px;width:460px}
+  .h1{font-size:20px;font-weight:800;margin:2px 0}
+  .sub{color:var(--text-dim);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0}
+  .stat-sub{font-weight:800;font-size:15px;margin:18px 2px 8px}
+  .stat-sub em{color:var(--text-dim);font-weight:500;font-style:normal;font-size:12px}
+  .legend{font-weight:700;color:#ffb13d;font-size:14px;margin-bottom:6px}
+  .curve{height:90px;background:linear-gradient(180deg,rgba(255,177,61,.18),rgba(255,177,61,0));border-radius:8px;position:relative;overflow:hidden}
+  .curve svg{position:absolute;inset:0}
+  .insight{font-size:13px;margin:10px 2px 0;line-height:1.4}
+  .chips{display:flex;gap:8px;margin-top:10px}
+  .chip{flex:1;background:#0f1319;border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
+  .chip span{color:var(--text-dim);font-size:11px}.chip b{display:block;font-size:16px;margin-top:2px}.chip em{color:var(--text-dim);font-size:10px;font-style:normal}
+  /* race prediction rows */
+  .row{display:flex;justify-content:space-between;align-items:center;background:#12151b;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:7px 0}
+  .row .nm{font-weight:700}.row .nm small{display:block;color:var(--text-dim);font-weight:500;font-size:11px}
+  .row .val{font-weight:800;font-size:17px;font-variant-numeric:tabular-nums}
+  .row--mar{border-color:#f0b14588;background:linear-gradient(#1c1913,#141118)}
+  .row--mar .val{color:#f0b145}.row .val small{display:block;color:var(--text-dim);font-weight:500;font-size:11px;text-align:right}
+  .badge{font-size:10px;font-weight:800;color:#f0b145;border:1px solid #f0b14588;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+  /* V1 — color rows */
+  .z{display:flex;align-items:center;gap:12px;background:#12151b;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:7px 0;position:relative;overflow:hidden}
+  .z::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--zc)}
+  .z .zn{font-weight:700}.z .zn small{display:block;color:var(--text-dim);font-weight:500;font-size:11px}
+  .z .zp{margin-left:auto;font-weight:800;font-size:17px;color:var(--zc);font-variant-numeric:tabular-nums}
+  .z .zp em{color:var(--text-dim);font-style:normal;font-weight:500;font-size:11px}
+  /* V2 — spectrum ladder */
+  .lad{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  .lrow{display:grid;grid-template-columns:82px 1fr 84px;align-items:center;gap:10px}
+  .lrow .ln{font-weight:700;font-size:13px}
+  .bar{height:12px;border-radius:6px;position:relative;background:#0f1319;border:1px solid var(--line);overflow:hidden}
+  .bar i{position:absolute;top:0;bottom:0;border-radius:6px;background:var(--zc);opacity:.85}
+  .lrow .lp{text-align:right;font-weight:800;font-size:14px;color:var(--zc);font-variant-numeric:tabular-nums}
+  .toggle{display:flex;gap:8px;margin:14px 0}
+  .toggle button{flex:1;padding:9px;border-radius:999px;border:1px solid var(--line);background:#12151b;color:var(--text);font-weight:700;cursor:pointer}
+  .toggle button.on{background:var(--accent);color:#04120a;border-color:var(--accent)}
+  .hide{display:none}
+  .note{color:var(--text-dim);font-size:12px;margin:2px 2px 0}
+</style>
+
+<div class="h1">Running — proposed layout</div>
+<div class="sub">Pace curve → race predictions → training zones. Toggle the zone style:</div>
+<div class="toggle">
+  <button id="b1" class="on" onclick="pick(1)">Zones: color rows</button>
+  <button id="b2" onclick="pick(2)">Zones: pace ladder</button>
+</div>
+
+<!-- PACE CURVE (unchanged, for context) -->
+<div class="card">
+  <div class="legend">● Pace curve ⓘ</div>
+  <div class="curve"><svg viewBox="0 0 300 90" preserveAspectRatio="none"><path d="M6,20 C40,28 70,50 110,60 S200,74 294,80" fill="none" stroke="#ffb13d" stroke-width="2.5"/></svg></div>
+  <div class="insight">📉 Your logged runs sit well easier than your 4:57/km threshold (best 1 k here 6:08) — mostly base miles. Add tempo or intervals to push the curve toward your real capacity.</div>
+  <div class="chips"><div class="chip"><span>400 m</span><b>6:03</b><em>/km</em></div><div class="chip"><span>1 km</span><b>6:08</b><em>/km</em></div></div>
+</div>
+
+<!-- RACE PREDICTIONS moved up, right under the curve -->
+<div class="stat-sub">Race predictions <em>· times your VDOT projects</em></div>
+<div class="row"><div class="nm">5K<small>at 4:43/km</small></div><div class="val">23:36</div></div>
+<div class="row"><div class="nm">10K<small>at 4:54/km</small></div><div class="val">48:58</div></div>
+<div class="row"><div class="nm">Half<small>at 5:09/km</small></div><div class="val">1:48:35</div></div>
+<div class="row row--mar"><div class="nm">Marathon <span class="badge">RANGE</span><small>potential → realistic</small></div><div class="val">3:45:00–4:03:00<small>5:20–5:46/km</small></div></div>
+
+<!-- TRAINING ZONES -->
+<div class="stat-sub">Training pace zones <em>· target min/km · cool → hard</em></div>
+
+<!-- V1: color rows -->
+<div id="v1">
+  <div class="z" style="--zc:#5ec8ff"><div class="zn">Easy<small>recovery & long runs</small></div><div class="zp">6:21–5:44<em> /km</em></div></div>
+  <div class="z" style="--zc:#34e07d"><div class="zn">Marathon<small>steady race pace</small></div><div class="zp">5:20<em> /km</em></div></div>
+  <div class="z" style="--zc:#f5b53d"><div class="zn">Threshold<small>comfortably hard (~1 h)</small></div><div class="zp">5:00<em> /km</em></div></div>
+  <div class="z" style="--zc:#ff8f3d"><div class="zn">Interval<small>VO₂max efforts</small></div><div class="zp">4:30<em> /km</em></div></div>
+  <div class="z" style="--zc:#ff5d5d"><div class="zn">Rep<small>speed & economy</small></div><div class="zp">4:14<em> /km</em></div></div>
+</div>
+
+<!-- V2: pace ladder -->
+<div id="v2" class="hide">
+  <div class="card"><div class="lad">
+    <div class="lrow" style="--zc:#5ec8ff"><span class="ln">Easy</span><div class="bar"><i style="left:0;right:12%"></i></div><span class="lp">6:21–5:44</span></div>
+    <div class="lrow" style="--zc:#34e07d"><span class="ln">Marathon</span><div class="bar"><i style="left:22%;right:34%"></i></div><span class="lp">5:20</span></div>
+    <div class="lrow" style="--zc:#f5b53d"><span class="ln">Threshold</span><div class="bar"><i style="left:40%;right:44%"></i></div><span class="lp">5:00</span></div>
+    <div class="lrow" style="--zc:#ff8f3d"><span class="ln">Interval</span><div class="bar"><i style="left:60%;right:22%"></i></div><span class="lp">4:30</span></div>
+    <div class="lrow" style="--zc:#ff5d5d"><span class="ln">Rep</span><div class="bar"><i style="left:80%;right:0"></i></div><span class="lp">4:14</span></div>
+    <div class="note">Bar length = how fast (right = faster). Colours = a cool→warm effort spectrum.</div>
+  </div></div>
+</div>
+
+<script>
+function pick(n){document.getElementById('b1').classList.toggle('on',n===1);document.getElementById('b2').classList.toggle('on',n===2);document.getElementById('v1').classList.toggle('hide',n!==1);document.getElementById('v2').classList.toggle('hide',n!==2)}
+</script>
