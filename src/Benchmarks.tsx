@@ -124,6 +124,8 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const [maxHrFrom, setMaxHrFrom] = useState<string>('')
   const [sleepEst, setSleepEst] = useState<number | null>(null) // computed sleep need (null until learned)
   const [sleepMore, setSleepMore] = useState<number | null>(null) // nights still needed
+  const [sleepRaw, setSleepRaw] = useState<number | null>(null) // unrounded best-nights avg (h) — shown in the sheet
+  const [sleepTop, setSleepTop] = useState<number>(0) // # best-recovery nights averaged
   const [powerCurve, setPowerCurve] = useState<PowerCurve | null>(null) // #401 cycling TTE
   const [paceCurve, setPaceCurve] = useState<PaceCurve | null>(null) // #401 running TTE
   const [efTrend, setEfTrend] = useState<EfTrend | null>(null) // #403 efficiency-factor trend (for the profile)
@@ -141,7 +143,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     fetchWellness(from, to).then((rows) => {
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break }
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { setEftp(rows[i].eftp as number); break }
-      const se = estimateSleepNeed(rows); setSleepEst(se.suggested); setSleepMore(se.needMore || null) // #337 sleep learning state
+      const se = estimateSleepNeed(rows); setSleepEst(se.suggested); setSleepMore(se.needMore || null); setSleepRaw(se.suggestedRaw); setSleepTop(se.topNights) // #337 sleep learning state
     }).catch(() => {})
   }, [connected])
   useEffect(() => { if (connected && profile) fetchEfTrend(profile === 'cycling' ? 'Ride' : 'Run').then(setEfTrend).catch(() => {}) }, [connected, profile]) // #403 EF for the profile
@@ -214,15 +216,23 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       { name: 'Running VDOT', formula: 'pace-based · needs ≥4 runs', value: run != null ? String(run.value) : '—', inUse: !!head && run?.source === head },
     ]
   })()
+  // Name the method ACTUALLY driving the number (headline source — same signal as the IN USE badge), not just
+  // the sport: a non-cyclist, or an HR-only estimate, must never falsely read "bike power" (JM 2026-07-07).
+  const vo2Narr = ((): ReactNode => {
+    const s = vo2head?.source || ''
+    const tail = ' It re-computes automatically — no lab or ramp test needed.'
+    if (/5-?min|MAP|power/i.test(s)) return <>Estimated from your <b>best 5-minute bike power</b> (your MAP), cross-checked against your heart-rate profile.{tail}</>
+    if (/pace|VDOT/i.test(s)) return <>Estimated from your <b>running pace</b> (VDOT), cross-checked against your heart-rate profile.{tail}</>
+    if (/HR|heart/i.test(s)) return <>Estimated from your <b>heart-rate profile</b> (max vs resting HR) — a submax proxy until you log a hard ~5-min ride or a few runs.{tail}</>
+    return <>Estimated from your <b>best efforts</b>, cross-checked against your heart-rate profile.{tail}</>
+  })()
 
   const defs: StatDef[] = [
     {
       key: 'vo2max', label: 'VO₂max', computed: vo2head ? vo2head.value : null, computedSrc: vo2head ? `${confLabel(vo2head.confidence)} · ${vo2head.source}` : '', pending: vo2Gate, manual: user?.vo2max ?? null, fmt: String, parse: numParse(20, 95), save: (v) => authApi.saveProfile({ vo2max: v }).then(() => refresh()),
       chip: vo2Chip(),
       conf: vo2maxConfidence({ value: vo2head ? vo2head.value : null, confidence: vo2head?.confidence, gate: vo2Gate }),
-      narr: doesCycle
-        ? <>Estimated from your <b>best 5-minute bike power</b> (your MAP), cross-checked against your heart-rate profile. It re-computes automatically — no lab or ramp test needed.</>
-        : <>Estimated from your <b>running pace</b> (VDOT), cross-checked against your heart-rate profile. It re-computes automatically — no lab or ramp test needed.</>,
+      narr: vo2Narr,
       sci: vo2Sci,
       sharpen: doesCycle ? 'a hard ~5-min near-max effort refreshes your MAP → the estimate tightens.' : 'log a few more runs incl. a hard effort → your pace VDOT (and this number) firm up.',
     },
@@ -308,8 +318,10 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       key: 'sleepNeed', label: 'Sleep need', unit: 'h', computed: sleepEst, computedSrc: 'from your best-recovery nights', pending: sleepMore ? `in ~${sleepMore} more nights — needs 21 nights of sleep + HRV to learn your ideal` : undefined, manual: user?.sleepNeed ?? null, fmt: String, parse: numParse(4, 12), save: (v) => authApi.saveProfile({ sleepNeed: v }).then(() => refresh()),
       chip: (sleepEst != null && !sleepMore) ? 'Best nights' : 'Learning',
       conf: sleepNeedConfidence({ est: sleepEst, needMore: sleepMore }),
-      narr: <>Learned from your <b>best-recovery nights</b> — how much sleep precedes your strongest HRV. It needs ~21 nights of sleep + HRV data to dial in your personal number.</>,
-      sci: [{ name: 'Best-recovery nights', formula: 'sleep before your top-HRV days', value: sleepEst != null ? String(sleepEst) : '—', inUse: sleepEst != null }],
+      narr: <>Learned from your <b>best-recovery nights</b> — how much sleep precedes your strongest HRV.{sleepEst != null && sleepRaw != null && sleepTop > 0
+        ? <> Your {sleepTop} best-recovery nights averaged <b>{sleepRaw} h</b> — rounded to a {String(sleepEst)} h target you can actually aim for.</>
+        : <> It needs ~21 nights of sleep + HRV data to dial in your personal number.</>}</>,
+      sci: [{ name: 'Best-recovery nights', formula: sleepTop > 0 ? `avg of your ${sleepTop} top-HRV nights` : 'sleep before your top-HRV days', value: sleepEst != null ? String(sleepEst) : '—', inUse: sleepEst != null }],
       sharpen: 'wear your tracker to sleep a few more nights → we learn the duration your body recovers best on.',
     },
   ]

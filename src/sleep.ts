@@ -6,7 +6,9 @@ export interface SleepNeedEstimate {
   nights: number          // usable nights (sleep + HRV)
   needMore: number        // nights still needed before a confident estimate (0 = ready)
   avgSleep: number | null // average nightly sleep (h)
-  suggested: number | null // learned ideal (h) — best-recovery nights; null until ready
+  suggested: number | null // learned ideal (h) — best-recovery nights, rounded to ¼ h; null until ready
+  suggestedRaw: number | null // the UNrounded best-nights avg (h) — surfaced so the round target doesn't look defaulted
+  topNights: number       // how many best-recovery nights were averaged
   trainOften: boolean     // high average training load (needs more sleep)
 }
 const MIN_NIGHTS = 21
@@ -19,9 +21,9 @@ export function estimateSleepNeed(wellness: SleepDay[]): SleepNeedEstimate {
   const nights = days.length
   const avgSleep = nights ? r1(avg(days.map((d) => d.sleepHours as number))) : null
   const trainOften = nights > 0 && avg(days.map((d) => Number(d.load) || 0)) >= 40
-  if (nights < MIN_NIGHTS) return { nights, needMore: MIN_NIGHTS - nights, avgSleep, suggested: null, trainOften }
+  if (nights < MIN_NIGHTS) return { nights, needMore: MIN_NIGHTS - nights, avgSleep, suggested: null, suggestedRaw: null, topNights: 0, trainOften }
   // best-recovery third of nights → the sleep the body wanted
   const top = [...days].sort((a, b) => (b.hrv as number) - (a.hrv as number)).slice(0, Math.max(4, Math.round(nights / 3)))
-  const suggested = rq(avg(top.map((d) => d.sleepHours as number)))
-  return { nights, needMore: 0, avgSleep, suggested, trainOften }
+  const rawTop = avg(top.map((d) => d.sleepHours as number))
+  return { nights, needMore: 0, avgSleep, suggested: rq(rawTop), suggestedRaw: r1(rawTop), topNights: top.length, trainOften }
 }

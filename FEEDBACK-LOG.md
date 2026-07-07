@@ -484,6 +484,19 @@ test guide → the **🧪 Test guide** section below.
     but no MCP tool returns the athlete's actual VALUES (CP 248, W′ 17.1, EF trend, TTE 12 min, profile type) — so the coach reasons
     from theory, not JM's numbers. Build: a server endpoint computing them (port `tte.js`/`athlete-profile` server-side or reuse the
     curve fetches) + an MCP `get_metrics`/extend `get_wellness` so daily-adapt + chat reason with the real profile. gymapp + coach.
+405. 🔨 **Sleep-need "9" looked defaulted — surface the raw best-nights avg in the sheet.** JM 2026-07-07: "how do you know it's 9?
+    what is the calculation? why not 8.97h or 9.2?" It IS computed (`estimateSleepNeed`, src/sleep.ts): over his 58 sleep+HRV nights,
+    average the sleep on the **19 best-HRV (best-recovery) nights** = **8.94h raw** → snapped to the nearest ¼ h = **9:00** (an
+    actionable target; his all-nights avg is only 8.75h so he runs a small deficit). The round "9" read as a hardcoded default.
+    JM picked "show the raw in the sheet". Built: `estimateSleepNeed` now also returns `suggestedRaw` (unrounded) + `topNights`;
+    the Sleep-need benchmark narr shows "Your N best-recovery nights averaged X h → rounded to a 9 h target", sci row says "avg of
+    your N top-HRV nights". Unit test added (src/sleep.test.ts, 6 pass). gymapp-only.
+406. 🔨 **VO₂max sheet said "bike power" even for a non-cyclist — key the prose to the method actually in use.** JM 2026-07-07:
+    "this works for me (best 5-min bike power) but if another user doesn't bike, the VO₂max is based on… what? maybe remove the bike
+    mention?" The narr was keyed to `doesCycle` (a sport flag), so a non-biker — or a biker whose current number came from HR — read
+    a FALSE source. Fix (better than removing): the narr now follows `vo2head.source` (the same signal as the IN USE badge) with 3
+    branches — **MAP** (bike power) / **VDOT** (run pace) / **HR-profile** (submax proxy) + a generic fallback. The subtitle already
+    used the real source. tsc clean. gymapp-only.
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
     passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");
