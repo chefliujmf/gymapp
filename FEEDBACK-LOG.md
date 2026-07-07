@@ -440,7 +440,24 @@ test guide → the **🧪 Test guide** section below.
     the zone colour). Chip decision (JM asked re 5 k/10 k/half/marathon): curve chips stay ACTUAL best efforts (400 m/1 k);
     5 k+ are PROJECTIONS shown in Race predictions right below — not mixed into the chips (his actual 1 k 6:08 next to a
     projected 5 k 4:43 would read as "faster at 5 k than 1 k"). Verified via render (real styles.css). gymapp-only.
-    but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
+400. 🔨 **intervals-style BEST-EFFORTS table under the power/pace curve + Coros-style separate race predictions.** JM
+    2026-07-07 (intervals + Coros screenshots): "what I want is like intervals.icu for power curve & running pace under stats;
+    keep race prediction separate like coros." + "keep benchmarks at top, only adjust graph & predictions, don't redo the whole
+    thing." Mocked 3 layouts → JM picked **A (separate 'Best efforts' table card under the curve)**. Design: a table Distance/Time
+    bucket × [This season · All time] (all-time in orange), time+/km for running, W+W/kg for cycling. Data VERIFIED buildable:
+    intervals `power-curves`/`pace-curves` accept MULTIPLE `curves=` specs (this-season = `${daysSinceJan1}d`, all-time = `10000d`)
+    → best at 5s/1m/5m/20m (power) or 1k/3k/5k/10k (pace). Sanity-filter pace buckets (all-time 1 k returned garbage 8 s → reject if
+    pace <2:30 or >12:00/km). NO metrics strip (VO₂max/CS live in the benchmark cards — JM: "don't duplicate"). Race predictions →
+    restyle to Coros table (Distance · Time · Avg pace), kept SEPARATE (undo the #399 under-curve move). Benchmarks untouched.
+    Build: `fetchPowerBest()`/`fetchPaceBest()` (intervals.ts) + a shared `BestEffortsTable` (charts.tsx) + wire CyclingStats +
+    RunningStats. gymapp-only.
+401. 🔨 **TTE as a LEARNED benchmark, per sport (like VO₂max/sleep).** JM 2026-07-07: "TTE add it to benchmark for each sport if
+    relevant and make sure we learn about it too like the rest." TTE (time-to-exhaustion at threshold) is NOT a stored intervals
+    field — it's DERIVED from the CP/W′ power model (`powerModels` on the power-curve; cycling TTE ≈ W′/(eFTP−CP); running from the
+    CS/D′ model). Build: a new benchmark `Key` `'tte'` per sport (cycling s · running s) in `Benchmarks.tsx` (`src/benchmark-confidence.ts`
+    gets a `tteConfidence`), computed from the curve model, manual-override + auto/computed toggle like the rest, and surfaced in the
+    coach (openapi + MCP + coach-engine — [[platyplus-propagate-all-layers]]). Add to the benchmark cards (top), NOT the best-efforts
+    table. gymapp + coach.
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
     passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");

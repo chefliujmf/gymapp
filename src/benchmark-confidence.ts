@@ -56,6 +56,16 @@ export function maxHrConfidence({ computed, from }: MaxHrInputs): Confidence {
   return conf(40, 'need', 'Needs a max effort')
 }
 
+// #401 — TTE trust rises with how LONG you've actually held threshold. A short TTE means your curve barely
+// reaches threshold (you haven't done a long threshold effort, or the threshold is set high) → keep learning.
+export interface TteInputs { tte: number | null }
+export function tteConfidence({ tte }: TteInputs): Confidence {
+  if (tte == null) return conf(30, 'need', 'Needs a threshold effort')
+  if (tte >= 1800) return conf(90, 'strong', 'Strong') // held ≥30 min at threshold
+  if (tte >= 900) return conf(68, 'learn', 'Learning · a longer threshold effort') // 15–30 min
+  return conf(45, 'learn', 'Learning · a longer threshold effort') // < 15 min
+}
+
 export function sleepNeedConfidence({ est, needMore }: SleepInputs): Confidence {
   if (est != null && !needMore) return conf(90, 'strong', 'Dialed in')
   if (est != null || needMore != null) {

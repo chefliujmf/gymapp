@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import { authApi, type IcuAthletePull } from './auth/api'
 import { fmtPace, parsePace } from './running-paces'
-import { fetchWellness } from './intervals'
+import { fetchWellness, fetchPowerCurve, fetchPaceCurve, type PowerCurve, type PaceCurve } from './intervals'
 import { estimateSleepNeed } from './sleep'
+import { tteFromPower, tteFromPace, fmtTte } from './tte'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, confLabel } from './vo2max-submax'
-import { vo2maxConfidence, ftpConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, type Confidence } from './benchmark-confidence'
+import { vo2maxConfidence, ftpConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, type Confidence } from './benchmark-confidence'
 
 // #236 — benchmarks = MANUAL vs COMPUTED. Tiles show the in-use value; tap → a sheet with BOTH values,
 // an input (editable only in Manual), and a Manual|Computed toggle. A per-stat preference (user.statPrefs)
@@ -16,9 +17,15 @@ import { vo2maxConfidence, ftpConfidence, thresholdPaceConfidence, maxHrConfiden
 // N methods" (computed live for VO₂max), and a "Sharpen it" callout. See mockups/benchmark-cards.html.
 type Pref = 'manual' | 'computed' | 'auto' // #277 auto = use computed once it's ready, manual until then
 // #385 — exported so per-sport Stats pages can pass `only` to show the same polished cards, filtered.
-export type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed' // #337 sleep joins the picker
+export type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed' | 'tteRide' | 'tteRun' // #337 sleep · #401 TTE per sport
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n))
 const numParse = (lo: number, hi: number) => (s: string) => { const n = Number(s); return Number.isFinite(n) && n > 0 ? clamp(n, lo, hi) : null }
+// #401 — a manual TTE typed as m:ss / h:mm:ss (or bare minutes) → seconds.
+const parseTte = (s: string): number | null => {
+  const m = /^(\d+):(\d{1,2})(?::(\d{2}))?$/.exec(s.trim())
+  if (m) return m[3] ? (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]) : (+m[1]) * 60 + (+m[2])
+  const n = Number(s); return Number.isFinite(n) && n > 0 ? Math.round(n * 60) : null
+}
 
 // #374 — one science-method row in the detail sheet.
 interface SciRow { name: string; formula: string; value: string; inUse?: boolean }
@@ -116,6 +123,8 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
   const [maxHrFrom, setMaxHrFrom] = useState<string>('')
   const [sleepEst, setSleepEst] = useState<number | null>(null) // computed sleep need (null until learned)
   const [sleepMore, setSleepMore] = useState<number | null>(null) // nights still needed
+  const [powerCurve, setPowerCurve] = useState<PowerCurve | null>(null) // #401 cycling TTE
+  const [paceCurve, setPaceCurve] = useState<PaceCurve | null>(null) // #401 running TTE
   const [open, setOpen] = useState<Key | null>(null)
   const connected = !!user?.hasIcuKey
 
@@ -124,6 +133,8 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
     authApi.pullIcuAthlete().then(setPull).catch(() => {})
     authApi.runEstimate().then((r) => { if (r.available && r.thresholdPace) setPaceEst(r.thresholdPace) }).catch(() => {})
     authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? '') }).catch(() => {}) // #337
+    fetchPowerCurve(90).then(setPowerCurve).catch(() => {}) // #401 cycling TTE
+    fetchPaceCurve(90).then(setPaceCurve).catch(() => {}) // #401 running TTE
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)
     fetchWellness(from, to).then((rows) => {
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break }
@@ -146,6 +157,9 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
   }
   const vo2Order = [...(user?.sports || []).filter((s): s is 'running' | 'cycling' => s === 'running' || s === 'cycling'), 'cycling', 'running'].filter((s, i, a) => a.indexOf(s) === i) as ('running' | 'cycling')[]
   const vo2head = headlineVo2max(null, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
+  // #401 — TTE (how long you hold threshold), read off your mean-max curve.
+  const tteRide = powerCurve ? tteFromPower(powerCurve.secs, powerCurve.watts, ftpManual ?? eftp) : null
+  const tteRun = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, paceManual ?? paceEst) : null
 
   const saveSport = (group: 'cycling' | 'running', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
   // #337 — "when will the computed estimate land?" straight from our theory gates, so nothing just says
@@ -212,6 +226,23 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
       sci: [{ name: 'Critical Speed', formula: 'from your recent runs · ~1 h pace', value: paceEst != null ? fmtPace(paceEst) : '—', inUse: paceEst != null }],
       sharpen: 'log a few more runs incl. a hard effort → the Critical-Speed fit tightens.',
     },
+    // #401 — TTE (time to exhaustion at threshold), a LEARNED benchmark per sport, read off the mean-max curve.
+    {
+      key: 'tteRide', label: 'TTE', computed: tteRide, computedSrc: 'longest you held your eFTP', pending: tteRide == null ? (powerCurve ? 'after a sustained near-FTP effort (10–40 min) — your power curve then reaches your eFTP for longer' : 'after your next ride — read from your power curve') : undefined, manual: (ss.cycling as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('cycling', { tte: v }),
+      chip: 'Curve',
+      conf: tteConfidence({ tte: tteRide }),
+      narr: <>How long you can hold your <b>FTP</b> before fatigue — read straight off your power curve (the longest time your best power is still ≥ your eFTP). A longer, harder sustained effort extends it.</>,
+      sci: [{ name: 'From your power curve', formula: 'longest time ≥ eFTP', value: tteRide != null ? fmtTte(tteRide) : '—', inUse: tteRide != null }],
+      sharpen: 'a sustained near-FTP effort (10–40 min) pushes your curve out → a longer, truer TTE.',
+    },
+    {
+      key: 'tteRun', label: 'TTE', computed: tteRun, computedSrc: 'longest you held threshold pace', pending: tteRun == null ? (paceCurve ? 'after a sustained threshold run (15–40 min) — your pace curve then holds threshold for longer' : 'after a few runs — read from your pace curve') : undefined, manual: (ss.running as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('running', { tte: v }),
+      chip: 'Curve',
+      conf: tteConfidence({ tte: tteRun }),
+      narr: <>How long you can hold your <b>threshold pace</b> before fatigue — read from your pace curve (the longest time you stayed at/faster than threshold). If it's short, your threshold pace may be set too fast.</>,
+      sci: [{ name: 'From your pace curve', formula: 'longest time ≤ threshold pace', value: tteRun != null ? fmtTte(tteRun) : '—', inUse: tteRun != null }],
+      sharpen: 'a sustained threshold run (15–40 min) extends your curve → a longer, truer TTE.',
+    },
     {
       key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: compMaxHr, computedSrc: maxHrFrom === 'observed' ? `observed peak — highest HR in your last 180 days${maxHrSamples > 1 ? ` (hit ${maxHrSamples}×)` : ''}` : 'your zone ceiling from intervals — beat it in an all-out effort to raise it', pending: 'after your next all-out effort with a HR strap/watch — we read your true peak, not an age formula', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }),
       chip: maxHrFrom === 'observed' ? 'Observed' : 'Ceiling',
@@ -235,11 +266,12 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
       sharpen: 'wear your tracker to sleep a few more nights → we learn the duration your body recovers best on.',
     },
   ]
-  // #385 — when `only` is passed, keep just those keys, in the requested order; else show all 5.
-  const shown = only ? only.map((k) => defs.find((d) => d.key === k)).filter((d): d is StatDef => !!d) : defs
+  // #385 — when `only` is passed, keep just those keys, in the requested order; else show all 5 (the global
+  // benchmarks stay unchanged — #401 TTE is a per-sport-page card, requested explicitly via `only`).
+  const shown = only ? only.map((k) => defs.find((d) => d.key === k)).filter((d): d is StatDef => !!d) : defs.filter((d) => d.key !== 'tteRide' && d.key !== 'tteRun')
   const showsFtp = shown.some((d) => d.key === 'ftp')
   // #277: default is AUTO — prefer the computed estimate once it's ready, manual until then.
-  const prefOf = (d: StatDef): Pref => user?.statPrefs?.[d.key] ?? 'auto'
+  const prefOf = (d: StatDef): Pref => (user?.statPrefs as Partial<Record<Key, Pref>> | undefined)?.[d.key] ?? 'auto'
   const inUse = (d: StatDef): number | null => { const p = prefOf(d); return p === 'manual' ? (d.manual ?? d.computed) : (d.computed ?? d.manual) } // computed/auto prefer computed, fall back to manual
   // what's ACTUALLY driving right now (for the tag): auto resolves to computed-or-manual.
   const activeSrc = (d: StatDef): 'manual' | 'computed' => { const p = prefOf(d); if (p === 'manual') return 'manual'; if (p === 'computed') return 'computed'; return d.computed != null ? 'computed' : 'manual' }
