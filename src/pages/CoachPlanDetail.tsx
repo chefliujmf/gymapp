@@ -223,7 +223,10 @@ export default function CoachPlanDetail() {
 
       {(p.fuel?.why || p.fuel?.supplements || meals.length > 0) && (
         <div className="plansec">
-          <div className="plansec__h"><span className="plansec__k">🍽️ Fuel</span>{p.fuel?.why && <button className="why-chip" onClick={() => setSheet({ title: 'Fueling strategy', body: p.fuel!.why! })}>why ⓘ</button>}</div>
+          <span className="plansec__k">🍽️ Fuel</span>
+          {/* #418 — show the fueling strategy INLINE (like Mind #411 / Recovery), not behind a "why" chip that left
+              the section feeling empty. JM: "the why for fuel still weird, put it straight in fuel section". */}
+          {p.fuel?.why && <p className="plansec__v" style={{ marginTop: 4 }}>{p.fuel.why}</p>}
           {meals.length > 0 && (
             <div className="mealgrid">
               {meals.map((m) => (

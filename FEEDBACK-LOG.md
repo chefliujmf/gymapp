@@ -560,6 +560,16 @@ test guide → the **🧪 Test guide** section below.
     "when clicking full exercise on android, the back button seems to overlay with something and not every press works to return back." The
     exercise-detail (video) view/modal + Android hardware back don't cooperate — likely a history/overlay state issue (the modal doesn't push
     a history entry, or a stray overlay swallows the back). Investigate the full-exercise view's routing/modal + Android back handling. gymapp-only.
+418. 🔨 **Fuel "why" behind a chip (do like Mind) + an empty gym on QA.** JM 2026-07-07 (QA): "the why for fuel still weird, put it
+    straight in fuel section"; also "this one is empty" (a "Full-Body Strength — Rain Day" gym opens with no exercises). (a) FIXED — the
+    Fuel section now shows `p.fuel.why` (the fueling strategy) INLINE like Mind #411 / Recovery, chip dropped (CoachPlanDetail.tsx). tsc clean.
+    (b) The empty "Rain Day" gym is **NOT in the QA DB** — it's a PROD plan's intervals event surfacing on QA through the SHARED i28814
+    athlete (a known QA/prod-shared artifact; can't be GC'd on QA since staging is read-only). Not a new render bug. gymapp-only.
+419. 🔨 **Coach names workouts after the WEATHER ("Rain Day") — stop it; title by the training.** JM 2026-07-07: "for any activity titles,
+    don't mention weather, why do it? focus on the activity done for title and description." No rule existed → the coach invented "Full-Body
+    Strength — Rain Day" from a rainy forecast. FIXED (2 layers): the **coach identity** (`coachIdentity`, server.js) + the **get_weather MCP
+    tool desc** (mcp/server.js) now say: TITLE + describe every workout by its TRAINING content/purpose, NEVER the weather/theme ("Rain Day",
+    "Hot Day"); weather only informs indoor/outdoor + intensity + fuel. ⚠️ MCP change → rsync `mcp/` to the host. gymapp + coach.
 411. 🔨 **Workout detail: the "Mind" section body is EMPTY while its content hides behind a "why" chip.** JM 2026-07-07 (screenshot):
     "don't get the Mind — the section is empty but the why is a chip to click." Fuel shows its text inline (+ a why chip); Mind shows only
     a "why ⓘ" chip with no body, so it reads as broken/empty (the real "Mental focus — Restraint…" is buried in the why sheet). FIX: if a

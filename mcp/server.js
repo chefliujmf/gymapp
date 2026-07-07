@@ -78,7 +78,7 @@ server.tool('get_metrics',
   wrap(() => api('GET', '/api/athlete-metrics')))
 
 server.tool('get_weather',
-  "Get the day's WEATHER forecast + coaching guidance for the athlete's location (free, no key). Call it before planning or confirming an OUTDOOR run/ride, especially in heat/cold. Returns feels-like temp, wind, rain%, and ready-made guidance (heat derating, hydration, cold layers, wind, or move-indoors). { needsLocation:true } means no location yet — ask the athlete their city (it also auto-fills from their next GPS activity). Use it to ADJUST intensity/pace + add fuel/hydration notes, don't just report it.",
+  "Get the day's WEATHER forecast + coaching guidance for the athlete's location (free, no key). Call it before planning or confirming an OUTDOOR run/ride, especially in heat/cold. Returns feels-like temp, wind, rain%, and ready-made guidance (heat derating, hydration, cold layers, wind, or move-indoors). { needsLocation:true } means no location yet — ask the athlete their city (it also auto-fills from their next GPS activity). Use it to ADJUST intensity/pace + add fuel/hydration notes, don't just report it. NEVER put the weather in a workout's TITLE or description (no \"Rain Day\", \"Hot Day\", \"Windy…\"): title + describe every session by its TRAINING content and purpose (\"Full-Body Strength\", \"Sweet-Spot 3×12\"); weather only informs whether it's indoor/outdoor, the intensity, and fuel/hydration — it is never the name or theme.",
   { date: DATE.optional().describe('YYYY-MM-DD; default today. Use the planned session date.') },
   wrap((a) => api('GET', `/api/weather${a.date ? `?date=${a.date}` : ''}`)))
 

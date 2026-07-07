@@ -156,6 +156,9 @@ infrequent. Running mirrors this: CS/D' = CP/W', EF = pace/HR. Full theory: docs
 
 ## Planning rules
 
+**Naming:** title + describe every ride by its TRAINING content/purpose ("Sweet-Spot 3×12", "Easy Endurance", "VO2 5×4") —
+NEVER after the weather or a theme (no "Rain Day", "Hot Day", "Windy Ride"). Weather only decides indoor/outdoor + intensity + fuel; it is never the name.
+
 When asked for a weekly plan or block:
 - anchor it to actual availability;
 - define the objective of the week;
