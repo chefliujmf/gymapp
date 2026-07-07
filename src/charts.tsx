@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { zoneColor, zoneName, segPower } from './zones'
 
-export type Series = { label: string; color: string; data: (number | null)[]; area?: boolean; dash?: boolean }
+export type Series = { label: string; color: string; data: (number | null)[]; area?: boolean; dash?: boolean; faint?: boolean }
 
 /** #286 — a completed activity's shape as zone-coloured bars, binned from the REAL power
  *  stream (not the planned segments, which can be degenerate/0 W). Used for the card + detail
@@ -147,8 +147,8 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
               )}
               {/* #376/#355 — NO draw-in animation: the dash/pathLength reveal strands the line mid-draw under
                   the non-uniform SVG stretch (looked like Form/Fatigue "stopped" partway, each at a different x). Static. */}
-              <path d={path} fill="none" stroke={s.color} strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s.dash ? '4 4' : undefined} strokeOpacity={s.dash ? 0.75 : 1} vectorEffect="non-scaling-stroke" />
-              {!s.dash && <circle cx={last[0]} cy={last[1]} r="3" fill={s.color} vectorEffect="non-scaling-stroke" />}
+              <path d={path} fill="none" stroke={s.color} strokeWidth={s.faint ? '1.25' : '2.25'} strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s.dash ? '4 4' : undefined} strokeOpacity={s.dash ? 0.75 : s.faint ? 0.38 : 1} vectorEffect="non-scaling-stroke" />
+              {!s.dash && !s.faint && <circle cx={last[0]} cy={last[1]} r="3" fill={s.color} vectorEffect="non-scaling-stroke" />}
               {hi != null && s.data[hi] != null && <circle cx={x(hi)} cy={y(s.data[hi] as number)} r="3.5" fill={s.color} stroke="var(--bg)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
             </g>
           )

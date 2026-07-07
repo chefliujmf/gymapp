@@ -4,10 +4,10 @@ import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, parsePace, type RunVolume } from '../running-paces'
 import { runningVo2max } from '../vo2max-submax'
-import { fetchWellness } from '../intervals'
+import { fetchWellness, fetchPaceCurve, bestPaceAtDist, type PaceCurve } from '../intervals'
 import { setSetting } from '../db'
 import { authApi } from '../auth/api'
-import { TrendChart, InfoDot } from '../charts'
+import { TrendChart, PaceCurveChart, InfoDot } from '../charts'
 import { BenchmarksCard } from '../Benchmarks'
 
 // #275 — editable threshold-pace cell (tap to edit here, syncs to intervals like Profile does).
@@ -44,12 +44,14 @@ export default function RunningStats() {
   const [runVol, setRunVol] = useState<{ available: boolean; longestKm?: number; weeklyKm?: number } | null>(null)
   const [hrRest, setHrRest] = useState<number | null>(null) // #234 HR-ratio input
   const [paceTrend, setPaceTrend] = useState<(number | null)[] | null>(null) // #230 per-week avg pace
+  const [pc, setPc] = useState<PaceCurve | null>(null) // #396 mean-max pace curve
   const isRunner = hasModule(user?.sports || [], 'running')
 
   useEffect(() => {
     if (!user?.hasIcuKey || !isRunner) return
     authApi.runVolume().then(setRunVol).catch(() => {})
     authApi.runPaceTrend().then((r) => setPaceTrend(r.available && r.paces ? r.paces : [])).catch(() => {})
+    fetchPaceCurve(90).then(setPc).catch(() => setPc(null)) // #396
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
     fetchWellness(from, to).then((rows) => { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break } }).catch(() => {})
   }, [user?.hasIcuKey, isRunner])
@@ -91,6 +93,20 @@ export default function RunningStats() {
             <ThresholdCell pace={pace} onSave={saveRunPace} />
           </div>
           {vo2 && hrRatioMismatch && <p className="meta" style={{ margin: '10px 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
+
+          {/* #396 — mean-max PACE curve (running's power curve): fastest pace held for each duration, from intervals. */}
+          {pc && pc.secs.length >= 2 && (
+            <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
+              <div className="fit-legend"><span style={{ color: '#ffb13d' }}>● Pace curve<InfoDot text="Your fastest pace held for each duration — short bursts on the left (seconds), long runs on the right (up to ~minutes). Push a line UP (faster) = you got quicker at that effort. Read live from intervals.icu." /></span></div>
+              <PaceCurveChart secs={pc.secs} pace={pc.pace} color="#ffb13d" />
+              <div className="be-row">
+                {([[1000, '1 km'], [5000, '5 km'], [10000, '10 km']] as [number, string][]).map(([m, label]) => {
+                  const p = bestPaceAtDist(pc, m)
+                  return <div key={label} className="be"><span>{label}</span><b>{p ? fmtPace(p) : '—'}</b>{p ? <em>/km</em> : null}</div>
+                })}
+              </div>
+            </div>
+          )}
 
           {zones && (
             <>

@@ -396,6 +396,24 @@ test guide → the **🧪 Test guide** section below.
     `/api/coach/load-plan` + write `load_target` back to the ATP TARGET events + MCP tool + coach-engine) — the forecast
     already reads them; this adds coach-side EDITING. Also: the coach should FLAG that JM's ATP overload weeks (×13–14 CTL)
     exceed the ×12 cap (Form → −24). gymapp + coach.
+394. ⬜ **Let the coach EDIT the ATP weekly blocks from chat + flag over-cap overload weeks.** Split from #393: the 4-wk
+    forecast now READS the intervals ATP weekly TARGETs, but the coach can't yet author/adjust them. Build: `POST /api/coach/load-plan`
+    (store `user.info.loadPlan` + write `load_target` back to the ATP TARGET events, prod-only via IS_STAGING) + an MCP tool +
+    `coach-engine-*.md` guidance. Also: coach should FLAG when a week's target exceeds `weeklyLoadBudget().cap` (×12 CTL) — JM's
+    ATP W08/W09 (430/460 on CTL 32 ≈ ×13–14) project Form to −24. Propagate to openapi + MCP + engine. gymapp + coach.
+395. 🔨 **Wellness charts (HRV · Resting HR · Weight · Sleep) need the HOVER SCRUBBER + tooltip like Load & Form.** JM 2026-07-07
+    (screenshot): "want those graphs to have a line that shows with hovering like the form/fitness graph, to see values in x & y —
+    that's a standard feature. Be consistent with the coach insights so graphs follow the same standards too." Root: Wellness uses a
+    bespoke `WTrend` (Wellness.tsx, `aria-hidden` SVG, NO pointer handlers/tooltip) while Load & Form uses the shared `TrendChart`
+    (hover + tooltip + axes). FIX = switch `MetricCard` to the shared `TrendChart` (daily + 7-day-avg series, axes, hover tooltip
+    showing date + value) + add a coach-voice insight line per metric (already have `wellness-insights.ts`). Enforces the ONE-shared-
+    chart standard ([[platyplus-chart-standard]] — WTrend is exactly the hand-rolled polyline the standard says to retire). gymapp-only.
+396. 🔨 **Running stats has NO pace curve (cycling has the power curve).** JM 2026-07-07: "cycling power curve looks good, but for
+    running I don't see the pace curve. Add this too." `RunningStats.tsx` shows a pace TREND but not the mean-max pace CURVE.
+    `PaceCurveChart` already exists in charts.tsx. Data source FOUND: intervals `/athlete/{id}/pace-curves?curves={days}d&type=Run`
+    → `list[0].distance[]` (meters) + `values[]` (seconds to cover each) → pace sec/km = `values/distance*1000`, duration = `values`.
+    Build `fetchPaceCurve(days)` in intervals.ts (returns {secs, pace}), add `PaceCurveChart` to RunningStats mirroring how
+    CyclingStats uses PowerCurveChart (+ best-pace-at chips: 400 m / 1 k / 5 k / 10 k). JM has 10 runs → real data. gymapp-only.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
