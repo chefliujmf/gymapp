@@ -1879,11 +1879,33 @@ let EXERCISES = []
     else console.log(`catalog: no exercises.json at ${p} — /api/exercises returns empty`)
   } catch (e) { console.log('catalog load failed:', e.message) }
 })()
+// #416 — search-result RANK: a demo WITH VIDEO always outranks an image-only one (free-exercise-db `fedb-*` are
+// image-only; Centr `e-*` / MuscleWiki `mw-*` carry video for the same move), then exact/prefix name, then a
+// tighter (shorter) name. So the coach picks video demos at the source — no more "no video" gym sessions. Pure.
+export function rankExerciseHit(e, q) {
+  const name = String(e?.name || '').toLowerCase()
+  let s = 0
+  if (e?.video) s += 1000
+  if (name === q) s += 400
+  else if (name.startsWith(q)) s += 200
+  s += Math.max(0, 60 - name.length)
+  return s
+}
 function searchExercises(q, limit, equipment) {
   const n = String(q || '').trim().toLowerCase()
   const eq = equipment ? String(equipment).split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : null
-  let list = n ? EXERCISES.filter((e) => e.name.toLowerCase().includes(n)) : EXERCISES
+  // #416 — TOKEN match (all significant query words present, any order) instead of a strict substring, so a video
+  // demo named "Dumbbell SEATED shoulder press" still matches "dumbbell shoulder press" (the substring filter missed
+  // it → the coach only saw the image-only free-exercise-db entry). Fall back to any-token when all-token finds
+  // nothing. Then rank VIDEO-first so the coach picks a demo WITH a clip whenever the exact movement has one.
+  const toks = n.split(/[^a-z0-9]+/).filter((t) => t.length > 1)
+  let list = EXERCISES
+  if (toks.length) {
+    list = EXERCISES.filter((e) => { const nm = e.name.toLowerCase(); return toks.every((t) => nm.includes(t)) })
+    if (!list.length) list = EXERCISES.filter((e) => { const nm = e.name.toLowerCase(); return toks.some((t) => nm.includes(t)) })
+  }
   if (eq) list = list.filter((e) => e.equipment && eq.includes(e.equipment.toLowerCase())) // owned-equipment filter
+  if (toks.length) list = [...list].sort((a, b) => rankExerciseHit(b, n) - rankExerciseHit(a, n)) // #416 video-first
   return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, equipment: e.equipment, image: e.image, video: e.video }))
 }
 // Recipe + mind/movement catalogs — let the coach PICK real Platyplus content by id
