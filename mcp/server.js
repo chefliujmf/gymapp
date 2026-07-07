@@ -71,6 +71,12 @@ server.tool('get_wellness',
   { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },
   wrap((a) => api('GET', `/api/intervals/wellness?days=${a.days || 14}`)))
 
+// #404 — the athlete's COMPUTED performance profile, so you coach from their ACTUAL numbers, not just theory.
+server.tool('get_metrics',
+  "Read the athlete's computed performance PROFILE (live from intervals.icu, READ-ONLY). Per sport — cycling: FTP · eFTP · Critical Power (CP) · W' (anaerobic reserve, kJ) · TTE (time-to-exhaustion at FTP, s) · Efficiency Factor; running: threshold pace · Critical Speed (CS) · D' (m) · TTE · EF — plus a synthesised athlete TYPE (Punchy-threshold / Diesel / All-rounder / Puncheur) with a training focus. ALL model-derived from their power/pace curve — NO exhaustion or lab test needed; normal hard efforts sharpen it. Use this to coach BEYOND one FTP number: read the PROFILE — short TTE (≪30 min vs eFTP) ⇒ extensive threshold (3×15–20 min @ 90–95%) and/or ease FTP toward eFTP; small W'/D' ⇒ short near-max repeats; rising EF ⇒ the aerobic base is working, keep it. Returns { connected:false } if intervals isn't connected. Theory: docs/beyond-ftp-metrics.md + docs/tte.md.",
+  {},
+  wrap(() => api('GET', '/api/athlete-metrics')))
+
 server.tool('get_weather',
   "Get the day's WEATHER forecast + coaching guidance for the athlete's location (free, no key). Call it before planning or confirming an OUTDOOR run/ride, especially in heat/cold. Returns feels-like temp, wind, rain%, and ready-made guidance (heat derating, hydration, cold layers, wind, or move-indoors). { needsLocation:true } means no location yet — ask the athlete their city (it also auto-fills from their next GPS activity). Use it to ADJUST intensity/pace + add fuel/hydration notes, don't just report it.",
   { date: DATE.optional().describe('YYYY-MM-DD; default today. Use the planned session date.') },

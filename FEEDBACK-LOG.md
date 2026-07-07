@@ -480,10 +480,14 @@ test guide → the **🧪 Test guide** section below.
     — TYPE + per-metric coach read + no-test training focus, rendered by `BenchmarksCard profile=`. Phase 4 (propagate): docs/beyond-ftp-metrics.md
     (+ highnorth CP-calc cite) + coach-engine cycling & running sections + openapi (cp/wPrime/cs/dPrime) + memory [[platyplus-beyond-ftp-metrics]].
     JM's Qs answered inline: CP/W′/EF separate (not under TTE); improve without tests (the efforts ARE the data); profile = "Punchy threshold".
-404. ⬜ **Expose the computed CP/W′/EF/TTE/PROFILE to the COACH (MCP read tool).** From #403: the coach-engine now has the THEORY,
+404. 🔨 **Expose the computed CP/W′/EF/TTE/PROFILE to the COACH (MCP read tool).** From #403: the coach-engine now has the THEORY,
     but no MCP tool returns the athlete's actual VALUES (CP 248, W′ 17.1, EF trend, TTE 12 min, profile type) — so the coach reasons
     from theory, not JM's numbers. Build: a server endpoint computing them (port `tte.js`/`athlete-profile` server-side or reuse the
     curve fetches) + an MCP `get_metrics`/extend `get_wellness` so daily-adapt + chat reason with the real profile. gymapp + coach.
+    ✅ BUILT: `server/perf-metrics.js` (mirrors src/tte.ts + src/athlete-profile.ts — parity unit-tested, src/perf-metrics.test.ts,
+    8 pass) + `GET /api/athlete-metrics` (apiAuth, per-sport ftp/eftp/cp/wPrimeKj/tteSec/ef/profile from the 365-d power/pace curves)
+    + MCP `get_metrics` tool (mcp/server.js) + openapi + a "call get_metrics" pointer in BOTH coach-engine cycling & running. ⚠️ after
+    QA deploy: verify /api/athlete-metrics returns real numbers, then MANUAL `rsync mcp/` to the host (nothing syncs it, [[platyplus-propagate-all-layers]]).
 405. 🔨 **Sleep-need "9" looked defaulted — surface the raw best-nights avg in the sheet.** JM 2026-07-07: "how do you know it's 9?
     what is the calculation? why not 8.97h or 9.2?" It IS computed (`estimateSleepNeed`, src/sleep.ts): over his 58 sleep+HRV nights,
     average the sleep on the **19 best-HRV (best-recovery) nights** = **8.94h raw** → snapped to the nearest ¼ h = **9:00** (an

@@ -27,6 +27,7 @@ import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchan
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads } from './readiness.js'
+import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss, stripPlatyplusLinks, stripDerivedWorkout } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
@@ -748,6 +749,41 @@ app.get('/auth/readiness-projection', auth, async (req, res) => {
   for (let dd = addDays(today, 1); dd <= end; dd = addDays(dd, 1)) { dates.push(dd); loads.push(dd <= plannedThrough ? (byDay[dd] || 0) : (periodized[dd] != null ? periodized[dd] : heldLoad)) }
   const series = projectFormSeries({ ctl: latest.ctl, atl: latest.atl }, loads)
   res.json({ connected: true, available: true, dates, loads, plannedThrough, loadPlan: blocks, planSource, restDows, ctl: series.map((s) => s.ctl), atl: series.map((s) => s.atl), form: series.map((s) => s.form) })
+})
+
+// #404 — the athlete's COMPUTED performance metrics (CP/W′/CS/D′/TTE/EF + a profile synthesis) for the COACH,
+// mirroring the client benchmark/profile cards so the coach reasons from ACTUAL values (see perf-metrics.js).
+app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
+  if (!req.user.icuKey) return res.json({ connected: false })
+  const ath = req.user.icuAthlete || 'i28814', ss = req.user.sportSettings || {}, sports = req.user.sports || []
+  const today = await athleteToday(req.user), from = addDays(today, -365)
+  let acts = null
+  const efFor = async (type) => {
+    if (acts == null) acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${from}&newest=${today}`)
+    const pts = (Array.isArray(acts) ? acts : []).filter((a) => a.type === type && Number(a.icu_efficiency_factor) > 0 && Number(a.moving_time) >= 1200)
+      .map((a) => ({ date: String(a.start_date_local || '').slice(0, 10), ef: Math.round(Number(a.icu_efficiency_factor) * 1000) / 1000 })).sort((x, y) => x.date.localeCompare(y.date))
+    return efSummary(pts)
+  }
+  const out = { connected: true }
+  if (sports.includes('cycling') || sports.length === 0) {
+    const c = ((await icuGet(req.user, `/athlete/${ath}/power-curves?curves=365d&type=Ride`))?.list || [])[0] || {}
+    const pm = (c.powerModels || []).find((m) => m.type === 'FFT_CURVES') || (c.powerModels || [])[0] || {}
+    const cp = pm.criticalPower ?? null, wJ = pm.wPrime ?? null, eftp = pm.ftp ?? null
+    const ftp = ss.cycling?.ftp ?? req.user.ftp ?? eftp
+    const tte = tteFromPower(c.secs || [], c.values || [], ftp ?? eftp) ?? tteModelPower(ftp ?? eftp, cp, wJ)
+    const ef = await efFor('Ride'), wKj = wJ != null ? Math.round(wJ / 100) / 10 : null
+    out.cycling = { ftp, eftp, cp, wPrimeKj: wKj, tteSec: tte, ef, profile: computeAthleteProfile({ sport: 'cycling', threshold: ftp, eftp, tte, cp, reserveKj: wKj, reserveBig: 20, ef: ef.latest, efTrend: ef.trend }) }
+  }
+  if (sports.includes('running') || sports.length === 0) {
+    const c = ((await icuGet(req.user, `/athlete/${ath}/pace-curves?curves=365d&type=Run`))?.list || [])[0] || {}
+    const pmodel = (c.paceModels || [])[0] || {}
+    const cs = pmodel.criticalSpeed ?? null, dP = pmodel.dPrime ?? null, csPace = cs > 0 ? Math.round(1000 / cs) : null
+    const thr = ss.running?.thresholdPace ?? req.user.runThresholdPace ?? null
+    const tte = tteFromPace(c.distance || [], c.values || [], thr) ?? tteModelPace(thr, cs, dP)
+    const ef = await efFor('Run')
+    out.running = { thresholdPaceSec: thr, csPaceSec: csPace, dPrimeM: dP != null ? Math.round(dP) : null, tteSec: tte, ef, profile: computeAthleteProfile({ sport: 'running', threshold: thr, eftp: csPace, tte, cp: csPace, reserveKj: dP != null ? Math.round(dP) : null, reserveBig: 200, ef: ef.latest, efTrend: ef.trend }) }
+  }
+  res.json(out)
 })
 
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads

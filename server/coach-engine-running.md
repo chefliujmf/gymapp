@@ -54,6 +54,9 @@ Platyplus shows these on the running stats page + an athlete-PROFILE synthesis c
   easy volume, the pace follows. Falling EF -> check sleep/stress/fuel. Trend over ~6 runs. Decoupling = within-run durability.
 All improve through NORMAL running -- the efforts ARE the data (CS/D'/TTE models sharpen as they train); NEVER prescribe a
 formal exhaustion test. Full theory: docs/beyond-ftp-metrics.md + docs/tte.md.
+- **Call `get_metrics` to read the athlete's ACTUAL numbers** (Critical Speed, D', TTE, EF trend + a computed profile TYPE + focus),
+  not just the theory above. Do this before prescribing threshold/interval work or judging whether threshold pace is set right — coach
+  from THEIR profile. READ-ONLY and live; { connected:false } means fall back to what you have.
 
 ## Reviewing a run (the "so what")
 Volunteer the ONE useful insight, tied to their data and goal: decoupling (pace vs HR drift → aerobic

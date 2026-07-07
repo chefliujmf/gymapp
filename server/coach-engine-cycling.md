@@ -146,6 +146,9 @@ Platyplus surfaces these on the stats page + an athlete-PROFILE synthesis card. 
   (raise the ceiling: 4x8-12 @ 100-105%).
 All improve through NORMAL training and the efforts ARE the data (the CP/W' + TTE models sharpen as they train) -- NEVER
 prescribe a formal exhaustion/ramp test. Running mirrors this: CS/D' = CP/W', EF = pace/HR. Full theory: docs/beyond-ftp-metrics.md.
+- **Call `get_metrics` to read the athlete's ACTUAL numbers** (CP, W', TTE, EF trend + a computed profile TYPE + focus), not just the
+  theory above. Do this before prescribing threshold/VO2 work or judging whether FTP is set right — coach from THEIR profile, not a
+  generic one. It's READ-ONLY and live; { connected:false } means fall back to what you have.
 
 ## Planning rules
 
