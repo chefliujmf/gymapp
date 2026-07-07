@@ -31,6 +31,26 @@ export function tteFromPace(dist: number[], timeSec: number[], thresholdSecKm: n
   return best >= MIN_TTE_SEC ? best : null
 }
 
+/** Model-based TTE ESTIMATE (fallback when the curve hasn't shown a real threshold hold). From the
+ *  Critical-Power / Critical-Speed 2-param model: time to exhaust W′/D′ at the power/pace above CP/CS.
+ *  Cycling: W′ / (eFTP − CP). Estimated → lower confidence than an observed (curve) TTE. */
+export function tteModelPower(eftp: number | null | undefined, cp: number | null | undefined, wPrime: number | null | undefined): number | null {
+  if (!(Number(eftp) > 0) || !(Number(cp) > 0) || !(Number(wPrime) > 0)) return null
+  const gap = (eftp as number) - (cp as number)
+  if (gap <= 0) return null // eFTP at/below CP → effectively unbounded, not a TTE
+  const t = Math.round((wPrime as number) / gap)
+  return t >= MIN_TTE_SEC ? Math.min(7200, t) : null
+}
+/** Running model TTE: D′ / (v_threshold − CS), v in m/s from the threshold pace (sec/km). */
+export function tteModelPace(thresholdSecKm: number | null | undefined, cs: number | null | undefined, dPrime: number | null | undefined): number | null {
+  if (!(Number(thresholdSecKm) > 0) || !(Number(cs) > 0) || !(Number(dPrime) > 0)) return null
+  const v = 1000 / (thresholdSecKm as number)
+  const gap = v - (cs as number)
+  if (gap <= 0) return null // threshold at/below CS → unbounded
+  const t = Math.round((dPrime as number) / gap)
+  return t >= MIN_TTE_SEC ? Math.min(7200, t) : null
+}
+
 /** m:ss (or h:mm:ss) for a TTE in seconds. */
 export function fmtTte(sec: number): string {
   const s = Math.round(sec)
