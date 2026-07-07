@@ -1,0 +1,131 @@
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--line:#2a2f3a;--card:linear-gradient(#21252f,#191c24)}
+  *{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--text);padding:16px;width:460px}
+  .h1{font-size:19px;font-weight:800;margin:2px 0}.sub{color:var(--text-dim);font-size:12px;margin-bottom:10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0}
+  .stat-sub{font-weight:800;font-size:15px;margin:18px 2px 8px}.stat-sub em{color:var(--text-dim);font-weight:500;font-style:normal;font-size:12px}
+  .legend{font-weight:700;font-size:14px;margin-bottom:6px;color:#ffb13d}
+  .curve{height:74px;background:linear-gradient(180deg,rgba(255,177,61,.16),rgba(255,177,61,0));border-radius:8px;position:relative;overflow:hidden}
+  .curve svg{position:absolute;inset:0}
+  .ins{font-size:12.5px;margin:9px 2px 0}
+  /* benchmarks (UNCHANGED, shown as context) */
+  .bm{display:flex;gap:8px}.bmc{flex:1;background:#12151b;border:1px solid var(--line);border-radius:12px;padding:10px}
+  .bmc .t{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+  .bmc .v{font-size:20px;font-weight:800;margin-top:2px}.bmc .v small{font-size:11px;color:var(--text-dim)}
+  .bar{height:5px;border-radius:3px;background:#0f1319;margin-top:7px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,#5ec8ff,#34e07d)}
+  .lock{color:var(--text-dim);font-size:11px;text-align:center;margin:6px 0}
+  /* best-efforts TABLE (V1/V2) */
+  .bet{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  .bet th{font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;padding:5px 4px;text-align:right;border-bottom:1px solid var(--line)}
+  .bet th.l{text-align:left}.bet th.best{color:#ffb13d}
+  .bet td{padding:8px 4px;text-align:right;border-bottom:1px solid #1c2027}.bet tr:last-child td{border-bottom:0}
+  .bet td.l{text-align:left;font-weight:700}
+  .bet .v{font-weight:800;font-size:15px}.bet .u{color:var(--text-dim);font-size:11px;margin-left:1px}
+  .bet .s{display:block;color:var(--text-dim);font-size:11px;font-weight:600}
+  .bet td.best .v{color:#ffb13d}
+  /* best-efforts ROWS (V3) */
+  .er{display:grid;grid-template-columns:64px 1fr 1fr;gap:10px;align-items:center;background:#12151b;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:6px 0}
+  .er .d{font-weight:800}.er .cell{text-align:right}.er .cell .k{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.3px}
+  .er .cell .v{font-weight:800;font-size:15px;font-variant-numeric:tabular-nums}.er .cell .v.best{color:#ffb13d}.er .cell .s{font-size:10px;color:var(--text-dim)}
+  /* zones */
+  .z{display:flex;align-items:center;gap:12px;background:#12151b;border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin:6px 0;position:relative;overflow:hidden}
+  .z::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--zc)}
+  .z .zn{font-weight:700;font-size:13px}.z .zn small{display:block;color:var(--text-dim);font-weight:500;font-size:10px}
+  .z .zp{margin-left:auto;font-weight:800;font-size:16px;color:var(--zc)}.z .zp em{color:var(--text-dim);font-style:normal;font-weight:500;font-size:10px}
+  /* race predictor (coros) */
+  .rp{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .rp .rph,.rp .rpr{display:grid;grid-template-columns:1fr auto 88px;gap:14px;padding:11px 16px;align-items:center}
+  .rp .rph{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-dim);font-weight:700;border-bottom:1px solid var(--line)}
+  .rp .rpr{border-bottom:1px solid #1c2027}.rp .rpr:last-child{border-bottom:0}
+  .rp .d{font-weight:700}.rp .t{font-weight:800;font-variant-numeric:tabular-nums;text-align:right}.rp .p{color:var(--text-dim);text-align:right;font-variant-numeric:tabular-nums}
+  .divider{height:1px;background:var(--line);margin:12px 0}
+  .hide{display:none}
+  .toggle{display:flex;gap:6px;margin:8px 0 4px;flex-wrap:wrap}
+  .toggle button{flex:1;min-width:120px;padding:9px;border-radius:999px;border:1px solid var(--line);background:#12151b;color:var(--text);font-weight:700;font-size:12px;cursor:pointer}
+  .toggle button.on{background:var(--accent);color:#04120a;border-color:var(--accent)}
+</style>
+
+<div class="h1">Running stats — variations</div>
+<div class="sub">Benchmarks stay at top (untouched). Only the graph gets best-efforts, and predictions go Coros-style separate. Pick the best-efforts layout:</div>
+<div class="toggle">
+  <button id="b1" class="on" onclick="pick(1)">A · Separate table card</button>
+  <button id="b2" onclick="pick(2)">B · In the graph card</button>
+  <button id="b3" onclick="pick(3)">C · Distance rows</button>
+</div>
+
+<!-- BENCHMARKS (unchanged) -->
+<div class="lock">🔒 Benchmarks — unchanged</div>
+<div class="bm">
+  <div class="bmc"><div class="t">Threshold</div><div class="v">4:57<small>/km</small></div><div class="bar"><i style="width:62%"></i></div></div>
+  <div class="bmc"><div class="t">VO₂max</div><div class="v">51.1</div><div class="bar"><i style="width:78%"></i></div></div>
+  <div class="bmc"><div class="t">Max HR</div><div class="v">185</div><div class="bar"><i style="width:55%;background:#f0b145"></i></div></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ============ V1: separate table card ============ -->
+<div id="v1">
+  <div class="card">
+    <div class="legend">● Pace curve ⓘ</div>
+    <div class="curve"><svg viewBox="0 0 300 74" preserveAspectRatio="none"><path d="M6,14 C40,22 70,42 110,50 S200,64 294,70" fill="none" stroke="#ffb13d" stroke-width="2.5"/></svg></div>
+    <div class="ins">📉 Your runs sit easier than your 4:57 threshold (best 1 k 6:08) — base miles. Add tempo/intervals.</div>
+  </div>
+  <div class="stat-sub">Best efforts <em>· fastest by distance</em></div>
+  <div class="card"><table class="bet"><thead><tr><th class="l">Distance</th><th>This season</th><th class="best">All time</th></tr></thead><tbody>
+    <tr><td class="l">1 km</td><td><span class="v">4:39</span><span class="s">4:39/km</span></td><td class="best"><span class="v">—</span></td></tr>
+    <tr><td class="l">3 km</td><td><span class="v">15:20</span><span class="s">5:07/km</span></td><td class="best"><span class="v">13:42</span><span class="s">4:34/km</span></td></tr>
+    <tr><td class="l">5 km</td><td><span class="v">26:23</span><span class="s">5:16/km</span></td><td class="best"><span class="v">23:12</span><span class="s">4:38/km</span></td></tr>
+    <tr><td class="l">10 km</td><td><span class="v">1:07:20</span><span class="s">6:44/km</span></td><td class="best"><span class="v">50:59</span><span class="s">5:06/km</span></td></tr>
+  </tbody></table></div>
+</div>
+
+<!-- ============ V2: best efforts inside the graph card ============ -->
+<div id="v2" class="hide">
+  <div class="card">
+    <div class="legend">● Pace curve ⓘ</div>
+    <div class="curve"><svg viewBox="0 0 300 74" preserveAspectRatio="none"><path d="M6,14 C40,22 70,42 110,50 S200,64 294,70" fill="none" stroke="#ffb13d" stroke-width="2.5"/></svg></div>
+    <div class="ins">📉 Your runs sit easier than your 4:57 threshold (best 1 k 6:08) — base miles. Add tempo/intervals.</div>
+    <div class="divider"></div>
+    <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:4px">Best efforts</div>
+    <table class="bet"><thead><tr><th class="l"></th><th>This season</th><th class="best">All time</th></tr></thead><tbody>
+      <tr><td class="l">1 km</td><td><span class="v">4:39</span></td><td class="best"><span class="v">—</span></td></tr>
+      <tr><td class="l">5 km</td><td><span class="v">26:23</span><span class="s">5:16/km</span></td><td class="best"><span class="v">23:12</span><span class="s">4:38/km</span></td></tr>
+      <tr><td class="l">10 km</td><td><span class="v">1:07:20</span><span class="s">6:44/km</span></td><td class="best"><span class="v">50:59</span><span class="s">5:06/km</span></td></tr>
+    </tbody></table>
+  </div>
+</div>
+
+<!-- ============ V3: distance rows ============ -->
+<div id="v3" class="hide">
+  <div class="card">
+    <div class="legend">● Pace curve ⓘ</div>
+    <div class="curve"><svg viewBox="0 0 300 74" preserveAspectRatio="none"><path d="M6,14 C40,22 70,42 110,50 S200,64 294,70" fill="none" stroke="#ffb13d" stroke-width="2.5"/></svg></div>
+    <div class="ins">📉 Your runs sit easier than your 4:57 threshold (best 1 k 6:08) — base miles. Add tempo/intervals.</div>
+  </div>
+  <div class="stat-sub">Best efforts <em>· this season vs all time</em></div>
+  <div class="er"><span class="d">1 km</span><div class="cell"><div class="k">This season</div><div class="v">4:39</div></div><div class="cell"><div class="k">All time</div><div class="v best">—</div></div></div>
+  <div class="er"><span class="d">5 km</span><div class="cell"><div class="k">This season</div><div class="v">26:23</div><div class="s">5:16/km</div></div><div class="cell"><div class="k">All time</div><div class="v best">23:12</div><div class="s">4:38/km</div></div></div>
+  <div class="er"><span class="d">10 km</span><div class="cell"><div class="k">This season</div><div class="v">1:07:20</div><div class="s">6:44/km</div></div><div class="cell"><div class="k">All time</div><div class="v best">50:59</div><div class="s">5:06/km</div></div></div>
+</div>
+
+<!-- COMMON: zones + Coros race predictions -->
+<div class="stat-sub">Training pace zones <em>· cool → hard</em></div>
+<div class="z" style="--zc:#5ec8ff"><div class="zn">Easy<small>recovery & long runs</small></div><div class="zp">6:21–5:44<em> /km</em></div></div>
+<div class="z" style="--zc:#34e07d"><div class="zn">Marathon<small>steady race pace</small></div><div class="zp">5:20<em> /km</em></div></div>
+<div class="z" style="--zc:#f5b53d"><div class="zn">Threshold<small>comfortably hard</small></div><div class="zp">5:00<em> /km</em></div></div>
+<div class="z" style="--zc:#ff8f3d"><div class="zn">Interval<small>VO₂max efforts</small></div><div class="zp">4:30<em> /km</em></div></div>
+<div class="z" style="--zc:#ff5d5d"><div class="zn">Rep<small>speed & economy</small></div><div class="zp">4:14<em> /km</em></div></div>
+
+<div class="stat-sub">Race predictions <em>· projected from your VDOT</em></div>
+<div class="rp">
+  <div class="rph"><span>Distance</span><span>Time</span><span>Avg pace</span></div>
+  <div class="rpr"><span class="d">5K</span><span class="t">23:36</span><span class="p">4:43/km</span></div>
+  <div class="rpr"><span class="d">10K</span><span class="t">48:58</span><span class="p">4:54/km</span></div>
+  <div class="rpr"><span class="d">Half</span><span class="t">1:48:35</span><span class="p">5:09/km</span></div>
+  <div class="rpr"><span class="d">Marathon</span><span class="t">3:45–4:03</span><span class="p">5:20–5:46</span></div>
+</div>
+
+<script>
+function pick(n){for(const i of [1,2,3]){document.getElementById('b'+i).classList.toggle('on',i===n);document.getElementById('v'+i).classList.toggle('hide',i!==n)}}
+</script>

@@ -433,6 +433,7 @@ async function applySportStat(user, body = {}) {
   if ('maxHr' in body) patch.maxHr = numOr(body.maxHr, 120, 230)
   if ('lthr' in body) patch.lthr = numOr(body.lthr, 90, 220)
   if ('thresholdPace' in body) patch.thresholdPace = group === 'running' ? numOr(body.thresholdPace, 120, 900) : numOr(body.thresholdPace, 40, 300)
+  if ('tte' in body) patch.tte = numOr(body.tte, 30, 14400) // #401 — TTE seconds (our benchmark, not an intervals field; stored locally, not synced)
 
   user.sportSettings = user.sportSettings || {}
   user.sportSettings[group] = { ...(user.sportSettings[group] || {}), ...patch }
