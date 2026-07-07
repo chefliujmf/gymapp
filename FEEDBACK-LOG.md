@@ -510,7 +510,12 @@ test guide → the **🧪 Test guide** section below.
     — with W/kg. THE design problem = **mobile**: his reference is a 9-col desktop table; the no-horizontal-scroll rule needs a plan
     (sticky-label scroll table / 2-col + season toggle / This-vs-All-time). MOCK 3 layouts first. Data: intervals power-curves/pace-curves
     accept multiple `curves=` specs (per-season date ranges) + per-curve `powerModels` (per-season CP/W′/FTP). Supersedes #400's 2-col design.
-    gymapp-only (+ maybe a curve-fetch tweak). See [[platyplus-chart-standard]] · options-first.
+    gymapp-only (+ maybe a curve-fetch tweak). See [[platyplus-chart-standard]] · options-first. 🔨 MOCKED 3 layouts (mockups/best-efforts-table.html,
+    real data 5s→8h + metric rows). **JM picked: "A for the list of metrics, B to compare"** + (new Q) **overlay 2 seasons on the power-curve
+    CHART**. DECISION = combined section, one "Compare to" control drives all: (1) **curve chart overlays 2 season lines** (This + picked —
+    intervals compare view; TrendChart multi-series); (2) **table has an [All seasons | Compare] toggle** — All = layout A full scroll table
+    (every season × every metric, label col pinned, page never scrolls), Compare = layout B (This vs picked + Δ-to-PR). Data: garbage-filter
+    pace buckets (all-time 400m/1k came back 0:02/0:08 → reject pace <2:30/km). Build after the combined mock is approved.
 408. 🔨 **Drop the absolute "never demand a test" — allow an OCCASIONAL, TRIGGERED test.** JM 2026-07-07: "remove the never demand a
     test, I'll do it if really needed but not too frequent, and if there's a way to know [when to] do one then let's do that instead."
     #403/#404 baked a dogmatic "NEVER prescribe a test / no formal test needed" into the coach brain, athlete-profile, docs. Reframe (all
@@ -519,6 +524,23 @@ test guide → the **🧪 Test guide** section below.
     or a goal-block start. Give the coach that rule = the "way to know". Touch: `src/athlete-profile.ts` + `server/perf-metrics.js` (mirror,
     focus line) + coach-engine cycling & running + docs/beyond-ftp-metrics.md + the 2 unit tests + memory. Server-only → QA auto-deploy
     (no mcp rsync; mcp/server.js unchanged). gymapp + coach.
+409. 🔨 **"Finish setting up" checklist keeps REAPPEARING though setup was done long ago.** JM 2026-07-07 (QA, screenshot 3/6).
+    ROOT CAUSE (diagnosed, NOT a detection bug): (a) **Strava step = localStorage ack** (`getAck('strava')`, SetupChecklist.tsx) —
+    per-DOMAIN + per-device, so a prod ack never shows on the QA domain and any storage-clear resets it → the card can NEVER hit 6/6
+    → nags forever (affects prod too on a new device). (b) **equipment + availability read `user.info.*` from the QA Postgres, which
+    is SEPARATE from prod** — JM set them on prod (equip=5, full weekly avail) so QA's DB genuinely lacks them (info keys on QA:
+    lat/lon/sex/sports/coachName/sleepNeed only). FIX: persist the Strava ack SERVER-side (`info.stravaAcked` via saveProfile, like
+    Availability does) + copy JM's prod equip/avail → QA (one-time). Then 6/6 → hides durably. (Optional: a server-persisted dismiss.) gymapp-only.
+410. 🔨 **Best-efforts mock rework (JM critiques the combined mock).** JM 2026-07-07: "why does Compare REMOVE metrics like CP? why 2
+    tabs when the first tab already shows the other seasons? doesn't fit; and the graph Compare-to pills (All time / Last season) show
+    both curves but clicking does nothing." Valid: (1) the Compare (B) table dropped the metric rows — KEEP metrics always; (2) the
+    [All seasons | Compare] 2-tab is redundant — the full table already shows all seasons → DROP the tabs, ONE full table (all seasons ×
+    all metrics, A-style scroll); (3) the graph "Compare to" pills must ACTUALLY switch the overlaid 2nd curve (mock hardcoded All-time).
+    Rework mockups/best-efforts-full.html + fetch a real last-season curve so the pills do something. gymapp-only.
+411. 🔨 **Workout detail: the "Mind" section body is EMPTY while its content hides behind a "why" chip.** JM 2026-07-07 (screenshot):
+    "don't get the Mind — the section is empty but the why is a chip to click." Fuel shows its text inline (+ a why chip); Mind shows only
+    a "why ⓘ" chip with no body, so it reads as broken/empty (the real "Mental focus — Restraint…" is buried in the why sheet). FIX: if a
+    section has no inline body, show its content in the body (not only behind "why"), OR hide the empty section header. gymapp-only.
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
     passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");
