@@ -7,7 +7,7 @@ import { fetchWellness, fetchPowerCurve, fetchPaceCurve, type PowerCurve, type P
 import { estimateSleepNeed } from './sleep'
 import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from './tte'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, confLabel } from './vo2max-submax'
-import { vo2maxConfidence, ftpConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, type Confidence } from './benchmark-confidence'
+import { vo2maxConfidence, ftpConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, modelFitConfidence, type Confidence } from './benchmark-confidence'
 
 // #236 — benchmarks = MANUAL vs COMPUTED. Tiles show the in-use value; tap → a sheet with BOTH values,
 // an input (editable only in Manual), and a Manual|Computed toggle. A per-stat preference (user.statPrefs)
@@ -17,7 +17,7 @@ import { vo2maxConfidence, ftpConfidence, thresholdPaceConfidence, maxHrConfiden
 // N methods" (computed live for VO₂max), and a "Sharpen it" callout. See mockups/benchmark-cards.html.
 type Pref = 'manual' | 'computed' | 'auto' // #277 auto = use computed once it's ready, manual until then
 // #385 — exported so per-sport Stats pages can pass `only` to show the same polished cards, filtered.
-export type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed' | 'tteRide' | 'tteRun' // #337 sleep · #401 TTE per sport
+export type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed' | 'tteRide' | 'tteRun' | 'cp' | 'wPrime' | 'cs' | 'dPrime' // #337 sleep · #401 TTE · #403 CP/W′/CS/D′
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n))
 const numParse = (lo: number, hi: number) => (s: string) => { const n = Number(s); return Number.isFinite(n) && n > 0 ? clamp(n, lo, hi) : null }
 // #401 — a manual TTE typed as m:ss / h:mm:ss (or bare minutes) → seconds.
@@ -165,6 +165,11 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
   const tteRunObs = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, paceManual ?? paceEst) : null
   const tteRunEst = paceCurve ? tteModelPace(paceManual ?? paceEst, paceCurve.cs, paceCurve.dPrime) : null
   const tteRun = tteRunObs ?? tteRunEst, tteRunEstimated = tteRunObs == null && tteRunEst != null
+  // #403 — CP/W′ (cycling) + CS/D′ (running) from the power/pace-duration model fit. CS shown as a pace (sec/km).
+  const cp = powerCurve?.cp ?? null
+  const wPrimeKj = powerCurve?.wPrime != null ? Math.round(powerCurve.wPrime / 100) / 10 : null // kJ, 0.1 precision
+  const csPace = paceCurve?.cs != null && paceCurve.cs > 0 ? Math.round(1000 / paceCurve.cs) : null // sec/km
+  const dPrimeM = paceCurve?.dPrime != null ? Math.round(paceCurve.dPrime) : null // metres
 
   const saveSport = (group: 'cycling' | 'running', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
   // #337 — "when will the computed estimate land?" straight from our theory gates, so nothing just says
@@ -247,6 +252,36 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
       narr: <>How long you can hold your <b>threshold pace</b> before fatigue — normally <b>30–70 min</b>. Read off your pace curve once you've held it that long, else estimated from your pace-duration model. A short one usually means your threshold pace is set too fast — or extend it with sustained threshold runs (3×15–20 min @ threshold).</>,
       sci: [{ name: 'From your pace curve', formula: 'longest time ≤ threshold', value: tteRunObs != null ? fmtTte(tteRunObs) : '—', inUse: !tteRunEstimated && tteRun != null }, { name: 'Modeled', formula: 'from your pace-duration fit', value: tteRunEst != null ? fmtTte(tteRunEst) : '—', inUse: tteRunEstimated }],
       sharpen: 'sustained threshold runs (15–40 min, ~5 k–10 k effort) extend your TTE — or ease your threshold pace toward your critical speed.',
+    },
+    // #403 — CP · W′ (cycling) and CS · D′ (running): the power/pace-duration model. Modelled from the curve (no
+    // test); manual override persists via the sport-stat whitelist. Per-sport pages only.
+    {
+      key: 'cp', label: 'Critical Power', unit: 'W', computed: cp, computedSrc: 'your sustainable ceiling (power-duration fit)', pending: cp == null ? 'after a few hard efforts across durations — the model needs points to fit' : undefined, manual: (ss.cycling as { cp?: number })?.cp ?? null, fmt: String, parse: numParse(60, 500), save: (v) => saveSport('cycling', { cp: v }),
+      chip: 'Curve', conf: modelFitConfidence({ value: cp, r2: powerCurve?.r2 }),
+      narr: <>Your <b>Critical Power</b> — the highest power you can hold near-indefinitely (the asymptote of your power curve): your true aerobic ceiling, which FTP sits just above. More precise than FTP because it's modelled from efforts across many durations.</>,
+      sci: [{ name: 'Power-duration model', formula: '2-param CP/W′ fit', value: cp != null ? `${cp} W` : '—', inUse: cp != null }],
+      sharpen: 'hard efforts of varied length (1–20 min) sharpen the CP/W′ fit.',
+    },
+    {
+      key: 'wPrime', label: 'W′', unit: 'kJ', computed: wPrimeKj, computedSrc: 'anaerobic work capacity above CP', pending: wPrimeKj == null ? 'after some short max efforts — the model needs sprint points' : undefined, manual: (ss.cycling as { wPrime?: number })?.wPrime ?? null, fmt: String, parse: numParse(2, 60), save: (v) => saveSport('cycling', { wPrime: v }),
+      chip: 'Curve', conf: modelFitConfidence({ value: wPrimeKj, r2: powerCurve?.r2 }),
+      narr: <>Your <b>W′</b> ("W-prime") — the finite work you can do ABOVE Critical Power before you're cooked: your anaerobic "battery" for attacks, surges and sprints. A big W′ = puncheur; a small one = diesel. Short hard repeats grow it.</>,
+      sci: [{ name: 'Power-duration model', formula: 'work above CP (kJ)', value: wPrimeKj != null ? `${wPrimeKj} kJ` : '—', inUse: wPrimeKj != null }],
+      sharpen: 'short near-max repeats (30 s–3 min) build W′.',
+    },
+    {
+      key: 'cs', label: 'Critical Speed', unit: '/km', computed: csPace, computedSrc: 'your sustainable running ceiling', pending: csPace == null ? 'after a few hard runs across distances — the model needs points' : undefined, manual: (ss.running as { cs?: number })?.cs ?? null, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { cs: v }),
+      chip: 'Curve', conf: modelFitConfidence({ value: csPace, r2: paceCurve?.r2 }),
+      narr: <>Your <b>Critical Speed</b> — the running analogue of Critical Power: the fastest pace you can hold near-indefinitely, your true aerobic ceiling. If your threshold pace is much faster than this, it's set too optimistic.</>,
+      sci: [{ name: 'Pace-duration model', formula: '2-param CS/D′ fit', value: csPace != null ? `${fmtPace(csPace)}/km` : '—', inUse: csPace != null }],
+      sharpen: 'hard runs of varied distance (1 k–5 k) sharpen the CS/D′ fit.',
+    },
+    {
+      key: 'dPrime', label: 'D′', unit: 'm', computed: dPrimeM, computedSrc: 'anaerobic distance reserve above CS', pending: dPrimeM == null ? 'after some short fast reps — the model needs sprint points' : undefined, manual: (ss.running as { dPrime?: number })?.dPrime ?? null, fmt: String, parse: numParse(50, 400), save: (v) => saveSport('running', { dPrime: v }),
+      chip: 'Curve', conf: modelFitConfidence({ value: dPrimeM, r2: paceCurve?.r2 }),
+      narr: <>Your <b>D′</b> ("D-prime") — the finite distance you can cover ABOVE Critical Speed before fatigue: your anaerobic reserve for kicks and surges. Short fast reps grow it.</>,
+      sci: [{ name: 'Pace-duration model', formula: 'distance above CS (m)', value: dPrimeM != null ? `${dPrimeM} m` : '—', inUse: dPrimeM != null }],
+      sharpen: 'short fast reps (200–600 m) build D′.',
     },
     {
       key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: compMaxHr, computedSrc: maxHrFrom === 'observed' ? `observed peak — highest HR in your last 180 days${maxHrSamples > 1 ? ` (hit ${maxHrSamples}×)` : ''}` : 'your zone ceiling from intervals — beat it in an all-out effort to raise it', pending: 'after your next all-out effort with a HR strap/watch — we read your true peak, not an age formula', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }),

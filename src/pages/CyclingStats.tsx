@@ -47,7 +47,7 @@ export default function CyclingStats() {
       ) : (
         <>
           {/* #385 — same polished benchmark cards as Global, filtered to cycling (FTP · VO₂max · Max HR). */}
-          <BenchmarksCard only={['ftp', 'vo2max', 'maxHr', 'tteRide']} />
+          <BenchmarksCard only={['ftp', 'cp', 'wPrime', 'vo2max', 'tteRide', 'maxHr']} />
           <DateRangeFilter presets={TRAINING_PRESETS} from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
           {rows === null ? <p className="meta">Loading…</p> : (
             <>

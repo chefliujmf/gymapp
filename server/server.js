@@ -434,6 +434,10 @@ async function applySportStat(user, body = {}) {
   if ('lthr' in body) patch.lthr = numOr(body.lthr, 90, 220)
   if ('thresholdPace' in body) patch.thresholdPace = group === 'running' ? numOr(body.thresholdPace, 120, 900) : numOr(body.thresholdPace, 40, 300)
   if ('tte' in body) patch.tte = numOr(body.tte, 30, 14400) // #401 — TTE seconds (our benchmark, not an intervals field; stored locally, not synced)
+  if (group === 'cycling' && 'cp' in body) patch.cp = numOr(body.cp, 60, 500)   // #403 critical power (W)
+  if (group === 'cycling' && 'wPrime' in body) patch.wPrime = numOr(body.wPrime, 2, 60) // #403 W′ (kJ)
+  if (group === 'running' && 'cs' in body) patch.cs = numOr(body.cs, 120, 900)  // #403 critical speed (sec/km)
+  if (group === 'running' && 'dPrime' in body) patch.dPrime = numOr(body.dPrime, 50, 400) // #403 D′ (m)
 
   user.sportSettings = user.sportSettings || {}
   user.sportSettings[group] = { ...(user.sportSettings[group] || {}), ...patch }

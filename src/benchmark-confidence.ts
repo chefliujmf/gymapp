@@ -67,6 +67,23 @@ export function tteConfidence({ tte, estimated }: TteInputs): Confidence {
   return conf(45, 'learn', 'Learning · a longer threshold effort') // < 15 min
 }
 
+// #403 — CP/W′ (and running CS/D′) come from the SAME power-duration model fit intervals maintains; trust
+// tracks the model's r² (fit quality) and whether it's present. Curve-derived, no manual test needed.
+export interface ModelInputs { value: number | null; r2?: number | null }
+export function modelFitConfidence({ value, r2 }: ModelInputs): Confidence {
+  if (value == null) return conf(30, 'learn', 'Learning · needs a few hard efforts')
+  if (r2 != null && r2 >= 0.99) return conf(92, 'strong', 'Strong fit')
+  if (r2 != null && r2 >= 0.95) return conf(72, 'learn', 'Good fit')
+  return conf(55, 'learn', 'Modeled · add efforts to firm up')
+}
+// #403 — Efficiency Factor: trust grows with the number of comparable aerobic rides in the trend.
+export interface EfInputs { latest: number | null; samples: number }
+export function efConfidence({ latest, samples }: EfInputs): Confidence {
+  if (latest == null || samples < 1) return conf(28, 'learn', 'Learning · needs steady aerobic rides')
+  if (samples >= 6) return conf(88, 'strong', 'Strong trend')
+  return conf(Math.min(85, 30 + samples * 10), 'learn', `Learning · ${samples} / 6 rides`)
+}
+
 export function sleepNeedConfidence({ est, needMore }: SleepInputs): Confidence {
   if (est != null && !needMore) return conf(90, 'strong', 'Dialed in')
   if (est != null || needMore != null) {

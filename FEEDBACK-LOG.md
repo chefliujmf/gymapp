@@ -465,7 +465,7 @@ test guide → the **🧪 Test guide** section below.
     6–10 min rec, total work ≈ current TTE), only flag FTP-too-high when TTE ≪ 30 min vs eFTP. Built: `docs/tte.md` (full theory +
     tables, cited) + a concise TTE section in `coach-engine-cycling.md` + reframed the TTE benchmark narr/sharpen (references the
     30–70 min norm + "extend via threshold work, not more watts"). ⚠️ verify coach-engine reaches the host coach on deploy. gymapp + coach.
-403. ⬜ **"Beyond FTP" metrics — CP · W′ · Efficiency Factor (+ running equivalents) as benchmarks AND graphs + coach brain.** JM
+403. 🔨 **"Beyond FTP" metrics — CP · W′ · Efficiency Factor (+ running equivalents) as benchmarks AND graphs + coach brain.** JM
     2026-07-07 shared 3 sources (mattbottrill "beyond FTP", joinvekta CP/W′, roadman EF/Joe-Friel). Wants the metrics that really
     drive performance, running equivalents where they exist, the COACH to reason with them, and GRAPHS to our chart standard. Plan:
     (a) **CP + W′** (cycling) and **CS + D′** (running) as learned benchmark cards — DATA ALREADY EXTRACTED (`PowerCurve.cp/wPrime`,

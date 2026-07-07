@@ -67,7 +67,7 @@ export default function RunningStats() {
         <>
           {/* #385/#398 — the benchmark cards (Threshold pace · VO₂max · Max HR) are the single source: each shows the
               value + confidence and taps open a sheet to edit (manual value) / switch manual↔computed. No duplicate cell. */}
-          <BenchmarksCard only={['thresholdPace', 'vo2max', 'maxHr', 'tteRun']} />
+          <BenchmarksCard only={['thresholdPace', 'cs', 'dPrime', 'vo2max', 'tteRun', 'maxHr']} />
           {vo2 && hrRatioMismatch &&<p className="meta" style={{ margin: '10px 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
 
           {/* #396 — mean-max PACE curve (running's power curve): fastest pace held for each duration, from intervals. */}
