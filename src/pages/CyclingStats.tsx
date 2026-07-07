@@ -8,6 +8,7 @@ import { hasModule } from '../modules'
 import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
 import { MiniCard, last } from './Fitness'
 import { BenchmarksCard } from '../Benchmarks'
+import SeasonCompare from '../SeasonCompare'
 
 // #225 — Cycling per-sport stats: power curve · eFTP · VO₂max · W/kg. Split out of /fitness (which
 // is now global Load & Form only).
@@ -69,6 +70,8 @@ export default function CyclingStats() {
                   </div>
                 </div>
               ) : <p className="meta" style={{ marginTop: 10 }}>No power-curve data in this range.</p>}
+              {/* #407 — season comparison: overlay 2 seasons + a best-efforts compare table (fixed trailing windows). */}
+              <SeasonCompare sport="cycling" weight={last(s.weight)} />
               {/* #403 — Efficiency Factor: aerobic engine (power ÷ HR), rising = fitter even when FTP is flat. */}
               {ef && ef.points.length >= 2 && (
                 <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>

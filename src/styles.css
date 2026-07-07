@@ -1705,3 +1705,30 @@ select.search { appearance: none; -webkit-appearance: none; }
 /* disabled Move row (icu-origin events) */
 .act-row--disabled { color: var(--text-dim); opacity: .8; cursor: default; }
 .act-row--disabled:active { transform: none; }
+
+/* #407 — season comparison (curve overlay + compare table + picker) */
+.sc-card { margin-bottom: 14px; }
+.sc-load { color: var(--text-dim); font-size: 13px; padding: 8px 2px; }
+.sc-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.sc-legend { display: flex; gap: 16px; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+.sc-legend span { display: inline-flex; align-items: center; }
+.sc-dot { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 6px; }
+.sc-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 11px; }
+.sc-pick .meta { font-size: 11px; }
+.sc-pill { padding: 6px 12px; border: 1px solid var(--line); background: #12151b; color: var(--text-dim); border-radius: 20px; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.sc-pill.on { background: #22303f; color: var(--blue, #5aa9ff); border-color: #2f4a63; }
+.sc-tablewrap { overflow-x: auto; }
+.sc-table { border-collapse: collapse; width: 100%; }
+.sc-table th, .sc-table td { padding: 7px 8px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sc-table thead th { color: var(--text-dim); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; border-bottom: 1px solid var(--line); }
+.sc-table thead th.sc-blue { color: var(--blue, #5aa9ff); }
+.sc-table tbody td { border-bottom: 1px solid #1c2029; font-size: 12.5px; }
+.sc-table td.sc-lbl { text-align: left; font-weight: 700; color: var(--text); }
+.sc-v { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 1.15; }
+.sc-sub { color: var(--text-dim); font-size: 10px; font-style: normal; }
+.sc-dim { color: var(--text-dim); }
+.sc-d { font-weight: 700; } .sc-d--up { color: var(--accent); } .sc-d--dn { color: #ff7a7a; } .sc-d--eq { color: var(--text-dim); font-weight: 400; }
+.sc-msep td { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; padding: 9px 2px 3px; font-weight: 700; text-align: left; border: 0; }
+.sc-mrow td { border-bottom: 1px solid #171a21; }
+.sc-mrow td.sc-lbl { color: var(--accent); }
+.sc-insight { color: var(--text-dim); font-size: 11px; line-height: 1.45; margin-top: 9px; }

@@ -1,0 +1,133 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Season compare v3 — pick ANY season or custom range (#407)</title>
+<style>
+  :root{ --text:#eef1f4; --dim:#9298a6; --accent:#34e07d; --blue:#5aa9ff; --line:#252a34; }
+  *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body{ background:#080a0d; color:var(--text); font:14px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; padding:14px; }
+  .phone{ max-width:430px; margin:0 auto; }
+  h1{ font-size:15px; font-weight:700; margin-bottom:3px; }
+  .sub{ color:var(--dim); font-size:11.5px; margin-bottom:12px; }
+  .card{ background:linear-gradient(160deg,#21252f,#191c24); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:14px; }
+  .ctitle{ font-size:13px; font-weight:700; margin-bottom:8px; }
+  .insight{ color:var(--dim); font-size:11px; margin-top:9px; line-height:1.45; }
+  .insight b{ color:var(--text); }
+  .leg{ display:flex; gap:14px; font-size:10.5px; color:var(--dim); margin-bottom:2px; }
+  .dot{ display:inline-block; width:9px; height:3px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+  /* flexible picker — WRAPS, never scrolls sideways */
+  .pk{ margin:6px 0 2px; }
+  .pk__lbl{ color:var(--dim); font-size:11px; margin-bottom:7px; }
+  .pk__row{ display:flex; flex-wrap:wrap; gap:7px; }
+  .pk__row button{ padding:6px 12px; border:1px solid var(--line); background:#12151b; color:var(--dim); border-radius:20px; font-size:11.5px; font-weight:600; cursor:pointer; }
+  .pk__row button.on{ background:#22303f; color:var(--blue); border-color:#2f4a63; }
+  .pk__row button.add{ color:var(--accent); border-style:dashed; border-color:#2f5a44; }
+  .range{ display:none; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; background:#12151b; border:1px solid var(--line); border-radius:12px; padding:10px; }
+  .range.show{ display:flex; }
+  .range label{ color:var(--dim); font-size:10.5px; display:block; margin-bottom:3px; }
+  .range input{ background:#0c0f14; border:1px solid var(--line); border-radius:8px; color:var(--text); padding:7px 9px; font-size:12px; width:130px; }
+  .range .apply{ background:var(--accent); color:#062; border:0; border-radius:8px; padding:8px 14px; font-weight:700; font-size:12px; cursor:pointer; align-self:flex-end; }
+  table{ border-collapse:collapse; width:100%; margin-top:4px; }
+  th,td{ padding:7px 8px; text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  thead th{ color:var(--dim); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; border-bottom:1px solid var(--line); }
+  thead th.pick{ color:var(--blue); }
+  tbody td{ border-bottom:1px solid #1c2029; font-size:12.5px; }
+  td.lbl{ text-align:left; font-weight:700; }
+  .metricrow td.lbl{ color:var(--accent); } .metricrow td{ border-bottom:1px solid #171a21; }
+  .wkg{ color:var(--dim); font-size:10px; }
+  .rk{ color:var(--dim); }
+  .cell2{ display:flex; flex-direction:column; align-items:flex-end; line-height:1.12; }
+  .d-up{ color:var(--accent); font-weight:700; } .d-dn{ color:#ff7a7a; font-weight:700; } .d-eq{ color:var(--dim); }
+  .mhead{ font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; padding:9px 2px 3px; font-weight:700; text-align:left; }
+</style>
+
+<div class="phone">
+  <h1>Season comparison <span style="color:var(--dim);font-weight:500">· v3 (flexible picker)</span></h1>
+  <div class="sub">This season vs <b style="color:var(--text)">any season — or a custom date range</b> you add. Real cycling data.</div>
+
+  <div class="card">
+    <div class="ctitle" id="curveTitle">Power curve · overlay</div>
+    <div class="leg"><span><span class="dot" style="background:var(--accent)"></span>This season</span><span><span class="dot" style="background:var(--blue)"></span><span id="legCmp">All time</span></span></div>
+    <svg id="chart" viewBox="0 0 400 210" width="100%" preserveAspectRatio="none" style="display:block"></svg>
+    <div class="insight" id="curveInsight"></div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">Best efforts</div>
+    <div class="pk">
+      <div class="pk__lbl">Compare this season to:</div>
+      <div class="pk__row" id="pills">
+        <button data-k="last">Last season</button>
+        <button data-k="s2">2 seasons ago</button>
+        <button data-k="all" class="on">All time</button>
+        <button data-k="custom" class="add">＋ Custom range</button>
+      </div>
+      <div class="range" id="range">
+        <div><label>From</label><input type="date" value="2025-03-01"></div>
+        <div><label>To</label><input type="date" value="2025-06-30"></div>
+        <button class="apply" onclick="applyRange()">Apply</button>
+      </div>
+    </div>
+    <table><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+    <div class="insight" id="tblInsight"></div>
+  </div>
+</div>
+
+<script>
+const W=74.4, wkg=w=>(w/W).toFixed(2);
+const DS=[[5,'5s'],[60,'60s'],[300,'5m'],[1200,'20m'],[3600,'1h'],[7200,'2h'],[10800,'3h'],[14400,'4h'],[18000,'5h'],[21600,'6h'],[28800,'8h']];
+const seasons={
+  this:{label:'This season', v:[837,392,310,229,213,168,149,128,123,null,null]},
+  last:{label:'Last season', v:[966,431,310,246,213,177,149,128,123,null,null]},
+  s2:  {label:'2 seasons ago',v:[986,431,310,246,213,177,149,139,135,null,null]},
+  all: {label:'All time',    v:[1079,448,310,246,214,180,149,139,135,120,82]},
+  custom:{label:'Mar–Jun 2025',v:[930,415,305,241,211,172,148,131,125,null,null]},
+};
+// metrics: value per season key (— when absent)
+const metrics=[
+  ['FTP',   {this:'260',all:'260'},'W'],
+  ['CP',    {all:'248'},'W'],
+  ["W′",    {all:'17.1'},'kJ'],
+  ['MAP',   {all:'278'},'W'],
+  ['VO₂max',{this:'53.5',last:'51',s2:'54',all:'57',custom:'52'},''],
+  ['TTE',   {this:'10:00',last:'18:00',s2:'15:00',all:'13:00'},''],
+];
+let pick='all';
+const curveOf=key=>DS.map((d,i)=>seasons[key].v[i]!=null?[d[0],seasons[key].v[i]]:null).filter(Boolean);
+
+function drawCurve(){
+  const pl={l:34,r:10,t:10,b:22}, w=400,h=210, pw=w-pl.l-pl.r, ph=h-pl.t-pl.b, lx=x=>Math.log(x);
+  const xmin=lx(5), xmax=lx(28800), X=x=>pl.l+(lx(x)-xmin)/(xmax-xmin)*pw, ymin=50, ymax=1120, Y=v=>pl.t+(1-(v-ymin)/(ymax-ymin))*ph;
+  const line=(d,c,wd)=>d.length?`<path d="${d.map((p,i)=>`${i?'L':'M'}${X(p[0]).toFixed(1)} ${Y(p[1]).toFixed(1)}`).join(' ')}" fill="none" stroke="${c}" stroke-width="${wd}" stroke-linejoin="round"/>`+d.map(p=>`<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="2.4" fill="${c}"/>`).join(''):'';
+  let g=`<line x1="${pl.l}" y1="${pl.t}" x2="${pl.l}" y2="${h-pl.b}" stroke="#333a45"/><line x1="${pl.l}" y1="${h-pl.b}" x2="${w-pl.r}" y2="${h-pl.b}" stroke="#333a45"/>`;
+  g+=[[5,'5s'],[60,'1m'],[300,'5m'],[1200,'20m'],[3600,'1h'],[10800,'3h'],[28800,'8h']].map(t=>`<text x="${X(t[0]).toFixed(1)}" y="${h-8}" fill="#9298a6" font-size="8.5" text-anchor="middle">${t[1]}</text>`).join('');
+  g+=[100,300,500,700,900,1100].map(v=>`<text x="${pl.l-4}" y="${(Y(v)+3).toFixed(1)}" fill="#9298a6" font-size="8" text-anchor="end">${v}</text>`).join('');
+  g+=line(curveOf(pick),'#5aa9ff',2)+line(curveOf('this'),'#34e07d',2.4);
+  document.getElementById('chart').innerHTML=g;
+}
+function render(){
+  const S=seasons[pick];
+  document.getElementById('thead').innerHTML=`<tr><th style="text-align:left">Time</th><th>This season</th><th class="pick">${S.label} ▾</th><th>Δ</th></tr>`;
+  const rows=DS.map((d,i)=>{ const a=seasons.this.v[i], b=S.v[i];
+    const cell=v=>v==null?'<span class=rk>—</span>':`<div class="cell2"><span>${v}</span><span class="wkg">${wkg(v)} w/kg</span></div>`;
+    let dl='<span class="d-eq">—</span>'; if(a!=null&&b!=null){ const raw=a-b, cls=raw>0?'d-up':raw<0?'d-dn':'d-eq'; dl=`<span class="${cls}">${raw>0?'+':''}${raw===0?'0':raw+'W'}</span>`; }
+    return `<tr><td class="lbl">${d[1]}</td><td>${cell(a)}</td><td>${cell(b)}</td><td>${dl}</td></tr>`; }).join('');
+  const mets=metrics.map(([k,vals,u])=>{ const a=vals.this, b=vals[pick];
+    const f=v=>v?v+(u?' '+u:''):'<span class=rk>—</span>';
+    let dl='<span class="d-eq">—</span>'; const na=parseFloat(a),nb=parseFloat(b); if(!isNaN(na)&&!isNaN(nb)){const raw=Math.round((na-nb)*10)/10, cls=raw>0?'d-up':raw<0?'d-dn':'d-eq'; dl=`<span class="${cls}">${raw>0?'+':''}${raw}${u||''}</span>`;}
+    return `<tr class="metricrow"><td class="lbl">${k}</td><td>${f(a)}</td><td>${f(b)}</td><td>${dl}</td></tr>`; }).join('');
+  document.getElementById('tbody').innerHTML=rows+`<tr><td class="mhead" colspan="4">Metrics</td></tr>`+mets;
+  document.getElementById('legCmp').textContent=S.label;
+  document.getElementById('curveInsight').innerHTML= pick==='all'
+    ? 'Your <b>5 s–1 min</b> is well down on all-time (837 vs 1079 W) — top-end faded; <b>5 min–3 h</b> match your PR.'
+    : pick==='custom' ? `Vs your <b>${S.label}</b> block: sprint −93 W, 20 min −12 W — you were sharper mid-2025. Good target for a build.`
+    : `Vs <b>${S.label.toLowerCase()}</b>: a touch down across the board — a lighter block so far, not a cliff.`;
+  document.getElementById('tblInsight').innerHTML=`<b>Δ</b> = this season vs ${S.label.toLowerCase()} (<span class="d-up">green</span> above, <span class="d-dn">red</span> below). Add more seasons or a <b>custom range</b> above — the curve + table follow.`;
+  drawCurve();
+}
+function setPick(k){ pick=k; document.querySelectorAll('#pills button').forEach(x=>x.classList.toggle('on',x.dataset.k===k)); document.getElementById('range').classList.toggle('show',k==='custom'); render(); }
+window.applyRange=()=>{ const f=document.querySelectorAll('.range input')[0].value, t=document.querySelectorAll('.range input')[1].value;
+  const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const lab=(d)=>{const x=new Date(d+'T00:00');return mo[x.getMonth()]+" '"+String(x.getFullYear()).slice(2);};
+  seasons.custom.label=lab(f)+'–'+lab(t); render(); };
+document.querySelectorAll('#pills button').forEach(b=>b.onclick=()=>setPick(b.dataset.k));
+const q=new URLSearchParams(location.search); if(q.get('k')) setPick(q.get('k')); else render();
+</script>

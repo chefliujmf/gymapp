@@ -1,0 +1,189 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Best efforts — season comparison (#407)</title>
+<style>
+  :root{ --text:#eef1f4; --dim:#9298a6; --accent:#34e07d; --blue:#5aa9ff; --bg:#0f1216; --line:#252a34; }
+  *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body{ background:#080a0d; color:var(--text); font:14px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; padding:14px; }
+  .phone{ max-width:430px; margin:0 auto; }
+  h1{ font-size:15px; margin:2px 0 10px; font-weight:700; }
+  .sub{ color:var(--dim); font-size:12px; margin-bottom:12px; }
+  .pick{ display:flex; gap:6px; margin-bottom:14px; }
+  .pick button{ flex:1; padding:8px 4px; border:1px solid var(--line); background:#12151b; color:var(--dim); border-radius:9px; font-size:11.5px; font-weight:600; cursor:pointer; }
+  .pick button.on{ background:var(--accent); color:#062; border-color:var(--accent); }
+  .card{ background:linear-gradient(160deg,#21252f,#191c24); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:14px; }
+  .ctitle{ font-size:13px; font-weight:700; margin-bottom:2px; }
+  .cnote{ color:var(--dim); font-size:11px; margin-bottom:12px; }
+  .tag{ display:inline-block; font-size:10px; padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle; font-weight:700; }
+  .tag.rec{ background:rgba(52,224,125,.16); color:var(--accent); }
+  .tag.warn{ background:rgba(255,170,60,.16); color:#ffaa3c; }
+  .best{ color:var(--blue); font-weight:800; }
+  .wkg{ color:var(--dim); font-size:10.5px; font-weight:500; }
+  .rk{ color:var(--dim); font-size:12px; font-weight:700; }
+  .metricrow td:first-child{ color:var(--accent); }
+
+  /* ---------- Option A: sticky-label scroll table ---------- */
+  .scrollwrap{ position:relative; }
+  .scroller{ overflow-x:auto; scrollbar-width:thin; }
+  table{ border-collapse:collapse; width:100%; }
+  th,td{ padding:7px 10px; text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  thead th{ color:var(--dim); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid var(--line); }
+  tbody td{ border-bottom:1px solid #1c2029; font-size:13px; }
+  .stick{ position:sticky; left:0; z-index:2; text-align:left !important; background:#1b1e26;
+    box-shadow:6px 0 8px -6px rgba(0,0,0,.7); color:var(--text); font-weight:700; }
+  thead .stick{ background:#191c24; }
+  .fade{ position:absolute; top:0; right:0; width:26px; height:100%; pointer-events:none;
+    background:linear-gradient(90deg,transparent,#1b1e26cc); border-radius:0 12px 12px 0; }
+  .cell2{ display:flex; flex-direction:column; align-items:flex-end; line-height:1.15; }
+
+  /* ---------- Option B: 2-col + season toggle ---------- */
+  .segs{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .segs button{ padding:6px 11px; border:1px solid var(--line); background:#12151b; color:var(--dim); border-radius:20px; font-size:11.5px; font-weight:600; cursor:pointer; }
+  .segs button.on{ background:#22303f; color:var(--blue); border-color:#2f4a63; }
+  .b-grid{ width:100%; }
+  .b-grid th{ text-transform:uppercase; }
+  .delta.up{ color:var(--accent); } .delta.dn{ color:#ff7a7a; } .delta.eq{ color:var(--dim); }
+  .colhead-blue{ color:var(--blue) !important; }
+
+  /* ---------- Option C: per-row hero + season bars ---------- */
+  .crow{ display:flex; align-items:center; gap:11px; padding:9px 2px; border-bottom:1px solid #1c2029; }
+  .crow:last-child{ border-bottom:0; }
+  .cdur{ width:34px; color:var(--text); font-weight:700; font-size:13px; flex:0 0 auto; }
+  .cnow{ width:80px; flex:0 0 auto; text-align:right; }
+  .cnow b{ font-size:15px; } .cnow .wkg{ display:block; }
+  .bars{ flex:1; display:flex; align-items:flex-end; gap:3px; height:30px; }
+  .bar{ flex:1; background:#2b3038; border-radius:3px 3px 0 0; position:relative; min-height:3px; }
+  .bar.now{ background:var(--accent); } .bar.pr{ background:var(--blue); }
+  .cpr{ flex:0 0 auto; text-align:right; width:56px; }
+  .cpr b{ color:var(--blue); font-size:13px; } .cpr small{ display:block; color:var(--dim); font-size:9.5px; }
+  .barwrap{ text-align:center; }
+  .legend{ display:flex; gap:14px; justify-content:center; margin-top:10px; color:var(--dim); font-size:10.5px; }
+  .dot{ display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; vertical-align:middle; }
+</style>
+
+<div class="phone">
+  <h1>Best efforts — season comparison <span style="color:var(--dim);font-weight:500">#407</span></h1>
+  <div class="sub">Your real cycling data. Running mirrors it (distance buckets 400 m / 1 k / 5 k / 10 k). Pick a layout ↓</div>
+  <div class="pick">
+    <button data-opt="A" class="on">A · Scroll table</button>
+    <button data-opt="B">B · 2-col + toggle</button>
+    <button data-opt="C">C · Rows + bars</button>
+  </div>
+  <div id="stage"></div>
+</div>
+
+<script>
+const cols = ['This season','Last season','Jan 2024','All time'];
+const W = 74.4;
+const wkg = w => (w/W).toFixed(2);
+// power rows: arrays of {w} or null, in col order
+const P = [
+  ['5s',  [837,966,986,1079]],
+  ['60s', [392,431,373,448]],
+  ['5m',  [310,290,254,310]],
+  ['20m', [229,246,239,246]],
+  ['1h',  [213,null,null,214]],
+  ['2h',  [168,null,null,180]],
+  ['3h',  [149,null,null,149]],
+  ['4h',  [128,null,null,139]],
+  ['5h',  [123,null,null,135]],
+  ['6h',  [null,null,null,120]],
+  ['8h',  [null,null,null,82]],
+];
+// metric rows: raw strings (per season) + a "higher is better" flag for best-highlight
+const M = [
+  ['FTP',   ['260','—','—','260'],'W'],
+  ['CP',    ['—','—','—','248'],'W'],
+  ["W′",    ['—','—','—','17.1'],'kJ'],
+  ['MAP',   ['—','—','—','278'],'W'],
+  ['TTE',   ['10:00','18:00','22:00','13:00'],''],
+  ['VO₂max',['53.5','51','46.1','57'],''],
+  ['EF',    ['—','—','—','1.10 ↓'],''],
+];
+const bestIdx = arr => { let bi=-1,bv=-1; arr.forEach((v,i)=>{ if(v!=null&&v>bv){bv=v;bi=i;} }); return bi; };
+
+/* ---------- Option A ---------- */
+function optA(){
+  let rows = P.map(([k,vals])=>{
+    const bi=bestIdx(vals);
+    const tds = vals.map((v,i)=> v==null
+      ? `<td><span class="rk">—</span></td>`
+      : `<td><div class="cell2"><span class="${i===bi?'best':''}">${v}</span><span class="wkg">${wkg(v)}</span></div></td>`).join('');
+    return `<tr><td class="stick">${k}</td>${tds}</tr>`;
+  }).join('');
+  let mrows = M.map(([k,vals,u])=>{
+    const nums = vals.map(v=>{ const n=parseFloat(v); return isNaN(n)?null:n; });
+    const bi=bestIdx(nums);
+    const tds = vals.map((v,i)=> v==='—'
+      ? `<td><span class="rk">—</span></td>`
+      : `<td><span class="${i===bi?'best':''}">${v}${u?' '+u:''}</span></td>`).join('');
+    return `<tr class="metricrow"><td class="stick">${k}</td>${tds}</tr>`;
+  }).join('');
+  return `<div class="card">
+    <div class="ctitle">Scroll table <span class="tag rec">recommended</span></div>
+    <div class="cnote">Label column pinned; swipe the seasons sideways. Best in <span class="best">blue</span>. This is a real data table (pinned first column + scroll affordance) — the one place a sideways scroll is warranted, unlike a chip row.</div>
+    <div class="scrollwrap"><div class="scroller"><table>
+      <thead><tr><th class="stick">Time</th>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+      <tbody>${rows}${mrows}</tbody>
+    </table></div><div class="fade"></div></div>
+  </div>`;
+}
+
+/* ---------- Option B ---------- */
+let bSel = 3; // default compare col = All time
+function optB(){
+  const rowsHtml = () => {
+    const P2 = P.map(([k,vals])=>{
+      const a=vals[0], b=vals[bSel];
+      const bestA = a!=null && (b==null || a>=b), bestB = b!=null && (a==null || b>a);
+      const d = (a!=null&&b!=null)? a-b : null;
+      const dcls = d==null?'eq':d>0?'up':d<0?'dn':'eq';
+      const dtxt = d==null?'':(d>0?'+':'')+d+'W';
+      return `<tr>
+        <td class="stick">${k}</td>
+        <td>${a==null?'<span class=rk>—</span>':`<div class="cell2"><span class="${bestA?'best':''}">${a}</span><span class="wkg">${wkg(a)}</span></div>`}</td>
+        <td>${b==null?'<span class=rk>—</span>':`<div class="cell2"><span class="${bestB?'best':''}">${b}</span><span class="wkg">${wkg(b)}</span></div>`}</td>
+        <td><span class="delta ${dcls}">${dtxt}</span></td>
+      </tr>`;
+    }).join('');
+    return P2;
+  };
+  const segs = cols.slice(1).map((c,i)=>`<button data-b="${i+1}" class="${bSel===i+1?'on':''}">${c}</button>`).join('');
+  return `<div class="card">
+    <div class="ctitle">2 columns + season toggle</div>
+    <div class="cnote">Always shows <b>This season</b> vs one you pick — no sideways scroll at all. Trade-off: you compare two seasons at a time, not all four at once.</div>
+    <div class="segs"><span style="align-self:center;color:var(--dim);font-size:11px;margin-right:2px">Compare to:</span>${segs}</div>
+    <table class="b-grid">
+      <thead><tr><th class="stick" style="background:transparent">Time</th><th>This season</th><th class="colhead-blue">${cols[bSel]}</th><th>Δ</th></tr></thead>
+      <tbody>${rowsHtml()}</tbody>
+    </table>
+  </div>`;
+}
+
+/* ---------- Option C ---------- */
+function optC(){
+  const rows = P.map(([k,vals])=>{
+    const now=vals[0], pr=vals[3];
+    const mx=Math.max(...vals.filter(v=>v!=null));
+    const bars = vals.map((v,i)=> `<div class="bar ${i===0?'now':''} ${v===pr&&v!=null?'pr':''}" style="height:${v==null?3:Math.round(v/mx*30)}px" title="${cols[i]}: ${v??'—'}"></div>`).join('');
+    return `<div class="crow">
+      <div class="cdur">${k}</div>
+      <div class="cnow">${now==null?'<span class=rk>—</span>':`<b>${now}</b><span class="wkg">${wkg(now)} w/kg</span>`}</div>
+      <div class="bars">${bars}</div>
+      <div class="cpr">${pr==null?'':`<b>${pr}</b><small>PR</small>`}</div>
+    </div>`;
+  }).join('');
+  return `<div class="card">
+    <div class="ctitle">Rows + season bars</div>
+    <div class="cnote">Each duration: your <b style="color:var(--accent)">this-season</b> number big, the all-time <b style="color:var(--blue)">PR</b> at right, and a 4-season bar spark. Visual & no scroll — but not a precise side-by-side grid.</div>
+    ${rows}
+    <div class="legend"><span><span class="dot" style="background:var(--accent)"></span>This season</span><span><span class="dot" style="background:#2b3038"></span>Last / Jan24</span><span><span class="dot" style="background:var(--blue)"></span>All-time PR</span></div>
+  </div>`;
+}
+
+const stage=document.getElementById('stage');
+function render(opt){ stage.innerHTML = opt==='A'?optA():opt==='B'?optB():optC(); if(opt==='B'){ stage.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{bSel=+b.dataset.b; render('B');}); } }
+document.querySelectorAll('.pick button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('.pick button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); render(b.dataset.opt); });
+const init=(new URLSearchParams(location.search).get('opt')||'A').toUpperCase();
+document.querySelectorAll('.pick button').forEach(x=>x.classList.toggle('on',x.dataset.opt===init));
+render(init);
+</script>

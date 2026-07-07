@@ -3,6 +3,7 @@
 // use a serverless function so the key stays server-side.
 import { getSetting, setSetting } from './db'
 import { ICU_FIELDS, RUN_FIELDS, ICU_FIELD_CODES, FEEL_LABELS } from './icu-fields'
+import { seasonSpecs, daysSinceJan1, POWER_DURATIONS, PACE_DISTANCES, bestAt, paceOkay, type SeasonSpec } from './season-compare'
 
 const ICU = '/icu/api/v1'
 const DEFAULT_ATHLETE = 'i28814'
@@ -138,6 +139,59 @@ export async function fetchEfTrend(type: 'Ride' | 'Run', days = 90): Promise<EfT
     const deltaPct = older > 0 ? Math.round(((recent - older) / older) * 1000) / 10 : null
     const trend = recent > older * 1.02 ? 'up' : recent < older * 0.98 ? 'down' : 'flat'
     return { points, latest: points[points.length - 1].ef, trend, deltaPct }
+  } catch { return null }
+}
+
+// #407 — SEASON COMPARISON. One power/pace-curve call carries MULTIPLE `curves=` specs → `data.list[i]` aligned to
+// the specs order (verified). Each season = a trailing window (This=YTD · Last=365d · 2-ago=730d · All=10000d); the
+// curve API can't do bounded years (that's the #415 server-computed follow-up). Read-only; null on no key/error.
+export interface PowerSeason extends SeasonSpec { secs: number[]; watts: number[]; cp?: number; wPrime?: number; ftp?: number; best: (number | null)[] }
+export async function fetchPowerSeasons(): Promise<PowerSeason[] | null> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return null
+  const specs = seasonSpecs(daysSinceJan1(new Date()))
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}/power-curves?curves=${specs.map((s) => `${s.days}d`).join(',')}&type=Ride`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return null
+    const list = (await res.json())?.list || []
+    return specs.map((s, i) => {
+      const c = list[i] || {}
+      const secs: number[] = c?.secs || [], watts: number[] = c?.values || []
+      const pm = (c?.powerModels || []).find((m: { type?: string }) => m.type === 'FFT_CURVES') || (c?.powerModels || [])[0]
+      return { ...s, secs, watts, cp: pm?.criticalPower, wPrime: pm?.wPrime, ftp: pm?.ftp, best: POWER_DURATIONS.map((d) => bestAt(secs, watts, d.secs)) }
+    })
+  } catch { return null }
+}
+export interface PaceSeason extends SeasonSpec { secs: number[]; pace: number[]; dist: number[]; cs?: number; dPrime?: number; best: (number | null)[] } // best = TIME (s) per PACE_DISTANCE
+export async function fetchPaceSeasons(): Promise<PaceSeason[] | null> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return null
+  const specs = seasonSpecs(daysSinceJan1(new Date()))
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}/pace-curves?curves=${specs.map((s) => `${s.days}d`).join(',')}&type=Run`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return null
+    const list = (await res.json())?.list || []
+    return specs.map((s, i) => {
+      const c = list[i] || {}
+      const dist: number[] = c?.distance || [], val: number[] = c?.values || []
+      const pts: { s: number; p: number; d: number }[] = []
+      for (let j = 0; j < dist.length; j++) if (dist[j] > 0 && val[j] > 0) pts.push({ s: Math.round(val[j]), p: Math.round((val[j] / dist[j]) * 1000), d: dist[j] })
+      pts.sort((a, b) => a.s - b.s)
+      const secs: number[] = [], pace: number[] = [], dm: number[] = []
+      for (const pt of pts) {
+        if (secs.length && pt.s === secs[secs.length - 1]) { if (pt.p < pace[pace.length - 1]) { pace[pace.length - 1] = pt.p; dm[dm.length - 1] = pt.d } }
+        else { secs.push(pt.s); pace.push(pt.p); dm.push(pt.d) }
+      }
+      const pmodel = (c?.paceModels || [])[0]
+      // best TIME to cover each target distance (nearest bucket within 15%), pace sanity-filtered (#400).
+      const best = PACE_DISTANCES.map((pd) => {
+        let bi = -1, bd = Infinity
+        for (let j = 0; j < dm.length; j++) { const dd = Math.abs(dm[j] - pd.m); if (dd < bd) { bd = dd; bi = j } }
+        if (bi < 0 || bd > pd.m * 0.15) return null
+        return paceOkay(pace[bi]) ? secs[bi] : null
+      })
+      return { ...s, secs, pace, dist: dm, cs: pmodel?.criticalSpeed, dPrime: pmodel?.dPrime, best }
+    })
   } catch { return null }
 }
 

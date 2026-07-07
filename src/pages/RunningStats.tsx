@@ -8,6 +8,7 @@ import { fetchWellness, fetchPaceCurve, fetchEfTrend, bestPaceAtDist, type PaceC
 import { authApi } from '../auth/api'
 import { TrendChart, PaceCurveChart, InfoDot } from '../charts'
 import { BenchmarksCard } from '../Benchmarks'
+import SeasonCompare from '../SeasonCompare'
 // #398 — the Threshold benchmark card (edit + confidence + science) is the ONE place for threshold pace; the
 // old duplicate inline ThresholdCell was removed (JM: "threshold there 2 times").
 
@@ -95,6 +96,9 @@ export default function RunningStats() {
               </div>
             </div>
           )}
+
+          {/* #407 — season comparison: overlay 2 seasons on the pace curve + a best-efforts compare table. */}
+          <SeasonCompare sport="running" />
 
           {/* #398 — race predictions sit right under the pace curve (both are "what you can do"); the training
               zones ("how to train") follow, colour-coded as a cool→warm effort spectrum. */}
