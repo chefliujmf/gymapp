@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+// @ts-expect-error — plain JS server module, no types
 import * as srv from '../server/perf-metrics.js'
 import { tteFromPower, tteFromPace, tteModelPower, tteModelPace } from './tte'
 
