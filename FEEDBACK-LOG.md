@@ -432,6 +432,14 @@ test guide → the **🧪 Test guide** section below.
     threshold-anchored + robust: if the 1 k pace sits >30 s/km easier than threshold → "mostly base miles, add tempo/intervals"
     (true for JM: 1 k 6:08 vs 4:57 threshold); else the endurance fade over whatever longest distance exists. Chips now adaptive
     (400 m/1 k/5 k/10 k → only render distances with data, no "—"). Reinforces #397. gymapp-only.
+399. 🔨 **Running layout polish — race predictions under the pace curve + colour-coded training zones.** JM 2026-07-07:
+    "should we merge race predictions under the pace graph? can training paces reflect the UX more?" Mocked V1 (colour rows)
+    vs V2 (pace ladder) → JM picked **colour rows**. Built: reordered `RunningStats` so **Race predictions sit right under the
+    pace curve** (both = "what you can do"), then **Training pace zones** ("how to train") as a **cool→warm effort spectrum**
+    (Easy blue → Marathon green → Threshold gold → Interval orange → Rep red) via `.zrow--pace` (left accent bar + pace in
+    the zone colour). Chip decision (JM asked re 5 k/10 k/half/marathon): curve chips stay ACTUAL best efforts (400 m/1 k);
+    5 k+ are PROJECTIONS shown in Race predictions right below — not mixed into the chips (his actual 1 k 6:08 next to a
+    projected 5 k 4:43 would read as "faster at 5 k than 1 k"). Verified via render (real styles.css). gymapp-only.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
