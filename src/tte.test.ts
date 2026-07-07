@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tteFromPower, tteFromPace, fmtTte } from './tte'
+import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from './tte'
 
 // #401 — TTE = longest duration you can hold threshold, read off the mean-max curve.
 describe('tteFromPower (cycling — longest time ≥ eFTP)', () => {
@@ -41,6 +41,19 @@ describe('TTE floor — a sub-2-min hold isn’t a real TTE (threshold set too h
   })
   it('cycling: only a 30 s effort ≥ eFTP → null', () => {
     expect(tteFromPower([5, 30, 600], [500, 300, 200], 280)).toBeNull() // 30 s@300 ≥280 but < floor; 600 s@200 <280
+  })
+})
+
+describe('tteModelPower / tteModelPace — Critical-Power/Speed ESTIMATE (fallback)', () => {
+  it('cycling: W′ / (eFTP − CP)', () => expect(tteModelPower(253, 248, 17100)).toBe(3420))
+  it('running: D′ / (v_threshold − CS) — JM ≈ 9:53', () => {
+    const t = tteModelPace(297, 3.117, 148.3)! // 4:57/km → v 3.367 m/s; CS 3.117; D′ 148.3
+    expect(t).toBeGreaterThan(560); expect(t).toBeLessThan(620)
+  })
+  it('null when threshold at/below CS (unbounded), eFTP≤CP, or missing inputs', () => {
+    expect(tteModelPace(400, 3.117, 148.3)).toBeNull() // v 2.5 < CS
+    expect(tteModelPower(248, 248, 17100)).toBeNull() // gap 0
+    expect(tteModelPower(253, 248, null)).toBeNull()
   })
 })
 

@@ -5,7 +5,7 @@ import { authApi, type IcuAthletePull } from './auth/api'
 import { fmtPace, parsePace } from './running-paces'
 import { fetchWellness, fetchPowerCurve, fetchPaceCurve, type PowerCurve, type PaceCurve } from './intervals'
 import { estimateSleepNeed } from './sleep'
-import { tteFromPower, tteFromPace, fmtTte } from './tte'
+import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from './tte'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, confLabel } from './vo2max-submax'
 import { vo2maxConfidence, ftpConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, type Confidence } from './benchmark-confidence'
 
@@ -133,8 +133,8 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
     authApi.pullIcuAthlete().then(setPull).catch(() => {})
     authApi.runEstimate().then((r) => { if (r.available && r.thresholdPace) setPaceEst(r.thresholdPace) }).catch(() => {})
     authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? '') }).catch(() => {}) // #337
-    fetchPowerCurve(90).then(setPowerCurve).catch(() => {}) // #401 cycling TTE
-    fetchPaceCurve(90).then(setPaceCurve).catch(() => {}) // #401 running TTE
+    fetchPowerCurve(365).then(setPowerCurve).catch(() => {}) // #401 TTE — a year of efforts for a stable CP/W′ + CS/D′ model fit
+    fetchPaceCurve(365).then(setPaceCurve).catch(() => {}) // #401 running TTE
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)
     fetchWellness(from, to).then((rows) => {
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break }
@@ -157,9 +157,14 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
   }
   const vo2Order = [...(user?.sports || []).filter((s): s is 'running' | 'cycling' => s === 'running' || s === 'cycling'), 'cycling', 'running'].filter((s, i, a) => a.indexOf(s) === i) as ('running' | 'cycling')[]
   const vo2head = headlineVo2max(null, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
-  // #401 — TTE (how long you hold threshold), read off your mean-max curve.
-  const tteRide = powerCurve ? tteFromPower(powerCurve.secs, powerCurve.watts, ftpManual ?? eftp) : null
-  const tteRun = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, paceManual ?? paceEst) : null
+  // #401 — TTE (how long you hold threshold): OBSERVED off your curve when you've held it long enough, else
+  // ESTIMATED from the Critical-Power/Speed model (W′/(eFTP−CP) · D′/(v−CS)) so it shows a value pre-effort.
+  const tteRideObs = powerCurve ? tteFromPower(powerCurve.secs, powerCurve.watts, ftpManual ?? eftp) : null
+  const tteRideEst = powerCurve ? tteModelPower(ftpManual ?? eftp, powerCurve.cp, powerCurve.wPrime) : null
+  const tteRide = tteRideObs ?? tteRideEst, tteRideEstimated = tteRideObs == null && tteRideEst != null
+  const tteRunObs = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, paceManual ?? paceEst) : null
+  const tteRunEst = paceCurve ? tteModelPace(paceManual ?? paceEst, paceCurve.cs, paceCurve.dPrime) : null
+  const tteRun = tteRunObs ?? tteRunEst, tteRunEstimated = tteRunObs == null && tteRunEst != null
 
   const saveSport = (group: 'cycling' | 'running', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
   // #337 — "when will the computed estimate land?" straight from our theory gates, so nothing just says
@@ -228,20 +233,20 @@ export function BenchmarksCard({ showTrendsLink = false, only }: { showTrendsLin
     },
     // #401 — TTE (time to exhaustion at threshold), a LEARNED benchmark per sport, read off the mean-max curve.
     {
-      key: 'tteRide', label: 'TTE', computed: tteRide, computedSrc: 'longest you held your eFTP', pending: tteRide == null ? (powerCurve ? 'after a sustained near-FTP effort (10–40 min) — your power curve then reaches your eFTP for longer' : 'after your next ride — read from your power curve') : undefined, manual: (ss.cycling as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('cycling', { tte: v }),
-      chip: 'Curve',
-      conf: tteConfidence({ tte: tteRide }),
-      narr: <>How long you can hold your <b>FTP</b> before fatigue — read straight off your power curve (the longest time your best power is still ≥ your eFTP). A longer, harder sustained effort extends it.</>,
-      sci: [{ name: 'From your power curve', formula: 'longest time ≥ eFTP', value: tteRide != null ? fmtTte(tteRide) : '—', inUse: tteRide != null }],
-      sharpen: 'a sustained near-FTP effort (10–40 min) pushes your curve out → a longer, truer TTE.',
+      key: 'tteRide', label: 'TTE', computed: tteRide, computedSrc: tteRideEstimated ? 'estimated from your power model (W′/CP)' : 'longest you held your eFTP', pending: tteRide == null ? (powerCurve ? 'after a sustained near-FTP effort (10–40 min)' : 'after your next ride — read from your power curve') : undefined, manual: (ss.cycling as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('cycling', { tte: v }),
+      chip: tteRideEstimated ? 'CP model' : 'Curve',
+      conf: tteConfidence({ tte: tteRide, estimated: tteRideEstimated }),
+      narr: <>How long you can hold your <b>FTP</b> before fatigue. Once you've held it long enough it's read straight off your power curve; until then it's <b>estimated</b> from your Critical-Power model (W′ ÷ (FTP − CP)). A sustained near-FTP effort confirms it.</>,
+      sci: [{ name: 'From your power curve', formula: 'longest time ≥ eFTP', value: tteRideObs != null ? fmtTte(tteRideObs) : '—', inUse: !tteRideEstimated && tteRide != null }, { name: 'Critical-Power model', formula: 'W′ / (eFTP − CP)', value: tteRideEst != null ? fmtTte(tteRideEst) : '—', inUse: tteRideEstimated }],
+      sharpen: 'a sustained near-FTP effort (10–40 min) turns the estimate into an observed, tighter TTE.',
     },
     {
-      key: 'tteRun', label: 'TTE', computed: tteRun, computedSrc: 'longest you held threshold pace', pending: tteRun == null ? (paceCurve ? 'after a sustained threshold run (15–40 min) — your pace curve then holds threshold for longer' : 'after a few runs — read from your pace curve') : undefined, manual: (ss.running as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('running', { tte: v }),
-      chip: 'Curve',
-      conf: tteConfidence({ tte: tteRun }),
-      narr: <>How long you can hold your <b>threshold pace</b> before fatigue — read from your pace curve (the longest time you stayed at/faster than threshold). If it's short, your threshold pace may be set too fast.</>,
-      sci: [{ name: 'From your pace curve', formula: 'longest time ≤ threshold pace', value: tteRun != null ? fmtTte(tteRun) : '—', inUse: tteRun != null }],
-      sharpen: 'a sustained threshold run (15–40 min) extends your curve → a longer, truer TTE.',
+      key: 'tteRun', label: 'TTE', computed: tteRun, computedSrc: tteRunEstimated ? 'estimated from your Critical-Speed model' : 'longest you held threshold pace', pending: tteRun == null ? (paceCurve ? 'after a sustained threshold run (15–40 min)' : 'after a few runs — read from your pace curve') : undefined, manual: (ss.running as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('running', { tte: v }),
+      chip: tteRunEstimated ? 'CS model' : 'Curve',
+      conf: tteConfidence({ tte: tteRun, estimated: tteRunEstimated }),
+      narr: <>How long you can hold your <b>threshold pace</b> before fatigue. Once you've held it long enough it's read off your pace curve; until then it's <b>estimated</b> from your Critical-Speed model (D′ ÷ (threshold-speed − CS)). If it comes out short, your threshold pace may be set too fast.</>,
+      sci: [{ name: 'From your pace curve', formula: 'longest time ≤ threshold', value: tteRunObs != null ? fmtTte(tteRunObs) : '—', inUse: !tteRunEstimated && tteRun != null }, { name: 'Critical-Speed model', formula: 'D′ / (v_thr − CS)', value: tteRunEst != null ? fmtTte(tteRunEst) : '—', inUse: tteRunEstimated }],
+      sharpen: 'a sustained threshold run (15–40 min) turns the estimate into an observed, truer TTE.',
     },
     {
       key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: compMaxHr, computedSrc: maxHrFrom === 'observed' ? `observed peak — highest HR in your last 180 days${maxHrSamples > 1 ? ` (hit ${maxHrSamples}×)` : ''}` : 'your zone ceiling from intervals — beat it in an all-out effort to raise it', pending: 'after your next all-out effort with a HR strap/watch — we read your true peak, not an age formula', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }),

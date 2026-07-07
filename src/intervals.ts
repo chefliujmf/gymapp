@@ -66,7 +66,7 @@ export async function fetchAthleteFtp(): Promise<number | undefined> {
 }
 
 /** A mean-max power curve (best watts sustainable for each duration). */
-export interface PowerCurve { secs: number[]; watts: number[] }
+export interface PowerCurve { secs: number[]; watts: number[]; cp?: number; wPrime?: number } // #401 CP/W′ (FFT/Morton model) → model-based TTE fallback
 /** Athlete mean-max POWER curve from intervals.icu over the last N days (cycling).
  * Read-only; null on no key/error/unexpected shape (graceful). */
 export async function fetchPowerCurve(days: number): Promise<PowerCurve | null> {
@@ -82,11 +82,12 @@ export async function fetchPowerCurve(days: number): Promise<PowerCurve | null> 
     const secs: number[] = curve?.secs || data?.secs || []
     const watts: number[] = curve?.values || curve?.watts || []
     if (!secs.length || !watts.length) return null
-    return { secs, watts }
+    const pm = (curve?.powerModels || []).find((m: { type?: string }) => m.type === 'FFT_CURVES') || (curve?.powerModels || [])[0]
+    return { secs, watts, cp: pm?.criticalPower, wPrime: pm?.wPrime }
   } catch { return null }
 }
 
-export interface PaceCurve { secs: number[]; pace: number[]; dist: number[] } // aligned: duration(s) · pace(sec/km) · distance(m)
+export interface PaceCurve { secs: number[]; pace: number[]; dist: number[]; cs?: number; dPrime?: number } // #401 CS/D′ model → model-based TTE fallback
 /** Running mean-max PACE curve from intervals.icu (#396). intervals indexes it by DISTANCE
  * (`distance[]` m + `values[]` = seconds to cover each), so we derive duration + pace(sec/km) and
  * sort by duration to mirror the cycling power curve. Read-only; null on no key/error/empty. */
@@ -109,7 +110,8 @@ export async function fetchPaceCurve(days: number): Promise<PaceCurve | null> {
       if (secs.length && pt.s === secs[secs.length - 1]) { if (pt.p < pace[pace.length - 1]) { pace[pace.length - 1] = pt.p; dm[dm.length - 1] = pt.d } }
       else { secs.push(pt.s); pace.push(pt.p); dm.push(pt.d) }
     }
-    return secs.length >= 2 ? { secs, pace, dist: dm } : null
+    const pmodel = (curve?.paceModels || [])[0]
+    return secs.length >= 2 ? { secs, pace, dist: dm, cs: pmodel?.criticalSpeed, dPrime: pmodel?.dPrime } : null
   } catch { return null }
 }
 /** Best pace (sec/km) at the distance bucket nearest `meters` — for the pace-curve chips (1k/5k/10k). */
