@@ -240,7 +240,11 @@ export default function CoachPlanDetail() {
 
       {(p.mind?.why || minds.length > 0) && (
         <div className="plansec">
-          <div className="plansec__h"><span className="plansec__k">🧠 Mind</span>{p.mind?.why && <button className="why-chip" onClick={() => setSheet({ title: 'Mental focus', body: p.mind!.why! })}>why ⓘ</button>}</div>
+          <span className="plansec__k">🧠 Mind</span>
+          {/* #411 — the mind "why" IS the mental-focus content (not a separate rationale like Fuel), so show it
+              INLINE like Recovery/Success. It used to sit behind a "why" chip, leaving the section body empty on
+              days with no mind CALENDAR items → looked broken. */}
+          {p.mind?.why && <p className="plansec__v" style={{ marginTop: 4 }}>{p.mind.why}</p>}
           {minds.map((s) => (
             <Link key={s.id} to={s.refId ? `/mind/${s.refId}` : '#'} state={s.why ? { coachPick: s.why } : undefined} className="mindrow">
               <span className="mindrow__play">▶</span>
