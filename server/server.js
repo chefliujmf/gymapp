@@ -26,7 +26,7 @@ const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
-import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget } from './readiness.js'
+import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads } from './readiness.js'
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss, stripPlatyplusLinks, stripDerivedWorkout } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
@@ -710,12 +710,16 @@ app.get('/auth/readiness-projection', auth, async (req, res) => {
   const latest = [...rows].reverse().find((r) => r.ctl != null && r.atl != null)
   if (!latest) return res.json({ connected: true, available: false })
   const end = addDays(today, days)
-  const evs = await icuGet(req.user, `/athlete/${ath}/events?oldest=${today}&newest=${end}`)
-  const byDay = {}
+  const evs = await icuGet(req.user, `/athlete/${ath}/events?oldest=${isoMonday(today)}&newest=${end}`)
+  const byDay = {}, icuBlocks = []
   for (const e of (Array.isArray(evs) ? evs : [])) {
     const d = (e.start_date_local || '').slice(0, 10)
+    if (!d) continue
+    // #393 — an intervals ATP weekly TARGET (category=TARGET, load_target) IS the athlete's real periodization.
+    // Collect it as a weekly block (its Monday + weekly TSS target) — still NOT a single-day load (#366).
+    if (e.category === 'TARGET') { const t = Number(e.load_target ?? e.icu_training_load) || 0; if (t > 0) icuBlocks.push({ weekStart: isoMonday(d), target: Math.round(t), phase: 'plan', name: e.name }); continue }
     if (d <= today || d > end) continue
-    if (e.category === 'TARGET' || e.category === 'NOTE' || /^ATP\b/i.test(e.name || '')) continue // #366 — not a single-day load (ATP weekly target / note)
+    if (e.category === 'NOTE' || /^ATP\b/i.test(e.name || '')) continue
     const load = e.icu_training_load || e.icu_planned_training_load || 0
     if (load > 0) byDay[d] = (byDay[d] || 0) + load
   }
@@ -725,11 +729,20 @@ app.get('/auth/readiness-projection', auth, async (req, res) => {
   // nothing). `plannedThrough` marks where the real plan ends so the client can label the held-load tail.
   const plannedDates = Object.keys(byDay).sort()
   const plannedThrough = plannedDates.length ? plannedDates[plannedDates.length - 1] : today
-  const heldLoad = Math.max(0, Math.round(latest.ctl)) // recent avg daily training stress
+  const heldLoad = Math.max(0, Math.round(latest.ctl)) // recent avg daily training stress (last-resort fallback)
+  // #393 — past the coach's detailed plan, project the PERIODIZED weekly LOAD BLOCKS (build/peak/recovery)
+  // spread across the athlete's real training days — NOT a flat held-load. Source priority: the coach's authored
+  // blocks > the athlete's intervals ATP weekly TARGETs (their real plan) > a CTL-sized default (never flat).
+  const authored = Array.isArray(req.user.info?.loadPlan) && req.user.info.loadPlan.length ? req.user.info.loadPlan : null
+  const blocks = authored || (icuBlocks.length ? icuBlocks : defaultLoadPlan(latest.ctl, isoMonday(today)))
+  const planSource = authored ? 'coach' : (icuBlocks.length ? 'atp' : 'default')
+  const histLoads = {}; for (const r of (Array.isArray(wData) ? wData : [])) { if (r && r.id != null) histLoads[String(r.id)] = r.ctlLoad ?? r.atlLoad ?? 0 }
+  const restDows = recentRestDows(histLoads)
+  const periodized = periodizedLoads(addDays(plannedThrough, 1), end, blocks, { restDows })
   const dates = [], loads = []
-  for (let dd = addDays(today, 1); dd <= end; dd = addDays(dd, 1)) { dates.push(dd); loads.push(dd <= plannedThrough ? (byDay[dd] || 0) : heldLoad) }
+  for (let dd = addDays(today, 1); dd <= end; dd = addDays(dd, 1)) { dates.push(dd); loads.push(dd <= plannedThrough ? (byDay[dd] || 0) : (periodized[dd] != null ? periodized[dd] : heldLoad)) }
   const series = projectFormSeries({ ctl: latest.ctl, atl: latest.atl }, loads)
-  res.json({ connected: true, available: true, dates, loads, plannedThrough, ctl: series.map((s) => s.ctl), atl: series.map((s) => s.atl), form: series.map((s) => s.form) })
+  res.json({ connected: true, available: true, dates, loads, plannedThrough, loadPlan: blocks, planSource, restDows, ctl: series.map((s) => s.ctl), atl: series.map((s) => s.atl), form: series.map((s) => s.form) })
 })
 
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads
