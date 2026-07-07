@@ -313,9 +313,11 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sharpen: 'wear your tracker to sleep a few more nights → we learn the duration your body recovers best on.',
     },
   ]
-  // #385 — when `only` is passed, keep just those keys, in the requested order; else show all 5 (the global
-  // benchmarks stay unchanged — #401 TTE is a per-sport-page card, requested explicitly via `only`).
-  const shown = only ? only.map((k) => defs.find((d) => d.key === k)).filter((d): d is StatDef => !!d) : defs.filter((d) => d.key !== 'tteRide' && d.key !== 'tteRun')
+  // #385/#401/#403 — when `only` is passed, keep just those keys, in the requested order; else the global grid
+  // stays CORE (VO₂max/FTP/threshold/MaxHR/sleep). The advanced, ACTIVITY/SPORT-SPECIFIC cards — TTE · CP · W′ ·
+  // CS · D′ — are per-sport-page only (requested explicitly via `only`), never in the global mix (JM directive).
+  const ADVANCED: Key[] = ['tteRide', 'tteRun', 'cp', 'wPrime', 'cs', 'dPrime']
+  const shown = only ? only.map((k) => defs.find((d) => d.key === k)).filter((d): d is StatDef => !!d) : defs.filter((d) => !ADVANCED.includes(d.key))
   const showsFtp = shown.some((d) => d.key === 'ftp')
   // #277: default is AUTO — prefer the computed estimate once it's ready, manual until then.
   const prefOf = (d: StatDef): Pref => (user?.statPrefs as Partial<Record<Key, Pref>> | undefined)?.[d.key] ?? 'auto'
