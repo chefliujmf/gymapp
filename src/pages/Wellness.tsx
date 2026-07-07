@@ -88,25 +88,34 @@ function CheckinBreakdown({ series, dates }: { series: Record<'sleep' | 'energy'
   const stats = { sleep: seriesStats(series.sleep), energy: seriesStats(series.energy), form: seriesStats(series.form) }
   const overallStat = seriesStats(overallDaily)
 
-  // one y-scale across all three 7-day-avg lines + the overall line, with a little headroom.
+  // enough check-ins to draw?
   const drawn = [avgLines.sleep, avgLines.energy, avgLines.form, overallAvgLine]
   const all = drawn.flat().filter((v): v is number => v != null)
   if (all.length < 2 || !overallStat) return <p className="meta" style={{ margin: '8px 2px' }}>Not enough check-ins in this range.</p>
-  const rawMn = Math.min(...all), rawMx = Math.max(...all)
-  const pad = (rawMx - rawMn || 1) * 0.12
-  const mn = Math.max(1, round1(rawMn - pad)), mx = Math.min(5, round1(rawMx + pad)), rng = mx - mn || 1, mid = round1((mn + mx) / 2)
-  const n = dates.length
-  const px = (i: number) => (n > 1 ? (i / (n - 1)) * 100 : 0)
-  const py = (v: number) => (1 - (v - mn) / rng) * 100
-  const toLine = (arr: (number | null)[]) => arr.map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v != null)
-    .map((p) => `${px(p.i).toFixed(2)},${py(p.v).toFixed(2)}`).join(' ')
-  const xTicks = [0, Math.floor((n - 1) / 3), Math.floor(((n - 1) * 2) / 3), n - 1]
 
   const latest = (arr: (number | null)[]) => { const v = arr.filter((x): x is number => x != null); return v.length ? v[v.length - 1] : null }
   const focused = focus ? CB_METRICS.find((m) => m.key === focus)! : null
   const headTitle = focused ? focused.name : 'Check-in breakdown'
   const headNow = focused ? latest(avgLines[focus!]) : overallStat.avg
   const headColor = focused ? focused.color : 'var(--text)'
+  // #395/#397 — the SHARED TrendChart (hover scrubber + tooltip showing every value on a day). Tap-to-focus now
+  // dims the others via `faint`; the overall average stays dashed. Same standard as the metric charts above.
+  const cbSeries = [
+    ...CB_METRICS.map((m) => ({ label: m.name, color: m.color, data: avgLines[m.key], faint: !!focus && focus !== m.key })),
+    { label: 'overall', color: CB_OVERALL_COLOR, data: overallAvgLine, dash: true },
+  ]
+  // coach insight on EVERY graph (JM 2026-07-07): overall readiness trend + the weakest lever to improve.
+  const oVals = overallDaily.filter((v): v is number => v != null)
+  let cbInsight: string | null = null
+  if (oVals.length >= 4) {
+    const h = Math.floor(oVals.length / 2)
+    const dm = oVals.slice(h).reduce((a, b) => a + b, 0) / oVals.slice(h).length - oVals.slice(0, h).reduce((a, b) => a + b, 0) / oVals.slice(0, h).length
+    const comp = CB_METRICS.map((m) => { const v = series[m.key].filter((x): x is number => x != null); return { m, a: v.length ? v.reduce((x, y) => x + y, 0) / v.length : NaN } }).filter((x) => !Number.isNaN(x.a))
+    const weakest = comp.length ? comp.reduce((lo, x) => (x.a < lo.a ? x : lo)) : null
+    const trend = Math.abs(dm) < 0.2 ? '➡️ Your daily readiness is holding steady.' : dm > 0 ? `📈 Readiness is trending up (+${dm.toFixed(1)}) — recovery is winning; keep it going.` : `📉 Readiness is sliding (${dm.toFixed(1)}) — bank more sleep or ease the load.`
+    const lever = weakest && weakest.a < 3.2 ? ` ${weakest.m.emoji} ${weakest.m.name} is your lowest input (avg ${weakest.a.toFixed(1)}/5) — the biggest win is there.` : ''
+    cbInsight = trend + lever
+  }
 
   return (
     <div className="card wcard">
@@ -115,24 +124,8 @@ function CheckinBreakdown({ series, dates }: { series: Record<'sleep' | 'energy'
         <span className="wcard__now" style={{ color: headColor }}>{headNow ?? '—'}</span>
       </div>
       <div className="wcard__sub">Overall avg {overallStat.avg} · min {overallStat.min} · max {overallStat.max}{!focus ? ' — tap a metric to focus' : ''}</div>
-      <div className="wt cb">
-        <div className="wt__plot">
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="wt__svg" aria-hidden="true">
-            <line x1={0} y1={0} x2={100} y2={0} stroke="#222732" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
-            <line x1={0} y1={py(mid)} x2={100} y2={py(mid)} stroke="#222732" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-            <line x1={0} y1={100} x2={100} y2={100} stroke="#222732" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
-            <polyline points={toLine(overallAvgLine)} fill="none" stroke={CB_OVERALL_COLOR} strokeWidth={1.4} strokeDasharray="4 3" strokeOpacity={focus ? 0.15 : 0.5} vectorEffect="non-scaling-stroke" />
-            {CB_METRICS.map((m) => {
-              const on = !focus || focus === m.key
-              return <polyline key={m.key} points={toLine(avgLines[m.key])} fill="none" stroke={m.color} strokeWidth={focus === m.key ? 3 : 2.2} strokeOpacity={on ? 1 : 0.18} vectorEffect="non-scaling-stroke" />
-            })}
-          </svg>
-          <span className="wt__y" style={{ top: '0%' }}>{mx}</span>
-          <span className="wt__y" style={{ top: '50%' }}>{mid}</span>
-          <span className="wt__y" style={{ top: '100%' }}>{mn}</span>
-        </div>
-        <div className="wt__x">{xTicks.map((i) => <span key={i}>{dates[i] || ''}</span>)}</div>
-      </div>
+      <TrendChart height={150} axes labels={dates} minSpan={2} series={cbSeries} />
+      {cbInsight && <p className="fit-insight">{cbInsight}</p>}
       <div className="cb__leg">
         {CB_METRICS.map((m) => {
           const s = stats[m.key]; const on = !focus || focus === m.key

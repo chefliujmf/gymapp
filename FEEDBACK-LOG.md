@@ -414,6 +414,15 @@ test guide → the **🧪 Test guide** section below.
     → `list[0].distance[]` (meters) + `values[]` (seconds to cover each) → pace sec/km = `values/distance*1000`, duration = `values`.
     Build `fetchPaceCurve(days)` in intervals.ts (returns {secs, pace}), add `PaceCurveChart` to RunningStats mirroring how
     CyclingStats uses PowerCurveChart (+ best-pace-at chips: 400 m / 1 k / 5 k / 10 k). JM has 10 runs → real data. gymapp-only.
+    UPDATE 2026-07-07 (JM: "good in QA but you forgot the check-in breakdown one"): also converted `CheckinBreakdown`
+    (Sleep/Energy/Form + overall) from its bespoke SVG to the shared `TrendChart` — hover + tooltip, tap-to-focus now via the
+    `faint` series flag, overall dashed — + a coach insight (readiness trend + weakest lever). Pace curve got an insight too.
+397. ⬜ **STANDING RULE — a coach insight on EVERY graph where there's added value.** JM 2026-07-07: "for every graph, every
+    data, the coach should include insights if there's added value to learn and mostly improve (or to know what to keep doing)."
+    NOT a one-off — a bar for all charts (reinforced in [[platyplus-insights-everywhere]] + [[platyplus-chart-standard]]). Done so
+    far: Fitness/Fatigue/Form/Load, all Wellness metrics + CheckinBreakdown, pace trend + pace curve. ⬜ AUDIT the rest + add where
+    valuable: cycling **power curve** + **eFTP trend** (CyclingStats), running race-predictions, benchmark cards, any Progress/Mind
+    charts. Insight = one plain line: what it means + keep-doing / do-this-to-improve. Skip only when genuinely no signal. gymapp-wide.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client

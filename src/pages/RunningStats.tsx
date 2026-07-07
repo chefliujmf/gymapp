@@ -99,6 +99,8 @@ export default function RunningStats() {
             <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
               <div className="fit-legend"><span style={{ color: '#ffb13d' }}>● Pace curve<InfoDot text="Your fastest pace held for each duration — short bursts on the left (seconds), long runs on the right (up to ~minutes). Push a line UP (faster) = you got quicker at that effort. Read live from intervals.icu." /></span></div>
               <PaceCurveChart secs={pc.secs} pace={pc.pace} color="#ffb13d" />
+              {/* coach insight on every graph (#395 directive): the 1 k→5 k fade = your speed-vs-endurance profile. */}
+              {(() => { const p1 = bestPaceAtDist(pc, 1000), p5 = bestPaceAtDist(pc, 5000); if (!p1 || !p5) return null; const f = p5 - p1; return <p className="fit-insight">{f < 15 ? '💪 Strong endurance — your pace barely fades from 1 k to 5 k.' : f < 45 ? `➡️ Pace fades ~${Math.round(f)}s/km from 1 k to 5 k — a normal aerobic drop-off.` : `📉 Big fade (~${Math.round(f)}s/km) 1 k→5 k — more easy endurance volume would flatten your curve.`}</p> })()}
               <div className="be-row">
                 {([[1000, '1 km'], [5000, '5 km'], [10000, '10 km']] as [number, string][]).map(([m, label]) => {
                   const p = bestPaceAtDist(pc, m)
