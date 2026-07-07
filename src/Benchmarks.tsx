@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import { authApi, type IcuAthletePull } from './auth/api'
 import { fmtPace, parsePace } from './running-paces'
-import { fetchWellness, fetchPowerCurve, fetchPaceCurve, type PowerCurve, type PaceCurve } from './intervals'
+import { fetchWellness, fetchPowerCurve, fetchPaceCurve, fetchEfTrend, type PowerCurve, type PaceCurve, type EfTrend } from './intervals'
 import { estimateSleepNeed } from './sleep'
 import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from './tte'
 import { athleteProfile } from './athlete-profile'
@@ -126,6 +126,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const [sleepMore, setSleepMore] = useState<number | null>(null) // nights still needed
   const [powerCurve, setPowerCurve] = useState<PowerCurve | null>(null) // #401 cycling TTE
   const [paceCurve, setPaceCurve] = useState<PaceCurve | null>(null) // #401 running TTE
+  const [efTrend, setEfTrend] = useState<EfTrend | null>(null) // #403 efficiency-factor trend (for the profile)
   const [open, setOpen] = useState<Key | null>(null)
   const connected = !!user?.hasIcuKey
 
@@ -143,6 +144,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       const se = estimateSleepNeed(rows); setSleepEst(se.suggested); setSleepMore(se.needMore || null) // #337 sleep learning state
     }).catch(() => {})
   }, [connected])
+  useEffect(() => { if (connected && profile) fetchEfTrend(profile === 'cycling' ? 'Ride' : 'Run').then(setEfTrend).catch(() => {}) }, [connected, profile]) // #403 EF for the profile
 
   const ss = pull?.sportSettings || {}
   const ftpManual = ss.cycling?.ftp ?? user?.ftp ?? null
@@ -173,8 +175,8 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const dPrimeM = paceCurve?.dPrime != null ? Math.round(paceCurve.dPrime) : null // metres
   // #403 — athlete-profile synthesis (rendered when a per-sport page passes `profile`). EF wires in Phase 2.
   const prof = profile ? athleteProfile(profile === 'cycling'
-    ? { sport: 'cycling', threshold: ftpManual, eftp, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20 }
-    : { sport: 'running', threshold: paceManual ?? paceEst, eftp: paceEst, tte: tteRun, cp: csPace, reserveKj: dPrimeM, reserveBig: 200 }) : null
+    ? { sport: 'cycling', threshold: ftpManual, eftp, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
+    : { sport: 'running', threshold: paceManual ?? paceEst, eftp: paceEst, tte: tteRun, cp: csPace, reserveKj: dPrimeM, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null
 
   const saveSport = (group: 'cycling' | 'running', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
   // #337 — "when will the computed estimate land?" straight from our theory gates, so nothing just says
