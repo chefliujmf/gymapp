@@ -474,6 +474,16 @@ test guide → the **🧪 Test guide** section below.
     aerobic decoupling Pw:HR if easy) — new compute from activities (intervals has `icu_weighted_avg_watts`, `average_heartrate`,
     `decoupling`). (c) coach KB: CP/W′/FRC + EF interpretation + "high FTP+short TTE=fragile · moderate FTP+long TTE=diesel" → docs/ +
     coach-engine. Present a plan + confirm scope (big feature). gymapp + coach. See [[platyplus-chart-standard]] · [[platyplus-insights-everywhere]].
+    ✅ BUILT (JM: "build it all, don't forget mockups"). Mocked (mockups/beyond-ftp.html) → approved. Phase 1: CP·W′·CS·D′
+    benchmark cards (modelFitConfidence, from the curve fit, no test). Phase 2: EF trend graph on both stats pages (fetchEfTrend
+    reads intervals `icu_efficiency_factor`) + EF read in the profile. Phase 3: `src/athlete-profile.ts` synthesis card (pure+tested)
+    — TYPE + per-metric coach read + no-test training focus, rendered by `BenchmarksCard profile=`. Phase 4 (propagate): docs/beyond-ftp-metrics.md
+    (+ highnorth CP-calc cite) + coach-engine cycling & running sections + openapi (cp/wPrime/cs/dPrime) + memory [[platyplus-beyond-ftp-metrics]].
+    JM's Qs answered inline: CP/W′/EF separate (not under TTE); improve without tests (the efforts ARE the data); profile = "Punchy threshold".
+404. ⬜ **Expose the computed CP/W′/EF/TTE/PROFILE to the COACH (MCP read tool).** From #403: the coach-engine now has the THEORY,
+    but no MCP tool returns the athlete's actual VALUES (CP 248, W′ 17.1, EF trend, TTE 12 min, profile type) — so the coach reasons
+    from theory, not JM's numbers. Build: a server endpoint computing them (port `tte.js`/`athlete-profile` server-side or reuse the
+    curve fetches) + an MCP `get_metrics`/extend `get_wellness` so daily-adapt + chat reason with the real profile. gymapp + coach.
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
     passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");
