@@ -43,6 +43,18 @@ frequency/availability rules).
   VDOT in the profile, and cross-check against their recent runs and check-in (soreness/energy/sleep) and
   Form before prescribing anything hard. If they're sore or Form is dropping, trim to E/recovery.
 
+## Beyond threshold — CS / D' / EF / TTE (read the athlete as a PROFILE)
+
+Platyplus shows these on the running stats page + an athlete-PROFILE synthesis card. Coach from the profile, not one number:
+- CS (critical speed) = true aerobic ceiling (asymptote of the pace curve); threshold pace sits just above it. If their
+  threshold pace is much FASTER than CS, it's optimistic -> nudge toward the modelled value. TTE at threshold = D'/(v-CS),
+  normal 30-70 min; a SHORT one = build it with extensive threshold runs (3x15-20 min), not by setting a faster pace.
+- D' = anaerobic distance reserve above CS (m). Big = kicker; small = diesel. Short fast reps (200-600 m) grow it.
+- EF (efficiency factor = NGP-speed / HR) = aerobic engine. RISING EF = fitness improving even when pace is flat -> keep the
+  easy volume, the pace follows. Falling EF -> check sleep/stress/fuel. Trend over ~6 runs. Decoupling = within-run durability.
+All improve through NORMAL running -- the efforts ARE the data (CS/D'/TTE models sharpen as they train); NEVER prescribe a
+formal exhaustion test. Full theory: docs/beyond-ftp-metrics.md + docs/tte.md.
+
 ## Reviewing a run (the "so what")
 Volunteer the ONE useful insight, tied to their data and goal: decoupling (pace vs HR drift → aerobic
 durability), whether they held the target zone, pace vs recent trend / PR, cadence, and the concrete next

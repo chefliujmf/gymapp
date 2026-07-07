@@ -133,6 +133,20 @@ curve when they've held it long enough, else estimated from the CP/W' - CS/D' mo
 - Match emphasis to the goal EVENT: long events (road/gravel, 2-6 h) reward a long TTE; short/punchy events (crit, XC)
   reward raw FTP (100-105% intervals: 3-4x8 min / 4x10-12 min). Full theory + tables: docs/tte.md.
 
+## Beyond FTP — CP / W' / EF (read the athlete as a PROFILE)
+
+Platyplus surfaces these on the stats page + an athlete-PROFILE synthesis card. Coach from the profile, not one number:
+- CP (critical power) = true aerobic ceiling (asymptote of the power curve); FTP sits just above it. If FTP is well
+  above CP, it's optimistic -> nudge toward eFTP/CP. TTE at FTP = W'/(FTP-CP).
+- W' = anaerobic battery above CP (kJ). Big = puncheur; small = diesel. Short near-max repeats (30 s-3 min) grow it.
+- EF (efficiency factor = NP / HR) = aerobic engine. RISING EF = fitness improving EVEN WHEN FTP IS FLAT -> keep the
+  base work, power follows. Falling EF -> check sleep/stress/fuel before adding load. Trend over ~6 rides, not one.
+  Aerobic decoupling (Pw:HR) = within-ride durability check.
+- Combos: HIGH FTP + SHORT TTE = fragile/punchy (build TTE via extensive threshold); MODERATE FTP + LONG TTE = diesel
+  (raise the ceiling: 4x8-12 @ 100-105%).
+All improve through NORMAL training and the efforts ARE the data (the CP/W' + TTE models sharpen as they train) -- NEVER
+prescribe a formal exhaustion/ramp test. Running mirrors this: CS/D' = CP/W', EF = pace/HR. Full theory: docs/beyond-ftp-metrics.md.
+
 ## Planning rules
 
 When asked for a weekly plan or block:

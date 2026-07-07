@@ -66,7 +66,7 @@ export async function fetchAthleteFtp(): Promise<number | undefined> {
 }
 
 /** A mean-max power curve (best watts sustainable for each duration). */
-export interface PowerCurve { secs: number[]; watts: number[]; cp?: number; wPrime?: number } // #401 CP/W′ (FFT/Morton model) → model-based TTE fallback
+export interface PowerCurve { secs: number[]; watts: number[]; cp?: number; wPrime?: number; r2?: number } // #401/#403 CP/W′ + fit quality (FFT/Morton model)
 /** Athlete mean-max POWER curve from intervals.icu over the last N days (cycling).
  * Read-only; null on no key/error/unexpected shape (graceful). */
 export async function fetchPowerCurve(days: number): Promise<PowerCurve | null> {
@@ -83,11 +83,11 @@ export async function fetchPowerCurve(days: number): Promise<PowerCurve | null> 
     const watts: number[] = curve?.values || curve?.watts || []
     if (!secs.length || !watts.length) return null
     const pm = (curve?.powerModels || []).find((m: { type?: string }) => m.type === 'FFT_CURVES') || (curve?.powerModels || [])[0]
-    return { secs, watts, cp: pm?.criticalPower, wPrime: pm?.wPrime }
+    return { secs, watts, cp: pm?.criticalPower, wPrime: pm?.wPrime, r2: pm?.r2 }
   } catch { return null }
 }
 
-export interface PaceCurve { secs: number[]; pace: number[]; dist: number[]; cs?: number; dPrime?: number } // #401 CS/D′ model → model-based TTE fallback
+export interface PaceCurve { secs: number[]; pace: number[]; dist: number[]; cs?: number; dPrime?: number; r2?: number } // #401/#403 CS/D′ + fit quality
 /** Running mean-max PACE curve from intervals.icu (#396). intervals indexes it by DISTANCE
  * (`distance[]` m + `values[]` = seconds to cover each), so we derive duration + pace(sec/km) and
  * sort by duration to mirror the cycling power curve. Read-only; null on no key/error/empty. */
@@ -111,9 +111,36 @@ export async function fetchPaceCurve(days: number): Promise<PaceCurve | null> {
       else { secs.push(pt.s); pace.push(pt.p); dm.push(pt.d) }
     }
     const pmodel = (curve?.paceModels || [])[0]
-    return secs.length >= 2 ? { secs, pace, dist: dm, cs: pmodel?.criticalSpeed, dPrime: pmodel?.dPrime } : null
+    return secs.length >= 2 ? { secs, pace, dist: dm, cs: pmodel?.criticalSpeed, dPrime: pmodel?.dPrime, r2: pmodel?.r2 } : null
   } catch { return null }
 }
+// #403 — Efficiency Factor trend. intervals computes EF per activity (icu_efficiency_factor = NP÷HR for a
+// ride, NGP-speed÷HR for a run) — a rising EF = your aerobic engine improving even when FTP/pace is flat.
+export interface EfPoint { date: string; ef: number }
+export interface EfTrend { points: EfPoint[]; latest: number | null; trend: 'up' | 'down' | 'flat' | null; deltaPct: number | null }
+export async function fetchEfTrend(type: 'Ride' | 'Run', days = 90): Promise<EfTrend | null> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return null
+  try {
+    const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
+    const res = await fetch(`${ICU}/athlete/${athleteId}/activities?oldest=${from}&newest=${to}`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return null
+    const arr = await res.json()
+    const points: EfPoint[] = (Array.isArray(arr) ? arr : [])
+      .filter((a: Record<string, number | string>) => a.type === type && Number(a.icu_efficiency_factor) > 0 && Number(a.moving_time) >= 1200) // ≥20 min → a meaningful aerobic EF
+      .map((a: Record<string, number | string>) => ({ date: String(a.start_date_local || '').slice(0, 10), ef: Math.round(Number(a.icu_efficiency_factor) * 1000) / 1000 }))
+      .filter((p) => p.date)
+      .sort((a, b) => a.date.localeCompare(b.date))
+    if (points.length < 2) return { points, latest: points.length ? points[points.length - 1].ef : null, trend: null, deltaPct: null }
+    const h = Math.floor(points.length / 2)
+    const older = points.slice(0, h).reduce((s, p) => s + p.ef, 0) / h
+    const recent = points.slice(h).reduce((s, p) => s + p.ef, 0) / (points.length - h)
+    const deltaPct = older > 0 ? Math.round(((recent - older) / older) * 1000) / 10 : null
+    const trend = recent > older * 1.02 ? 'up' : recent < older * 0.98 ? 'down' : 'flat'
+    return { points, latest: points[points.length - 1].ef, trend, deltaPct }
+  } catch { return null }
+}
+
 /** Best pace (sec/km) at the distance bucket nearest `meters` — for the pace-curve chips (1k/5k/10k). */
 export function bestPaceAtDist(pc: PaceCurve, meters: number): number | null {
   let bi = -1, bd = Infinity

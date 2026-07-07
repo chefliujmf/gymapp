@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, type RunVolume } from '../running-paces'
 import { runningVo2max } from '../vo2max-submax'
-import { fetchWellness, fetchPaceCurve, bestPaceAtDist, type PaceCurve } from '../intervals'
+import { fetchWellness, fetchPaceCurve, fetchEfTrend, bestPaceAtDist, type PaceCurve, type EfTrend } from '../intervals'
 import { authApi } from '../auth/api'
 import { TrendChart, PaceCurveChart, InfoDot } from '../charts'
 import { BenchmarksCard } from '../Benchmarks'
@@ -30,6 +30,7 @@ export default function RunningStats() {
   const [hrRest, setHrRest] = useState<number | null>(null) // #234 HR-ratio input
   const [paceTrend, setPaceTrend] = useState<(number | null)[] | null>(null) // #230 per-week avg pace
   const [pc, setPc] = useState<PaceCurve | null>(null) // #396 mean-max pace curve
+  const [ef, setEf] = useState<EfTrend | null>(null) // #403 efficiency-factor trend
   const isRunner = hasModule(user?.sports || [], 'running')
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function RunningStats() {
     authApi.runVolume().then(setRunVol).catch(() => {})
     authApi.runPaceTrend().then((r) => setPaceTrend(r.available && r.paces ? r.paces : [])).catch(() => {})
     fetchPaceCurve(90).then(setPc).catch(() => setPc(null)) // #396
+    fetchEfTrend('Run', 90).then(setEf).catch(() => {}) // #403
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
     fetchWellness(from, to).then((rows) => { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break } }).catch(() => {})
   }, [user?.hasIcuKey, isRunner])
@@ -67,7 +69,7 @@ export default function RunningStats() {
         <>
           {/* #385/#398 — the benchmark cards (Threshold pace · VO₂max · Max HR) are the single source: each shows the
               value + confidence and taps open a sheet to edit (manual value) / switch manual↔computed. No duplicate cell. */}
-          <BenchmarksCard only={['thresholdPace', 'vo2max', 'maxHr', 'tteRun']} />
+          <BenchmarksCard only={['thresholdPace', 'cs', 'dPrime', 'vo2max', 'tteRun', 'maxHr']} profile="running" />
           {vo2 && hrRatioMismatch &&<p className="meta" style={{ margin: '10px 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
 
           {/* #396 — mean-max PACE curve (running's power curve): fastest pace held for each duration, from intervals. */}
@@ -136,6 +138,17 @@ export default function RunningStats() {
               </>
             )
           })()}
+
+          {/* #403 — Efficiency Factor: aerobic engine (pace ÷ HR), rising = fitter even when pace is flat. */}
+          {ef && ef.points.length >= 2 && (
+            <>
+              <div className="stat-sub">Efficiency Factor <em>· aerobic engine · pace ÷ HR</em></div>
+              <div className="card chart-card" style={{ padding: '12px 14px' }}>
+                <TrendChart series={[{ label: 'EF', color: '#34e07d', data: ef.points.map((p) => p.ef), area: true }]} height={110} axes labels={ef.points.map((p) => new Date(p.date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))} />
+                <p className="fit-insight">{ef.trend === 'up' ? `📈 EF is climbing (${ef.deltaPct != null && ef.deltaPct > 0 ? '+' : ''}${ef.deltaPct}%) — your aerobic engine is improving, even if pace is flat.` : ef.trend === 'down' ? `📉 EF is slipping (${ef.deltaPct}%) — check sleep, stress or fuelling.` : '➡️ EF is steady — a stable aerobic base.'}</p>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
