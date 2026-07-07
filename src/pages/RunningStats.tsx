@@ -2,31 +2,14 @@ import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
-import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, parsePace, type RunVolume } from '../running-paces'
+import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, type RunVolume } from '../running-paces'
 import { runningVo2max } from '../vo2max-submax'
 import { fetchWellness, fetchPaceCurve, bestPaceAtDist, type PaceCurve } from '../intervals'
-import { setSetting } from '../db'
 import { authApi } from '../auth/api'
 import { TrendChart, PaceCurveChart, InfoDot } from '../charts'
 import { BenchmarksCard } from '../Benchmarks'
-
-// #275 — editable threshold-pace cell (tap to edit here, syncs to intervals like Profile does).
-function ThresholdCell({ pace, onSave }: { pace: number | null; onSave: (sec: number | null) => void }) {
-  const [editing, setEditing] = useState(false)
-  const [txt, setTxt] = useState('')
-  const commit = () => { onSave(txt.trim() ? parsePace(txt.trim()) : null); setEditing(false) }
-  return (
-    <div className="fit-mini" style={{ cursor: 'pointer' }} onClick={() => { if (!editing) { setTxt(pace ? fmtPace(pace) : ''); setEditing(true) } }}>
-      <div className="fit-mini__head">
-        <span>Threshold <InfoDot text="Your ~1 h race pace (lactate threshold). Tap to edit — syncs to intervals." /></span>
-        {editing
-          ? <input autoFocus value={txt} placeholder="m:ss" inputMode="numeric" onChange={(e) => setTxt(e.target.value)} onBlur={commit} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Enter') commit() }} style={{ width: 60, textAlign: 'right', background: 'transparent', border: 0, borderBottom: '1px solid var(--accent)', color: 'var(--accent)', fontWeight: 800, fontSize: 18 }} />
-          : <b>{pace ? fmtPace(pace) : '—'}</b>}
-      </div>
-      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{pace ? '/km · tap to edit' : 'tap to set'}</div>
-    </div>
-  )
-}
+// #398 — the Threshold benchmark card (edit + confidence + science) is the ONE place for threshold pace; the
+// old duplicate inline ThresholdCell was removed (JM: "threshold there 2 times").
 
 // #225 — Running per-sport stats: threshold pace · Daniels zones · VDOT · race predictions.
 // Pulls the running benchmarks (today shown in Profile too — edit in either, #228).
@@ -40,7 +23,7 @@ const ZONES: [keyof ReturnType<typeof paceZones>, string, string][] = [
 
 export default function RunningStats() {
   const navigate = useNavigate()
-  const { user, refresh } = useAuth()
+  const { user } = useAuth()
   const [runVol, setRunVol] = useState<{ available: boolean; longestKm?: number; weeklyKm?: number } | null>(null)
   const [hrRest, setHrRest] = useState<number | null>(null) // #234 HR-ratio input
   const [paceTrend, setPaceTrend] = useState<(number | null)[] | null>(null) // #230 per-week avg pace
@@ -56,13 +39,7 @@ export default function RunningStats() {
     fetchWellness(from, to).then((rows) => { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break } }).catch(() => {})
   }, [user?.hasIcuKey, isRunner])
 
-  const pace = user?.runThresholdPace ?? null // sec/km
-  // #275: save the threshold pace from here (mirrors Profile.saveRunPace → syncs to intervals).
-  const saveRunPace = (sec: number | null) => {
-    const c = sec && sec > 0 ? sec : null
-    authApi.saveSportStat({ group: 'running', thresholdPace: c, runVdot: c ? Math.round(vdotFromThresholdPace(c)) : null }).then(() => refresh()).catch(() => {})
-    setSetting('runThresholdPace', c ? String(c) : '')
-  }
+  const pace = user?.runThresholdPace ?? null // sec/km (edited via the Threshold benchmark card, #398)
   const vdot = pace ? Math.round(vdotFromThresholdPace(pace)) : (user?.runVdot ?? null)
   const zones = vdot ? paceZones(vdot) : null
   const preds = vdot ? racePredictions(vdot) : null
@@ -86,26 +63,31 @@ export default function RunningStats() {
         <p className="meta">Set your <Link to="/profile" style={{ color: 'var(--accent)' }}>threshold pace</Link> (the ~1 h race pace you can hold) to unlock Daniels zones, VDOT & race predictions.</p>
       ) : (
         <>
-          {/* #385 — same polished benchmark cards as Global, filtered to running (Threshold pace · VO₂max · Max HR). */}
+          {/* #385/#398 — the benchmark cards (Threshold pace · VO₂max · Max HR) are the single source: each shows the
+              value + confidence and taps open a sheet to edit (manual value) / switch manual↔computed. No duplicate cell. */}
           <BenchmarksCard only={['thresholdPace', 'vo2max', 'maxHr']} />
-          {/* Quick inline threshold-pace editor (the benchmark card shows current + confidence; this is the fast tap-to-edit that drives zones & predictions below). */}
-          <div className="fit-grid" style={{ gridTemplateColumns: '1fr' }}>
-            <ThresholdCell pace={pace} onSave={saveRunPace} />
-          </div>
-          {vo2 && hrRatioMismatch && <p className="meta" style={{ margin: '10px 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
+          {vo2 && hrRatioMismatch &&<p className="meta" style={{ margin: '10px 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
 
           {/* #396 — mean-max PACE curve (running's power curve): fastest pace held for each duration, from intervals. */}
           {pc && pc.secs.length >= 2 && (
             <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
               <div className="fit-legend"><span style={{ color: '#ffb13d' }}>● Pace curve<InfoDot text="Your fastest pace held for each duration — short bursts on the left (seconds), long runs on the right (up to ~minutes). Push a line UP (faster) = you got quicker at that effort. Read live from intervals.icu." /></span></div>
               <PaceCurveChart secs={pc.secs} pace={pc.pace} color="#ffb13d" />
-              {/* coach insight on every graph (#395 directive): the 1 k→5 k fade = your speed-vs-endurance profile. */}
-              {(() => { const p1 = bestPaceAtDist(pc, 1000), p5 = bestPaceAtDist(pc, 5000); if (!p1 || !p5) return null; const f = p5 - p1; return <p className="fit-insight">{f < 15 ? '💪 Strong endurance — your pace barely fades from 1 k to 5 k.' : f < 45 ? `➡️ Pace fades ~${Math.round(f)}s/km from 1 k to 5 k — a normal aerobic drop-off.` : `📉 Big fade (~${Math.round(f)}s/km) 1 k→5 k — more easy endurance volume would flatten your curve.`}</p> })()}
+              {/* coach insight on every graph (#395/#397) — threshold-anchored + robust to whatever distances exist:
+                  is the curve from easy base miles or real efforts near threshold? then the endurance fade. */}
+              {(() => {
+                const p1 = bestPaceAtDist(pc, 1000)
+                if (pace && p1 && p1 > pace + 30) return <p className="fit-insight">📉 Your logged runs sit well easier than your {fmtPace(pace)}/km threshold (best 1 k here {fmtPace(p1)}) — mostly base miles. Add tempo or intervals to push the curve toward your real capacity.</p>
+                const li = pc.dist.reduce((mx, d, i) => (d > pc.dist[mx] ? i : mx), 0)
+                const dLong = pc.dist[li], pLong = pc.pace[li], base = p1 ?? Math.min(...pc.pace)
+                if (dLong >= 2000 && pLong >= base) { const f = Math.round(pLong - base); return <p className="fit-insight">{f < 25 ? `💪 Strong endurance — your pace barely fades (~${f}s/km) out to ${(dLong / 1000).toFixed(1)} km.` : `➡️ Pace fades ~${f}s/km out to ${(dLong / 1000).toFixed(1)} km — more easy volume flattens the curve.`}</p> }
+                return null
+              })()}
               <div className="be-row">
-                {([[1000, '1 km'], [5000, '5 km'], [10000, '10 km']] as [number, string][]).map(([m, label]) => {
-                  const p = bestPaceAtDist(pc, m)
-                  return <div key={label} className="be"><span>{label}</span><b>{p ? fmtPace(p) : '—'}</b>{p ? <em>/km</em> : null}</div>
-                })}
+                {([[400, '400 m'], [1000, '1 km'], [5000, '5 km'], [10000, '10 km']] as [number, string][])
+                  .map(([m, label]) => [label, bestPaceAtDist(pc, m)] as [string, number | null])
+                  .filter(([, p]) => p != null)
+                  .map(([label, p]) => <div key={label} className="be"><span>{label}</span><b>{fmtPace(p!)}</b><em>/km</em></div>)}
               </div>
             </div>
           )}

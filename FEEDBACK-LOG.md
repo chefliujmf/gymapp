@@ -423,6 +423,15 @@ test guide → the **🧪 Test guide** section below.
     far: Fitness/Fatigue/Form/Load, all Wellness metrics + CheckinBreakdown, pace trend + pace curve. ⬜ AUDIT the rest + add where
     valuable: cycling **power curve** + **eFTP trend** (CyclingStats), running race-predictions, benchmark cards, any Progress/Mind
     charts. Insight = one plain line: what it means + keep-doing / do-this-to-improve. Skip only when genuinely no signal. gymapp-wide.
+398. 🔨 **Threshold pace shown TWICE on Running + pace-curve insight not appearing.** JM 2026-07-07 (screenshot): "threshold
+    there 2 times; also no insights yet under pace graph." (1) `RunningStats` rendered BOTH the Threshold **benchmark card**
+    (value + confidence + tap-to-edit sheet) AND a duplicate inline `ThresholdCell` — removed the ThresholdCell (+ its
+    `saveRunPace`, unused `refresh`/`parsePace`/`setSetting`); the benchmark card's edit sheet (Benchmarks.tsx `Sheet`, an
+    editable input + Manual/Computed toggle) is the single source and still drives zones/predictions via `user.runThresholdPace`.
+    (2) The pace-curve insight required a 1 k AND 5 k bucket, but JM's curve maxes at 4 km (no 5 k) → silently null. Rewrote it
+    threshold-anchored + robust: if the 1 k pace sits >30 s/km easier than threshold → "mostly base miles, add tempo/intervals"
+    (true for JM: 1 k 6:08 vs 4:57 threshold); else the endurance fade over whatever longest distance exists. Chips now adaptive
+    (400 m/1 k/5 k/10 k → only render distances with data, no "—"). Reinforces #397. gymapp-only.
     but it's still evening of Jul 3 in Montreal → so forecasting Jul 4 (tomorrow LOCALLY) hits `if (date<=today) return
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
