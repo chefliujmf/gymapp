@@ -325,11 +325,12 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sharpen: 'wear your tracker to sleep a few more nights → we learn the duration your body recovers best on.',
     },
   ]
-  // #385/#401/#403 — when `only` is passed, keep just those keys, in the requested order; else the global grid
-  // stays CORE (VO₂max/FTP/threshold/MaxHR/sleep). The advanced, ACTIVITY/SPORT-SPECIFIC cards — TTE · CP · W′ ·
-  // CS · D′ — are per-sport-page only (requested explicitly via `only`), never in the global mix (JM directive).
-  const ADVANCED: Key[] = ['tteRide', 'tteRun', 'cp', 'wPrime', 'cs', 'dPrime']
-  const shown = only ? only.map((k) => defs.find((d) => d.key === k)).filter((d): d is StatDef => !!d) : defs.filter((d) => !ADVANCED.includes(d.key))
+  // #385/#401/#403/#413 — when `only` is passed, keep just those keys, in the requested order. Else the GLOBAL grid
+  // shows ONLY cross-sport benchmarks: VO₂max · Max HR · Sleep. Everything SPORT-SPECIFIC lives on its per-sport page
+  // (via `only`), never in the global mix (JM directive: nothing activity-specific in global): FTP (cycling) +
+  // threshold pace (running), and the advanced curve metrics TTE · CP · W′ · CS · D′.
+  const SPORT_ONLY: Key[] = ['ftp', 'thresholdPace', 'tteRide', 'tteRun', 'cp', 'wPrime', 'cs', 'dPrime']
+  const shown = only ? only.map((k) => defs.find((d) => d.key === k)).filter((d): d is StatDef => !!d) : defs.filter((d) => !SPORT_ONLY.includes(d.key))
   const showsFtp = shown.some((d) => d.key === 'ftp')
   // #277: default is AUTO — prefer the computed estimate once it's ready, manual until then.
   const prefOf = (d: StatDef): Pref => (user?.statPrefs as Partial<Record<Key, Pref>> | undefined)?.[d.key] ?? 'auto'

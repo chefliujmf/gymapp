@@ -541,7 +541,25 @@ test guide → the **🧪 Test guide** section below.
     "don't get the Mind — the section is empty but the why is a chip to click." Fuel shows its text inline (+ a why chip); Mind shows only
     a "why ⓘ" chip with no body, so it reads as broken/empty (the real "Mental focus — Restraint…" is buried in the why sheet). FIX: if a
     section has no inline body, show its content in the body (not only behind "why"), OR hide the empty section header. gymapp-only.
-    {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
+412. ⬜ **(FOR LATER) Moving a session between days FAILS / DUPLICATES + the "Substitute" picker is empty.** JM 2026-07-07 (QA):
+    "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
+    Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
+    exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
+    icuEventId, not create — ties [[platyplus-integrations]] sync #380 planToIcuEvent/reconcile "intervals-move-wins for the DAY";
+    also the past-day/paired-activity guard). (2) the "Substitute on Jul 9" modal (screenshot) shows a "Search ride…" field over a wall
+    of EMPTY skeleton rows that never populate — the ride list isn't loading. Repro on QA. Investigate the move/upsert dedup + the
+    substitute picker's data fetch. gymapp (+ maybe intervals sync). JM: FOR LATER.
+413. 🔨 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
+    in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
+    FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL
+    grid now shows ONLY cross-sport benchmarks — **VO₂max · Max HR · Sleep**. FTP stays on the Cycling stats page, threshold pace on Running
+    (both already via `only=[…]`). tsc clean. gymapp-only.
+414. ⬜ **Xenia's (wife) "gym workout for today" shows EMPTY.** JM 2026-07-07. INVESTIGATED: Xenia has **no plan at all for 2026-07-07**
+    on prod (5U3WYwwwkI6X — only a run Jul 6, then gym Jul 11) NOR staging (DYo0FuzIvn6w — 0 plans, no icu_key, no sports, icu_athlete
+    inherited as i28814). Her OTHER gym plans DO populate (Jul 11/15/18 = 12 exercises each), so it's NOT an empty-exercises generation bug.
+    So the empty card is either (a) the Today page renders a gym-workout card when there is NO plan for that day, or (b) on QA an
+    intervals SHELL surfaces from the shared i28814 athlete (she has no key). NEED from JM to pinpoint: which ENV (QA vs prod) + a
+    screenshot of the empty card + confirm it's on HER login. gymapp (Today.tsx render / intervals shell). 
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
     passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");
     (2) server derives local today from the athlete's intervals timezone; (3) client-only message fix. Note: the readiness
