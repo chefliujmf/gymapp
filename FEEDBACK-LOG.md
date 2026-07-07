@@ -458,6 +458,22 @@ test guide → the **🧪 Test guide** section below.
     gets a `tteConfidence`), computed from the curve model, manual-override + auto/computed toggle like the rest, and surfaced in the
     coach (openapi + MCP + coach-engine — [[platyplus-propagate-all-layers]]). Add to the benchmark cards (top), NOT the best-efforts
     table. gymapp + coach.
+402. 🔨 **TTE theory → coach knowledge base + card reframe.** JM 2026-07-07 shared https://trainright.com/…time-to-exhaustion-tte…
+    ("good for the coach") after questioning why his cycling TTE showed 6:30 vs the textbook "30–70 min at FTP". Theory: TTE =
+    max duration you hold FTP/threshold (normal 30–70 min; moderate 30–40, well-trained 45–75); FTP is a POWER-DURATION PAIR, not a
+    bare watt; a short TTE is usually a TRAINING TARGET (extend with extensive threshold work — 3×15–20/3×24/4×15 min @ 90–95% FTP,
+    6–10 min rec, total work ≈ current TTE), only flag FTP-too-high when TTE ≪ 30 min vs eFTP. Built: `docs/tte.md` (full theory +
+    tables, cited) + a concise TTE section in `coach-engine-cycling.md` + reframed the TTE benchmark narr/sharpen (references the
+    30–70 min norm + "extend via threshold work, not more watts"). ⚠️ verify coach-engine reaches the host coach on deploy. gymapp + coach.
+403. ⬜ **"Beyond FTP" metrics — CP · W′ · Efficiency Factor (+ running equivalents) as benchmarks AND graphs + coach brain.** JM
+    2026-07-07 shared 3 sources (mattbottrill "beyond FTP", joinvekta CP/W′, roadman EF/Joe-Friel). Wants the metrics that really
+    drive performance, running equivalents where they exist, the COACH to reason with them, and GRAPHS to our chart standard. Plan:
+    (a) **CP + W′** (cycling) and **CS + D′** (running) as learned benchmark cards — DATA ALREADY EXTRACTED (`PowerCurve.cp/wPrime`,
+    `PaceCurve.cs/dPrime` from the curve models, #401) → quick. (b) **Efficiency Factor** EF = NP÷HR (ride) / pace÷HR i.e. NGP÷HR (run)
+    per activity → a TREND graph (rising EF = aerobic engine improving even when FTP is flat; masters ~1.4–2.0; trend over noise; add
+    aerobic decoupling Pw:HR if easy) — new compute from activities (intervals has `icu_weighted_avg_watts`, `average_heartrate`,
+    `decoupling`). (c) coach KB: CP/W′/FRC + EF interpretation + "high FTP+short TTE=fragile · moderate FTP+long TTE=diesel" → docs/ +
+    coach-engine. Present a plan + confirm scope (big feature). gymapp + coach. See [[platyplus-chart-standard]] · [[platyplus-insights-everywhere]].
     {future:false}` (server.js:609) and returns no forecast; the client then shows the WRONG "not enough training data"
     message for a `future:false` response (Today.tsx:179 checks `!f.available`, which is undefined). FIX options: (1) client
     passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");

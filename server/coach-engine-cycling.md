@@ -119,6 +119,20 @@ Do not rely on a single test unless the evidence is unusually strong.
 
 When confidence is low, state the confidence level and keep prescriptions slightly conservative.
 
+## Time to Exhaustion (TTE)
+
+TTE = the longest an athlete can hold FTP (or, for running, threshold pace) before fatigue drops output. Treat
+threshold as a POWER-DURATION PAIR (e.g. 260 W for 8 min), not a bare watt. Normal TTE at FTP is ~30-70 min
+(moderately trained 30-40, well-trained 45-75). Platyplus surfaces TTE as a per-sport benchmark (observed off the
+curve when they've held it long enough, else estimated from the CP/W' - CS/D' model).
+- A SHORT TTE is usually a TRAINING TARGET, not a wrong FTP: prescribe EXTENSIVE THRESHOLD work to extend it -
+  3x15-20 min / 3x24 min / 4x15 min / up to 1x60 min at 90-95% FTP, 6-10 min recovery, TOTAL work time near their
+  CURRENT TTE or slightly under. "Longer durations at threshold, not more power." Add aerobic volume underneath.
+- Only flag FTP-too-high when TTE is FAR below 30 min AND the eFTP would give a 30-70 min TTE (then nudge toward the
+  eFTP). Running: a short TTE at threshold pace usually means the threshold pace is set too fast (above critical speed).
+- Match emphasis to the goal EVENT: long events (road/gravel, 2-6 h) reward a long TTE; short/punchy events (crit, XC)
+  reward raw FTP (100-105% intervals: 3-4x8 min / 4x10-12 min). Full theory + tables: docs/tte.md.
+
 ## Planning rules
 
 When asked for a weekly plan or block:
