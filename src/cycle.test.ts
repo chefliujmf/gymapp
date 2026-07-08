@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { normalizePhase, phaseFromDay, cycleLoadModifier, cycleReadinessAdjust, cycleContext, phaseFromHistory } from '../server/cycle.js'
+import { normalizePhase, phaseFromDay, cycleLoadModifier, cycleReadinessAdjust, cycleContext, phaseFromHistory, pregnancyStage } from '../server/cycle.js'
 
 // #329 — menstrual-cycle factor for coaching + readiness.
 describe('normalizePhase (intervals menstrualPhase text → canonical)', () => {
@@ -57,6 +57,28 @@ describe('phaseFromHistory (last PERIOD in wellness → current phase)', () => {
   })
   it('ignores markers AFTER the viewed date', () => {
     expect(phaseFromHistory([{ date: '2026-07-10', menstrualPhase: 'PERIOD' }], '2026-07-08')).toBeNull()
+  })
+})
+
+// #427 — pregnancy gestational stage (gates the cycle logic OFF when pregnant).
+describe('pregnancyStage (weeks + trimester)', () => {
+  it('returns null when NOT pregnant (→ caller runs normal cycle logic)', () => {
+    expect(pregnancyStage({}, '2026-07-08')).toBeNull()
+    expect(pregnancyStage({ pregnant: false }, '2026-07-08')).toBeNull()
+  })
+  it('pregnant but no date → pregnant flag, weeks/trimester unknown (coach asks EDD)', () => {
+    expect(pregnancyStage({ pregnant: true }, '2026-07-08')).toEqual({ pregnant: true, weeks: null, trimester: null, dueDate: null })
+  })
+  it('derives weeks + trimester from the due date (EDD)', () => {
+    expect(pregnancyStage({ pregnant: true, dueDate: '2026-11-25' }, '2026-07-08')).toMatchObject({ weeks: 20, trimester: 2 })
+  })
+  it('derives weeks from LMP (pregnancyStart)', () => {
+    expect(pregnancyStage({ pregnant: true, pregnancyStart: '2026-05-13' }, '2026-07-08')).toMatchObject({ weeks: 8, trimester: 1 })
+  })
+  it('trimester boundaries: <14=T1, 14-27=T2, >=28=T3', () => {
+    expect(pregnancyStage({ pregnant: true, pregnancyStart: '2026-04-08' }, '2026-07-08')!.trimester).toBe(1) // 13 wk
+    expect(pregnancyStage({ pregnant: true, pregnancyStart: '2026-03-11' }, '2026-07-08')!.trimester).toBe(2) // 17 wk
+    expect(pregnancyStage({ pregnant: true, pregnancyStart: '2025-12-01' }, '2026-07-08')!.trimester).toBe(3) // 31 wk
   })
 })
 
