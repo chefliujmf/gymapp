@@ -1,6 +1,29 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, detectRepeat, plannedTss, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from '../server/icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, detectRepeat, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from '../server/icu-steps.js'
+
+// #434 — gym plans carry a LOAD so intervals Form/CTL counts strength (was pushed as 0).
+describe('plannedGymTss — gym LOAD from exercises (KB Friel ~45 TSS/h)', () => {
+  const plan = { rounds: 1, exercises: [
+    { name: 'Squat', sets: 3, reps: 8, rest: 90 }, { name: 'Bench', sets: 3, reps: 8, rest: 90 },
+    { name: 'Row', sets: 3, reps: 10, rest: 60 }, { name: 'Plank', mode: 'timed', seconds: 45, sets: 3, rest: 45 }] }
+  it('a real 4-move session scores a sensible non-zero TSS (~15-40)', () => {
+    const tss = plannedGymTss(plan)
+    expect(tss).toBeGreaterThan(10)
+    expect(tss).toBeLessThan(45)
+  })
+  it('is ~ minutes/60 × 45 (the Friel standard factor)', () => {
+    const min = estimateGymSeconds(plan) / 60
+    expect(plannedGymTss(plan)).toBe(Math.round((min / 60) * 45))
+  })
+  it('empty / no-exercise gym → 0 (no phantom load)', () => {
+    expect(plannedGymTss({ exercises: [] })).toBe(0)
+    expect(plannedGymTss({})).toBe(0)
+  })
+  it('rounds multiply the volume', () => {
+    expect(plannedGymTss({ ...plan, rounds: 2 })).toBeGreaterThan(plannedGymTss(plan))
+  })
+})
 
 // #384 — cool-downs flatten (no backwards "150-117" range); warm-ups always ramp up.
 describe('normalizeRamps — flat cool-downs, warm-ups ramp up', () => {
