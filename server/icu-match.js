@@ -37,12 +37,15 @@ export const slotKey = (date, sport) => `${String(date).slice(0, 10)}|${sport}`
 //   • outside the window → keep (we didn't look there)
 //   • its mirror event is still live → keep
 //   • mirror gone + icu-ORIGIN → drop (it only existed as a mirror)
-//   • mirror gone + platyplus-origin → drop ONLY if the slot now has a live (replacement)
-//     event; a pure intervals deletion with no replacement is kept (respects #160).
-export function planDroppedByReconcile(plan, { liveIds, liveSlots, from, to }) {
+//   • mirror gone + icu-ORIGIN → drop (it only existed as a mirror)
+//   • mirror gone + platyplus-origin → drop ONLY if a DIFFERENT plan owns a LIVE event in this slot (a real
+//     replacement took over the day). #431 B1: was `liveSlots` (ANY event in the slot), which dropped the
+//     legit old plan on a retitle/re-plan while its event survived → the lost-plan bug. A pure intervals
+//     deletion with no owning replacement plan is KEPT (respects #160).
+export function planDroppedByReconcile(plan, { liveIds, ownedSlots, from, to }) {
   if (!plan || !plan.icuEventId) return false
   if ((from && plan.date < from) || (to && plan.date > to)) return false
   if (liveIds.has(plan.icuEventId)) return false
   if (plan.origin === 'icu') return true
-  return liveSlots.has(slotKey(plan.date, plan.sport))
+  return ownedSlots.has(slotKey(plan.date, plan.sport))
 }

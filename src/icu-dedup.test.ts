@@ -48,32 +48,32 @@ describe('intervals dedup matcher (#150)', () => {
 describe('planDroppedByReconcile (#185 replaced-plan cleanup)', () => {
   const win = { from: '2026-06-22', to: '2026-06-28' }
   const skov = { id: 'friday_ride_to_skov_2026-06-26', date: '2026-06-26', sport: 'ride', title: 'Friday Ride to Skov', origin: 'platyplus', icuEventId: 118840139 }
-  const liveSlots = new Set([slotKey('2026-06-26', 'ride')]) // the coach's "Friday Endurance Ride" is live here
+  const ownedSlots = new Set([slotKey('2026-06-26', 'ride')]) // the coach's "Friday Endurance Ride" is live here
 
   it('drops the stale platyplus plan when its event is gone AND the slot has a replacement', () => {
-    expect(planDroppedByReconcile(skov, { liveIds: new Set([118860036]), liveSlots, ...win })).toBe(true)
+    expect(planDroppedByReconcile(skov, { liveIds: new Set([118860036]), ownedSlots, ...win })).toBe(true)
   })
 
   it('keeps it while its own mirror event is still live', () => {
-    expect(planDroppedByReconcile(skov, { liveIds: new Set([118840139]), liveSlots, ...win })).toBe(false)
+    expect(planDroppedByReconcile(skov, { liveIds: new Set([118840139]), ownedSlots, ...win })).toBe(false)
   })
 
   it('keeps a Platyplus plan whose event was deleted with NO replacement (respects #160)', () => {
-    expect(planDroppedByReconcile(skov, { liveIds: new Set(), liveSlots: new Set(), ...win })).toBe(false)
+    expect(planDroppedByReconcile(skov, { liveIds: new Set(), ownedSlots: new Set(), ...win })).toBe(false)
   })
 
   it('never drops a locally-authored plan that was never pushed (no icuEventId)', () => {
     const local = { ...skov, icuEventId: undefined }
-    expect(planDroppedByReconcile(local, { liveIds: new Set(), liveSlots, ...win })).toBe(false)
+    expect(planDroppedByReconcile(local, { liveIds: new Set(), ownedSlots, ...win })).toBe(false)
   })
 
   it('drops an icu-origin plan whose event vanished even without a replacement (pure mirror)', () => {
     const icu = { ...skov, origin: 'icu' }
-    expect(planDroppedByReconcile(icu, { liveIds: new Set(), liveSlots: new Set(), ...win })).toBe(true)
+    expect(planDroppedByReconcile(icu, { liveIds: new Set(), ownedSlots: new Set(), ...win })).toBe(true)
   })
 
   it('does not judge plans outside the synced window', () => {
     const past = { ...skov, date: '2026-06-01' }
-    expect(planDroppedByReconcile(past, { liveIds: new Set(), liveSlots, ...win })).toBe(false)
+    expect(planDroppedByReconcile(past, { liveIds: new Set(), ownedSlots, ...win })).toBe(false)
   })
 })
