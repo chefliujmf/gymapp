@@ -953,6 +953,28 @@ app.delete('/auth/users/:id', auth, admin, (req, res) => {
   store.users = store.users.filter((u) => u.id !== req.params.id); save(store); res.json({ ok: true })
 })
 
+// #438 — ADMIN BACKLOG triage overlay. The item LIST is built from FEEDBACK-LOG.md (bundled backlog.json);
+// this is JM's LIVE triage on top of it — per item number: priority (hi|med|lo), a comment thread, and a
+// discard flag. Stored on the admin's own record (JM is the owner) so Claude can read it each session.
+const PRIORITIES = ['hi', 'med', 'lo']
+app.get('/auth/admin/backlog', auth, admin, (req, res) => res.json({ triage: req.user.backlogTriage || {} }))
+app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
+  const n = String(Number(req.params.n) || '')
+  if (!n || n === '0') return res.status(400).json({ error: 'valid item number required' })
+  req.user.backlogTriage = req.user.backlogTriage || {}
+  const t = { comments: [], ...req.user.backlogTriage[n] }
+  const b = req.body || {}
+  if ('priority' in b) t.priority = PRIORITIES.includes(b.priority) ? b.priority : undefined // null/other → clear
+  if (typeof b.discarded === 'boolean') t.discarded = b.discarded
+  if (typeof b.comment === 'string' && b.comment.trim()) { t.comments.push({ text: b.comment.trim().slice(0, 800), at: Date.now() }); if (t.comments.length > 100) t.comments = t.comments.slice(-100) }
+  if (b.deleteCommentAt) t.comments = t.comments.filter((c) => c.at !== b.deleteCommentAt)
+  // drop the row entirely if it carries nothing (keeps the overlay lean)
+  if (!t.priority && !t.discarded && !t.comments.length) delete req.user.backlogTriage[n]
+  else req.user.backlogTriage[n] = t
+  save(store)
+  res.json({ n: Number(n), triage: req.user.backlogTriage[n] || null })
+})
+
 // ---- coach API token (shown to its owner only) ---------------------------
 app.get('/auth/token', auth, (req, res) => res.json({ token: req.user.apiToken }))
 app.post('/auth/token/rotate', auth, (req, res) => { req.user.apiToken = randomBytes(24).toString('base64url'); save(store); res.json({ token: req.user.apiToken }) })

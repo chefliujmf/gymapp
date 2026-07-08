@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import { authApi, type User } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
+import AdminBacklog from './AdminBacklog'
 
-// Simple, admin-only user management. Mobile-first cards + role badges.
+// Admin-only: the BACKLOG tracker (#438) + user management. Mobile-first.
 export default function Admin() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [tab, setTab] = useState<'backlog' | 'users'>('backlog') // #438 — backlog front-and-centre
   const [users, setUsers] = useState<User[]>([])
   const [loaded, setLoaded] = useState(false)
   const [u, setU] = useState('')
@@ -47,9 +49,17 @@ export default function Admin() {
       <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head">
         <h1>Admin</h1>
-        <p>Manage who can access Platyplus</p>
+        <p>{tab === 'backlog' ? 'Your live backlog — filter, comment, prioritise, discard' : 'Manage who can access Platyplus'}</p>
       </div>
 
+      <div className="chips" style={{ marginBottom: 14 }}>
+        <button className={'chip' + (tab === 'backlog' ? ' chip--active' : '')} onClick={() => setTab('backlog')}>Backlog</button>
+        <button className={'chip' + (tab === 'users' ? ' chip--active' : '')} onClick={() => setTab('users')}>Users</button>
+      </div>
+
+      {tab === 'backlog' && <AdminBacklog />}
+
+      {tab === 'users' && (<>
       <div className="section-title">Users · {users.length}</div>
       <div className="stack">
         {users.map((x) => (
@@ -89,6 +99,7 @@ export default function Admin() {
       </div>
       <button className="btn" onClick={add} disabled={!u || !em}>Add user</button>
       {msg && <p className="meta" style={{ marginTop: 8, wordBreak: 'break-all' }}>{msg}</p>}
+      </>)}
     </div>
   )
 }

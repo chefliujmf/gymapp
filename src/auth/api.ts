@@ -202,4 +202,15 @@ export const authApi = {
   resetUser: (id: string) => req<{ tempPassword: string; emailed: boolean }>(`/users/${id}/reset`, { method: 'POST' }),
   setUserPassword: (id: string, password: string) => req<{ ok: boolean }>(`/users/${id}/password`, { method: 'POST', body: { password } }),
   deleteUser: (id: string) => req<{ ok: boolean }>(`/users/${id}`, { method: 'DELETE' }),
+
+  // #438 — admin backlog triage overlay (priority / comments / discard) on top of the bundled backlog.json
+  getBacklogTriage: () => req<{ triage: BacklogTriage }>('/admin/backlog'),
+  updateBacklog: (n: number, patch: { priority?: BacklogPriority | null; comment?: string; deleteCommentAt?: number; discarded?: boolean }) =>
+    req<{ n: number; triage: BacklogTriageItem | null }>(`/admin/backlog/${n}`, { method: 'PUT', body: patch }),
 }
+
+// #438 — admin backlog triage types
+export type BacklogPriority = 'hi' | 'med' | 'lo'
+export interface BacklogComment { text: string; at: number }
+export interface BacklogTriageItem { priority?: BacklogPriority; comments?: BacklogComment[]; discarded?: boolean }
+export type BacklogTriage = Record<string, BacklogTriageItem>

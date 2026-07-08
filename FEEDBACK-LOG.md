@@ -780,6 +780,16 @@ test guide → the **🧪 Test guide** section below.
     cap the few most recent. (4) openapi updated. 440 tests green. Closes the #436 reliability loop (coach gets the id straight from the read). Prod-only
     behavior (daily-adapt off on QA); MCP auto-syncs on prod deploy. Verify: get_recent_activities shows `reviewed:true` on ticked activities + the
     coach reviews the un-ticked ones on a daily-adapt pass.
+438. 🔨 **In-app ADMIN BACKLOG manager — track this list from inside the app, add comments / discard / change priority.** JM 2026-07-08:
+    "put the backlog page under admin in the app so I can keep track of it at all time, add more comments or discard or change priority."
+    Replaces the throwaway scratchpad Artifact with a real, always-available admin page. Mocked 2 layouts (options-first) → JM picked **A · Triage
+    list** (filter-first, tap-to-expand inline triage). BUILT: (1) `scripts/build-backlog.mjs` parses FEEDBACK-LOG.md → lean
+    `src/data/generated/backlog.json` (`{n,status,title,summary}`, 328 items) — wired into `build:app`, lazy-loaded (own 126KB chunk, out of the
+    main bundle). (2) Admin-gated triage overlay on the admin record (`user.backlogTriage[n]` = `{priority:hi|med|lo, comments:[{text,at}], discarded}`)
+    via `GET /auth/admin/backlog` + `PUT /auth/admin/backlog/:n` (+ openapi). (3) `src/auth/api.ts` getBacklogTriage/updateBacklog. (4) `Admin.tsx`
+    now has **Backlog** (default) + Users tabs; `AdminBacklog.tsx` = filter-first list (status + priority chips w/ counts + search + sort), tap a row
+    → summary + comment thread (add/delete) + priority buttons + discard/restore. Claude READS the overlay each session + folds it into the .md
+    (CLAUDE.md work-queue note + memory `platyplus-admin-backlog`). tsc + 440 tests + full build green. Admin-only. On QA to verify visually.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
