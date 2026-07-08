@@ -122,7 +122,11 @@ function FuelFields({ user, refresh }: { user: User; refresh: () => Promise<void
       <div className="section-title" style={{ fontSize: 13 }}>Daily fuel targets <span className="meta" style={{ fontWeight: 400 }}>· BMR/TDEE{saved ? ' · Saved ✓' : ''}</span></div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Height (cm)
-          <input type="number" inputMode="numeric" min={100} max={230} className="search" style={{ maxWidth: 92, textAlign: 'center' }} value={heightCm} onChange={(e) => { const v = e.target.value ? Math.max(100, Math.min(230, Math.round(Number(e.target.value)))) : ''; setHeightCm(v); if (v) save({ heightCm: v }) }} /></label>
+          {/* #424 — DON'T clamp to min on every keystroke (typing "1" jumped straight to 100 → impossible to build 175).
+              Type freely; clamp to [100,230] + save on BLUR. */}
+          <input type="number" inputMode="numeric" min={100} max={230} className="search" style={{ maxWidth: 92, textAlign: 'center' }} value={heightCm}
+            onChange={(e) => setHeightCm(e.target.value === '' ? '' : Math.round(Number(e.target.value)))}
+            onBlur={() => { if (heightCm === '') return; const v = Math.max(100, Math.min(230, Number(heightCm))); setHeightCm(v); save({ heightCm: v }) }} /></label>
         <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Birth date
           <input type="date" className="search" style={{ maxWidth: 160 }} value={dob} onChange={(e) => { setDob(e.target.value); save({ dob: e.target.value }) }} /></label>
       </div>

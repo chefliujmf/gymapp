@@ -17,7 +17,7 @@ function Delta({ v, unit }: { v: number | null; unit: string }) {
   return <span className={`sc-d ${cls}`}>{v === 0 ? '0' : `${v > 0 ? '+' : ''}${v}${unit}`}</span>
 }
 
-export default function SeasonCompare({ sport, weight, threshold }: { sport: 'cycling' | 'running'; weight?: number | null; threshold?: number | null }) {
+export default function SeasonCompare({ sport, weight, threshold, ftp }: { sport: 'cycling' | 'running'; weight?: number | null; threshold?: number | null; ftp?: number | null }) {
   const [power, setPower] = useState<PowerSeason[] | null | undefined>(undefined)
   const [pace, setPace] = useState<PaceSeason[] | null | undefined>(undefined)
   useEffect(() => {
@@ -29,11 +29,11 @@ export default function SeasonCompare({ sport, weight, threshold }: { sport: 'cy
   const seasons: (PowerSeason | PaceSeason)[] | null | undefined = sport === 'cycling' ? power : pace
   if (seasons === undefined) return <div className="card"><div className="sc-load">Loading season comparison…</div></div>
   if (!seasons || seasons.length < 2) return null // no key / not enough data → hide (benchmarks above still show)
-  return <SeasonCompareView sport={sport} seasons={seasons} weight={weight} threshold={threshold} />
+  return <SeasonCompareView sport={sport} seasons={seasons} weight={weight} threshold={threshold} ftp={ftp} />
 }
 
 // Presentational (given loaded season data) — separated so it can be render-verified with real data.
-export function SeasonCompareView({ sport, seasons, weight, threshold }: { sport: 'cycling' | 'running'; seasons: (PowerSeason | PaceSeason)[]; weight?: number | null; threshold?: number | null }) {
+export function SeasonCompareView({ sport, seasons, weight, threshold, ftp }: { sport: 'cycling' | 'running'; seasons: (PowerSeason | PaceSeason)[]; weight?: number | null; threshold?: number | null; ftp?: number | null }) {
   const [pick, setPick] = useState('all') // compared season key
   const thisS = seasons[0]
   const cmp = seasons.find((s) => s.key === pick) || seasons[seasons.length - 1]
@@ -57,7 +57,9 @@ export function SeasonCompareView({ sport, seasons, weight, threshold }: { sport
 
   const vo2 = (s: PowerSeason) => (weight && s.best[2] != null ? Math.round((10.8 * (s.best[2]! / weight) + 7) * 10) / 10 : null) // #420 — VO₂max from the season's best 5-min MAP
   // #420 — TTE per season: observed (longest ≥ threshold on that season's curve) else modelled (CP/W′ · CS/D′).
-  const tteCyc = (s: PowerSeason) => tteFromPower(s.secs, s.watts, s.ftp ?? null) ?? tteModelPower(s.ftp ?? null, s.cp ?? null, s.wPrime ?? null)
+  // #421 — anchor TTE on the athlete's SET FTP (same as the benchmark card, `ftpManual ?? eftp`) so the values are
+  // consistent; fall back to the season's own eFTP if no set FTP. (The all-time/365-d column then matches the card.)
+  const tteCyc = (s: PowerSeason) => { const a = ftp ?? s.ftp ?? null; return tteFromPower(s.secs, s.watts, a) ?? tteModelPower(a, s.cp ?? null, s.wPrime ?? null) }
   const tteRun = (s: PaceSeason) => (threshold != null ? (tteFromPace(s.dist, s.secs, threshold) ?? tteModelPace(threshold, s.cs ?? null, s.dPrime ?? null)) : null)
   const metrics = sport === 'cycling'
     ? [
