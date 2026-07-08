@@ -276,6 +276,7 @@ app.put('/auth/avatar', auth, (req, res) => {
 // profile info (arbitrary general fields: displayName, etc.)
 app.put('/auth/profile', auth, (req, res) => {
   req.user.info = { ...(req.user.info || {}), ...(req.body || {}) }
+  if (req.body && req.body.pregnant === true) { delete req.user.cyclePhase; delete req.user.cyclePhaseAt } // #427 — no menstrual cycle while pregnant; clear stale phase now
   if (typeof req.body.email === 'string' && req.body.email.includes('@')) req.user.email = req.body.email.toLowerCase()
   if (typeof req.body.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
   if (Array.isArray(req.body.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)

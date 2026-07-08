@@ -674,7 +674,10 @@ test guide → the **🧪 Test guide** section below.
     pregnancy, it's private, no mention anywhere whatsoever"): added an ABSOLUTE rule in the `# PREGNANCY` block + coach-engine.md privacy
     section + female §6 + `set_activity_text` MCP desc — NEVER write pregnancy/trimester/prenatal/expecting/bump in any title, description, or
     plan name; coach sessions by normal training content, apply adjustments silently. Scrubbed: 0 existing mentions in her 21 activities/plans.
-    ⬜ REMAINING: Profile Pregnant TOGGLE (JM said "yes for toggle") — mock-first, then build (hide cycle fields when on, no due-date needed yet).
+    ✅ TOGGLE BUILT (JM: "yes for toggle thanks"): Profile "Cycle & pregnancy" section now has a **Pregnant** checkbox — ON switches the
+    coach to pregnancy mode + pauses cycle tracking + hides the cycle fields + shows a private-note line ("never shown on your workouts"); OFF
+    = the normal cycle UI. Saves `info.pregnant` via `/auth/profile` (which also clears any stale cyclePhase). No due-date field yet (JM: no
+    info). tsc clean, mock at mockups/pregnancy-toggle.html. #427 now COMPLETE end-to-end (state + gate + engine + privacy + UI); awaiting JM ✅.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

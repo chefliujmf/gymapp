@@ -1,0 +1,42 @@
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216}
+  *{box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}
+  body{background:var(--bg);color:var(--text);margin:0;padding:20px;display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+  .phone{width:390px;background:var(--bg)}
+  .card{background:linear-gradient(#21252f,#191c24);border:1px solid #2a2f3a;border-radius:14px;padding:14px 16px;margin-bottom:12px}
+  .section-title{font-size:13px;font-weight:600;margin-bottom:2px}
+  .dim{color:var(--text-dim);font-weight:400}
+  .meta{color:var(--text-dim);font-size:12.5px;line-height:1.45}
+  .acc{color:var(--accent)}
+  label.tg{display:flex;align-items:center;gap:8px;cursor:pointer;margin:2px 2px 8px}
+  label.tg input{width:17px;height:17px;accent-color:var(--accent)}
+  label.tg span{font-size:14px}
+  .fields{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:2px 0}
+  .fields label{display:flex;flex-direction:column;gap:3px;color:var(--text-dim);font-size:12.5px}
+  .inp{background:#141821;border:1px solid #2a2f3a;border-radius:8px;color:var(--text);padding:7px 9px;font-size:13px}
+  b{color:var(--text)}
+  .cap{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px}
+</style>
+
+<div class="phone">
+  <p class="cap">Profile · not pregnant (toggle off)</p>
+  <div class="card">
+    <div class="section-title">Cycle &amp; pregnancy <span class="dim">· optional</span></div>
+    <label class="tg"><input type="checkbox"><span>Pregnant</span></label>
+    <p class="meta acc" style="margin:2px 2px 8px">Read from intervals.icu: currently <b>follicular</b> (as of 2026-07-08). Your coach adapts load, recovery &amp; fuelling automatically — no need to enter anything below.</p>
+    <div class="fields">
+      <label>Last period start<input class="inp" type="date" value="2026-07-03" style="max-width:160px"></label>
+      <label>Cycle length<input class="inp" type="number" value="28" style="max-width:92px;text-align:center"></label>
+    </div>
+  </div>
+</div>
+
+<div class="phone">
+  <p class="cap">Profile · pregnant (toggle on)</p>
+  <div class="card">
+    <div class="section-title">Cycle &amp; pregnancy <span class="dim">· optional · Saved ✓</span></div>
+    <label class="tg"><input type="checkbox" checked><span>Pregnant</span></label>
+    <p class="meta acc" style="margin:2px 2px 4px">Your coach is adapting your training for pregnancy — health &amp; function first, and menstrual-cycle tracking is paused. This stays private: it's never shown on your workout titles or descriptions.</p>
+  </div>
+  <p class="meta" style="padding:0 4px">When on: the coach switches to pregnancy mode (maintain, RPE/talk-test, trimester-safe) and the cycle fields disappear. No due date needed yet.</p>
+</div>

@@ -72,32 +72,44 @@ function cyclePhaseOf(start?: string, len = 28): { day: number; phase: string } 
   return { day, phase }
 }
 function CycleFields({ user, refresh }: { user: User; refresh: () => Promise<void> }) {
-  const info = (user.info || {}) as { cycleStart?: string; cycleLength?: number }
+  const info = (user.info || {}) as { cycleStart?: string; cycleLength?: number; pregnant?: boolean }
   const [start, setStart] = useState(info.cycleStart || '')
   const [len, setLen] = useState<number>(info.cycleLength || 28)
   const [saved, setSaved] = useState(false)
-  const save = (patch: { cycleStart?: string; cycleLength?: number }) => { authApi.saveProfile(patch).then(() => { refresh().catch(() => {}); setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {}) }
+  const save = (patch: { cycleStart?: string; cycleLength?: number; pregnant?: boolean }) => { authApi.saveProfile(patch).then(() => { refresh().catch(() => {}); setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {}) }
+  const pregnant = !!info.pregnant
   const ph = cyclePhaseOf(start, len)
   // #422 — if intervals wellness already gives us the phase (she logs her period there), SHOW it and
   // don't prompt her to re-enter. Manual fields stay as a fallback for athletes who don't log it.
   const icuPhase = user.cyclePhase ? String(user.cyclePhase).replace(/_/g, ' ') : null
   return (
     <div style={{ marginTop: 6 }}>
-      <div className="section-title" style={{ fontSize: 13 }}>Menstrual cycle <span className="meta" style={{ fontWeight: 400 }}>· optional{saved ? ' · Saved ✓' : ''}</span></div>
-      {icuPhase && (
-        <p className="meta" style={{ margin: '2px 2px 8px', color: 'var(--accent)' }}>Read from intervals.icu: currently <b>{icuPhase}</b>{user.cyclePhaseAt ? ` (as of ${user.cyclePhaseAt})` : ''}. Your coach adapts load, recovery & fuelling automatically — no need to enter anything below.</p>
+      <div className="section-title" style={{ fontSize: 13 }}>Cycle &amp; pregnancy <span className="meta" style={{ fontWeight: 400 }}>· optional{saved ? ' · Saved ✓' : ''}</span></div>
+      {/* #427 — Pregnant toggle: switches the coach to pregnancy mode + pauses menstrual-cycle tracking. Private (never shown on workouts). */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: '2px 2px 8px' }}>
+        <input type="checkbox" checked={pregnant} onChange={(e) => save({ pregnant: e.target.checked })} style={{ width: 17, height: 17, accentColor: 'var(--accent)' }} />
+        <span style={{ color: 'var(--text)', fontSize: 14 }}>Pregnant</span>
+      </label>
+      {pregnant ? (
+        <p className="meta" style={{ margin: '2px 2px 4px', color: 'var(--accent)' }}>Your coach is adapting your training for pregnancy — health &amp; function first, and menstrual-cycle tracking is paused. This stays private: it's never shown on your workout titles or descriptions.</p>
+      ) : (
+        <>
+          {icuPhase && (
+            <p className="meta" style={{ margin: '2px 2px 8px', color: 'var(--accent)' }}>Read from intervals.icu: currently <b>{icuPhase}</b>{user.cyclePhaseAt ? ` (as of ${user.cyclePhaseAt})` : ''}. Your coach adapts load, recovery &amp; fuelling automatically — no need to enter anything below.</p>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Last period start
+              <input type="date" className="search" style={{ maxWidth: 160 }} value={start} onChange={(e) => { setStart(e.target.value); save({ cycleStart: e.target.value }) }} />
+            </label>
+            <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Cycle length
+              <input type="number" inputMode="numeric" min={21} max={40} className="search" style={{ maxWidth: 92, textAlign: 'center' }} value={len} onChange={(e) => { const v = Math.max(21, Math.min(40, Math.round(Number(e.target.value) || 28))); setLen(v); save({ cycleLength: v }) }} />
+            </label>
+          </div>
+          {!icuPhase && (ph
+            ? <p className="meta" style={{ margin: '6px 2px 4px', color: 'var(--accent)' }}>~Day {ph.day} · likely <b>{ph.phase}</b> — your coach adapts load, recovery &amp; fuelling for it.</p>
+            : <p className="meta" style={{ margin: '6px 2px 4px' }}>Log your period in intervals.icu and it's read automatically. Or enter it here as a fallback, and your coach adapts training to your phase.</p>)}
+        </>
       )}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Last period start
-          <input type="date" className="search" style={{ maxWidth: 160 }} value={start} onChange={(e) => { setStart(e.target.value); save({ cycleStart: e.target.value }) }} />
-        </label>
-        <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Cycle length
-          <input type="number" inputMode="numeric" min={21} max={40} className="search" style={{ maxWidth: 92, textAlign: 'center' }} value={len} onChange={(e) => { const v = Math.max(21, Math.min(40, Math.round(Number(e.target.value) || 28))); setLen(v); save({ cycleLength: v }) }} />
-        </label>
-      </div>
-      {!icuPhase && (ph
-        ? <p className="meta" style={{ margin: '6px 2px 4px', color: 'var(--accent)' }}>~Day {ph.day} · likely <b>{ph.phase}</b> — your coach adapts load, recovery & fuelling for it.</p>
-        : <p className="meta" style={{ margin: '6px 2px 4px' }}>Log your period in intervals.icu and it's read automatically. Or enter it here as a fallback, and your coach adapts training to your phase.</p>)}
     </div>
   )
 }
