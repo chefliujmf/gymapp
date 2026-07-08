@@ -1859,8 +1859,11 @@ async function reconcileFromIcu(user, from, to) {
     const safe = orphanCandidates.filter((ev) => {
       const date = String(ev.start_date_local || '').slice(0, 10); if (!date) return false
       const plansHere = plansBySlot[`${date}|${evSport(ev)}`] || []
-      if (!plansHere.length) return true // genuine leftover (removed plan's event never deleted)
-      return plansHere.some((p) => p.icuEventId && String(p.icuEventId) !== String(ev.id) && liveIcuIds.has(p.icuEventId)) // a plan already owns a DIFFERENT live event → this is a duplicate
+      // ONLY auto-delete an UNAMBIGUOUS DUPLICATE: a plan already owns this exact day+sport via a DIFFERENT
+      // LIVE event. A NO-PLAN orphan is NEVER auto-deleted — it can be a LEGIT session whose plan link was
+      // lost (JM's 07-09 coach gym), not a rest-day leftover, and we can't tell them apart. Leftovers are
+      // handled at the source (delete-on-plan-removal) or by hand; losing a real session is unacceptable. (#431)
+      return plansHere.some((p) => p.icuEventId && String(p.icuEventId) !== String(ev.id) && liveIcuIds.has(p.icuEventId))
     })
     if (safe.length > 8) {
       console.warn(`[reconcile GC] ${user.username}: ${safe.length} orphan candidates — too many, SKIPPING (bad plan state?).`)
