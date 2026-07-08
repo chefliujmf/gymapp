@@ -854,6 +854,14 @@ test guide → the **🧪 Test guide** section below.
     it's confusing." The review/todo/build/totest/pass/fail/done/discarded set + the "Open = not done/discarded (still includes pass/fail)" semantics
     are too much. Propose a simpler flow (e.g. Review → To do → Building → To test → Done, with a fail looping back to Building + a comment; drop
     separate pass/fail) — MOCK 2 options first (options-first). #438 backlog page. Low-risk polish; after #431.
+448. ⬜ **STRENGTH Progress + Stats rework — make it as advanced as running/cycling.** JM 2026-07-08, batch-tested the backlog on QA
+    (35 pass, 4 fail). 3 of the 4 failures are the SAME theme (gym/strength analytics are underbuilt) — umbrella here, reopening the individual
+    items: **#227** (Jun-19 gym shows GENERIC exercises; can't tap an exercise to see its progress/stats) · **#251** (session shows "1 session ·
+    11 min" — WRONG, the real session was longer; "Volume this week" is disconnected from the top filter — it should be a count + total time +
+    total kg from the SELECTED filters) · **#252** (the Progress date/domain filter works but there's no gym exercise data or graphs under it).
+    JM verbatim: "will need to rework a lot of progress for strength training + stats to make it as advanced as running and cycling." SCOPE + MOCK
+    first (options-first) — per-exercise progress + tappable exercises + filter-driven volume/time/tonnage + strength graphs. Big effort. (Separate:
+    **#148** empty "Search gym…" list in the Add sheet — a discrete picker bug, ties #412.)
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
