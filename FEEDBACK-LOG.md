@@ -586,11 +586,29 @@ test guide → the **🧪 Test guide** section below.
 422. ⬜ **Xenia: had to enter her menstrual-cycle date manually though it's already in intervals wellness (logged the 3rd).** JM 2026-07-08.
     The cycle/period date is in intervals wellness — Platyplus should READ it (like HRV/sleep/CTL) and prefill the coach's cycle-phase, not
     ask her to re-enter. Investigate the intervals wellness cycle field + wire it into the cycle-phase (coach-engine-female uses cyclePhase). gymapp + coach.
-423. ⬜ **Xenia: no longer getting 4 workouts/week — audit the coach's frequency.** JM 2026-07-08. Her target is ~4 days/week (info.freq)
+423. 🔨 **Xenia: no longer getting 4 workouts/week — audit the coach's frequency.** JM 2026-07-08. Her target is ~4 days/week (info.freq)
     but the plan has fewer. Coach issue? Check `# TRAINING FREQUENCY` (buildSystemPrompt) vs what daily-adapt actually schedules; audit her
     upcoming 2 weeks vs freq. gymapp + coach.
-424. ⬜ **Xenia: the HEIGHT field in her profile is BUGGY — can't enter a value.** JM 2026-07-08. A form bug on the height input (Profile).
-    Investigate the height field (validation/parse/state) — likely rejects or won't accept input. gymapp-only.
+    ✅ AUDITED: her config is CORRECT — `info.trainingDays=4`, availability all 7 days @0.75, sports=[running,strength], solid pregnancy
+    profile. So NOT a coach-frequency bug. The empty week was collateral of the **#414 orphan-GC regression** (my GC deleted her legit
+    intervals events → the deletion-mirror dropped the plans). ROOT fixed (GC now log-only, prod). Triggered `POST /api/coach/daily-adapt`
+    → it REBUILT her 2 weeks: **W28 & W29 both = 4 sessions (Mon run · Wed gym · Fri run · Sat gym)**, fresh intervals IDs (121282xxx)
+    pushed. NB the coach LLM takes several min to finish creating — don't judge "empty" from a <2-min poll. Awaiting JM ✅ on her login.
+424. 🔨 **Xenia: the HEIGHT field in her profile is BUGGY — can't enter a value.** JM 2026-07-08. ✅ FIXED: the input clamped to
+    min 100 on EVERY keystroke, so typing "1" jumped to 100 → impossible to build 175. Now types freely + clamps [100,230] + saves on blur. gymapp-only.
+425. ⬜ **Coach activity descriptions/titles too casual/cocky — make them scientific, no em-dashes.** JM 2026-07-08 (example: "Another
+    Local Legend, Relaxed Miles / … Snagged a Local Legend … proof you don't have to go hard … Classic relaxing spin."). Rules for
+    `set_activity_text` + the review flow: (1) NO casual "easy/hard/whatnot/snagged/classic relaxing spin" — use ZONE terms (Z1/Z2/Z3…);
+    (2) NEVER an em-dash "—", use commas; (3) be SCIENTIFIC — name the adaptation (aerobic base/foundations, W′, threshold), not vibes.
+    Touch: set_activity_text MCP desc + coach-engine review sections + the activity-review runtime msg. gymapp + coach.
+426. 🔨 **"Gym exercises have no video/pictures/thumbnails" — REGRESSION triage: server-side is 100% correct → stale PWA cache.** JM
+    2026-07-08 (repeated, frustrated: glute bridge, dumbbell goblet squat, romanian deadlift). AUDITED exhaustively: JM's Jul-9 gym = 15/15
+    valid exIds; every video+image FILE exists on `/srv/media` (0 missing across the whole 4530 catalog); media serves **200** over HTTPS;
+    the DEPLOYED bundle (index-DMCF41TO.js, 01:20) CONTAINS the catalog+exIds; resolveDemo + searchExercises (video-only) correct. So the data
+    is present → JM sees a STALE cached app (PWA SW). Asked for a clean reload + a screenshot if it persists. SYSTEMIC follow-up: add a
+    visible build-version + "update available" prompt so staleness is obvious; verify the SW autoUpdate/skipWaiting actually flips for him.
+    ⚠️ **CAUSE of the churn = #423**: my re-map persisted only via SIGKILL (a graceful restart's shutdown-save reverted it once) — the DB
+    write path needs to go THROUGH the app, not direct. gymapp (PWA/SW + ops).
     "don't get the Mind — the section is empty but the why is a chip to click." Fuel shows its text inline (+ a why chip); Mind shows only
     a "why ⓘ" chip with no body, so it reads as broken/empty (the real "Mental focus — Restraint…" is buried in the why sheet). FIX: if a
     section has no inline body, show its content in the body (not only behind "why"), OR hide the empty section header. gymapp-only.

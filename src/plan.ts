@@ -135,7 +135,14 @@ export function matchExercise(name: string) { return findLib(name) }
 // exId, always a real library entry with media) and only fall back to fuzzy name-matching. Fixes
 // "some exercises have no video" when the authored name doesn't token-match the library.
 export function resolveDemo(exId: string | undefined, name: string) {
-  return (exId && allExercisesById[exId]) || findLib(name)
+  // #426 — PREFER a demo that actually has media: if the exId points at a media-less row (or is stale/missing in
+  // the bundle), fall back to a name match that HAS video/image, so the tile never shows a bare emoji when a real
+  // demo exists. (Was: return the exId entry even if media-less → blank tiles.)
+  const byId = exId ? allExercisesById[exId] : undefined
+  if (byId && hasMedia(byId)) return byId
+  const byName = findLib(name)
+  if (byName && hasMedia(byName)) return byName
+  return byId || byName
 }
 function findLib(name: string) {
   // #296: drop parenthetical notes — "(or machine chest press)", "(both sides)", "(left)" — they

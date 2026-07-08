@@ -154,7 +154,9 @@ a { color: inherit; text-decoration: none; }
 /* ---------- Detail page ---------- */
 .detail-top { margin: 0 -16px; }
 .detail-hero { height: 240px; background: linear-gradient(150deg, #1b2a22, #232733); color: #fff; display: flex; align-items: flex-end; padding: 18px; font-size: 64px; position: relative; }
-.back-btn { position: absolute; top: calc(env(safe-area-inset-top) + 10px); left: 14px; width: 44px; height: 44px; border-radius: 999px; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; font-size: 22px; border: none; color: #111; }
+/* #417 — z-index:5 so the back button sits ABOVE the hero video/image/emoji (which render AFTER it in the DOM and
+   were covering it → the tap landed on the media, not the button). */
+.back-btn { position: absolute; z-index: 5; top: calc(env(safe-area-inset-top) + 10px); left: 14px; width: 44px; height: 44px; border-radius: 999px; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; font-size: 22px; border: none; color: #111; cursor: pointer; }
 /* Standard back affordance — comfortable 44px tap target (Apple HIG / Material). */
 .back {
   display: inline-flex; align-items: center; gap: 2px;
