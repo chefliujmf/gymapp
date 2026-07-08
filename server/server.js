@@ -1194,7 +1194,7 @@ function buildSystemPrompt(user) {
   // #375 — WEEKLY LOAD BUDGET so the coach doesn't over-cook a week (it planned ~2× sustainable when it
   // couldn't see planned loads; #372 fixed the visibility, this states the budget). Uses the stashed CTL.
   const budget = weeklyLoadBudget(user.ctl)
-  p += `\n\n# WEEKLY LOAD BUDGET (a BAND — hit the productive zone, don't sit under it OR blow past it): CTL×7 TSS only HOLDS fitness flat (maintenance/recovery). A PRODUCTIVE BUILD must create real stimulus — aim ~CTL×9-11 so Form dips into the GREEN productive zone (roughly −10 to −20 here). ${budget ? `Their CTL≈${user.ctl} → a build week is ~${budget.build}-${budget.hard} TSS (flat ≈ ${budget.sustainable}, overload cap ≈ ${budget.cap}).` : `Read their CTL with get_wellness, then: flat ≈ CTL×7, build ≈ CTL×9-11.`} Two failure modes, avoid BOTH: (1) TOO EASY — a build week that leaves Form in the grey (>−8) is junk miles that waste the week (unless it's deliberately a recovery/taper week). A real build needs ~2 quality days (e.g. sweet-spot/threshold + a longer harder ride), NOT back-to-back, with easy days between. (2) TOO HARD — past the overload cap, or Form projecting below ~−25, is overreaching: only as a NAMED overload block + a following recovery week. ALWAYS verify: after planning, sum the week's TSS (list_schedule shows each session's load) AND check the Form forecast lands in green (−10 to −20) — re-plan if it's grey or past −25.`
+  p += `\n\n# WEEKLY LOAD BUDGET (a BAND — hit the productive zone, don't sit under it OR blow past it): CTL×7 TSS only HOLDS fitness flat (maintenance/recovery). A PRODUCTIVE BUILD must create real stimulus — aim ~CTL×9-11 so Form dips into the GREEN productive zone (roughly −10 to −20 here). ${budget ? `Their CTL≈${user.ctl} → a build week is ~${budget.build}-${budget.hard} TSS (flat ≈ ${budget.sustainable}, overload cap ≈ ${budget.cap}).` : `Read their CTL with get_wellness, then: flat ≈ CTL×7, build ≈ CTL×9-11.`} Two failure modes, avoid BOTH: (1) TOO EASY — a build week that leaves Form in the grey (>−8) is junk miles that waste the week (unless it's deliberately a recovery/taper week). A real build needs ~2 quality days (e.g. sweet-spot/threshold + a longer harder ride), NOT back-to-back, with easy days between. (2) TOO HARD — past the overload cap, or Form projecting below ~−25, is overreaching: only as a NAMED overload block + a following recovery week. ALWAYS verify: after planning, sum the week's TSS (list_schedule shows each session's load) AND check the Form forecast lands in green (−10 to −20) — re-plan if it's grey or past −25. For a MULTI-WEEK block (build/peak/recovery over several weeks, an ATP), set the periodization with **set_load_plan** (the weekly TSS targets) so the 4-week Load & Form forecast reflects YOUR plan instead of a flat held-load; it returns any week over the cap so you name it as an overload or ease it.`
   // #341 — weather-aware coaching for OUTDOOR sessions.
   p += `\n\n# WEATHER (outdoor sessions): before planning or confirming an outdoor run/ride — especially in heat or cold — call get_weather (date = the session day). In the heat, DERATE: judge easy days by feel/HR (pace/power hold at a higher cost), trim quality targets, add hydration/electrolyte + fueling notes, prefer the cool hour or shade, and move a hard session indoors when it's extreme. Cold → longer warm-up + layers; strong wind → ride to effort not speed; likely rain → grip/visibility or indoors. Fold it into the plan/notes, don't just report it. If it returns needsLocation, ask their city once.`
   // #323 — the athlete's OWN goal & identity. This is what makes the plan theirs; center on it and
@@ -2339,6 +2339,38 @@ app.post('/api/weekly-target', apiAuth, async (req, res) => {
     const desc = [target.focus, target.note].filter(Boolean).join('\n\n')
     icuFetch(req.user, `/athlete/${ath}/events`, { method: 'POST', body: JSON.stringify({ category: 'TARGET', start_date_local: `${weekStart}T00:00:00`, name, description: desc }) }).catch((e) => console.error('[weekly-target-mirror] ' + (e.message || e)))
   }
+})
+
+// #394 — the coach AUTHORS/adjusts the multi-week LOAD periodization (build/peak/recovery blocks). Stored as
+// `user.info.loadPlan` — the TOP-priority source the 4-week Load&Form forecast reads (#393), so the projection
+// reflects the coach's plan immediately. Also returns an OVER-CAP flag: a week beyond ~×12 CTL (weeklyLoadBudget.cap)
+// is an intentional overload that must be NAMED, not accidental — the coach should justify or ease it (#375 band).
+// Prod-only mirror: write `load_target` onto a Platyplus-managed weekly TARGET event per week (idempotent via
+// external_id so a re-POST updates, never duplicates); QA is READ-ONLY toward intervals (IS_STAGING).
+app.post('/api/coach/load-plan', apiAuth, async (req, res) => {
+  const weeks = Array.isArray(req.body?.weeks) ? req.body.weeks : []
+  const norm = weeks
+    .map((w) => ({
+      weekStart: /^\d{4}-\d{2}-\d{2}$/.test(String(w?.weekStart || '').slice(0, 10)) ? isoMonday(String(w.weekStart).slice(0, 10)) : null,
+      target: Math.max(0, Math.round(Number(w?.target ?? w?.load) || 0)),
+      phase: typeof w?.phase === 'string' ? w.phase.trim().slice(0, 16) : undefined,
+      focus: typeof w?.focus === 'string' ? w.focus.trim().slice(0, 300) : undefined,
+    }))
+    .filter((w) => w.weekStart && w.target > 0)
+  const byWeek = {}; for (const w of norm) byWeek[w.weekStart] = w // dedup by week, last wins
+  const plan = Object.values(byWeek).sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1)).slice(0, 26)
+  if (!plan.length) return res.status(400).json({ error: 'weeks required: [{ weekStart (a Monday, YYYY-MM-DD), target (weekly TSS), phase?, focus? }]' })
+  req.user.info = req.user.info || {}
+  req.user.info.loadPlan = plan
+  const budget = weeklyLoadBudget(req.user.ctl)
+  const cap = budget?.cap ?? null
+  const overCap = cap ? plan.filter((w) => w.target > cap).map((w) => ({ weekStart: w.weekStart, target: w.target })) : []
+  save(store)
+  res.status(201).json({ ok: true, weeks: plan, ctl: req.user.ctl ?? null, capPerWeek: cap, band: budget ? { sustainable: budget.sustainable, build: budget.build, hard: budget.hard, cap } : null, overCap })
+  // NOTE: the 4-week Load&Form forecast reads `info.loadPlan` as its TOP-priority source (#393), so the
+  // projection reflects this immediately — no intervals write needed for the in-app value. Mirroring
+  // `load_target` back onto the athlete's intervals ATP is a deferred follow-up: it needs idempotent
+  // upsert (Platyplus tracks event ids to UPDATE, a plain POST would duplicate on re-POST) + IS_STAGING gating.
 })
 
 // Coach post-workout REVIEW (#91): the cyclingcoach engine writes its existing

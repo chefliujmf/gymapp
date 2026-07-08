@@ -250,6 +250,11 @@ server.tool('set_weekly_target',
   { weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("the week's Monday, YYYY-MM-DD"), hours: z.number().optional().describe('target ride/training hours'), load: z.number().optional().describe('target weekly training load (TSS)'), focus: z.string().optional().describe('the week\'s focus, e.g. "sweet-spot durability + one VO2 touch, long aerobic Saturday"'), note: z.string().optional() },
   wrap((a) => api('POST', '/api/weekly-target', { weekStart: a.weekStart, hours: a.hours, load: a.load, focus: a.focus, note: a.note })))
 
+server.tool('set_load_plan',
+  "Set/adjust the athlete's MULTI-WEEK LOAD periodization — the weekly TSS targets for the coming build/peak/recovery blocks (an ATP). This is the 4-week Load & Form FORECAST's top-priority source, so setting it makes the projection reflect YOUR plan (not a flat held-load). Use it when you lay out or revise a training BLOCK across weeks (for a single week use set_weekly_target). Respect the weekly-load BAND (sustainable ×7 / build ×9 / hard ×11 of CTL): a week ABOVE the cap (~×12 CTL) is an intentional OVERLOAD that must be a NAMED, justified block — the response returns any `overCap` weeks; ease them or name the reason, don't leave an accidental spike.",
+  { weeks: z.array(z.object({ weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("the week's Monday, YYYY-MM-DD"), target: z.number().describe('weekly training load (TSS) target'), phase: z.string().optional().describe('build | peak | recovery | base'), focus: z.string().optional().describe("the week's focus in a short phrase") })).describe('the weekly load blocks, in order') },
+  wrap((a) => api('POST', '/api/coach/load-plan', { weeks: a.weeks })))
+
 server.tool('finish_onboarding',
   'Call this ONCE at the END of onboarding a brand-new athlete — AFTER you have saved their profile (set_athlete_profile) AND drafted their first week. It marks setup complete so the app stops showing the "set me up" prompt. Do not call it before the first week exists.',
   {},
