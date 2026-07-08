@@ -819,6 +819,32 @@ test guide → the **🧪 Test guide** section below.
     authed user) → lands in the SHARED backlog (`store.backlog`) as status **review** with reporter + time, and pings the (other) admins (bell). Admin
     sees it in Admin → Backlog under the **Under review** filter. authApi.reportBug. JM 2026-07-08: show it for **ALL users incl. admins** (was
     non-admin-only; simpler + lets JM test it directly + anyone can quick-report). On QA.
+441. 🔨 **Mirror PROD data → QA so QA has real-life stuff to test.** JM 2026-07-08. BUILT: `scripts/mirror-prod-to-qa.sh` (run on XPS) copies
+    each real user's child rows (plans/logs/coach_reviews/checkins/calendar_items) + coach doc fields prod→QA, keyed by email (ids differ),
+    PRESERVING QA auth + keeping QA read-only toward intervals. NOT auto-run yet (holding — would reset QA mid-test). QA already READS real
+    intervals activities (shares i28814). Run on demand; optionally wire into the staging deploy. Verify: run it, QA data matches prod + QA login still works.
+442. ⬜ **Review flow: get it OFF History + return-to-list after saving.** JM 2026-07-08 (screenshots): (a) feedback rows need enough activity
+    info to remember it (BUILT on the History banner: duration/distance/effort/load line + a working "Show all N" expand — but per (b) this MOVES);
+    (b) "I don't want the review banner in History" → build a DEDICATED review view (reached from the Today #387 card, not `/logs`); (c) tapping a
+    session opens the activity normally (feedback form) = already how it works; (d) after SAVING feedback, return to the review list to knock out the
+    next one. Needs a `/review` route + return-after-save nav. Mock the dedicated view first.
+443. 🔨 **Tempo tooltip was cut off + unclear.** JM 2026-07-08: "what is 3? lift 3s? the 1 wait? 0 restart?" ROOT: the exercise `.card` had
+    `overflow:hidden` → clipped the InfoDot popover to one line. FIX (CoachPlanDetail.tsx): card `overflow` is `visible` when collapsed (thumbnail
+    self-rounds so it's safe); tooltip text rewritten to number each phase explicitly (LOWER first: 3-1-1-0 = lower 3s · hold 1s · lift 1s · 0s top). On QA.
+444. ⬜ **intervals coach-note text is a wall — format with sections / titles / bullets.** JM 2026-07-08 (Sweet-Spot screenshot): the "coach notes"
+    block (Objective / Fuel / Cues / Full plan link) runs together as one paragraph. Format it into clear sections with headers + bullets. Source:
+    the description composer in `planToIcuEvent` / the coach-note render (server/icu-steps.js + server.js). Keep it readable in intervals' plain-text description.
+445. ⬜ **Planned GYM shows no LOAD in the APP.** JM 2026-07-08. NOTE: the intervals gym EVENTS do carry load (Full-Body 48, Upper-Body 53 —
+    #434 holds server-side, verified). So this is a CLIENT display gap — the Platyplus gym plan view isn't showing the planned load like rides do.
+    Confirm which screen (plan detail / card) + wire the client gym `plannedLoad` display. gymapp-client.
+446. 🔨→⬜ **DUPLICATE gyms RECURRED (#431 not fully fixed) — "why 2 gyms Thu suddenly + copied to Mon? thought this was fixed."** JM
+    2026-07-08 (prod screenshot). Thu Jul 9 had Full-Body Strength + an ORPHAN Upper-Body & Trunk (event 121417361, ext mcp-p22pqmo5, NO plan),
+    which also made Upper-Body appear on Mon Jul 13 (its real home). Same move-orphan class as #431: a re-plan/move created a NEW plan+event and
+    orphaned the old, and the duplicate-only GC didn't clean it. IMMEDIATE: deleted the orphan (Jul 9 clean, full scan = no other orphans). ROOT
+    STILL OPEN: (1) a coach move/re-plan must UPDATE the same event (keep icuEventId), not create-new+orphan; (2) the orphan-GC must catch a
+    move-leftover (platyplus-pushed, no plan, duplicates another slot/title) while sparing a legit lost-link session; (3) **Jul 7 ride plan
+    (mcp-lzkte5tt) was never PUSHED (no icuEventId)** so the completed ride can't pair. Needs a focused #431 deep-fix + resync of Jul 7. **Most
+    serious open item — functional, recurring, JM frustrated.**
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
