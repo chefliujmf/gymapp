@@ -668,7 +668,13 @@ test guide → the **🧪 Test guide** section below.
     not HR, no supine T2+, no Valsalva, thermoregulation, pelvic floor, contraindications + STOP signs, safe strength/impact) + a
     `docs/pregnancy-coaching.md` KB; (5) Profile UI: Pregnant toggle + due date, hide cycle fields, show week/trimester (mock-first, later).
     Medical: DEFER to her clinician, health/function framing, never PRs. Set Xenia's flag on prod. gymapp + coach.
-412. ⬜ **(FOR LATER) Moving a session between days FAILS / DUPLICATES + the "Substitute" picker is empty.** JM 2026-07-07 (QA):
+    ✅ BUILT + LIVE (2026-07-08): pregnancyStage + gate + `# PREGNANCY` runtime block + coach-engine-female §6 rewrite + docs KB; Xenia's
+    flag set on prod (pregnant=true, stale cyclePhase cleared), verified deployed phaseFromHistory gated OFF. No EDD yet (JM: "we just learnt
+    about it, no info yet") → block says trimester unknown, assume T1. 🔒 PRIVACY (JM: "for Xenia workouts title and description, NO mention of
+    pregnancy, it's private, no mention anywhere whatsoever"): added an ABSOLUTE rule in the `# PREGNANCY` block + coach-engine.md privacy
+    section + female §6 + `set_activity_text` MCP desc — NEVER write pregnancy/trimester/prenatal/expecting/bump in any title, description, or
+    plan name; coach sessions by normal training content, apply adjustments silently. Scrubbed: 0 existing mentions in her 21 activities/plans.
+    ⬜ REMAINING: Profile Pregnant TOGGLE (JM said "yes for toggle") — mock-first, then build (hide cycle fields when on, no due-date needed yet).
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
