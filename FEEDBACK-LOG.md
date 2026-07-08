@@ -762,13 +762,15 @@ test guide → the **🧪 Test guide** section below.
 435. 🔨 **Activity detail page shows NO date.** JM 2026-07-08 (screenshot: "WORKOUT · INDOOR / Afternoon Weight Training" — no date).
     BUILT+DEPLOYED (commit 0582959): ActivityDetail eyebrow (ActivityDetail.tsx:307) now appends the session date (weekday, month, day) from
     `start_date_local`. gymapp-only. Verify: open any activity → the eyebrow shows the date.
-436. ⬜ **Coach "✓" review checkbox on the intervals activity no longer gets checked.** JM 2026-07-08 (screenshot: Compliance ✓ 83% but
-    "Coach ☐" unchecked; "coach used to check this box"). DIAGNOSIS: Platyplus creates **no** "Coach" custom field (only the 6 athlete-feedback
-    fields — Legs/Fuel/Pain…). The "Coach ✓" is driven by the coach posting a **note to the intervals activity's message thread** (`postCoachNote`,
-    server.js:2489) — which fires deterministically app-side, BUT only when `save_coach_review` is called **with** `activityId`, and that resolution
-    sits on the FLAKY LLM path (the coach often doesn't echo the activityId back). LIKELY FIX: backfill the known activityId app-side when the app
-    itself triggered the review for a specific activity, so the note (→ the "Coach" indicator) posts reliably. BLOCKED: confirming the exact
-    intervals field + reproducing needs live intervals access (Tailscale re-auth) — don't ship a fix for a field I can't observe. Needs its own pass.
+436. 🔨 **Coach "✓" review checkbox on the intervals activity no longer gets checked.** JM 2026-07-08 (screenshot: Compliance ✓ 83% but
+    "Coach ☐" unchecked; "coach used to check this box"). ROOT CAUSE (found live): the "Coach ✓" is intervals' native **`coach_tick`** field — an
+    INTEGER 1-5 rating (the coach's 5-point tick), NOT a boolean. Platyplus posted the coach NOTE to the activity thread (`postCoachNote`) but
+    NEVER set `coach_tick`, so the box stayed empty even on reviewed activities (confirmed: activity i158721911 had 2 coach-note messages but
+    `coach_tick=null`). `{coach_tick:true}` is rejected (Jackson can't parse a bool into the int field → generic "JSON parse error"); `{coach_tick:3}`
+    → 200 and sticks. BUILT: `coachTick(score10)` in server/readiness.js (maps our /10 review score → 1-5, null → neutral 3; pure + unit-tested,
+    440 tests green); `postCoachNote` now PUTs `coach_tick` on every review. Verified live by round-trip (i158721911 → 4, matches its 7/10 review).
+    Note: still gated on the coach passing `activityId` to save_coach_review (the separate LLM-reliability thread) — but when a review DOES post,
+    the box now ticks. Deploy + JM verifies the tick appears on a freshly-reviewed activity. Past reviews can be backfilled on request.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

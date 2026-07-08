@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { lnRMSSD, meanSd, zTo5, score100To5, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, projectFormSeries, forecastFreshness, estimateVo2max as estimateVo2maxSrv, bestVo2maxEstimate, hrRatioVo2max, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads } from '../server/readiness.js'
+import { lnRMSSD, meanSd, zTo5, score100To5, coachTick, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, projectFormSeries, forecastFreshness, estimateVo2max as estimateVo2maxSrv, bestVo2maxEstimate, hrRatioVo2max, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads } from '../server/readiness.js'
 
 // #195 readiness math, grounded in docs/readiness-scores.md (WHOOP deep-dive 2026-06-28).
 
@@ -14,6 +14,12 @@ describe('stats primitives', () => {
     expect(zTo5(1.5, -1)).toBe(1) // inverse (e.g. RHR up = worse)
   })
   it('score100To5 maps a device 0–100', () => { expect(score100To5(100)).toBe(5); expect(score100To5(60)).toBe(3); expect(score100To5(0)).toBe(1) })
+  it('#436 coachTick maps a /10 review score → integer 1–5, null → neutral 3', () => {
+    expect(coachTick(10)).toBe(5); expect(coachTick(7)).toBe(4); expect(coachTick(6)).toBe(3); expect(coachTick(4)).toBe(2); expect(coachTick(2)).toBe(1)
+    expect(coachTick(0)).toBe(1); expect(coachTick(1)).toBe(1) // clamp floor (never 0 — that would read as "no tick")
+    expect(coachTick(null)).toBe(3); expect(coachTick(undefined)).toBe(3) // reviewed, no score → neutral tick
+    expect(Number.isInteger(coachTick(7))).toBe(true) // MUST be a whole number — intervals rejects a bool/float
+  })
   it('lerpMap interpolates + clamps at ends', () => {
     expect(lerpMap(0.9, [[0.8, 5], [1.0, 4]])).toBeCloseTo(4.5, 5)
     expect(lerpMap(0.5, [[0.8, 5], [1.0, 4]])).toBe(5) // below range → first

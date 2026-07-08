@@ -30,6 +30,9 @@ export const zscore = (x, mean, sd) => (sd && sd > 0 ? (x - mean) / sd : 0)
 export const zTo5 = (z, dir = 1) => clamp(round1(3 + dir * z * (2 / 1.5)), 1, 5)
 // 0–100 device score → 1–5.
 export const score100To5 = (s) => clamp(round1(s / 20), 1, 5)
+// #436 — a coach review score (/10, or null) → intervals' coach's-tick INTEGER rating 1–5 (what checks the
+// "Coach ✓" on the activity). Must be a whole 1–5; a null score (reviewed, no number) → a neutral 3.
+export const coachTick = (score10) => (score10 == null || Number.isNaN(Number(score10))) ? 3 : clamp(Math.round(Number(score10) / 2), 1, 5)
 // Monotonic piecewise-linear map; clamps at the ends. pts = [[x,y]...] sorted by x.
 export function lerpMap(x, pts) {
   if (x == null) return null
