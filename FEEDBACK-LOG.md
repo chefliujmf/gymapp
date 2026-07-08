@@ -632,6 +632,12 @@ test guide → the **🧪 Test guide** section below.
     comfortably hard), NOT jargon. BAN jargon-dense terms in output (mitochondrial density, fat oxidation, glycolytic, lactate, "excursions").
     Target: "Steady Z2 endurance ride, 71 min at 153 W, easy aerobic pace building your base." Update coach-engine.md DESCRIPTION section +
     MCP desc; rewrite the 2 descriptions I already over-scienced. Still: no cocky/vibe words, no em-dash. Titles still human.
+    🔧 CORRECTION 3 (JM 2026-07-08: "write it like I'm writing it … now it's so boring, dont repeat the 153w, how can we find a balance?"):
+    the plain pass went too FLAT (dry data line that repeats the watts already on Strava). The BALANCE = write it like the ATHLETE would,
+    a natural sentence or two with a little personality, between a data line, a lecture, and a brag. Two new rules: (a) write with FLOW/voice
+    ("Relaxed Z2 miles on the backroads, kept it easy start to finish, quiet base work banking fitness for when it counts"); (b) do NOT restate
+    numbers already shown on the activity (avg power, duration) — redundant + boring; describe the FEEL + the WHY. coach-engine.md DESCRIPTION +
+    MCP desc updated; JM's 2 rides rewritten to the balanced voice. On dev, awaiting JM's read on the balance before promoting.
 426. 🔨 **"Gym exercises have no video/pictures/thumbnails" — REGRESSION triage: server-side is 100% correct → stale PWA cache.** JM
     2026-07-08 (repeated, frustrated: glute bridge, dumbbell goblet squat, romanian deadlift). AUDITED exhaustively: JM's Jul-9 gym = 15/15
     valid exIds; every video+image FILE exists on `/srv/media` (0 missing across the whole 4530 catalog); media serves **200** over HTTPS;

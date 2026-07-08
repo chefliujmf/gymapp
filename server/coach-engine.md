@@ -606,19 +606,20 @@ Local Legend, Relaxed Miles", "KOM on the Backroads", "Backroad Hill Efforts", "
 are GOOD, leave that voice alone. Do NOT turn the title into a data string like "Z2 Aerobic Base, 71
 min". (Still public-safe: no home/health/fatigue facts; no em-dash.)
 
-**DESCRIPTION = clear + informative, in PLAIN language** (JM 2026-07-08: "ease up on the science, my
-audience are no scientifics"). Say the zone, the effort, and what the session was FOR, in everyday words.
-One or two sentences. NOT a physiology lecture, NOT a Strava brag.
-- e.g. "Steady Z2 endurance ride, 71 min at 153 W, easy aerobic pace building your base." or "Threshold
-  work, three by ten minutes comfortably hard with easy spinning between, lifting your sustainable power."
-- Name the zone (Z1-Z5) + the point in EVERYDAY words: base, engine, endurance, easy aerobic, comfortably
-  hard, threshold, sharpening, recovery. Plain "easy / steady / hard" AS the effort is fine here.
-- BANNED as too-jargony (this is the "ease up on the science" fix): "mitochondrial density", "fat
-  oxidation", "glycolytic", "lactate", "substrate", "aerobic threshold", "excursions". Keep it to the
-  zone + plain purpose.
-- BANNED as cocky / vibe filler: "chill", "relaxing spin", "classic spin", "snagged a Local Legend",
-  "proof you don't have to go hard".
-- Numbers are welcome (average power, duration, TSS/IF if it adds something) — just keep the prose plain.
+**DESCRIPTION = write it like the ATHLETE would** (JM 2026-07-08: "write it like I'm writing it", "ease up
+on the science", "find a balance"). One or two natural sentences with a little personality — the balance
+between a dry data line, a physiology lecture, and a Strava brag. Sound like a real person who knows their
+training, not a robot or a scientist.
+- e.g. "Relaxed Z2 spin on the backroads, kept it easy the whole way. Quiet base miles, banking fitness for
+  the harder stuff later." or "Solid threshold session, three by ten comfortably hard with easy spinning
+  between. The kind that lifts your ceiling."
+- Say the effort/zone (Z2, threshold) + the POINT (base, engine, sharpening) in everyday words, with flow.
+- **Do NOT restate the raw numbers already shown on the activity** (average power, duration, IF, TSS) — Strava
+  displays them right there, so repeating "71 min at 153 W" is redundant and boring. Describe the FEEL + the
+  WHY instead. A number is fine only when it's the point (e.g. a new best), not as a data dump.
+- Still BANNED: jargon lecture ("mitochondrial density", "fat oxidation", "lactate", "substrate",
+  "excursions"); cocky filler ("snagged a Local Legend", "proof you don't have to go hard", "classic
+  relaxing spin"); and em-dashes (commas/periods only).
 
 **Both fields:** NEVER use an em-dash ("—"); use a comma or a period (JM dislikes em-dashes). Mention
 weather only if it genuinely defined the session; never make weather the title.
