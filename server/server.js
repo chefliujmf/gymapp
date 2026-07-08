@@ -31,7 +31,7 @@ import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athl
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
-import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory } from './cycle.js' // #329 (#422 phaseFromHistory)
+import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage)
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -645,7 +645,9 @@ app.get('/auth/readiness', auth, async (req, res) => {
   // #422 — order of truth: today's logged/predicted phase → DERIVE from the last PERIOD marker in the
   // wellness history (intervals only stamps the period-start day, not every day) → manual cycleStart.
   // The middle step is what stops us re-asking Xenia for a date intervals already has (she logged it).
-  const cyclePhase = req.user.sex === 'female'
+  // #427 — PREGNANCY suppresses all of this: there is no menstrual cycle during pregnancy, so never
+  // compute/stash a cyclePhase for a pregnant athlete (the coach uses the pregnancy block instead).
+  const cyclePhase = (req.user.sex === 'female' && !req.user.info?.pregnant)
     ? (normalizePhase(today.menstrualPhase)
       || phaseFromHistory(rows, date, req.user.info?.cycleLength)
       || (req.user.info?.cycleStart ? phaseFromDay(Math.floor((new Date(date) - new Date(req.user.info.cycleStart)) / 86400000) + 1, req.user.info.cycleLength) : null))
@@ -1130,9 +1132,13 @@ function buildSystemPrompt(user) {
   }
   const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
   if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
-  // #329 — this athlete's CURRENT cycle phase (from intervals menstrualPhase or a stored cycle start,
-  // stashed by /auth/readiness). Adjust the PLAN by phase, not just readiness. Only if reasonably fresh.
-  if (isFemale) {
+  // #329/#427 — this athlete's CURRENT repro-state block. PREGNANCY overrides everything (there is no
+  // cycle); otherwise the menstrual cycle phase (from intervals, stashed by /auth/readiness) biases the PLAN.
+  if (isFemale && user.info && user.info.pregnant) {
+    const pg = pregnancyStage(user.info, new Date().toISOString().slice(0, 10))
+    const wk = pg && pg.weeks != null ? `~week ${pg.weeks} (trimester ${pg.trimester})` : 'trimester unknown — ASK her due date (EDD) or last-period date to tailor by trimester; use first-trimester defaults until then'
+    p += `\n\n# PREGNANCY — she is PREGNANT (${wk}). This OVERRIDES cycle-phase logic: there is NO menstrual cycle now, do NOT program by cycle phase. Apply the pregnancy protocol in your female-athlete guidance (§6). Core rules: goal is MAINTAIN health & fitness, never build/PR/max efforts; gauge intensity by RPE + the TALK TEST, not heart rate (pregnancy raises resting HR ~10-20 bpm); no Valsalva/breath-holding (exhale on the effort, keep ~2-3 reps in reserve); ${pg && pg.trimester >= 2 ? 'NO supine (flat-on-back) work, use incline/side-lying/upright versions, and watch for abdominal doming; ' : ''}avoid overheating (cool + hydrate, especially hot-humid days), fall/contact/collision risk, and sprinting; keep pelvic-floor + deep-core awareness. DEFER to her clinician / pelvic-floor PT. If she reports any STOP sign (vaginal bleeding, fluid leak, calf pain or swelling, chest pain, dizziness/faintness, a headache that won't clear, regular contractions, reduced fetal movement) tell her to STOP and contact her clinician. Frame everything on health & function, never weight or "getting the body back".`
+  } else if (isFemale) {
     const fresh = user.cyclePhaseAt && (Date.now() - new Date(user.cyclePhaseAt + 'T00:00:00Z').getTime()) < 6 * 86400000
     const cc = fresh ? cycleContext({ phase: user.cyclePhase }) : null
     if (cc) p += `\n\n# CYCLE PHASE — currently **${cc.phase}** (as of ${user.cyclePhaseAt}). ${cc.guidance} When you plan or adjust this week, apply a load bias of ~×${cc.loadModifier} for this phase (push intensity in the follicular/ovulatory green window; ease top-end + add recovery/Z2 + carbs/sleep in late-luteal/PMS if symptomatic). Don't over-medicalise it — many train through; adapt to how SHE reports feeling. Their late-luteal RHR/HRV naturally shift, so don't read that as poor recovery.`

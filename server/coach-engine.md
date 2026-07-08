@@ -606,17 +606,19 @@ Local Legend, Relaxed Miles", "KOM on the Backroads", "Backroad Hill Efforts", "
 are GOOD, leave that voice alone. Do NOT turn the title into a data string like "Z2 Aerobic Base, 71
 min". (Still public-safe: no home/health/fatigue facts; no em-dash.)
 
-**DESCRIPTION = scientific**, like a sports scientist logging the session, not a Strava caption:
-- Lead with the physiology: the zone(s), the structure, and the ADAPTATION. e.g. "Steady Z2 aerobic
-  endurance, 71 min at 153 W, IF 0.61, developing aerobic base and mitochondrial density." or "Three
-  ten-minute efforts at threshold (Z4), Z2 recovery between, building repeatability at FTP."
-- Use ZONE terms, never vibe words. Z1/Z2/Z3/Z4/Z5 (or endurance, tempo, threshold, VO2, aerobic base).
-  BANNED in the description as cocky filler that says nothing about the training: "easy", "hard",
-  "chill", "relaxing spin", "classic spin", "whatnot", "snagged a Local Legend", "proof you don't have
-  to go hard", and the like.
-- Name the ADAPTATION, the why: aerobic base and foundations, mitochondrial density, fat oxidation, W′
-  (anaerobic capacity), threshold, VO2max, durability. That is the point of the description.
-- Cite the numbers when useful: average power, IF, TSS, duration.
+**DESCRIPTION = clear + informative, in PLAIN language** (JM 2026-07-08: "ease up on the science, my
+audience are no scientifics"). Say the zone, the effort, and what the session was FOR, in everyday words.
+One or two sentences. NOT a physiology lecture, NOT a Strava brag.
+- e.g. "Steady Z2 endurance ride, 71 min at 153 W, easy aerobic pace building your base." or "Threshold
+  work, three by ten minutes comfortably hard with easy spinning between, lifting your sustainable power."
+- Name the zone (Z1-Z5) + the point in EVERYDAY words: base, engine, endurance, easy aerobic, comfortably
+  hard, threshold, sharpening, recovery. Plain "easy / steady / hard" AS the effort is fine here.
+- BANNED as too-jargony (this is the "ease up on the science" fix): "mitochondrial density", "fat
+  oxidation", "glycolytic", "lactate", "substrate", "aerobic threshold", "excursions". Keep it to the
+  zone + plain purpose.
+- BANNED as cocky / vibe filler: "chill", "relaxing spin", "classic spin", "snagged a Local Legend",
+  "proof you don't have to go hard".
+- Numbers are welcome (average power, duration, TSS/IF if it adds something) — just keep the prose plain.
 
 **Both fields:** NEVER use an em-dash ("—"); use a comma or a period (JM dislikes em-dashes). Mention
 weather only if it genuinely defined the session; never make weather the title.

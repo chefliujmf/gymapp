@@ -92,3 +92,21 @@ export function cycleContext({ phase, cycleDay, cycleLength = 28 } = {}) {
   if (!ph) return null
   return { phase: ph, loadModifier: cycleLoadModifier(ph), readinessAdjust: cycleReadinessAdjust(ph), guidance: cycleGuidance(ph) }
 }
+
+/**
+ * #427 — gestational stage from a pregnancy state. `info.pregnant` + either `info.dueDate` (EDD) or
+ * `info.pregnancyStart` (LMP). 40 wk = 280 d gestation. Returns weeks (1 decimal) + trimester (1/2/3),
+ * or null weeks/trimester when no date is known (so the coach can still say "pregnant, ask her EDD").
+ * Returns null entirely when NOT pregnant — that's the signal to run the normal menstrual-cycle logic.
+ * During pregnancy there is NO cycle: callers must SKIP phaseFromHistory/cycleContext when this is set.
+ */
+export function pregnancyStage(info = {}, date) {
+  if (!info || !info.pregnant) return null
+  const today = date ? new Date(date) : null
+  let weeks = null
+  if (today && info.dueDate) weeks = (280 - Math.round((new Date(info.dueDate) - today) / 86400000)) / 7
+  else if (today && info.pregnancyStart) weeks = Math.round((today - new Date(info.pregnancyStart)) / 86400000) / 7
+  const w = weeks == null || !isFinite(weeks) ? null : Math.max(0, Math.min(43, Math.round(weeks * 10) / 10))
+  const trimester = w == null ? null : w < 14 ? 1 : w < 28 ? 2 : 3
+  return { pregnant: true, weeks: w, trimester, dueDate: info.dueDate || null }
+}

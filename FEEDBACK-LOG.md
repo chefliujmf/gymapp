@@ -626,6 +626,12 @@ test guide → the **🧪 Test guide** section below.
     DESCRIPTION goes scientific" section + KOM line + the 3 intro copies + MCP set_activity_text + sync script), and RESTORED the 2 titles I
     changed back to "Another Local Legend, Relaxed Miles" / "Local Legend on the South Shore" while KEEPING their scientific descriptions.
     Em-dash ban stays on BOTH fields. Re-promoting.
+    🔧 CORRECTION 2 (JM 2026-07-08: "ease up on the science, my audience are no scientifics"): the first scientific pass went TOO far —
+    "targeting mitochondrial density, fat oxidation, no Z4 or Z5 excursions" reads like a physiology lecture. Re-calibrate the DESCRIPTION to
+    scientific-but-ACCESSIBLE plain language: name the zone (Z2) + what the session was FOR in everyday words (base fitness, your engine,
+    comfortably hard), NOT jargon. BAN jargon-dense terms in output (mitochondrial density, fat oxidation, glycolytic, lactate, "excursions").
+    Target: "Steady Z2 endurance ride, 71 min at 153 W, easy aerobic pace building your base." Update coach-engine.md DESCRIPTION section +
+    MCP desc; rewrite the 2 descriptions I already over-scienced. Still: no cocky/vibe words, no em-dash. Titles still human.
 426. 🔨 **"Gym exercises have no video/pictures/thumbnails" — REGRESSION triage: server-side is 100% correct → stale PWA cache.** JM
     2026-07-08 (repeated, frustrated: glute bridge, dumbbell goblet squat, romanian deadlift). AUDITED exhaustively: JM's Jul-9 gym = 15/15
     valid exIds; every video+image FILE exists on `/srv/media` (0 missing across the whole 4530 catalog); media serves **200** over HTTPS;
@@ -637,6 +643,18 @@ test guide → the **🧪 Test guide** section below.
     "don't get the Mind — the section is empty but the why is a chip to click." Fuel shows its text inline (+ a why chip); Mind shows only
     a "why ⓘ" chip with no body, so it reads as broken/empty (the real "Mental focus — Restraint…" is buried in the why sheet). FIX: if a
     section has no inline body, show its content in the body (not only behind "why"), OR hide the empty section header. gymapp-only.
+427. 🔨 **PREGNANCY MODE — Xenia is pregnant (confirmed 2026-07-07); no structured state + the cycle logic CONFLICTS.** JM 2026-07-08
+    ("how will this handle pregnancy, my wife just got pregnant" + "update coach engines for pregnancy, deep research if needed"). FOUND:
+    pregnancy is captured ONLY in her coachProfile prose ("PREGNANT — maintain, not build" + full guardrails); there is NO `info.pregnant`/
+    dueDate flag, and the #329/#422 CYCLE-PHASE logic is NOT suppressed — her `cyclePhase=menstrual` is LIVE, so buildSystemPrompt injects
+    "# CYCLE PHASE — currently menstrual … push intensity in the follicular/ovulatory green window", contradicting pregnancy guidance
+    (maintain/ease/no PRs). FIX (pregnancy mode): (1) structured `info.pregnant` + `info.dueDate` (→ gestational week + trimester);
+    (2) GATE OFF cycle-phase coaching + readiness cycle-adjust when pregnant (no menstrual model during pregnancy); (3) inject a
+    `# PREGNANCY — week N / trimester T` block with trimester-appropriate guardrails; (4) DEEP-RESEARCH + expand coach-engine-female §6
+    (currently postpartum-thin) into evidence-based ACTIVE-pregnancy trimester coaching (ACOG 804 / 2019 Canadian guideline: RPE+talk-test
+    not HR, no supine T2+, no Valsalva, thermoregulation, pelvic floor, contraindications + STOP signs, safe strength/impact) + a
+    `docs/pregnancy-coaching.md` KB; (5) Profile UI: Pregnant toggle + due date, hide cycle fields, show week/trimester (mock-first, later).
+    Medical: DEFER to her clinician, health/function framing, never PRs. Set Xenia's flag on prod. gymapp + coach.
 412. ⬜ **(FOR LATER) Moving a session between days FAILS / DUPLICATES + the "Substitute" picker is empty.** JM 2026-07-07 (QA):
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
