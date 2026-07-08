@@ -23,6 +23,7 @@ const T_COLOR: Record<BacklogType, string> = { bug: '#ff6b6b', feature: '#34e07d
 // #449 — dev → qa → prod PROGRESSION, derived from the lifecycle so it's ACCURATE (a text heuristic massively
 // under-counted prod). building = on dev · to-test/tested = on QA · done = promoted to prod. Ideal = all reach prod.
 const ENV_STEPS = ['dev', 'qa', 'prod'] as const
+const ENV_COLORS: Record<string, string> = { dev: '#ff9f43', qa: '#d946ef', prod: '#34e07d' } // dev orange · qa magenta · prod green (JM)
 const envReached = (env?: string) => (env === 'prod' ? 2 : env === 'qa' ? 1 : env === 'dev' ? 0 : -1)
 const STATUS_ENV: Record<BacklogStatus, string> = { review: '', todo: '', build: 'dev', totest: 'qa', pass: 'qa', fail: 'qa', done: 'prod', discarded: '' }
 function EnvTrack({ env, labeled = false }: { env?: string; labeled?: boolean }) {
@@ -31,10 +32,10 @@ function EnvTrack({ env, labeled = false }: { env?: string; labeled?: boolean })
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: labeled ? 5 : 3, flexShrink: 0 }} title={`dev ${r >= 0 ? '✓' : '—'} · qa ${r >= 1 ? '✓' : '—'} · prod ${r >= 2 ? '✓' : '—'}`}>
       {ENV_STEPS.map((step, i) => {
-        const on = i <= r
+        const on = i <= r; const c = ENV_COLORS[step]
         return labeled
-          ? <span key={step} style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.04em', padding: '2px 6px', borderRadius: 5, background: on ? '#34e07d22' : '#ffffff08', color: on ? '#34e07d' : '#5c6472', border: '1px solid ' + (on ? '#34e07d44' : '#ffffff12') }}>{step.toUpperCase()}{on ? ' ✓' : ''}</span>
-          : <span key={step} style={{ width: 6, height: 6, borderRadius: '50%', background: on ? '#34e07d' : '#3a4150' }} />
+          ? <span key={step} style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.04em', padding: '2px 6px', borderRadius: 5, background: on ? c + '22' : '#ffffff08', color: on ? c : '#5c6472', border: '1px solid ' + (on ? c + '55' : '#ffffff12') }}>{step.toUpperCase()}{on ? ' ✓' : ''}</span>
+          : <span key={step} style={{ width: 6, height: 6, borderRadius: '50%', background: on ? c : '#3a4150' }} title={step.toUpperCase()} />
       })}
     </span>
   )
