@@ -25,7 +25,7 @@ const USE_PG = !!process.env.DATABASE_URL
 const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
-import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
+import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
@@ -1930,18 +1930,11 @@ async function reconcileFromIcu(user, from, to) {
   // Plus: plans must be loaded (a stale/empty load ≠ "all orphaned"), and cap the batch (a big one = bad
   // plan state → skip + warn). PROD-only.
   if (!IS_STAGING && orphanCandidates.length && user.plans.length) {
-    const evSport = (ev) => (ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym')
-    const plansBySlot = {}
-    for (const p of user.plans) { const k = `${p.date}|${p.sport}`; (plansBySlot[k] = plansBySlot[k] || []).push(p) }
-    const safe = orphanCandidates.filter((ev) => {
-      const date = String(ev.start_date_local || '').slice(0, 10); if (!date) return false
-      const plansHere = plansBySlot[`${date}|${evSport(ev)}`] || []
-      // ONLY auto-delete an UNAMBIGUOUS DUPLICATE: a plan already owns this exact day+sport via a DIFFERENT
-      // LIVE event. A NO-PLAN orphan is NEVER auto-deleted — it can be a LEGIT session whose plan link was
-      // lost (JM's 07-09 coach gym), not a rest-day leftover, and we can't tell them apart. Leftovers are
-      // handled at the source (delete-on-plan-removal) or by hand; losing a real session is unacceptable. (#431)
-      return plansHere.some((p) => p.icuEventId && String(p.icuEventId) !== String(ev.id) && liveIcuIds.has(p.icuEventId))
-    })
+    // #446 — delete a MOVE/RE-PLAN LEFTOVER (its slot re-taken by a different live plan, OR the same session now
+    // lives on another day = same sport+title, live) while KEEPING a legit lost-link session (unique title, no
+    // live plan owns its slot). Fixes the cross-day-move orphan the old slot-only rule was blind to, without
+    // re-introducing #431/#377 (deleting JM's real gym). Pure + tested in icu-dedup.test.ts.
+    const safe = orphanCandidates.filter((ev) => orphanIsMoveLeftover(ev, { liveIds: liveIcuIds, plans: user.plans }))
     if (safe.length > 8) {
       console.warn(`[reconcile GC] ${user.username}: ${safe.length} orphan candidates — too many, SKIPPING (bad plan state?).`)
     } else if (safe.length) {

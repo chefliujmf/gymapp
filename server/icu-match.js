@@ -45,7 +45,27 @@ export const slotKey = (date, sport) => `${String(date).slice(0, 10)}|${sport}`
 export function planDroppedByReconcile(plan, { liveIds, ownedSlots, from, to }) {
   if (!plan || !plan.icuEventId) return false
   if ((from && plan.date < from) || (to && plan.date > to)) return false
-  if (liveIds.has(plan.icuEventId)) return false
+  if (liveHas(liveIds, plan.icuEventId)) return false
   if (plan.origin === 'icu') return true
   return ownedSlots.has(slotKey(plan.date, plan.sport))
+}
+
+// string/number-tolerant Set membership — icuEventIds get stored as numbers OR strings, and a Set of one type
+// silently misses the other (this quietly defeated the #431 orphan-GC when a plan's link was a string). #446.
+export const liveHas = (set, id) => id != null && (set.has(id) || set.has(String(id)) || set.has(Number(id)))
+
+// #446 — is a Platyplus-PUSHED orphan event (no plan claims it by icuEventId) an UNAMBIGUOUS DUPLICATE that's
+// safe to delete, vs a session we must KEEP? Delete ONLY when a DIFFERENT live-backed plan already owns the
+// orphan's exact day+sport (a real replacement took the slot) — the #446 Thu-9 orphan (its slot owned by the
+// live Full-Body plan). The key fix vs the old inline rule is `liveHas` (string/number-tolerant): a plan whose
+// icuEventId was stored as a STRING silently defeated `Set<number>.has(...)`, so the duplicate went undetected.
+// A NO-PLAN orphan whose slot NO live plan owns is KEPT — it can be a LEGIT session whose link was merely lost
+// (#431/#377, "lost my tomorrow's gym"), and we will NOT risk deleting a real session. (Cross-day "move to an
+// empty day" leftovers are left for a deterministic delete-on-plan-removal pass, not fuzzy title-matching.)
+export function orphanIsMoveLeftover(ev, { liveIds, plans }) {
+  if (!ev) return false
+  const evId = String(ev.id)
+  const date = String(ev.start_date_local || '').slice(0, 10)
+  const sport = eventSport(ev.type)
+  return (plans || []).some((p) => p.date === date && p.sport === sport && p.icuEventId && String(p.icuEventId) !== evId && liveHas(liveIds, p.icuEventId))
 }

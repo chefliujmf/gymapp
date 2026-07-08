@@ -841,10 +841,15 @@ test guide → the **🧪 Test guide** section below.
     2026-07-08 (prod screenshot). Thu Jul 9 had Full-Body Strength + an ORPHAN Upper-Body & Trunk (event 121417361, ext mcp-p22pqmo5, NO plan),
     which also made Upper-Body appear on Mon Jul 13 (its real home). Same move-orphan class as #431: a re-plan/move created a NEW plan+event and
     orphaned the old, and the duplicate-only GC didn't clean it. IMMEDIATE: deleted the orphan (Jul 9 clean, full scan = no other orphans). ROOT
-    STILL OPEN: (1) a coach move/re-plan must UPDATE the same event (keep icuEventId), not create-new+orphan; (2) the orphan-GC must catch a
-    move-leftover (platyplus-pushed, no plan, duplicates another slot/title) while sparing a legit lost-link session; (3) **Jul 7 ride plan
-    (mcp-lzkte5tt) was never PUSHED (no icuEventId)** so the completed ride can't pair. Needs a focused #431 deep-fix + resync of Jul 7. **Most
-    serious open item — functional, recurring, JM frustrated.**
+    DIAGNOSIS (subagent, evidence in scratchpad/gc-sim*.mjs): the old inline GC rule WAS correct for the Thu-9 case (Full-Body owns the slot) but
+    a plan whose `icuEventId` was stored as a **STRING silently defeated `Set<number>.has()`** → the duplicate went undetected; also the GC only
+    runs on client `/auth/plans/sync`. FIXED (Fix A, the safe net): extracted `orphanIsMoveLeftover` + `liveHas` (string/number-tolerant) into
+    server/icu-match.js — delete an orphan ONLY when a DIFFERENT **live-backed** plan owns its exact day+sport; a unique-title / unowned-slot orphan
+    is KEPT (never re-delete a legit lost-link session, #431/#377). Wired into `reconcileFromIcu`. 447 tests (6 new in icu-dedup.test.ts incl. the
+    string-link regression + the keep-legit case). Server-only. DELIBERATELY DEFERRED as too risky for JM's "never lose a session": the fuzzy
+    same-title-elsewhere signal + a source-side title-merge (would over-merge recurring titles). STILL OPEN (follow-ups): (1) a deterministic
+    delete-on-plan-removal so a "move to an EMPTY day" leaves no phantom; (2) **Jul 7 ride plan never PUSHED** (PAST-guard skips plans dated before
+    today, so a coach back-fill never pushes → completed ride can't pair). Prod-only GC → verify next time an orphan appears (or inject-and-reconcile).
 447. ⬜ **STREAMLINE the backlog status model — 8 statuses is confusing.** JM 2026-07-08: "got the concept of open… but it should be streamline,
     it's confusing." The review/todo/build/totest/pass/fail/done/discarded set + the "Open = not done/discarded (still includes pass/fail)" semantics
     are too much. Propose a simpler flow (e.g. Review → To do → Building → To test → Done, with a fail looping back to Building + a comment; drop
