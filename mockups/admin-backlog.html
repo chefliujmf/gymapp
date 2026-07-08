@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Backlog — mock</title>
+<style>
+  :root{ --text:#eef1f4; --text-dim:#9298a6; --accent:#34e07d; --bg:#0f1216; --card1:#21252f; --card2:#191c24;
+    --hi:#ff6b6b; --med:#ffb454; --lo:#7a8699; --build:#ffb454; --todo:#8aa0ff; --done:#34e07d; }
+  *{ box-sizing:border-box; margin:0; padding:0 }
+  body{ background:#07090c; color:var(--text); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased }
+  .phone{ max-width:430px; margin:0 auto; min-height:100vh; background:var(--bg); padding:14px 14px 60px }
+  .toggle{ display:flex; gap:6px; background:#0b0e12; border:1px solid #ffffff14; border-radius:12px; padding:5px; margin-bottom:16px; position:sticky; top:8px; z-index:5 }
+  .toggle button{ flex:1; background:none; border:0; color:var(--text-dim); font:700 13px/1 inherit; padding:9px; border-radius:8px; cursor:pointer }
+  .toggle button.on{ background:linear-gradient(160deg,var(--card1),var(--card2)); color:var(--text) }
+  .head{ margin-bottom:12px }
+  .head h1{ font-size:24px; letter-spacing:-.02em }
+  .head p{ color:var(--text-dim); font-size:13px; margin-top:2px }
+  .filters{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px }
+  .search{ width:100%; background:#0b0e12; border:1px solid #ffffff1a; color:var(--text); border-radius:10px; padding:9px 12px; font-size:14px; margin-bottom:8px }
+  .search::placeholder{ color:#5c6472 }
+  .chip{ background:#0b0e12; border:1px solid #ffffff1a; color:var(--text-dim); border-radius:999px; padding:6px 11px; font-size:12px; font-weight:600; cursor:pointer }
+  .chip.on{ background:var(--accent); color:#062012; border-color:var(--accent) }
+  .chip.on.hi{ background:var(--hi); border-color:var(--hi); color:#2a0808 }
+  .row-sort{ display:flex; align-items:center; gap:6px; margin:2px 0 12px; color:var(--text-dim); font-size:12px }
+  .row-sort select{ background:#0b0e12; border:1px solid #ffffff1a; color:var(--text); border-radius:8px; padding:5px 8px; font-size:12px }
+  .count{ margin-left:auto }
+
+  /* ---- Option A: dense triage list ---- */
+  .item{ border:1px solid #ffffff12; border-radius:12px; margin-bottom:8px; background:linear-gradient(160deg,var(--card1),var(--card2)); overflow:hidden }
+  .item.disc{ opacity:.5 }
+  .item-row{ display:flex; align-items:center; gap:10px; padding:11px 12px; cursor:pointer }
+  .dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0 }
+  .dot.build{ background:var(--build) } .dot.todo{ background:var(--todo) } .dot.done{ background:var(--done) }
+  .num{ color:var(--text-dim); font-weight:700; font-size:12px; flex-shrink:0; font-variant-numeric:tabular-nums }
+  .ttl{ flex:1; min-width:0; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  .pri{ font-size:10px; font-weight:800; padding:3px 7px; border-radius:6px; flex-shrink:0; letter-spacing:.03em }
+  .pri.hi{ background:#ff6b6b22; color:var(--hi) } .pri.med{ background:#ffb45422; color:var(--med) } .pri.lo{ background:#7a869922; color:var(--lo) }
+  .cmt{ font-size:11px; color:var(--text-dim); flex-shrink:0 }
+  .expand{ padding:2px 12px 13px; border-top:1px solid #ffffff10 }
+  .summary{ color:#c4cad4; font-size:13px; margin:10px 0 12px }
+  .cthread{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px }
+  .cnote{ background:#0b0e12; border:1px solid #ffffff12; border-radius:8px; padding:7px 10px; font-size:12.5px }
+  .cnote .who{ color:var(--accent); font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:.04em }
+  .cin{ display:flex; gap:6px; margin-bottom:12px }
+  .cin input{ flex:1; background:#0b0e12; border:1px solid #ffffff1a; color:var(--text); border-radius:8px; padding:8px 10px; font-size:13px }
+  .cin button{ background:var(--accent); color:#062012; border:0; border-radius:8px; padding:0 14px; font-weight:700; cursor:pointer }
+  .actions{ display:flex; align-items:center; gap:6px; flex-wrap:wrap }
+  .actions .lbl{ font-size:11px; color:var(--text-dim); margin-right:2px }
+  .pbtn{ background:#0b0e12; border:1px solid #ffffff1a; color:var(--text-dim); border-radius:7px; padding:5px 9px; font-size:11px; font-weight:700; cursor:pointer }
+  .pbtn.on.hi{ background:var(--hi); color:#2a0808; border-color:var(--hi) }
+  .pbtn.on.med{ background:var(--med); color:#2a1c04; border-color:var(--med) }
+  .pbtn.on.lo{ background:var(--lo); color:#0b0e12; border-color:var(--lo) }
+  .discard{ margin-left:auto; background:none; border:1px solid #ff6b6b44; color:var(--hi); border-radius:7px; padding:5px 10px; font-size:11px; font-weight:700; cursor:pointer }
+
+  /* ---- Option B: grouped cards ---- */
+  .group-h{ display:flex; align-items:center; gap:8px; margin:16px 0 9px; font-weight:800; font-size:13px; letter-spacing:.02em }
+  .group-h .badge{ color:var(--text-dim); font-weight:700; font-size:12px }
+  .group-h .caret{ margin-left:auto; color:var(--text-dim) }
+  .gcard{ position:relative; border:1px solid #ffffff12; border-radius:12px; padding:12px 13px 11px 16px; margin-bottom:8px; background:linear-gradient(160deg,var(--card1),var(--card2)) }
+  .gcard .stripe{ position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:12px 0 0 12px }
+  .stripe.hi{ background:var(--hi) } .stripe.med{ background:var(--med) } .stripe.lo{ background:var(--lo) } .stripe.none{ background:#3a4150 }
+  .gcard .gtop{ display:flex; align-items:center; gap:8px; margin-bottom:5px }
+  .gcard .gttl{ font-size:14px; font-weight:600; flex:1; min-width:0 }
+  .schip{ font-size:10px; font-weight:800; padding:2px 7px; border-radius:6px }
+  .schip.build{ background:#ffb45422; color:var(--build) } .schip.todo{ background:#8aa0ff22; color:var(--todo) } .schip.done{ background:#34e07d22; color:var(--done) }
+  .gsum{ color:#aab0bb; font-size:12.5px; margin-bottom:9px }
+  .gfoot{ display:flex; align-items:center; gap:12px; color:var(--text-dim); font-size:12px }
+  .gfoot .kebab{ margin-left:auto; cursor:pointer; font-size:16px; color:var(--text-dim); padding:0 4px }
+  .hint{ text-align:center; color:#5c6472; font-size:11px; margin-top:18px }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="toggle">
+    <button id="tA" class="on" onclick="show('A')">Option A · Triage list</button>
+    <button id="tB" onclick="show('B')">Option B · Cards by status</button>
+  </div>
+
+  <div class="head">
+    <h1>Backlog</h1>
+    <p id="sub">255 open · your live triage — comment, prioritise, discard</p>
+  </div>
+
+  <input class="search" placeholder="Search the backlog…">
+  <div class="filters" id="statusFilters">
+    <span class="chip on">Open</span><span class="chip">To do</span><span class="chip">Building</span>
+    <span class="chip">Done</span><span class="chip">Discarded</span>
+  </div>
+  <div class="filters">
+    <span class="chip hi">High</span><span class="chip">Med</span><span class="chip">Low</span><span class="chip">Unset</span>
+  </div>
+  <div class="row-sort">
+    Sort <select><option>Priority ↓</option><option>Newest #</option><option>Status</option><option>Most comments</option></select>
+    <span class="count" id="cnt">12 shown</span>
+  </div>
+
+  <div id="viewA"></div>
+  <div id="viewB" style="display:none"></div>
+  <div class="hint">Mock · Platyplus dark theme · admin-only</div>
+</div>
+
+<script>
+const items = [
+  { n:438, s:'build', t:'In-app admin backlog manager', pri:'hi', sum:'Track the backlog inside the app under Admin — comment, discard, change priority. This page.', cmts:[{who:'You',x:'finally, so I stop losing the artifact link'}] },
+  { n:412, s:'todo', t:'Picker rendering — recovery clip + ride list empty', pri:'hi', sum:'Recovery clip clipped; the hide-rides list shows empty skeleton rows that never populate.', cmts:[{who:'You',x:'reported this like 6 times now, needs to get fixed'}] },
+  { n:431, s:'build', t:'Duplicate rides — bi-directional sync buggy', pri:'hi', sum:'Moving a session Thu→Tue duplicated it. Root-caused (upsertPlan supersede, reconcile owned-slot) + fixed.', cmts:[] },
+  { n:436, s:'build', t:'Coach ✓ box (coach_tick) stopped getting set', pri:'med', sum:'coach_tick is an int 1-5, not a bool. Now set on every review + history backfilled.', cmts:[{who:'You',x:'coach check worked ✓'}] },
+  { n:437, s:'build', t:'Coach reads coach_tick — reviewed tracker', pri:'med', sum:'get_recent_activities now returns id + reviewed so the coach knows what is still pending.', cmts:[] },
+  { n:433, s:'build', t:'Fuel + Mind + Recovery coach-driven', pri:'med', sum:'Daily-adapt now schedules fuel/mind/recovery, not just training.', cmts:[] },
+  { n:348, s:'build', t:'Capture location in onboarding + Profile', pri:'med', sum:'For weather + local time, bi-directionally synced with intervals.', cmts:[] },
+  { n:183, s:'todo', t:'Guided onboarding / profile wizard', pri:'med', sum:'Structured app data + audio speech-to-text for a smoother first run.', cmts:[] },
+  { n:354, s:'todo', t:'Jul-3 check-in shows empty', pri:'lo', sum:'One day’s check-in card rendered blank. Low-frequency.', cmts:[] },
+  { n:180, s:'todo', t:'Real per-workout imagery as card background', pri:'lo', sum:'Use real ride/workout imagery instead of the flat gradient.', cmts:[] },
+  { n:177, s:'todo', t:'New categories: Yoga + Pilates', pri:'lo', sum:'Add Yoga + Pilates as Mind categories.', cmts:[] },
+  { n:349, s:'build', t:'Sleep "why" was too shallow', pri:'lo', sum:'Now leads with hours-vs-need, not just the bare tracker score.', cmts:[] },
+];
+const priLabel = { hi:'HIGH', med:'MED', lo:'LOW' };
+const sName = { build:'Building', todo:'To do', done:'Done' };
+
+let openN = 438;
+function renderA(){
+  const v = document.getElementById('viewA'); v.innerHTML = '';
+  items.forEach(it => {
+    const ex = it.n === openN;
+    const el = document.createElement('div'); el.className = 'item';
+    el.innerHTML = `
+      <div class="item-row" onclick="toggleA(${it.n})">
+        <span class="dot ${it.s}"></span>
+        <span class="num">#${it.n}</span>
+        <span class="ttl">${it.t}</span>
+        ${it.pri ? `<span class="pri ${it.pri}">${priLabel[it.pri]}</span>`:''}
+        ${it.cmts.length ? `<span class="cmt">💬${it.cmts.length}</span>`:''}
+      </div>
+      ${ex ? `<div class="expand">
+        <div class="summary">${it.sum}</div>
+        <div class="cthread">${it.cmts.map(c=>`<div class="cnote"><span class="who">${c.who}</span> ${c.x}</div>`).join('') || ''}</div>
+        <div class="cin"><input placeholder="Add a comment / direction…"><button>Post</button></div>
+        <div class="actions">
+          <span class="lbl">Priority</span>
+          <button class="pbtn ${it.pri==='hi'?'on hi':''}">High</button>
+          <button class="pbtn ${it.pri==='med'?'on med':''}">Med</button>
+          <button class="pbtn ${it.pri==='lo'?'on lo':''}">Low</button>
+          <button class="discard">Discard</button>
+        </div>
+      </div>`:''}`;
+    v.appendChild(el);
+  });
+}
+function toggleA(n){ openN = (openN===n?0:n); renderA(); }
+
+function renderB(){
+  const v = document.getElementById('viewB'); v.innerHTML = '';
+  const order = ['build','todo','done'];
+  order.forEach(st => {
+    const list = items.filter(i=>i.s===st);
+    if(!list.length) return;
+    const gh = document.createElement('div'); gh.className='group-h';
+    const ico = st==='build'?'🔨':st==='todo'?'⬜':'✅';
+    gh.innerHTML = `${ico} ${sName[st]} <span class="badge">${list.length}</span><span class="caret">${st==='done'?'›':'⌄'}</span>`;
+    v.appendChild(gh);
+    if(st==='done') return; // done collapsed by default
+    list.forEach(it=>{
+      const c = document.createElement('div'); c.className='gcard';
+      c.innerHTML = `
+        <span class="stripe ${it.pri||'none'}"></span>
+        <div class="gtop"><span class="num">#${it.n}</span><span class="gttl">${it.t}</span>
+          <span class="schip ${it.s}">${sName[it.s]}</span></div>
+        <div class="gsum">${it.sum}</div>
+        <div class="gfoot">${it.pri?`<span class="pri ${it.pri}">${priLabel[it.pri]}</span>`:'<span style="color:#5c6472">no priority</span>'}
+          <span>💬 ${it.cmts.length}</span><span class="kebab">⋯</span></div>`;
+      v.appendChild(c);
+    });
+  });
+}
+
+function show(o){
+  document.getElementById('tA').classList.toggle('on', o==='A');
+  document.getElementById('tB').classList.toggle('on', o==='B');
+  document.getElementById('viewA').style.display = o==='A'?'block':'none';
+  document.getElementById('viewB').style.display = o==='B'?'block':'none';
+  document.getElementById('sub').textContent = o==='A'
+    ? '255 open · filter-first, tap a row to triage'
+    : '255 open · grouped by status, ⋯ to triage';
+}
+renderA(); renderB();
+</script>
+</body>
+</html>

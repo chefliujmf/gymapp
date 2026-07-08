@@ -4,6 +4,7 @@ import { Home, CalendarDays, Dumbbell, BarChart3, Salad, MessageCircle, RotateCw
 import AccountMenu from './auth/AccountMenu'
 import ReleaseBell from './ReleaseBell'
 import PromoteButton from './PromoteButton'
+import ReportButton from './ReportButton'
 import PasskeyPrompt from './auth/PasskeyPrompt'
 
 // 5 fixed tabs (best practice). Train & Stats are hubs whose CONTENT adapts to the
@@ -41,7 +42,7 @@ export default function App() {
           <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=4" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</Link>
           {/* Top-right is the status cluster only: notifications + account (Coach moved to the FAB). */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <RefreshButton /><PromoteButton /><ReleaseBell /><AccountMenu />
+            <RefreshButton /><PromoteButton /><ReportButton /><ReleaseBell /><AccountMenu />
           </div>
         </header>
       )}

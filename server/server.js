@@ -25,8 +25,8 @@ const USE_PG = !!process.env.DATABASE_URL
 const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
-import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from './icu-match.js'
-import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick } from './readiness.js'
+import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover } from './icu-match.js'
+import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
@@ -953,6 +953,69 @@ app.delete('/auth/users/:id', auth, admin, (req, res) => {
   store.users = store.users.filter((u) => u.id !== req.params.id); save(store); res.json({ ok: true })
 })
 
+// #438 — ADMIN BACKLOG triage overlay. The item LIST is built from FEEDBACK-LOG.md (bundled backlog.json);
+// this is JM's LIVE triage on top of it — per item number: priority (hi|med|lo), a comment thread, and a
+// discard flag. Stored on the admin's own record (JM is the owner) so Claude can read it each session.
+const PRIORITIES = ['hi', 'med', 'lo']
+const BACKLOG_STATUSES = ['review', 'todo', 'build', 'totest', 'pass', 'fail', 'done', 'discarded'] // JM's status OVERRIDES the .md-derived one; 'review' = a user report awaiting triage
+const BACKLOG_TYPES = ['bug', 'feature', 'idea', 'chore']
+// #438/#440 — the backlog triage + app-added items + user reports live in the SHARED global store (app_meta),
+// so a report from ANY user reaches the admin and any admin sees the same board. Claude reads it each session.
+const backlogStore = () => (store.backlog = store.backlog || { triage: {}, added: [] })
+const nextBacklogN = (bl) => Math.max(438, ...(bl.added || []).map((x) => x.n || 0)) + 1
+app.get('/auth/admin/backlog', auth, admin, (req, res) => { const bl = backlogStore(); res.json({ triage: bl.triage || {}, added: bl.added || [] }) })
+app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
+  const n = String(Number(req.params.n) || '')
+  if (!n || n === '0') return res.status(400).json({ error: 'valid item number required' })
+  const bl = backlogStore(); bl.triage = bl.triage || {}
+  const t = { comments: [], ...bl.triage[n] }
+  const b = req.body || {}
+  if ('priority' in b) t.priority = PRIORITIES.includes(b.priority) ? b.priority : undefined // null/other → clear
+  if ('status' in b) { t.status = BACKLOG_STATUSES.includes(b.status) ? b.status : undefined; delete t.discarded } // status supersedes the old discarded bool
+  if ('type' in b) t.type = BACKLOG_TYPES.includes(b.type) ? b.type : undefined
+  if (typeof b.discarded === 'boolean') t.discarded = b.discarded // back-compat
+  if (typeof b.comment === 'string' && b.comment.trim()) { t.comments.push({ text: b.comment.trim().slice(0, 800), at: Date.now(), by: req.user.username || 'you' }); if (t.comments.length > 100) t.comments = t.comments.slice(-100) }
+  if (b.deleteCommentAt) t.comments = t.comments.filter((c) => c.at !== b.deleteCommentAt)
+  if (!t.priority && !t.status && !t.type && !t.discarded && !t.comments.length) delete bl.triage[n] // drop empty rows
+  else bl.triage[n] = t
+  save(store)
+  res.json({ n: Number(n), triage: bl.triage[n] || null })
+})
+// ADMIN adds a backlog item directly (title + type + priority). App-added items get merged into the .md-derived
+// list; Claude folds them into FEEDBACK-LOG.md each session.
+app.post('/auth/admin/backlog', auth, admin, (req, res) => {
+  const b = req.body || {}
+  const title = String(b.title || '').trim()
+  if (!title) return res.status(400).json({ error: 'title required' })
+  const bl = backlogStore(); bl.added = bl.added || []; bl.triage = bl.triage || {}
+  const n = Number(b.n) > 438 ? Number(b.n) : nextBacklogN(bl)
+  const item = { n, title: title.slice(0, 200), summary: String(b.summary || '').trim().slice(0, 1000), reporter: req.user.username || 'admin', at: Date.now() }
+  bl.added = [item, ...bl.added.filter((x) => x.n !== n)]
+  const seed = {}
+  if (BACKLOG_TYPES.includes(b.type)) seed.type = b.type
+  if (PRIORITIES.includes(b.priority)) seed.priority = b.priority
+  bl.triage[String(n)] = { comments: [], ...bl.triage[String(n)], ...seed }
+  save(store)
+  res.status(201).json({ item, triage: bl.triage[String(n)] || null })
+})
+// #440 — ANY signed-in user reports a bug/idea → lands in the shared backlog as status 'review' (under review),
+// stamped with the reporter + time. Not admin-gated (that's the point — the whole team can report).
+app.post('/auth/report', auth, (req, res) => {
+  const b = req.body || {}
+  const title = String(b.title || '').trim()
+  if (!title) return res.status(400).json({ error: 'a short description is required' })
+  const type = BACKLOG_TYPES.includes(b.type) ? b.type : 'bug'
+  const bl = backlogStore(); bl.added = bl.added || []; bl.triage = bl.triage || {}
+  const n = nextBacklogN(bl)
+  const item = { n, title: title.slice(0, 200), summary: String(b.summary || '').trim().slice(0, 1000), reporter: req.user.username || req.user.email || 'user', at: Date.now() }
+  bl.added = [item, ...bl.added]
+  bl.triage[String(n)] = { comments: [], type, status: 'review' }
+  save(store)
+  // tell the OTHER admins a report came in (not the reporter themselves)
+  for (const admU of (store.users || []).filter((u) => u.role === 'admin' && u.id !== req.user.id)) pushNotification(admU, { id: 'report-' + n, title: `${type === 'idea' ? '💡 Idea' : '🐛 Bug'} reported by ${item.reporter}`, body: title.slice(0, 120), link: '/admin' })
+  res.status(201).json({ ok: true, n })
+})
+
 // ---- coach API token (shown to its owner only) ---------------------------
 app.get('/auth/token', auth, (req, res) => res.json({ token: req.user.apiToken }))
 app.post('/auth/token/rotate', auth, (req, res) => { req.user.apiToken = randomBytes(24).toString('base64url'); save(store); res.json({ token: req.user.apiToken }) })
@@ -1867,18 +1930,11 @@ async function reconcileFromIcu(user, from, to) {
   // Plus: plans must be loaded (a stale/empty load ≠ "all orphaned"), and cap the batch (a big one = bad
   // plan state → skip + warn). PROD-only.
   if (!IS_STAGING && orphanCandidates.length && user.plans.length) {
-    const evSport = (ev) => (ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym')
-    const plansBySlot = {}
-    for (const p of user.plans) { const k = `${p.date}|${p.sport}`; (plansBySlot[k] = plansBySlot[k] || []).push(p) }
-    const safe = orphanCandidates.filter((ev) => {
-      const date = String(ev.start_date_local || '').slice(0, 10); if (!date) return false
-      const plansHere = plansBySlot[`${date}|${evSport(ev)}`] || []
-      // ONLY auto-delete an UNAMBIGUOUS DUPLICATE: a plan already owns this exact day+sport via a DIFFERENT
-      // LIVE event. A NO-PLAN orphan is NEVER auto-deleted — it can be a LEGIT session whose plan link was
-      // lost (JM's 07-09 coach gym), not a rest-day leftover, and we can't tell them apart. Leftovers are
-      // handled at the source (delete-on-plan-removal) or by hand; losing a real session is unacceptable. (#431)
-      return plansHere.some((p) => p.icuEventId && String(p.icuEventId) !== String(ev.id) && liveIcuIds.has(p.icuEventId))
-    })
+    // #446 — delete a MOVE/RE-PLAN LEFTOVER (its slot re-taken by a different live plan, OR the same session now
+    // lives on another day = same sport+title, live) while KEEPING a legit lost-link session (unique title, no
+    // live plan owns its slot). Fixes the cross-day-move orphan the old slot-only rule was blind to, without
+    // re-introducing #431/#377 (deleting JM's real gym). Pure + tested in icu-dedup.test.ts.
+    const safe = orphanCandidates.filter((ev) => orphanIsMoveLeftover(ev, { liveIds: liveIcuIds, plans: user.plans }))
     if (safe.length > 8) {
       console.warn(`[reconcile GC] ${user.username}: ${safe.length} orphan candidates — too many, SKIPPING (bad plan state?).`)
     } else if (safe.length) {
@@ -2576,14 +2632,23 @@ process.on('uncaughtException', (e) => console.error(`[uncaughtException] ${e?.s
 // (Form/freshness are always available), then a REFINE pass once overnight HRV/sleep/RHR lands in
 // intervals. Runs in-process (single instance); guarded once-per-pass-per-day via user.dailyAdapt.
 const DAILY_HORIZON = 14 // days the coach keeps populated + adapted ahead
-function dailyAdaptMsg(today, pass) {
+function dailyAdaptMsg(today, pass, cov) {
   const head = pass === 'refine'
     ? `Daily auto-adaptation — REFINE pass (${today}). Their overnight HRV/sleep/resting-HR has now LANDED in intervals — read it (get_wellness) + their check-in (get_checkins). If it changes today's readiness vs earlier, refine; if nothing meaningful changed, don't churn the plan.`
     : `Daily auto-adaptation — EARLY pass (${today}). Overnight HRV/sleep from their watch usually ISN'T synced this early, so decide from their FRESHNESS / Form (CTL−ATL, always available — get_wellness) + their latest check-in (get_checkins). You'll get a refine pass later once HRV/sleep lands.`
-  return `${head} Then PROACTIVELY adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule): ease / harden / shift / add sessions so the rolling ~2-week plan matches how they're recovering AND their goals, weekly frequency + availability. Keep ~${DAILY_HORIZON} days populated ahead (fill gaps toward their target frequency; never double-book a day / exceed their max sessions per day). ALSO round out the plan the way a real coach would — FUEL, MIND and RECOVERY, not just the workout: on TODAY and each clearly demanding day (hard / long / quality sessions), schedule a fitting meal or two (schedule_meal — pick a real recipe that fits their diet + daily fuel targets, more carbs around the hard work, lighter on rest days, one-line why); add a MIND session (schedule_mind) where it earns its place — a wind-down after a hard or high-stress day, something longer on a rest day; and put RECOVERY (schedule_recovery — mobility / sauna / easy walk) after the hardest days. Only where it genuinely adds value for THIS athlete on THIS day — don't drop a meal or session onto every slot for the sake of it, and don't churn what they've already got. ALSO catch up on REVIEWS: get_recent_activities now flags each activity's \`reviewed\` status + its \`id\` — for any completed activity in the last week with \`reviewed:false\`, REVIEW it (save_coach_review with that exact \`id\`, a score + one-line verdict + 2-4 takeaways — that ticks the Coach box + posts your note) and give it a public-safe title/description (set_activity_text). SKIP anything already \`reviewed:true\` (never re-review), cap at the few most recent so nothing piles up unreviewed. If a MATERIAL call is uncertain (e.g. several run-down days → cut this week's volume? a race clash?), use notify to ASK them rather than guess. When you change things, notify ONE short line of what changed + why. Don't ask trivial questions — decide and act; ask only when it truly matters. Be concise.`
+  // #439 — hand the coach the EXACT horizon gap. It wasn't holding the 2-week horizon on its own (planned
+  // only the current week), so make filling to the horizon end the FIRST, non-negotiable job of the pass.
+  const gap = cov && cov.empty >= 3
+    ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. Right now only ${cov.covered}/${DAILY_HORIZON + 1} days through ${cov.end} have anything (last session ${cov.last || 'none'}; first empty day ${cov.firstEmpty}). EXTEND the plan ALL THE WAY to ${cov.end} in THIS pass — add sessions on the empty days to hit their weekly frequency per availability. Do NOT leave the back half of the horizon blank; planning only the current week is the bug you're fixing.`
+    : ''
+  return `${head}${gap} Then PROACTIVELY adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule): ease / harden / shift / add sessions so the rolling ~2-week plan matches how they're recovering AND their goals, weekly frequency + availability. Keep ~${DAILY_HORIZON} days populated ahead (fill gaps toward their target frequency; never double-book a day / exceed their max sessions per day). ALSO round out the plan the way a real coach would — FUEL, MIND and RECOVERY, not just the workout: on TODAY and each clearly demanding day (hard / long / quality sessions), schedule a fitting meal or two (schedule_meal — pick a real recipe that fits their diet + daily fuel targets, more carbs around the hard work, lighter on rest days, one-line why); add a MIND session (schedule_mind) where it earns its place — a wind-down after a hard or high-stress day, something longer on a rest day; and put RECOVERY (schedule_recovery — mobility / sauna / easy walk) after the hardest days. Only where it genuinely adds value for THIS athlete on THIS day — don't drop a meal or session onto every slot for the sake of it, and don't churn what they've already got. ALSO catch up on REVIEWS: get_recent_activities now flags each activity's \`reviewed\` status + its \`id\` — for any completed activity in the last week with \`reviewed:false\`, REVIEW it (save_coach_review with that exact \`id\`, a score + one-line verdict + 2-4 takeaways — that ticks the Coach box + posts your note) and give it a public-safe title/description (set_activity_text). SKIP anything already \`reviewed:true\` (never re-review), cap at the few most recent so nothing piles up unreviewed. If a MATERIAL call is uncertain (e.g. several run-down days → cut this week's volume? a race clash?), use notify to ASK them rather than guess. When you change things, notify ONE short line of what changed + why. Don't ask trivial questions — decide and act; ask only when it truly matters. Be concise.`
 }
 async function runDailyAdapt(user, pass) {
-  try { await runCoachTask(user, dailyAdaptMsg(await athleteToday(user), pass)) } catch (e) { console.error(`[daily-adapt ${pass}] ${user.username || ''} ${e.message || e}`) }
+  try {
+    const today = await athleteToday(user)
+    const cov = horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON) // #439 — the exact gap to fill
+    await runCoachTask(user, dailyAdaptMsg(today, pass, cov))
+  } catch (e) { console.error(`[daily-adapt ${pass}] ${user.username || ''} ${e.message || e}`) }
 }
 // One scheduler tick: fire the due pass for each coached athlete. Called every ~30 min.
 async function dailyAdaptTick() {

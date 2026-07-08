@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { lnRMSSD, meanSd, zTo5, score100To5, coachTick, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, projectFormSeries, forecastFreshness, estimateVo2max as estimateVo2maxSrv, bestVo2maxEstimate, hrRatioVo2max, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads } from '../server/readiness.js'
+import { lnRMSSD, meanSd, zTo5, score100To5, coachTick, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, projectFormSeries, forecastFreshness, estimateVo2max as estimateVo2maxSrv, bestVo2maxEstimate, hrRatioVo2max, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, horizonCoverage } from '../server/readiness.js'
 
 // #195 readiness math, grounded in docs/readiness-scores.md (WHOOP deep-dive 2026-06-28).
 
@@ -19,6 +19,16 @@ describe('stats primitives', () => {
     expect(coachTick(0)).toBe(1); expect(coachTick(1)).toBe(1) // clamp floor (never 0 — that would read as "no tick")
     expect(coachTick(null)).toBe(3); expect(coachTick(undefined)).toBe(3) // reviewed, no score → neutral tick
     expect(Number.isInteger(coachTick(7))).toBe(true) // MUST be a whole number — intervals rejects a bool/float
+  })
+  it('#439 horizonCoverage — the exact 2-week gap the coach must fill', () => {
+    const today = '2026-07-08'
+    const jm = horizonCoverage(['2026-07-09', '2026-07-10', '2026-07-11', '2026-07-12', '2026-07-13'], today, 14) // JM's real case
+    expect(jm.covered).toBe(5); expect(jm.empty).toBe(10); expect(jm.last).toBe('2026-07-13')
+    expect(jm.firstEmpty).toBe('2026-07-08'); expect(jm.end).toBe('2026-07-22')
+    expect(horizonCoverage([], today, 14).empty).toBe(15) // nothing planned → whole horizon empty (15 = day 0..14)
+    const all = Array.from({ length: 15 }, (_, i) => { const d = new Date(today + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i); return d.toISOString().slice(0, 10) })
+    expect(horizonCoverage(all, today, 14).empty).toBe(0) // fully covered → no gap
+    expect(horizonCoverage(['2026-07-09', '2026-07-09', null as unknown as string, '2025-01-01'], today, 14).covered).toBe(1) // dedup + ignore junk/out-of-range
   })
   it('lerpMap interpolates + clamps at ends', () => {
     expect(lerpMap(0.9, [[0.8, 5], [1.0, 4]])).toBeCloseTo(4.5, 5)

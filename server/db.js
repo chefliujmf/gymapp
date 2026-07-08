@@ -92,7 +92,8 @@ export async function loadStore() {
   const meta = (await pool.query('SELECT doc FROM app_meta WHERE id=1')).rows[0]?.doc || {}
   const sessionSecret = meta.sessionSecret || randomBytes(48).toString('hex')
   const resets = meta.resets || {}
-  return { users, sessionSecret, resets }
+  const backlog = meta.backlog || { triage: {}, added: [] } // #438/#440 — SHARED admin backlog + user reports (global, not per-user)
+  return { users, sessionSecret, resets, backlog }
 }
 
 // save the whole in-memory store transactionally (per-user row + replace child rows).
@@ -142,7 +143,7 @@ async function _save(store) {
     await client.query(
       `INSERT INTO app_meta (id, doc) VALUES (1, $1)
        ON CONFLICT (id) DO UPDATE SET doc = EXCLUDED.doc`,
-      [{ sessionSecret: store.sessionSecret, resets: store.resets || {} }],
+      [{ sessionSecret: store.sessionSecret, resets: store.resets || {}, backlog: store.backlog || { triage: {}, added: [] } }],
     )
     await client.query('COMMIT')
   } catch (e) { await client.query('ROLLBACK'); console.error('[db] _save rollback', e.message); throw e } finally { client.release() }

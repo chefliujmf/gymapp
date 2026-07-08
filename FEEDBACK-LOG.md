@@ -780,6 +780,80 @@ test guide → the **🧪 Test guide** section below.
     cap the few most recent. (4) openapi updated. 440 tests green. Closes the #436 reliability loop (coach gets the id straight from the read). Prod-only
     behavior (daily-adapt off on QA); MCP auto-syncs on prod deploy. Verify: get_recent_activities shows `reviewed:true` on ticked activities + the
     coach reviews the un-ticked ones on a daily-adapt pass.
+438. 🔨 **In-app ADMIN BACKLOG manager — track this list from inside the app, add comments / discard / change priority.** JM 2026-07-08:
+    "put the backlog page under admin in the app so I can keep track of it at all time, add more comments or discard or change priority."
+    Replaces the throwaway scratchpad Artifact with a real, always-available admin page. Mocked 2 layouts (options-first) → JM picked **A · Triage
+    list** (filter-first, tap-to-expand inline triage). BUILT: (1) `scripts/build-backlog.mjs` parses FEEDBACK-LOG.md → lean
+    `src/data/generated/backlog.json` (`{n,status,title,summary}`, 328 items) — wired into `build:app`, lazy-loaded (own 126KB chunk, out of the
+    main bundle). (2) Admin-gated triage overlay on the admin record (`user.backlogTriage[n]` = `{priority:hi|med|lo, comments:[{text,at}], discarded}`)
+    via `GET /auth/admin/backlog` + `PUT /auth/admin/backlog/:n` (+ openapi). (3) `src/auth/api.ts` getBacklogTriage/updateBacklog. (4) `Admin.tsx`
+    now has **Backlog** (default) + Users tabs; `AdminBacklog.tsx` = filter-first list (status + priority chips w/ counts + search + sort), tap a row
+    → summary + comment thread (add/delete) + priority buttons + discard/restore. Claude READS the overlay each session + folds it into the .md
+    (CLAUDE.md work-queue note + memory `platyplus-admin-backlog`). tsc + 440 tests + full build green. Admin-only.
+    JM verified on QA 2026-07-08 ("looks good") → asked for **bidirectional sort**: added a ↑/↓ direction toggle (any sort — priority/#/status/
+    comments — flips asc↔desc). On QA.
+    JM 2026-07-08 round 2 (3 asks): (a) "a button that says done, discard is more cancel, not sure how to change status" → **STATUS is now a
+    4-way control** (To do · Building · Done · Discarded) that JM sets directly and **OVERRIDES the .md-derived status** (`triage[n].status`);
+    the old standalone Discard button is gone (Discarded is a status). (b) "same for unset with priority" → priority row now has an explicit
+    **None** button (not just tap-to-clear). (c) "add in this window + define bug / ideation / feature / whatnot" → added a **+ New item** form
+    (title + type + optional notes → app-added items in `user.backlogAdded`, numbered max+1, merged into the list; Claude folds into the .md) and a
+    **TYPE** field (Bug/Feature/Idea/Chore, in the overlay, shown as a row chip). Server: PUT takes status/type, new POST creates items, GET returns
+    `{triage, added}` (+ openapi). tsc + build + tests green. On QA.
+    JM 2026-07-08 round 3: **testing workflow + more.** (a) added statuses **To test → Tested ✓ / Tested ✗** (7-status flow: todo/build/totest/
+    pass/fail/done/discarded) + a **"What to test"** callout (build-backlog extracts the "Verify:" clause from the entry) shown in a test status;
+    tested notes go in the comment thread. (b) **dev/qa/prod** badge (derived from the entry text). (c) **Type + Priority both REQUIRED** — removed the
+    None options; add-form needs both. (d) chore = behind-the-scenes work (refactor/CI/infra); Idea can spawn multiple Features. (e) **reporter +
+    timestamp** on each item (added/reported carry reporter+at; .md items get a date from the entry). Migrated the whole board to the **SHARED
+    global store** (`app_meta.backlog`, `store.backlog`) so it's not per-admin — needed for #440. On QA.
+439. 🔨 **Coach must ALWAYS keep ~2 weeks of planning ahead (horizon not being held).** JM 2026-07-08: "I currently have workouts until
+    ~Jul 12, that's not 2 weeks. Since we have a trigger every day with the coach (after check-in), the coach should always have 2 weeks ahead
+    of planning as per our agreement." DIAGNOSIS (prod): the daily-adapt tick IS firing (JM's `dailyAdapt` = early+refine both ran today) — but the
+    coach only planned the current week (through Jul 13, 5 days) and left the back half of the 14-day horizon EMPTY. The soft "keep ~14 days ahead"
+    line wasn't enough. FIX: compute the EXACT gap server-side (`horizonCoverage` in readiness.js — pure + unit-tested: covered/empty/last/firstEmpty
+    over [today..today+14]) and hand the coach a non-negotiable lead directive in `dailyAdaptMsg`: "only N/15 days through {end} have anything; EXTEND
+    the plan ALL THE WAY to {end} in THIS pass" (only when empty≥3). `runDailyAdapt` passes it. 441 tests. Prod-only (daily-adapt off on QA) → verify
+    by triggering `POST /api/coach/daily-adapt` on prod after promote + confirm JM's plan fills to ~Jul 22. Ties #367/#433.
+440. 🔨 **"Report a bug or idea" for any (non-admin) user — top bar, → backlog as "under review".** JM 2026-07-08: "for a user who is not
+    admin, add a button to report bug or idea, to the left of the notification icon… added to the backlog as under review, put a reporter + a
+    timestamp on each item." BUILT: `ReportButton.tsx` (top bar, left of the bell, non-admins only) → a Bug/Idea form → `POST /auth/report` (any
+    authed user) → lands in the SHARED backlog (`store.backlog`) as status **review** with reporter + time, and pings the (other) admins (bell). Admin
+    sees it in Admin → Backlog under the **Under review** filter. authApi.reportBug. JM 2026-07-08: show it for **ALL users incl. admins** (was
+    non-admin-only; simpler + lets JM test it directly + anyone can quick-report). On QA.
+441. 🔨 **Mirror PROD data → QA so QA has real-life stuff to test.** JM 2026-07-08. BUILT: `scripts/mirror-prod-to-qa.sh` (run on XPS) copies
+    each real user's child rows (plans/logs/coach_reviews/checkins/calendar_items) + coach doc fields prod→QA, keyed by email (ids differ),
+    PRESERVING QA auth + keeping QA read-only toward intervals. NOT auto-run yet (holding — would reset QA mid-test). QA already READS real
+    intervals activities (shares i28814). Run on demand; optionally wire into the staging deploy. Verify: run it, QA data matches prod + QA login still works.
+442. ⬜ **Review flow: get it OFF History + return-to-list after saving.** JM 2026-07-08 (screenshots): (a) feedback rows need enough activity
+    info to remember it (BUILT on the History banner: duration/distance/effort/load line + a working "Show all N" expand — but per (b) this MOVES);
+    (b) "I don't want the review banner in History" → build a DEDICATED review view (reached from the Today #387 card, not `/logs`); (c) tapping a
+    session opens the activity normally (feedback form) = already how it works; (d) after SAVING feedback, return to the review list to knock out the
+    next one. Needs a `/review` route + return-after-save nav. Mock the dedicated view first.
+443. 🔨 **Tempo tooltip was cut off + unclear.** JM 2026-07-08: "what is 3? lift 3s? the 1 wait? 0 restart?" ROOT: the exercise `.card` had
+    `overflow:hidden` → clipped the InfoDot popover to one line. FIX (CoachPlanDetail.tsx): card `overflow` is `visible` when collapsed (thumbnail
+    self-rounds so it's safe); tooltip text rewritten to number each phase explicitly (LOWER first: 3-1-1-0 = lower 3s · hold 1s · lift 1s · 0s top). On QA.
+444. ⬜ **intervals coach-note text is a wall — format with sections / titles / bullets.** JM 2026-07-08 (Sweet-Spot screenshot): the "coach notes"
+    block (Objective / Fuel / Cues / Full plan link) runs together as one paragraph. Format it into clear sections with headers + bullets. Source:
+    the description composer in `planToIcuEvent` / the coach-note render (server/icu-steps.js + server.js). Keep it readable in intervals' plain-text description.
+445. ⬜ **Planned GYM shows no LOAD in the APP.** JM 2026-07-08. NOTE: the intervals gym EVENTS do carry load (Full-Body 48, Upper-Body 53 —
+    #434 holds server-side, verified). So this is a CLIENT display gap — the Platyplus gym plan view isn't showing the planned load like rides do.
+    Confirm which screen (plan detail / card) + wire the client gym `plannedLoad` display. gymapp-client.
+446. 🔨→⬜ **DUPLICATE gyms RECURRED (#431 not fully fixed) — "why 2 gyms Thu suddenly + copied to Mon? thought this was fixed."** JM
+    2026-07-08 (prod screenshot). Thu Jul 9 had Full-Body Strength + an ORPHAN Upper-Body & Trunk (event 121417361, ext mcp-p22pqmo5, NO plan),
+    which also made Upper-Body appear on Mon Jul 13 (its real home). Same move-orphan class as #431: a re-plan/move created a NEW plan+event and
+    orphaned the old, and the duplicate-only GC didn't clean it. IMMEDIATE: deleted the orphan (Jul 9 clean, full scan = no other orphans). ROOT
+    DIAGNOSIS (subagent, evidence in scratchpad/gc-sim*.mjs): the old inline GC rule WAS correct for the Thu-9 case (Full-Body owns the slot) but
+    a plan whose `icuEventId` was stored as a **STRING silently defeated `Set<number>.has()`** → the duplicate went undetected; also the GC only
+    runs on client `/auth/plans/sync`. FIXED (Fix A, the safe net): extracted `orphanIsMoveLeftover` + `liveHas` (string/number-tolerant) into
+    server/icu-match.js — delete an orphan ONLY when a DIFFERENT **live-backed** plan owns its exact day+sport; a unique-title / unowned-slot orphan
+    is KEPT (never re-delete a legit lost-link session, #431/#377). Wired into `reconcileFromIcu`. 447 tests (6 new in icu-dedup.test.ts incl. the
+    string-link regression + the keep-legit case). Server-only. DELIBERATELY DEFERRED as too risky for JM's "never lose a session": the fuzzy
+    same-title-elsewhere signal + a source-side title-merge (would over-merge recurring titles). STILL OPEN (follow-ups): (1) a deterministic
+    delete-on-plan-removal so a "move to an EMPTY day" leaves no phantom; (2) **Jul 7 ride plan never PUSHED** (PAST-guard skips plans dated before
+    today, so a coach back-fill never pushes → completed ride can't pair). Prod-only GC → verify next time an orphan appears (or inject-and-reconcile).
+447. ⬜ **STREAMLINE the backlog status model — 8 statuses is confusing.** JM 2026-07-08: "got the concept of open… but it should be streamline,
+    it's confusing." The review/todo/build/totest/pass/fail/done/discarded set + the "Open = not done/discarded (still includes pass/fail)" semantics
+    are too much. Propose a simpler flow (e.g. Review → To do → Building → To test → Done, with a fail looping back to Building + a comment; drop
+    separate pass/fail) — MOCK 2 options first (options-first). #438 backlog page. Low-risk polish; after #431.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

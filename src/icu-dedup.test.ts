@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { normTitle, eventMatchesPlan, planDroppedByReconcile, slotKey } from '../server/icu-match.js'
+import { normTitle, eventMatchesPlan, planDroppedByReconcile, slotKey, orphanIsMoveLeftover, liveHas } from '../server/icu-match.js'
 
 // #150 — the dedup that decides "is this Platyplus plan already in intervals?" The real bug:
 // the athlete's OTHER coach names the event "...#Codex Coach #Aggressive June Build", so an
@@ -75,5 +75,47 @@ describe('planDroppedByReconcile (#185 replaced-plan cleanup)', () => {
   it('does not judge plans outside the synced window', () => {
     const past = { ...skov, date: '2026-06-01' }
     expect(planDroppedByReconcile(past, { liveIds: new Set(), ownedSlots, ...win })).toBe(false)
+  })
+})
+
+// #446 — the orphan-GC decision: delete a move/re-plan LEFTOVER (slot re-taken by a live plan) but NEVER a
+// legit lost-link session (unique title, no live plan owns its slot). Reproduces the exact prod dup-gym case.
+describe('orphanIsMoveLeftover (#446 orphan-GC)', () => {
+  // prod case: Jul-9 has a stray "Upper-Body & Trunk" event (121417361, no plan) while the LIVE Full-Body
+  // plan owns Jul-9 gym, and the real Upper-Body lives on Jul-13.
+  const orphan9 = { id: 121417361, type: 'WeightTraining', name: 'Upper-Body & Trunk', start_date_local: '2026-07-09T15:00:00' }
+  const fullBodyLive = { id: 'mcp-8yqqn8sq', date: '2026-07-09', sport: 'gym', title: 'Full-Body Strength', icuEventId: 121371062 }
+  const upperJul13 = { id: 'mcp-2dr0x7ae', date: '2026-07-13', sport: 'gym', title: 'Upper-Body & Trunk', icuEventId: 121320987 }
+
+  it('DELETES the #446 orphan — a different LIVE plan (Full-Body) owns its Jul-9 slot', () => {
+    expect(orphanIsMoveLeftover(orphan9, { liveIds: new Set([121371062, 121320987]), plans: [fullBodyLive, upperJul13] })).toBe(true)
+  })
+
+  it('still deletes when the sibling link is stored as a STRING (the type-mismatch that defeated the old rule)', () => {
+    const fullBodyStr = { ...fullBodyLive, icuEventId: '121371062' } // link is a string
+    expect(orphanIsMoveLeftover(orphan9, { liveIds: new Set([121371062]), plans: [fullBodyStr] })).toBe(true)
+    expect(liveHas(new Set([121371062]), '121371062')).toBe(true) // the fix, directly
+    expect(liveHas(new Set(['121371062']), 121371062)).toBe(true)
+  })
+
+  it('KEEPS a legit lost-link session — unique title, no live plan owns its slot (never delete #431/#377)', () => {
+    const lost = { id: 'mcp-rain', date: '2026-07-09', sport: 'gym', title: 'Full-Body Strength — Rain Day', icuEventId: undefined }
+    const orphanLost = { id: 900001, type: 'WeightTraining', name: 'Full-Body Strength — Rain Day', start_date_local: '2026-07-09T15:00:00' }
+    expect(orphanIsMoveLeftover(orphanLost, { liveIds: new Set(), plans: [lost] })).toBe(false)
+  })
+
+  it('KEEPS an orphan whose slot is owned only by a DEAD (not live) sibling link', () => {
+    const fullBodyDead = { ...fullBodyLive, icuEventId: 999999 } // link points at a deleted event
+    expect(orphanIsMoveLeftover(orphan9, { liveIds: new Set([121320987]), plans: [fullBodyDead] })).toBe(false)
+  })
+
+  it('does not treat the orphan as owning its own slot (self-match guard)', () => {
+    const selfPlan = { id: 'mcp-x', date: '2026-07-09', sport: 'gym', title: 'Upper-Body & Trunk', icuEventId: 121417361 }
+    expect(orphanIsMoveLeftover(orphan9, { liveIds: new Set([121417361]), plans: [selfPlan] })).toBe(false)
+  })
+
+  it('a different-SPORT live plan in the slot does not trigger deletion', () => {
+    const rideSameDay = { id: 'mcp-r', date: '2026-07-09', sport: 'ride', title: 'Endurance', icuEventId: 121371062 }
+    expect(orphanIsMoveLeftover(orphan9, { liveIds: new Set([121371062]), plans: [rideSameDay] })).toBe(false)
   })
 })

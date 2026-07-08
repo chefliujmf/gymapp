@@ -11,6 +11,17 @@ feedback/idea there (numbered) on receipt. Design detail for big items → the *
 section of `FEEDBACK-LOG.md`. (FEEDBACK-LOG.md is now the SINGLE backlog + design + test guide —
 UX-BACKLOG.md and REGRESSION.md were folded into it.)
 
+**ALSO read JM's LIVE in-app TRIAGE (#438/#440).** JM (and any user, via the top-bar report button) triages
+the backlog inside the app (Admin → Backlog): per item # a **status** (review/todo/build/totest/pass/fail/
+done/discarded), **priority**, **type** (bug/feature/idea/chore), **comments**, plus **app-added items** and
+**user bug/idea reports**. This all lives in the **SHARED GLOBAL store** — `store.backlog = {triage, added}`,
+persisted in `app_meta.backlog` (NOT per-user). The item LIST is generated from this file
+(`scripts/build-backlog.mjs` → `src/data/generated/backlog.json`, rebuilt each deploy). **Each session, read
+the overlay** (`GET /auth/admin/backlog`, or `select doc->'backlog' from app_meta where id=1`) and let it
+STEER the queue: **his status OVERRIDES my .md status** (esp. Done = his ✅ sign-off; `review` = a fresh user
+report to triage), **his priority OVERRIDES top-to-bottom order**, skip discarded, and FOLD his comments +
+app-added items into the numbered entry here (so the .md stays authoritative). See memory `platyplus-admin-backlog`.
+
 ## ▶ TESTING & VERIFICATION — HARD RULE (JM directive 2026-06-26)
 JM lost trust because I shipped "built" code that didn't work. The fix is non-negotiable:
 1. **LOG FIRST.** Every report → `FEEDBACK-LOG.md` (numbered) *before* touching code. Don't fix-then-forget.
