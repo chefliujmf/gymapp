@@ -770,7 +770,13 @@ test guide → the **🧪 Test guide** section below.
     → 200 and sticks. BUILT: `coachTick(score10)` in server/readiness.js (maps our /10 review score → 1-5, null → neutral 3; pure + unit-tested,
     440 tests green); `postCoachNote` now PUTs `coach_tick` on every review. Verified live by round-trip (i158721911 → 4, matches its 7/10 review).
     Note: still gated on the coach passing `activityId` to save_coach_review (the separate LLM-reliability thread) — but when a review DOES post,
-    the box now ticks. Deploy + JM verifies the tick appears on a freshly-reviewed activity. Past reviews can be backfilled on request.
+    the box now ticks. DEPLOYED to prod (PR #138, commit 7fee142). JM CONFIRMED the tick works. BACKFILLED his history: 4 reviewed activities
+    ticked (14 plan-only reviews had no device activity to tick). JM: it's the coach's reviewed/not-reviewed TRACKER → see #437 (coach should READ it).
+437. ⬜ **Coach should READ `coach_tick` to know what's reviewed vs still pending.** JM 2026-07-08 (framing #436): "it's the tracker for the
+    coach to know what was reviewed or not." Right now the coach only WRITES coach_tick (on review). Make it a real work-tracker: expose coach_tick
+    on the activity read (get_recent_activities), and have the coach proactively review any completed activity whose coach_tick is still empty (skip
+    the ones already ticked) — so nothing goes unreviewed and it never double-reviews. Ties the save_coach_review activityId-reliability thread in
+    #436. gymapp (MCP get_recent_activities surfaces coach_tick) + coach (daily-adapt / review-sweep reads it). Scope first.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
