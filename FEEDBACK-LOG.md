@@ -586,9 +586,14 @@ test guide → the **🧪 Test guide** section below.
 422. ⬜ **Xenia: had to enter her menstrual-cycle date manually though it's already in intervals wellness (logged the 3rd).** JM 2026-07-08.
     The cycle/period date is in intervals wellness — Platyplus should READ it (like HRV/sleep/CTL) and prefill the coach's cycle-phase, not
     ask her to re-enter. Investigate the intervals wellness cycle field + wire it into the cycle-phase (coach-engine-female uses cyclePhase). gymapp + coach.
-423. ⬜ **Xenia: no longer getting 4 workouts/week — audit the coach's frequency.** JM 2026-07-08. Her target is ~4 days/week (info.freq)
+423. 🔨 **Xenia: no longer getting 4 workouts/week — audit the coach's frequency.** JM 2026-07-08. Her target is ~4 days/week (info.freq)
     but the plan has fewer. Coach issue? Check `# TRAINING FREQUENCY` (buildSystemPrompt) vs what daily-adapt actually schedules; audit her
     upcoming 2 weeks vs freq. gymapp + coach.
+    ✅ AUDITED: her config is CORRECT — `info.trainingDays=4`, availability all 7 days @0.75, sports=[running,strength], solid pregnancy
+    profile. So NOT a coach-frequency bug. The empty week was collateral of the **#414 orphan-GC regression** (my GC deleted her legit
+    intervals events → the deletion-mirror dropped the plans). ROOT fixed (GC now log-only, prod). Triggered `POST /api/coach/daily-adapt`
+    → it REBUILT her 2 weeks: **W28 & W29 both = 4 sessions (Mon run · Wed gym · Fri run · Sat gym)**, fresh intervals IDs (121282xxx)
+    pushed. NB the coach LLM takes several min to finish creating — don't judge "empty" from a <2-min poll. Awaiting JM ✅ on her login.
 424. 🔨 **Xenia: the HEIGHT field in her profile is BUGGY — can't enter a value.** JM 2026-07-08. ✅ FIXED: the input clamped to
     min 100 on EVERY keystroke, so typing "1" jumped to 100 → impossible to build 175. Now types freely + clamps [100,230] + saves on blur. gymapp-only.
 425. ⬜ **Coach activity descriptions/titles too casual/cocky — make them scientific, no em-dashes.** JM 2026-07-08 (example: "Another
