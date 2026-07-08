@@ -1312,8 +1312,13 @@ select.search { appearance: none; -webkit-appearance: none; }
 .sheet-list { max-height: 56vh; overflow-y: auto; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
 /* #148: the card is a <button>; display:block + flex content + overflow:hidden collapses it
    to ~0 height in WebKit (you saw faint lines, not the list). flex container sizes to content. */
-.sheet-list .card { width: 100%; text-align: left; display: flex; flex-direction: column; }
-.sheet-list .card .card-row { width: 100%; }
+.sheet-list .card { width: 100%; text-align: left; display: flex; flex-direction: column; overflow: visible; height: auto; }
+.sheet-list .card .card-row { width: 100%; align-items: center; }
+/* #412 — the picker card's subtitle ("15 min · recovery") was clipped: the base .card has overflow:hidden and
+   the flex-column button constrained the row height. Let it size to content + never clip. */
+.sheet-list .card .card-body { overflow: visible; }
+.sheet-list .card .card-body h3 { white-space: normal; }
+.sheet-list .card .card-body .meta { white-space: normal; line-height: 1.35; }
 
 /* ---------- Coach chat ---------- */
 .chat { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg); }

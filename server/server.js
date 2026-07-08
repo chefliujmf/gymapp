@@ -29,7 +29,7 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from '.
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads } from './readiness.js'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, plannedTss, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage)
 
@@ -1593,6 +1593,12 @@ function planToIcuEvent(plan, items = []) {
     ev.description = [native, stripDerivedWorkout(stripPlatyplusLinks(plan.notes)), shortCoachNote(plan)].filter(Boolean).join('\n\n')
   } else {
     ev.type = 'WeightTraining'
+    // #434 — push a gym LOAD (+ duration) so intervals' Form/CTL COUNTS strength work (was 0 → gym ignored).
+    // Gym has no segments, so plannedTss can't; estimate from the exercises + the KB Friel factor.
+    const gsec = estimateGymSeconds(plan)
+    if (gsec > 0) { ev.moving_time = gsec; ev.time_target = gsec }
+    const gtss = plannedGymTss(plan)
+    if (gtss > 0) ev.icu_training_load = gtss
     // #301 — DON'T mirror gym structure as text (tempo/sets can't round-trip through intervals, which
     // has no gym model). Platyplus is the canonical home for the structured workout; intervals just gets
     // a deep LINK to open it in Platyplus, plus the coach's human notes.

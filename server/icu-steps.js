@@ -198,6 +198,35 @@ export function plannedTss(segments = []) {
   return { if: Math.round(IF * 100) / 100, tss: Math.round((totalSec * IF * IF) / 3600 * 100) }
 }
 
+// #434 — a GYM plan carries no segments, so plannedTss returns null and intervals gets Load 0 (its Form/CTL
+// then IGNORES strength work). Estimate the gym LOAD the way the app estimates gym MINUTES (sets × reps×tempo
+// + rest + per-move setup + warm-up — mirror of src/plan.ts estimateGymMinutes), then apply the KB's Friel
+// weightlifting factor. #81: ~45 TSS/h "standard" is the planned default; a post-session RPE refines it
+// (TSS/h ≈ 8 + RPE×6, src/tss.ts gymTSSfromRPE). Pure + unit-tested.
+function gymTempoSec(tempo) { const s = String(tempo || '').split('-').map(Number).filter((n) => !isNaN(n)).reduce((a, b) => a + b, 0); return s > 0 ? s : 4 }
+export function estimateGymSeconds(plan) {
+  const exs = (plan && plan.exercises) || []
+  if (!exs.length) return 0
+  let sec = 0
+  for (const x of exs) {
+    const sets = Number(x.sets) > 0 ? Number(x.sets) : 3
+    const rest = x.rest != null && Number(x.rest) >= 0 ? Number(x.rest) : 60
+    const work = (x.mode || 'reps') === 'timed'
+      ? (Number(x.seconds) > 0 ? Number(x.seconds) : 40)
+      : (Number(x.reps) > 0 ? Number(x.reps) : 10) * gymTempoSec(x.tempo)
+    sec += sets * work + sets * rest + 20
+  }
+  sec *= (Number(plan.rounds) > 0 ? Number(plan.rounds) : 1)
+  sec += 5 * 60
+  return Math.round(sec)
+}
+export function plannedGymTss(plan) {
+  const min = estimateGymSeconds(plan) / 60
+  if (min < 5) return 0
+  const PER_HOUR = 45 // KB (Friel): standard hypertrophy/maintenance ≈ 45 TSS/h. #81 refines by prescribed effort.
+  return Math.max(1, Math.round((min / 60) * PER_HOUR))
+}
+
 // #414 — did PLATYPLUS push this intervals event? Every event we create carries `external_id = <plan id>`
 // (composeIcuEvent), and gym events also carry the "Open workout in Platyplus" deep-link. Athlete-created
 // events (from the intervals calendar, a watch, or Strava-planned) have NEITHER. This is the SAFETY-CRITICAL

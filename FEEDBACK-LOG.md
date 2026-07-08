@@ -751,6 +751,18 @@ test guide → the **🧪 Test guide** section below.
     `schedule_meal`/`schedule_mind`) are coach-driven, and the coach doesn't proactively fill every day. TO BUILD: have the coach/daily-adapt
     schedule the day's fuel + mind personalised to the training load + goals (carb-forward on a hard day, recovery-focused mind, etc.), so the
     defaults are coach logic, not a generic pool. gymapp + coach. Mock/scope first.
+434. ⬜ **Gym LOAD not synced to intervals — 12 in Platyplus, 0 in intervals (bi-directional).** JM 2026-07-08 (Jun-19 "Afternoon
+    Weight Training"). ROOT: `planToIcuEvent` (server.js:1571) sets `ev.icu_training_load` from `plannedTss(segs)` — SEGMENT-based, so
+    ride/run only. GYM has no segments → no load pushed → intervals shows 0 (so intervals' own Form/CTL ignores gym). The KB DOES have a
+    gym-TSS method (coach-engine.md "Quantifying strength training load"). FIX: compute the gym load server-side (mirror the client's "Load 12"
+    — find its formula) + set `ev.icu_training_load` for gym plans in planToIcuEvent; backfill via resync. Ties #81 (make gym TSS KB-based, not
+    a rough estimate). gymapp (icu-steps/server).
+435. ⬜ **Activity detail page shows NO date.** JM 2026-07-08 (screenshot: "WORKOUT · INDOOR / Afternoon Weight Training" — no date). The
+    ActivityDetail header lacks the session date. Add it (absolute, e.g. "Fri, Jun 19" + relative). gymapp-only (ActivityDetail.tsx).
+436. ⬜ **Coach "✓" review checkbox on the intervals activity no longer gets checked.** JM 2026-07-08 (screenshot: Compliance ✓ 83% but
+    "Coach ☐" unchecked; "coach used to check this box"). The coach-review marker (a custom field / the workout-done flag intervals shows as
+    "Coach") isn't being set on review. Investigate: does save_coach_review / the activity-review flow set that intervals field, and did it
+    regress? gymapp + coach (intervals field write). Needs its own pass.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

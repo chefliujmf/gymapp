@@ -304,7 +304,7 @@ export default function ActivityDetail() {
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
         {!isRun && (streams.watts?.filter((v) => v != null).length || 0) >= 9 && <div className="act-thumb"><PowerBlocks watts={streams.watts} ftp={ftp} /></div>}
         <div style={{ minWidth: 0 }}>
-          <span className="eyebrow">{sportOfActivity(a) === 'ride' ? 'Ride' : sportOfActivity(a) === 'run' ? 'Run' : 'Workout'} · {isIndoorActivity(a) ? 'Indoor' : 'Outdoor'}</span>
+          <span className="eyebrow">{sportOfActivity(a) === 'ride' ? 'Ride' : sportOfActivity(a) === 'run' ? 'Run' : 'Workout'} · {isIndoorActivity(a) ? 'Indoor' : 'Outdoor'}{a.start_date_local ? ` · ${new Date(a.start_date_local).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}</span>
           <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Activity'}</h1>
         </div>
       </div>
