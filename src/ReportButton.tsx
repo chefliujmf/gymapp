@@ -3,9 +3,9 @@ import { Megaphone } from 'lucide-react'
 import { useAuth } from './auth/AuthContext'
 import { authApi, type BacklogType } from './auth/api'
 
-// #440 — a "Report a bug or idea" button in the top bar (left of the notification bell) for NON-admin users
-// (admins have the full Admin → Backlog). A report lands in the shared backlog as "under review", stamped with
-// the reporter + time, and pings the admins.
+// #440 — a "Report a bug or idea" button in the top bar (left of the notification bell) for ALL signed-in
+// users (a quick-jot; admins ALSO have the full Admin → Backlog for triage). A report lands in the shared
+// backlog as "under review", stamped with the reporter + time, and pings the admins.
 export default function ReportButton() {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
@@ -21,7 +21,7 @@ export default function ReportButton() {
     return () => document.removeEventListener('mousedown', onDoc)
   }, [])
 
-  if (!user || user.role === 'admin') return null // admins use the Admin → Backlog page
+  if (!user) return null // shown to every signed-in user (admins too — JM 2026-07-08)
 
   async function send() {
     if (!title.trim()) return

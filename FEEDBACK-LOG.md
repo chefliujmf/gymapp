@@ -816,9 +816,9 @@ test guide → the **🧪 Test guide** section below.
 440. 🔨 **"Report a bug or idea" for any (non-admin) user — top bar, → backlog as "under review".** JM 2026-07-08: "for a user who is not
     admin, add a button to report bug or idea, to the left of the notification icon… added to the backlog as under review, put a reporter + a
     timestamp on each item." BUILT: `ReportButton.tsx` (top bar, left of the bell, non-admins only) → a Bug/Idea form → `POST /auth/report` (any
-    authed user) → lands in the SHARED backlog (`store.backlog`) as status **review** with reporter + time, and pings the admins (bell). Admin sees
-    it in Admin → Backlog under the **Under review** filter. authApi.reportBug. On QA — **test from a NON-admin account (e.g. Xenia)**, since admins
-    don't see the button.
+    authed user) → lands in the SHARED backlog (`store.backlog`) as status **review** with reporter + time, and pings the (other) admins (bell). Admin
+    sees it in Admin → Backlog under the **Under review** filter. authApi.reportBug. JM 2026-07-08: show it for **ALL users incl. admins** (was
+    non-admin-only; simpler + lets JM test it directly + anyone can quick-report). On QA.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

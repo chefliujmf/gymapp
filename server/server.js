@@ -1011,8 +1011,8 @@ app.post('/auth/report', auth, (req, res) => {
   bl.added = [item, ...bl.added]
   bl.triage[String(n)] = { comments: [], type, status: 'review' }
   save(store)
-  // tell the admins a report came in
-  for (const admU of (store.users || []).filter((u) => u.role === 'admin')) pushNotification(admU, { id: 'report-' + n, title: `${type === 'idea' ? '💡 Idea' : '🐛 Bug'} reported by ${item.reporter}`, body: title.slice(0, 120), link: '/admin' })
+  // tell the OTHER admins a report came in (not the reporter themselves)
+  for (const admU of (store.users || []).filter((u) => u.role === 'admin' && u.id !== req.user.id)) pushNotification(admU, { id: 'report-' + n, title: `${type === 'idea' ? '💡 Idea' : '🐛 Bug'} reported by ${item.reporter}`, body: title.slice(0, 120), link: '/admin' })
   res.status(201).json({ ok: true, n })
 })
 
