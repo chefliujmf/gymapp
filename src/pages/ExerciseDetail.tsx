@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { allExercisesById, workouts } from '../data/catalog'
 import { addToDraft } from '../builderDraft'
@@ -9,6 +9,7 @@ import { attributionFor } from '../attribution'
 export default function ExerciseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const coachTip = (useLocation().state as { coachTip?: string } | null)?.coachTip // #420 — the coach's per-exercise note, shown as the description (catalog has none yet)
   const ex = id ? allExercisesById[id] : undefined
   const [added, setAdded] = useState(0)
   const gender = (useLiveQuery(() => getSetting('gender')) as 'male' | 'female' | undefined) ?? 'male'
@@ -46,6 +47,8 @@ export default function ExerciseDetail() {
       <div className="detail-body">
         <span className="eyebrow">{ex.category}</span>
         <h1>{ex.name}</h1>
+        {/* #420 — the coach's per-exercise note serves as the description until the catalog has real ones (JM). */}
+        {coachTip && <p className="lead" style={{ color: 'var(--text-dim)' }}>💡 {coachTip}</p>}
 
         {hasFemale && (
           <div className="seg" style={{ maxWidth: 200 }}>

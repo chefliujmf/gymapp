@@ -199,7 +199,7 @@ export default function CoachPlanDetail() {
                         {isOpen && demo && (
                           <div style={{ padding: '0 12px 12px' }}>
                             {demo.video ? <video className="ex-video-inline" src={demo.video} poster={demo.image} controls autoPlay loop muted playsInline /> : demo.image && <img className="ex-video-inline" src={demo.image} alt={x.name} />}
-                            <Link to={`/exercises/${demo.id}`} className="see-all" style={{ display: 'inline-block', marginTop: 6 }}>Full exercise →</Link>
+                            <Link to={`/exercises/${demo.id}`} state={x.tip ? { coachTip: x.tip } : undefined} className="see-all" style={{ display: 'inline-block', marginTop: 6 }}>Full exercise →</Link>
                           </div>
                         )}
                       </div>
