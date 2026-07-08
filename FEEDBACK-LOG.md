@@ -799,6 +799,25 @@ test guide → the **🧪 Test guide** section below.
     (title + type + optional notes → app-added items in `user.backlogAdded`, numbered max+1, merged into the list; Claude folds into the .md) and a
     **TYPE** field (Bug/Feature/Idea/Chore, in the overlay, shown as a row chip). Server: PUT takes status/type, new POST creates items, GET returns
     `{triage, added}` (+ openapi). tsc + build + tests green. On QA.
+    JM 2026-07-08 round 3: **testing workflow + more.** (a) added statuses **To test → Tested ✓ / Tested ✗** (7-status flow: todo/build/totest/
+    pass/fail/done/discarded) + a **"What to test"** callout (build-backlog extracts the "Verify:" clause from the entry) shown in a test status;
+    tested notes go in the comment thread. (b) **dev/qa/prod** badge (derived from the entry text). (c) **Type + Priority both REQUIRED** — removed the
+    None options; add-form needs both. (d) chore = behind-the-scenes work (refactor/CI/infra); Idea can spawn multiple Features. (e) **reporter +
+    timestamp** on each item (added/reported carry reporter+at; .md items get a date from the entry). Migrated the whole board to the **SHARED
+    global store** (`app_meta.backlog`, `store.backlog`) so it's not per-admin — needed for #440. On QA.
+439. ⬜ **Coach must ALWAYS keep ~2 weeks of planning ahead (horizon not being held).** JM 2026-07-08: "I currently have workouts until
+    ~Jul 12, that's not 2 weeks. Since we have a trigger every day with the coach (after check-in), the coach should always have 2 weeks ahead
+    of planning as per our agreement." The daily-adapt msg DOES say "keep ~14 days populated ahead," but it's not happening — JM's plan runs out
+    at ~4 days. INVESTIGATE: is the daily-adapt tick firing for JM on prod? is the coach actually FILLING gaps to the horizon (vs only adjusting
+    existing sessions)? Likely fix: make the horizon-fill EXPLICIT + verifiable — the coach lists the next 14 days, finds empty days vs the target
+    weekly frequency, and adds sessions to reach it; and/or the check-in trigger msg should enforce the fill, not just adapt. Ties #367/#433. Server
+    (dailyAdaptMsg / check-in trigger). **NEXT — functional, JM flagged it.**
+440. 🔨 **"Report a bug or idea" for any (non-admin) user — top bar, → backlog as "under review".** JM 2026-07-08: "for a user who is not
+    admin, add a button to report bug or idea, to the left of the notification icon… added to the backlog as under review, put a reporter + a
+    timestamp on each item." BUILT: `ReportButton.tsx` (top bar, left of the bell, non-admins only) → a Bug/Idea form → `POST /auth/report` (any
+    authed user) → lands in the SHARED backlog (`store.backlog`) as status **review** with reporter + time, and pings the admins (bell). Admin sees
+    it in Admin → Backlog under the **Under review** filter. authApi.reportBug. On QA — **test from a NON-admin account (e.g. Xenia)**, since admins
+    don't see the button.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

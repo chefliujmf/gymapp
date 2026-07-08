@@ -957,41 +957,63 @@ app.delete('/auth/users/:id', auth, admin, (req, res) => {
 // this is JM's LIVE triage on top of it — per item number: priority (hi|med|lo), a comment thread, and a
 // discard flag. Stored on the admin's own record (JM is the owner) so Claude can read it each session.
 const PRIORITIES = ['hi', 'med', 'lo']
-const BACKLOG_STATUSES = ['todo', 'build', 'done', 'discarded'] // JM's status OVERRIDES the .md-derived one
+const BACKLOG_STATUSES = ['review', 'todo', 'build', 'totest', 'pass', 'fail', 'done', 'discarded'] // JM's status OVERRIDES the .md-derived one; 'review' = a user report awaiting triage
 const BACKLOG_TYPES = ['bug', 'feature', 'idea', 'chore']
-app.get('/auth/admin/backlog', auth, admin, (req, res) => res.json({ triage: req.user.backlogTriage || {}, added: req.user.backlogAdded || [] }))
+// #438/#440 — the backlog triage + app-added items + user reports live in the SHARED global store (app_meta),
+// so a report from ANY user reaches the admin and any admin sees the same board. Claude reads it each session.
+const backlogStore = () => (store.backlog = store.backlog || { triage: {}, added: [] })
+const nextBacklogN = (bl) => Math.max(438, ...(bl.added || []).map((x) => x.n || 0)) + 1
+app.get('/auth/admin/backlog', auth, admin, (req, res) => { const bl = backlogStore(); res.json({ triage: bl.triage || {}, added: bl.added || [] }) })
 app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
   const n = String(Number(req.params.n) || '')
   if (!n || n === '0') return res.status(400).json({ error: 'valid item number required' })
-  req.user.backlogTriage = req.user.backlogTriage || {}
-  const t = { comments: [], ...req.user.backlogTriage[n] }
+  const bl = backlogStore(); bl.triage = bl.triage || {}
+  const t = { comments: [], ...bl.triage[n] }
   const b = req.body || {}
   if ('priority' in b) t.priority = PRIORITIES.includes(b.priority) ? b.priority : undefined // null/other → clear
   if ('status' in b) { t.status = BACKLOG_STATUSES.includes(b.status) ? b.status : undefined; delete t.discarded } // status supersedes the old discarded bool
   if ('type' in b) t.type = BACKLOG_TYPES.includes(b.type) ? b.type : undefined
   if (typeof b.discarded === 'boolean') t.discarded = b.discarded // back-compat
-  if (typeof b.comment === 'string' && b.comment.trim()) { t.comments.push({ text: b.comment.trim().slice(0, 800), at: Date.now() }); if (t.comments.length > 100) t.comments = t.comments.slice(-100) }
+  if (typeof b.comment === 'string' && b.comment.trim()) { t.comments.push({ text: b.comment.trim().slice(0, 800), at: Date.now(), by: req.user.username || 'you' }); if (t.comments.length > 100) t.comments = t.comments.slice(-100) }
   if (b.deleteCommentAt) t.comments = t.comments.filter((c) => c.at !== b.deleteCommentAt)
-  // drop the row entirely if it carries nothing (keeps the overlay lean)
-  if (!t.priority && !t.status && !t.type && !t.discarded && !t.comments.length) delete req.user.backlogTriage[n]
-  else req.user.backlogTriage[n] = t
+  if (!t.priority && !t.status && !t.type && !t.discarded && !t.comments.length) delete bl.triage[n] // drop empty rows
+  else bl.triage[n] = t
   save(store)
-  res.json({ n: Number(n), triage: req.user.backlogTriage[n] || null })
+  res.json({ n: Number(n), triage: bl.triage[n] || null })
 })
-// #438 — ADD a new backlog item from the app. The item LIST is otherwise FEEDBACK-LOG.md-derived (the app
-// can't write the repo file), so app-added items live in user.backlogAdded + get merged into the list; Claude
-// folds them into the .md each session. Client sends the next number (max of .md + added + 1).
+// ADMIN adds a backlog item directly (title + type + priority). App-added items get merged into the .md-derived
+// list; Claude folds them into FEEDBACK-LOG.md each session.
 app.post('/auth/admin/backlog', auth, admin, (req, res) => {
   const b = req.body || {}
   const title = String(b.title || '').trim()
   if (!title) return res.status(400).json({ error: 'title required' })
-  req.user.backlogAdded = req.user.backlogAdded || []
-  const n = Number(b.n) > 438 ? Number(b.n) : (Math.max(438, ...req.user.backlogAdded.map((x) => x.n || 0)) + 1)
-  const item = { n, title: title.slice(0, 200), summary: String(b.summary || '').trim().slice(0, 1000), at: Date.now() }
-  req.user.backlogAdded = [item, ...req.user.backlogAdded.filter((x) => x.n !== n)]
-  if (BACKLOG_TYPES.includes(b.type)) { req.user.backlogTriage = req.user.backlogTriage || {}; req.user.backlogTriage[String(n)] = { comments: [], ...req.user.backlogTriage[String(n)], type: b.type } } // type lives in the triage overlay (md + added alike)
+  const bl = backlogStore(); bl.added = bl.added || []; bl.triage = bl.triage || {}
+  const n = Number(b.n) > 438 ? Number(b.n) : nextBacklogN(bl)
+  const item = { n, title: title.slice(0, 200), summary: String(b.summary || '').trim().slice(0, 1000), reporter: req.user.username || 'admin', at: Date.now() }
+  bl.added = [item, ...bl.added.filter((x) => x.n !== n)]
+  const seed = {}
+  if (BACKLOG_TYPES.includes(b.type)) seed.type = b.type
+  if (PRIORITIES.includes(b.priority)) seed.priority = b.priority
+  bl.triage[String(n)] = { comments: [], ...bl.triage[String(n)], ...seed }
   save(store)
-  res.status(201).json({ item, triage: (req.user.backlogTriage || {})[String(n)] || null })
+  res.status(201).json({ item, triage: bl.triage[String(n)] || null })
+})
+// #440 — ANY signed-in user reports a bug/idea → lands in the shared backlog as status 'review' (under review),
+// stamped with the reporter + time. Not admin-gated (that's the point — the whole team can report).
+app.post('/auth/report', auth, (req, res) => {
+  const b = req.body || {}
+  const title = String(b.title || '').trim()
+  if (!title) return res.status(400).json({ error: 'a short description is required' })
+  const type = BACKLOG_TYPES.includes(b.type) ? b.type : 'bug'
+  const bl = backlogStore(); bl.added = bl.added || []; bl.triage = bl.triage || {}
+  const n = nextBacklogN(bl)
+  const item = { n, title: title.slice(0, 200), summary: String(b.summary || '').trim().slice(0, 1000), reporter: req.user.username || req.user.email || 'user', at: Date.now() }
+  bl.added = [item, ...bl.added]
+  bl.triage[String(n)] = { comments: [], type, status: 'review' }
+  save(store)
+  // tell the admins a report came in
+  for (const admU of (store.users || []).filter((u) => u.role === 'admin')) pushNotification(admU, { id: 'report-' + n, title: `${type === 'idea' ? '💡 Idea' : '🐛 Bug'} reported by ${item.reporter}`, body: title.slice(0, 120), link: '/admin' })
+  res.status(201).json({ ok: true, n })
 })
 
 // ---- coach API token (shown to its owner only) ---------------------------

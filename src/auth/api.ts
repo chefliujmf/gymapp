@@ -207,15 +207,17 @@ export const authApi = {
   getBacklogTriage: () => req<{ triage: BacklogTriage; added: BacklogAddedItem[] }>('/admin/backlog'),
   updateBacklog: (n: number, patch: { priority?: BacklogPriority | null; status?: BacklogStatus | null; type?: BacklogType | null; comment?: string; deleteCommentAt?: number; discarded?: boolean }) =>
     req<{ n: number; triage: BacklogTriageItem | null }>(`/admin/backlog/${n}`, { method: 'PUT', body: patch }),
-  addBacklogItem: (item: { n: number; title: string; type?: BacklogType; summary?: string }) =>
+  addBacklogItem: (item: { n: number; title: string; type?: BacklogType; priority?: BacklogPriority; summary?: string }) =>
     req<{ item: BacklogAddedItem; triage: BacklogTriageItem | null }>('/admin/backlog', { body: item }),
+  // #440 — ANY signed-in user reports a bug/idea (lands in the shared backlog as "under review")
+  reportBug: (item: { title: string; type: BacklogType; summary?: string }) => req<{ ok: boolean; n: number }>('/report', { body: item }),
 }
 
 // #438 — admin backlog triage types
 export type BacklogPriority = 'hi' | 'med' | 'lo'
-export type BacklogStatus = 'todo' | 'build' | 'done' | 'discarded'
+export type BacklogStatus = 'review' | 'todo' | 'build' | 'totest' | 'pass' | 'fail' | 'done' | 'discarded'
 export type BacklogType = 'bug' | 'feature' | 'idea' | 'chore'
 export interface BacklogComment { text: string; at: number }
 export interface BacklogTriageItem { priority?: BacklogPriority; status?: BacklogStatus; type?: BacklogType; comments?: BacklogComment[]; discarded?: boolean }
 export type BacklogTriage = Record<string, BacklogTriageItem>
-export interface BacklogAddedItem { n: number; title: string; summary?: string; at: number }
+export interface BacklogAddedItem { n: number; title: string; summary?: string; reporter?: string; at: number }
