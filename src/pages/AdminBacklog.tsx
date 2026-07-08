@@ -20,7 +20,25 @@ const P_COLOR: Record<BacklogPriority, string> = { hi: '#ff6b6b', med: '#ffb454'
 const P_RANK: Record<string, number> = { hi: 0, med: 1, lo: 2, '': 3 }
 const T_LABEL: Record<BacklogType, string> = { bug: 'Bug', feature: 'Feature', idea: 'Idea', chore: 'Chore' }
 const T_COLOR: Record<BacklogType, string> = { bug: '#ff6b6b', feature: '#34e07d', idea: '#b98cff', chore: '#7a8699' }
-const ENV_COLOR: Record<string, string> = { dev: '#7a8699', qa: '#ffb454', prod: '#34e07d' }
+// #449 — dev → qa → prod PROGRESSION, derived from the lifecycle so it's ACCURATE (a text heuristic massively
+// under-counted prod). building = on dev · to-test/tested = on QA · done = promoted to prod. Ideal = all reach prod.
+const ENV_STEPS = ['dev', 'qa', 'prod'] as const
+const envReached = (env?: string) => (env === 'prod' ? 2 : env === 'qa' ? 1 : env === 'dev' ? 0 : -1)
+const STATUS_ENV: Record<BacklogStatus, string> = { review: '', todo: '', build: 'dev', totest: 'qa', pass: 'qa', fail: 'qa', done: 'prod', discarded: '' }
+function EnvTrack({ env, labeled = false }: { env?: string; labeled?: boolean }) {
+  const r = envReached(env)
+  if (r < 0) return null // ⬜ todo → not built → nowhere yet
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: labeled ? 5 : 3, flexShrink: 0 }} title={`dev ${r >= 0 ? '✓' : '—'} · qa ${r >= 1 ? '✓' : '—'} · prod ${r >= 2 ? '✓' : '—'}`}>
+      {ENV_STEPS.map((step, i) => {
+        const on = i <= r
+        return labeled
+          ? <span key={step} style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.04em', padding: '2px 6px', borderRadius: 5, background: on ? '#34e07d22' : '#ffffff08', color: on ? '#34e07d' : '#5c6472', border: '1px solid ' + (on ? '#34e07d44' : '#ffffff12') }}>{step.toUpperCase()}{on ? ' ✓' : ''}</span>
+          : <span key={step} style={{ width: 6, height: 6, borderRadius: '50%', background: on ? '#34e07d' : '#3a4150' }} />
+      })}
+    </span>
+  )
+}
 
 const STATUS_OPTS: [BacklogStatus, string, string][] = (['review', 'todo', 'build', 'totest', 'pass', 'fail', 'done', 'discarded'] as BacklogStatus[]).map((s) => [s, S_LABEL[s], S_DOT[s]])
 const PRI_OPTS: [BacklogPriority, string, string][] = [['hi', 'High', P_COLOR.hi], ['med', 'Med', P_COLOR.med], ['lo', 'Low', P_COLOR.lo]]
@@ -162,7 +180,7 @@ export default function AdminBacklog() {
                 <span style={{ width: 9, height: 9, borderRadius: '50%', background: S_DOT[s], flexShrink: 0 }} title={S_LABEL[s]} />
                 <span className="meta" style={{ fontWeight: 700, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>#{it.n}</span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
-                {it.env && <span style={chip(ENV_COLOR[it.env] + '22', ENV_COLOR[it.env])}>{it.env.toUpperCase()}</span>}
+                <EnvTrack env={STATUS_ENV[s]} />
                 {t.type && <span style={chip(T_COLOR[t.type] + '22', T_COLOR[t.type])}>{T_LABEL[t.type]}</span>}
                 {t.priority && <span style={chip(P_COLOR[t.priority] + '22', P_COLOR[t.priority])}>{P_LABEL[t.priority]}</span>}
                 {cmts.length > 0 && <span className="meta" style={{ flexShrink: 0, fontSize: 11 }}>💬{cmts.length}</span>}
@@ -170,7 +188,10 @@ export default function AdminBacklog() {
               {exp && (
                 <div style={{ padding: '0 12px 13px', borderTop: '1px solid #ffffff10' }}>
                   <div style={{ color: '#c4cad4', fontSize: 13, margin: '10px 0 5px' }}>{it.summary || <span className="meta">No detail{it.added ? ' — added here' : ''}.</span>}</div>
-                  <div className="meta" style={{ fontSize: 11, marginBottom: 12 }}>Reported by {it.reporter || 'JM'}{fmtWhen(it.at || it.date) ? ` · ${fmtWhen(it.at || it.date)}` : ''}{it.added ? ' · added in-app' : ''}</div>
+                  <div className="meta" style={{ fontSize: 11, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span>Reported by {it.reporter || 'JM'}{fmtWhen(it.at || it.date) ? ` · ${fmtWhen(it.at || it.date)}` : ''}{it.added ? ' · added in-app' : ''}</span>
+                    {envReached(STATUS_ENV[s]) >= 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>· <EnvTrack env={STATUS_ENV[s]} labeled /></span>}
+                  </div>
                   {TEST_STATUS.has(s) && (
                     <div style={{ background: '#4dd4e011', border: '1px solid #4dd4e033', borderRadius: 8, padding: '8px 10px', marginBottom: 12 }}>
                       <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.04em', color: '#4dd4e0', textTransform: 'uppercase', marginBottom: 3 }}>What to test</div>

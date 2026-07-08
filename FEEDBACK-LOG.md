@@ -22,7 +22,7 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-348. 🔨 **Capture LOCATION (weather + local time) in onboarding + Profile, bi-directionally synced with intervals.** JM
+348. 🧪 **Capture LOCATION (weather + local time) in onboarding + Profile, bi-directionally synced with intervals.** JM
     2026-07-04 (from #341/#347: "you have the location for weather right? if you need it, put it in onboarding" + "sync it
     with intervals bi-directional"). Mocked C/B/A → JM picked **C (detected + confirm)**. Done: `GET/POST /auth/location` —
     GET resolves saved → the intervals athlete **city** (geocoded, Open-Meteo) → null; POST takes a city, geocodes it
@@ -30,7 +30,7 @@ test guide → the **🧪 Test guide** section below.
     persists `city` via PUT but IGNORES lat/lng). Profile **LocationField** (option C: "📍 Montreal, Quebec · from intervals"
     + Use this ✓ / Change → city field) at `#ob-location`; new **onboarding step** "Your location". Feeds weather (#341) +
     the local-today tz fix (#347). openapi + audit. Self-validated vs mock C. On QA. gymapp-only.
-349. 🔨 **Sleep "why" was too shallow — "tracker scored 75/100" with no hours-vs-need.** JM 2026-07-04 (screenshot, Sleep 4). Fixed: `server/readiness.js` `sleep()` now ALWAYS carries `sleepHours` + `sleepNeed` (even when a device sleep SCORE drives the number, which previously dropped them); the Today "why" now leads with the actionable basis — e.g. "6.2h slept vs your ~8h need · tracker sleep score 75/100" — not just the bare score. 313 tests. **On QA + prod.** gymapp-only.
+349. 🧪 **Sleep "why" was too shallow — "tracker scored 75/100" with no hours-vs-need.** JM 2026-07-04 (screenshot, Sleep 4). Fixed: `server/readiness.js` `sleep()` now ALWAYS carries `sleepHours` + `sleepNeed` (even when a device sleep SCORE drives the number, which previously dropped them); the Today "why" now leads with the actionable basis — e.g. "6.2h slept vs your ~8h need · tracker sleep score 75/100" — not just the bare score. 313 tests. **On QA + prod.** gymapp-only.
 350. ✅🔁 **Propagate every improvement to ALL impacted layers.** JM 2026-07-04: "when we improve, you need to remember to
     update APIs, MCP, instructions, skill, memory, agent and other key elements impacted." Prompted by the #168 discovery
     that the **coach's host MCP was ~1 week stale** — #313/#341/#343/#332 tools never reached the coach because **nothing
@@ -46,7 +46,7 @@ test guide → the **🧪 Test guide** section below.
     (re-pair done↔planned), `POST /api/coach/run` (coach re-review — OUTWARD: writes coach notes + notifications). Plan: build
     a one-command `scripts/reprocess-user.mjs` (reconcile + re-pair + optional coach re-review) + run it post-change. Scope of
     the coach re-review confirmed with JM before mass-running (outward-facing). Memory `platyplus-reprocess-after-change`.
-352. 🔨 **PROD COACH OUTAGE (caused + fixed) — `E2BIG` spawning the coach.** 2026-07-04, surfaced running #351's reprocess:
+352. ✅ **PROD COACH OUTAGE (caused + fixed) — `E2BIG` spawning the coach.** 2026-07-04, surfaced running #351's reprocess:
     the coach `systemPrompt` (base engine 51KB + cycling engine 63KB + running + profile ≈ 128 KB) exceeds Linux
     `MAX_ARG_STRLEN` (128 KiB per single argv) → `spawn E2BIG`, which crash-looped `platyplus-chat-prod` (coach chat down).
     My #168 coach-engine.md growth tipped it over. **Fixed:** write the prompt to a temp file + pass `--append-system-prompt-file`
@@ -62,7 +62,7 @@ test guide → the **🧪 Test guide** section below.
     "reviewing your <thing>…". **On QA (client+server).** ⚠️ The host `chat-helper/server.mjs` emit-side sync was BLOCKED
     (Tailscale SSH re-auth needed mid-session) — it auto-deploys on the next PROD PROMOTE (deploy.sh runner sync, #352), or
     re-sync manually when SSH is back. Until then the client shows the generic "thinking…/still working…" (already improved).
-354. 🔨 **Jul 3 (prod, JM) shows NO Energy/Sleep/Freshness despite a check-in done (incl. in intervals).** JM 2026-07-05
+354. ✅ **Jul 3 (prod, JM) shows NO Energy/Sleep/Freshness despite a check-in done (incl. in intervals).** JM 2026-07-05
     (screenshot: the check-in scales are all unselected on Fri Jul 3). Coach claimed "it's there" but it isn't shown. The
     check-in feedback was entered in INTERVALS too → Platyplus + the coach must READ the intervals check-in/wellness for the
     day. Diagnose: is it a display bug (logged but not rendered), a missing-wellness auto-derive gap, or Platyplus not reading
@@ -75,7 +75,7 @@ test guide → the **🧪 Test guide** section below.
     day-aware copy ("No HRV/sleep for this day, scores are your own read") so an empty check-in explains itself instead of looking broken.
     (Follow-up idea if wanted: read intervals' SUBJECTIVE check-in fields — mood/motivation/fatigue/soreness — for athletes who log them
     natively in intervals; Jul 3 had none, so not needed here.) gymapp-only.
-355. 🔨 **POWER CURVE line stops ~1m instead of running to 1h (prod).** JM 2026-07-05 (screenshot, ride detail → Power tab).
+355. 🧪 **POWER CURVE line stops ~1m instead of running to 1h (prod).** JM 2026-07-05 (screenshot, ride detail → Power tab).
     The "best avg by duration" curve draws a crisp line 1s→~1m then flattens into just the fill with no visible line to
     5m/20m/1h — "be sure the graph line goes all the way." Same family as #344/#292/#334 chart bugs. Diagnose: does the curve
     DATA extend past 1m (best-20min 154W is mentioned, so data exists) or does the line path/points stop? Make the line span
@@ -90,26 +90,26 @@ test guide → the **🧪 Test guide** section below.
     ramp/"target shape" line vs intervals' blocky zone-coloured bars). "That's the standard, no ramp thing." Reverses the
     #219 true-shape ramps for the PLANNED view — render each segment as a solid bar at its target watts, coloured by zone
     (Z1..Z4/SS), matching intervals. gymapp-only.
-358. 🔨 **Chat needs timestamps (UX best practice).** JM 2026-07-05. Added a subtle time separator only on a real gap
+358. 🧪 **Chat needs timestamps (UX best practice).** JM 2026-07-05. Added a subtle time separator only on a real gap
     (>15 min) — same-day = time, else dated ("Yesterday · 2:30 PM"). `Chat.tsx` `fmtChatTime` + `.chat-time-sep`. On QA.
-359. 🔨 **Coach-note URLs weren't clickable** (e.g. "Full plan → https://platyplus…/coach/mcp-…"). JM 2026-07-05 (QA).
+359. 🧪 **Coach-note URLs weren't clickable** (e.g. "Full plan → https://platyplus…/coach/mcp-…"). JM 2026-07-05 (QA).
     New `src/linkify.tsx` — internal Platyplus links become in-app `<Link>`, external open a tab; applied to the plan-notes
     render (`CoachPlanDetail`). `.linkified` accent+underline. On QA.
-360. 🔨 **Notification timestamps show DATE only — need time of day.** JM 2026-07-05 (QA, bell). `ReleaseBell` `whenLine`
+360. 🧪 **Notification timestamps show DATE only — need time of day.** JM 2026-07-05 (QA, bell). `ReleaseBell` `whenLine`
     now shows date + time from the notif `at`. On QA.
-361. 🔨 **Coach-review notifications don't link the activity / hard to follow which session.** JM 2026-07-05 (QA): a stack
+361. 🧪 **Coach-review notifications don't link the activity / hard to follow which session.** JM 2026-07-05 (QA): a stack
     of "Coach reviewed your ride" all dated today, no context. Fixed: the review notif now carries the SESSION date
     (`pushNotification` accepts `date`; review passes `review.date`) → bell shows "Sun Jul 5 · reviewed 2:34 PM"; links to
     the activity (`/activity/:id`) when the review has an activityId (else the plan). On QA. (Older reprocessed reviews that
     lacked an activityId won't link retroactively; new ones will.)
-362. 🔨 **Learned stats need a clear "when will Computed be ready?" ETA — consistently, everywhere.** JM 2026-07-05 (QA,
+362. 🧪 **Learned stats need a clear "when will Computed be ready?" ETA — consistently, everywhere.** JM 2026-07-05 (QA,
     Stats benchmarks): threshold pace shows a specific ETA ("~1 more run — needs ≥4 runs + ~25 km in 6 weeks") but FTP just
     said "lands automatically… as intervals sees hard efforts" (no timeframe), and Max HR / Sleep need / VO₂max vary. Fixed
     (`src/Benchmarks.tsx`): every gate now answers "when" the SAME way — a COUNT where countable ("~N more runs/nights"), else
     the exact trigger event. FTP → "after your next hard ride — a ~5–20 min near-max effort (no formal test)"; Max HR →
     "after your next all-out effort with a HR strap"; VO₂max cycling → "after your next hard ~5-min effort", running →
     count-based like pace. Modal Computed box shows the same ⏳ ETA as the card. 321 tests. On QA.
-363. 🔨 **Coach chat — CONVERSATIONS (threads) + search (ChatGPT/Claude-style).** JM 2026-07-05 (QA): "how will I see previous
+363. ✅ **Coach chat — CONVERSATIONS (threads) + search (ChatGPT/Claude-style).** JM 2026-07-05 (QA): "how will I see previous
     conversation + search a conversation?" The #356 sync was ONE continuous thread. Built the full model (mock
     `mockups/chat-threads.html`, JM picked the drawer): server `chatThreads` (each with its own claude `--resume` session =
     per-conversation memory), migrates the legacy single convo into thread 1. New endpoints: `GET/POST /auth/chat/threads`,
@@ -119,20 +119,20 @@ test guide → the **🧪 Test guide** section below.
     test before promote.** gymapp-only. **✅ Promoted to prod (JM 2026-07-05).** ⚠️ JM's prod `chatMsgs`/`chatThreads` = 0
     server-side — today's prod convo is only in his DESKTOP cache; to save it he must open the coach on that desktop (client
     seeds localStorage→server thread 1). Guidance given.
-364. 🔨 **After submitting post-workout feedback, show "coach is reviewing" + WHERE the review lands.** JM 2026-07-05: wants a
+364. 🧪 **After submitting post-workout feedback, show "coach is reviewing" + WHERE the review lands.** JM 2026-07-05: wants a
     note/section after entering feedback that the coach is currently reviewing, and where the takeaways will appear. Built in
     `src/ActivityFeedback.tsx` (the shared feedback form): after Save it shows a "🔎 Your coach is reviewing this session…"
     block (pulses) that names where it'll land (here + Progress + 🔔 notification), and POLLS `coach-reviews` so the real
     verdict + takeaways (+ score) appear inline the moment they land (~1–3 min) — with a "See all coach takeaways on Progress →"
     link. Also shows an existing review on mount. `.pw-fbrev` styles. 321 tests. On QA.
-365. 🔨 **Forecast "Expected" wrongly says "likely wrecked tomorrow, Form −29.8" when it's not true.** JM 2026-07-05.
+365. 🧪 **Forecast "Expected" wrongly says "likely wrecked tomorrow, Form −29.8" when it's not true.** JM 2026-07-05.
     ROOT: `/auth/readiness-forecast` projected planned load `today+1 .. target` **INCLUSIVE** — so a hard planned session
     ON the target day projected its OWN post-session fatigue (Form crashes to −29.8 → freshness <1.6 → "Likely wrecked").
     But the forecast is meant to show how recovered you'll be GOING INTO the day (morning readiness). Fix: project only the
     days BEFORE the target (`today+1 .. target-1`, exclusive of the target's own session) — `server/server.js` loop `< date`
     + filter `d >= date`. Now a fresh athlete going into a hard day reads fresh, and it still accumulates fatigue from the
     intervening days. +3 readiness tests (#365), 324 total. gymapp-only.
-366. 🔨 **#365 fixed tomorrow but Jul 7 still reads "wrecked" — REAL root found.** JM 2026-07-05. Pulled JM's live intervals
+366. 🧪 **#365 fixed tomorrow but Jul 7 still reads "wrecked" — REAL root found.** JM 2026-07-05. Pulled JM's live intervals
     data (scratchpad/fc.mjs): the "250 TSS on Jul 6" driving the crash is an event **"ATP W06 - Recovery consolidation",
     category `TARGET`** = an intervals Annual-Training-Plan **WEEKLY** target (~250 TSS for the whole week), NOT a single-day
     session. The forecast summed it as one day's load → ATL spike → false "wrecked". (His actual planned workouts that day
@@ -156,22 +156,22 @@ test guide → the **🧪 Test guide** section below.
     this session — so QA + prod run IDENTICAL availability code + CSS. ⇒ almost certainly a **stale QA PWA bundle** (#200):
     hard-refresh QA and it should match prod. If it still differs after a hard refresh, need a screenshot of both (could be
     data-driven — QA vs prod are separate DBs). No code change made. gymapp-only.
-369. 🔨 **Chip/"Completed" badge overlaps the activity TITLE on mobile (Android).** JM 2026-07-05. CSS layout bug — the status
+369. 🧪 **Chip/"Completed" badge overlaps the activity TITLE on mobile (Android).** JM 2026-07-05. CSS layout bug — the status
     chip sits over the title on narrow screens. Fixed: `.card--done .eyebrow, .card--done h3 { padding-right: 112px }` so the
     absolute corner badge never overlaps. On prod. gymapp-only.
-370. 🔨 **Desktop needs a REFRESH button (installed PWA, no address bar).** JM 2026-07-06: installed the PWA in Chrome, no way
+370. 🧪 **Desktop needs a REFRESH button (installed PWA, no address bar).** JM 2026-07-06: installed the PWA in Chrome, no way
     to refresh; mobile is fine (pull-to-refresh). Added a ↻ Refresh button in the header status cluster (`App.tsx`) — calls
     the exposed `updateSW(true)` (activates a newer bundle if one's waiting → picks up post-deploy changes, #200) then reloads
     (1.5s fallback reload if no new SW). Shown on DESKTOP only (`@media (hover:hover) and (pointer:fine)`) since mobile
     swipes. gymapp-only.
-371. 🔨 **Coach double-booked days (2 same-sport rides/day) despite max 1/day.** JM 2026-07-06 (intervals screenshot: Wed 8
+371. 🧪 **Coach double-booked days (2 same-sport rides/day) despite max 1/day.** JM 2026-07-06 (intervals screenshot: Wed 8
     = "Sweet Spot 2×15 — FTP Builder" + "Sweet Spot 2×15"; Fri 10 + Sat 11 similar). The one-per-day rule IS in the coach
     prompt (server.js:1113) + the #367 daily-adapt msg, but instruction drifted (same lesson as #168). ENFORCED server-side:
     `upsertPlan` now REJECTS (409) a NEW **coach**-created session (`actor==='coach'`, `i<0`) on a day already at the athlete's
     `maxPerDay` — message tells the coach to COMBINE into that day's session (same id) or move it; two short same-sport rides
     should be ONE. UI path (`actor==='you'`) exempt. Also: 2 sessions of the same sport ≠ one long ride (JM). Existing doubles
     on his prod calendar cleaned via a coach dedup run. 324 tests. On QA→prod.
-372. 🔨 **Form barely drops despite a hard week — planned rides carry NO load.** JM 2026-07-06 (intervals screenshot: an
+372. ✅ **Form barely drops despite a hard week — planned rides carry NO load.** JM 2026-07-06 (intervals screenshot: an
     intense week, yet Form sits ~-3/-4 into Sat; "no way after a 2h ride my form stays at -3"). DIAGNOSIS via /tmp/audit.mjs
     against his intervals: Ride FTP=260 is set, every planned ride has a valid `%ftp` `workout_doc`, but **`icu_training_load`
     is `null` on all of them** → **intervals does NOT compute planned load for EXTERNALLY-created (API) workouts** — only for
@@ -182,12 +182,12 @@ test guide → the **🧪 Test guide** section below.
     plans so his EXISTING ones pick up the load (no content change). 328 tests (4 new for plannedTss). **On prod — VERIFIED
     end-to-end:** resynced his 13 plans, `icu_training_load` now 41/64/40/73/112/111, and his Form projection went from
     FLAT (-3.2 Sun) to a truthful **-22.2 Sun**. Round-trip on a throwaway event confirmed intervals stores + models it.
-373. 🔨 **Energy (i) should show the ACTUAL numbers — current HRV vs known min/max.** JM 2026-07-06: the Energy readiness
+373. 🧪 **Energy (i) should show the ACTUAL numbers — current HRV vs known min/max.** JM 2026-07-06: the Energy readiness
     ⓘ currently reads "HRV +0.4 vs your baseline" (a z-score sign) — JM wants the concrete range: his current HRV vs the
     min/max he's known. Plan: `server/readiness.js` `baselines()` also returns `hrvMin`/`hrvMax` (raw ms) from history;
     expose in the readiness response; Today.tsx energy `why` renders "HRV 42 ms (your range 28–58)". Same treatment fits
     resting HR. gymapp-only. **On prod** (Energy ⓘ now reads "HRV NN ms (your range lo–hi) … resting HR NN (range lo–hi)").
-374. 🔨 **Learned-stat cards: COMPACT summary, details on SELECT + always say WHEN/how-often/based-on-what.** JM 2026-07-06
+374. 🧪 **Learned-stat cards: COMPACT summary, details on SELECT + always say WHEN/how-often/based-on-what.** JM 2026-07-06
     (Global benchmarks screenshot): the "Your benchmarks" cards (VO₂max, FTP, Threshold Pace, Max HR, Sleep Need) — the
     inline explanation should be COMPACT; the full detail belongs in a tap-to-open view. AND not all cards say how long
     until it's estimated (how many days/workouts), how often it updates, and on what. **VO₂max is the worst example** —
@@ -206,7 +206,7 @@ test guide → the **🧪 Test guide** section below.
     {pct,cls,label}, 17 tests). Every card: bright value (2-col grid), a method chip, + a colorful confidence/learning bar
     (learn=blue-green / strong=green / need=amber). Detail sheet: confidence bar + plain-language + "The science · N methods"
     (VO2max computes MAP + HR-ratio + VDOT live, marks IN USE) + "Sharpen it" callout. 352 tests green. On QA-prod.
-375. 🔨 **Coach OVER-PLANNED the week — ~2× sustainable load, no overload framing (root cause = #372 null loads).** JM
+375. ✅ **Coach OVER-PLANNED the week — ~2× sustainable load, no overload framing (root cause = #372 null loads).** JM
     2026-07-06 ("too many crazy workouts this week? normal?"). AUDIT of his real prod week (Mon Jul6–Sun Jul12): 6 rides +
     1 gym, planned **441 TSS** vs ~**225 sustainable** at his CTL≈32 (CTL×7) — a ~1.9 ramp, with **two back-to-back
     110-TSS days** (Sat 112 + Sun 111). Projected Form once #372 loads flow in ≈ **-25 by Sunday** (not the -3 intervals
@@ -219,7 +219,7 @@ test guide → the **🧪 Test guide** section below.
     cycling engine "verify the week TOTAL" line. THEN JM chose "rebalance now" → ran a targeted `/api/coach/run`: coach cut
     the week **441→~250 TSS**, dropped Sunday's threshold (no back-to-back), long ride 120→90min endurance, Fri tempo→easy,
     kept ONE quality day; Form peak now **-7.7** (was -22). Coach notified JM in-app. 332 tests.
-376. 🔨 **Load & Form charts have a GAP — the line stops ~Jun 24 and a disconnected segment restarts Jun 24→Jul 20.** JM
+376. ✅ **Load & Form charts have a GAP — the line stops ~Jun 24 and a disconnected segment restarts Jun 24→Jul 20.** JM
     2026-07-06 (Fitness/Fatigue + Form screenshots): the historical (solid) line ends ~Jun 24, then the projected (dashed)
     line starts later with a visible break — not continuous. Today is Jul 6, so it's odd the ACTUAL line stops Jun 24 AND
     the projection doesn't start at today. Likely: historical + projected series are two arrays that don't share the join
@@ -268,7 +268,7 @@ test guide → the **🧪 Test guide** section below.
     are composed (`planToIcuEvent` ride+gym) or imported (`icuEventToPlan`) → link can't accumulate; and reconcile now
     SKIPS importing a gym event carrying the Platyplus link (it's ours; intervals has no exercises → empty shell). Still
     TODO: clean the 3 already-corrupted plans' stored notes + have the coach re-author their exercises. 25 icu-steps tests.
-379. 🔨 **Move a planned activity from one day to another (drag & drop?).** JM 2026-07-06: wants to reschedule a session by
+379. 🧪 **Move a planned activity from one day to another (drag & drop?).** JM 2026-07-06: wants to reschedule a session by
     dragging it to a different day on the calendar. Needs a MOCK (options-first): drag-drop on the Plan/calendar grid vs a
     "move to…" date picker on the session (mobile-friendly — DnD is fiddly on touch, so likely BOTH: long-press drag on
     desktop + a "Move" action with a day picker on mobile). Server already supports date change via `upsertPlan` (same id,
@@ -278,7 +278,7 @@ test guide → the **🧪 Test guide** section below.
     date) + This-week/Next-week day strip (current day purple, FULL days amber dot). Full day → inline "combine or move it"
     confirm. Move = `savePlan/saveItem` (same id + new date → re-push). **Undo bar** after each move. icu-origin events show a
     disabled "edit in intervals" row. 365 tests. On QA→prod. (Drag on desktop week-view = possible later enhancement.)
-380. 🔨 **Moves made IN intervals (swap gym↔ride across days) must mirror back to Platyplus on "update".** JM 2026-07-06:
+380. 🧪 **Moves made IN intervals (swap gym↔ride across days) must mirror back to Platyplus on "update".** JM 2026-07-06:
     moved his gym to tomorrow + tomorrow's ride to today IN intervals, expects the Update/Refresh button to pull that into
     Platyplus. TENSION: the model is **Platyplus-WINS** (`reconcileFromIcu` refreshes only icu-origin plans' title/notes/
     segments — NOT date; Platyplus-origin plans are never overwritten → a Platyplus push would move it BACK). And #377 now
@@ -290,7 +290,7 @@ test guide → the **🧪 Test guide** section below.
     **JM PICKED "intervals move wins for the DAY".** DONE: `reconcileFromIcu` owned-event block now adopts the intervals
     `start_date_local` for the plan's date on EVERY origin (content stays Platyplus-owned unless icu-origin); `refreshed++`
     → saves. Runs on every Today/Calendar load (so Refresh mirrors it). 335 tests.
-381. 🔨 **Gym session is DUPLICATED across days (Mon 06 + Tue 07, both empty).** JM 2026-07-06 (intervals screenshot):
+381. 🧪 **Gym session is DUPLICATED across days (Mon 06 + Tue 07, both empty).** JM 2026-07-06 (intervals screenshot):
     "Upper-Body & Trunk Strength" shows on TWO days. Chain: JM moved the gym to Tue in intervals (#380) → but a coach
     re-run / Platyplus push re-created it on Mon → 2 empty shells. This + #377/#378 all trace to ONE root: **QA + prod
     share the real intervals athlete i28814**, and BOTH run the #367 scheduler + push to it, so they duplicate/collide on
@@ -318,7 +318,7 @@ test guide → the **🧪 Test guide** section below.
     soreness per day). Plan: a multi-series variant of `WTrend`/`MetricCard` in `Wellness.tsx` — 3 component lines (7-day avg,
     distinct colors) + overall avg (faint), legend with per-metric avg/min/max. Readability trade-off (3-4 lines on a 1–5
     scale) → mock overlay-all vs segmented-focus. gymapp-only. Needs a mock (options-first). **JM PICKED B (overlay + tap-to-focus).** Building.
-384. 🔨 **Coach authored an INVALID range — cool-down "143-117" (high number first) + a "rest" interval with no range.** JM
+384. 🧪 **Coach authored an INVALID range — cool-down "143-117" (high number first) + a "rest" interval with no range.** JM
     2026-07-06 (for-after): a range must read low→high (or be a proper ramp-down, not "143-117" backwards); a "rest" interval
     came through with no range at all. Fix the COACH + MCP validation: (a) normalize/reject descending numeric ranges (swap
     or flag), (b) require a valid target on every non-rest step + a proper form for REST (e.g. explicit 0/recovery, not a bad
@@ -345,7 +345,7 @@ test guide → the **🧪 Test guide** section below.
     date range, so either they're not discoverable or the top "needs feedback" card ignores them. FIX: label the entry with
     its real sport + title + full date (not bare "Activity · Sat"); make the filters/sort obviously apply to everything incl.
     the feedback card; confirm sort-by-date works. gymapp-only.
-387. 🔨 **"Missing feedback" should be a HEADLINE, not buried in History.** JM 2026-07-06: the "N session(s) still need your
+387. 🧪 **"Missing feedback" should be a HEADLINE, not buried in History.** JM 2026-07-06: the "N session(s) still need your
     feedback" banner lives inside History/Logs — but post-workout feedback drives the coach's review + plan adaptation, so it
     should be surfaced prominently (a headline on Today, and/or a badge/nudge on the Coach FAB or the top bar), not hidden a
     tab away. Plan: show a compact "N to review → " card near the top of Today (links to the oldest one), reusing
@@ -353,7 +353,7 @@ test guide → the **🧪 Test guide** section below.
     ✅ BUILT (JM picked Option A from mockups/today-to-review.html): a compact amber `ToReviewCard` on Today (right under the check-in,
     only when `incompleteFeedback(activities).length > 0`) — "N sessions need your feedback · Review →", taps through to the full
     per-session list on Logs (`/logs`). Reuses the existing `.fbban` styling + a new `.fbban__cta`. tsc clean. gymapp-only.
-388. 🔨 **Pushed workout is DOUBLED in intervals — 1h1m in Platyplus renders as ~2h (steps repeated).** JM 2026-07-06
+388. ✅ **Pushed workout is DOUBLED in intervals — 1h1m in Platyplus renders as ~2h (steps repeated).** JM 2026-07-06
     (Platyplus vs intervals screenshots of "Sweet Spot 2×15 — FTP Builder", Wed Jul 8): Platyplus = 61 min / 64 TSS / IF .79;
     intervals shows the SAME event but the workout_doc steps are DUPLICATED — Warmup·Opener·Easy·SS·Recovery·SS·Cooldown then
     Warmup again… graph runs to ~1:56 (≈2×). `icu_training_load` (64) is right, but the `workout_doc.steps` got doubled on
@@ -374,7 +374,7 @@ test guide → the **🧪 Test guide** section below.
     independence gate — HOST the images on the XPS, NEVER hotlink 3rd-party per the invariant) → `npm run sync:catalog` →
     content-manifest (license/commercial flags — check ToS before scraping) → deploy. Tag by meal type / cuisine / diet /
     macros / time so the coach's `search_recipes` can pick well. Parked until JM prioritizes. gymapp content.
-391. 🔨 **Forecast/projection only goes 14 days — extend it (+ the To filter caps at today).** JM 2026-07-06 (Load & Form):
+391. 🧪 **Forecast/projection only goes 14 days — extend it (+ the To filter caps at today).** JM 2026-07-06 (Load & Form):
     "wish the coach would project more than that." The projection = 14d (`readinessProjection(14)`, endpoint caps at 28);
     the To date-picker `max=today`. TRADE-OFF: the forecast is driven by PLANNED load, and the coach only keeps ~14 days
     populated (#367 DAILY_HORIZON=14) — naively extending to 6 wk shows Form RISING (falsely fresh) because there's no
@@ -385,13 +385,13 @@ test guide → the **🧪 Test guide** section below.
     past today); a longer PROJECTION auto-extends the axis, so the filter needn't change. Ask JM the horizon (4/6 wk / to a race). gymapp.
     ✅ SHIPPED as **4 weeks** (JM's pick): `readinessProjection(28)`; endpoint fills days past the last PLANNED event with a
     HELD load (`heldLoad = round(latest.ctl)`) → an "if you keep training like this" tail, labelled via an ⓘ on the Form note.
-392. 🔨 **Expanded-chart modal (⤢ Load/Form) — the ✕ won't close it; you get stuck in the fullscreen chart.** JM 2026-07-06
+392. 🧪 **Expanded-chart modal (⤢ Load/Form) — the ✕ won't close it; you get stuck in the fullscreen chart.** JM 2026-07-06
     (Form modal screenshot: "once a graph is open, cannot click on the X to close it"). On mobile the panel is near-fullscreen
     so there's barely any backdrop to tap as a fallback, and the ✕ tap wasn't landing reliably. FIX (`charts.tsx` `ChartModal`
     + `styles.css`): closes **3 ways now — ✕, tap-outside, and Escape**; the head is `position:sticky; z-index:3` (its own
     stacking layer, always above the chart's scrub/pointer area so the chart can never intercept the close tap) with
     `touch-action:manipulation` on the ✕ (no 300ms tap delay / double-tap zoom); body scroll locked while open. gymapp-only.
-393. 🔨 **Make the 4-week forecast REAL, not a flat held-load tail — "adjust the coach to forecast that."** JM 2026-07-06
+393. ✅ **Make the 4-week forecast REAL, not a flat held-load tail — "adjust the coach to forecast that."** JM 2026-07-06
     (QA, after the #376 animation fix): the axis runs 4 wks but weeks 3–4 are a FLAT held-load line (`heldLoad = round(CTL)`
     ≈ 32 TSS EVERY day past the coach's ~14-day plan, server.js:728/730) → CTL holds flat, ATL→32, Form→0. It reaches Aug 3
     now but looks lifeless/pointless ("what's the point of the graph going further than the lines"). JM wants the COACH to
@@ -414,7 +414,7 @@ test guide → the **🧪 Test guide** section below.
     `/api/coach/load-plan` + write `load_target` back to the ATP TARGET events + MCP tool + coach-engine) — the forecast
     already reads them; this adds coach-side EDITING. Also: the coach should FLAG that JM's ATP overload weeks (×13–14 CTL)
     exceed the ×12 cap (Form → −24). gymapp + coach.
-394. 🔨 **Let the coach EDIT the ATP weekly blocks from chat + flag over-cap overload weeks.** Split from #393: the 4-wk
+394. 🧪 **Let the coach EDIT the ATP weekly blocks from chat + flag over-cap overload weeks.** Split from #393: the 4-wk
     forecast now READS the intervals ATP weekly TARGETs, but the coach can't yet author/adjust them. Build: `POST /api/coach/load-plan`
     (store `user.info.loadPlan` + write `load_target` back to the ATP TARGET events, prod-only via IS_STAGING) + an MCP tool +
     `coach-engine-*.md` guidance. Also: coach should FLAG when a week's target exceeds `weeklyLoadBudget().cap` (×12 CTL) — JM's
@@ -434,7 +434,7 @@ test guide → the **🧪 Test guide** section below.
     (hover + tooltip + axes). FIX = switch `MetricCard` to the shared `TrendChart` (daily + 7-day-avg series, axes, hover tooltip
     showing date + value) + add a coach-voice insight line per metric (already have `wellness-insights.ts`). Enforces the ONE-shared-
     chart standard ([[platyplus-chart-standard]] — WTrend is exactly the hand-rolled polyline the standard says to retire). gymapp-only.
-396. 🔨 **Running stats has NO pace curve (cycling has the power curve).** JM 2026-07-07: "cycling power curve looks good, but for
+396. 🧪 **Running stats has NO pace curve (cycling has the power curve).** JM 2026-07-07: "cycling power curve looks good, but for
     running I don't see the pace curve. Add this too." `RunningStats.tsx` shows a pace TREND but not the mean-max pace CURVE.
     `PaceCurveChart` already exists in charts.tsx. Data source FOUND: intervals `/athlete/{id}/pace-curves?curves={days}d&type=Run`
     → `list[0].distance[]` (meters) + `values[]` (seconds to cover each) → pace sec/km = `values/distance*1000`, duration = `values`.
@@ -449,7 +449,7 @@ test guide → the **🧪 Test guide** section below.
     far: Fitness/Fatigue/Form/Load, all Wellness metrics + CheckinBreakdown, pace trend + pace curve. ⬜ AUDIT the rest + add where
     valuable: cycling **power curve** + **eFTP trend** (CyclingStats), running race-predictions, benchmark cards, any Progress/Mind
     charts. Insight = one plain line: what it means + keep-doing / do-this-to-improve. Skip only when genuinely no signal. gymapp-wide.
-398. 🔨 **Threshold pace shown TWICE on Running + pace-curve insight not appearing.** JM 2026-07-07 (screenshot): "threshold
+398. 🧪 **Threshold pace shown TWICE on Running + pace-curve insight not appearing.** JM 2026-07-07 (screenshot): "threshold
     there 2 times; also no insights yet under pace graph." (1) `RunningStats` rendered BOTH the Threshold **benchmark card**
     (value + confidence + tap-to-edit sheet) AND a duplicate inline `ThresholdCell` — removed the ThresholdCell (+ its
     `saveRunPace`, unused `refresh`/`parsePace`/`setSetting`); the benchmark card's edit sheet (Benchmarks.tsx `Sheet`, an
@@ -458,7 +458,7 @@ test guide → the **🧪 Test guide** section below.
     threshold-anchored + robust: if the 1 k pace sits >30 s/km easier than threshold → "mostly base miles, add tempo/intervals"
     (true for JM: 1 k 6:08 vs 4:57 threshold); else the endurance fade over whatever longest distance exists. Chips now adaptive
     (400 m/1 k/5 k/10 k → only render distances with data, no "—"). Reinforces #397. gymapp-only.
-399. 🔨 **Running layout polish — race predictions under the pace curve + colour-coded training zones.** JM 2026-07-07:
+399. 🧪 **Running layout polish — race predictions under the pace curve + colour-coded training zones.** JM 2026-07-07:
     "should we merge race predictions under the pace graph? can training paces reflect the UX more?" Mocked V1 (colour rows)
     vs V2 (pace ladder) → JM picked **colour rows**. Built: reordered `RunningStats` so **Race predictions sit right under the
     pace curve** (both = "what you can do"), then **Training pace zones** ("how to train") as a **cool→warm effort spectrum**
@@ -484,14 +484,14 @@ test guide → the **🧪 Test guide** section below.
     gets a `tteConfidence`), computed from the curve model, manual-override + auto/computed toggle like the rest, and surfaced in the
     coach (openapi + MCP + coach-engine — [[platyplus-propagate-all-layers]]). Add to the benchmark cards (top), NOT the best-efforts
     table. gymapp + coach.
-402. 🔨 **TTE theory → coach knowledge base + card reframe.** JM 2026-07-07 shared https://trainright.com/…time-to-exhaustion-tte…
+402. 🧪 **TTE theory → coach knowledge base + card reframe.** JM 2026-07-07 shared https://trainright.com/…time-to-exhaustion-tte…
     ("good for the coach") after questioning why his cycling TTE showed 6:30 vs the textbook "30–70 min at FTP". Theory: TTE =
     max duration you hold FTP/threshold (normal 30–70 min; moderate 30–40, well-trained 45–75); FTP is a POWER-DURATION PAIR, not a
     bare watt; a short TTE is usually a TRAINING TARGET (extend with extensive threshold work — 3×15–20/3×24/4×15 min @ 90–95% FTP,
     6–10 min rec, total work ≈ current TTE), only flag FTP-too-high when TTE ≪ 30 min vs eFTP. Built: `docs/tte.md` (full theory +
     tables, cited) + a concise TTE section in `coach-engine-cycling.md` + reframed the TTE benchmark narr/sharpen (references the
     30–70 min norm + "extend via threshold work, not more watts"). ⚠️ verify coach-engine reaches the host coach on deploy. gymapp + coach.
-403. 🔨 **"Beyond FTP" metrics — CP · W′ · Efficiency Factor (+ running equivalents) as benchmarks AND graphs + coach brain.** JM
+403. 🧪 **"Beyond FTP" metrics — CP · W′ · Efficiency Factor (+ running equivalents) as benchmarks AND graphs + coach brain.** JM
     2026-07-07 shared 3 sources (mattbottrill "beyond FTP", joinvekta CP/W′, roadman EF/Joe-Friel). Wants the metrics that really
     drive performance, running equivalents where they exist, the COACH to reason with them, and GRAPHS to our chart standard. Plan:
     (a) **CP + W′** (cycling) and **CS + D′** (running) as learned benchmark cards — DATA ALREADY EXTRACTED (`PowerCurve.cp/wPrime`,
@@ -506,7 +506,7 @@ test guide → the **🧪 Test guide** section below.
     — TYPE + per-metric coach read + no-test training focus, rendered by `BenchmarksCard profile=`. Phase 4 (propagate): docs/beyond-ftp-metrics.md
     (+ highnorth CP-calc cite) + coach-engine cycling & running sections + openapi (cp/wPrime/cs/dPrime) + memory [[platyplus-beyond-ftp-metrics]].
     JM's Qs answered inline: CP/W′/EF separate (not under TTE); improve without tests (the efforts ARE the data); profile = "Punchy threshold".
-404. 🔨 **Expose the computed CP/W′/EF/TTE/PROFILE to the COACH (MCP read tool).** From #403: the coach-engine now has the THEORY,
+404. 🧪 **Expose the computed CP/W′/EF/TTE/PROFILE to the COACH (MCP read tool).** From #403: the coach-engine now has the THEORY,
     but no MCP tool returns the athlete's actual VALUES (CP 248, W′ 17.1, EF trend, TTE 12 min, profile type) — so the coach reasons
     from theory, not JM's numbers. Build: a server endpoint computing them (port `tte.js`/`athlete-profile` server-side or reuse the
     curve fetches) + an MCP `get_metrics`/extend `get_wellness` so daily-adapt + chat reason with the real profile. gymapp + coach.
@@ -515,14 +515,14 @@ test guide → the **🧪 Test guide** section below.
     + MCP `get_metrics` tool (mcp/server.js) + openapi + a "call get_metrics" pointer in BOTH coach-engine cycling & running.
     ✅ LIVE-VERIFIED on QA (HTTP 200): cycling {ftp 260, eftp 253, cp 248, W′ 17.1, TTE 12:00, EF 1.104↓, "Punchy threshold"} +
     running {4:57, CS 5:21, D′ 148m}; focus line renders. `mcp/` rsynced to /home/jmf/platyplus-chat (parses). Awaiting JM ✅ on QA.
-405. 🔨 **Sleep-need "9" looked defaulted — surface the raw best-nights avg in the sheet.** JM 2026-07-07: "how do you know it's 9?
+405. 🧪 **Sleep-need "9" looked defaulted — surface the raw best-nights avg in the sheet.** JM 2026-07-07: "how do you know it's 9?
     what is the calculation? why not 8.97h or 9.2?" It IS computed (`estimateSleepNeed`, src/sleep.ts): over his 58 sleep+HRV nights,
     average the sleep on the **19 best-HRV (best-recovery) nights** = **8.94h raw** → snapped to the nearest ¼ h = **9:00** (an
     actionable target; his all-nights avg is only 8.75h so he runs a small deficit). The round "9" read as a hardcoded default.
     JM picked "show the raw in the sheet". Built: `estimateSleepNeed` now also returns `suggestedRaw` (unrounded) + `topNights`;
     the Sleep-need benchmark narr shows "Your N best-recovery nights averaged X h → rounded to a 9 h target", sci row says "avg of
     your N top-HRV nights". Unit test added (src/sleep.test.ts, 6 pass). gymapp-only.
-406. 🔨 **VO₂max sheet said "bike power" even for a non-cyclist — key the prose to the method actually in use.** JM 2026-07-07:
+406. 🧪 **VO₂max sheet said "bike power" even for a non-cyclist — key the prose to the method actually in use.** JM 2026-07-07:
     "this works for me (best 5-min bike power) but if another user doesn't bike, the VO₂max is based on… what? maybe remove the bike
     mention?" The narr was keyed to `doesCycle` (a sport flag), so a non-biker — or a biker whose current number came from HR — read
     a FALSE source. Fix (better than removing): the narr now follows `vo2head.source` (the same signal as the IN USE badge) with 3
@@ -586,12 +586,12 @@ test guide → the **🧪 Test guide** section below.
     "when clicking full exercise on android, the back button seems to overlay with something and not every press works to return back." The
     exercise-detail (video) view/modal + Android hardware back don't cooperate — likely a history/overlay state issue (the modal doesn't push
     a history entry, or a stray overlay swallows the back). Investigate the full-exercise view's routing/modal + Android back handling. gymapp-only.
-418. 🔨 **Fuel "why" behind a chip (do like Mind) + an empty gym on QA.** JM 2026-07-07 (QA): "the why for fuel still weird, put it
+418. 🧪 **Fuel "why" behind a chip (do like Mind) + an empty gym on QA.** JM 2026-07-07 (QA): "the why for fuel still weird, put it
     straight in fuel section"; also "this one is empty" (a "Full-Body Strength — Rain Day" gym opens with no exercises). (a) FIXED — the
     Fuel section now shows `p.fuel.why` (the fueling strategy) INLINE like Mind #411 / Recovery, chip dropped (CoachPlanDetail.tsx). tsc clean.
     (b) The empty "Rain Day" gym is **NOT in the QA DB** — it's a PROD plan's intervals event surfacing on QA through the SHARED i28814
     athlete (a known QA/prod-shared artifact; can't be GC'd on QA since staging is read-only). Not a new render bug. gymapp-only.
-419. 🔨 **Coach names workouts after the WEATHER ("Rain Day") — stop it; title by the training.** JM 2026-07-07: "for any activity titles,
+419. 🧪 **Coach names workouts after the WEATHER ("Rain Day") — stop it; title by the training.** JM 2026-07-07: "for any activity titles,
     don't mention weather, why do it? focus on the activity done for title and description." No rule existed → the coach invented "Full-Body
     Strength — Rain Day" from a rainy forecast. FIXED (2 layers): the **coach identity** (`coachIdentity`, server.js) + the **get_weather MCP
     tool desc** (mcp/server.js) now say: TITLE + describe every workout by its TRAINING content/purpose, NEVER the weather/theme ("Rain Day",
@@ -609,7 +609,7 @@ test guide → the **🧪 Test guide** section below.
     while the season-compare uses PER-SEASON `tteFromPower(season curve, season eFTP)` — different FTP anchor + different window. FIX: one
     canonical TTE — pass the athlete's SET FTP to SeasonCompare + anchor cycling TTE on it (like the benchmark); align the window so at least
     one column matches the card, or clarify labels. Also running TTE. gymapp-only.
-422. 🔨 **Xenia: had to enter her menstrual-cycle date manually though it's already in intervals wellness (logged the 3rd).** JM 2026-07-08.
+422. 🧪 **Xenia: had to enter her menstrual-cycle date manually though it's already in intervals wellness (logged the 3rd).** JM 2026-07-08.
     The cycle/period date is in intervals wellness — Platyplus should READ it (like HRV/sleep/CTL) and prefill the coach's cycle-phase, not
     ask her to re-enter. Investigate the intervals wellness cycle field + wire it into the cycle-phase (coach-engine-female uses cyclePhase). gymapp + coach.
     ✅ ROOT CAUSE: intervals only stamps `menstrualPhase="PERIOD"` on the period-START day (Xenia: 07-03); EVERY other day is null AND
@@ -619,7 +619,7 @@ test guide → the **🧪 Test guide** section below.
     phantom phase). Wired into `/auth/readiness` cyclePhase as the middle step (intervals-today → derived-from-history → manual cycleStart).
     Exposed `cyclePhase`/`cyclePhaseAt` on the user (pub) + client User type; Profile now SHOWS "Read from intervals.icu: currently follicular"
     instead of prompting her. 6 new unit tests (src/cycle.test.ts, incl. her exact case) green, tsc clean. Ships to prod for her real data.
-423. 🔨 **Xenia: no longer getting 4 workouts/week — audit the coach's frequency.** JM 2026-07-08. Her target is ~4 days/week (info.freq)
+423. 🧪 **Xenia: no longer getting 4 workouts/week — audit the coach's frequency.** JM 2026-07-08. Her target is ~4 days/week (info.freq)
     but the plan has fewer. Coach issue? Check `# TRAINING FREQUENCY` (buildSystemPrompt) vs what daily-adapt actually schedules; audit her
     upcoming 2 weeks vs freq. gymapp + coach.
     ✅ AUDITED: her config is CORRECT — `info.trainingDays=4`, availability all 7 days @0.75, sports=[running,strength], solid pregnancy
@@ -627,9 +627,9 @@ test guide → the **🧪 Test guide** section below.
     intervals events → the deletion-mirror dropped the plans). ROOT fixed (GC now log-only, prod). Triggered `POST /api/coach/daily-adapt`
     → it REBUILT her 2 weeks: **W28 & W29 both = 4 sessions (Mon run · Wed gym · Fri run · Sat gym)**, fresh intervals IDs (121282xxx)
     pushed. NB the coach LLM takes several min to finish creating — don't judge "empty" from a <2-min poll. Awaiting JM ✅ on her login.
-424. 🔨 **Xenia: the HEIGHT field in her profile is BUGGY — can't enter a value.** JM 2026-07-08. ✅ FIXED: the input clamped to
+424. 🧪 **Xenia: the HEIGHT field in her profile is BUGGY — can't enter a value.** JM 2026-07-08. ✅ FIXED: the input clamped to
     min 100 on EVERY keystroke, so typing "1" jumped to 100 → impossible to build 175. Now types freely + clamps [100,230] + saves on blur. gymapp-only.
-425. 🔨 **Coach activity descriptions/titles too casual/cocky — make them scientific, no em-dashes.** JM 2026-07-08 (example: "Another
+425. 🧪 **Coach activity descriptions/titles too casual/cocky — make them scientific, no em-dashes.** JM 2026-07-08 (example: "Another
     Local Legend, Relaxed Miles / … Snagged a Local Legend … proof you don't have to go hard … Classic relaxing spin."). Rules: (1) NO
     casual "easy/hard/whatnot/snagged/classic relaxing spin" — use ZONE terms (Z1/Z2/Z3…); (2) NEVER an em-dash "—", use commas; (3) be
     SCIENTIFIC — name the adaptation (aerobic base/foundations, W′, threshold), not vibes.
@@ -675,7 +675,7 @@ test guide → the **🧪 Test guide** section below.
     "don't get the Mind — the section is empty but the why is a chip to click." Fuel shows its text inline (+ a why chip); Mind shows only
     a "why ⓘ" chip with no body, so it reads as broken/empty (the real "Mental focus — Restraint…" is buried in the why sheet). FIX: if a
     section has no inline body, show its content in the body (not only behind "why"), OR hide the empty section header. gymapp-only.
-427. 🔨 **PREGNANCY MODE — Xenia is pregnant (confirmed 2026-07-07); no structured state + the cycle logic CONFLICTS.** JM 2026-07-08
+427. 🧪 **PREGNANCY MODE — Xenia is pregnant (confirmed 2026-07-07); no structured state + the cycle logic CONFLICTS.** JM 2026-07-08
     ("how will this handle pregnancy, my wife just got pregnant" + "update coach engines for pregnancy, deep research if needed"). FOUND:
     pregnancy is captured ONLY in her coachProfile prose ("PREGNANT — maintain, not build" + full guardrails); there is NO `info.pregnant`/
     dueDate flag, and the #329/#422 CYCLE-PHASE logic is NOT suppressed — her `cyclePhase=menstrual` is LIVE, so buildSystemPrompt injects
@@ -697,7 +697,7 @@ test guide → the **🧪 Test guide** section below.
     coach to pregnancy mode + pauses cycle tracking + hides the cycle fields + shows a private-note line ("never shown on your workouts"); OFF
     = the normal cycle UI. Saves `info.pregnant` via `/auth/profile` (which also clears any stale cyclePhase). No due-date field yet (JM: no
     info). tsc clean, mock at mockups/pregnancy-toggle.html. #427 now COMPLETE end-to-end (state + gate + engine + privacy + UI); awaiting JM ✅.
-428. 🔨 **Coach chat SLOW on mobile + a "no result" after navigating away.** JM 2026-07-08: "asked something to my coach, took forever on
+428. 🧪 **Coach chat SLOW on mobile + a "no result" after navigating away.** JM 2026-07-08: "asked something to my coach, took forever on
     mobile, then I backed out and came back to the chat and there was NO result. Optimize the coach speed + clarify what happened." Two
     problems: (1) LATENCY — the coach runs a full agentic turn (~128 KB systemPrompt + tool calls) via the host chat-helper; first token can
     take many seconds. (2) DURABILITY — if the user navigates away mid-stream on mobile, the in-flight response may not persist/resume, so
@@ -741,11 +741,11 @@ test guide → the **🧪 Test guide** section below.
     now **DUPLICATE-ONLY** (auto-deletes an orphan ONLY when a plan owns the exact day+sport via a DIFFERENT LIVE event); never deletes a
     no-plan orphan. Restoring JM's 07-09 gym. ⚠️ ROOT still open (JM: "audit and fix all #431"): WHY did the 07-09 gym PLAN disappear while
     its event survived? The reconcile/deletion-mirror is dropping plans and/or the coach re-plan orphans events — needs a full sync audit.
-432. 🔨 **Fuel section overflows the screen to the right — fit it.** JM 2026-07-08 (screenshot: the Dinner meal card is cut off past the
+432. 🧪 **Fuel section overflows the screen to the right — fit it.** JM 2026-07-08 (screenshot: the Dinner meal card is cut off past the
     right edge). ✅ FIXED: `.fuel-grid` grid children lacked `min-width:0`, so a long meal title (`white-space:nowrap`) forced the cell (and
     the page) wider than the viewport instead of truncating. Added `.fuel-grid{max-width:100%}` + `.fuel-grid>.mealchip{min-width:0;display:block}`
     (the `display:block` also overrides a colliding later `.mealchip{display:flex}` rule leaking from another component). gymapp-only (CSS).
-433. 🔨 **Make Fuel SUGGESTIONS + Mind coach-driven (personalised), not algorithmic.** JM 2026-07-08: "be sure fuel suggested and mind are
+433. 🧪 **Make Fuel SUGGESTIONS + Mind coach-driven (personalised), not algorithmic.** JM 2026-07-08: "be sure fuel suggested and mind are
     done with coach logic, is there one?" AUDIT: the plumbing already existed — Today shows coach-SCHEDULED meals/mind/recovery (with the
     coach's "why") and only falls back to the ALGORITHMIC `suggestMeal`/`pickByDate` (Today.tsx:495/506) when the coach scheduled nothing. The
     real gap: the **daily-adapt pass only adapted TRAINING** (`dailyAdaptMsg`), never fuel/mind/recovery — so the coach never proactively filled
@@ -753,16 +753,16 @@ test guide → the **🧪 Test guide** section below.
     diet + fuel-target aware), add a MIND session where it earns its place, and RECOVERY after the hardest days — *only where it adds value*, no
     spamming every slot. 439 tests green. Coach behavior (not pure) → manual test-guide row. Verify: run a daily-adapt pass, a hard day shows a
     coach-scheduled meal/recovery (with a why), not the generic pick. Needs the coach running live (Tailscale).
-434. 🔨 **Gym LOAD not synced to intervals — 12 in Platyplus, 0 in intervals (bi-directional).** JM 2026-07-08 (Jun-19 "Afternoon
+434. 🧪 **Gym LOAD not synced to intervals — 12 in Platyplus, 0 in intervals (bi-directional).** JM 2026-07-08 (Jun-19 "Afternoon
     Weight Training"). ROOT: `planToIcuEvent` set `ev.icu_training_load` from `plannedTss(segs)` — SEGMENT-based, so ride/run only. GYM has no
     segments → no load pushed → intervals showed 0. BUILT+DEPLOYED (commit 0582959): `plannedGymTss`/`estimateGymSeconds`/`gymTempoSec` in
     server/icu-steps.js (mirror src/plan.ts estimateGymMinutes × 45 TSS/h, KB Friel); `planToIcuEvent` gym branch now sets `icu_training_load` +
     `moving_time`/`time_target`; `POST /api/plans/resync` backfills existing plans. 41 icu-steps tests (incl. plannedGymTss). Verify on intervals
     (a gym event shows a non-zero load) — BLOCKED on Tailscale re-auth for the live check.
-435. 🔨 **Activity detail page shows NO date.** JM 2026-07-08 (screenshot: "WORKOUT · INDOOR / Afternoon Weight Training" — no date).
+435. 🧪 **Activity detail page shows NO date.** JM 2026-07-08 (screenshot: "WORKOUT · INDOOR / Afternoon Weight Training" — no date).
     BUILT+DEPLOYED (commit 0582959): ActivityDetail eyebrow (ActivityDetail.tsx:307) now appends the session date (weekday, month, day) from
     `start_date_local`. gymapp-only. Verify: open any activity → the eyebrow shows the date.
-436. 🔨 **Coach "✓" review checkbox on the intervals activity no longer gets checked.** JM 2026-07-08 (screenshot: Compliance ✓ 83% but
+436. ✅ **Coach "✓" review checkbox on the intervals activity no longer gets checked.** JM 2026-07-08 (screenshot: Compliance ✓ 83% but
     "Coach ☐" unchecked; "coach used to check this box"). ROOT CAUSE (found live): the "Coach ✓" is intervals' native **`coach_tick`** field — an
     INTEGER 1-5 rating (the coach's 5-point tick), NOT a boolean. Platyplus posted the coach NOTE to the activity thread (`postCoachNote`) but
     NEVER set `coach_tick`, so the box stayed empty even on reviewed activities (confirmed: activity i158721911 had 2 coach-note messages but
@@ -772,7 +772,7 @@ test guide → the **🧪 Test guide** section below.
     Note: still gated on the coach passing `activityId` to save_coach_review (the separate LLM-reliability thread) — but when a review DOES post,
     the box now ticks. DEPLOYED to prod (PR #138, commit 7fee142). JM CONFIRMED the tick works. BACKFILLED his history: 4 reviewed activities
     ticked (14 plan-only reviews had no device activity to tick). JM: it's the coach's reviewed/not-reviewed TRACKER → see #437 (coach should READ it).
-437. 🔨 **Coach READS `coach_tick` to know what's reviewed vs still pending.** JM 2026-07-08 (framing #436): "it's the tracker for the
+437. 🧪 **Coach READS `coach_tick` to know what's reviewed vs still pending.** JM 2026-07-08 (framing #436): "it's the tracker for the
     coach to know what was reviewed or not." BUILT: (1) `/api/intervals/activities` (→ MCP get_recent_activities) now returns each activity's **`id`**
     (was MISSING — that's exactly why the coach couldn't reliably pass activityId to save_coach_review, the #436 caveat) + **`reviewed`**/`coachTick`
     (the tracker). (2) MCP tool description updated to explain id + reviewed. (3) daily-adapt now sweeps: for any completed activity in the last week
@@ -780,7 +780,7 @@ test guide → the **🧪 Test guide** section below.
     cap the few most recent. (4) openapi updated. 440 tests green. Closes the #436 reliability loop (coach gets the id straight from the read). Prod-only
     behavior (daily-adapt off on QA); MCP auto-syncs on prod deploy. Verify: get_recent_activities shows `reviewed:true` on ticked activities + the
     coach reviews the un-ticked ones on a daily-adapt pass.
-438. 🔨 **In-app ADMIN BACKLOG manager — track this list from inside the app, add comments / discard / change priority.** JM 2026-07-08:
+438. 🧪 **In-app ADMIN BACKLOG manager — track this list from inside the app, add comments / discard / change priority.** JM 2026-07-08:
     "put the backlog page under admin in the app so I can keep track of it at all time, add more comments or discard or change priority."
     Replaces the throwaway scratchpad Artifact with a real, always-available admin page. Mocked 2 layouts (options-first) → JM picked **A · Triage
     list** (filter-first, tap-to-expand inline triage). BUILT: (1) `scripts/build-backlog.mjs` parses FEEDBACK-LOG.md → lean
@@ -805,7 +805,7 @@ test guide → the **🧪 Test guide** section below.
     None options; add-form needs both. (d) chore = behind-the-scenes work (refactor/CI/infra); Idea can spawn multiple Features. (e) **reporter +
     timestamp** on each item (added/reported carry reporter+at; .md items get a date from the entry). Migrated the whole board to the **SHARED
     global store** (`app_meta.backlog`, `store.backlog`) so it's not per-admin — needed for #440. On QA.
-439. 🔨 **Coach must ALWAYS keep ~2 weeks of planning ahead (horizon not being held).** JM 2026-07-08: "I currently have workouts until
+439. 🧪 **Coach must ALWAYS keep ~2 weeks of planning ahead (horizon not being held).** JM 2026-07-08: "I currently have workouts until
     ~Jul 12, that's not 2 weeks. Since we have a trigger every day with the coach (after check-in), the coach should always have 2 weeks ahead
     of planning as per our agreement." DIAGNOSIS (prod): the daily-adapt tick IS firing (JM's `dailyAdapt` = early+refine both ran today) — but the
     coach only planned the current week (through Jul 13, 5 days) and left the back half of the 14-day horizon EMPTY. The soft "keep ~14 days ahead"
@@ -813,13 +813,13 @@ test guide → the **🧪 Test guide** section below.
     over [today..today+14]) and hand the coach a non-negotiable lead directive in `dailyAdaptMsg`: "only N/15 days through {end} have anything; EXTEND
     the plan ALL THE WAY to {end} in THIS pass" (only when empty≥3). `runDailyAdapt` passes it. 441 tests. Prod-only (daily-adapt off on QA) → verify
     by triggering `POST /api/coach/daily-adapt` on prod after promote + confirm JM's plan fills to ~Jul 22. Ties #367/#433.
-440. 🔨 **"Report a bug or idea" for any (non-admin) user — top bar, → backlog as "under review".** JM 2026-07-08: "for a user who is not
+440. 🧪 **"Report a bug or idea" for any (non-admin) user — top bar, → backlog as "under review".** JM 2026-07-08: "for a user who is not
     admin, add a button to report bug or idea, to the left of the notification icon… added to the backlog as under review, put a reporter + a
     timestamp on each item." BUILT: `ReportButton.tsx` (top bar, left of the bell, non-admins only) → a Bug/Idea form → `POST /auth/report` (any
     authed user) → lands in the SHARED backlog (`store.backlog`) as status **review** with reporter + time, and pings the (other) admins (bell). Admin
     sees it in Admin → Backlog under the **Under review** filter. authApi.reportBug. JM 2026-07-08: show it for **ALL users incl. admins** (was
     non-admin-only; simpler + lets JM test it directly + anyone can quick-report). On QA.
-441. 🔨 **Mirror PROD data → QA so QA has real-life stuff to test.** JM 2026-07-08. BUILT: `scripts/mirror-prod-to-qa.sh` (run on XPS) copies
+441. 🧪 **Mirror PROD data → QA so QA has real-life stuff to test.** JM 2026-07-08. BUILT: `scripts/mirror-prod-to-qa.sh` (run on XPS) copies
     each real user's child rows (plans/logs/coach_reviews/checkins/calendar_items) + coach doc fields prod→QA, keyed by email (ids differ),
     PRESERVING QA auth + keeping QA read-only toward intervals. NOT auto-run yet (holding — would reset QA mid-test). QA already READS real
     intervals activities (shares i28814). Run on demand; optionally wire into the staging deploy. Verify: run it, QA data matches prod + QA login still works.
@@ -828,7 +828,7 @@ test guide → the **🧪 Test guide** section below.
     (b) "I don't want the review banner in History" → build a DEDICATED review view (reached from the Today #387 card, not `/logs`); (c) tapping a
     session opens the activity normally (feedback form) = already how it works; (d) after SAVING feedback, return to the review list to knock out the
     next one. Needs a `/review` route + return-after-save nav. Mock the dedicated view first.
-443. 🔨 **Tempo tooltip was cut off + unclear.** JM 2026-07-08: "what is 3? lift 3s? the 1 wait? 0 restart?" ROOT: the exercise `.card` had
+443. 🧪 **Tempo tooltip was cut off + unclear.** JM 2026-07-08: "what is 3? lift 3s? the 1 wait? 0 restart?" ROOT: the exercise `.card` had
     `overflow:hidden` → clipped the InfoDot popover to one line. FIX (CoachPlanDetail.tsx): card `overflow` is `visible` when collapsed (thumbnail
     self-rounds so it's safe); tooltip text rewritten to number each phase explicitly (LOWER first: 3-1-1-0 = lower 3s · hold 1s · lift 1s · 0s top). On QA.
 444. ⬜ **intervals coach-note text is a wall — format with sections / titles / bullets.** JM 2026-07-08 (Sweet-Spot screenshot): the "coach notes"
@@ -862,6 +862,13 @@ test guide → the **🧪 Test guide** section below.
     JM verbatim: "will need to rework a lot of progress for strength training + stats to make it as advanced as running and cycling." SCOPE + MOCK
     first (options-first) — per-exercise progress + tappable exercises + filter-driven volume/time/tonnage + strength graphs. Big effort. (Separate:
     **#148** empty "Search gym…" list in the Add sheet — a discrete picker bug, ties #412.)
+449. 🧪 **Backlog: show dev→qa→prod PROGRESSION per item + full status CYCLE.** JM 2026-07-08: "not all items show where (prod/qa/dev)…
+    ideally always dev to qa to prod" + "if you work an item that failed, change it to building? we need a full cycle flow." BUILT: (a) every
+    built item shows a **DEV·QA·PROD track** (`EnvTrack`) derived from the lifecycle — building=dev · to-test/tested=qa · done=prod (a text
+    heuristic under-counted prod badly, so it's status-derived + reflects JM's in-app overrides). (b) The **status CYCLE** is now a documented
+    process I DRIVE: ⬜→🔨(I start)→🧪(I ship to QA)→JM tests→✅done/✗fail, and **fail→🔨 building when I rework it**, updating BOTH the .md AND
+    the in-app status (skill `options-first` + memory `platyplus-admin-backlog`). Also RECLASSIFIED the stale 🔨 pile (agent review): 209 building
+    → 80 building + 153 to-test + 42 done, so the board reflects reality. On QA (rebuild + deploy). Ties #447 (this cycle IS the clarified model).
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
@@ -869,7 +876,7 @@ test guide → the **🧪 Test guide** section below.
     also the past-day/paired-activity guard). (2) the "Substitute on Jul 9" modal (screenshot) shows a "Search ride…" field over a wall
     of EMPTY skeleton rows that never populate — the ride list isn't loading. Repro on QA. Investigate the move/upsert dedup + the
     substitute picker's data fetch. gymapp (+ maybe intervals sync). JM: FOR LATER.
-413. 🔨 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
+413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL
     grid now shows ONLY cross-sport benchmarks — **VO₂max · Max HR · Sleep**. FTP stays on the Cycling stats page, threshold pace on Running
@@ -904,7 +911,7 @@ test guide → the **🧪 Test guide** section below.
     passes its LOCAL today; server uses it for the future-check (+ fix the client message so future:false ≠ "no data");
     (2) server derives local today from the athlete's intervals timezone; (3) client-only message fix. Note: the readiness
     endpoint uses UTC "today" too — same class of bug. gymapp-only.
-346. 🔨 **A completed workout shows as TWO entries in intervals (ghost PLANNED event + the DONE activity).** JM 2026-07-04
+346. ✅ **A completed workout shows as TWO entries in intervals (ghost PLANNED event + the DONE activity).** JM 2026-07-04
     (screenshot, xenia Fri 03 Jul). VERIFIED in her data: a planned event "Upper Body + Core" (WeightTraining, our push
     id 120381637) AND a completed activity "Strength" (WeightTraining, id i162487273, **paired_event_id=None**) both on
     2026-07-03. They didn't merge because (a) her WATCH names the activity generically "Strength" ≠ the plan title, and gym
@@ -919,7 +926,7 @@ test guide → the **🧪 Test guide** section below.
 
 > 🎯 **FOCUS (JM 2026-07-03):** prioritise **OUTDOOR activities + GYM**. **Indoor-ride** features are LATER — #174 (Bluetooth HR on the bike), #106 (pedaling metrics), and the indoor bits of the ride player / #62 ref. Cut by JM: #173, #163, #149, #61 (marked ❌ below).
 
-345. 🔨 **"Max workouts per DAY" preference (default 1) — next to preferred workouts/week.** JM 2026-07-03: the coach
+345. 🧪 **"Max workouts per DAY" preference (default 1) — next to preferred workouts/week.** JM 2026-07-03: the coach
     pushed a gym AND a run the same day; unless the athlete SAYS they can double (time/capacity), expect ONE session/day.
     Done: `maxPerDay` field (default 1) beside days/week in Availability; persisted to `info.maxPerDay`; coach prompt now
     hard-caps sessions/day ("do NOT schedule two workouts same day unless opted in"). Directly resolves #339. On QA.
@@ -931,7 +938,7 @@ test guide → the **🧪 Test guide** section below.
     render the planned target as a proper STEP/RAMP profile from the segments (time-proportional, run + ride consistent),
     add a Y-axis min-range, and AUDIT every chart (TrendChart trends, BarChart, PowerCurveChart) for the same classes of
     bug. Supersedes/extends #334 (y-axis crammed). Mock the profile shape first. gymapp-only.
-343. 🔨 **Coach used cycling power-logic on RUNS — "Recovery Run" pushed at 94–95% = Z4 threshold in PROD.**
+343. 🧪 **Coach used cycling power-logic on RUNS — "Recovery Run" pushed at 94–95% = Z4 threshold in PROD.**
     JM 2026-07-03: her recovery run showed Z4 in intervals; her real endurance is ~6:15–6:45. Root cause: NO
     running engine — the coach had a cycling engine (FTP) but nothing for running, so it thought "95% = just
     below threshold = easy." **95% is NEVER easy, any sport.** JM: "have an engine per sport/activity … running
@@ -943,26 +950,26 @@ test guide → the **🧪 Test guide** section below.
     labelled segments prescribed >80% → wired into upsertPlan + planToIcuEvent; (d) MCP `create_run` schema
     teaches the zones from the science. **Fixed her prod run** (94→Z1 7:13–7:25). 15 icu-steps tests. Coach
     memory + skill + CLAUDE.md updated. [[platyplus-coach-engine]] [[platyplus-intervals-workout-steps]]
-342. 🔨 **Max HR IS computable — stop saying "no safe way to guess it".** JM 2026-07-03: the card claimed Max HR can
+342. 🧪 **Max HR IS computable — stop saying "no safe way to guess it".** JM 2026-07-03: the card claimed Max HR can
     only be set manually. Wrong: the honest computed source is the **observed peak** — the highest per-activity max HR
     over the last 180 days (what Garmin/Coros/intervals use). Age formulas are the unsafe guess; observed peak is real.
     Done: `/auth/intervals/power-benchmarks` returns `observedMaxHr` + `maxHrSamples` (guarded 120–230 bpm); Benchmarks
     Max HR card now has a Computed value + honest source ("observed peak — hit N×"); pending copy = "lands the first
     time you go all-out with a strap/watch". Same Manual/Auto/Computed picker as the rest.
-341. 🔨 **Local WEATHER in the coach brain (heat/cold/wind → adjust intensity).** JM 2026-07-03. Done: `server/weather.js`
+341. 🧪 **Local WEATHER in the coach brain (heat/cold/wind → adjust intensity).** JM 2026-07-03. Done: `server/weather.js`
     turns a day's forecast into coaching guidance (heat derating + hydration, cold layers, wind→effort, rain→indoor; pure,
     6 tests). `/api/weather?date=` (Open-Meteo, FREE/no-key) + MCP `get_weather` tool; athlete location auto-derived from
     recent GPS activities (no new UI; `needsLocation` → coach asks their city). Coach prompt: call get_weather before an
     outdoor session + DERATE in heat, fold into the plan/notes. Verified live (Montreal feels-like 32°C → heat:high). On QA.
-340. 🔨 **Banner for activities that haven't received full feedback (option A).** JM 2026-07-03 (mock A picked). Done:
+340. 🧪 **Banner for activities that haven't received full feedback (option A).** JM 2026-07-03 (mock A picked). Done:
     History page shows an amber roll-up banner ("N sessions still need your feedback") + a knock-out list (oldest first),
     each row = sport emoji, title·day, missing chips + a richness progress bar, deep-linking to the activity's feedback.
     Nag only on the CORE (feel + RPE) so it's not spammy — custom fields drive the % but not the flag. `feedbackGaps.ts`
     (5 tests) + `IncompleteFeedbackBanner` in Logs.tsx. Self-validated vs mock A. On QA.
-339. 🔨 **Coach scheduled a GYM and a RUN the SAME day — "crazy".** JM 2026-07-03. Respect training frequency (#316) +
+339. 🧪 **Coach scheduled a GYM and a RUN the SAME day — "crazy".** JM 2026-07-03. Respect training frequency (#316) +
     availability; don't double-book a day unless the athlete explicitly wants a double. **Fixed by #345** (maxPerDay cap,
     default 1, in the coach prompt). On QA.
-338. 🔨 **Coach CHAT on the app = wall of text, no titles.** JM 2026-07-03. Root: the chat rendered coach text as PLAIN
+338. 🧪 **Coach CHAT on the app = wall of text, no titles.** JM 2026-07-03. Root: the chat rendered coach text as PLAIN
     text (markdown showed literally). Done: (a) a tiny dependency-free, CSP-safe markdown-lite renderer — `chatFormat.ts`
     (parse **bold** / "- " bullets / "## "+bold-line headers → blocks; 7 tests) → `ChatBody` renders React nodes (no HTML
     injection) with `.chat-h/.chat-p/.chat-ul` styles; (b) coach prompt now says "format for a phone — lead with the
@@ -971,23 +978,23 @@ test guide → the **🧪 Test guide** section below.
     showed in BOTH Profile (52.1) and Stats — "confusing, streamline." Done: removed BenchmarksCard + all per-sport stat
     cards/SleepNeed/zones from Profile; Profile now links to Stats for data. Profile = preferences (coach, sports, sex,
     goals, availability, equipment, diet, learn-readiness). 274 tests green. On QA — awaiting JM ✅.
-337. 🔨 **Learned-stats system: Manual/Auto/Computed picker for every benchmark + "when computed lands".** JM 2026-07-03:
+337. 🧪 **Learned-stats system: Manual/Auto/Computed picker for every benchmark + "when computed lands".** JM 2026-07-03:
     VO₂max was terrible (used sparse running). Done: cycling VO₂max from **5-min MAP power** (`10.8·W/kg+7`), not FTP;
     running VO₂max suppressed when <4 recent runs; headline uses the athlete's PRIMARY sport; sleep-need joins the picker;
     each stat shows its theory GATE when computed isn't ready ("after a hard ~5-min bike effort", "in ~N more nights —
     needs 21 nights"). `vo2max-submax.ts` (17 tests). Verified her number is realistic (Coros 49). On QA — awaiting JM ✅.
-335. 🔨 **Training frequency = free NUMBER field, not fixed 3/4/5/6 chips (#316b).** JM 2026-07-02: chips "stupid", just a field. Done: number input 0-14 days/week.
-334. 🔨 **Chart y-axis crammed + too close to the "PLANNED PACE" title.** JM 2026-07-02: the pace chart's y labels
+335. 🧪 **Training frequency = free NUMBER field, not fixed 3/4/5/6 chips (#316b).** JM 2026-07-02: chips "stupid", just a field. Done: number input 0-14 days/week.
+334. 🧪 **Chart y-axis crammed + too close to the "PLANNED PACE" title.** JM 2026-07-02: the pace chart's y labels
     (5:59/6:03/6:07…) crowd the title and are too dense/non-linear. **Folded into #344** (min axis span spreads the
     labels; step profile removes the near-vertical clutter). On QA — verify the title spacing reads OK too.
-333. 🔨 **COMPLETED run activity renders POWER (avg 220 W, POWER CURVE, TIME-IN-ZONE by FTP) — SHE WAS RUNNING.** JM
+333. 🧪 **COMPLETED run activity renders POWER (avg 220 W, POWER CURVE, TIME-IN-ZONE by FTP) — SHE WAS RUNNING.** JM
     2026-07-02 (screenshots, Garmin FR255). Done: ActivityDetail now branches on sport — a RUN shows PACE everywhere:
     hero/chips are pace-based (distance, avg pace, load, HR — no watts/NP/VI/eFTP); a **PACE timeline** (min/km from
     velocity_smooth, faster=up) + HR/altitude/cadence; a **Pace tab** with a **pace curve** (best avg pace by duration,
     inverted log axis) + **time-in-PACE-zone** (Daniels, off threshold pace). Added velocity_smooth/distance streams +
     `PaceCurveChart` + TrendChart `invert`. Pure maths in `run-analysis.ts` (7 tests). Run-gated → zero ride regression.
     Self-validated vs mock (mockups/run-analysis-check.html). On QA. NB: needs threshold pace set for the zone bar.
-332. 🔨 **Gym warm-up/cool-down are COMBINED multi-move lines with no demo.** JM 2026-07-02 ("you combine 3?!"). Picked
+332. 🧪 **Gym warm-up/cool-down are COMBINED multi-move lines with no demo.** JM 2026-07-02 ("you combine 3?!"). Picked
     **option A** (individual demo'd moves under a header). Confirmed the library covers warm-up moves (99% w/ media: arm
     circles, leg swings, high knees, cat-cow, jogging in place…). Done: `create_workout` gains a `section`
     ('warmup'|'main'|'cooldown') field + guidance to author warm-up/cool-down as INDIVIDUAL library moves (each an exId),
@@ -995,19 +1002,19 @@ test guide → the **🧪 Test guide** section below.
     its own demo row); the GymPlayer already plays them individually now. Mock A approved. On QA.
     **Test:** ask the coach for a gym session → the plan shows warm-up as separate demo'd rows under a "🔥 Warm-up" header,
     not one garbled line; each warm-up move opens a real demo video.
-331. 🔨 **Platyplus renders a RUN as WATTS (117 W, "PLANNED POWER", Z3) + intervals shows empty/"% (0-0w)".** JM
+331. 🧪 **Platyplus renders a RUN as WATTS (117 W, "PLANNED POWER", Z3) + intervals shows empty/"% (0-0w)".** JM
     2026-07-02 (screenshots). The endurance detail (CoachPlanDetail) + charts are power-only; a run must show PACE
     (min/km) using threshold pace, never watts. **Done** (PLANNED view): CoachPlanDetail shows PLANNED PACE, native
     "% pace" text pushes to intervals, pacing corrected + calibrated (#343) + chart fixed (#344). On QA. NB: the
     COMPLETED/analysed run view is the sibling #333 (still open).
-330. 🔨 **Post-workout feedback form PRE-FILLED with fake values (POOR + RPE 10) + WRONG SPORT (cycling fields on a run).**
+330. 🧪 **Post-workout feedback form PRE-FILLED with fake values (POOR + RPE 10) + WRONG SPORT (cycling fields on a run).**
     JM 2026-07-02 (St-Lambert run). Done: (a) **phantom guard** — `readIcuFeedback` returns null unless a custom field is
     present, so Strava/coach-imported feel/RPE no longer show as "already logged"; form starts blank (already shipped +
     tested). (b) **running fields** — new `RUN_FIELDS` (no "saddle"; Pain = knee/shin·calf/foot·ankle/hip/IT band/hamstring;
     running Fuel), `FIELDS.run` uses them, and BOTH the app read (`readIcuFeedback`, sport-aware) AND the server write
     (`ICU_FB_FIELDS_RUN`) map through the run options so the round-trip + coach message stay consistent. 6 read-feedback
     tests. On QA.
-329. 🔨 **Factor the MENSTRUAL CYCLE into coaching + readiness — with a defined FORMULA.** JM 2026-07-02 (very important).
+329. 🧪 **Factor the MENSTRUAL CYCLE into coaching + readiness — with a defined FORMULA.** JM 2026-07-02 (very important).
     Formula done earlier (server/cycle.js, 10 tests, on prod). NOW wired end-to-end: `/auth/readiness` derives the phase
     (intervals `menstrualPhase` → else stored cycle start+length via phaseFromDay), **passes cyclePhase to the readiness
     engine** (luteal RHR↑/HRV↓ no longer docks Energy) AND stashes it so **buildSystemPrompt injects the phase into the
@@ -1022,7 +1029,7 @@ test guide → the **🧪 Test guide** section below.
 328. 🔨 **Running pace + threshold must display in MIN/KM everywhere.** JM 2026-07-02. intervals threshold_pace is stored
     in m/s (converted); UI + coach must always SHOW running pace/threshold as m:ss/km, never watts/%/m/s. Verify every run
     surface (plan, player, stats, coach text). Ties #312/#313. gymapp-only.
-327. 🔨 **VO₂max shown for wife looks too high (doubt 52.1).** JM 2026-07-02. Fixed in `vo2max-submax.ts` (#234/#337):
+327. 🧪 **VO₂max shown for wife looks too high (doubt 52.1).** JM 2026-07-02. Fixed in `vo2max-submax.ts` (#234/#337):
     running now PREFERS VDOT from real pace and no longer lets the HR-ratio method (inflated by an ASSUMED 220−age HRmax)
     win — and when VDOT vs HR-ratio diverge >6, the value is flagged **low confidence**; HR-ratio alone is 'low'; cycling
     comes from 5-min MAP power. The Benchmarks card shows the confidence + source. No more phantom 52 for a 6:45/km runner.
@@ -1142,7 +1149,7 @@ test guide → the **🧪 Test guide** section below.
     (f) **analyze intervals FIRST before asking** (e.g. pace) — after Strava-in-intervals there's 3-month history.
     (g) **too many questions + wall of text** — ask few, be terse. (a-d client; e-g coach onboarding prompt.) gymapp-only.
 
-305. 🔨 **Create the intervals custom fields for NEW users + TELL them.** JM 2026-07-02: important we create the fields AND
+305. 🧪 **Create the intervals custom fields for NEW users + TELL them.** JM 2026-07-02: important we create the fields AND
     inform the user. STATUS: creation handled (#288 on /auth/icu connect + onboarding-complete + feedback path, guarded).
     ADD: tell the user — `ensureIcuFields` now pushes a bell notification when it actually CREATES fields ("Added N private
     feedback fields to your intervals for coach analysis"). gymapp-only.
@@ -1170,32 +1177,32 @@ test guide → the **🧪 Test guide** section below.
     video · 1379 image-only (Centr .jpg) · 49 no-media. Matcher now PREFERS video (#296) so prescribed exercises resolve to
     video ~93%+. Options: (a) drop the 49 no-media + hide image-only from browse; (b) source video for image-only from OPEN/
     FREE libs (wger, free-exercise-db, exercisedb). JM prefers videos. Decision needed before deleting 1379 entries.
-299. 🔨 **Auto-trigger coach review on activity completed + feedback — EXISTS, verify.** JM 2026-07-02. VERIFIED wired in
+299. 🧪 **Auto-trigger coach review on activity completed + feedback — EXISTS, verify.** JM 2026-07-02. VERIFIED wired in
     code: `/auth/activity/:id/feedback` → `runCoachTask` (server.js:772-777) reviews the activity → `save_coach_review`
     (→ intervals Notes #290 + bell #233) + `set_activity_text` (#289). Gated on `coachProfile`. JM to verify end-to-end on prod.
 
-298. 🔨 **Tag band exercises + make "Bands" a filter/equipment.** JM 2026-07-02: "identify and tag the ones with small
+298. 🧪 **Tag band exercises + make "Bands" a filter/equipment.** JM 2026-07-02: "identify and tag the ones with small
     band and make this available as a filter and equipment." FOUND: equipment "Bands" already exists (203 exercises) + the
     equipment filter is data-driven, so a Bands chip already showed — BUT ~25 band-ASSISTED moves (e.g. "Barbell Banded
     Squat", "Deadlift with Bands") were tagged by primary kit (Barbell/Dumbbell) so they were missed. FIXED: catalog.ts
     derives a `band` flag (equipment 'Bands' OR band in name) → 228 flagged; the "Bands" filter chip now matches the flag
     (catches band-assisted too); "Bands" always present in the equipment list. gymapp-only. **JM to verify on QA.**
-297. 🔨 **Tempo chip (#284) not showing in dev.** JM 2026-07-02. VERIFIED in code: the tempo pill renders on the gym cards
+297. 🧪 **Tempo chip (#284) not showing in dev.** JM 2026-07-02. VERIFIED in code: the tempo pill renders on the gym cards
     (CoachPlanDetail: `tempo {x.tempo}` on main-set reps; GymPlayer pre-start line shows `· tempo {ex.tempo}`), and
     `withDefaultTempo` defaults reps-mode exercises to `3-1-1-0` on save — so it always has a value. Likely an old build.
     JM to re-verify on prod. gymapp-only.
-296. 🔨 **Some exercises still have no video — the free library should cover them.** JM 2026-07-02. Root: it was FUZZY
+296. 🧪 **Some exercises still have no video — the free library should cover them.** JM 2026-07-02. Root: it was FUZZY
     NAME-matching (matchExercise), which misses when the authored name doesn't token-match. Confirmed the library is 99%
     media-covered — so the gap is matching, not missing clips. Fix: new `resolveDemo(exId, name)` prefers the catalog
     **exId** the coach sets (search_exercises always returns a real entry with media) and only falls back to name-match;
     CoachPlanDetail now uses it. Ties #332 (coach now sets exId per move). JM to verify on prod. gymapp-only.
-295. 🔨 **Pre-workout GYM insights — show stats before starting.** JM 2026-07-02. VERIFIED implemented: GymPlayer pre-start
+295. 🧪 **Pre-workout GYM insights — show stats before starting.** JM 2026-07-02. VERIFIED implemented: GymPlayer pre-start
     (`!started && !done`) shows, per exercise, a **suggested working weight** (est 1RM × prescribed reps via weightForReps),
     **est 1RM**, and **last session's sets** — plus the demo thumb + tempo. JM to verify on prod. gymapp-only.
-294. 🔨 **Lost the gym REORDERING page in dev.** JM 2026-07-02. VERIFIED present: GymPlayer pre-start renders the ↑/↓ reorder
+294. 🧪 **Lost the gym REORDERING page in dev.** JM 2026-07-02. VERIFIED present: GymPlayer pre-start renders the ↑/↓ reorder
     buttons per exercise; it shows for any FRESH gym session (only skipped when RESUMING saved mid-workout progress —
     correct). Likely an old build or a resumed session. JM to re-verify on prod. gymapp-only.
-292. 🔨 **Power-curve chart missing the hover scrubber the timeline has — standardize.** JM 2026-07-02 (DEV): the timeline
+292. 🧪 **Power-curve chart missing the hover scrubber the timeline has — standardize.** JM 2026-07-02 (DEV): the timeline
     charts show a vertical line + tooltip with the value at a point on hover; the POWER CURVE doesn't. "Standardize those
     graphs to be consistent." FIXED: `PowerCurveChart` now has the same hover scrubber — snaps to the nearest curve point,
     draws the vertical line + highlighted dot, and a `.chart-tip` tooltip ("20m · 179 W"). Same interaction/classes as the
@@ -1233,20 +1240,20 @@ test guide → the **🧪 Test guide** section below.
     title/description onto the completed activity → nothing renames. FIX: add a Platyplus tool + server endpoint to PUT a
     public-safe `name` + `description` on the intervals activity (syncs to Strava); instruct the coach (post-workout flow)
     to set them per instructions_public_text (center the workout, no private-life/health leaks). gymapp-only.
-288. 🔨 **New users won't have the custom feedback fields in intervals — create them on connect.** JM 2026-07-01:
+288. 🧪 **New users won't have the custom feedback fields in intervals — create them on connect.** JM 2026-07-01:
     "a new user might not have the fields created (custom) so you'll have to create them in intervals in onboarding."
     Right — the 6 ACTIVITY_FIELDs (LegsBefore/LegsAfter/FuelGI/PainNiggles/LifeConstraint/MentalState) exist on JM's
     account but not a fresh one, so the 1-based values we write have nowhere to land. FIXED: `ensureIcuFields(user)` in
     server — GETs `/athlete/{id}/custom-item`, creates any missing field (POST custom-item, type select, options with
     1-based values matching icu-fields.ts), idempotent + best-effort. Called from `/auth/icu` whenever a key is set
     (covers onboarding connect + reconnect). gymapp-only. **JM to verify on a fresh QA account.**
-287. 🔨 **Free-text comment doesn't sync to intervals (feel/RPE/fields do).** JM 2026-07-01 (QA): entered a comment on
+287. 🧪 **Free-text comment doesn't sync to intervals (feel/RPE/fields do).** JM 2026-07-01 (QA): entered a comment on
     today's activity in Platyplus; the rest synced but the comment didn't appear in intervals. ROOT CAUSE: the comment
     isn't a field — it belongs in the intervals MESSAGE thread, and the write-back only PUT the custom fields. FIXED:
     `syncActivityNote(user, id, content)` POSTs the note to `/activity/{id}/messages` (deduped — skips if an identical
     comment already exists, so re-saving doesn't spam). Wired into `/auth/activity/:id/feedback`. Reads already surface it
     (#286 fetchActivityThread). gymapp-only. **JM to verify on QA.**
-286. 🔨 **Monday post-workout round — bi-directional feedback + coach text + charts to standard (a #273 re-report).**
+286. 🧪 **Monday post-workout round — bi-directional feedback + coach text + charts to standard (a #273 re-report).**
     JM 2026-07-01 testing "Monday" (completed ride i161348698): (a) "most feedback from intervals were NOT collected = no
     bi-directional sync" — his feel/RPE/fields didn't show; (b) "anything else should have my comments, it's empty" — his
     free-text comment didn't show; (c) "notes contain the description, it's wrong and not the coach feedback" — the plain
@@ -1280,7 +1287,7 @@ test guide → the **🧪 Test guide** section below.
     session-level `tip`/focus. Coach prescribes them (update the coach prompt + create_workout tool). Show on the exercise
     card (planned/player/completed) + a workout tip banner. Pairs #242 (exercise list) + #255 (per-exercise insights) +
     the gym post-workout rework. Mock-first. gymapp-only.
-285. 🔨 **Gym COMPLETED view still the OLD form (PostWorkout /feedback/:id) — doesnt match #273 mock.** JM 2026-07-01
+285. 🧪 **Gym COMPLETED view still the OLD form (PostWorkout /feedback/:id) — doesnt match #273 mock.** JM 2026-07-01
     ("not much like the mockups"). #273 rich view is on ActivityDetail (device rides/runs); coach-plan + GYM completions go
     through PostWorkout, which is the old feel/RPE form. Rework the completed-workout path (esp. gym) to the #273 mock:
     verdict + sets/PR + feedback collapse. Unify onto one component with ActivityDetail. gymapp-only.
@@ -1290,7 +1297,7 @@ test guide → the **🧪 Test guide** section below.
     AND the revisit path PostWorkout `/feedback/:id` (loads the local log by `plan-<id>` + PR baseline + review) instead of the
     bare feel/RPE form. PR badge from bestE1rmByExercise. **JM to verify on QA.**
 
-283. 🔨 **Remove direct Platyplus↔Strava connect (use intervals as the hub).** JM 2026-07-01: his wife hit Strava 403
+283. 🧪 **Remove direct Platyplus↔Strava connect (use intervals as the hub).** JM 2026-07-01: his wife hit Strava 403
     "limit of connected athletes exceeded" — Strava caps an API app at 1 athlete until reviewed, and it's redundant since
     intervals already aggregates Strava/Garmin/Coros/Wahoo. REMOVED: the "Connect with Strava" UI in AccountSection + the
     coach's Platyplus-Strava guidance; onboarding + APP_HELP now say connect Strava/device INSIDE intervals.icu. KEPT:
@@ -1302,11 +1309,11 @@ test guide → the **🧪 Test guide** section below.
     layer / string catalog), translate app copy + coach-facing labels; the COACH itself can already reply in the user's
     language via the prompt. Sizeable (touches most components) — do it as one pass post-launch. gymapp-only.
 
-281. 🔨 **Login by EMAIL (not just username).** JM 2026-07-01: allow email as the credential. Client already offered
+281. 🧪 **Login by EMAIL (not just username).** JM 2026-07-01: allow email as the credential. Client already offered
     "Username or email"; server `findByLogin` compared the raw stored email so it broke on any uppercase. FIXED: normalize
     both sides to lowercase (+ trim). Email or username both work now. gymapp-only.
 
-280. 🔨 **PRE-workout UX rework — KEEP THE SAME SPIRIT as the post-workout view (#286).** JM 2026-07-01: "let's keep the
+280. 🧪 **PRE-workout UX rework — KEEP THE SAME SPIRIT as the post-workout view (#286).** JM 2026-07-01: "let's keep the
     same spirit for pre-workout." Mirror the LOCKED post-workout look on PlanDetail + CoachPlanDetail: **planned
     SegmentProfile thumbnail** (same clean treatment as PowerBlocks), **hero+chips** target summary (target TSS/IF/
     duration/zones), a **coach insight/tip line under EVERY section** (what to expect, key set, cues), and the planned
@@ -1325,7 +1332,7 @@ test guide → the **🧪 Test guide** section below.
     line, + the existing structure list + coach shell. New pure helpers `plannedSeries`/`plannedLoad` (IF/TSS) + tests.
     Gym plans keep the exercise list (#242/#284). **JM to verify on QA.**
     #167 (gym-player pre-workout time estimate). Build alongside #273 to reuse components. gymapp-only.
-279. 🔨 **Missing-data handling: graceful degrade + "unlock" nudge + label estimates (don't fabricate).** JM 2026-07-01
+279. 🧪 **Missing-data handling: graceful degrade + "unlock" nudge + label estimates (don't fabricate).** JM 2026-07-01
     ("what happens if we don't collect data needed for coach calls / estimates?"). AUDIT: pure calcs already return null →
     UI shows "set X"/manual fallback; readiness gated on 14-day baseline (cold-start null); VO₂max/BMR null when inputs
     missing; coach told "adapt, don't invent" + onboarding data-readiness gate. RISK found: workout chart showed watts off a
@@ -1341,23 +1348,23 @@ test guide → the **🧪 Test guide** section below.
     parsing, session handling (Claude `--resume`; others manage history ourselves). The coach IP (prompt/tools/
     coachProfile/coachMemory) is provider-agnostic — only the runner changes. Note: consumer-subscription hosting has ToS
     friction (see design analysis) — this is for QA/self-host, provider-selectable per user. gymapp-only.
-277. 🔨 **Manual/Computed flow: add AUTO (computed-when-ready, manual until then).** JM 2026-06-30: when computed isn't
+277. 🧪 **Manual/Computed flow: add AUTO (computed-when-ready, manual until then).** JM 2026-06-30: when computed isn't
     ready he has to remember to switch to computed later — wants to "select computed but use manual until we learn enough."
     BUILT: statPrefs gains `auto` (now the DEFAULT). Benchmarks sheet = 3-way Manual / Auto / Computed with a hint
     explaining auto; the tag shows "auto · computed" or "auto · manual" so it's clear what's driving. Resolution: auto/
     computed prefer the computed value when available, fall back to manual. Server buildSystemPrompt honours auto too
     (`wantsComputed` helper) so the coach uses the estimate once ready. gymapp-only.
-276. 🔨 **Workout power shows % on dev but WATTS on QA — JM wants WATTS.** JM 2026-06-30: same workout rendered % of FTP on
+276. 🧪 **Workout power shows % on dev but WATTS on QA — JM wants WATTS.** JM 2026-06-30: same workout rendered % of FTP on
     dev, watts on QA — `SegmentProfile` shows watts only when an `ftp` prop is passed, and the detail pages sourced it from
     the local `getSetting('ftp')` which the dev test user lacked. FIXED: PlanDetail + CoachPlanDetail now resolve
     `ftp = plan.ftp || localFtp || user.ftp || 200`, so the chart always renders watts (real FTP when known, 200 W
     fallback otherwise). gymapp-only.
-275. 🔨 **Running "Threshold" stat cell was EMPTY + not editable there.** JM 2026-06-30: the Threshold MiniCard on the
+275. 🧪 **Running "Threshold" stat cell was EMPTY + not editable there.** JM 2026-06-30: the Threshold MiniCard on the
     Running stats page was hardcoded `null` (showed "—") though a threshold pace exists, and he wanted to edit it there,
     not only in Profile. FIXED: RunningStats Threshold cell now shows the pace and is tap-to-edit inline (parses m:ss,
     saves via saveSportStat → syncs to intervals + updates VDOT). (Also confirms #269 VO₂max fix: now reads 50.5 from HR,
     not 43.9.) gymapp-only.
-274. 🔨 **"Why a beaver?" — onboarding used 🦫 (beaver) but the brand is Platyplus (platypus).** JM 2026-06-30. Today card
+274. 🧪 **"Why a beaver?" — onboarding used 🦫 (beaver) but the brand is Platyplus (platypus).** JM 2026-06-30. Today card
     was fixed earlier; NOW the remaining 3 (OnboardReturnBar bar, Chat onboarding avatar + "Build my first week" button)
     also use the real Platyplus logo (favicon.svg), no beaver anywhere. `grep 🦫 src/` = 0. JM to verify on prod. gymapp-only.
 273. 🔨 **Post-workout UX, per activity type — intervals.icu-style analysis + coach text. MOCK LOCKED (5 rounds).**
@@ -1383,12 +1390,12 @@ test guide → the **🧪 Test guide** section below.
     • **TRIMP**: surface in stats + use as the LOAD driver when no power (HR-only runs/indoor).
     Build: charts from activity streams (fetchActivityStreams #51); pre/post keyed on whether a coach-review exists.
     Pairs #54 + #91 + #255. gymapp-only.
-272. 🔨 **Onboarding chat ERRORED: "No conversation found with session ID …".** JM 2026-06-30 (dev test of #257): tapping
+272. 🧪 **Onboarding chat ERRORED: "No conversation found with session ID …".** JM 2026-06-30 (dev test of #257): tapping
     Set me up → coach chat died with a stale-session error. ROOT CAUSE: `/auth/chat` blindly passed `--resume
     <user.chatSession>`, but claude's local session store had been cleared (restart/deploy) → resume hard-fails. FIXED:
     dev path now retries ONCE with a fresh thread when resume fails ("no conversation found"); QA/prod helper path clears
     the stale id + asks the user to resend. So onboarding (and any chat) self-heals instead of dying. gymapp-only.
-271. 🔨 **Running threshold suggestion: ASSESS confidence before suggesting (don't push a slower pace off thin data).**
+271. 🧪 **Running threshold suggestion: ASSESS confidence before suggesting (don't push a slower pace off thin data).**
     JM 2026-06-30 (dev): the #215 Critical-Speed estimate suggested a threshold SLOWER than set (5:21 vs 4:57), bare "Use"
     button → looks like an unexplained downgrade. JM: "if we're not confident because the user barely ran, we should
     assess before suggesting." FIXED: server `/run-estimate` now gates on recent run VOLUME (≥4–8 runs + km in 6 wks) AND
@@ -1402,7 +1409,7 @@ test guide → the **🧪 Test guide** section below.
     persists; clicking sync re-resolved via the key). TODO: confirm no code path clears icuKey; consider the client
     auto-retrying the athlete pull / showing "reconnecting" instead of "Connect" right after a deploy. Watch for recurrence;
     not reproduced after sync. gymapp-only.
-269. 🔨 **VO₂max too LOW / wrong again (Profile + per-sport).** JM 2026-06-30: Profile showed VO₂max 43.9 = ONLY the
+269. 🧪 **VO₂max too LOW / wrong again (Profile + per-sport).** JM 2026-06-30: Profile showed VO₂max 43.9 = ONLY the
     cycling Coggan (10.8·FTP/wt+7 = 10.8·260/76+7) and ignored the HR-ratio method we built in #234 → under-rated. ROOT
     CAUSE: Profile used the old `estimateVo2max` (Coggan + VDOT only), not `headlineVo2max` (#234, incl. HR-ratio
     15.3·HRmax/HRrest, ranked by confidence). FIXED: Profile now fetches resting HR from wellness + uses
@@ -1417,7 +1424,7 @@ test guide → the **🧪 Test guide** section below.
     the Platyplus profile, and WRITE BACK on edit (mirror #210 ftp/maxHr two-way). This FEEDS #265 (BMR/TDEE/protein need
     sex+height+age+weight) — so #265's inputs come from intervals, edited in either place. Manual fallback for the few
     fields intervals lacks. gymapp-only. Pairs #265 + #257 (onboarding).
-267. 🔨 **Intervals sync doesn't REMOVE upstream-deleted activities.** JM confirmed: the session was CREATED in
+267. 🧪 **Intervals sync doesn't REMOVE upstream-deleted activities.** JM confirmed: the session was CREATED in
     intervals then DELETED there, but stayed in Platyplus → a device/intervals activity served from cache (the live fetch
     shouldn't return a deleted one). FIXED: intervals proxy now sends `Cache-Control: no-store` + client `fetchActivities`
     uses `cache:'no-store'`, so a deleted-upstream activity can't be served stale. Manual test: delete an activity in
@@ -1427,7 +1434,7 @@ test guide → the **🧪 Test guide** section below.
     History merges a cached copy). FIX: on activity sync, reconcile = anything previously synced from intervals that's no
     longer in the fetched window should be removed/hidden (mirror the plan reconcile #150/#185, but for ACTIVITIES). Check
     where History merges intervals activities (`platyplus-activity-flow`) + any local cache. gymapp-only.
-266. 🔨 **Passkey button does NOTHING on desktop (prod).** JM 2026-06-30: a fresh desktop has NO passkey, so the
+266. 🧪 **Passkey button does NOTHING on desktop (prod).** JM 2026-06-30: a fresh desktop has NO passkey, so the
     SIGN-IN button can't do anything useful + the only feedback was a tiny error line → "nothing happens". JM chose:
     A (suggest add after login) + C (clear error if you try passkey login with none). BUILT: (A) `PasskeyPrompt` modal —
     one-time, dismissible, shows after sign-in when WebAuthn is supported AND the account has 0 passkeys on this device →
@@ -1435,7 +1442,7 @@ test guide → the **🧪 Test guide** section below.
     ("No passkey on this device yet — sign in with your password, then we'll offer to set one up.") instead of dying
     silently. Registration still also available in Settings → Passkeys. Manual test: fresh browser → password login →
     modal appears → Add → next sign-in uses Touch ID. gymapp-only.
-265. 🔨 **Eat/Fuel: capture sex + compute BMR/TDEE & protein needs.** JM 2026-06-30. The math (`nutrition.ts`, 14 tests) was
+265. 🧪 **Eat/Fuel: capture sex + compute BMR/TDEE & protein needs.** JM 2026-06-30. The math (`nutrition.ts`, 14 tests) was
     built but UNWIRED. Now wired: Profile → **FuelFields** captures the missing inputs (height + birth date; sex from
     About-you, weight from intervals) + a fuel-goal picker (lose/maintain/gain), and shows the athlete their **daily
     targets** (calories + protein/fat/carbs + BMR/TDEE). Weight is stashed server-side from wellness; **buildSystemPrompt
@@ -1454,10 +1461,10 @@ test guide → the **🧪 Test guide** section below.
     (should be blank until set). (c) **coachName "Tadej" / "1 workout" / local logs** come from browser-local storage
     (Dexie + localStorage) shared when both accounts are tested in the SAME browser — not a server leak, but confirm
     per-user scoping (namespace local data by user id, or it bleeds across accounts on one device). gymapp-only.
-261. 🔨 **Admin: click a user → see + SET a specific password.** JM 2026-06-30: as admin, click a user to expand and set a
+261. 🧪 **Admin: click a user → see + SET a specific password.** JM 2026-06-30: as admin, click a user to expand and set a
     chosen password (not just the random reset). BUILT: `POST /auth/users/:id/password` (admin, bcrypt, min 6) +
     `authApi.setUserPassword` + Admin.tsx expandable row (Set password / Random reset / delete). gymapp-only.
-260. 🔨 **Admin: "No users loaded (sign in as an admin)" shown during load (misleading).** JM 2026-06-30: the empty-state
+260. 🧪 **Admin: "No users loaded (sign in as an admin)" shown during load (misleading).** JM 2026-06-30: the empty-state
     message flashes while the list is still fetching (and the admin IS signed in). BUILT: `loaded` flag → show "Loading…"
     until the fetch resolves, then "No users yet." if truly empty. gymapp-only.
 259. ✅ **DECIDED: hand over credentials directly (no email). Free email for Add-user (account invite) + onboarding.** JM 2026-06-30: adding his wife — what's free to
@@ -1469,7 +1476,7 @@ test guide → the **🧪 Test guide** section below.
 258. 🧪 **Duplicate readiness note in TWO places (Today).** JM 2026-06-30: the collapsed check-in says "Coach knows
     you're run-down today" AND the plan banner says "A bit run-down — keep it easy…" — same insight twice. FIX: drop the
     restatement in the check-in card, keep the actionable plan banner + the "Ask coach" link. gymapp-only.
-257. 🔨 **Onboarding flow for a new user → conversational, coach-led, generates first week.** JM 2026-06-30: chosen design —
+257. 🧪 **Onboarding flow for a new user → conversational, coach-led, generates first week.** JM 2026-06-30: chosen design —
     **conversational** (real-coach chat, tap/type/VOICE, chips are suggestions not limits), capture profile basics+sports,
     real-week availability, goal+experience, equipment+constraints + anything else. TRIGGER = **welcome card on Today**
     ("Meet your coach → Set me up"); skippable for the session, reappears until done. COMPLETE = coach saved profile AND
@@ -1516,7 +1523,7 @@ test guide → the **🧪 Test guide** section below.
     → fold into coach-engine; COACHCHECK feedback protocol/completion gate. Already in Platyplus (don't re-port): readiness
     scores, base coach-engine/cycling module. **#4 (+#1) directly inform #257 onboarding** — capture structured profile +
     seed baselines at signup.
-255. 🔨 **Per-exercise INSIGHTS for gym.** 🔨 BUILT 2026-07-02: pure `exerciseInsight(pts, fmt)` in strength.ts →
+255. 🧪 **Per-exercise INSIGHTS for gym.** 🔨 BUILT 2026-07-02: pure `exerciseInsight(pts, fmt)` in strength.ts →
     tone (pr/up/stall/flat/new) + a coach-style line from the dated e1RM history (on-form/PR, trending up, stalled ~N wk
     off peak → vary reps/deload, holding → push top set). Unit-tested (6 cases). Rendered in the Progress lift modal (💡
     Coach line under the e1RM chart), unit-aware. Fits the insights-everywhere directive. **JM to verify on QA.** Original:
@@ -1583,7 +1590,7 @@ test guide → the **🧪 Test guide** section below.
     trainers|mind|cycle|plan}/:id`), `/chat`, `/build`, `/admin`. That's by design; changing it risks breaking those.
     NEEDS A REPRO to fix safely: JM — which exact page/screen loses the bar when you DON'T expect it? (Also possible: iOS
     keyboard shrinking the visual viewport.) gymapp-only.
-237. 🔨 **VDOT (from threshold pace) contradicts HR-ratio VO₂max → flag stale pace.** JM 2026-06-30 (QA). The ⚠️ stale-pace
+237. 🧪 **VDOT (from threshold pace) contradicts HR-ratio VO₂max → flag stale pace.** JM 2026-06-30 (QA). The ⚠️ stale-pace
     flag shipped; the reconcile path now exists too: the **#215** estimate-from-runs (`runEstimate`/Critical Speed) is a
     Computed threshold pace in the Manual/Auto/Computed picker (#236/#337b) → Auto/Computed drives VDOT/zones/predictions
     from real runs, and #327 flags the VO₂max low-confidence when VDOT vs HR-ratio diverge. JM to verify on prod. gymapp-only.
@@ -1649,7 +1656,7 @@ test guide → the **🧪 Test guide** section below.
     update** — when the coach adjusts the plan / posts a review, notify with a one-line "what changed" (the coach already
     has a `notify` tool — surface those in-app + push); (2) **new activity** — when a new intervals/device activity
     appears in History, notify. Tie into the existing notifications model + the releases/bell. gymapp-only.
-232. 🔨 **Activity + changes/audit log for investigation.** JM 2026-06-30 → mocked A/B/C, JM picked **A (feed)**, "mobile-
+232. 🧪 **Activity + changes/audit log for investigation.** JM 2026-06-30 → mocked A/B/C, JM picked **A (feed)**, "mobile-
     first, in Settings" 2026-07-04. Done: an append-only per-user `audit` store (capped 500) with an `audit(user, {actor,
     action, target, detail, kind})` helper captured at the mutation points — plan Created/Updated/Removed (actor **you** via
     /auth/plans vs **coach** via /api/plan), **sync** import/remove (reconcile), **check-in**, **feedback**, coach **review**,
@@ -1686,7 +1693,7 @@ test guide → the **🧪 Test guide** section below.
 > #118/#119 gym page, #129/#130/#131 activity flow, #137-#143 fixes, #75 trim. Prod healthy + 200.
 > (Earlier #1, PR #37: #125–#131 + Postgres + encrypted nightly pg_dump.)
 
-228. 🔨 **Profile vs Stats streamline — global athlete data buried in Profile; global belongs at TOP of Stats.** JM
+228. 🧪 **Profile vs Stats streamline — global athlete data buried in Profile; global belongs at TOP of Stats.** JM
     2026-06-30: "this Profile page has [the General/global stats] at the end of the page — reorganize so global is at the
     top of Stats; need to think how to streamline this too." Profile's "General" (sleep need / VO₂max / weight) + the
     per-sport "Your stats" (FTP/maxHR/threshold pace) are EDITABLE athlete inputs living in Profile, but they overlap
@@ -1870,7 +1877,7 @@ test guide → the **🧪 Test guide** section below.
     from intervals' athlete pace), derive **Daniels pace zones** (E/M/T/I/R) + **VDOT → running VO₂max**, wire into the
     RunPlayer (target paces) + coach (prescribe by pace). Pairs with #207 Phase 2 (athlete-stats) + Phase 2b (wire
     VO₂max into readiness). gymapp-only.
-208. 🔨 **Freshness recalibration — less conservative (DONE).** JM 2026-06-29: Form −1 reading 3/5 is too conservative
+208. 🧪 **Freshness recalibration — less conservative (DONE).** JM 2026-06-29: Form −1 reading 3/5 is too conservative
     + clashed with the "You're fresh" verdict. The mapping was the research-doc table (TSB −15..0 → 3). Re-anchored to
     TrainingPeaks Form zones + ACWR sweet-spot 0.8–1.3 (low risk = good): balanced (Form ~0 / ACWR ~1) → ~4; 5 reserved
     for tapered (Form ≥ +12); drops to 2–1 as real fatigue accumulates. JM real days: Form −1 → 3.4→**4**, normal days
@@ -1910,12 +1917,12 @@ test guide → the **🧪 Test guide** section below.
     just poor days), once/day (`ci.coachDecided`), and is told to lean on the check-in + **Freshness/Form** since HRV/
     sleep are usually mid-sync; it makes a STICK (one-line confirm) or ADJUST (ease + notify) call. tsc+build clean, 150
     tests green. ADVICE for JM: open Coros on waking to push the sync sooner. gymapp-only.
-205. 🔨 **WeekStrip: select edge date on week change + "Today" shows whenever off-today.** JM 2026-06-29: changing
+205. 🧪 **WeekStrip: select edge date on week change + "Today" shows whenever off-today.** JM 2026-06-29: changing
     week should move the selection — **next week → that week's Monday (first)**, **prev week → its Sunday (last)** — so
     it scrolls continuously; and the **Today** button should appear as soon as the selected date isn't today (even
     within this week), not only on a different week. BUILT (`src/ui.tsx`): `goWeek(delta)` sets the offset + selects the
     edge date; `away = offset!==0 || selected!==today` shows Today. tsc clean.
-204. 🔨 **Override indicator in the check-in (keep the auto trace).** JM 2026-06-28: after editing a score the "· auto"
+204. 🧪 **Override indicator in the check-in (keep the auto trace).** JM 2026-06-28: after editing a score the "· auto"
     tag just disappears — no sign it's a manual override + the computed value is lost. BUILT: overridden score now shows
     **"· edited (auto N)"** (amber) in both the expanded rows and collapsed chips; the ⓘ also adds "Auto computed X · you
     set Y". `Today.tsx`/`styles.css`. tsc clean.
@@ -1926,7 +1933,7 @@ test guide → the **🧪 Test guide** section below.
     COMPUTED vs the user's input** (e.g. "Freshness 3 · auto was 4"), so the override is transparent. Mock the collapsed
     states first (options-first). Build on the existing CheckInCard (`Today.tsx`); the per-day why already exists in the
     expanded ⓘ — extend it to the collapsed chips + add the computed-vs-input delta.
-202. 🔨 **Today/home redesign — "your day" as a flexible typed-block stack (DESIGN LOCKED 2026-06-28, option C2).** JM
+202. 🧪 **Today/home redesign — "your day" as a flexible typed-block stack (DESIGN LOCKED 2026-06-28, option C2).** JM
     picked **C2** (readiness verdict as a banner ON the plan card, then 🍽️ Fuel + 🧠 Mind as their own labelled cards).
     Mockups: `mockups/today-ux.html` (A/B/C), `today-blended.html` (C1/C2), `today-c2-sports.html` (multi-sport),
     `today-c2-flex.html` (extensible). **LOCKED model:** Today renders an **ordered list of typed blocks** from the
@@ -1947,14 +1954,14 @@ test guide → the **🧪 Test guide** section below.
     + Supplement (text + quick-chips) authoring. Coach MCP tools `schedule_recovery` + `schedule_supplement` added
     (gymapp `mcp/server.js` — needs host MCP re-sync to reach the live coach). tsc clean, build OK. Remaining (low-pri):
     swim/pilates body polish; algorithmic Recovery suggestion when empty.
-201. 🔨 **Score explanations: definition under the label, per-day WHY in the ⓘ.** JM 2026-06-28: the line under each
+201. 🧪 **Score explanations: definition under the label, per-day WHY in the ⓘ.** JM 2026-06-28: the line under each
     score is the *definition*; the **ⓘ should explain WHY this day's score** is what it is. Now: dim one-liner under
     each row = definition (Energy "How ready your body is to train right now", Sleep "How well last night recovered
     you", Freshness "How recovered you are from training load"); the **ⓘ = the day's actual inputs** ("Why today: HRV
     +0.4σ vs your baseline, sleep 4/5, resting HR −0.2σ" / "Form 8, acute-vs-chronic 0.7") + the 1–5 scale — computed
     from the wellness data whether or not the row is answered, with a clear "no HRV/sleep synced yet" fallback. "· auto"
     shows only while the value still equals the data-derived one.
-200. 🔨 **"Can't log in after a deploy" — PWA stale-bundle, FIXED once-and-for-all.** JM: dev/QA often won't let him log
+200. 🧪 **"Can't log in after a deploy" — PWA stale-bundle, FIXED once-and-for-all.** JM: dev/QA often won't let him log
     in after changes. Verified the SERVER is fine (QA boot "Session key loaded", sessionSecret STABLE in Postgres
     `a35f3a13…`, login endpoint clean 401 on wrong pw). Root cause = the **service worker served the OLD precached
     bundle** until every tab closed (the app never registered the SW or checked for updates; workbox lacked
@@ -1980,7 +1987,7 @@ test guide → the **🧪 Test guide** section below.
     Gym tabs you don't do (meal/mind/recovery/supplement/note stay universal). NOT changed: the **coach** (server JS, can't
     import the TS helper; keeps its own sport gating + profile-text fallback — fine) and the **mind** tab is left universal
     (open Q if JM wants it gated too). 8 new tests; existing statsGroups test still green; 160 total, tsc+build clean. gymapp-only.
-197. 🔨 **Friday shows "2 completed workouts" incl. a phantom "Ride to Skov" (prod).** JM (2026-06-27) did ONE ride
+197. 🧪 **Friday shows "2 completed workouts" incl. a phantom "Ride to Skov" (prod).** JM (2026-06-27) did ONE ride
     (not Ride to Skov). VERIFIED server+intervals CLEAN for 06-26: 1 plan + 1 activity + 1 event, all "Friday
     Endurance Ride"; **0 logs**; no "Ride to Skov" anywhere. ⇒ phantom was a **stale local `db.logs` entry**.
     **BUILT (gymapp-only, awaiting JM verify on QA/prod):** (1) History (`Logs.tsx`) calls `syncLogsFromServer()` on
@@ -2063,7 +2070,7 @@ test guide → the **🧪 Test guide** section below.
     it's a manual tap) — best proxy is a composite of HRV+RestHR+sleep, label it a soft estimate, manual tap always
     overrides. Sleep mapping today (Today.tsx `sleepTo5`): device sleepSCORE/20→1-5, else hours <5/<6/<7/<8/≥8→1-5.
     JM 2026-06-26.
-157. 🔨 **The workout TEXT Platyplus pushes to intervals reads unlike a real planned workout.** JM 2026-06-26. Mocked
+157. 🧪 **The workout TEXT Platyplus pushes to intervals reads unlike a real planned workout.** JM 2026-06-26. Mocked
     current-vs-proposed (mockups/intervals-text.html); JM picked **A · native sections + brief below**. Done:
     `nativeWorkoutText(segs, isRun)` (icu-steps.js) renders **Warmup / Nx repeats / Cooldown** blocks instead of a flat
     "## Workout" list (peels labelled warm-up/cool-down + a leading ramp; `detectRepeat` collapses periodic work into an
@@ -2071,7 +2078,7 @@ test guide → the **🧪 Test guide** section below.
     stay in Platyplus). Rides keep `workout_doc` (chart authority); runs parse the text — **round-trip VERIFIED on a real
     intervals run**: "2x" + "% pace" → 4 steps, pace targets [77,111,75,75]. 4 new unit tests (312 total). JM to verify on
     prod (open a pushed ride/run in intervals — reads native; chart still renders). gymapp-only.
-156. 🔨 **Missed-workout UX.** JM 2026-06-26 → refined 2026-07-03. Mocked 3 options (mockups/missed-workout.html); JM picked
+156. 🧪 **Missed-workout UX.** JM 2026-06-26 → refined 2026-07-03. Mocked 3 options (mockups/missed-workout.html); JM picked
     **C, refined**: DON'T leave a red "Missed" card on the calendar — instead the coach reshapes the week, REMOVES the missed
     workout, and the NOTIFICATION carries the coach's own explanation. Done: `POST /auth/plans/handle-missed` detects a plan
     1–3 days past with no completion (local log by workoutId + intervals activity by day+sport), dedups via
@@ -2079,7 +2086,7 @@ test guide → the **🧪 Test guide** section below.
     each missed + `notify` with what changed & why. Today calls it on load (server dedups). openapi updated. 308 tests.
     **Test (on prod):** have a planned session go 1 day past without completing it, open the app → within ~1 min the missed
     workout disappears from the calendar and a bell notification explains what the coach moved/dropped. gymapp-only.
-155. 🔨 **Detail page must branch on session STATE + unify the "use your phone" messaging.** JM 2026-06-26 → chose "open
+155. 🧪 **Detail page must branch on session STATE + unify the "use your phone" messaging.** JM 2026-06-26 → chose "open
     the results page" 2026-07-03. Diagnosis: desktop-no-Play was ALREADY handled (`canPlayHere` shows the inline hint, not
     a Play button); the bug was a DONE workout showing "✓ Completed" AND the full plan + Play (a mix). Done: a completed
     plan now REDIRECTS to its results — ride/run → `/activity/:id` (analysis), gym → `/feedback/:id` (session summary);
@@ -2090,7 +2097,7 @@ test guide → the **🧪 Test guide** section below.
 154. ⬜ **R4 feedback fields may not be mobile-friendly — chips, consider a dropdown.** The post-workout fields render
     as chip rows; with 6 fields × 6-8 options that's a lot of chips on a phone. JM: "not sure this is mobile friendly
     (dropdown?)". Evaluate chips vs a compact native `<select>` per field on mobile. JM 2026-06-26.
-153. 🔨 **BUG: Today week strip shows the WRONG "today" (23 highlighted on June 26).** JM 2026-06-26. Root confirmed: a PWA
+153. 🧪 **BUG: Today week strip shows the WRONG "today" (23 highlighted on June 26).** JM 2026-06-26. Root confirmed: a PWA
     left open across midnight captured `todayISO()` in `selDay` at mount and never re-anchored. FIXED: Today now re-anchors
     on `visibilitychange`/`focus` — when the date has rolled over it moves `selDay` to the new today (ONLY if the user was
     still viewing the old today, so a manually-picked day isn't clobbered) and reloads the week window. Self-heals without a
@@ -2144,7 +2151,7 @@ test guide → the **🧪 Test guide** section below.
     RunPlayer) but the "▶ Ride now" button on the ride-detail pages (CoachPlanDetail + PlanDetail) is still
     actionable on desktop. JM has said 2-3× you CANNOT ride from desktop. FIX: gate the BUTTON itself
     (canPlayHere = isMobile || sensor-bridge) so it shows "Open on your phone" on a sensor-less desktop. JM 2026-06-26.
-144. 🔨 **In-app Promote button → GitHub 403 — FIXED IN CODE.** The button POSTed a workflow_dispatch,
+144. 🧪 **In-app Promote button → GitHub 403 — FIXED IN CODE.** The button POSTed a workflow_dispatch,
     which needs `actions: write`; the PAT has Contents+PRs only → 403. Rather than ask JM to widen the PAT,
     rewrote `/auth/promote-prod` to open/reuse a dev→main PR + enable auto-merge directly (Contents+PRs —
     which the token HAS). No PAT change, no actions:write. Ships in this promotion; verify the button on prod.
@@ -2250,7 +2257,7 @@ test guide → the **🧪 Test guide** section below.
 118. 🔨 **Gym workout builder — missing/not surfaced** — there's a Ride builder (/ride-builder) and Run builder (/run-builder) but no GYM builder on the Gym page. (A `builderDraft` + `addToDraft` exist under the hood, used from ExerciseDetail.) Add/surface a "Build a gym workout" flow on the Gym page: pick exercises, set sets/reps/rest, save as a template → play. Parity with Ride/Run "+ Build".
 119. ✅ **Remove "Programs" from Gym — a program is a plan (coach's domain)** — the Gym page lists "Programs" (+ Trainers). A program = a multi-week PLAN, which the COACH now owns. Remove the Programs section from the Gym page (decide on Trainers too) so planning lives with the coach, and Gym = workouts + builder + library.
 121. ✅ **DATA-FLOW MODEL — LOCKED (2026-06-25).** Reviewed all flows w/ JM (see 🎨 Design reference "Workout data-flow model"). Principles: (a) **intervals.icu = the read hub** — Platyplus reads every completed workout back from intervals (everything lands there: Garmin/Wahoo/Coros/Strava→intervals). (b) **Platyplus is always the local home** for in-app workouts (works with ZERO external connections — coach reads its own data; intervals AND Strava are optional). (c) **MATCH-FIRST, upload-only-if-missing** — Platyplus checks intervals for a matching device activity; if present (day+sport+time) → match + enrich (don't duplicate); if absent and Platyplus is the source → upload its own. (d) Fan-out target for Platyplus-recorded workouts = **intervals direct** (no Strava dependency); Strava optional. Planning direction = Platyplus→intervals→device (Garmin/Wahoo for bike, Coros for run — Coros does planned-workout DOWNLOAD).
-122. 🔨 **BUILD #3 — indoor ride: capture stream + upload.** [BUILT, QA-verify] RidePlayer currently logs `duration` only + no push. Build: record per-second power/HR/cadence during the ride → on finish encode a FIT/activity → **upload to intervals when connected** (Strava optional), ALWAYS keep the Platyplus copy. Match-first (skip upload if a device already recorded it). (Replaces the false "indoor→FIT→Strava already works".)
+122. 🧪 **BUILD #3 — indoor ride: capture stream + upload.** [BUILT, QA-verify] RidePlayer currently logs `duration` only + no push. Build: record per-second power/HR/cadence during the ride → on finish encode a FIT/activity → **upload to intervals when connected** (Strava optional), ALWAYS keep the Platyplus copy. Match-first (skip upload if a device already recorded it). (Replaces the false "indoor→FIT→Strava already works".)
 123. 🔨 **BUILD #4 — gym source + match.** [match-first wired; manual-strength-upload deferred] Platyplus gym log (GymPlayer, real sets/reps/weights) is the exercise SOURCE. Match-first against any Coros/device strength activity in intervals (by day/sport/time) → ONE merged session = Platyplus exercises + Coros HR; optionally write the exercise list into that activity's notes (Strava shows exercises). Upload our own strength activity ONLY when no device recorded it. (Coros has no open OAuth — direct connect isn't possible nor needed.)
 124. ✅ **#5 — planned runs already mirror to intervals (planToIcuEvent run→Run); Coros pulls them.** Completed runs/walks/hikes = the read/match path (shared w/ #2). Planned runs ALREADY flow Platyplus→intervals (same mirror as rides); Coros pulls them to the watch (download confirmed). Minimal build — mostly ensure run plans publish to intervals like rides + JM verifies the Coros↔intervals planned-sync toggle.
 
@@ -2279,7 +2286,7 @@ test guide → the **🧪 Test guide** section below.
     it SIMPLE + admin-focused (no workout features). Mobile-first: user cards, role badges, "+Add user" sheet,
     per-user actions sheet (reset / change role / remove) with confirmations. Coach API token stays in Profile.
     (source: UX-BACKLOG Session-2.)
-166. 🔨 **Calendar density + polish (centerpiece).** Big, modern, close to Google Calendar: Day/Week/Month/
+166. 🧪 **Calendar density + polish (centerpiece).** Big, modern, close to Google Calendar: Day/Week/Month/
     Schedule views; clean event blocks; today highlighted. Everything (workouts, rides, runs, meals, mind) is an
     event on a day. The current calendar still feels empty/sparse — needs density + polish. (source: UX-BACKLOG Calendar.)
     **Reviewed tab-by-tab with JM (mockups/calendar-tabs.html, Now vs Proposed).** JM verdict 2026-07-04: build Day/Week/Schedule,
@@ -2289,11 +2296,11 @@ test guide → the **🧪 Test guide** section below.
     (b) **Week** — compact day-rows (name · count, today tinted), rest days collapse to one line → whole week fits;
     (c) **Schedule** — date-rail timeline (big day number, today badge, border-left column) + month separators.
     Files: `src/pages/Calendar.tsx` (WeekScrubber, week/schedule rewrites), `src/styles.css` (.cal-scrub/.cal-week/.cal-agenda). 313 tests. **On QA + prod.**
-167. 🔨 **Gym player refinements (live workout screen).** [VERIFIED built — gym player already has add-set (＋ set) + pre-start reorder/insights; verify skip-set on prod] Pre-workout **time estimate** (total + per-exercise,
+167. 🧪 **Gym player refinements (live workout screen).** [VERIFIED built — gym player already has add-set (＋ set) + pre-start reorder/insights; verify skip-set on prod] Pre-workout **time estimate** (total + per-exercise,
     reps × time-under-tension); **reorder exercises before starting**; **add-set / skip-set** in player + full
     set TABLE (JetFit-style); **history back-nav** returns to your position (today dumps to exercise 1); a
     **dedicated swipe gesture** to change exercise (currently arrows + dots). (source: UX-BACKLOG Session-4 gym player.)
-168. 🔨 **Coach generation quality.** Generated workouts have **no warm-up / cool-down**; should **group similar
+168. 🧪 **Coach generation quality.** Generated workouts have **no warm-up / cool-down**; should **group similar
     exercises by equipment** so you don't move around (e.g. dumbbell+bench together) when it doesn't compromise
     the goal; **Pallof press should be represented both sides**. (cyclingcoach / via MCP.) (source: UX-BACKLOG.)
     **Diagnosis:** the coach-engine.md (l.339-348) AND the create_workout tool ALREADY require all three — but nothing
@@ -2311,7 +2318,7 @@ test guide → the **🧪 Test guide** section below.
 169. ⬜ **Eat: meal packs + shopping-list generator.** Eat list is built; REMAINING: **meal packs** (pre-packaged
     breakfast/lunch/snack "packs" that roll up kcal + protein — JM specifically likes this); **shopping-list
     generator** for selected days / a full week (consolidate from assigned meals + snacks). (source: UX-BACKLOG Eat.)
-170. 🔨 **Train filters & sorting + equipment list.** [VERIFIED built — both list pages already filter by equipment/category/muscle + duration/level (intensity) + sort; done] Filter + sort **Workouts AND Exercises** by **equipment**,
+170. 🧪 **Train filters & sorting + equipment list.** [VERIFIED built — both list pages already filter by equipment/category/muscle + duration/level (intensity) + sort; done] Filter + sort **Workouts AND Exercises** by **equipment**,
     **time/duration**, **intensity**. Powered by a **Settings → equipment list** (what the user owns). (source:
     UX-BACKLOG 2026-06-23 session.)
 171. ⬜ **Check-in history: collapse-when-done + Logs list.** Once all 3 (energy/sleep/freshness) are logged,
