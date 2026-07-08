@@ -789,7 +789,9 @@ test guide → the **🧪 Test guide** section below.
     via `GET /auth/admin/backlog` + `PUT /auth/admin/backlog/:n` (+ openapi). (3) `src/auth/api.ts` getBacklogTriage/updateBacklog. (4) `Admin.tsx`
     now has **Backlog** (default) + Users tabs; `AdminBacklog.tsx` = filter-first list (status + priority chips w/ counts + search + sort), tap a row
     → summary + comment thread (add/delete) + priority buttons + discard/restore. Claude READS the overlay each session + folds it into the .md
-    (CLAUDE.md work-queue note + memory `platyplus-admin-backlog`). tsc + 440 tests + full build green. Admin-only. On QA to verify visually.
+    (CLAUDE.md work-queue note + memory `platyplus-admin-backlog`). tsc + 440 tests + full build green. Admin-only.
+    JM verified on QA 2026-07-08 ("looks good") → asked for **bidirectional sort**: added a ↑/↓ direction toggle (any sort — priority/#/status/
+    comments — flips asc↔desc). On QA.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

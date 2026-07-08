@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Trash2, RotateCcw } from 'lucide-react'
+import { Trash2, RotateCcw, ArrowDown, ArrowUp } from 'lucide-react'
 import { authApi, type BacklogTriage, type BacklogPriority } from '../auth/api'
 
 // #438 — in-app admin backlog. The item LIST is the bundled backlog.json (built from FEEDBACK-LOG.md on
@@ -25,6 +25,7 @@ export default function AdminBacklog() {
   const [sf, setSf] = useState<StatusFilter>('open')
   const [pf, setPf] = useState<PriFilter>('')
   const [sort, setSort] = useState<Sort>('pri')
+  const [dir, setDir] = useState<'desc' | 'asc'>('desc') // sort both ways
   const [open, setOpen] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
 
@@ -56,14 +57,17 @@ export default function AdminBacklog() {
       if (ql && !`#${it.n} ${it.title} ${it.summary}`.toLowerCase().includes(ql)) return false
       return true
     })
-    return out.sort((a, b) => {
+    out.sort((a, b) => {
       const ta = tr(a.n), tb = tr(b.n)
-      if (sort === 'num') return b.n - a.n
-      if (sort === 'status') return a.status.localeCompare(b.status) || b.n - a.n
-      if (sort === 'cmts') return (tb.comments?.length || 0) - (ta.comments?.length || 0) || b.n - a.n
-      return (PRI_RANK[ta.priority || ''] - PRI_RANK[tb.priority || '']) || b.n - a.n
+      let cmp: number
+      if (sort === 'num') cmp = b.n - a.n
+      else if (sort === 'status') cmp = a.status.localeCompare(b.status) || b.n - a.n
+      else if (sort === 'cmts') cmp = (tb.comments?.length || 0) - (ta.comments?.length || 0) || b.n - a.n
+      else cmp = (PRI_RANK[ta.priority || ''] - PRI_RANK[tb.priority || '']) || b.n - a.n
+      return dir === 'asc' ? -cmp : cmp
     })
-  }, [items, triage, q, sf, pf, sort])
+    return out
+  }, [items, triage, q, sf, pf, sort, dir])
 
   const statusChips: [StatusFilter, string, number][] = [['open', 'Open', counts.open], ['todo', 'To do', counts.todo], ['build', 'Building', counts.build], ['done', 'Done', counts.done], ['discarded', 'Discarded', counts.discarded]]
   const priChips: [PriFilter, string][] = [['hi', 'High'], ['med', 'Med'], ['lo', 'Low'], ['unset', 'Unset']]
@@ -84,8 +88,11 @@ export default function AdminBacklog() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <span className="meta">Sort</span>
         <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} style={{ background: '#0b0e12', border: '1px solid #ffffff1a', color: 'var(--text,#eef1f4)', borderRadius: 8, padding: '5px 8px', fontSize: 12 }}>
-          <option value="pri">Priority ↓</option><option value="num">Newest #</option><option value="status">Status</option><option value="cmts">Most comments</option>
+          <option value="pri">Priority</option><option value="num">Item #</option><option value="status">Status</option><option value="cmts">Comments</option>
         </select>
+        <button className="icon-btn" onClick={() => setDir((d) => (d === 'desc' ? 'asc' : 'desc'))} aria-label={`Sort ${dir === 'desc' ? 'descending' : 'ascending'} — tap to flip`} title={dir === 'desc' ? 'High → low (tap for low → high)' : 'Low → high (tap for high → low)'} style={{ width: 32, height: 32, flexShrink: 0 }}>
+          {dir === 'desc' ? <ArrowDown size={16} /> : <ArrowUp size={16} />}
+        </button>
         <span className="meta" style={{ marginLeft: 'auto' }}>{list.length} shown</span>
       </div>
 
