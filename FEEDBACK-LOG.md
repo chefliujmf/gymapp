@@ -725,6 +725,16 @@ test guide → the **🧪 Test guide** section below.
     cross-user data path). REMAINING: (a) add an EXPLICIT confidentiality/no-leak rule to coachIdentity + coach-engine (never reference or
     compare to any other person; strictly private); (b) strengthen the "learn from EVERY interaction" instruction on the coachMemory block.
     gymapp + coach engine.
+431. 🔨 **DUPLICATE rides on future days — "I have multiple rides again, this bi-directional sync is buggy."** JM 2026-07-08 (prod,
+    screenshots Fri 10 + Sat 11: each day shows a plain RIDE + a RIDE·IN-APP). DIAGNOSED: NOT double-import. Each day had the real IN-APP
+    plan (new event, e.g. "Easy Aerobic Base" 121354231) AND an ORPHANED old event from a prior plan ("Easy Endurance Spin" 120867616) that
+    the coach's daily-adapt re-plan superseded but never deleted → both render. Found 4 orphans (07-09/10/11/14), all Platyplus-pushed, none
+    claimed by a plan → DELETED them (JM's calendar now clean, one session/day). SYSTEMIC: refined the reconcile orphan-GC (#429) — my first
+    pass only swept PAST + no-plan days, which MISSED these (future, plan-owns-slot, orphan=duplicate). New rule deletes an orphan when NO
+    plan owns its day+sport (leftover) OR a plan owns it but is linked to a DIFFERENT LIVE event (duplicate); SKIPS when a plan exists but
+    isn't linked to a live different event (the mid-re-push Xenia case); cap 8, prod-only. ⏳ SOURCE follow-up: the daily-adapt re-plan
+    CREATES new events but doesn't always DELETE the superseded old one — the GC is the net; the deterministic source (delete-on-replace)
+    is worth a pass. gymapp (reconcile + coach re-plan).
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

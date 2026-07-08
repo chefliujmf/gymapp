@@ -1840,25 +1840,33 @@ async function reconcileFromIcu(user, from, to) {
   // the deletion-mirror then dropped the plan → real workouts lost. Until the GC can tell a true orphan from a
   // mid-re-push transient (e.g. only sweep PAST events, or require the plan to have been gone across TWO reconciles),
   // it is **LOG-ONLY — it never deletes**. (Original empty-shell orphans are cleaned by hand instead.)
-  // #414/#423/#429 — orphan GC, re-enabled SAFELY. The Xenia regression was a mid-re-push transient on a
-  // FUTURE session; JM's leftover ("coach said rest but the workout still showed") was TODAY with NO plan.
-  // So delete an orphan ONLY when ALL hold: (a) plans ARE loaded (a stale/empty load ≠ "all orphaned");
-  // (b) the event is on/before TODAY — never touch FUTURE, that's where a re-push race lives; (c) NO plan
-  // owns that day+sport (a plan there = mid-re-push / title-changed, not a true orphan); (d) at most a
-  // handful — a big batch signals a bad plan state → skip + warn. PROD-only.
+  // #414/#423/#429/#431 — orphan GC, re-enabled SAFELY. An orphan = a Platyplus-PUSHED event that NO plan
+  // claims by icuEventId. Two real cases seen: (1) JM's DUPLICATE rides — an OLD event from a prior plan left
+  // behind after the coach re-planned the SAME day (a NEW plan+event now owns the slot); (2) a rest-day
+  // LEFTOVER — the plan was removed but its event wasn't. The Xenia regression to AVOID was a mid-re-push
+  // transient: create_workout on the same plan momentarily broke the plan↔event link (plan still there, just
+  // not linked to a live event). So delete an orphan ONLY when it's provably safe:
+  //   • NO plan for its day+sport → genuine leftover (a re-push keeps the plan, so "no plan" is never the
+  //     transient) → delete; OR
+  //   • a plan for its day+sport is linked to a DIFFERENT, LIVE event → the orphan is a duplicate → delete.
+  //   • else (a plan exists but isn't linked to a live different event) → could be mid-re-push → SKIP.
+  // Plus: plans must be loaded (a stale/empty load ≠ "all orphaned"), and cap the batch (a big one = bad
+  // plan state → skip + warn). PROD-only.
   if (!IS_STAGING && orphanCandidates.length && user.plans.length) {
-    const todayStr = await athleteToday(user)
-    const planDaySlots = new Set(user.plans.map((p) => `${p.date}|${p.sport}`))
     const evSport = (ev) => (ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym')
+    const plansBySlot = {}
+    for (const p of user.plans) { const k = `${p.date}|${p.sport}`; (plansBySlot[k] = plansBySlot[k] || []).push(p) }
     const safe = orphanCandidates.filter((ev) => {
-      const date = String(ev.start_date_local || '').slice(0, 10)
-      return date && date <= todayStr && !planDaySlots.has(`${date}|${evSport(ev)}`)
+      const date = String(ev.start_date_local || '').slice(0, 10); if (!date) return false
+      const plansHere = plansBySlot[`${date}|${evSport(ev)}`] || []
+      if (!plansHere.length) return true // genuine leftover (removed plan's event never deleted)
+      return plansHere.some((p) => p.icuEventId && String(p.icuEventId) !== String(ev.id) && liveIcuIds.has(p.icuEventId)) // a plan already owns a DIFFERENT live event → this is a duplicate
     })
-    if (safe.length > 6) {
-      console.warn(`[reconcile GC] ${user.username}: ${safe.length} safe orphan candidates — too many, SKIPPING (bad plan state?).`)
+    if (safe.length > 8) {
+      console.warn(`[reconcile GC] ${user.username}: ${safe.length} orphan candidates — too many, SKIPPING (bad plan state?).`)
     } else if (safe.length) {
       for (const ev of safe) { await deleteIcuEvent(user, { icuEventId: ev.id }); gcDeleted++ }
-      console.warn(`[reconcile GC] ${user.username}: deleted ${safe.length} orphan event(s) on/before ${todayStr}, no owning plan (${safe.map((e) => e.id).join(',')}).`)
+      console.warn(`[reconcile GC] ${user.username}: deleted ${safe.length} orphan event(s) [${safe.map((e) => e.id).join(',')}] — leftover/duplicate, no owning plan.`)
     }
   }
   // Deletion mirror (#150) + replaced-plan cleanup (#185): drop a stored plan whose
