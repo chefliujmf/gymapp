@@ -1153,11 +1153,11 @@
     },
     "/api/intervals/activities": {
       "get": {
-        "summary": "Read-through the user's recently completed intervals.icu activities (duration/distance/HR/power/Load/RPE, indoor vs outdoor). Live, not stored.",
+        "summary": "Read-through the user's recently completed intervals.icu activities (id, duration/distance/HR/power/Load/RPE, indoor vs outdoor, plus reviewed/coachTick — the coach's reviewed-vs-pending tracker, #437). Live, not stored.",
         "tags": ["intervals"],
         "security": [{ "bearerAuth": [] }],
         "parameters": [{ "name": "days", "in": "query", "schema": { "type": "integer" } }],
-        "responses": { "200": { "description": "{ connected, activities[] }" } }
+        "responses": { "200": { "description": "{ connected, activities[] } — each activity: { id, date, type, indoor, minutes, km, avgHR, avgW, load, intensity, rpe, feel, name, reviewed, coachTick }" } }
       }
     },
     "/api/athlete-metrics": {

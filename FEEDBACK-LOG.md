@@ -770,7 +770,16 @@ test guide → the **🧪 Test guide** section below.
     → 200 and sticks. BUILT: `coachTick(score10)` in server/readiness.js (maps our /10 review score → 1-5, null → neutral 3; pure + unit-tested,
     440 tests green); `postCoachNote` now PUTs `coach_tick` on every review. Verified live by round-trip (i158721911 → 4, matches its 7/10 review).
     Note: still gated on the coach passing `activityId` to save_coach_review (the separate LLM-reliability thread) — but when a review DOES post,
-    the box now ticks. Deploy + JM verifies the tick appears on a freshly-reviewed activity. Past reviews can be backfilled on request.
+    the box now ticks. DEPLOYED to prod (PR #138, commit 7fee142). JM CONFIRMED the tick works. BACKFILLED his history: 4 reviewed activities
+    ticked (14 plan-only reviews had no device activity to tick). JM: it's the coach's reviewed/not-reviewed TRACKER → see #437 (coach should READ it).
+437. 🔨 **Coach READS `coach_tick` to know what's reviewed vs still pending.** JM 2026-07-08 (framing #436): "it's the tracker for the
+    coach to know what was reviewed or not." BUILT: (1) `/api/intervals/activities` (→ MCP get_recent_activities) now returns each activity's **`id`**
+    (was MISSING — that's exactly why the coach couldn't reliably pass activityId to save_coach_review, the #436 caveat) + **`reviewed`**/`coachTick`
+    (the tracker). (2) MCP tool description updated to explain id + reviewed. (3) daily-adapt now sweeps: for any completed activity in the last week
+    with `reviewed:false`, review it with its exact id (→ ticks the box + posts the note) and set a public-safe title/desc; SKIP already-reviewed;
+    cap the few most recent. (4) openapi updated. 440 tests green. Closes the #436 reliability loop (coach gets the id straight from the read). Prod-only
+    behavior (daily-adapt off on QA); MCP auto-syncs on prod deploy. Verify: get_recent_activities shows `reviewed:true` on ticked activities + the
+    coach reviews the un-ticked ones on a daily-adapt pass.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

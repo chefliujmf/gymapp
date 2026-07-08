@@ -83,7 +83,7 @@ server.tool('get_weather',
   wrap((a) => api('GET', `/api/weather${a.date ? `?date=${a.date}` : ''}`)))
 
 server.tool('get_recent_activities',
-  "Read the athlete's recently COMPLETED activities from intervals.icu: date, type, indoor/outdoor, duration, distance, avg HR, avg power, Load (TSS), intensity (IF), RPE, feel. READ-ONLY; returns { connected:false } if intervals.icu isn't connected.",
+  "Read the athlete's recently COMPLETED activities from intervals.icu: each has `id` (the activity id — pass it to save_coach_review / set_activity_text to review or annotate THAT activity), date, type, indoor/outdoor, duration, distance, avg HR, avg power, Load (TSS), intensity (IF), RPE, feel, and `reviewed` (true once you've reviewed it — this is the reviewed/NOT-reviewed tracker; `reviewed:false` means it's still waiting for your review). READ-ONLY; returns { connected:false } if intervals.icu isn't connected.",
   { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },
   wrap((a) => api('GET', `/api/intervals/activities?days=${a.days || 14}`)))
 
