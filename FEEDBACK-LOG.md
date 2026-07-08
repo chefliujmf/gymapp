@@ -821,8 +821,11 @@ test guide → the **🧪 Test guide** section below.
     non-admin-only; simpler + lets JM test it directly + anyone can quick-report). On QA.
 441. 🧪 **Mirror PROD data → QA so QA has real-life stuff to test.** JM 2026-07-08. BUILT: `scripts/mirror-prod-to-qa.sh` (run on XPS) copies
     each real user's child rows (plans/logs/coach_reviews/checkins/calendar_items) + coach doc fields prod→QA, keyed by email (ids differ),
-    PRESERVING QA auth + keeping QA read-only toward intervals. NOT auto-run yet (holding — would reset QA mid-test). QA already READS real
-    intervals activities (shares i28814). Run on demand; optionally wire into the staging deploy. Verify: run it, QA data matches prod + QA login still works.
+    PRESERVING QA auth + keeping QA read-only toward intervals. QA already READS real intervals activities (shares i28814). RAN 2026-07-08 (JM
+    asked, before a testing pass): JM's QA data now MATCHES prod (plans 36, logs 1, coach_reviews 1→18, checkins 18) + Xenia's; QA login preserved,
+    coachProfile merged, QA healthy (200). Fix during run: the doc-merge `\copy`-into-temp-table failed (can't mix a meta-command with SQL in one
+    `-c`) → switched to **base64** (`encode`→shell→`decode`), which safely carries the multi-line coachProfile. Re-runnable on demand; could wire
+    into the staging deploy later. (Child copy is idempotent delete+copy; SIGKILL-restart reload means a brief boot 502 right after — normal.)
 442. ⬜ **Review flow: get it OFF History + return-to-list after saving.** JM 2026-07-08 (screenshots): (a) feedback rows need enough activity
     info to remember it (BUILT on the History banner: duration/distance/effort/load line + a working "Show all N" expand — but per (b) this MOVES);
     (b) "I don't want the review banner in History" → build a DEDICATED review view (reached from the Today #387 card, not `/logs`); (c) tapping a
