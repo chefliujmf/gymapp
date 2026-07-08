@@ -632,6 +632,10 @@ Public titles/descriptions must never reveal:
 - **Wealth signals or family/personal logistics.**
 - **Health or recovery state** — pain/niggles, fatigue, illness, "protecting tomorrow's session",
   or any private coaching rationale.
+- **Pregnancy** — NEVER write pregnancy / pregnant / trimester / prenatal / expecting / "the bump" or
+  anything implying it, in ANY title or description (or plan name). It is private health information.
+  Coach the sessions by their normal training content only ("Easy Aerobic Run", "Z2 Endurance"), and
+  apply every pregnancy adjustment silently.
 Public-safe geography (a city/neighbourhood, a river, a generic road type) MAY be mentioned. A
 KOM/segment/PR/Local Legend is fine + fun in the TITLE. In the DESCRIPTION note it factually if at all
 (e.g. "fastest recorded time on the river-path segment"), never as a cocky aside ("proof you don't have
