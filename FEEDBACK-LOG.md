@@ -596,11 +596,17 @@ test guide → the **🧪 Test guide** section below.
     pushed. NB the coach LLM takes several min to finish creating — don't judge "empty" from a <2-min poll. Awaiting JM ✅ on her login.
 424. 🔨 **Xenia: the HEIGHT field in her profile is BUGGY — can't enter a value.** JM 2026-07-08. ✅ FIXED: the input clamped to
     min 100 on EVERY keystroke, so typing "1" jumped to 100 → impossible to build 175. Now types freely + clamps [100,230] + saves on blur. gymapp-only.
-425. ⬜ **Coach activity descriptions/titles too casual/cocky — make them scientific, no em-dashes.** JM 2026-07-08 (example: "Another
-    Local Legend, Relaxed Miles / … Snagged a Local Legend … proof you don't have to go hard … Classic relaxing spin."). Rules for
-    `set_activity_text` + the review flow: (1) NO casual "easy/hard/whatnot/snagged/classic relaxing spin" — use ZONE terms (Z1/Z2/Z3…);
-    (2) NEVER an em-dash "—", use commas; (3) be SCIENTIFIC — name the adaptation (aerobic base/foundations, W′, threshold), not vibes.
-    Touch: set_activity_text MCP desc + coach-engine review sections + the activity-review runtime msg. gymapp + coach.
+425. 🔨 **Coach activity descriptions/titles too casual/cocky — make them scientific, no em-dashes.** JM 2026-07-08 (example: "Another
+    Local Legend, Relaxed Miles / … Snagged a Local Legend … proof you don't have to go hard … Classic relaxing spin."). Rules: (1) NO
+    casual "easy/hard/whatnot/snagged/classic relaxing spin" — use ZONE terms (Z1/Z2/Z3…); (2) NEVER an em-dash "—", use commas; (3) be
+    SCIENTIFIC — name the adaptation (aerobic base/foundations, W′, threshold), not vibes.
+    ✅ BUILT across all layers: `coach-engine.md` new "Center the WORKOUT physiologically: scientific, not cocky" section (zones + adaptation
+    + a BANNED-words list + explicit no-em-dash rule), the KOM/segment line reworded to "factual, never a brag", and the OUTPUT-ROUTING intro
+    (base + cycling + female copies); the `set_activity_text` MCP desc (scientific voice, Z1-Z5, no em-dash, factual examples); and the
+    hardcoded intro in `scripts/sync-coach-engine.mjs` so a future sync keeps it. ⚠️ SOURCE-REPO TODO: the DETAILED "Writing TEXT" body is
+    sourced from `../coach-engine-src/codex_coach/instructions_public_text.md` (NOT in this workspace) — apply the same edit there before the
+    next manual `sync-coach-engine` run or it regresses. Ships on the next prod deploy (coach-engine baked in the server image + MCP
+    auto-rsynced by deploy.sh); THEN re-run JM's recent activities to rewrite public titles/descriptions in the new voice. gymapp + coach.
 426. 🔨 **"Gym exercises have no video/pictures/thumbnails" — REGRESSION triage: server-side is 100% correct → stale PWA cache.** JM
     2026-07-08 (repeated, frustrated: glute bridge, dumbbell goblet squat, romanian deadlift). AUDITED exhaustively: JM's Jul-9 gym = 15/15
     valid exIds; every video+image FILE exists on `/srv/media` (0 missing across the whole 4530 catalog); media serves **200** over HTTPS;
