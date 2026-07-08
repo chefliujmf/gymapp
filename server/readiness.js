@@ -248,6 +248,20 @@ const _addDays = (d, n) => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(
 /** ISO Monday (0=Mon week) on/before `d`, as 'YYYY-MM-DD'. */
 export function isoMonday(d) { const wd = (_dow(d) + 6) % 7; return _addDays(d, -wd) }
 
+/** #439 — how much of the rolling planning horizon [today .. today+days] is populated by `plannedDates`
+ *  (any YYYY-MM-DD list). Returns { end, last, covered, empty, firstEmpty } so the coach can be handed the
+ *  EXACT gap to fill (it wasn't holding the 2-week horizon on its own). Pure + tested. */
+export function horizonCoverage(plannedDates, today, days) {
+  const set = new Set((plannedDates || []).filter(Boolean).map((d) => String(d).slice(0, 10)))
+  const end = _addDays(today, days)
+  let covered = 0, last = null, firstEmpty = null
+  for (let i = 0; i <= days; i++) {
+    const d = _addDays(today, i)
+    if (set.has(d)) { covered++; last = d } else if (!firstEmpty) firstEmpty = d
+  }
+  return { end, last, covered, empty: (days + 1) - covered, firstEmpty }
+}
+
 /** A sensible DEFAULT periodized weekly-load plan from CTL — a repeating 4-week block
  *  (build · build · peak · recovery) sized off `weeklyLoadBudget`. The coach OVERRIDES this with its own
  *  authored blocks (user.info.loadPlan); this is the seed + fallback so the forecast is never flat. */

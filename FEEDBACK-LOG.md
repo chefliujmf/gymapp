@@ -805,13 +805,14 @@ test guide → the **🧪 Test guide** section below.
     None options; add-form needs both. (d) chore = behind-the-scenes work (refactor/CI/infra); Idea can spawn multiple Features. (e) **reporter +
     timestamp** on each item (added/reported carry reporter+at; .md items get a date from the entry). Migrated the whole board to the **SHARED
     global store** (`app_meta.backlog`, `store.backlog`) so it's not per-admin — needed for #440. On QA.
-439. ⬜ **Coach must ALWAYS keep ~2 weeks of planning ahead (horizon not being held).** JM 2026-07-08: "I currently have workouts until
+439. 🔨 **Coach must ALWAYS keep ~2 weeks of planning ahead (horizon not being held).** JM 2026-07-08: "I currently have workouts until
     ~Jul 12, that's not 2 weeks. Since we have a trigger every day with the coach (after check-in), the coach should always have 2 weeks ahead
-    of planning as per our agreement." The daily-adapt msg DOES say "keep ~14 days populated ahead," but it's not happening — JM's plan runs out
-    at ~4 days. INVESTIGATE: is the daily-adapt tick firing for JM on prod? is the coach actually FILLING gaps to the horizon (vs only adjusting
-    existing sessions)? Likely fix: make the horizon-fill EXPLICIT + verifiable — the coach lists the next 14 days, finds empty days vs the target
-    weekly frequency, and adds sessions to reach it; and/or the check-in trigger msg should enforce the fill, not just adapt. Ties #367/#433. Server
-    (dailyAdaptMsg / check-in trigger). **NEXT — functional, JM flagged it.**
+    of planning as per our agreement." DIAGNOSIS (prod): the daily-adapt tick IS firing (JM's `dailyAdapt` = early+refine both ran today) — but the
+    coach only planned the current week (through Jul 13, 5 days) and left the back half of the 14-day horizon EMPTY. The soft "keep ~14 days ahead"
+    line wasn't enough. FIX: compute the EXACT gap server-side (`horizonCoverage` in readiness.js — pure + unit-tested: covered/empty/last/firstEmpty
+    over [today..today+14]) and hand the coach a non-negotiable lead directive in `dailyAdaptMsg`: "only N/15 days through {end} have anything; EXTEND
+    the plan ALL THE WAY to {end} in THIS pass" (only when empty≥3). `runDailyAdapt` passes it. 441 tests. Prod-only (daily-adapt off on QA) → verify
+    by triggering `POST /api/coach/daily-adapt` on prod after promote + confirm JM's plan fills to ~Jul 22. Ties #367/#433.
 440. 🔨 **"Report a bug or idea" for any (non-admin) user — top bar, → backlog as "under review".** JM 2026-07-08: "for a user who is not
     admin, add a button to report bug or idea, to the left of the notification icon… added to the backlog as under review, put a reporter + a
     timestamp on each item." BUILT: `ReportButton.tsx` (top bar, left of the bell, non-admins only) → a Bug/Idea form → `POST /auth/report` (any
