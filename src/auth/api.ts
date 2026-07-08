@@ -45,6 +45,8 @@ export interface User {
   learnReadiness?: boolean // #235 — auto-calibrate readiness from check-in overrides (default true)
   statsSyncedAt?: number // last successful push to intervals
   onboardedAt?: number // #257 set when the coach finishes onboarding (profile + first week)
+  cyclePhase?: string | null // #422 — current menstrual phase auto-derived from intervals wellness (last readiness read)
+  cyclePhaseAt?: string | null // #422 — the date that phase is as-of (YYYY-MM-DD)
 }
 
 export interface SportStat { ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null }

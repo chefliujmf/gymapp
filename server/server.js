@@ -31,7 +31,7 @@ import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athl
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
-import { cycleContext, normalizePhase, phaseFromDay } from './cycle.js' // #329
+import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory } from './cycle.js' // #329 (#422 phaseFromHistory)
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -103,7 +103,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, cyclePhase: u.cyclePhase || null, cyclePhaseAt: u.cyclePhaseAt || null, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').trim().toLowerCase(); return l ? store.users.find((u) => (u.username || '').toLowerCase() === l || (u.email || '').toLowerCase() === l) : undefined }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -642,8 +642,12 @@ app.get('/auth/readiness', auth, async (req, res) => {
   const today = rows.find((r) => r.date === date) || rows[rows.length - 1] || {}
   // #329 — cycle phase for female athletes: intervals wellness `menstrualPhase` if present, else derive
   // from a stored cycle start date + length. Stash it so the coach's system prompt can adjust the PLAN.
+  // #422 — order of truth: today's logged/predicted phase → DERIVE from the last PERIOD marker in the
+  // wellness history (intervals only stamps the period-start day, not every day) → manual cycleStart.
+  // The middle step is what stops us re-asking Xenia for a date intervals already has (she logged it).
   const cyclePhase = req.user.sex === 'female'
     ? (normalizePhase(today.menstrualPhase)
+      || phaseFromHistory(rows, date, req.user.info?.cycleLength)
       || (req.user.info?.cycleStart ? phaseFromDay(Math.floor((new Date(date) - new Date(req.user.info.cycleStart)) / 86400000) + 1, req.user.info.cycleLength) : null))
     : null
   if (cyclePhase) { req.user.cyclePhase = cyclePhase; req.user.cyclePhaseAt = date } else if (req.user.cyclePhase) { delete req.user.cyclePhase; delete req.user.cyclePhaseAt }

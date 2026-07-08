@@ -78,9 +78,15 @@ function CycleFields({ user, refresh }: { user: User; refresh: () => Promise<voi
   const [saved, setSaved] = useState(false)
   const save = (patch: { cycleStart?: string; cycleLength?: number }) => { authApi.saveProfile(patch).then(() => { refresh().catch(() => {}); setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {}) }
   const ph = cyclePhaseOf(start, len)
+  // #422 — if intervals wellness already gives us the phase (she logs her period there), SHOW it and
+  // don't prompt her to re-enter. Manual fields stay as a fallback for athletes who don't log it.
+  const icuPhase = user.cyclePhase ? String(user.cyclePhase).replace(/_/g, ' ') : null
   return (
     <div style={{ marginTop: 6 }}>
       <div className="section-title" style={{ fontSize: 13 }}>Menstrual cycle <span className="meta" style={{ fontWeight: 400 }}>· optional{saved ? ' · Saved ✓' : ''}</span></div>
+      {icuPhase && (
+        <p className="meta" style={{ margin: '2px 2px 8px', color: 'var(--accent)' }}>Read from intervals.icu: currently <b>{icuPhase}</b>{user.cyclePhaseAt ? ` (as of ${user.cyclePhaseAt})` : ''}. Your coach adapts load, recovery & fuelling automatically — no need to enter anything below.</p>
+      )}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Last period start
           <input type="date" className="search" style={{ maxWidth: 160 }} value={start} onChange={(e) => { setStart(e.target.value); save({ cycleStart: e.target.value }) }} />
@@ -89,9 +95,9 @@ function CycleFields({ user, refresh }: { user: User; refresh: () => Promise<voi
           <input type="number" inputMode="numeric" min={21} max={40} className="search" style={{ maxWidth: 92, textAlign: 'center' }} value={len} onChange={(e) => { const v = Math.max(21, Math.min(40, Math.round(Number(e.target.value) || 28))); setLen(v); save({ cycleLength: v }) }} />
         </label>
       </div>
-      {ph
+      {!icuPhase && (ph
         ? <p className="meta" style={{ margin: '6px 2px 4px', color: 'var(--accent)' }}>~Day {ph.day} · likely <b>{ph.phase}</b> — your coach adapts load, recovery & fuelling for it.</p>
-        : <p className="meta" style={{ margin: '6px 2px 4px' }}>Add these and your coach adapts training to your cycle phase. If you sync it in intervals, it's read automatically.</p>}
+        : <p className="meta" style={{ margin: '6px 2px 4px' }}>Log your period in intervals.icu and it's read automatically. Or enter it here as a fallback, and your coach adapts training to your phase.</p>)}
     </div>
   )
 }
