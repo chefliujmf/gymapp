@@ -1840,8 +1840,26 @@ async function reconcileFromIcu(user, from, to) {
   // the deletion-mirror then dropped the plan → real workouts lost. Until the GC can tell a true orphan from a
   // mid-re-push transient (e.g. only sweep PAST events, or require the plan to have been gone across TWO reconciles),
   // it is **LOG-ONLY — it never deletes**. (Original empty-shell orphans are cleaned by hand instead.)
-  if (!IS_STAGING && orphanCandidates.length) {
-    console.warn(`[reconcile #414/#423] orphan-GC LOG-ONLY for ${user.username}: ${orphanCandidates.length} candidate event(s) NOT deleted (${orphanCandidates.map((e) => e.id).slice(0, 6).join(',')}); ${user.plans.length} plans loaded.`)
+  // #414/#423/#429 — orphan GC, re-enabled SAFELY. The Xenia regression was a mid-re-push transient on a
+  // FUTURE session; JM's leftover ("coach said rest but the workout still showed") was TODAY with NO plan.
+  // So delete an orphan ONLY when ALL hold: (a) plans ARE loaded (a stale/empty load ≠ "all orphaned");
+  // (b) the event is on/before TODAY — never touch FUTURE, that's where a re-push race lives; (c) NO plan
+  // owns that day+sport (a plan there = mid-re-push / title-changed, not a true orphan); (d) at most a
+  // handful — a big batch signals a bad plan state → skip + warn. PROD-only.
+  if (!IS_STAGING && orphanCandidates.length && user.plans.length) {
+    const todayStr = await athleteToday(user)
+    const planDaySlots = new Set(user.plans.map((p) => `${p.date}|${p.sport}`))
+    const evSport = (ev) => (ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym')
+    const safe = orphanCandidates.filter((ev) => {
+      const date = String(ev.start_date_local || '').slice(0, 10)
+      return date && date <= todayStr && !planDaySlots.has(`${date}|${evSport(ev)}`)
+    })
+    if (safe.length > 6) {
+      console.warn(`[reconcile GC] ${user.username}: ${safe.length} safe orphan candidates — too many, SKIPPING (bad plan state?).`)
+    } else if (safe.length) {
+      for (const ev of safe) { await deleteIcuEvent(user, { icuEventId: ev.id }); gcDeleted++ }
+      console.warn(`[reconcile GC] ${user.username}: deleted ${safe.length} orphan event(s) on/before ${todayStr}, no owning plan (${safe.map((e) => e.id).join(',')}).`)
+    }
   }
   // Deletion mirror (#150) + replaced-plan cleanup (#185): drop a stored plan whose
   // intervals mirror is gone — icu-origin always, platyplus-origin ONLY when a live
