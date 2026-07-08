@@ -745,24 +745,30 @@ test guide → the **🧪 Test guide** section below.
     right edge). ✅ FIXED: `.fuel-grid` grid children lacked `min-width:0`, so a long meal title (`white-space:nowrap`) forced the cell (and
     the page) wider than the viewport instead of truncating. Added `.fuel-grid{max-width:100%}` + `.fuel-grid>.mealchip{min-width:0;display:block}`
     (the `display:block` also overrides a colliding later `.mealchip{display:flex}` rule leaking from another component). gymapp-only (CSS).
-433. ⬜ **Make Fuel SUGGESTIONS + Mind coach-driven (personalised), not algorithmic.** JM 2026-07-08: "be sure fuel suggested and mind are
-    done with coach logic, is there one?" AUDIT: currently the DEFAULT suggestions are ALGORITHMIC — `suggestMeal` picks from `recipes` by
-    category + diet + date-salt (Today.tsx:495), `meditation` = `pickByDate(mindSessions)` (Today.tsx:506). Only SCHEDULED meals/mind (coach
-    `schedule_meal`/`schedule_mind`) are coach-driven, and the coach doesn't proactively fill every day. TO BUILD: have the coach/daily-adapt
-    schedule the day's fuel + mind personalised to the training load + goals (carb-forward on a hard day, recovery-focused mind, etc.), so the
-    defaults are coach logic, not a generic pool. gymapp + coach. Mock/scope first.
-434. ⬜ **Gym LOAD not synced to intervals — 12 in Platyplus, 0 in intervals (bi-directional).** JM 2026-07-08 (Jun-19 "Afternoon
-    Weight Training"). ROOT: `planToIcuEvent` (server.js:1571) sets `ev.icu_training_load` from `plannedTss(segs)` — SEGMENT-based, so
-    ride/run only. GYM has no segments → no load pushed → intervals shows 0 (so intervals' own Form/CTL ignores gym). The KB DOES have a
-    gym-TSS method (coach-engine.md "Quantifying strength training load"). FIX: compute the gym load server-side (mirror the client's "Load 12"
-    — find its formula) + set `ev.icu_training_load` for gym plans in planToIcuEvent; backfill via resync. Ties #81 (make gym TSS KB-based, not
-    a rough estimate). gymapp (icu-steps/server).
-435. ⬜ **Activity detail page shows NO date.** JM 2026-07-08 (screenshot: "WORKOUT · INDOOR / Afternoon Weight Training" — no date). The
-    ActivityDetail header lacks the session date. Add it (absolute, e.g. "Fri, Jun 19" + relative). gymapp-only (ActivityDetail.tsx).
+433. 🔨 **Make Fuel SUGGESTIONS + Mind coach-driven (personalised), not algorithmic.** JM 2026-07-08: "be sure fuel suggested and mind are
+    done with coach logic, is there one?" AUDIT: the plumbing already existed — Today shows coach-SCHEDULED meals/mind/recovery (with the
+    coach's "why") and only falls back to the ALGORITHMIC `suggestMeal`/`pickByDate` (Today.tsx:495/506) when the coach scheduled nothing. The
+    real gap: the **daily-adapt pass only adapted TRAINING** (`dailyAdaptMsg`), never fuel/mind/recovery — so the coach never proactively filled
+    them → the static fallback showed. BUILT: `dailyAdaptMsg` (server.js:2576) now tells the coach to also FUEL demanding days (schedule_meal,
+    diet + fuel-target aware), add a MIND session where it earns its place, and RECOVERY after the hardest days — *only where it adds value*, no
+    spamming every slot. 439 tests green. Coach behavior (not pure) → manual test-guide row. Verify: run a daily-adapt pass, a hard day shows a
+    coach-scheduled meal/recovery (with a why), not the generic pick. Needs the coach running live (Tailscale).
+434. 🔨 **Gym LOAD not synced to intervals — 12 in Platyplus, 0 in intervals (bi-directional).** JM 2026-07-08 (Jun-19 "Afternoon
+    Weight Training"). ROOT: `planToIcuEvent` set `ev.icu_training_load` from `plannedTss(segs)` — SEGMENT-based, so ride/run only. GYM has no
+    segments → no load pushed → intervals showed 0. BUILT+DEPLOYED (commit 0582959): `plannedGymTss`/`estimateGymSeconds`/`gymTempoSec` in
+    server/icu-steps.js (mirror src/plan.ts estimateGymMinutes × 45 TSS/h, KB Friel); `planToIcuEvent` gym branch now sets `icu_training_load` +
+    `moving_time`/`time_target`; `POST /api/plans/resync` backfills existing plans. 41 icu-steps tests (incl. plannedGymTss). Verify on intervals
+    (a gym event shows a non-zero load) — BLOCKED on Tailscale re-auth for the live check.
+435. 🔨 **Activity detail page shows NO date.** JM 2026-07-08 (screenshot: "WORKOUT · INDOOR / Afternoon Weight Training" — no date).
+    BUILT+DEPLOYED (commit 0582959): ActivityDetail eyebrow (ActivityDetail.tsx:307) now appends the session date (weekday, month, day) from
+    `start_date_local`. gymapp-only. Verify: open any activity → the eyebrow shows the date.
 436. ⬜ **Coach "✓" review checkbox on the intervals activity no longer gets checked.** JM 2026-07-08 (screenshot: Compliance ✓ 83% but
-    "Coach ☐" unchecked; "coach used to check this box"). The coach-review marker (a custom field / the workout-done flag intervals shows as
-    "Coach") isn't being set on review. Investigate: does save_coach_review / the activity-review flow set that intervals field, and did it
-    regress? gymapp + coach (intervals field write). Needs its own pass.
+    "Coach ☐" unchecked; "coach used to check this box"). DIAGNOSIS: Platyplus creates **no** "Coach" custom field (only the 6 athlete-feedback
+    fields — Legs/Fuel/Pain…). The "Coach ✓" is driven by the coach posting a **note to the intervals activity's message thread** (`postCoachNote`,
+    server.js:2489) — which fires deterministically app-side, BUT only when `save_coach_review` is called **with** `activityId`, and that resolution
+    sits on the FLAKY LLM path (the coach often doesn't echo the activityId back). LIKELY FIX: backfill the known activityId app-side when the app
+    itself triggered the review for a specific activity, so the note (→ the "Coach" indicator) posts reliably. BLOCKED: confirming the exact
+    intervals field + reproducing needs live intervals access (Tailscale re-auth) — don't ship a fix for a field I can't observe. Needs its own pass.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
