@@ -712,6 +712,29 @@ test guide → the **🧪 Test guide** section below.
     ⏳ LATENCY: still inherent (the coach runs a full agentic turn on a ~128 KB systemPrompt); the client already shows a "reviewing…" tool
     indicator + a "waited long" note at 8s. FOLLOW-UP (optional): client optimistic-merge / poll so a turn finished-while-away appears WITHOUT
     a manual refresh (today: reopen/refresh the chat); and shrinking the systemPrompt would cut first-token time. gymapp + coach infra.
+429. 🔨 **Two ADMIN pages: (1) Activities & system info (actions done), (2) System logs (success + errors) for debugging.** JM 2026-07-08.
+    Best practices: absolute + relative timestamps, actor, action, target, LEVEL, context, filter + search. (1) = the activity/audit feed
+    (`audit()` exists per-user + AuditLog.tsx) → make it an ADMIN cross-user view of actions done (coach/user/system). (2) = NEW: capture app
+    success/error logs (console + thrown errors) into a queryable store surfaced under admin, with level (info/warn/error), ts, source/route,
+    message, stack, user. Mock-first (options). gymapp (admin UI + a log-capture layer). ⬜ pending mock.
+430. 🔨 **Coach LEARNS per-user from every interaction + STRICT confidentiality/isolation between users.** JM 2026-07-08: "for every
+    interaction between a user and the coach, update his skills/memory so the coach learns + tailors insights/feedback/plan to THAT user. This
+    knowledge must NOT affect another user (if my wife does cardio-poussette/stroller, don't bring it up to me). A user's info + interactions
+    with the coach are STRICTLY CONFIDENTIAL between them." STATUS: the infra already exists + is isolated — per-user `user.coachMemory`
+    (buildSystemPrompt injects ONLY this athlete's, server.js:1225; save_coach_memory MCP tool; the coach runs with ONLY their token, no
+    cross-user data path). REMAINING: (a) add an EXPLICIT confidentiality/no-leak rule to coachIdentity + coach-engine (never reference or
+    compare to any other person; strictly private); (b) strengthen the "learn from EVERY interaction" instruction on the coachMemory block.
+    gymapp + coach engine.
+431. 🔨 **DUPLICATE rides on future days — "I have multiple rides again, this bi-directional sync is buggy."** JM 2026-07-08 (prod,
+    screenshots Fri 10 + Sat 11: each day shows a plain RIDE + a RIDE·IN-APP). DIAGNOSED: NOT double-import. Each day had the real IN-APP
+    plan (new event, e.g. "Easy Aerobic Base" 121354231) AND an ORPHANED old event from a prior plan ("Easy Endurance Spin" 120867616) that
+    the coach's daily-adapt re-plan superseded but never deleted → both render. Found 4 orphans (07-09/10/11/14), all Platyplus-pushed, none
+    claimed by a plan → DELETED them (JM's calendar now clean, one session/day). SYSTEMIC: refined the reconcile orphan-GC (#429) — my first
+    pass only swept PAST + no-plan days, which MISSED these (future, plan-owns-slot, orphan=duplicate). New rule deletes an orphan when NO
+    plan owns its day+sport (leftover) OR a plan owns it but is linked to a DIFFERENT LIVE event (duplicate); SKIPS when a plan exists but
+    isn't linked to a live different event (the mid-re-push Xenia case); cap 8, prod-only. ⏳ SOURCE follow-up: the daily-adapt re-plan
+    CREATES new events but doesn't always DELETE the superseded old one — the GC is the net; the deterministic source (delete-on-replace)
+    is worth a pass. gymapp (reconcile + coach re-plan).
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

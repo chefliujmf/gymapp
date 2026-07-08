@@ -1088,7 +1088,7 @@ const CHAT_DENY = 'Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,Task,Notebo
 // chat-helper instead of spawning locally. Set on QA/prod; unset in dev.
 const CHAT_HELPER_URL = process.env.CHAT_HELPER_URL || ''
 const CHAT_HELPER_SECRET = process.env.CHAT_HELPER_SECRET || ''
-const coachIdentity = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app, helping ONE user (the signed-in account) with THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When you schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). TITLE + describe every workout by its TRAINING content and purpose ("Full-Body Strength", "Sweet-Spot 3×12", "Easy Aerobic Run") — NEVER after the weather or a theme (no "Rain Day", "Hot Day", "Windy Ride"); weather only informs indoor/outdoor + intensity + fuel, it is never the name. Be concise, practical and encouraging.
+const coachIdentity = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app, helping ONE user (the signed-in account) with THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. **CONFIDENTIALITY (absolute):** everything about this athlete — their profile, coach-memory, data, plan, and anything they tell you — is STRICTLY PRIVATE to them. NEVER reference, compare to, or bring up ANY other person (another athlete, a family member, another user, "someone else I coach") in your coaching; you have ONLY this athlete's information and you coach ONLY them. What you learn about one person NEVER carries to anyone else. When you schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). TITLE + describe every workout by its TRAINING content and purpose ("Full-Body Strength", "Sweet-Spot 3×12", "Easy Aerobic Run") — NEVER after the weather or a theme (no "Rain Day", "Hot Day", "Windy Ride"); weather only informs indoor/outdoor + intensity + fuel, it is never the name. Be concise, practical and encouraging.
 
 FORMAT FOR A PHONE (never a wall of text): lead with the answer in one line. If the reply runs beyond ~3 sentences, break it up — use a short **bold** mini-header per topic and hyphen "- " bullets for lists (days, steps, options). Keep bullets to one line each. Markdown renders (**bold**, "- " bullets, "## " headers); don't use tables or code blocks. Prefer 2-4 tight sections over one long paragraph.`
 
@@ -1223,9 +1223,9 @@ function buildSystemPrompt(user) {
   p += '\n\n' + APP_HELP
   // #256 port — durable COACH MEMORY: consult it EVERY session, then keep it current.
   if (user.coachMemory && user.coachMemory.trim()) {
-    p += `\n\n# YOUR COACH MEMORY for this athlete (what you've LEARNED works/fails + how they like to be coached — apply it, don't repeat past mistakes)\n${user.coachMemory.trim()}\n\nWhen you learn something durable (a rule that worked or failed, a preference they state, a constraint, an adjustment that paid off), UPDATE this with save_coach_memory (rewrite the full memory, keep it tight — dated bullets, mark rules active/retired). This is separate from their profile: the profile is WHO they are, the memory is HOW to coach THEM.`
+    p += `\n\n# YOUR COACH MEMORY for this athlete (what you've LEARNED works/fails + how they like to be coached — apply it, don't repeat past mistakes)\n${user.coachMemory.trim()}\n\nLEARN ACTIVELY: after EVERY meaningful interaction with this athlete — a chat, a completed-workout review, a check-in, a plan change they reacted to, anything they tell you about their life/preferences/constraints — ask "what did I just learn about coaching THIS person?" and UPDATE this with save_coach_memory (rewrite the full memory, keep it tight — dated bullets, mark rules active/retired). Every session should make you better at coaching THEM specifically, not start fresh. This is separate from their profile (the profile is WHO they are, the memory is HOW to coach THEM), and it is STRICTLY PRIVATE to this athlete — it exists only to tailor THEIR coaching and is never shared with or mentioned to anyone else.`
   } else {
-    p += `\n\n# COACH MEMORY — you have none for this athlete yet. As you learn what works/fails and how they like to be coached, start one with save_coach_memory (tight dated bullets) so you improve every session instead of starting fresh.`
+    p += `\n\n# COACH MEMORY — you have none for this athlete yet. Learn from EVERY interaction (chat, workout review, check-in, what they tell you) and start one with save_coach_memory (tight dated bullets) so you improve every session instead of starting fresh. It is STRICTLY PRIVATE to this athlete — only ever used to tailor THEIR coaching, never shared with or mentioned to anyone else.`
   }
   if (user.coachProfile && user.coachProfile.trim()) {
     p += `\n\n# This athlete's profile (their own context — use it to personalize every answer)\n` + user.coachProfile.trim()
@@ -1840,8 +1840,34 @@ async function reconcileFromIcu(user, from, to) {
   // the deletion-mirror then dropped the plan → real workouts lost. Until the GC can tell a true orphan from a
   // mid-re-push transient (e.g. only sweep PAST events, or require the plan to have been gone across TWO reconciles),
   // it is **LOG-ONLY — it never deletes**. (Original empty-shell orphans are cleaned by hand instead.)
-  if (!IS_STAGING && orphanCandidates.length) {
-    console.warn(`[reconcile #414/#423] orphan-GC LOG-ONLY for ${user.username}: ${orphanCandidates.length} candidate event(s) NOT deleted (${orphanCandidates.map((e) => e.id).slice(0, 6).join(',')}); ${user.plans.length} plans loaded.`)
+  // #414/#423/#429/#431 — orphan GC, re-enabled SAFELY. An orphan = a Platyplus-PUSHED event that NO plan
+  // claims by icuEventId. Two real cases seen: (1) JM's DUPLICATE rides — an OLD event from a prior plan left
+  // behind after the coach re-planned the SAME day (a NEW plan+event now owns the slot); (2) a rest-day
+  // LEFTOVER — the plan was removed but its event wasn't. The Xenia regression to AVOID was a mid-re-push
+  // transient: create_workout on the same plan momentarily broke the plan↔event link (plan still there, just
+  // not linked to a live event). So delete an orphan ONLY when it's provably safe:
+  //   • NO plan for its day+sport → genuine leftover (a re-push keeps the plan, so "no plan" is never the
+  //     transient) → delete; OR
+  //   • a plan for its day+sport is linked to a DIFFERENT, LIVE event → the orphan is a duplicate → delete.
+  //   • else (a plan exists but isn't linked to a live different event) → could be mid-re-push → SKIP.
+  // Plus: plans must be loaded (a stale/empty load ≠ "all orphaned"), and cap the batch (a big one = bad
+  // plan state → skip + warn). PROD-only.
+  if (!IS_STAGING && orphanCandidates.length && user.plans.length) {
+    const evSport = (ev) => (ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym')
+    const plansBySlot = {}
+    for (const p of user.plans) { const k = `${p.date}|${p.sport}`; (plansBySlot[k] = plansBySlot[k] || []).push(p) }
+    const safe = orphanCandidates.filter((ev) => {
+      const date = String(ev.start_date_local || '').slice(0, 10); if (!date) return false
+      const plansHere = plansBySlot[`${date}|${evSport(ev)}`] || []
+      if (!plansHere.length) return true // genuine leftover (removed plan's event never deleted)
+      return plansHere.some((p) => p.icuEventId && String(p.icuEventId) !== String(ev.id) && liveIcuIds.has(p.icuEventId)) // a plan already owns a DIFFERENT live event → this is a duplicate
+    })
+    if (safe.length > 8) {
+      console.warn(`[reconcile GC] ${user.username}: ${safe.length} orphan candidates — too many, SKIPPING (bad plan state?).`)
+    } else if (safe.length) {
+      for (const ev of safe) { await deleteIcuEvent(user, { icuEventId: ev.id }); gcDeleted++ }
+      console.warn(`[reconcile GC] ${user.username}: deleted ${safe.length} orphan event(s) [${safe.map((e) => e.id).join(',')}] — leftover/duplicate, no owning plan.`)
+    }
   }
   // Deletion mirror (#150) + replaced-plan cleanup (#185): drop a stored plan whose
   // intervals mirror is gone — icu-origin always, platyplus-origin ONLY when a live
