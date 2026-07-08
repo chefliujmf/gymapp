@@ -337,11 +337,14 @@ test guide → the **🧪 Test guide** section below.
     date range, so either they're not discoverable or the top "needs feedback" card ignores them. FIX: label the entry with
     its real sport + title + full date (not bare "Activity · Sat"); make the filters/sort obviously apply to everything incl.
     the feedback card; confirm sort-by-date works. gymapp-only.
-387. ⬜ **"Missing feedback" should be a HEADLINE, not buried in History.** JM 2026-07-06: the "N session(s) still need your
+387. 🔨 **"Missing feedback" should be a HEADLINE, not buried in History.** JM 2026-07-06: the "N session(s) still need your
     feedback" banner lives inside History/Logs — but post-workout feedback drives the coach's review + plan adaptation, so it
     should be surfaced prominently (a headline on Today, and/or a badge/nudge on the Coach FAB or the top bar), not hidden a
     tab away. Plan: show a compact "N to review → " card near the top of Today (links to the oldest one), reusing
     `incompleteFeedback(acts)`; keep the History list too. Consider a count badge on the nav. gymapp-only. Small mock/confirm.
+    ✅ BUILT (JM picked Option A from mockups/today-to-review.html): a compact amber `ToReviewCard` on Today (right under the check-in,
+    only when `incompleteFeedback(activities).length > 0`) — "N sessions need your feedback · Review →", taps through to the full
+    per-session list on Logs (`/logs`). Reuses the existing `.fbban` styling + a new `.fbban__cta`. tsc clean. gymapp-only.
 388. 🔨 **Pushed workout is DOUBLED in intervals — 1h1m in Platyplus renders as ~2h (steps repeated).** JM 2026-07-06
     (Platyplus vs intervals screenshots of "Sweet Spot 2×15 — FTP Builder", Wed Jul 8): Platyplus = 61 min / 64 TSS / IF .79;
     intervals shows the SAME event but the workout_doc steps are DUPLICATED — Warmup·Opener·Easy·SS·Recovery·SS·Cooldown then

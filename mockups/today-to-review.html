@@ -1,0 +1,78 @@
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--warn:#f0b145;--bg:#0f1216;--line:#2a2f3a;--card-1:#21252f;--card-2:#191c24}
+  *{box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}
+  body{background:var(--bg);color:var(--text);margin:0;padding:20px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+  .phone{width:400px}
+  .cap{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;font-weight:700}
+  .eyebrow{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em}
+  h1{font-size:24px;margin:2px 0 12px}
+  .stub{background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:12px;color:var(--text-dim);font-size:13px}
+  .sect{font-weight:800;font-size:15px;margin:14px 2px 6px}
+  /* existing banner styles */
+  .fbgap{margin-bottom:16px}
+  .fbban{background:linear-gradient(180deg,#2a2416,#1f1c14);border:1px solid rgba(240,177,69,.33);border-radius:14px;padding:13px 14px;display:flex;gap:11px;align-items:flex-start}
+  .fbban__ic{flex:none;width:34px;height:34px;border-radius:10px;background:rgba(240,177,69,.13);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .fbban__t{font-weight:800;font-size:14px}
+  .fbban__s{font-size:12px;color:var(--text-dim);margin-top:2px;line-height:1.4}
+  .fbban__cta{flex:none;align-self:center;font-size:12px;font-weight:800;color:var(--warn);background:rgba(240,177,69,.09);border:1px solid rgba(240,177,69,.27);border-radius:9px;padding:7px 12px}
+  .fbrow{display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid var(--line);border-radius:13px;padding:11px 12px;margin-top:9px}
+  .fbrow__th{flex:none;width:40px;height:40px;border-radius:9px;background:#14181f;display:flex;align-items:center;justify-content:center;font-size:19px}
+  .fbrow__b{flex:1;min-width:0}
+  .fbrow__t{font-weight:700;font-size:14px}
+  .fbrow__m{font-size:11.5px;color:var(--text-dim);margin-top:3px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+  .fbmiss{font-size:9.5px;font-weight:800;color:var(--warn);border:1px solid rgba(240,177,69,.33);border-radius:999px;padding:1px 6px;text-transform:uppercase;letter-spacing:.3px}
+  .fbprog{height:5px;border-radius:3px;background:#2a2f3a;overflow:hidden;margin-top:7px;max-width:150px}
+  .fbprog i{display:block;height:100%;background:var(--warn)}
+  .fbrow__cta{flex:none;font-size:12px;font-weight:800;color:var(--warn);background:rgba(240,177,69,.09);border:1px solid rgba(240,177,69,.27);border-radius:9px;padding:6px 11px}
+</style>
+
+<div class="phone">
+  <p class="cap">Option A · compact headline (one tap → the list)</p>
+  <span class="eyebrow">Good morning</span><h1>Ready to train?</h1>
+  <div class="stub">✓ Check-in · Energy 4 · Sleep 4 · Freshness 3</div>
+  <div class="fbban" style="margin-bottom:12px">
+    <div class="fbban__ic">📝</div>
+    <div style="flex:1;min-width:0">
+      <div class="fbban__t">2 sessions need your feedback</div>
+      <div class="fbban__s">Your coach reviews it and adapts your plan, a minute each.</div>
+    </div>
+    <div class="fbban__cta">Review →</div>
+  </div>
+  <div class="sect">Today's plan</div>
+  <div class="stub">🚴 Sweet-Spot 3×12 · 75 min</div>
+</div>
+
+<div class="phone">
+  <p class="cap">Option B · actionable mini-list (tap a session directly)</p>
+  <span class="eyebrow">Good morning</span><h1>Ready to train?</h1>
+  <div class="stub">✓ Check-in · Energy 4 · Sleep 4 · Freshness 3</div>
+  <div class="fbgap">
+    <div class="fbban">
+      <div class="fbban__ic">📝</div>
+      <div style="flex:1;min-width:0">
+        <div class="fbban__t">2 sessions need your feedback</div>
+        <div class="fbban__s">Your coach reviews it and adapts your plan. Oldest first so nothing goes stale.</div>
+      </div>
+    </div>
+    <div class="fbrow">
+      <div class="fbrow__th">🏃</div>
+      <div class="fbrow__b">
+        <div class="fbrow__t">Easy Aerobic Run · Sun, Jul 5</div>
+        <div class="fbrow__m"><span class="fbmiss">Feel</span><span class="fbmiss">RPE</span></div>
+        <div class="fbprog"><i style="width:35%"></i></div>
+      </div>
+      <span class="fbrow__cta">Add →</span>
+    </div>
+    <div class="fbrow">
+      <div class="fbrow__th">🚴</div>
+      <div class="fbrow__b">
+        <div class="fbrow__t">Backroad Hill Efforts · Mon, Jul 6</div>
+        <div class="fbrow__m"><span class="fbmiss">RPE</span></div>
+        <div class="fbprog"><i style="width:70%"></i></div>
+      </div>
+      <span class="fbrow__cta">Add →</span>
+    </div>
+  </div>
+  <div class="sect">Today's plan</div>
+  <div class="stub">🚴 Sweet-Spot 3×12 · 75 min</div>
+</div>
