@@ -792,6 +792,13 @@ test guide → the **🧪 Test guide** section below.
     (CLAUDE.md work-queue note + memory `platyplus-admin-backlog`). tsc + 440 tests + full build green. Admin-only.
     JM verified on QA 2026-07-08 ("looks good") → asked for **bidirectional sort**: added a ↑/↓ direction toggle (any sort — priority/#/status/
     comments — flips asc↔desc). On QA.
+    JM 2026-07-08 round 2 (3 asks): (a) "a button that says done, discard is more cancel, not sure how to change status" → **STATUS is now a
+    4-way control** (To do · Building · Done · Discarded) that JM sets directly and **OVERRIDES the .md-derived status** (`triage[n].status`);
+    the old standalone Discard button is gone (Discarded is a status). (b) "same for unset with priority" → priority row now has an explicit
+    **None** button (not just tap-to-clear). (c) "add in this window + define bug / ideation / feature / whatnot" → added a **+ New item** form
+    (title + type + optional notes → app-added items in `user.backlogAdded`, numbered max+1, merged into the list; Claude folds into the .md) and a
+    **TYPE** field (Bug/Feature/Idea/Chore, in the overlay, shown as a row chip). Server: PUT takes status/type, new POST creates items, GET returns
+    `{triage, added}` (+ openapi). tsc + build + tests green. On QA.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

@@ -203,14 +203,19 @@ export const authApi = {
   setUserPassword: (id: string, password: string) => req<{ ok: boolean }>(`/users/${id}/password`, { method: 'POST', body: { password } }),
   deleteUser: (id: string) => req<{ ok: boolean }>(`/users/${id}`, { method: 'DELETE' }),
 
-  // #438 — admin backlog triage overlay (priority / comments / discard) on top of the bundled backlog.json
-  getBacklogTriage: () => req<{ triage: BacklogTriage }>('/admin/backlog'),
-  updateBacklog: (n: number, patch: { priority?: BacklogPriority | null; comment?: string; deleteCommentAt?: number; discarded?: boolean }) =>
+  // #438 — admin backlog triage overlay (status / priority / type / comments) on top of the bundled backlog.json
+  getBacklogTriage: () => req<{ triage: BacklogTriage; added: BacklogAddedItem[] }>('/admin/backlog'),
+  updateBacklog: (n: number, patch: { priority?: BacklogPriority | null; status?: BacklogStatus | null; type?: BacklogType | null; comment?: string; deleteCommentAt?: number; discarded?: boolean }) =>
     req<{ n: number; triage: BacklogTriageItem | null }>(`/admin/backlog/${n}`, { method: 'PUT', body: patch }),
+  addBacklogItem: (item: { n: number; title: string; type?: BacklogType; summary?: string }) =>
+    req<{ item: BacklogAddedItem; triage: BacklogTriageItem | null }>('/admin/backlog', { body: item }),
 }
 
 // #438 — admin backlog triage types
 export type BacklogPriority = 'hi' | 'med' | 'lo'
+export type BacklogStatus = 'todo' | 'build' | 'done' | 'discarded'
+export type BacklogType = 'bug' | 'feature' | 'idea' | 'chore'
 export interface BacklogComment { text: string; at: number }
-export interface BacklogTriageItem { priority?: BacklogPriority; comments?: BacklogComment[]; discarded?: boolean }
+export interface BacklogTriageItem { priority?: BacklogPriority; status?: BacklogStatus; type?: BacklogType; comments?: BacklogComment[]; discarded?: boolean }
 export type BacklogTriage = Record<string, BacklogTriageItem>
+export interface BacklogAddedItem { n: number; title: string; summary?: string; at: number }

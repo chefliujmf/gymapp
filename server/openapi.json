@@ -227,18 +227,24 @@
     },
     "/auth/admin/backlog": {
       "get": {
-        "summary": "#438 — read the admin backlog TRIAGE overlay (priority/comments/discarded per item #). Session+admin.",
-        "description": "The item list itself comes from the bundled backlog.json (built from FEEDBACK-LOG.md); this returns only JM's live triage stored on the admin record. { triage: { [n]: { priority?, comments?[], discarded? } } }.",
+        "summary": "#438 — read the admin backlog TRIAGE overlay + app-added items. Session+admin.",
+        "description": "The base item list comes from the bundled backlog.json (built from FEEDBACK-LOG.md); this returns JM's live triage + any app-added items, both stored on the admin record. { triage: { [n]: { status?, priority?, type?, comments?[] } }, added: [{ n, title, summary, at }] }.",
         "security": [{ "cookieAuth": [] }],
-        "responses": { "200": { "description": "{ triage }" } }
+        "responses": { "200": { "description": "{ triage, added }" } }
+      },
+      "post": {
+        "summary": "#438 — ADD a new backlog item from the app (title + optional type/summary). Session+admin.",
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "required": ["title"], "properties": { "n": { "type": "integer", "description": "suggested number (max of .md+added +1)" }, "title": { "type": "string" }, "type": { "type": "string", "enum": ["bug", "feature", "idea", "chore"] }, "summary": { "type": "string" } } } } } },
+        "responses": { "201": { "description": "{ item, triage }" } }
       }
     },
     "/auth/admin/backlog/{n}": {
       "put": {
-        "summary": "#438 — update one backlog item's triage: set/clear priority (hi|med|lo), add/delete a comment, toggle discarded. Session+admin.",
+        "summary": "#438 — update one backlog item's triage: set/clear status (todo|build|done|discarded — OVERRIDES the .md status), priority (hi|med|lo), type (bug|feature|idea|chore), add/delete a comment. Session+admin.",
         "security": [{ "cookieAuth": [] }],
         "parameters": [{ "name": "n", "in": "path", "required": true, "schema": { "type": "integer" } }],
-        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "priority": { "type": "string", "enum": ["hi", "med", "lo"], "nullable": true }, "comment": { "type": "string" }, "deleteCommentAt": { "type": "integer" }, "discarded": { "type": "boolean" } } } } } },
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string", "enum": ["todo", "build", "done", "discarded"], "nullable": true }, "priority": { "type": "string", "enum": ["hi", "med", "lo"], "nullable": true }, "type": { "type": "string", "enum": ["bug", "feature", "idea", "chore"], "nullable": true }, "comment": { "type": "string" }, "deleteCommentAt": { "type": "integer" }, "discarded": { "type": "boolean" } } } } } },
         "responses": { "200": { "description": "{ n, triage }" } }
       }
     },
