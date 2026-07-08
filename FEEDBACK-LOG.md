@@ -607,6 +607,13 @@ test guide → the **🧪 Test guide** section below.
     sourced from `../coach-engine-src/codex_coach/instructions_public_text.md` (NOT in this workspace) — apply the same edit there before the
     next manual `sync-coach-engine` run or it regresses. Ships on the next prod deploy (coach-engine baked in the server image + MCP
     auto-rsynced by deploy.sh); THEN re-run JM's recent activities to rewrite public titles/descriptions in the new voice. gymapp + coach.
+    ✅ SHIPPED + VERIFIED on real prod data (2026-07-08): coach-engine + host MCP live on prod; drove a rewrite of JM's 2 worst titles —
+    "Another Local Legend, Relaxed Miles" → "Z2 Aerobic Base, 71 min" ("…153 W avg, IF 0.61, aerobic base development, mitochondrial
+    density…") and "Local Legend on the South Shore" → "Z1 to Z2 Endurance, 62 min". Perfect voice: zones + adaptation, no vibe words, no
+    em-dash, public-safe. ⚠️ LEARNED: the coach re-run (`/api/coach/run`) struggles to SELF-RESOLVE which activity to edit from a vague
+    "rewrite my recent activities" ask (it drafts the text then asks for the id); it writes reliably when handed the exact activityId. The
+    normal daily activity-review path already passes the activityId, so that flow is fine; only ad-hoc batch "rewrite recent" needs ids.
+    Remaining older JM titles (KOM on the Backroads, Backroad Segment Hunt, St-Lambert Road Cycling) left as-is pending JM's read on the voice.
 426. 🔨 **"Gym exercises have no video/pictures/thumbnails" — REGRESSION triage: server-side is 100% correct → stale PWA cache.** JM
     2026-07-08 (repeated, frustrated: glute bridge, dumbbell goblet squat, romanian deadlift). AUDITED exhaustively: JM's Jul-9 gym = 15/15
     valid exIds; every video+image FILE exists on `/srv/media` (0 missing across the whole 4530 catalog); media serves **200** over HTTPS;
