@@ -1404,13 +1404,18 @@ app.post('/auth/chat', auth, async (req, res) => {
   res.setHeader('Connection', 'keep-alive')
   res.setHeader('X-Accel-Buffering', 'no') // stop nginx/NPM from buffering the SSE (else it arrives all at once)
   res.flushHeaders?.()
-  const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`)
+  // #428 — if the client leaves (mobile back button mid-answer), DON'T abort the coach: keep generating so
+  // the full turn completes + persists to the thread; just stop writing to the dead socket. On return, the
+  // #363 thread sync shows the finished answer. (Was: res close → reader.cancel → only a partial/empty reply saved.)
+  let clientGone = false
+  res.on('close', () => { clientGone = true })
+  const send = (o) => { if (clientGone) return; try { res.write(`data: ${JSON.stringify(o)}\n\n`) } catch { clientGone = true } }
   send({ coach: req.user.coachName || 'Coach' })
 
   // QA/prod: the container can't run the glibc claude → proxy to the host helper.
   if (CHAT_HELPER_URL) {
     let pdone = false, reply = ''
-    const pend = () => { if (pdone) return; pdone = true; persistChat(req.user, message, reply); send({ done: true }); res.end() }
+    const pend = () => { if (pdone) return; pdone = true; persistChat(req.user, message, reply); send({ done: true }); if (!clientGone) res.end() }
     try {
       const hr = await fetch(CHAT_HELPER_URL + '/chat', {
         method: 'POST',
@@ -1419,20 +1424,22 @@ app.post('/auth/chat', auth, async (req, res) => {
       })
       if (!hr.ok || !hr.body) { send({ error: 'coach unavailable (' + hr.status + ')' }); return pend() }
       const reader = hr.body.getReader(); const dec = new TextDecoder(); let hbuf = ''
-      res.on('close', () => { try { reader.cancel() } catch { /* */ } })
-      for (;;) {
-        const { done: rdone, value } = await reader.read(); if (rdone) break
-        hbuf += dec.decode(value, { stream: true })
-        let i
-        while ((i = hbuf.indexOf('\n\n')) >= 0) {
-          const data = hbuf.slice(0, i).split('\n').find((l) => l.startsWith('data:')); hbuf = hbuf.slice(i + 2)
-          if (!data) continue
-          let ev; try { ev = JSON.parse(data.slice(5).trim()) } catch { continue }
-          if (ev.sessionId) { thread.sessionId = ev.sessionId; save(store) } // #363 persist per-thread, don't forward
-          else if (ev.error && /no conversation found|session id/i.test(String(ev.error))) { thread.sessionId = null; save(store); send({ error: 'Lost the thread — tap send again to start fresh.' }) } // stale session → clear so next send is fresh
-          else if (!ev.done) { if (ev.delta) reply += ev.delta; send(ev) } // forward delta / tool / error (our own done at the end); #356 accumulate the reply to persist
+      const killer = setTimeout(() => { try { reader.cancel() } catch { /* */ } }, 200000) // #428 net for a truly hung coach; a client disconnect NO LONGER cancels (we finish + persist)
+      try {
+        for (;;) {
+          const { done: rdone, value } = await reader.read(); if (rdone) break
+          hbuf += dec.decode(value, { stream: true })
+          let i
+          while ((i = hbuf.indexOf('\n\n')) >= 0) {
+            const data = hbuf.slice(0, i).split('\n').find((l) => l.startsWith('data:')); hbuf = hbuf.slice(i + 2)
+            if (!data) continue
+            let ev; try { ev = JSON.parse(data.slice(5).trim()) } catch { continue }
+            if (ev.sessionId) { thread.sessionId = ev.sessionId; save(store) } // #363 persist per-thread, don't forward
+            else if (ev.error && /no conversation found|session id/i.test(String(ev.error))) { thread.sessionId = null; save(store); send({ error: 'Lost the thread — tap send again to start fresh.' }) } // stale session → clear so next send is fresh
+            else if (!ev.done) { if (ev.delta) reply += ev.delta; send(ev) } // forward delta / tool / error (our own done at the end); #356 accumulate the reply to persist
+          }
         }
-      }
+      } finally { clearTimeout(killer) }
     } catch (e) { send({ error: 'coach unavailable: ' + (e.message || e) }) }
     return pend()
   }
