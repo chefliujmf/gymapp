@@ -310,13 +310,20 @@ test guide → the **🧪 Test guide** section below.
     soreness per day). Plan: a multi-series variant of `WTrend`/`MetricCard` in `Wellness.tsx` — 3 component lines (7-day avg,
     distinct colors) + overall avg (faint), legend with per-metric avg/min/max. Readability trade-off (3-4 lines on a 1–5
     scale) → mock overlay-all vs segmented-focus. gymapp-only. Needs a mock (options-first). **JM PICKED B (overlay + tap-to-focus).** Building.
-384. ⬜ **Coach authored an INVALID range — cool-down "143-117" (high number first) + a "rest" interval with no range.** JM
+384. 🔨 **Coach authored an INVALID range — cool-down "143-117" (high number first) + a "rest" interval with no range.** JM
     2026-07-06 (for-after): a range must read low→high (or be a proper ramp-down, not "143-117" backwards); a "rest" interval
     came through with no range at all. Fix the COACH + MCP validation: (a) normalize/reject descending numeric ranges (swap
     or flag), (b) require a valid target on every non-rest step + a proper form for REST (e.g. explicit 0/recovery, not a bad
     range), (c) add more format-validation mechanisms so bad shapes can't reach intervals. Likely in `validateGymWorkout` /
     the SEGMENTS schema (`mcp/server.js`) + `icu-steps.js` encode + the coach-engine workout-format rules. Trace the real
     round-trip. gymapp coach + MCP + server. Needs its own pass.
+    ✅ RECURRED + FIXED (JM 2026-07-08, screenshot: cool-down "10m 150-117w (58-45%)"): it was his COOL-DOWN ramping DOWN 58→45%,
+    which intervals renders start→end so it reads "150-117" like a backwards range. JM's pick = **flat easy spin** for cool-downs.
+    Added `normalizeRamps(segments)` in `icu-steps.js` (cool-down → single value at the eased-down power; warm-up always ramps UP;
+    WORK segments left as authored so real over-unders/progressive ramps survive), applied at BOTH persist (`upsertPlan` guard, so the
+    DB + app view match) AND push (`planToIcuEvent`, covers existing plans on re-sync). 4 unit tests green. Reprocess JM's plans
+    (`/api/plans/resync`) so his already-pushed cool-downs flatten in intervals. (Deferred: the "rest interval with no range" +
+    generic descending-WORK-range rejection — revisit if it recurs.)
 385. 🔨 **Make per-sport benchmark displays CONSISTENT with the polished Global "Your benchmarks" (#374).** JM 2026-07-06:
     "I love the global section" — wants the SAME treatment on the per-sport pages. Global (`BenchmarksCard`) now has method
     chips + colorful confidence bars + tap-for-science (#374); but the **Cycling** page shows plain "VO₂max (est.) / eFTP —
@@ -632,6 +639,12 @@ test guide → the **🧪 Test guide** section below.
     comfortably hard), NOT jargon. BAN jargon-dense terms in output (mitochondrial density, fat oxidation, glycolytic, lactate, "excursions").
     Target: "Steady Z2 endurance ride, 71 min at 153 W, easy aerobic pace building your base." Update coach-engine.md DESCRIPTION section +
     MCP desc; rewrite the 2 descriptions I already over-scienced. Still: no cocky/vibe words, no em-dash. Titles still human.
+    🔧 CORRECTION 3 (JM 2026-07-08: "write it like I'm writing it … now it's so boring, dont repeat the 153w, how can we find a balance?"):
+    the plain pass went too FLAT (dry data line that repeats the watts already on Strava). The BALANCE = write it like the ATHLETE would,
+    a natural sentence or two with a little personality, between a data line, a lecture, and a brag. Two new rules: (a) write with FLOW/voice
+    ("Relaxed Z2 miles on the backroads, kept it easy start to finish, quiet base work banking fitness for when it counts"); (b) do NOT restate
+    numbers already shown on the activity (avg power, duration) — redundant + boring; describe the FEEL + the WHY. coach-engine.md DESCRIPTION +
+    MCP desc updated; JM's 2 rides rewritten to the balanced voice. On dev, awaiting JM's read on the balance before promoting.
 426. 🔨 **"Gym exercises have no video/pictures/thumbnails" — REGRESSION triage: server-side is 100% correct → stale PWA cache.** JM
     2026-07-08 (repeated, frustrated: glute bridge, dumbbell goblet squat, romanian deadlift). AUDITED exhaustively: JM's Jul-9 gym = 15/15
     valid exIds; every video+image FILE exists on `/srv/media` (0 missing across the whole 4530 catalog); media serves **200** over HTTPS;
