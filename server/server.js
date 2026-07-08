@@ -1816,15 +1816,13 @@ async function reconcileFromIcu(user, from, to) {
   // "a plan claims it" logic above. So NEVER mass-delete: (a) do nothing if NO plans are loaded (a stale/empty
   // load must not read as "everything is orphaned"), and (b) CAP deletions per run — a genuine move/re-plan leaves
   // 1-2 orphans; a large batch signals a bad plan state, so skip + warn rather than delete. PROD-only.
+  // #423 SAFETY — the orphan-GC DELETED Xenia's legit upcoming gym events: a coach re-push (create_workout on the
+  // same id) transiently broke the plan↔event link, the event momentarily looked orphaned, the GC deleted it, and
+  // the deletion-mirror then dropped the plan → real workouts lost. Until the GC can tell a true orphan from a
+  // mid-re-push transient (e.g. only sweep PAST events, or require the plan to have been gone across TWO reconciles),
+  // it is **LOG-ONLY — it never deletes**. (Original empty-shell orphans are cleaned by hand instead.)
   if (!IS_STAGING && orphanCandidates.length) {
-    const MAX_GC = 4
-    if (user.plans.length === 0 || orphanCandidates.length > MAX_GC) {
-      console.warn(`[reconcile #414] orphan-GC SKIPPED for ${user.username}: ${orphanCandidates.length} candidate(s) vs ${user.plans.length} plan(s) — refusing to mass-delete (likely stale plan state).`)
-    } else {
-      for (const ev of orphanCandidates) {
-        try { const r = await icuFetch(user, `/athlete/${ath}/events/${ev.id}`, { method: 'DELETE' }); if (r.ok) gcDeleted++ } catch { /* best effort */ }
-      }
-    }
+    console.warn(`[reconcile #414/#423] orphan-GC LOG-ONLY for ${user.username}: ${orphanCandidates.length} candidate event(s) NOT deleted (${orphanCandidates.map((e) => e.id).slice(0, 6).join(',')}); ${user.plans.length} plans loaded.`)
   }
   // Deletion mirror (#150) + replaced-plan cleanup (#185): drop a stored plan whose
   // intervals mirror is gone — icu-origin always, platyplus-origin ONLY when a live

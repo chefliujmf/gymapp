@@ -83,7 +83,7 @@ export default function CyclingStats() {
                 </div>
               )}
               {/* #407/#420 — the 2-season overlay IS the power curve now (removed the old single-range curve to avoid two). */}
-              <SeasonCompare sport="cycling" weight={last(s.weight)} />
+              <SeasonCompare sport="cycling" weight={last(s.weight)} ftp={user?.sportSettings?.cycling?.ftp ?? user?.ftp ?? null} />
               <p className="meta" style={{ marginTop: 10 }}>Read live from intervals.icu.</p>
             </>
           )}

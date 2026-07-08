@@ -578,7 +578,19 @@ test guide → the **🧪 Test guide** section below.
     best-efforts** → reorder: trends (eFTP, EF) together, season-compare last (or EF above it). (6) **eFTP-trend MiniCard renders a
     partial/empty square though data exists** — investigate. (7) apply ALL of the above to the **Running** section too. (8) SEPARATE: the
     **Fitness page Form/Load charts have a "Wellness →" link — remove it.** gymapp-only.
-411. 🔨 **Workout detail: the "Mind" section body is EMPTY while its content hides behind a "why" chip.** JM 2026-07-07 (screenshot):
+421. ⬜ **TTE differs between the season best-efforts table and the benchmark card — make them consistent.** JM 2026-07-08 (prod, his
+    profile): "my TTE in best-efforts ≠ my TTE under benchmarks." Root: the benchmark `tteRide` = `tteFromPower(all-time-ish curve, ftpManual ?? eftp)`
+    while the season-compare uses PER-SEASON `tteFromPower(season curve, season eFTP)` — different FTP anchor + different window. FIX: one
+    canonical TTE — pass the athlete's SET FTP to SeasonCompare + anchor cycling TTE on it (like the benchmark); align the window so at least
+    one column matches the card, or clarify labels. Also running TTE. gymapp-only.
+422. ⬜ **Xenia: had to enter her menstrual-cycle date manually though it's already in intervals wellness (logged the 3rd).** JM 2026-07-08.
+    The cycle/period date is in intervals wellness — Platyplus should READ it (like HRV/sleep/CTL) and prefill the coach's cycle-phase, not
+    ask her to re-enter. Investigate the intervals wellness cycle field + wire it into the cycle-phase (coach-engine-female uses cyclePhase). gymapp + coach.
+423. ⬜ **Xenia: no longer getting 4 workouts/week — audit the coach's frequency.** JM 2026-07-08. Her target is ~4 days/week (info.freq)
+    but the plan has fewer. Coach issue? Check `# TRAINING FREQUENCY` (buildSystemPrompt) vs what daily-adapt actually schedules; audit her
+    upcoming 2 weeks vs freq. gymapp + coach.
+424. ⬜ **Xenia: the HEIGHT field in her profile is BUGGY — can't enter a value.** JM 2026-07-08. A form bug on the height input (Profile).
+    Investigate the height field (validation/parse/state) — likely rejects or won't accept input. gymapp-only.
     "don't get the Mind — the section is empty but the why is a chip to click." Fuel shows its text inline (+ a why chip); Mind shows only
     a "why ⓘ" chip with no body, so it reads as broken/empty (the real "Mental focus — Restraint…" is buried in the why sheet). FIX: if a
     section has no inline body, show its content in the body (not only behind "why"), OR hide the empty section header. gymapp-only.
