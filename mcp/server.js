@@ -40,7 +40,7 @@ const server = new McpServer({ name: 'platyplus', version: '1.0.0' })
 
 // --- discovery ------------------------------------------------------------
 server.tool('search_exercises',
-  'Search the Platyplus exercise library by name; returns ids (exId), the equipment tag, and demo media. Use the exId in create_workout. IMPORTANT: pass `equipment` = the athlete\'s OWNED gear (see the profile) so you only ever prescribe exercises they can actually do; "Bodyweight" needs nothing.',
+  'Search the Platyplus exercise library by name; returns ids (exId), the equipment tag, and demo media. Use the exId in create_workout. Every result is a COMPLETE exercise with a real VIDEO demo (image-only entries are never returned) — so always pick from these and never invent an exId. Results are ranked best-match first, so the TOP hit is usually the right movement. IMPORTANT: pass `equipment` = the athlete\'s OWNED gear (see the profile) so you only ever prescribe exercises they can actually do; "Bodyweight" needs nothing.',
   { query: z.string().describe('name fragment, e.g. "goblet squat"'), equipment: z.string().optional().describe('comma-separated owned equipment to limit to, e.g. "Dumbbell,Bodyweight,Bands"'), limit: z.number().int().min(1).max(100).optional() },
   wrap((a) => api('GET', `/api/exercises?q=${encodeURIComponent(a.query)}&equipment=${encodeURIComponent(a.equipment || '')}&limit=${a.limit || 20}`)))
 
@@ -78,7 +78,7 @@ server.tool('get_metrics',
   wrap(() => api('GET', '/api/athlete-metrics')))
 
 server.tool('get_weather',
-  "Get the day's WEATHER forecast + coaching guidance for the athlete's location (free, no key). Call it before planning or confirming an OUTDOOR run/ride, especially in heat/cold. Returns feels-like temp, wind, rain%, and ready-made guidance (heat derating, hydration, cold layers, wind, or move-indoors). { needsLocation:true } means no location yet — ask the athlete their city (it also auto-fills from their next GPS activity). Use it to ADJUST intensity/pace + add fuel/hydration notes, don't just report it.",
+  "Get the day's WEATHER forecast + coaching guidance for the athlete's location (free, no key). Call it before planning or confirming an OUTDOOR run/ride, especially in heat/cold. Returns feels-like temp, wind, rain%, and ready-made guidance (heat derating, hydration, cold layers, wind, or move-indoors). { needsLocation:true } means no location yet — ask the athlete their city (it also auto-fills from their next GPS activity). Use it to ADJUST intensity/pace + add fuel/hydration notes, don't just report it. NEVER put the weather in a workout's TITLE or description (no \"Rain Day\", \"Hot Day\", \"Windy…\"): title + describe every session by its TRAINING content and purpose (\"Full-Body Strength\", \"Sweet-Spot 3×12\"); weather only informs whether it's indoor/outdoor, the intensity, and fuel/hydration — it is never the name or theme.",
   { date: DATE.optional().describe('YYYY-MM-DD; default today. Use the planned session date.') },
   wrap((a) => api('GET', `/api/weather${a.date ? `?date=${a.date}` : ''}`)))
 

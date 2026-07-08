@@ -1081,7 +1081,7 @@ const CHAT_DENY = 'Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,Task,Notebo
 // chat-helper instead of spawning locally. Set on QA/prod; unset in dev.
 const CHAT_HELPER_URL = process.env.CHAT_HELPER_URL || ''
 const CHAT_HELPER_SECRET = process.env.CHAT_HELPER_SECRET || ''
-const coachIdentity = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app, helping ONE user (the signed-in account) with THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When you schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). Be concise, practical and encouraging.
+const coachIdentity = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app, helping ONE user (the signed-in account) with THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. When you schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). TITLE + describe every workout by its TRAINING content and purpose ("Full-Body Strength", "Sweet-Spot 3×12", "Easy Aerobic Run") — NEVER after the weather or a theme (no "Rain Day", "Hot Day", "Windy Ride"); weather only informs indoor/outdoor + intensity + fuel, it is never the name. Be concise, practical and encouraging.
 
 FORMAT FOR A PHONE (never a wall of text): lead with the answer in one line. If the reply runs beyond ~3 sentences, break it up — use a short **bold** mini-header per topic and hyphen "- " bullets for lists (days, steps, options). Keep bullets to one line each. Markdown renders (**bold**, "- " bullets, "## " headers); don't use tables or code blocks. Prefer 2-4 tight sections over one long paragraph.`
 
@@ -1879,11 +1879,40 @@ let EXERCISES = []
     else console.log(`catalog: no exercises.json at ${p} — /api/exercises returns empty`)
   } catch (e) { console.log('catalog load failed:', e.message) }
 })()
+// #416 — search-result RANK: a demo WITH VIDEO always outranks an image-only one (free-exercise-db `fedb-*` are
+// image-only; Centr `e-*` / MuscleWiki `mw-*` carry video for the same move), then exact/prefix name, then a
+// tighter (shorter) name. So the coach picks video demos at the source — no more "no video" gym sessions. Pure.
+export function rankExerciseHit(e, q) {
+  const name = String(e?.name || '').toLowerCase()
+  let s = 0
+  if (e?.video) s += 1000
+  if (name === q) s += 400
+  else if (name.startsWith(q)) s += 200
+  s += Math.max(0, 60 - name.length)
+  return s
+}
 function searchExercises(q, limit, equipment) {
   const n = String(q || '').trim().toLowerCase()
   const eq = equipment ? String(equipment).split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : null
-  let list = n ? EXERCISES.filter((e) => e.name.toLowerCase().includes(n)) : EXERCISES
+  // #416 — TOKEN match (all significant query words present, any order) instead of a strict substring, so a video
+  // demo named "Dumbbell SEATED shoulder press" still matches "dumbbell shoulder press" (the substring filter missed
+  // it → the coach only saw the image-only free-exercise-db entry). Fall back to any-token when all-token finds
+  // nothing. Then rank VIDEO-first so the coach picks a demo WITH a clip whenever the exact movement has one.
+  const toks = n.split(/[^a-z0-9]+/).filter((t) => t.length > 1)
+  // #420 — COMPLETE pool only (JM): only exercises that have a real VIDEO demo (~image comes with it). We have ~4k,
+  // plenty complete — never serve an image-less row.
+  let list = EXERCISES.filter((e) => e.video)
   if (eq) list = list.filter((e) => e.equipment && eq.includes(e.equipment.toLowerCase())) // owned-equipment filter
+  if (toks.length) {
+    // Rank by WHOLE-WORD overlap so "arm" matches the word "arm", NOT "w-arm-up", and a 2-word hit ("dumbbell row")
+    // beats a 1-word one ("arm circles"). Then exact/prefix/shorter-name as the tiebreak (rankExerciseHit). Keep only
+    // rows with ≥1 word matched — so "one-arm dumbbell row" (no exact video) still surfaces a video "Dumbbell Row".
+    const words = (name) => new Set(String(name || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean))
+    list = list.map((e) => { const w = words(e.name); return { e, ov: toks.filter((t) => w.has(t)).length } })
+      .filter((x) => x.ov > 0)
+      .sort((a, b) => (b.ov - a.ov) || (rankExerciseHit(b.e, n) - rankExerciseHit(a.e, n)))
+      .map((x) => x.e)
+  }
   return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, equipment: e.equipment, image: e.image, video: e.video }))
 }
 // Recipe + mind/movement catalogs — let the coach PICK real Platyplus content by id

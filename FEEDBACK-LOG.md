@@ -537,6 +537,47 @@ test guide → the **🧪 Test guide** section below.
     [All seasons | Compare] 2-tab is redundant — the full table already shows all seasons → DROP the tabs, ONE full table (all seasons ×
     all metrics, A-style scroll); (3) the graph "Compare to" pills must ACTUALLY switch the overlaid 2nd curve (mock hardcoded All-time).
     Rework mockups/best-efforts-full.html + fetch a real last-season curve so the pills do something. gymapp-only.
+    🔨 BUILDING (JM: "pick that up"). Mocks approved: v2 (This vs picked + Δ, mockups/best-efforts-compare.html) → v3 flexible picker
+    (any season / custom range, mockups/best-efforts-picker.html). JM: year labels EXCEPT "This season". ⚠️ DATA CONSTRAINT: intervals'
+    power/pace-curve API only returns TRAILING windows (`curves=Nd`) or all-time — it CANNOT return a bounded calendar year (curves=2024
+    → 422; start/end + oldest/newest are ignored → all-time), and activities carry no per-duration peaks. So JM chose **trailing windows
+    now** (This=YTD `${daysSinceJan1}d` · Last=365d · 2-seasons=730d · All=10000d — real, instant, matches intervals' own season columns)
+    + a curve OVERLAY (This + picked) + the compare table (This | picked | Δ + metrics). See #415 for the exact-year + custom-range follow-up.
+415. ⬜ **(FOLLOW-UP of #407) EXACT-YEAR season labels (2025/2024) + custom DATE-RANGE, server-computed.** Because the intervals curve API
+    can't do bounded periods, true per-year / arbitrary-range best-efforts must be computed from each activity's POWER STREAM (heavy:
+    ~100+ stream fetches/yr). Build a SERVER endpoint that, for a [from,to], fetches the range's activities + their mean-max curves,
+    aggregates the best power/pace at each duration, caches per (athlete,range), and returns the curve + best-efforts + models. Then the
+    v3 picker's exact-year pills + "＋ Custom range" light up. Deferred by JM ("exact years later"). gymapp + server (+ cache).
+416. 🔨 **Gym exercises show no VIDEO/description — the coach picks image-only free-exercise-db demos.** JM 2026-07-07 (prod, his gym):
+    "empty exercises (no video, photo, description) — update the coach again?" DIAGNOSED (NOT the orphan-GC — innocent, no GC log lines).
+    His gym plan's exIds are mostly **`fedb-*` (free_exercise_db)**: the IMAGES exist on disk (img OK) but those entries have **NO video**,
+    and the catalog carries **no descriptions at all**. Video demos DO exist for the same moves in Centr (`e-`) / MuscleWiki (`mw-`).
+    ROOT CAUSE: `searchExercises` (server.js:1883) filters by name+equipment then `slice(limit)` with **NO ranking** → the coach grabs
+    whatever's first (often the image-only fedb entry). So re-running the coach alone WON'T fix it. FIX: rank search results **video-first**
+    + closest-name so the coach picks demos WITH video; then re-run the coach for JM (+ Xenia) to re-pick. Descriptions = a separate catalog
+    enrichment (lower priority). Propagate: MCP search_exercises desc can note "prefer video". gymapp server + coach re-run (outward → confirm).
+417. ⬜ **Android: opening "full exercise" — the hardware BACK button overlays / doesn't always return.** JM 2026-07-07 (prod, Android):
+    "when clicking full exercise on android, the back button seems to overlay with something and not every press works to return back." The
+    exercise-detail (video) view/modal + Android hardware back don't cooperate — likely a history/overlay state issue (the modal doesn't push
+    a history entry, or a stray overlay swallows the back). Investigate the full-exercise view's routing/modal + Android back handling. gymapp-only.
+418. 🔨 **Fuel "why" behind a chip (do like Mind) + an empty gym on QA.** JM 2026-07-07 (QA): "the why for fuel still weird, put it
+    straight in fuel section"; also "this one is empty" (a "Full-Body Strength — Rain Day" gym opens with no exercises). (a) FIXED — the
+    Fuel section now shows `p.fuel.why` (the fueling strategy) INLINE like Mind #411 / Recovery, chip dropped (CoachPlanDetail.tsx). tsc clean.
+    (b) The empty "Rain Day" gym is **NOT in the QA DB** — it's a PROD plan's intervals event surfacing on QA through the SHARED i28814
+    athlete (a known QA/prod-shared artifact; can't be GC'd on QA since staging is read-only). Not a new render bug. gymapp-only.
+419. 🔨 **Coach names workouts after the WEATHER ("Rain Day") — stop it; title by the training.** JM 2026-07-07: "for any activity titles,
+    don't mention weather, why do it? focus on the activity done for title and description." No rule existed → the coach invented "Full-Body
+    Strength — Rain Day" from a rainy forecast. FIXED (2 layers): the **coach identity** (`coachIdentity`, server.js) + the **get_weather MCP
+    tool desc** (mcp/server.js) now say: TITLE + describe every workout by its TRAINING content/purpose, NEVER the weather/theme ("Rain Day",
+    "Hot Day"); weather only informs indoor/outdoor + intensity + fuel. ⚠️ MCP change → rsync `mcp/` to the host. gymapp + coach.
+420. 🔨 **Season-compare polish (QA review of #407).** JM 2026-07-07, per-point: (1) `.sc-card` (power curve + best-efforts) **lacks
+    padding** — title flush to the edge; add card padding. (2) the **"TIME"/"Dist" header is misaligned** — left-align the label column
+    header. (3) **TWO power-curve graphs now (old single-range + new overlay) = BAD** → REMOVE the old single-range curve card; the
+    2-season overlay IS the power curve. Same for Running's pace curve. (4) **metrics MISSING (e.g. VO₂max)** in the compare table — add
+    per-season VO₂max (from the season's best 5-min MAP + weight) alongside eFTP/CP/W′. (5) **EF trend is buried at the very bottom after
+    best-efforts** → reorder: trends (eFTP, EF) together, season-compare last (or EF above it). (6) **eFTP-trend MiniCard renders a
+    partial/empty square though data exists** — investigate. (7) apply ALL of the above to the **Running** section too. (8) SEPARATE: the
+    **Fitness page Form/Load charts have a "Wellness →" link — remove it.** gymapp-only.
 411. 🔨 **Workout detail: the "Mind" section body is EMPTY while its content hides behind a "why" chip.** JM 2026-07-07 (screenshot):
     "don't get the Mind — the section is empty but the why is a chip to click." Fuel shows its text inline (+ a why chip); Mind shows only
     a "why ⓘ" chip with no body, so it reads as broken/empty (the real "Mental focus — Restraint…" is buried in the why sheet). FIX: if a

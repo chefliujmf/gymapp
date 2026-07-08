@@ -249,12 +249,15 @@ export function ChartModal({ title, onClose, children }: { title: string; onClos
 const DUR_TICKS: [number, string][] = [[1, '1s'], [5, '5s'], [15, '15s'], [60, '1m'], [300, '5m'], [1200, '20m'], [3600, '1h'], [10800, '3h']]
 /** Mean-max curve on a LOG duration axis (power-duration curve). Tick labels render as
  * HTML below (avoids text distortion from the stretch-to-width SVG). */
-export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)', height = 200 }: { secs: number[]; watts: number[]; color?: string; height?: number }) {
+export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)', height = 200, overlay }: { secs: number[]; watts: number[]; color?: string; height?: number; overlay?: { secs: number[]; watts: number[]; color?: string } | null }) {
   const [hi, setHi] = useState<number | null>(null) // #292: hover scrubber, consistent with the timeline
   const pts0 = secs.map((s, i) => [s, watts[i]] as [number, number]).filter(([s, w]) => s > 0 && w != null)
   if (pts0.length < 2) return <div className="chart-empty">No power curve yet</div>
-  const sMin = Math.min(...pts0.map((p) => p[0])), sMax = Math.max(...pts0.map((p) => p[0]))
-  const vMax = Math.max(...pts0.map((p) => p[1]))
+  // #407 — optional 2nd-season OVERLAY (drawn behind the main line). Axes fit both curves.
+  const ov0 = overlay ? overlay.secs.map((s, i) => [s, overlay.watts[i]] as [number, number]).filter(([s, w]) => s > 0 && w != null) : []
+  const allPts = ov0.length ? pts0.concat(ov0) : pts0
+  const sMin = Math.min(...allPts.map((p) => p[0])), sMax = Math.max(...allPts.map((p) => p[0]))
+  const vMax = Math.max(...allPts.map((p) => p[1]))
   const H = height, padT = 8, padB = 6, pad = 6
   const fmtS = (s: number) => (s < 60 ? `${s}s` : s < 3600 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`)
   // chart-standard Y axis, dense (#286): ~6 clean watt gridlines; scale the path to the nice top.
@@ -283,6 +286,8 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
           {ticks.map(([s]) => <line key={s} x1={lx(s)} x2={lx(s)} y1={padT} y2={H - padB} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
           <defs><linearGradient id="pc-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.25" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
           <path d={`${d} L${lx(pts0[pts0.length - 1][0])},${H - padB} L${lx(pts0[0][0])},${H - padB} Z`} fill="url(#pc-fill)" />
+          {/* #407 — 2nd-season overlay line, drawn BEHIND the main (This-season) line */}
+          {ov0.length ? <path d={'M' + ov0.map((p) => `${lx(p[0])},${y(p[1])}`).join(' L')} fill="none" stroke={overlay?.color || 'var(--blue, #5aa9ff)'} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" opacity="0.9" /> : null}
           {/* #355 — static full line (no draw-in animation): a dash/pathLength reveal could leave the tail
               undrawn, making the curve look like it "stops" partway. Always render the whole curve to 1h. */}
           <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
@@ -305,12 +310,14 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
 /** #333 — Best-PACE curve (running's power curve): fastest average pace sustained for each duration,
  * on a LOG duration axis. Pace is inverted (faster = higher) so the curve reads like the power curve:
  * short bursts fast at the left, easing to the right. `pace` in sec/km. */
-export function PaceCurveChart({ secs, pace, color = 'var(--accent, #34e07d)', height = 200 }: { secs: number[]; pace: number[]; color?: string; height?: number }) {
+export function PaceCurveChart({ secs, pace, color = 'var(--accent, #34e07d)', height = 200, overlay }: { secs: number[]; pace: number[]; color?: string; height?: number; overlay?: { secs: number[]; pace: number[]; color?: string } | null }) {
   const [hi, setHi] = useState<number | null>(null)
   const pts0 = secs.map((s, i) => [s, pace[i]] as [number, number]).filter(([s, p]) => s > 0 && p != null && p > 0)
   if (pts0.length < 2) return <div className="chart-empty">No pace curve yet</div>
-  const sMin = Math.min(...pts0.map((p) => p[0])), sMax = Math.max(...pts0.map((p) => p[0]))
-  const pMin = Math.min(...pts0.map((p) => p[1])), pMax = Math.max(...pts0.map((p) => p[1])) // sec/km: min = fastest
+  const ov0 = overlay ? overlay.secs.map((s, i) => [s, overlay.pace[i]] as [number, number]).filter(([s, p]) => s > 0 && p != null && p > 0) : [] // #407 overlay
+  const allPts = ov0.length ? pts0.concat(ov0) : pts0
+  const sMin = Math.min(...allPts.map((p) => p[0])), sMax = Math.max(...allPts.map((p) => p[0]))
+  const pMin = Math.min(...allPts.map((p) => p[1])), pMax = Math.max(...allPts.map((p) => p[1])) // sec/km: min = fastest
   const H = height, padT = 8, padB = 6, pad = 6
   const span = Math.max(pMax - pMin, 20) // avoid a collapsed axis on a steady run
   const lo = pMin - span * 0.08, range2 = span * 1.16
@@ -337,6 +344,8 @@ export function PaceCurveChart({ secs, pace, color = 'var(--accent, #34e07d)', h
           {ticks.map(([s]) => <line key={s} x1={lx(s)} x2={lx(s)} y1={padT} y2={H - padB} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
           <defs><linearGradient id="pace-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.25" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
           <path d={`${d} L${lx(pts0[pts0.length - 1][0])},${H - padB} L${lx(pts0[0][0])},${H - padB} Z`} fill="url(#pace-fill)" />
+          {/* #407 — 2nd-season overlay line, behind the main (This-season) pace line */}
+          {ov0.length ? <path d={'M' + ov0.map((p) => `${lx(p[0])},${y(p[1])}`).join(' L')} fill="none" stroke={overlay?.color || 'var(--blue, #5aa9ff)'} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" opacity="0.9" /> : null}
           {/* #355 — static full line (no draw-in animation): a dash/pathLength reveal could leave the tail
               undrawn, making the curve look like it "stops" partway. Always render the whole curve to 1h. */}
           <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />

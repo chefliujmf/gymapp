@@ -33,6 +33,8 @@ easy/recovery days, never the day after another hard run or hard ride (see the g
 frequency/availability rules).
 
 ## Building a session
+- **Naming:** title + describe every run by its TRAINING content/purpose ("Easy Aerobic Run", "Tempo 3×10", "5 k-pace intervals")
+  — NEVER after the weather or a theme (no "Rain Day", "Hot Day"). Weather only decides indoor/outdoor + intensity + fuel, never the name.
 - **Threshold set it first.** Run %pace targets resolve on the watch ONLY if the athlete has a threshold
   pace. If it's blank, ESTIMATE it from their intervals run history (recent tempo/race efforts, Critical
   Speed), call `set_thresholds` (thresholdPace = seconds/km, e.g. 5:25/km = 325), and tell them your

@@ -4,10 +4,11 @@ import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, type RunVolume } from '../running-paces'
 import { runningVo2max } from '../vo2max-submax'
-import { fetchWellness, fetchPaceCurve, fetchEfTrend, bestPaceAtDist, type PaceCurve, type EfTrend } from '../intervals'
+import { fetchWellness, fetchEfTrend, type EfTrend } from '../intervals'
 import { authApi } from '../auth/api'
-import { TrendChart, PaceCurveChart, InfoDot } from '../charts'
+import { TrendChart } from '../charts'
 import { BenchmarksCard } from '../Benchmarks'
+import SeasonCompare from '../SeasonCompare'
 // #398 — the Threshold benchmark card (edit + confidence + science) is the ONE place for threshold pace; the
 // old duplicate inline ThresholdCell was removed (JM: "threshold there 2 times").
 
@@ -29,7 +30,6 @@ export default function RunningStats() {
   const [runVol, setRunVol] = useState<{ available: boolean; longestKm?: number; weeklyKm?: number } | null>(null)
   const [hrRest, setHrRest] = useState<number | null>(null) // #234 HR-ratio input
   const [paceTrend, setPaceTrend] = useState<(number | null)[] | null>(null) // #230 per-week avg pace
-  const [pc, setPc] = useState<PaceCurve | null>(null) // #396 mean-max pace curve
   const [ef, setEf] = useState<EfTrend | null>(null) // #403 efficiency-factor trend
   const isRunner = hasModule(user?.sports || [], 'running')
 
@@ -37,7 +37,6 @@ export default function RunningStats() {
     if (!user?.hasIcuKey || !isRunner) return
     authApi.runVolume().then(setRunVol).catch(() => {})
     authApi.runPaceTrend().then((r) => setPaceTrend(r.available && r.paces ? r.paces : [])).catch(() => {})
-    fetchPaceCurve(90).then(setPc).catch(() => setPc(null)) // #396
     fetchEfTrend('Run', 90).then(setEf).catch(() => {}) // #403
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
     fetchWellness(from, to).then((rows) => { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break } }).catch(() => {})
@@ -72,29 +71,8 @@ export default function RunningStats() {
           <BenchmarksCard only={['thresholdPace', 'cs', 'dPrime', 'vo2max', 'tteRun', 'maxHr']} profile="running" />
           {vo2 && hrRatioMismatch &&<p className="meta" style={{ margin: '10px 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
 
-          {/* #396 — mean-max PACE curve (running's power curve): fastest pace held for each duration, from intervals. */}
-          {pc && pc.secs.length >= 2 && (
-            <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
-              <div className="fit-legend"><span style={{ color: '#ffb13d' }}>● Pace curve<InfoDot text="Your fastest pace held for each duration — short bursts on the left (seconds), long runs on the right (up to ~minutes). Push a line UP (faster) = you got quicker at that effort. Read live from intervals.icu." /></span></div>
-              <PaceCurveChart secs={pc.secs} pace={pc.pace} color="#ffb13d" />
-              {/* coach insight on every graph (#395/#397) — threshold-anchored + robust to whatever distances exist:
-                  is the curve from easy base miles or real efforts near threshold? then the endurance fade. */}
-              {(() => {
-                const p1 = bestPaceAtDist(pc, 1000)
-                if (pace && p1 && p1 > pace + 30) return <p className="fit-insight">📉 Your logged runs sit well easier than your {fmtPace(pace)}/km threshold (best 1 k here {fmtPace(p1)}) — mostly base miles. Add tempo or intervals to push the curve toward your real capacity.</p>
-                const li = pc.dist.reduce((mx, d, i) => (d > pc.dist[mx] ? i : mx), 0)
-                const dLong = pc.dist[li], pLong = pc.pace[li], base = p1 ?? Math.min(...pc.pace)
-                if (dLong >= 2000 && pLong >= base) { const f = Math.round(pLong - base); return <p className="fit-insight">{f < 25 ? `💪 Strong endurance — your pace barely fades (~${f}s/km) out to ${(dLong / 1000).toFixed(1)} km.` : `➡️ Pace fades ~${f}s/km out to ${(dLong / 1000).toFixed(1)} km — more easy volume flattens the curve.`}</p> }
-                return null
-              })()}
-              <div className="be-row">
-                {([[400, '400 m'], [1000, '1 km'], [5000, '5 km'], [10000, '10 km']] as [number, string][])
-                  .map(([m, label]) => [label, bestPaceAtDist(pc, m)] as [string, number | null])
-                  .filter(([, p]) => p != null)
-                  .map(([label, p]) => <div key={label} className="be"><span>{label}</span><b>{fmtPace(p!)}</b><em>/km</em></div>)}
-              </div>
-            </div>
-          )}
+          {/* #407/#420 — the 2-season overlay IS the pace curve now (removed the old single-range curve to avoid two). */}
+          <SeasonCompare sport="running" threshold={pace} />
 
           {/* #398 — race predictions sit right under the pace curve (both are "what you can do"); the training
               zones ("how to train") follow, colour-coded as a cool→warm effort spectrum. */}

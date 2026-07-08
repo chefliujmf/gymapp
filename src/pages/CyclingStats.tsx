@@ -1,13 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { localISO } from '../date'
-import { fetchWellness, fetchPowerCurve, fetchEfTrend, type IcuWellness, type PowerCurve, type EfTrend } from '../intervals'
+import { fetchWellness, fetchEfTrend, type IcuWellness, type EfTrend } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
-import { PowerCurveChart, TrendChart, InfoDot, bestAt } from '../charts'
+import { TrendChart, InfoDot } from '../charts'
 import { hasModule } from '../modules'
 import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
-import { MiniCard, last } from './Fitness'
+import { last } from './Fitness'
+
+// #420 — one plain-language takeaway for the eFTP trend (matches the EF-chart insight style).
+function eftpInsight(a: (number | null)[]): string {
+  const vals = a.filter((v): v is number => v != null)
+  if (vals.length < 2) return 'Your eFTP will trend here as intervals reads it from your hard efforts.'
+  const first = vals[0], lastV = vals[vals.length - 1], d = Math.round(lastV - first)
+  return d > 3 ? `📈 eFTP is up ${d} W over this range — your threshold is climbing.`
+    : d < -3 ? `📉 eFTP has eased ${-d} W — normal in a base/recovery block; it rebounds with sharper efforts.`
+      : `➡️ eFTP is holding steady around ${Math.round(lastV)} W.`
+}
 import { BenchmarksCard } from '../Benchmarks'
+import SeasonCompare from '../SeasonCompare'
 
 // #225 — Cycling per-sport stats: power curve · eFTP · VO₂max · W/kg. Split out of /fitness (which
 // is now global Load & Form only).
@@ -17,7 +28,6 @@ export default function CyclingStats() {
   const [from, setFrom] = useState(localISO(new Date(Date.now() - 90 * 86400000)))
   const [to, setTo] = useState(localISO())
   const [rows, setRows] = useState<IcuWellness[] | null>(null)
-  const [pc, setPc] = useState<PowerCurve | null>(null)
   const [ef, setEf] = useState<EfTrend | null>(null) // #403 efficiency-factor trend
   const isCycling = hasModule(user?.sports || [], 'cycling')
   useEffect(() => { if (user?.hasIcuKey && isCycling) fetchEfTrend('Ride', 90).then(setEf).catch(() => {}) }, [user?.hasIcuKey, isCycling])
@@ -25,15 +35,18 @@ export default function CyclingStats() {
   useEffect(() => {
     if (!from || !to) return
     const [f, t] = from <= to ? [from, to] : [to, from]
-    setRows(null); setPc(null)
+    setRows(null)
     fetchWellness(f, t).then(setRows).catch(() => setRows([]))
-    fetchPowerCurve(Math.max(1, Math.round((Date.parse(t) - Date.parse(f)) / 86400000))).then(setPc).catch(() => setPc(null))
   }, [from, to])
 
   const s = useMemo(() => {
     const r = rows || []
     const col = (k: keyof IcuWellness) => r.map((d) => d[k] as number | null)
-    return { eftp: col('eftp'), weight: col('weight') }
+    // #420 — eFTP is only stamped on the days intervals recomputes it (most days are null → the trend rendered as an
+    // empty box). It HOLDS its value between updates, so forward-fill: each gap carries the last known eFTP → a
+    // continuous step line. Leading nulls (before the first estimate) stay null.
+    const ffill = (a: (number | null)[]) => { let last: number | null = null; return a.map((v) => (v != null ? (last = v) : last)) }
+    return { eftp: ffill(col('eftp')), weight: col('weight') }
   }, [rows])
 
   return (
@@ -53,22 +66,14 @@ export default function CyclingStats() {
           <DateRangeFilter presets={TRAINING_PRESETS} from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
           {rows === null ? <p className="meta">Loading…</p> : (
             <>
-              {/* eFTP TREND over the range (the benchmark card shows the current value + confidence; this is the history). */}
-              <div className="fit-grid">
-                <MiniCard title="eFTP trend" value={last(s.eftp)} unit=" W" hint="Estimated threshold power — watts you can hold ~1 hour. Higher = stronger. The line is your trend over this range." series={{ label: '', color: '#ffb020', data: s.eftp }} />
-              </div>
-              {pc ? (
+              {/* #420 — eFTP trend as a FULL-WIDTH standard chart (axes + labels + insight), matching EF below. */}
+              {s.eftp.some((v) => v != null) && (
                 <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
-                  <div className="fit-legend"><span style={{ color: '#34e07d' }}>● Power curve<InfoDot text="The most power (watts) you can hold for each duration — sprints on the left (seconds), endurance on the right (hours). Push a line up = you got stronger at that effort." /></span></div>
-                  <PowerCurveChart secs={pc.secs} watts={pc.watts} />
-                  <div className="be-row">
-                    {([[5, '5s'], [60, '1m'], [300, '5m'], [1200, '20m']] as [number, string][]).map(([d, label]) => {
-                      const w = bestAt(pc.secs, pc.watts, d), wt = last(s.weight)
-                      return <div key={label} className="be"><span>{label}</span><b>{w ? Math.round(w) : '—'} W</b>{w && wt ? <em>{(w / wt).toFixed(2)} W/kg</em> : null}</div>
-                    })}
-                  </div>
+                  <div className="fit-legend"><span style={{ color: '#ffb020' }}>● eFTP trend<InfoDot text="Estimated threshold power — the watts you can hold ~1 hour. intervals re-reads it from every hard effort; it holds its value between updates. The line is your trend over this range." /></span></div>
+                  <TrendChart series={[{ label: 'eFTP', color: '#ffb020', data: s.eftp, area: true }]} height={120} axes unit=" W" labels={(rows || []).map((d) => new Date(d.date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))} />
+                  <p className="fit-insight">{eftpInsight(s.eftp)}</p>
                 </div>
-              ) : <p className="meta" style={{ marginTop: 10 }}>No power-curve data in this range.</p>}
+              )}
               {/* #403 — Efficiency Factor: aerobic engine (power ÷ HR), rising = fitter even when FTP is flat. */}
               {ef && ef.points.length >= 2 && (
                 <div className="card" style={{ padding: '12px 14px', marginTop: 12 }}>
@@ -77,6 +82,8 @@ export default function CyclingStats() {
                   <p className="fit-insight">{ef.trend === 'up' ? `📈 EF is climbing (${ef.deltaPct != null && ef.deltaPct > 0 ? '+' : ''}${ef.deltaPct}%) — your aerobic engine is improving, even if FTP is flat. Keep the base work.` : ef.trend === 'down' ? `📉 EF is slipping (${ef.deltaPct}%) — check sleep, stress or fuelling before adding load.` : '➡️ EF is steady — a stable aerobic base.'}</p>
                 </div>
               )}
+              {/* #407/#420 — the 2-season overlay IS the power curve now (removed the old single-range curve to avoid two). */}
+              <SeasonCompare sport="cycling" weight={last(s.weight)} />
               <p className="meta" style={{ marginTop: 10 }}>Read live from intervals.icu.</p>
             </>
           )}

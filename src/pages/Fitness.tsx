@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { localISO } from '../date'
 import { fetchWellness, type IcuWellness } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
@@ -169,12 +169,7 @@ export default function Fitness() {
                 <TrendChart height={130} axes labels={dates} today={todayFrac} series={[{ label: 'Load', color: '#9b6bff', data: full(s.load, proj?.loads), area: true }]} />
                 <p className="fit-insight">{loadInsight(s.load)}</p>
               </div>
-              {/* sleep/HRV/resting-HR/weight moved to their own page (#194a) */}
-              <Link to="/wellness" className="card hub-link" style={{ marginTop: 12 }}>
-                <span className="hub-link__ic">❤️</span>
-                <span className="hub-link__t"><h3>Wellness</h3><div className="meta">Sleep · HRV · resting HR · weight trends</div></span>
-                <span className="hub-link__ch">›</span>
-              </Link>
+              {/* #420 — Wellness link removed from Load & Form (JM); Wellness lives in its own nav entry. */}
               <p className="meta" style={{ marginTop: 10 }}>All read live from intervals.icu — Platyplus doesn't store these. The number on each card is your most recent day.</p>
             </>
           )}
