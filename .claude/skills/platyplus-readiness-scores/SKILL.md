@@ -63,6 +63,18 @@ TSS (or RPE→TSS: moderate ~50–60/h, hard ~100/h). Check-in: subjective (ener
   proactively re-plan the rolling **14-day** horizon + notify + ask-if-uncertain. Runtime-message-driven
   (`dailyAdaptMsg`), kept OUT of `coach-engine.md` (E2BIG systemPrompt-size, #352). Test via `POST /api/coach/daily-adapt`.
 
+## Menstrual cycle + pregnancy (female-only; #329/#422/#427)
+- **Cycle → load + readiness bias** (`server/cycle.js`): intervals `menstrualPhase` → phase → a load modifier (push
+  follicular/ovulatory, ease late-luteal) + a readiness adjust (luteal naturally raises RHR / lowers HRV → don't dock
+  Energy). ⚠️ intervals only stamps `menstrualPhase="PERIOD"` on the START day (rest null, no forward prediction) →
+  `phaseFromHistory` finds the last PERIOD marker in 60-day wellness = day 1, projects with `phaseFromDay` (stale-guard
+  >cycle+10d). Wired at `/auth/readiness`; coach reads the `# CYCLE PHASE` block.
+- **PREGNANCY OVERRIDES the cycle (#427):** `info.pregnant` → NO cyclePhase computed, and `buildSystemPrompt` emits a
+  `# PREGNANCY` block (week/trimester from `pregnancyStage(info,date)`) INSTEAD. Evidence-based coaching in
+  `coach-engine-female.md §6` + `docs/pregnancy-coaching.md` (ACOG 804 / 2019 Canadian: RPE not HR, no supine T2+, no
+  Valsalva, thermoregulation, pelvic floor, STOP signs, defer to clinician). 🔒 ABSOLUTE privacy: never name pregnancy in
+  any public title/description/plan name. Profile "Cycle & pregnancy" **Pregnant toggle**. Unit-tested (`src/cycle.test.ts`).
+
 ## Build pattern
 Put the math in a PURE server module `server/readiness.js` (no side effects → unit-test in `src/*.test.ts`):
 `freshness(ctl,atl)`, `energy({hrvZ,sleep100,rhrZ,subjective})`, `sleep100(...)`, `to1_5(s)`, `ewma/z/swc`.

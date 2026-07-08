@@ -1023,7 +1023,7 @@
         "tags": ["checkin"],
         "security": [{ "cookieAuth": [] }],
         "parameters": [{ "name": "date", "in": "query", "schema": { "type": "string", "format": "date" } }],
-        "responses": { "200": { "description": "{ connected, sleep, freshness, energy (null on cold start), calibration (learned per-dim offsets, #207 Phase 2b), baseline, today }" } }
+        "responses": { "200": { "description": "{ connected, sleep, freshness, energy (null on cold start), cyclePhase (female: from intervals menstrualPhase or derived from the last period; NULL when pregnant, #422/#427), calibration (learned per-dim offsets, #207 Phase 2b), baseline, today }" } }
       }
     },
     "/auth/readiness-forecast": {

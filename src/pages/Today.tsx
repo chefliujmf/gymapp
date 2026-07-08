@@ -171,15 +171,17 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
           </div>
         </div>
       ))}
-      {isToday && rdy?.connected && (
+      {/* #354 — show the wellness source for ANY day (was today-only), so a blank past-day check-in
+          EXPLAINS itself (data not synced / not recorded) instead of looking broken. Refresh stays today-only. */}
+      {rdy?.connected && (
         <div className="checkin__wchips">
           {rdy.today?.sleepHours != null && <span className="wchip">😴 {rdy.today.sleepHours}h</span>}
           {rdy.today?.hrv != null && <span className="wchip">HRV {Math.round(rdy.today.hrv)}</span>}
           {rdy.today?.restingHR != null && <span className="wchip">Rest HR {Math.round(rdy.today.restingHR)}</span>}
           {(rdy.today?.hrv != null || rdy.today?.restingHR != null || rdy.today?.sleepHours != null)
             ? <span className="wchip wchip--src" title="These values come from intervals.icu"><span className="wchip__up" aria-hidden="true">↑</span> intervals</span>
-            : <span className="wchip wchip--wait">HRV/sleep not synced yet</span>}
-          <button className="wchip wchip--refresh" onClick={refreshRdy} disabled={refreshing} title="Re-check intervals for a newer Coros sync">{refreshing ? '…' : '⟳'}</button>
+            : <span className="wchip wchip--wait">{isToday ? 'HRV/sleep not synced yet — auto-fills once your watch syncs' : 'No HRV/sleep for this day — scores are your own read'}</span>}
+          {isToday && <button className="wchip wchip--refresh" onClick={refreshRdy} disabled={refreshing} title="Re-check intervals for a newer Coros sync">{refreshing ? '…' : '⟳'}</button>}
         </div>
       )}
     </div>
