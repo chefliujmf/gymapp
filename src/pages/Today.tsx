@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting, listTemplates, listRideTemplates, type WorkoutTemplate, type RideTemplate } from '../db'
 import { WeekStrip, MiniProfile, DoneStats } from '../ui'
 import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
+import { incompleteFeedback } from '../feedbackGaps' // #387 — surface the "to review" count on Today
 import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, setCoachPlans, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
 import { calApi, type CalItem } from '../calendar'
@@ -340,6 +341,23 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
   )
 }
 
+// #387 — a compact "sessions to review" headline on Today (only when there ARE gaps); taps through to the
+// full, per-session list on Logs. Keeps Today clean while making sure feedback never quietly goes stale.
+function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
+  const n = incompleteFeedback(acts).length
+  if (!n) return null
+  return (
+    <Link to="/logs" className="fbban" style={{ textDecoration: 'none', color: 'var(--text)', margin: '10px 0 12px' }}>
+      <div className="fbban__ic">📝</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="fbban__t">{n} session{n > 1 ? 's' : ''} need{n > 1 ? '' : 's'} your feedback</div>
+        <div className="fbban__s">Your coach reviews it and adapts your plan, a minute each.</div>
+      </div>
+      <span className="fbban__cta">Review →</span>
+    </Link>
+  )
+}
+
 export default function Today() {
   // #302: the setup checklist (SetupChecklist) now owns the "meet your coach" + setup nudges.
   const [selDay, setSelDay] = useState(todayISO())
@@ -511,6 +529,9 @@ export default function Today() {
 
       {/* #223: today = check-in + live verdict; future = freshness FORECAST (no fake "fresh"); past = logged. */}
       {isFuture ? <ForecastCard key={selDay} day={selDay} fmtDay={fmtDay} /> : <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />}
+
+      {/* #387 — nudge to review completed sessions still missing feedback (links to the full list on Logs). */}
+      <ToReviewCard acts={activities} />
 
       {todaysLogs && todaysLogs.length > 0 && (
         <Link to="/progress" style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — see history →</Link>
