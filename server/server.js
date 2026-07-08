@@ -1899,13 +1899,20 @@ function searchExercises(q, limit, equipment) {
   // it → the coach only saw the image-only free-exercise-db entry). Fall back to any-token when all-token finds
   // nothing. Then rank VIDEO-first so the coach picks a demo WITH a clip whenever the exact movement has one.
   const toks = n.split(/[^a-z0-9]+/).filter((t) => t.length > 1)
-  let list = EXERCISES
-  if (toks.length) {
-    list = EXERCISES.filter((e) => { const nm = e.name.toLowerCase(); return toks.every((t) => nm.includes(t)) })
-    if (!list.length) list = EXERCISES.filter((e) => { const nm = e.name.toLowerCase(); return toks.some((t) => nm.includes(t)) })
-  }
+  // #420 — COMPLETE pool only (JM): only exercises that have a real VIDEO demo (~image comes with it). We have ~4k,
+  // plenty complete — never serve an image-less row.
+  let list = EXERCISES.filter((e) => e.video)
   if (eq) list = list.filter((e) => e.equipment && eq.includes(e.equipment.toLowerCase())) // owned-equipment filter
-  if (toks.length) list = [...list].sort((a, b) => rankExerciseHit(b, n) - rankExerciseHit(a, n)) // #416 video-first
+  if (toks.length) {
+    // Rank by WHOLE-WORD overlap so "arm" matches the word "arm", NOT "w-arm-up", and a 2-word hit ("dumbbell row")
+    // beats a 1-word one ("arm circles"). Then exact/prefix/shorter-name as the tiebreak (rankExerciseHit). Keep only
+    // rows with ≥1 word matched — so "one-arm dumbbell row" (no exact video) still surfaces a video "Dumbbell Row".
+    const words = (name) => new Set(String(name || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean))
+    list = list.map((e) => { const w = words(e.name); return { e, ov: toks.filter((t) => w.has(t)).length } })
+      .filter((x) => x.ov > 0)
+      .sort((a, b) => (b.ov - a.ov) || (rankExerciseHit(b.e, n) - rankExerciseHit(a.e, n)))
+      .map((x) => x.e)
+  }
   return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, equipment: e.equipment, image: e.image, video: e.video }))
 }
 // Recipe + mind/movement catalogs — let the coach PICK real Platyplus content by id

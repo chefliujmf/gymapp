@@ -40,7 +40,7 @@ const server = new McpServer({ name: 'platyplus', version: '1.0.0' })
 
 // --- discovery ------------------------------------------------------------
 server.tool('search_exercises',
-  'Search the Platyplus exercise library by name; returns ids (exId), the equipment tag, and demo media. Use the exId in create_workout. IMPORTANT: pass `equipment` = the athlete\'s OWNED gear (see the profile) so you only ever prescribe exercises they can actually do; "Bodyweight" needs nothing.',
+  'Search the Platyplus exercise library by name; returns ids (exId), the equipment tag, and demo media. Use the exId in create_workout. Every result is a COMPLETE exercise with a real VIDEO demo (image-only entries are never returned) — so always pick from these and never invent an exId. Results are ranked best-match first, so the TOP hit is usually the right movement. IMPORTANT: pass `equipment` = the athlete\'s OWNED gear (see the profile) so you only ever prescribe exercises they can actually do; "Bodyweight" needs nothing.',
   { query: z.string().describe('name fragment, e.g. "goblet squat"'), equipment: z.string().optional().describe('comma-separated owned equipment to limit to, e.g. "Dumbbell,Bodyweight,Bands"'), limit: z.number().int().min(1).max(100).optional() },
   wrap((a) => api('GET', `/api/exercises?q=${encodeURIComponent(a.query)}&equipment=${encodeURIComponent(a.equipment || '')}&limit=${a.limit || 20}`)))
 
