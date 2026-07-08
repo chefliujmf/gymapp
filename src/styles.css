@@ -434,6 +434,12 @@ select.search { appearance: none; -webkit-appearance: none; }
 .mealchip__nm { font-size: 12.5px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mealchip__mc { font-size: 10px; color: var(--text-dim); }
 .mealchip__add { position: absolute; top: 7px; right: 7px; width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); color: var(--text-dim); display: grid; place-items: center; }
+/* #431 — the Today Fuel grid overflowed the screen: grid children default to min-width:auto, so a long
+   meal title (white-space:nowrap) forced the cell (and the whole page) wider instead of truncating. Pin
+   min-width:0 so the cell shrinks + the __nm ellipsis kicks in. `display:block` overrides a later, colliding
+   `.mealchip{display:flex}` rule (line ~1390, a different component) that was leaking onto these chips. */
+.fuel-grid { max-width: 100%; }
+.fuel-grid > .mealchip { min-width: 0; display: block; }
 /* #202 supplements sub-block under Fuel */
 .supps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 9px; }
 .supps__hdr { font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 2px; }

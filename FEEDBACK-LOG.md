@@ -735,6 +735,22 @@ test guide → the **🧪 Test guide** section below.
     isn't linked to a live different event (the mid-re-push Xenia case); cap 8, prod-only. ⏳ SOURCE follow-up: the daily-adapt re-plan
     CREATES new events but doesn't always DELETE the superseded old one — the GC is the net; the deterministic source (delete-on-replace)
     is worth a pass. gymapp (reconcile + coach re-plan).
+    🔧 CORRECTION (JM 2026-07-08: "lost my tomorrow's gym, normal?"): my "no-plan orphan → delete" rule was UNSAFE — JM's 07-09 gym was a
+    LEGIT coach-created session (audit: 07-07 20:25 coach Created "Full-Body Strength — Rain Day") whose PLAN link got lost (a sync bug), so
+    it looked orphaned and I deleted it. A no-plan event can be a lost-plan legit session, NOT just a leftover — indistinguishable. FIX: GC is
+    now **DUPLICATE-ONLY** (auto-deletes an orphan ONLY when a plan owns the exact day+sport via a DIFFERENT LIVE event); never deletes a
+    no-plan orphan. Restoring JM's 07-09 gym. ⚠️ ROOT still open (JM: "audit and fix all #431"): WHY did the 07-09 gym PLAN disappear while
+    its event survived? The reconcile/deletion-mirror is dropping plans and/or the coach re-plan orphans events — needs a full sync audit.
+432. 🔨 **Fuel section overflows the screen to the right — fit it.** JM 2026-07-08 (screenshot: the Dinner meal card is cut off past the
+    right edge). ✅ FIXED: `.fuel-grid` grid children lacked `min-width:0`, so a long meal title (`white-space:nowrap`) forced the cell (and
+    the page) wider than the viewport instead of truncating. Added `.fuel-grid{max-width:100%}` + `.fuel-grid>.mealchip{min-width:0;display:block}`
+    (the `display:block` also overrides a colliding later `.mealchip{display:flex}` rule leaking from another component). gymapp-only (CSS).
+433. ⬜ **Make Fuel SUGGESTIONS + Mind coach-driven (personalised), not algorithmic.** JM 2026-07-08: "be sure fuel suggested and mind are
+    done with coach logic, is there one?" AUDIT: currently the DEFAULT suggestions are ALGORITHMIC — `suggestMeal` picks from `recipes` by
+    category + diet + date-salt (Today.tsx:495), `meditation` = `pickByDate(mindSessions)` (Today.tsx:506). Only SCHEDULED meals/mind (coach
+    `schedule_meal`/`schedule_mind`) are coach-driven, and the coach doesn't proactively fill every day. TO BUILD: have the coach/daily-adapt
+    schedule the day's fuel + mind personalised to the training load + goals (carb-forward on a hard day, recovery-focused mind, etc.), so the
+    defaults are coach logic, not a generic pool. gymapp + coach. Mock/scope first.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
