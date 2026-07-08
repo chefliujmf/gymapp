@@ -37,6 +37,26 @@ export function phaseFromDay(day, cycleLen = 28) {
   return 'luteal'
 }
 
+/**
+ * #422 — derive the CURRENT phase from a WELLNESS HISTORY when intervals only marks the period-START
+ * day (it does NOT fill/predict every day forward — Xenia logged PERIOD on the 3rd, every other day is
+ * null). Finds the most recent logged 'menstrual' (period) day on-or-before `date` = cycle day 1, then
+ * projects with phaseFromDay. Returns null if there's no period marker, or the last one is stale (more
+ * than a cycle+10 days ago → don't project a phantom phase). `rows` = [{ date:'YYYY-MM-DD',
+ * menstrualPhase }], any order. This is what stops us re-asking her for a date intervals already has.
+ */
+export function phaseFromHistory(rows = [], date, cycleLen = 28) {
+  if (!date || !Array.isArray(rows)) return null
+  const L = Math.max(21, Math.min(40, Number(cycleLen) || 28))
+  const start = rows
+    .filter((r) => r && r.date && r.date <= date && normalizePhase(r.menstrualPhase) === 'menstrual')
+    .sort((a, b) => (a.date < b.date ? 1 : -1))[0] // most recent period marker first
+  if (!start) return null
+  const day = Math.floor((new Date(date) - new Date(start.date)) / 86400000) + 1
+  if (day < 1 || day > L + 10) return null // last period too long ago → don't project a stale phase
+  return phaseFromDay(day, L)
+}
+
 /** (a) Load multiplier for planned intensity/volume this phase. */
 export function cycleLoadModifier(phase) {
   return { menstrual: 0.90, follicular: 1.05, ovulatory: 1.00, luteal: 0.95, late_luteal: 0.85 }[phase] ?? 1.0

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { normalizePhase, phaseFromDay, cycleLoadModifier, cycleReadinessAdjust, cycleContext } from '../server/cycle.js'
+import { normalizePhase, phaseFromDay, cycleLoadModifier, cycleReadinessAdjust, cycleContext, phaseFromHistory } from '../server/cycle.js'
 
 // #329 — menstrual-cycle factor for coaching + readiness.
 describe('normalizePhase (intervals menstrualPhase text → canonical)', () => {
@@ -24,6 +24,40 @@ describe('phaseFromDay (28-day default + scaling)', () => {
   })
   it('wraps days beyond the cycle length', () => { expect(phaseFromDay(29)).toBe('menstrual') })
   it('scales ovulation to a longer cycle', () => { expect(phaseFromDay(16, 32)).toBe('follicular') /* ovul ~day 18 in a 32d */ })
+})
+
+// #422 — derive today's phase from the last PERIOD marker when intervals only stamps the period start.
+describe('phaseFromHistory (last PERIOD in wellness → current phase)', () => {
+  // Xenia's real case: PERIOD logged 2026-07-03, every other day null → viewing 07-08 = cycle day 6.
+  const xenia = [
+    { date: '2026-07-01', menstrualPhase: null },
+    { date: '2026-07-02', menstrualPhase: null },
+    { date: '2026-07-03', menstrualPhase: 'PERIOD' },
+    { date: '2026-07-04', menstrualPhase: null },
+    { date: '2026-07-05', menstrualPhase: null },
+    { date: '2026-07-06', menstrualPhase: null },
+    { date: '2026-07-07', menstrualPhase: null },
+    { date: '2026-07-08', menstrualPhase: null },
+  ]
+  it("derives follicular for Xenia's 07-08 from her 07-03 period (day 6)", () => {
+    expect(phaseFromHistory(xenia, '2026-07-08')).toBe('follicular')
+  })
+  it('the period-start day itself is menstrual (day 1)', () => {
+    expect(phaseFromHistory(xenia, '2026-07-03')).toBe('menstrual')
+  })
+  it('picks the MOST RECENT period marker, not an older one', () => {
+    const rows = [{ date: '2026-06-05', menstrualPhase: 'PERIOD' }, { date: '2026-07-03', menstrualPhase: 'PERIOD' }]
+    expect(phaseFromHistory(rows, '2026-07-04')).toBe('menstrual') // day 2 off the 07-03, not day ~29 off 06-05
+  })
+  it('returns null when there is no period marker', () => {
+    expect(phaseFromHistory([{ date: '2026-07-01', menstrualPhase: null }], '2026-07-08')).toBeNull()
+  })
+  it('returns null when the last period is STALE (>1 cycle+10d ago) — do not project a phantom phase', () => {
+    expect(phaseFromHistory([{ date: '2026-05-01', menstrualPhase: 'PERIOD' }], '2026-07-08')).toBeNull()
+  })
+  it('ignores markers AFTER the viewed date', () => {
+    expect(phaseFromHistory([{ date: '2026-07-10', menstrualPhase: 'PERIOD' }], '2026-07-08')).toBeNull()
+  })
 })
 
 describe('load modifier — push in follicular, ease late-luteal', () => {

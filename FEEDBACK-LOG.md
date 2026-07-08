@@ -583,9 +583,16 @@ test guide → the **🧪 Test guide** section below.
     while the season-compare uses PER-SEASON `tteFromPower(season curve, season eFTP)` — different FTP anchor + different window. FIX: one
     canonical TTE — pass the athlete's SET FTP to SeasonCompare + anchor cycling TTE on it (like the benchmark); align the window so at least
     one column matches the card, or clarify labels. Also running TTE. gymapp-only.
-422. ⬜ **Xenia: had to enter her menstrual-cycle date manually though it's already in intervals wellness (logged the 3rd).** JM 2026-07-08.
+422. 🔨 **Xenia: had to enter her menstrual-cycle date manually though it's already in intervals wellness (logged the 3rd).** JM 2026-07-08.
     The cycle/period date is in intervals wellness — Platyplus should READ it (like HRV/sleep/CTL) and prefill the coach's cycle-phase, not
     ask her to re-enter. Investigate the intervals wellness cycle field + wire it into the cycle-phase (coach-engine-female uses cyclePhase). gymapp + coach.
+    ✅ ROOT CAUSE: intervals only stamps `menstrualPhase="PERIOD"` on the period-START day (Xenia: 07-03); EVERY other day is null AND
+    `menstrualPhasePredicted` is null too (it does NOT project forward). Our code read only TODAY's phase → null → fell back to asking. FIX:
+    new `phaseFromHistory(rows, date, len)` in server/cycle.js scans the 60-day wellness for the most recent PERIOD marker = cycle day 1, then
+    projects with phaseFromDay (Xenia 07-03 → viewing 07-08 = day 6 = FOLLICULAR), with a stale-guard (last period >cycle+10d ago → null, no
+    phantom phase). Wired into `/auth/readiness` cyclePhase as the middle step (intervals-today → derived-from-history → manual cycleStart).
+    Exposed `cyclePhase`/`cyclePhaseAt` on the user (pub) + client User type; Profile now SHOWS "Read from intervals.icu: currently follicular"
+    instead of prompting her. 6 new unit tests (src/cycle.test.ts, incl. her exact case) green, tsc clean. Ships to prod for her real data.
 423. 🔨 **Xenia: no longer getting 4 workouts/week — audit the coach's frequency.** JM 2026-07-08. Her target is ~4 days/week (info.freq)
     but the plan has fewer. Coach issue? Check `# TRAINING FREQUENCY` (buildSystemPrompt) vs what daily-adapt actually schedules; audit her
     upcoming 2 weeks vs freq. gymapp + coach.
