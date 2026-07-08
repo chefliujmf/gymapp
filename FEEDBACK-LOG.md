@@ -67,6 +67,14 @@ test guide → the **🧪 Test guide** section below.
     check-in feedback was entered in INTERVALS too → Platyplus + the coach must READ the intervals check-in/wellness for the
     day. Diagnose: is it a display bug (logged but not rendered), a missing-wellness auto-derive gap, or Platyplus not reading
     the intervals wellness/feedback for Jul 3? Adjust the coach to see the intervals-side feedback.
+    ✅ DIAGNOSED + FIXED (2026-07-08): NOT a bug. Reproduced readiness for Jul 3 on JM's real 60-day wellness → it computes fine now
+    (Sleep 3.8 · Freshness 4.2 · Energy 2.7, HRV baseline n=52, not cold-start). ROOT CAUSE = LATE WATCH SYNC: the Jul-3-night HRV/sleep
+    only reached intervals at `updated=2026-07-05 22:56` (2 days late), and there was no Platyplus check-in and NO intervals *subjective*
+    check-in to fall back on, so when JM looked the data genuinely wasn't there → blank scales. The coach "it's there" = it ran after the
+    sync. FIX: the wellness-source chip row was `isToday`-only, so a blank PAST day showed no explanation. Now shows for any day with
+    day-aware copy ("No HRV/sleep for this day, scores are your own read") so an empty check-in explains itself instead of looking broken.
+    (Follow-up idea if wanted: read intervals' SUBJECTIVE check-in fields — mood/motivation/fatigue/soreness — for athletes who log them
+    natively in intervals; Jul 3 had none, so not needed here.) gymapp-only.
 355. 🔨 **POWER CURVE line stops ~1m instead of running to 1h (prod).** JM 2026-07-05 (screenshot, ride detail → Power tab).
     The "best avg by duration" curve draws a crisp line 1s→~1m then flattens into just the fill with no visible line to
     5m/20m/1h — "be sure the graph line goes all the way." Same family as #344/#292/#334 chart bugs. Diagnose: does the curve
@@ -681,6 +689,13 @@ test guide → the **🧪 Test guide** section below.
     coach to pregnancy mode + pauses cycle tracking + hides the cycle fields + shows a private-note line ("never shown on your workouts"); OFF
     = the normal cycle UI. Saves `info.pregnant` via `/auth/profile` (which also clears any stale cyclePhase). No due-date field yet (JM: no
     info). tsc clean, mock at mockups/pregnancy-toggle.html. #427 now COMPLETE end-to-end (state + gate + engine + privacy + UI); awaiting JM ✅.
+428. 🔨 **Coach chat SLOW on mobile + a "no result" after navigating away.** JM 2026-07-08: "asked something to my coach, took forever on
+    mobile, then I backed out and came back to the chat and there was NO result. Optimize the coach speed + clarify what happened." Two
+    problems: (1) LATENCY — the coach runs a full agentic turn (~128 KB systemPrompt + tool calls) via the host chat-helper; first token can
+    take many seconds. (2) DURABILITY — if the user navigates away mid-stream on mobile, the in-flight response may not persist/resume, so
+    returning shows nothing. Investigate: does the chat-helper persist the assistant turn server-side even if the client disconnects (threads
+    are #363-synced)? Does Chat.tsx resume an in-flight request on remount, or at least show a "still thinking" state that survives nav?
+    Optimize: stream first token sooner + a persistent thinking indicator + PERSIST the completed turn even if the client dropped. gymapp + coach infra.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
