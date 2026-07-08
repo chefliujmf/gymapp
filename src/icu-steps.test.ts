@@ -1,6 +1,27 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, detectRepeat, plannedTss, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from '../server/icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, detectRepeat, plannedTss, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from '../server/icu-steps.js'
+
+// #384 — cool-downs flatten (no backwards "150-117" range); warm-ups always ramp up.
+describe('normalizeRamps — flat cool-downs, warm-ups ramp up', () => {
+  it('flattens a cool-down ramp-down to a single easy value (the eased-down power)', () => {
+    const [cd] = normalizeRamps([{ duration: 600, powerStart: 58, powerEnd: 45, label: 'Cool-down' }])
+    expect(cd.powerStart).toBe(45)
+    expect(cd.powerEnd).toBe(45) // flat → intervals shows "45%", not "58-45%"
+  })
+  it('leaves a warm-up ramping UP alone (reads low-to-high)', () => {
+    const [wu] = normalizeRamps([{ duration: 600, powerStart: 50, powerEnd: 63, label: 'Warm-up' }])
+    expect([wu.powerStart, wu.powerEnd]).toEqual([50, 63])
+  })
+  it('flips a warm-up authored descending into an ascending ramp', () => {
+    const [wu] = normalizeRamps([{ duration: 600, powerStart: 63, powerEnd: 50, label: 'Warm-up' }])
+    expect([wu.powerStart, wu.powerEnd]).toEqual([50, 63])
+  })
+  it('leaves a WORK segment as authored (intentional ramps survive)', () => {
+    const [w] = normalizeRamps([{ duration: 1200, powerStart: 88, powerEnd: 94, label: 'Sweet Spot' }])
+    expect([w.powerStart, w.powerEnd]).toEqual([88, 94])
+  })
+})
 
 // #312 — a RUN must target PACE (%pace), a RIDE POWER (%ftp). The bug: every ride/run emitted
 // power → intervals (and the Garmin workout it syncs) showed WATTS on runs.

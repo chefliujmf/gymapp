@@ -49,6 +49,21 @@ export function clampEasyEfforts(title = '', segments = []) {
   return clamped ? { segments: out, clamped } : { segments, clamped: 0 }
 }
 
+// #384 — normalize ramp DIRECTION so intervals never shows a confusing "high-low" range. A COOL-DOWN
+// that ramps 58%→45% renders as "150-117 W", which reads like a backwards range — JM's pick was to make
+// cool-downs a FLAT easy spin (single value, the eased-down power). WARM-UPS always ramp UP (low→high).
+// Work/steady segments are left exactly as authored (a real over-under / progressive ramp is intentional).
+export function normalizeRamps(segments = []) {
+  return (segments || []).map((s) => {
+    const ps = Number(s.powerStart) || 0
+    const pe = s.powerEnd != null ? Number(s.powerEnd) : ps
+    const label = String(s.label || '')
+    if (/cool[ -]?down/i.test(label)) { const v = Math.min(ps, pe) || ps || pe; return { ...s, powerStart: v, powerEnd: v } }
+    if (/warm[ -]?up/i.test(label) && pe < ps) return { ...s, powerStart: pe, powerEnd: ps }
+    return s
+  })
+}
+
 // Encode ONE plan segment (powerStart/powerEnd = % of FTP for rides, % of threshold pace for runs)
 // into intervals workout_doc step(s). Splits a step longer than MAX into interpolated chunks — a
 // single over-long step makes the intervals workout render EMPTY (matches cyclingcoach split_long_doc_step).

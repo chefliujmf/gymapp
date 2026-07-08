@@ -29,7 +29,7 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile } from '.
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads } from './readiness.js'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, nativeWorkoutText, plannedTss, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, plannedTss, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage)
 
@@ -1561,7 +1561,7 @@ function planToIcuEvent(plan, items = []) {
   const brief = renderCoachBrief(plan, items)
   const ev = { start_date_local: plan.date + 'T00:00:00', category: 'WORKOUT', name: plan.title, external_id: plan.id, description: '' }
   if (plan.sport === 'ride' || plan.sport === 'run') {
-    const segs = clampEasyEfforts(plan.title, plan.segments || []).segments // #331c last-line guard on the push (covers pre-guard plans on re-sync)
+    const segs = normalizeRamps(clampEasyEfforts(plan.title, plan.segments || []).segments) // #331c + #384 last-line guard on the push (flat cool-downs; covers pre-guard plans on re-sync)
     ev.type = plan.sport === 'ride' ? 'Ride' : 'Run'
     ev.moving_time = segs.reduce((s, x) => s + (Number(x.duration) || 0), 0)
     // #372 — supply the planned LOAD (Coggan TSS from the %targets) so intervals' Form/CTL/ATL PROJECTS the
@@ -1719,6 +1719,7 @@ async function upsertPlan(user, body, actor = 'coach') {
   if (plan.sport !== 'gym' && Array.isArray(plan.segments) && plan.segments.length) {
     const g = clampEasyEfforts(plan.title, plan.segments)
     if (g.clamped) { plan.segments = g.segments; console.log(`[clampEasyEfforts] ${user.username} "${plan.title}" — clamped ${g.clamped} easy segment(s) below ${'threshold'}`) }
+    plan.segments = normalizeRamps(plan.segments) // #384 — flat cool-downs + warm-ups ramp up, so intervals never shows a backwards "150-117" range
   }
   if (i >= 0) user.plans[i] = plan; else user.plans.push(plan)
   audit(user, { actor, action: i >= 0 ? 'Updated' : 'Created', target: plan.title, detail: `${plan.sport}${plan.date ? ' · ' + plan.date : ''} · mirrored to intervals`, kind: 'plan' }) // #232
