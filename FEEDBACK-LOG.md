@@ -414,11 +414,19 @@ test guide → the **🧪 Test guide** section below.
     `/api/coach/load-plan` + write `load_target` back to the ATP TARGET events + MCP tool + coach-engine) — the forecast
     already reads them; this adds coach-side EDITING. Also: the coach should FLAG that JM's ATP overload weeks (×13–14 CTL)
     exceed the ×12 cap (Form → −24). gymapp + coach.
-394. ⬜ **Let the coach EDIT the ATP weekly blocks from chat + flag over-cap overload weeks.** Split from #393: the 4-wk
+394. 🔨 **Let the coach EDIT the ATP weekly blocks from chat + flag over-cap overload weeks.** Split from #393: the 4-wk
     forecast now READS the intervals ATP weekly TARGETs, but the coach can't yet author/adjust them. Build: `POST /api/coach/load-plan`
     (store `user.info.loadPlan` + write `load_target` back to the ATP TARGET events, prod-only via IS_STAGING) + an MCP tool +
     `coach-engine-*.md` guidance. Also: coach should FLAG when a week's target exceeds `weeklyLoadBudget().cap` (×12 CTL) — JM's
     ATP W08/W09 (430/460 on CTL 32 ≈ ×13–14) project Form to −24. Propagate to openapi + MCP + engine. gymapp + coach.
+    ✅ BUILT (2026-07-08): `POST /api/coach/load-plan` stores `user.info.loadPlan` = `[{weekStart(Monday), target TSS, phase?, focus?}]`
+    (normalised/deduped/snapped-to-Monday) — the TOP-priority source the #393 4-wk forecast already reads, so the projection reflects the
+    coach's plan immediately. Returns the CTL band (sustainable ×7 / build ×9 / hard ×11 / cap ×12) + an **`overCap`** list of any week
+    beyond ~CTL×12 (JM's ATP W08/W09 would flag). MCP tool **`set_load_plan`** (says: respect the band, a week over cap must be a NAMED
+    overload) + the `# WEEKLY LOAD BUDGET` prompt block points at it + openapi documented. ⏳ DEFERRED: the intervals `load_target` write-back
+    onto the athlete's ATP events — needs idempotent upsert (Platyplus tracks event ids to UPDATE; a plain POST duplicates) + IS_STAGING gate;
+    the in-app forecast value lands without it. TEST: after deploy, `POST /api/coach/load-plan` w/ an over-cap week → response flags it + the
+    Load&Form projection bends to the plan.
 395. 🔨 **Wellness charts (HRV · Resting HR · Weight · Sleep) need the HOVER SCRUBBER + tooltip like Load & Form.** JM 2026-07-07
     (screenshot): "want those graphs to have a line that shows with hovering like the form/fitness graph, to see values in x & y —
     that's a standard feature. Be consistent with the coach insights so graphs follow the same standards too." Root: Wellness uses a

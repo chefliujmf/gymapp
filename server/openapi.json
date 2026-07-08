@@ -747,6 +747,15 @@
         "responses": { "201": { "description": "target stored" }, "400": { "description": "weekStart required" } }
       }
     },
+    "/api/coach/load-plan": {
+      "post": {
+        "summary": "Coach sets the MULTI-WEEK load periodization (ATP build/peak/recovery blocks) (Bearer, #394)",
+        "description": "Stores `user.info.loadPlan` — the TOP-priority source the 4-week Load & Form forecast reads (#393), so the projection reflects the coach's plan. Returns an over-cap flag: a week beyond ~CTL×12 (weeklyLoadBudget.cap) is an intentional overload to name or ease. (Intervals load_target write-back is a deferred follow-up; the forecast reflects loadPlan directly.)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["weeks"], "properties": { "weeks": { "type": "array", "items": { "type": "object", "required": ["weekStart", "target"], "properties": { "weekStart": { "type": "string", "format": "date", "description": "the week's Monday" }, "target": { "type": "number", "description": "weekly training load (TSS)" }, "phase": { "type": "string", "description": "build | peak | recovery | base" }, "focus": { "type": "string" } } } } } } } } },
+        "responses": { "201": { "description": "{ ok, weeks, ctl, capPerWeek, band, overCap[] }" }, "400": { "description": "weeks required" } }
+      }
+    },
     "/api/sport-stat": {
       "put": {
         "summary": "Coach saves the athlete's threshold benchmarks (Bearer, #313)",
