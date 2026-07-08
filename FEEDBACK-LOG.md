@@ -845,6 +845,10 @@ test guide → the **🧪 Test guide** section below.
     move-leftover (platyplus-pushed, no plan, duplicates another slot/title) while sparing a legit lost-link session; (3) **Jul 7 ride plan
     (mcp-lzkte5tt) was never PUSHED (no icuEventId)** so the completed ride can't pair. Needs a focused #431 deep-fix + resync of Jul 7. **Most
     serious open item — functional, recurring, JM frustrated.**
+447. ⬜ **STREAMLINE the backlog status model — 8 statuses is confusing.** JM 2026-07-08: "got the concept of open… but it should be streamline,
+    it's confusing." The review/todo/build/totest/pass/fail/done/discarded set + the "Open = not done/discarded (still includes pass/fail)" semantics
+    are too much. Propose a simpler flow (e.g. Review → To do → Building → To test → Done, with a fail looping back to Building + a comment; drop
+    separate pass/fail) — MOCK 2 options first (options-first). #438 backlog page. Low-risk polish; after #431.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
