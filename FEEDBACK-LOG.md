@@ -696,6 +696,14 @@ test guide → the **🧪 Test guide** section below.
     returning shows nothing. Investigate: does the chat-helper persist the assistant turn server-side even if the client disconnects (threads
     are #363-synced)? Does Chat.tsx resume an in-flight request on remount, or at least show a "still thinking" state that survives nav?
     Optimize: stream first token sooner + a persistent thinking indicator + PERSIST the completed turn even if the client dropped. gymapp + coach infra.
+    ✅ ROOT CAUSE of "no result" FOUND + FIXED (2026-07-08): `/auth/chat` had `res.on('close', () => reader.cancel())` — navigating away
+    (mobile back) closed the socket → the server CANCELLED reading the coach's stream → `pend()` persisted only the PARTIAL reply (or NOTHING,
+    since `persistChat` skips an empty reply → the question itself was lost). FIX: a client disconnect no longer cancels; the server keeps
+    reading the coach to COMPLETION and persists the FULL turn to the thread (200s safety-net timeout for a truly hung coach; writes to the
+    dead socket are guarded by `clientGone`). So back-out-then-return now shows the finished answer via the #363 thread sync. node --check OK.
+    ⏳ LATENCY: still inherent (the coach runs a full agentic turn on a ~128 KB systemPrompt); the client already shows a "reviewing…" tool
+    indicator + a "waited long" note at 8s. FOLLOW-UP (optional): client optimistic-merge / poll so a turn finished-while-away appears WITHOUT
+    a manual refresh (today: reopen/refresh the chat); and shrinking the systemPrompt would cut first-token time. gymapp + coach infra.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
