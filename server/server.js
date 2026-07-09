@@ -1009,6 +1009,7 @@ app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
   const n = String(Number(req.params.n) || '')
   if (!n || n === '0') return res.status(400).json({ error: 'valid item number required' })
   const bl = readBacklog()
+  const prevStatus = bl.triage[n]?.status // #467 — detect the transition INTO 'done' to notify the reporter
   const t = { comments: [], ...bl.triage[n] }
   const b = req.body || {}
   if ('priority' in b) t.priority = PRIORITIES.includes(b.priority) ? b.priority : undefined // null/other → clear
@@ -1021,6 +1022,12 @@ app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
   if (!t.priority && !t.status && !t.type && !t.area && !t.discarded && !t.comments.length) delete bl.triage[n] // drop empty rows
   else bl.triage[n] = t
   writeBacklog(bl)
+  // #467 — when a user's REPORT is marked 'done' (fixed + shipped), push the reporter so they know it's fixed.
+  if (t.status === 'done' && prevStatus !== 'done') {
+    const rep = (bl.added || []).find((x) => String(x.n) === n)
+    const who = rep && rep.reporter && (store.users || []).find((u) => u.username === rep.reporter || u.email === rep.reporter)
+    if (who && who.id !== req.user.id) { pushNotification(who, { id: 'fixed-' + n, title: '✅ Your report is fixed', body: rep.title, link: '/reports' }); save(store) }
+  }
   res.json({ n: Number(n), triage: bl.triage[n] || null })
 })
 // ADMIN adds a backlog item directly (title + type + priority). App-added items get merged into the .md-derived
@@ -1057,6 +1064,17 @@ app.post('/auth/report', auth, (req, res) => {
   for (const admU of (store.users || []).filter((u) => u.role === 'admin' && u.id !== req.user.id)) pushNotification(admU, { id: 'report-' + n, title: `${type === 'idea' ? '💡 Idea' : '🐛 Bug'} reported by ${item.reporter}`, body: title.slice(0, 120), link: '/admin' })
   save(store) // persist the admins' in-app bell notifications (backlog already saved to its file above)
   res.status(201).json({ ok: true, n })
+})
+// #467 — ANY signed-in user sees THEIR OWN reports + current status (so a non-admin like Xenia can tell
+// whether her bug was fixed). Scoped to the caller's reports only; admins use the full board instead.
+app.get('/auth/my-reports', auth, (req, res) => {
+  const bl = readBacklog()
+  const me = [req.user.username, req.user.email].filter(Boolean)
+  const mine = (bl.added || [])
+    .filter((x) => me.includes(x.reporter))
+    .map((x) => { const t = bl.triage[String(x.n)] || {}; return { n: x.n, title: x.title, summary: x.summary || '', at: x.at || 0, status: t.status || 'review', type: t.type || 'bug' } })
+    .sort((a, b) => (b.at || 0) - (a.at || 0))
+  res.json({ reports: mine })
 })
 
 // ---- coach API token (shown to its owner only) ---------------------------

@@ -213,7 +213,10 @@ export const authApi = {
     req<{ item: BacklogAddedItem; triage: BacklogTriageItem | null }>('/admin/backlog', { body: item }),
   // #440 — ANY signed-in user reports a bug/idea (lands in the shared backlog as "under review")
   reportBug: (item: { title: string; type: BacklogType; summary?: string }) => req<{ ok: boolean; n: number }>('/report', { body: item }),
+  // #467 — a user sees THEIR OWN reports + current status (so a non-admin can tell if their bug was fixed)
+  myReports: () => req<{ reports: MyReport[] }>('/my-reports'),
 }
+export interface MyReport { n: number; title: string; summary: string; at: number; status: BacklogStatus; type: BacklogType }
 
 // #438 — admin backlog triage types
 export type BacklogPriority = 'hi' | 'med' | 'lo'
