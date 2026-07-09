@@ -1092,6 +1092,10 @@ select.search { appearance: none; -webkit-appearance: none; }
 
 .today-entry { position: relative; display: flex; flex-direction: column; }
 .today-entry > .card { width: 100%; }
+/* #451 — recovery card is an expandable <details>; hide the native disclosure triangle */
+.rec-card { width: 100%; }
+.rec-card > summary { list-style: none; }
+.rec-card > summary::-webkit-details-marker { display: none; }
 
 /* Compact ⋯ trigger — small footprint, hard to mis-tap; opens the action sheet. */
 .entry-kebab {

@@ -879,6 +879,14 @@ test guide → the **🧪 Test guide** section below.
     **"Rides & runs syncing to intervals"** (source-agnostic: JM uses Garmin, so "Strava" was misleading), `done` when `recentActivities>0`, and on
     first detection it PERSISTS the ack (`info.stravaAcked`) so it's a one-time check, not an intervals call every Today load. Manual "Done" stays as
     a fallback for a brand-new athlete with no activities yet. On QA. (This was the last stuck onboarding step that nagged forever.)
+451. 🧪 **Recovery/rest item on Today was a DEAD card — couldn't open it to read the how/why/execution.** JM 2026-07-08 (prod): "lost the
+    rest item… could not open the rest item so could not read description, insights or anything for execution." The item's data was fine (its
+    `why` field holds the FULL guidance — the readiness insight AND the routine, e.g. "Form −8, HRV 26… absorb it. Full-body mobility + foam roll,
+    left-calf routine: roller 60-90s/side, straight-knee + soleus 2×30s, eccentric raises 2×8-10. Sleep ~9h."), but the Today Recovery card was a
+    plain non-tappable `<div>` (unlike workouts/mind), so the `why` never showed. FIX: recovery card is now an expandable `<details>` (Today.tsx +
+    `.rec-card` CSS) — tap "how & why ›" to read the full block. (The "lost" was a transient: my SIGKILL prod restart for a backlog cosmetic caused
+    ~10s downtime — MISTAKE, won't bounce prod for cosmetics again; the item persisted fine.) tsc + build. On QA.
+    NOTE — earlier orphan text below belongs to #446; keeping for history.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
