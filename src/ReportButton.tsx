@@ -39,7 +39,7 @@ export default function ReportButton() {
         <Megaphone size={18} />
       </button>
       {open && (
-        <div className="acct__menu" role="menu" style={{ width: 260, padding: 14 }}>
+        <div className="acct__menu report-menu" role="menu">
           {state === 'sent' ? (
             <div style={{ textAlign: 'center', padding: '10px 0' }}><div style={{ fontSize: 26 }}>🙌</div><strong>Thanks!</strong><p className="meta" style={{ marginTop: 4 }}>Sent to the team.</p></div>
           ) : (
