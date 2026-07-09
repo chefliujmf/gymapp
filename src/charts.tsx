@@ -247,14 +247,15 @@ export function ChartModal({ title, onClose, children }: { title: string; onClos
 }
 
 const DUR_TICKS: [number, string][] = [[1, '1s'], [5, '5s'], [15, '15s'], [60, '1m'], [300, '5m'], [1200, '20m'], [3600, '1h'], [10800, '3h']]
+const MAX_DUR = DUR_TICKS[DUR_TICKS.length - 1][0] // #292 — power/pace curves cap at the last axis tick (3h) so the domain matches the ticks (no 5h hover past a 3h axis)
 /** Mean-max curve on a LOG duration axis (power-duration curve). Tick labels render as
  * HTML below (avoids text distortion from the stretch-to-width SVG). */
 export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)', height = 200, overlay }: { secs: number[]; watts: number[]; color?: string; height?: number; overlay?: { secs: number[]; watts: number[]; color?: string } | null }) {
   const [hi, setHi] = useState<number | null>(null) // #292: hover scrubber, consistent with the timeline
-  const pts0 = secs.map((s, i) => [s, watts[i]] as [number, number]).filter(([s, w]) => s > 0 && w != null)
+  const pts0 = secs.map((s, i) => [s, watts[i]] as [number, number]).filter(([s, w]) => s > 0 && s <= MAX_DUR && w != null)
   if (pts0.length < 2) return <div className="chart-empty">No power curve yet</div>
   // #407 — optional 2nd-season OVERLAY (drawn behind the main line). Axes fit both curves.
-  const ov0 = overlay ? overlay.secs.map((s, i) => [s, overlay.watts[i]] as [number, number]).filter(([s, w]) => s > 0 && w != null) : []
+  const ov0 = overlay ? overlay.secs.map((s, i) => [s, overlay.watts[i]] as [number, number]).filter(([s, w]) => s > 0 && s <= MAX_DUR && w != null) : []
   const allPts = ov0.length ? pts0.concat(ov0) : pts0
   const sMin = Math.min(...allPts.map((p) => p[0])), sMax = Math.max(...allPts.map((p) => p[0]))
   const vMax = Math.max(...allPts.map((p) => p[1]))
@@ -312,9 +313,9 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
  * short bursts fast at the left, easing to the right. `pace` in sec/km. */
 export function PaceCurveChart({ secs, pace, color = 'var(--accent, #34e07d)', height = 200, overlay }: { secs: number[]; pace: number[]; color?: string; height?: number; overlay?: { secs: number[]; pace: number[]; color?: string } | null }) {
   const [hi, setHi] = useState<number | null>(null)
-  const pts0 = secs.map((s, i) => [s, pace[i]] as [number, number]).filter(([s, p]) => s > 0 && p != null && p > 0)
+  const pts0 = secs.map((s, i) => [s, pace[i]] as [number, number]).filter(([s, p]) => s > 0 && s <= MAX_DUR && p != null && p > 0)
   if (pts0.length < 2) return <div className="chart-empty">No pace curve yet</div>
-  const ov0 = overlay ? overlay.secs.map((s, i) => [s, overlay.pace[i]] as [number, number]).filter(([s, p]) => s > 0 && p != null && p > 0) : [] // #407 overlay
+  const ov0 = overlay ? overlay.secs.map((s, i) => [s, overlay.pace[i]] as [number, number]).filter(([s, p]) => s > 0 && s <= MAX_DUR && p != null && p > 0) : [] // #407 overlay
   const allPts = ov0.length ? pts0.concat(ov0) : pts0
   const sMin = Math.min(...allPts.map((p) => p[0])), sMax = Math.max(...allPts.map((p) => p[0]))
   const pMin = Math.min(...allPts.map((p) => p[1])), pMax = Math.max(...allPts.map((p) => p[1])) // sec/km: min = fastest
