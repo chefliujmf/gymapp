@@ -18,6 +18,13 @@ jump the queue** — it stays at its own (usually med/low) priority ("[#255 is] 
 a bug"). Order: 1) **failed bugs** → 2) **open bugs** → 3) (only when no bugs left) features/ideas by their own
 priority. Don't sink time into a med feature (e.g. #255) while any bug is open. Type/priority = JM's triage overlay.
 
+## The 10-at-a-time bug pipeline (JM 2026-07-09) — how we drive to ZERO
+Keep **~10 bugs in flight at all times**. Work them; as each is fixed, flip it to **`totest`** so JM has a review
+queue. JM reviews → `pass` (I promote + mark `done`) or `fail`. **When the `totest` bucket is EMPTY** (JM has
+reviewed the whole batch), I: (1) review what he FAILED + rework those, and (2) pull fresh open bugs to **refill
+the working set back to 10**. Repeat until **0 bugs remain** (then, and only then, features/ideas). Always keep
+the 10 topped up — don't let the pipeline run dry. Bugs only (features wait); order per "Priority order" above.
+
 ## The five rules
 1. **LOG FIRST.** Every JM report → `FEEDBACK-LOG.md`, numbered, *before* touching code. Fixing
    without logging = the report gets lost. Never make JM re-report.
