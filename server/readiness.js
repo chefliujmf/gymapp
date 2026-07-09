@@ -254,12 +254,17 @@ export function isoMonday(d) { const wd = (_dow(d) + 6) % 7; return _addDays(d, 
 export function horizonCoverage(plannedDates, today, days) {
   const set = new Set((plannedDates || []).filter(Boolean).map((d) => String(d).slice(0, 10)))
   const end = _addDays(today, days)
-  let covered = 0, last = null, firstEmpty = null
+  let covered = 0, last = null, lastI = -1, firstEmpty = null
   for (let i = 0; i <= days; i++) {
     const d = _addDays(today, i)
-    if (set.has(d)) { covered++; last = d } else if (!firstEmpty) firstEmpty = d
+    if (set.has(d)) { covered++; last = d; lastI = i } else if (!firstEmpty) firstEmpty = d
   }
-  return { end, last, covered, empty: (days + 1) - covered, firstEmpty }
+  // #439 — `tail` = unplanned days at the END of the window = how far SHORT of ~2 weeks the plan REACHES.
+  // This is the real "keep 2 weeks ahead" signal: `empty` also counts legit REST days, so it never converges
+  // (a 5-day/wk athlete always has ~5 empty rest days in 15) → the fill loop quit on its cap, never on
+  // completion, stranding the back week blank. Drive the loop off `tail`. `reach` = index of the last planned day.
+  const tail = days - lastI
+  return { end, last, covered, empty: (days + 1) - covered, firstEmpty, tail, reach: lastI }
 }
 
 /** A sensible DEFAULT periodized weekly-load plan from CTL — a repeating 4-week block
