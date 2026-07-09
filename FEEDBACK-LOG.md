@@ -872,6 +872,13 @@ test guide → the **🧪 Test guide** section below.
     process I DRIVE: ⬜→🔨(I start)→🧪(I ship to QA)→JM tests→✅done/✗fail, and **fail→🔨 building when I rework it**, updating BOTH the .md AND
     the in-app status (skill `options-first` + memory `platyplus-admin-backlog`). Also RECLASSIFIED the stale 🔨 pile (agent review): 209 building
     → 80 building + 153 to-test + 42 done, so the board reflects reality. On QA (rebuild + deploy). Ties #447 (this cycle IS the clarified model).
+450. 🧪 **Onboarding: AUTO-detect activities syncing to intervals (drop the manual Strava ack).** JM 2026-07-08: "why don't you check if
+    Strava is connected in intervals yourself? is it possible?" YES — the connections endpoint already pulls `recentActivities` (last 3 wks) +
+    `deviceSources` (Garmin/Strava/…) live from intervals. FIX: (a) refactored `/api/connections` → `connectionsFor(user)` + added session
+    `GET /auth/connections` (+ openapi + authApi.connections). (b) `SetupChecklist` now AUTO-detects the step — relabeled "Connect Strava" →
+    **"Rides & runs syncing to intervals"** (source-agnostic: JM uses Garmin, so "Strava" was misleading), `done` when `recentActivities>0`, and on
+    first detection it PERSISTS the ack (`info.stravaAcked`) so it's a one-time check, not an intervals call every Today load. Manual "Done" stays as
+    a fallback for a brand-new athlete with no activities yet. On QA. (This was the last stuck onboarding step that nagged forever.)
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by

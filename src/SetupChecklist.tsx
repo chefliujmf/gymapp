@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import { authApi } from './auth/api'
@@ -16,11 +16,27 @@ interface Item { key: string; label: string; hint: string; done: boolean; to?: s
 export default function SetupChecklist() {
   const { user, refresh } = useAuth()
   const [tick, setTick] = useState(0) // re-render after a manual ack
+  // #450 — AUTO-detect whether activities are actually flowing into intervals (any source: Garmin/Strava/…),
+  // so the "rides syncing" step ticks itself instead of nagging for a manual ack. Falls back to the ack.
+  const [conn, setConn] = useState<{ recentActivities: number; deviceSources: string[] } | null>(null)
+  useEffect(() => {
+    const inf = (user?.info || {}) as { stravaAcked?: boolean }
+    if (!user?.hasIcuKey || inf.stravaAcked || getAck('strava')) return // only when it's the open gap; skip once resolved
+    authApi.connections().then((c) => {
+      setConn(c)
+      if (c.recentActivities > 0) { // activities ARE flowing → auto-ACK it (persist so we don't re-check every load)
+        try { localStorage.setItem(ackKey('strava'), '1') } catch { /* quota */ }
+        authApi.saveProfile({ stravaAcked: true }).then(() => refresh()).catch(() => {})
+      }
+    }).catch(() => {})
+  }, [user?.hasIcuKey, user?.info, refresh])
   if (!user) return null
   const info = (user.info || {}) as { equipment?: unknown[]; availability?: unknown; stravaAcked?: boolean }
+  const flowing = !!conn && conn.recentActivities > 0
+  const src = conn?.deviceSources?.[0]
   const items: Item[] = [
     { key: 'intervals', label: 'Connect intervals.icu', hint: 'Your data hub — HRV, activities, plans.', done: !!user.hasIcuKey, to: '/settings' },
-    { key: 'strava', label: 'Connect Strava — inside intervals', hint: 'So your rides & runs flow in (not in Platyplus — in intervals).', done: !!info.stravaAcked || getAck('strava'), ext: 'https://intervals.icu/settings', manual: true },
+    { key: 'strava', label: 'Rides & runs syncing to intervals', hint: `So your activities flow in automatically${src ? ` (we see ${src})` : ' (via Garmin, Strava, etc. — connected inside intervals)'}.`, done: flowing || !!info.stravaAcked || getAck('strava'), ext: 'https://intervals.icu/settings', manual: true },
     { key: 'coach', label: 'Meet your coach', hint: 'A 2-minute chat (tap, type, or talk) and it builds your first week around your real life.', done: !!user.hasCoachProfile, to: '/chat?onboard=1', cta: 'Set me up →' },
     { key: 'sport', label: 'Pick your sport(s)', hint: 'Tunes your plan & navigation.', done: (user.sports || []).length > 0, to: '/profile' },
     { key: 'equipment', label: 'Set your equipment', hint: 'The coach only picks gear you have.', done: Array.isArray(info.equipment) && info.equipment.length > 0, to: '/profile' },

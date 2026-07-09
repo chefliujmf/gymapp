@@ -196,6 +196,8 @@ export const authApi = {
   saveAvatar: (avatar: string) => req<User>('/avatar', { method: 'PUT', body: { avatar } }),
   getToken: () => req<{ token: string }>('/token'),
   rotateToken: () => req<{ token: string }>('/token/rotate', { method: 'POST' }),
+  // #450 — live connection status (is intervals linked + are activities actually flowing in, from any source)
+  connections: () => req<{ intervals: boolean; strava: boolean; recentActivities: number; deviceSources: string[] }>('/connections'),
 
   listUsers: () => req<User[]>('/users'),
   addUser: (username: string, email: string, role: 'admin' | 'user') => req<{ user: User; tempPassword: string; emailed: boolean }>('/users', { body: { username, email, role } }),
