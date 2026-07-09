@@ -25,9 +25,17 @@ describe('stats primitives', () => {
     const jm = horizonCoverage(['2026-07-09', '2026-07-10', '2026-07-11', '2026-07-12', '2026-07-13'], today, 14) // JM's real case
     expect(jm.covered).toBe(5); expect(jm.empty).toBe(10); expect(jm.last).toBe('2026-07-13')
     expect(jm.firstEmpty).toBe('2026-07-08'); expect(jm.end).toBe('2026-07-22')
+    // #439 — `tail` = unplanned days AFTER the last session (the real "reach 2 weeks" signal). Last session is day 5
+    // (2026-07-13), so 9 days (6..14) of tail. This — not `empty` — drives the fill loop.
+    expect(jm.reach).toBe(5); expect(jm.tail).toBe(9)
     expect(horizonCoverage([], today, 14).empty).toBe(15) // nothing planned → whole horizon empty (15 = day 0..14)
+    expect(horizonCoverage([], today, 14).tail).toBe(15) // …and tail=15 (reach=-1): nothing reached
     const all = Array.from({ length: 15 }, (_, i) => { const d = new Date(today + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i); return d.toISOString().slice(0, 10) })
     expect(horizonCoverage(all, today, 14).empty).toBe(0) // fully covered → no gap
+    expect(horizonCoverage(all, today, 14).tail).toBe(0) // reaches the end → tail 0 (loop stops)
+    // a plan that REACHES the end but has mid-window rest gaps → tail small even though empty>0 (loop won't churn)
+    const reaches = ['2026-07-09', '2026-07-12', '2026-07-15', '2026-07-18', '2026-07-21', '2026-07-22']
+    expect(horizonCoverage(reaches, today, 14).tail).toBe(0); expect(horizonCoverage(reaches, today, 14).empty).toBeGreaterThan(3)
     expect(horizonCoverage(['2026-07-09', '2026-07-09', null as unknown as string, '2025-01-01'], today, 14).covered).toBe(1) // dedup + ignore junk/out-of-range
   })
   it('lerpMap interpolates + clamps at ends', () => {

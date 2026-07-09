@@ -2771,15 +2771,15 @@ function dailyAdaptMsg(today, pass, cov) {
     : `Daily auto-adaptation — EARLY pass (${today}). Overnight HRV/sleep from their watch usually ISN'T synced this early, so decide from their FRESHNESS / Form (CTL−ATL, always available — get_wellness) + their latest check-in (get_checkins). You'll get a refine pass later once HRV/sleep lands.`
   // #439 — hand the coach the EXACT horizon gap. It wasn't holding the 2-week horizon on its own (planned
   // only the current week), so make filling to the horizon end the FIRST, non-negotiable job of the pass.
-  const gap = cov && cov.empty >= 3
-    ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. Right now only ${cov.covered}/${DAILY_HORIZON + 1} days through ${cov.end} have anything (last session ${cov.last || 'none'}; first empty day ${cov.firstEmpty}). EXTEND the plan ALL THE WAY to ${cov.end} in THIS pass — add sessions on the empty days UP TO (never beyond) their HARD weekly training-days cap, per availability. Do NOT leave the back half of the horizon blank; planning only the current week is the bug you're fixing.`
+  const gap = cov && cov.tail >= 3
+    ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. Your plan currently REACHES only ${cov.last || 'today'} — ${cov.tail} days SHORT of the ~2-week window end (${cov.end}). EXTEND it to ~${cov.end} in THIS pass: add training sessions across the days from ${cov.firstEmpty} through ${cov.end}, UP TO (never beyond) their HARD weekly training-days cap + availability — leave genuine REST days blank (don't force a session onto every day). Planning only the current week + leaving the back half blank is exactly the bug you're fixing.`
     : ''
   return `${head}${gap} Then PROACTIVELY adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule): ease / harden / shift / add sessions so the rolling ~2-week plan matches how they're recovering AND their goals, weekly frequency + availability. Keep ~${DAILY_HORIZON} days populated ahead (fill gaps toward their target frequency; never double-book a day / exceed their max sessions per day / exceed their HARD weekly training-days cap). This pass is ONLY the WORKOUT plan — create / move / ease / harden the training days + fill the horizon. Do NOT review past activities or add meals / mind / recovery now; those run as their OWN focused passes right after this one. If a MATERIAL call is uncertain (e.g. several run-down days → cut this week's volume? a race clash?), use notify to ASK them rather than guess. When you change things, notify ONE short line of what changed + why. Don't ask trivial questions — decide and act; ask only when it truly matters. Be concise.`
 }
 // #439 — FOCUSED horizon-fill (no reviews / fuel / mind distraction) so the coach actually populates the back
 // half of the ~2-week window. Used to re-drive it when one adapt pass left the horizon short.
 function horizonFillMsg(today, cov) {
-  return `HORIZON FILL — focused, non-negotiable. Their plan still has BLANK days in the next ${DAILY_HORIZON}-day window: only ${cov.covered}/${DAILY_HORIZON + 1} days through ${cov.end} are populated (first empty day ${cov.firstEmpty}). In THIS pass, do ONE thing: add a training session to EVERY empty day from ${cov.firstEmpty} through ${cov.end}, UP TO (never beyond) their HARD weekly training-days cap + availability — leave ONLY genuine rest days blank. Use list_schedule to see the gaps, then create the sessions (ride/run/gym per their sports + how the block is shaping up; keep intensity sane and spaced). Do NOT review activities, add meals/mind/recovery, or churn existing sessions now — just FILL the back half of the horizon. Be concise.`
+  return `HORIZON FILL — focused, non-negotiable. Your plan REACHES only ${cov.last || 'today'}, ${cov.tail} days short of the ~${DAILY_HORIZON}-day window end (${cov.end}). In THIS pass do ONE thing: EXTEND the plan out to ~${cov.end} — add training sessions across the days from ${cov.firstEmpty} through ${cov.end}, UP TO (never beyond) their HARD weekly training-days cap + availability, leaving genuine REST days blank (don't force a session onto every day). Use list_schedule to see how far it reaches, then create the sessions (ride/run/gym per their sports + how the block is shaping up; keep intensity sane + spaced). Do NOT review activities, add meals/mind/recovery, or churn existing sessions now — just extend the back half of the horizon. Be concise.`
 }
 // #439 (JM idea) — SEPARATE focused pass per topic beats one giant prompt (the coach gave each partial
 // attention + ran out). REVIEWS pass:
@@ -2797,7 +2797,10 @@ async function runDailyAdapt(user, pass) {
     // 1) ADAPT the WORKOUT plan + fill the horizon (readiness-sensitive → every pass), looped until the back
     //    half of the ~2-week window is populated (cov.empty < 3 = only ~rest days blank).
     await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()))
-    for (let i = 0; i < 2 && covOf().empty >= 3; i++) await runCoachTask(user, horizonFillMsg(today, covOf()))
+    // #439 — loop off `tail` (unplanned days after the LAST session), NOT `empty` (which counts rest days so it
+    // never converges). Keep re-driving until the plan REACHES within ~2 days of the 14-day end; cap at 5 passes
+    // (each coach pass extends a bit) so a fully-blank back week actually gets filled, not just 1 week + quit.
+    for (let i = 0; i < 5 && covOf().tail >= 3; i++) await runCoachTask(user, horizonFillMsg(today, covOf()))
     // 2) REVIEWS + 3) ROUND-OUT — their OWN focused passes, ONCE/day (dedup) so we don't re-spawn the coach
     //    for them on both the early AND refine passes.
     user.dailyAdapt = user.dailyAdapt || {}
