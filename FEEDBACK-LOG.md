@@ -932,6 +932,14 @@ test guide → the **🧪 Test guide** section below.
     descriptions; (5) Profile copy reframed ("A hard cap — your coach plans up to this many days, never more", dropped "optional extras").
     On QA (prompt+guard); prod + host-MCP on promote. Test: set days/week=N, ask the coach to add an N+1th training day → it refuses /
     moves instead (409), never books past N.
+455. 🧪 **A day she TRAINED (unplanned) read "Nothing scheduled — enjoy a rest day".** JM 2026-07-08 (on Xenia's account,
+    screenshot): Jul 7 had a week-strip DOT — her completed strength activity now LOADS (#453 working) — but the day content
+    said "Nothing scheduled". Root: Today's day content rendered only PLANS + planned EVENTS; a completed intervals activity
+    showed ONLY if it MATCHED a plan by day+sport (`actFor`). Xenia's strength was UNPLANNED (no plan to attach to) → invisible
+    in the day view, dot only. **Fixed:** Today now computes `orphanActs` (completed activities on the day with NO matching
+    plan/event) and renders each as a read-only **"✓ Completed" ActivityCard** (sport thumb + DoneStats, taps to `/activity/:id`),
+    and counts them in `hasWorkout` so a day she trained never reads "rest day". Already visible in History; now on Today too.
+    On QA. Test: open a day with a completed intervals workout but no plan → the completed card shows, not "Nothing scheduled".
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL
