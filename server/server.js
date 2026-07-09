@@ -1265,7 +1265,7 @@ function buildSystemPrompt(user) {
   // an EXTRA session is a clearly-labelled OPTIONAL/BONUS (title it "(optional)" and note it's a bonus),
   // never part of the base load.
   const freq = Number(user.info?.trainingDays) || 0
-  if (freq > 0) p += `\n\n# TRAINING FREQUENCY: the athlete wants ~${freq} training days/week. Plan exactly ${freq} COMMITTED sessions. If they ask for more (a bonus day), add ONE OPTIONAL session — prefix its title with "(optional)" and say it's a bonus they can skip — don't inflate the base week.`
+  if (freq > 0) p += `\n\n# WEEKLY TRAINING DAYS — HARD CAP of ${freq}/week (JM directive): the athlete trains on AT MOST ${freq} distinct days per calendar week (Mon–Sun). This is a HARD limit set in their profile, NOT a target to pad toward — NEVER schedule training on more than ${freq} days in any week, not even an "optional" or "bonus" extra. FEWER is fine when recovery or life calls for it; MORE is never allowed. Before you add a session, count the week's already-planned training days: if it's already at ${freq}, do NOT add a new day — MOVE an existing session instead, or combine into a day that's already training. If they explicitly ask for an extra day beyond ${freq}, tell them it would exceed their weekly cap and to raise it in their profile first. (Server enforces this too — a create that would exceed ${freq} is rejected.)`
   // #345 — most athletes train ONCE a day. Never stack two sessions (e.g. a gym + a run) on the same
   // calendar day beyond this cap unless the athlete explicitly opts into doubles.
   const maxPerDay = Math.max(1, Number(user.info?.maxPerDay) || 1)
@@ -1792,6 +1792,16 @@ async function upsertPlan(user, body, actor = 'coach') {
     const sameDay = (user.plans || []).filter((p) => p.date === body.date)
     if (sameDay.length >= maxPerDay) {
       return { status: 409, body: { error: `Rejected — ${body.date} already has ${sameDay.length} session(s) and the athlete's max is ${maxPerDay}/day (${sameDay.map((p) => `"${p.title}"`).join(', ')}). Do NOT stack sessions: either COMBINE this into that day's existing session (re-call create_* with THAT session's id to make it one longer/richer workout) or move it to a free day. Two short rides of the same sport should be ONE session, not two.` } }
+    }
+    // #454 (JM directive) — HARD weekly cap: at most `trainingDays` distinct TRAINING DAYS per Mon–Sun week.
+    // Adding a session on a NEW day when the week is already full is rejected (move/combine instead).
+    const freq = Math.max(0, Number(user.info?.trainingDays) || 0)
+    if (freq > 0) {
+      const wkStart = isoMonday(body.date), wkEnd = addDays(wkStart, 6)
+      const daysThisWeek = new Set((user.plans || []).filter((p) => p.date >= wkStart && p.date <= wkEnd).map((p) => p.date))
+      if (!daysThisWeek.has(body.date) && daysThisWeek.size >= freq) {
+        return { status: 409, body: { error: `Rejected — the week of ${wkStart} already has ${daysThisWeek.size} training day(s) and the athlete's HARD weekly cap is ${freq}/week (${[...daysThisWeek].sort().join(', ')}). Do NOT exceed it: MOVE an existing session onto ${body.date}, or fold this into a day that's already training. If they genuinely want more days, they must raise the cap in their profile first.` } }
+      }
     }
     }
   }
@@ -2598,7 +2608,14 @@ app.get('/api/docs', auth, (req, res) => res.type('html').send(`<!doctype html><
 
 // ---- intervals.icu proxy (session required) ------------------------------
 app.all('/icu/*', auth, async (req, res) => {
-  const url = ICU + req.originalUrl.replace(/^\/icu/, '')
+  let path = req.originalUrl.replace(/^\/icu/, '')
+  // #453 — FORCE the /athlete/<id> segment to the AUTHENTICATED user's own athlete. The client picks the
+  // athlete id from a device-local setting that defaults to the seed athlete (JM's i28814), so on a shared
+  // or not-yet-synced browser another user (Xenia, athlete i628280) was fetching JM's activities and never
+  // saw her own (e.g. her Jul-7 strength session). This is a personal app — each user only ever reads their
+  // OWN athlete, so pinning it here is authoritative and immune to stale client state.
+  if (req.user.icuAthlete) path = path.replace(/(\/athlete\/)i\d+/i, `$1${req.user.icuAthlete}`)
+  const url = ICU + path
   const headers = {}
   if (req.headers.authorization) headers.authorization = req.headers.authorization
   else if (req.user.icuKey) headers.authorization = 'Basic ' + Buffer.from('API_KEY:' + req.user.icuKey).toString('base64')
@@ -2661,9 +2678,9 @@ function dailyAdaptMsg(today, pass, cov) {
   // #439 — hand the coach the EXACT horizon gap. It wasn't holding the 2-week horizon on its own (planned
   // only the current week), so make filling to the horizon end the FIRST, non-negotiable job of the pass.
   const gap = cov && cov.empty >= 3
-    ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. Right now only ${cov.covered}/${DAILY_HORIZON + 1} days through ${cov.end} have anything (last session ${cov.last || 'none'}; first empty day ${cov.firstEmpty}). EXTEND the plan ALL THE WAY to ${cov.end} in THIS pass — add sessions on the empty days to hit their weekly frequency per availability. Do NOT leave the back half of the horizon blank; planning only the current week is the bug you're fixing.`
+    ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. Right now only ${cov.covered}/${DAILY_HORIZON + 1} days through ${cov.end} have anything (last session ${cov.last || 'none'}; first empty day ${cov.firstEmpty}). EXTEND the plan ALL THE WAY to ${cov.end} in THIS pass — add sessions on the empty days UP TO (never beyond) their HARD weekly training-days cap, per availability. Do NOT leave the back half of the horizon blank; planning only the current week is the bug you're fixing.`
     : ''
-  return `${head}${gap} Then PROACTIVELY adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule): ease / harden / shift / add sessions so the rolling ~2-week plan matches how they're recovering AND their goals, weekly frequency + availability. Keep ~${DAILY_HORIZON} days populated ahead (fill gaps toward their target frequency; never double-book a day / exceed their max sessions per day). ALSO round out the plan the way a real coach would — FUEL, MIND and RECOVERY, not just the workout: on TODAY and each clearly demanding day (hard / long / quality sessions), schedule a fitting meal or two (schedule_meal — pick a real recipe that fits their diet + daily fuel targets, more carbs around the hard work, lighter on rest days, one-line why); add a MIND session (schedule_mind) where it earns its place — a wind-down after a hard or high-stress day, something longer on a rest day; and put RECOVERY (schedule_recovery — mobility / sauna / easy walk) after the hardest days, given STRUCTURED (insight = why today + steps = the routine with doses + sleep note, NOT one text blob — it opens as its own activity view). Only where it genuinely adds value for THIS athlete on THIS day — don't drop a meal or session onto every slot for the sake of it, and don't churn what they've already got. ALSO catch up on REVIEWS: get_recent_activities now flags each activity's \`reviewed\` status + its \`id\` — for any completed activity in the last week with \`reviewed:false\`, REVIEW it (save_coach_review with that exact \`id\`, a score + one-line verdict + 2-4 takeaways — that ticks the Coach box + posts your note) and give it a public-safe title/description (set_activity_text). SKIP anything already \`reviewed:true\` (never re-review), cap at the few most recent so nothing piles up unreviewed. If a MATERIAL call is uncertain (e.g. several run-down days → cut this week's volume? a race clash?), use notify to ASK them rather than guess. When you change things, notify ONE short line of what changed + why. Don't ask trivial questions — decide and act; ask only when it truly matters. Be concise.`
+  return `${head}${gap} Then PROACTIVELY adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule): ease / harden / shift / add sessions so the rolling ~2-week plan matches how they're recovering AND their goals, weekly frequency + availability. Keep ~${DAILY_HORIZON} days populated ahead (fill gaps toward their target frequency; never double-book a day / exceed their max sessions per day / exceed their HARD weekly training-days cap). ALSO round out the plan the way a real coach would — FUEL, MIND and RECOVERY, not just the workout: on TODAY and each clearly demanding day (hard / long / quality sessions), schedule a fitting meal or two (schedule_meal — pick a real recipe that fits their diet + daily fuel targets, more carbs around the hard work, lighter on rest days, one-line why); add a MIND session (schedule_mind) where it earns its place — a wind-down after a hard or high-stress day, something longer on a rest day; and put RECOVERY (schedule_recovery — mobility / sauna / easy walk) after the hardest days, given STRUCTURED (insight = why today + steps = the routine with doses + sleep note, NOT one text blob — it opens as its own activity view). Only where it genuinely adds value for THIS athlete on THIS day — don't drop a meal or session onto every slot for the sake of it, and don't churn what they've already got. ALSO catch up on REVIEWS: get_recent_activities now flags each activity's \`reviewed\` status + its \`id\` — for any completed activity in the last week with \`reviewed:false\`, REVIEW it (save_coach_review with that exact \`id\`, a score + one-line verdict + 2-4 takeaways — that ticks the Coach box + posts your note) and give it a public-safe title/description (set_activity_text). SKIP anything already \`reviewed:true\` (never re-review), cap at the few most recent so nothing piles up unreviewed. If a MATERIAL call is uncertain (e.g. several run-down days → cut this week's volume? a race clash?), use notify to ASK them rather than guess. When you change things, notify ONE short line of what changed + why. Don't ask trivial questions — decide and act; ask only when it truly matters. Be concise.`
 }
 async function runDailyAdapt(user, pass) {
   try {

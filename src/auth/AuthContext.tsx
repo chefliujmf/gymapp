@@ -20,7 +20,9 @@ const DEV = import.meta.env.DEV
 async function syncIcu(u: User | null) {
   if (!u) return
   await setSetting('icu_server_key', u.hasIcuKey ? '1' : '0')
-  if (u.icuAthlete) await setSetting('icu_athlete_id', u.icuAthlete)
+  // #453 — ALWAYS write the current user's athlete (even empty), so a PREVIOUS user's / the default id can
+  // never linger on a shared browser and fetch the wrong athlete's data. (Server /icu proxy also forces it.)
+  await setSetting('icu_athlete_id', u.icuAthlete || '')
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

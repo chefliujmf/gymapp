@@ -1185,6 +1185,13 @@ select.search { appearance: none; -webkit-appearance: none; }
   background: var(--card, #1b1e26); border: 1px solid var(--border, #2a2e38);
   border-radius: 14px; padding: 6px; box-shadow: var(--card-shadow, 0 12px 40px rgba(0,0,0,.5));
 }
+/* #1000 (Xenia) — the Report dropdown lives MID-BAR (left of the bell, not at the right edge like the
+   account menu), so .acct__menu's `right:0` ran a ~260px panel off the LEFT of the screen on narrow
+   phones. Pin it to the viewport's top-right and cap its width to the screen so it can NEVER overflow. */
+.report-menu {
+  position: fixed; top: 62px; right: 12px; left: auto; z-index: 60;
+  width: min(300px, calc(100vw - 24px)); padding: 14px;
+}
 .acct__head { padding: 8px 10px 10px; border-bottom: 1px solid var(--border, #2a2e38); margin-bottom: 4px; display: flex; flex-direction: column; }
 .acct__head strong { font-size: 14px; }
 .acct__head span { font-size: 12px; color: var(--muted, #9aa3b2); }

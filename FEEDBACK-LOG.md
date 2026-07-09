@@ -914,6 +914,24 @@ test guide → the **🧪 Test guide** section below.
     so the CLI's own injected date matches. pregnancyStage date also switched to local today. **On QA** (server + host chat-helper on
     next promote/sync). Test: as Xenia in the evening, ask the coach "what's today?" → it names the correct local weekday/date; "I'm not
     available today, replan" → it removes/moves **today's** session (the correct date), first try. gymapp + coach.
+453. 🧪 **Xenia's Jul-7 strength workout didn't show in Platyplus — she was seeing JM's data.** JM 2026-07-08 (live). Her
+    WeightTraining "Strength" (intervals `i163669580`) IS in her athlete (i628280), but Platyplus showed nothing. **Root cause:**
+    the client picks the intervals athlete from a **device-local setting** (`icu_athlete_id`) that DEFAULTS to the seed athlete
+    (JM's **i28814**), and the login sync only set it `if (u.icuAthlete)` — so on a shared / not-yet-resynced browser Xenia's client
+    fetched **JM's** activities (i28814) and never her own (i628280). A cross-user data leak, not a display filter. **Fixed 2 ways:**
+    (a) **server `/icu` proxy now FORCES** the `/athlete/<id>` path segment to the AUTHENTICATED user's own athlete — authoritative,
+    immune to any stale/shared client state (personal app: each user only reads their own athlete); (b) client `syncIcu` now ALWAYS
+    writes the current user's athlete on every load (even empty), so a previous user's / the default id can never linger. On QA
+    (server+client); prod on promote. Test: as Xenia, open History → her Jul-7 Strength session shows; JM's data never appears.
+454. 🧪 **Coach must respect a HARD weekly max training-days (was soft).** JM 2026-07-08: "respect the maximum number of workouts in a
+    week that is setup under the profile — it's a HARD limit." The profile field (`info.trainingDays`, "days/week") was SOFT — the prompt
+    said "plan exactly N + offer extras as OPTIONAL bonus", so the coach could exceed it. Now a HARD CAP, enforced the same 3 ways as
+    maxPerDay (#371) + propagated: (1) dynamic prompt `# WEEKLY TRAINING DAYS — HARD CAP of N/week` (never exceed, move/combine, tell them
+    to raise it in profile if they want more); (2) **server 409 guard** in `upsertPlan` — rejects a session on a NEW day once the Mon–Sun
+    week already has N training days; (3) daily-adapt runtime msg (fill up to, never beyond, the cap); (4) MCP `create_ride/run/workout`
+    descriptions; (5) Profile copy reframed ("A hard cap — your coach plans up to this many days, never more", dropped "optional extras").
+    On QA (prompt+guard); prod + host-MCP on promote. Test: set days/week=N, ask the coach to add an N+1th training day → it refuses /
+    moves instead (409), never books past N.
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL
