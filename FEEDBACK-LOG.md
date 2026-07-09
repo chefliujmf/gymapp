@@ -902,6 +902,18 @@ test guide → the **🧪 Test guide** section below.
     also the past-day/paired-activity guard). (2) the "Substitute on Jul 9" modal (screenshot) shows a "Search ride…" field over a wall
     of EMPTY skeleton rows that never populate — the ride list isn't loading. Repro on QA. Investigate the move/upsert dedup + the
     substitute picker's data fetch. gymapp (+ maybe intervals sync). JM: FOR LATER.
+452. 🧪 **COACH's "today" was a day AHEAD — wrong-day plan edits (Xenia, live).** JM 2026-07-08: wife asked to replan (not available
+    **today**); coach replied "you're not available today AND Wednesday" — but it WAS Wednesday — and did NOT remove today's workout
+    until she re-asked. **Root cause:** `buildSystemPrompt` never stamped an explicit date, so the coach inferred "today" from the
+    `claude` CLI's own runtime clock = **UTC**, which rolls to tomorrow every evening in the Americas (21h EDT = next-day 01h UTC),
+    while the server's scheduling tools compute LOCAL (Toronto) today. That split made "today" (its UTC Thu) ≠ her real Wednesday →
+    it listed them as two days and deleted the wrong one. **Fixed (3 layers):** (a) `buildSystemPrompt` now stamps an AUTHORITATIVE
+    `# TODAY — it is <Weekday>, <YYYY-MM-DD> in the athlete's local time` block at the top + "this is the ONE source of truth, ignore
+    any other clock; confirm the date before moving/deleting a day"; (b) `localTodayInTz` falls back to **COACH_TZ (America/Toronto)**,
+    not UTC, closing the latent day-ahead bug for any tz-less path; (c) the host **chat-helper spawns `claude` with `TZ=America/Toronto`**
+    so the CLI's own injected date matches. pregnancyStage date also switched to local today. **On QA** (server + host chat-helper on
+    next promote/sync). Test: as Xenia in the evening, ask the coach "what's today?" → it names the correct local weekday/date; "I'm not
+    available today, replan" → it removes/moves **today's** session (the correct date), first try. gymapp + coach.
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL
