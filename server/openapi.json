@@ -248,6 +248,13 @@
         "responses": { "200": { "description": "{ n, triage }" } }
       }
     },
+    "/auth/connections": {
+      "get": {
+        "summary": "#450 — live connection status for the signed-in user (session): { intervals, strava, recentActivities, lastActivity, deviceSources[], wellness }. Used by the onboarding checklist to AUTO-detect activities flowing (any source).",
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "connection status" } }
+      }
+    },
     "/auth/report": {
       "post": {
         "summary": "#440 — ANY signed-in user reports a bug/idea → shared backlog as status 'review' with reporter + timestamp; pings admins. Session auth (not admin-gated).",

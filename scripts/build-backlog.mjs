@@ -15,8 +15,15 @@ const HEAD = /^(\d+)\.\s+(.+?)\s*\*\*(.+?)\*\*(.*)$/u
 const statusOf = (e) => (e.includes('✅') ? 'done' : e.includes('🧪') ? 'totest' : e.includes('🔨') ? 'build' : 'todo') // ⬜/anything else → todo
 // what to test — the "Verify:/Manual test:" clause I write in the entry (shown as a callout in a test status)
 const testOf = (body) => { const m = body.match(/\b(?:Verify|Manual test|To test)\b\s*:?\s*(.{5,240}?)(?:\.\s|\.$|$)/i); return m ? m[1].trim() : '' }
-// which environment it currently lives in (heuristic from my own phrasing in the entry)
-const envOf = (body) => { const b = body.toLowerCase(); return /deployed to prod|on prod\b|to prod\b|prod \(pr|prod deploy|✅ ?prod/.test(b) ? 'prod' : /on qa\b|qa ?\+ ?prod|staging|verify (?:on|it on)? ?qa|deploy.*stag/.test(b) ? 'qa' : '' }
+// #449 — how FAR through dev→qa→prod the item has propagated. A BUILT item (🔨/🧪/✅) is, by our pipeline,
+// committed + auto-deployed to QA, so it's at least dev+qa; 'prod' once the entry shows it was promoted. A
+// ⬜ todo isn't built → nowhere yet (''). The client renders a DEV·QA·PROD progression from this level.
+const envLevel = (status, body) => {
+  if (status === 'todo') return '' // not built → not deployed anywhere
+  const b = body.toLowerCase()
+  const onProd = /deployed to prod|on prod\b|to prod\b|prod \(pr|\bpromoted\b|live on prod|prod deploy|→ ?prod|✅[^.]*prod/.test(b)
+  return onProd ? 'prod' : 'qa'
+}
 // when it was logged (first date in the entry) — the timestamp shown on the item
 const dateOf = (body) => { const m = body.match(/\b(20\d{2}-\d{2}-\d{2})\b/); return m ? m[1] : '' }
 const clean = (s) => s
@@ -42,7 +49,7 @@ if (cur) items.push(cur)
 const byN = new Map()
 for (const it of items) {
   const body = clean(it.body)
-  byN.set(it.n, { n: it.n, status: it.status, title: clean(it.title), summary: body.length > 280 ? body.slice(0, 277) + '…' : body, test: clean(testOf(it.body)), env: envOf(it.body), date: dateOf(it.body) })
+  byN.set(it.n, { n: it.n, status: it.status, title: clean(it.title), summary: body.length > 280 ? body.slice(0, 277) + '…' : body, test: clean(testOf(it.body)), env: envLevel(it.status, it.body), date: dateOf(it.body) })
 }
 const out = [...byN.values()].sort((a, b) => b.n - a.n)
 

@@ -32,10 +32,20 @@ for EMAIL in $EMAILS; do
   copy_tbl coach_reviews "id, doc"
   copy_tbl checkins "date, doc"
   copy_tbl calendar_items "id, date, doc"
-  # merge the coach/state doc fields into QA's doc (auth columns stay put)
-  PDB -At -c "\copy (select json_build_object('coachProfile',doc->'coachProfile','coachProfileAt',doc->'coachProfileAt','coachMemory',doc->'coachMemory','coachMemoryAt',doc->'coachMemoryAt','activityFeedback',doc->'activityFeedback','info',doc->'info','sportSettings',doc->'sportSettings','statPrefs',doc->'statPrefs','runVdot',doc->'runVdot','maxHR',doc->'maxHR','ftp',doc->'ftp','vo2max',doc->'vo2max') from users where id='$PID') to stdout" \
-    | QDB_IN -c "create temp table _d(j jsonb); \copy _d from stdin; update users set doc = coalesce(doc,'{}'::jsonb) || coalesce((select j from _d),'{}'::jsonb) where id='$QID'; drop table _d;" >/dev/null
+  # merge the coach/state doc fields into QA's doc (auth columns stay put). base64 carries the multi-line
+  # coachProfile safely through the shell (no \copy/temp-table meta-command mixing). strip encode()'s wrap newlines.
+  B64=$(PDB -At -c "select encode(convert_to((json_build_object('coachName',doc->'coachName','coachProfile',doc->'coachProfile','coachProfileAt',doc->'coachProfileAt','coachMemory',doc->'coachMemory','coachMemoryAt',doc->'coachMemoryAt','activityFeedback',doc->'activityFeedback','info',doc->'info','sports',doc->'sports','onboardedAt',doc->'onboardedAt','statsSyncedAt',doc->'statsSyncedAt','sportSettings',doc->'sportSettings','statPrefs',doc->'statPrefs','runVdot',doc->'runVdot','maxHR',doc->'maxHR','ftp',doc->'ftp','vo2max',doc->'vo2max'))::text,'UTF8'),'base64') from users where id='$PID'" | tr -d '\n')
+  QDB_EXEC -c "update users set doc = coalesce(doc,'{}'::jsonb) || convert_from(decode('$B64','base64'),'UTF8')::jsonb where id='$QID'" >/dev/null
   echo "   coach doc merged"
+  # copy the intervals CONNECTION (icu_key/athlete) so QA reads the user's REAL data. LOGIN creds stay QA's —
+  # password_hash / api_token / role are NOT touched (so QA sign-in is unaffected). QA remains read-only toward
+  # intervals (IS_STAGING) so it never writes to the real athlete.
+  IK=$(PDB -At -c "select coalesce(icu_key,'') from users where id='$PID'"); IA=$(PDB -At -c "select coalesce(icu_athlete,'') from users where id='$PID'")
+  QDB_EXEC -c "update users set icu_key=nullif('$IK',''), icu_athlete=nullif('$IA','') where id='$QID'" >/dev/null
+  # Strava-in-intervals can't be auto-detected + rides already flow (Garmin→intervals), so ACK it → the onboarding
+  # checklist can actually reach done instead of nagging forever (was the last stuck step).
+  QDB_EXEC -c "update users set doc = jsonb_set(coalesce(doc,'{}'::jsonb) || jsonb_build_object('info', coalesce(doc->'info','{}'::jsonb)), '{info,stravaAcked}', 'true'::jsonb) where id='$QID'" >/dev/null
+  echo "   intervals connection copied + strava ack set"
 done
 
 echo ">> restarting QA app (SIGKILL) so it reloads the mirrored data from Postgres"

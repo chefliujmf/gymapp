@@ -2349,29 +2349,33 @@ app.post('/api/onboarding/complete', apiAuth, (req, res) => {
 // #257 — the coach VERIFIES connections & data flow (so it can tell the user exactly what to connect).
 // Reports Platyplus↔intervals/Strava links AND whether data is actually flowing INTO intervals
 // (recent activities + their source device, and whether HRV/sleep/RHR wellness is present).
-app.get('/api/connections', apiAuth, async (req, res) => {
-  const intervals = !!req.user.icuKey
-  const strava = userStravaConnected(req.user)
+async function connectionsFor(user) {
+  const intervals = !!user.icuKey
+  const strava = userStravaConnected(user)
   let recentActivities = 0, lastActivity = null, wellness = { hrv: false, sleep: false, restingHR: false }
   const sources = []
   if (intervals) {
-    const ath = req.user.icuAthlete || 'i28814'
-    const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(21)}&newest=${icuDay(0)}`).catch(() => null)
+    const ath = user.icuAthlete || 'i28814'
+    const acts = await icuGet(user, `/athlete/${ath}/activities?oldest=${icuDay(21)}&newest=${icuDay(0)}`).catch(() => null)
     if (Array.isArray(acts)) {
       recentActivities = acts.length
       const sorted = acts.filter((a) => a.start_date_local).sort((a, b) => (a.start_date_local < b.start_date_local ? 1 : -1))
       if (sorted[0]) lastActivity = { date: sorted[0].start_date_local.slice(0, 10), type: sorted[0].type || null, source: sorted[0].source || sorted[0].device_name || null }
       for (const a of acts) { const s = a.source || a.device_name; if (s && !sources.includes(s)) sources.push(s) }
     }
-    const well = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${icuDay(14)}&newest=${icuDay(0)}`).catch(() => null)
+    const well = await icuGet(user, `/athlete/${ath}/wellness?oldest=${icuDay(14)}&newest=${icuDay(0)}`).catch(() => null)
     if (Array.isArray(well)) wellness = {
       hrv: well.some((w) => w.hrv != null || w.hrvSDNN != null),
       sleep: well.some((w) => w.sleepSecs != null || w.sleepScore != null),
       restingHR: well.some((w) => w.restingHR != null),
     }
   }
-  res.json({ intervals, strava, recentActivities, lastActivity, deviceSources: sources.slice(0, 6), wellness })
-})
+  return { intervals, strava, recentActivities, lastActivity, deviceSources: sources.slice(0, 6), wellness }
+}
+app.get('/api/connections', apiAuth, async (req, res) => res.json(await connectionsFor(req.user)))
+// #450 — session version so the onboarding checklist can AUTO-detect "rides syncing to intervals" (JM: don't
+// make me manually ack Strava — check it yourself). recentActivities>0 ⇒ activities ARE flowing (any source).
+app.get('/auth/connections', auth, async (req, res) => res.json(await connectionsFor(req.user)))
 
 // Calendar items (meal / mind / note) — Platyplus-only, no intervals push.
 app.get('/api/items', apiAuth, (req, res) => res.json(itemsInRange(req.user, req.query.from, req.query.to)))
