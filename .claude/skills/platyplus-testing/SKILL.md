@@ -12,8 +12,17 @@ it doesn't happen again.
 ## The five rules
 1. **LOG FIRST.** Every JM report → `FEEDBACK-LOG.md`, numbered, *before* touching code. Fixing
    without logging = the report gets lost. Never make JM re-report.
-2. **`🔨 built ≠ done`.** tsc/build/deploy green is NOT verified. Mark a fix **🧪 (fixed+test,
-   awaiting JM)**. Only **JM** flips it to **✅** after testing on QA. I never self-certify UX.
+2. **`🔨 built ≠ done`. The MOMENT I finish working an item (shipped to QA), I FLIP its in-app backlog
+   status to `totest` — WITH the how-to-test (JM directive 2026-07-09).** That `totest` list IS JM's
+   testing queue: "once you've worked an item, place it under to test so I have a list of what to test and
+   how to test." So every worked item → status `totest` in the SHARED backlog (`/auth/admin/backlog/:n` or the
+   shared file), and its FEEDBACK-LOG.md entry carries a **`Verify:`** clause (build-backlog surfaces it as the
+   app's "What to test"). Never leave a shipped item at `todo`/`🔨` — that hides it from JM's to-test list.
+   Only **JM** flips `totest → pass` (Tested ✓) after testing on QA. **JM marking `pass` IS his promote
+   sign-off (JM 2026-07-09): the moment items are `pass`, I PROMOTE them to prod and flip `pass → done`** —
+   don't sit on tested-green work. (`done` = shipped to prod + signed off.) I never self-certify UX.
+   And a `fail` → I rework it immediately (bugs are highest priority) and re-ship it back to `totest` when fixed
+   (it stays `fail` while I work, preserving JM's signal, until it's ready to re-test).
 3. **A test ships with every fix — DEFINE a real unit test, don't hand-wave (JM 2026-06-30: "I don't see
    you define proper unit tests").** The DEFAULT is a unit test; if the logic lives inside a component,
    **extract the pure function** to a plain module so it CAN be tested (e.g. `vo2max-submax.ts`, `mind-stats.ts`,
@@ -38,6 +47,8 @@ it doesn't happen again.
 
 ## The loop for each item
 log it → write a failing test that captures the bug → fix until green → commit (test + fix + the
-🧪 Test guide row in FEEDBACK-LOG.md) → hand JM the manual step → JM verifies on QA → JM marks ✅. One at a time.
+🧪 Test guide row in FEEDBACK-LOG.md) → ship to QA → **FLIP its backlog status to `totest` + write the how-to-test
+(`Verify:`)** → hand JM the manual step → JM verifies on QA → JM marks `pass` → I flip `pass → done` on promote.
+One at a time. The `totest` status is not optional bookkeeping — it's how JM gets his "what/how to test" list.
 
 Pairs with `options-first` (mock UX first), `feedback-log-discipline`, `platyplus-ops`.

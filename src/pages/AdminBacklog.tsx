@@ -80,6 +80,7 @@ export default function AdminBacklog() {
   const [areaSet, setAreaSet] = useState<Set<string>>(new Set())
   const [priSet, setPriSet] = useState<Set<string>>(new Set())
   const [typeSet, setTypeSet] = useState<Set<string>>(new Set())
+  const [reporterSet, setReporterSet] = useState<Set<string>>(new Set()) // #467 — filter to who reported it
   const [sort, setSort] = useState<Sort>('pri')
   const [dir, setDir] = useState<'desc' | 'asc'>('desc')
   const [open, setOpen] = useState<number | null>(null)
@@ -145,6 +146,7 @@ export default function AdminBacklog() {
       if (areaSet.size && !areaSet.has(tr(it.n).area || it.area || 'other')) return false
       if (priSet.size && !priSet.has(t.priority || '')) return false
       if (typeSet.size && !typeSet.has(t.type || '')) return false
+      if (reporterSet.size && !reporterSet.has(it.reporter || '')) return false // #467 — filter by reporter
       if (ql && !`#${it.n} ${it.title} ${it.summary}`.toLowerCase().includes(ql)) return false
       return true
     })
@@ -158,7 +160,10 @@ export default function AdminBacklog() {
       return dir === 'asc' ? -cmp : cmp
     })
     return out
-  }, [merged, triage, q, statusSet, areaSet, priSet, typeSet, sort, dir])
+  }, [merged, triage, q, statusSet, areaSet, priSet, typeSet, reporterSet, sort, dir])
+
+  // #467 — distinct reporters present on user-reported items (admin can filter to one person's reports).
+  const reporters = useMemo(() => [...new Set(added.map((a) => a.reporter).filter((r): r is string => !!r))].sort(), [added])
 
   // status filter chips — each a member of statusSet (empty set = "open"). done is included so JM can filter to it.
   const statusChips: [BacklogStatus, string, number][] = [['review', 'Under review', counts.review], ['todo', 'To do', counts.todo], ['totest', 'To test', counts.totest], ['pass', 'Tested ✓', counts.pass], ['done', 'Done', counts.done], ['fail', 'Tested ✗', counts.fail], ['discarded', 'Discarded', counts.discarded]]
@@ -183,8 +188,8 @@ export default function AdminBacklog() {
       <input className="search" placeholder="Search the backlog…" value={q} onChange={(e) => setQ(e.target.value)} />
       {/* Filters — each row is its own MULTI-select group (tap several; tap again to remove). .chips WRAPS,
           never horizontal-scroll (mobile-first). A leading label makes each group + the multi-select clear. */}
-      {(statusSet.size || areaSet.size || priSet.size || typeSet.size) ? (
-        <button className="btn btn--ghost" style={{ width: 'auto', padding: '4px 10px', fontSize: 11, marginBottom: 8 }} onClick={() => { setStatusSet(new Set()); setAreaSet(new Set()); setPriSet(new Set()); setTypeSet(new Set()) }}>✕ Clear all filters</button>
+      {(statusSet.size || areaSet.size || priSet.size || typeSet.size || reporterSet.size) ? (
+        <button className="btn btn--ghost" style={{ width: 'auto', padding: '4px 10px', fontSize: 11, marginBottom: 8 }} onClick={() => { setStatusSet(new Set()); setAreaSet(new Set()); setPriSet(new Set()); setTypeSet(new Set()); setReporterSet(new Set()) }}>✕ Clear all filters</button>
       ) : null}
       <div className="chips" style={{ marginBottom: 8 }}>
         <span style={FLABEL}>Status</span>
@@ -203,6 +208,13 @@ export default function AdminBacklog() {
         <span style={FLABEL}>Priority</span>
         {PRI_OPTS.map(([k, label]) => <button key={k} className={'chip' + (priSet.has(k) ? ' chip--active' : '')} onClick={() => toggle(priSet, k, setPriSet)}>{label}</button>)}
       </div>
+      {/* #467 — filter by who reported it (only appears once there are user reports). */}
+      {reporters.length > 0 && (
+        <div className="chips" style={{ marginBottom: 10 }}>
+          <span style={FLABEL}>Reporter</span>
+          {reporters.map((r) => <button key={r} className={'chip' + (reporterSet.has(r) ? ' chip--active' : '')} onClick={() => toggle(reporterSet, r, setReporterSet)}>{r} <span style={{ opacity: .6 }}>{added.filter((a) => a.reporter === r).length}</span></button>)}
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <span className="meta">Sort</span>
         <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} style={{ background: '#0b0e12', border: '1px solid #ffffff1a', color: 'var(--text,#eef1f4)', borderRadius: 8, padding: '5px 8px', fontSize: 12 }}>

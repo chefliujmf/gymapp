@@ -1,0 +1,59 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216}
+  *{box-sizing:border-box;margin:0;font-family:-apple-system,system-ui,sans-serif}
+  body{background:var(--bg);color:var(--text);padding:16px;display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+  .col{width:390px;max-width:100%}
+  h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:10px;font-weight:800}
+  /* report sheet */
+  .sheet{background:linear-gradient(#21252f,#191c24);border:1px solid #ffffff1a;border-radius:14px;padding:14px}
+  .sheet strong{font-size:14px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 8px}
+  .chip{background:#0b0e12;border:1px solid #ffffff1a;color:var(--text);border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer}
+  .chip.on{background:#34e07d22;border-color:#34e07d;color:#eaffef}
+  .flabel{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#7a8290;margin-right:2px}
+  .search{width:100%;background:#0b0e12;border:1px solid #ffffff1a;color:var(--text);border-radius:9px;padding:8px 10px;font-size:13px;margin-bottom:8px}
+  .btn{width:100%;background:var(--accent);color:#08130b;border:0;border-radius:9px;padding:9px;font-weight:700;font-size:13px;cursor:pointer}
+  .meta{color:var(--text-dim);font-size:11px}
+  .mine{margin-top:12px;border-top:1px solid #2a2f3a;padding-top:10px}
+  .mrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .mrow .t{flex:1;min-width:0;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;white-space:nowrap}
+  /* backlog item */
+  .item{background:#0b0e12;border:1px solid #ffffff12;border-radius:12px;padding:13px 15px;display:flex;align-items:center;gap:12px;margin-top:8px}
+  .num{color:var(--text-dim);font-weight:700;font-size:13px}
+  .dot{width:9px;height:9px;border-radius:50%;background:#ec4899;flex-shrink:0}
+  .tag{font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px}
+</style></head><body>
+
+<div class="col">
+  <h3>Xenia — top-bar report sheet (📣) · files + checks status in one place</h3>
+  <div class="sheet">
+    <strong>Report a bug or idea</strong>
+    <div class="chips"><button class="chip on">🐛 Bug</button><button class="chip">💡 Idea</button></div>
+    <input class="search" placeholder="What's broken?" value="">
+    <textarea class="search" rows="2" placeholder="Any detail? (optional)"></textarea>
+    <button class="btn">Send</button>
+    <p class="meta" style="margin-top:8px">Goes straight to the team as “xenia”.</p>
+    <div class="mine">
+      <strong style="font-size:12;color:#c4cad4">Your reports</strong>
+      <div class="mrow"><span class="t">🐛 Report-a-bug sheet overflows off the left on mobile</span><span class="badge" style="color:#34e07d;background:#34e07d22">Fixed ✓</span></div>
+      <div class="mrow"><span class="t">🐛 'Fuel' renamed to 'eat' is misleading</span><span class="badge" style="color:#e0a334;background:#e0a33422">In testing</span></div>
+      <div class="mrow"><span class="t">💡 Add a rest-day suggestion on hard weeks</span><span class="badge" style="color:#9298a6;background:#9298a622">Under review</span></div>
+    </div>
+  </div>
+  <p class="meta" style="margin-top:10px">+ when a report flips to <b style="color:#34e07d">Fixed</b>, she gets a push: “✅ Your report is fixed”.</p>
+</div>
+
+<div class="col">
+  <h3>Admin backlog — new "Reporter" filter (multi-select, like the others)</h3>
+  <div class="chips"><span class="flabel">Priority</span><button class="chip">High</button><button class="chip">Med</button><button class="chip">Low</button></div>
+  <div class="chips"><span class="flabel">Reporter</span><button class="chip on">xenia <span style="opacity:.6">2</span></button><button class="chip">jmfiset <span style="opacity:.6">9</span></button></div>
+  <div style="margin-top:6px">
+    <div class="item"><span class="dot"></span><span class="num">#1000</span><span style="flex:1;font-size:13.5px">Report-a-bug sheet overflows off the left</span><span class="tag" style="color:#34e07d;background:#34e07d22">DONE</span></div>
+    <div class="item"><span class="dot"></span><span class="num">#1001</span><span style="flex:1;font-size:13.5px">'Fuel' renamed to 'eat' is misleading</span><span class="tag" style="color:#e0a334;background:#e0a33422">TOTEST</span></div>
+  </div>
+  <p class="meta" style="margin-top:10px">Filtered to <b>xenia</b> → only her 2 reports. Admin sees everyone; picking a name scopes the board.</p>
+</div>
+
+</body></html>
