@@ -303,8 +303,8 @@ app.put('/auth/profile', auth, (req, res) => {
 // + weight, mapped to our shape. intervals is CANONICAL for these — we also refresh our local
 // mirror (+ flat ftp/maxHR the coach reads) so nothing drifts.
 app.get('/auth/intervals/athlete', auth, async (req, res) => {
-  if (!req.user.icuKey) return res.json({ connected: false })
-  const ath = req.user.icuAthlete || 'i28814'
+  if (!req.user.icuKey || !req.user.icuAthlete) return res.json({ connected: false })
+  const ath = req.user.icuAthlete
   const a = await icuGet(req.user, `/athlete/${ath}`)
   if (!a) return res.status(502).json({ connected: true, error: 'could not read intervals athlete' })
   const mapped = fromIcuSportSettings(a.sportSettings || [])
@@ -326,7 +326,7 @@ app.get('/auth/intervals/athlete', auth, async (req, res) => {
 // return a confidence so the UI only surfaces a suggestion when we're genuinely confident.
 app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
   if (!req.user.icuKey) return res.json({ available: false })
-  const ath = req.user.icuAthlete || 'i28814'
+  const ath = req.user.icuAthlete
   const pc = await icuGet(req.user, `/athlete/${ath}/pace-curves?type=Run`)
   const est = pc ? runThresholdFromPaceCurve(pc) : null
   if (!est) return res.json({ available: false, reason: 'no-model' })
@@ -353,7 +353,7 @@ app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
 // recent run count so we can suppress a running VO₂max off almost no running.
 app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
   if (!req.user.icuKey) return res.json({ available: false })
-  const ath = req.user.icuAthlete || 'i28814'
+  const ath = req.user.icuAthlete
   const pc = await icuGet(req.user, `/athlete/${ath}/power-curves?type=Ride&start=${icuDay(90)}&end=${icuDay(0)}`)
   const curve = pc && Array.isArray(pc.list) ? pc.list[0] : null
   let map5 = null, ftp20 = null, weight = null
@@ -384,7 +384,7 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
 // average weekly volume over the recent window, from intervals run activities (km).
 app.get('/auth/intervals/run-volume', auth, async (req, res) => {
   if (!req.user.icuKey) return res.json({ available: false })
-  const ath = req.user.icuAthlete || 'i28814'
+  const ath = req.user.icuAthlete
   const DAYS = 42 // ~6 weeks — enough to read a long-run + weekly-volume base
   const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(DAYS)}&newest=${icuDay(0)}`)
   if (!Array.isArray(acts)) return res.json({ available: false })
@@ -400,7 +400,7 @@ app.get('/auth/intervals/run-volume', auth, async (req, res) => {
 // time ÷ total distance per week) so a long easy run doesn't get out-weighted by a short fast one.
 app.get('/auth/intervals/run-pace-trend', auth, async (req, res) => {
   if (!req.user.icuKey) return res.json({ available: false })
-  const ath = req.user.icuAthlete || 'i28814'
+  const ath = req.user.icuAthlete
   const WEEKS = 8, DAYS = WEEKS * 7
   const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(DAYS)}&newest=${icuDay(0)}`)
   if (!Array.isArray(acts)) return res.json({ available: false })
@@ -451,7 +451,7 @@ async function applySportStat(user, body = {}) {
 
   let synced = false, pushError = null
   if (user.icuKey) {
-    const ath = user.icuAthlete || 'i28814'
+    const ath = user.icuAthlete
     try {
       const list = await icuGet(user, `/athlete/${ath}/sport-settings`)
       const w = Array.isArray(list) ? icuPatchForGroup(list, group, patch) : null
@@ -592,7 +592,7 @@ app.get('/auth/location', auth, async (req, res) => {
   const u = req.user
   if (u.info && Number.isFinite(u.info.lat) && Number.isFinite(u.info.lon)) return res.json({ name: u.info.locationName || null, lat: u.info.lat, lon: u.info.lon, source: 'saved', timezone: u.icuTimezone || null })
   if (u.icuKey) {
-    const me = await icuGet(u, `/athlete/${u.icuAthlete || 'i28814'}`).catch(() => null)
+    const me = await icuGet(u, `/athlete/${u.icuAthlete}`).catch(() => null)
     if (me) {
       if (me.timezone && !u.icuTimezone) { u.icuTimezone = me.timezone; save(store) }
       if (me.city) { const g = await geocodePlace(me.city, me.state, me.country); if (g) return res.json({ name: [me.city, me.state].filter(Boolean).join(', '), lat: g.lat, lon: g.lon, source: 'intervals', timezone: u.icuTimezone || me.timezone || null }) }
@@ -608,7 +608,7 @@ app.post('/auth/location', auth, async (req, res) => {
   u.info = u.info || {}; u.info.lat = g.lat; u.info.lon = g.lon; u.info.locationName = city
   audit(u, { actor: 'you', action: 'Set location', target: city, detail: 'weather + local time · synced to intervals', kind: 'other' }) // #232
   save(store)
-  if (u.icuKey) icuFetch(u, `/athlete/${u.icuAthlete || 'i28814'}`, { method: 'PUT', body: JSON.stringify({ city }) }).catch((e) => console.error('[icu-city-write] ' + (e.message || e))) // #268 write-back
+  if (u.icuKey) icuFetch(u, `/athlete/${u.icuAthlete}`, { method: 'PUT', body: JSON.stringify({ city }) }).catch((e) => console.error('[icu-city-write] ' + (e.message || e))) // #268 write-back
   res.json({ name: city, lat: g.lat, lon: g.lon, source: 'saved' })
 })
 app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))
@@ -625,7 +625,7 @@ function localWeekdayInTz(tz) { try { return new Date().toLocaleDateString('en-U
 function localHourInTz(tz) { try { return parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: tz || 'UTC', hour: '2-digit', hour12: false }).format(new Date()), 10) % 24 } catch { return new Date().getUTCHours() } }
 async function athleteToday(user) {
   if (!user.icuTimezone && user.icuKey) {
-    try { const me = await icuGet(user, `/athlete/${user.icuAthlete || 'i28814'}`); if (me && me.timezone) { user.icuTimezone = me.timezone; save(store) } } catch { /* fall back to UTC */ }
+    try { const me = await icuGet(user, `/athlete/${user.icuAthlete}`); if (me && me.timezone) { user.icuTimezone = me.timezone; save(store) } } catch { /* fall back to UTC */ }
   }
   return localTodayInTz(user.icuTimezone)
 }
@@ -635,7 +635,7 @@ async function athleteToday(user) {
 app.get('/auth/readiness', auth, async (req, res) => {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : await athleteToday(req.user) // #347 local, not UTC
   const oldest = new Date(date + 'T00:00:00Z'); oldest.setUTCDate(oldest.getUTCDate() - 60)
-  const ath = req.user.icuAthlete || 'i28814'
+  const ath = req.user.icuAthlete
   const data = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${oldest.toISOString().slice(0, 10)}&newest=${date}`)
   if (!data) return res.json({ connected: false })
   const rows = (Array.isArray(data) ? data : []).map((d) => ({
@@ -685,10 +685,10 @@ const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDa
 app.get('/auth/readiness-forecast', auth, async (req, res) => {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : null
   if (!date) return res.status(400).json({ error: 'date required' })
-  if (!req.user.icuKey) return res.json({ connected: false })
+  if (!req.user.icuKey || !req.user.icuAthlete) return res.json({ connected: false })
   const today = await athleteToday(req.user) // #347 — LOCAL today (intervals tz), not UTC, so tomorrow isn't read as today
   if (date <= today) return res.json({ connected: true, future: false }) // only future days forecast
-  const ath = req.user.icuAthlete || 'i28814'
+  const ath = req.user.icuAthlete
   // current fitness state: latest wellness row with CTL+ATL, + a personal TSB baseline (60d)
   const wOld = addDays(today, -60)
   const wData = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${wOld}&newest=${today}`)
@@ -719,9 +719,9 @@ app.get('/auth/readiness-forecast', auth, async (req, res) => {
 
 // #248 — per-day CTL/ATL/Form PROJECTION for the next N days (forward line on the Load & Form charts).
 app.get('/auth/readiness-projection', auth, async (req, res) => {
-  if (!req.user.icuKey) return res.json({ connected: false })
+  if (!req.user.icuKey || !req.user.icuAthlete) return res.json({ connected: false })
   const days = Math.min(28, Math.max(1, Number(req.query.days) || 14))
-  const ath = req.user.icuAthlete || 'i28814'
+  const ath = req.user.icuAthlete
   const today = await athleteToday(req.user) // #347 local tz
   const wData = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${addDays(today, -30)}&newest=${today}`)
   const rows = (Array.isArray(wData) ? wData : []).map((d) => ({ ctl: d.ctl, atl: d.atl }))
@@ -766,8 +766,8 @@ app.get('/auth/readiness-projection', auth, async (req, res) => {
 // #404 — the athlete's COMPUTED performance metrics (CP/W′/CS/D′/TTE/EF + a profile synthesis) for the COACH,
 // mirroring the client benchmark/profile cards so the coach reasons from ACTUAL values (see perf-metrics.js).
 app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
-  if (!req.user.icuKey) return res.json({ connected: false })
-  const ath = req.user.icuAthlete || 'i28814', ss = req.user.sportSettings || {}, sports = req.user.sports || []
+  if (!req.user.icuKey || !req.user.icuAthlete) return res.json({ connected: false })
+  const ath = req.user.icuAthlete, ss = req.user.sportSettings || {}, sports = req.user.sports || []
   const today = await athleteToday(req.user), from = addDays(today, -365)
   let acts = null
   const efFor = async (type) => {
@@ -861,7 +861,7 @@ async function syncActivityNote(user, id, content) {
 async function ensureIcuFields(user, { force = false } = {}) {
   if (!user || !user.icuKey) return
   if (!force && user.icuFieldsAt) return // already ensured (flag) — skip the round-trip
-  const ath = user.icuAthlete || 'i28814'
+  const ath = user.icuAthlete
   try {
     const cur = await icuFetch(user, `/athlete/${ath}/custom-item`).then((r) => (r.ok ? r.json() : [])).catch(() => [])
     const have = new Set((Array.isArray(cur) ? cur : []).filter((it) => it && it.content && it.content.code).map((it) => it.content.code))
@@ -1059,7 +1059,7 @@ app.post('/auth/plans/handle-missed', auth, async (req, res) => {
   const logSlots = new Set((user.logs || []).map((l) => slotKey(l.date, l.discipline === 'running' ? 'run' : l.discipline === 'cycling' ? 'ride' : 'gym')))
   const actBySlot = {}
   if (user.icuKey) {
-    const acts = await icuGet(user, `/athlete/${user.icuAthlete || 'i28814'}/activities?oldest=${addDays(today, -6)}&newest=${today}`).catch(() => null)
+    const acts = await icuGet(user, `/athlete/${user.icuAthlete}/activities?oldest=${addDays(today, -6)}&newest=${today}`).catch(() => null)
     for (const a of (Array.isArray(acts) ? acts : [])) { const k = slotKey((a.start_date_local || '').slice(0, 10), eventSport(a.type)); if (!actBySlot[k]) actBySlot[k] = a }
   }
   let paired = 0
@@ -1689,7 +1689,8 @@ function planToIcuEvent(plan, items = []) {
 // All intervals planned EVENTS that already represent this plan (incl. the other coach's copy,
 // whose name carries a "#Codex Coach" suffix — matched fuzzily). See server/icu-match.js (#150).
 async function findIcuEventsForPlan(user, plan) {
-  const ath = user.icuAthlete || 'i28814'
+  const ath = user.icuAthlete
+  if (!ath) return [] // #456 — no athlete → never fall back to the seed (i28814); block
   try {
     const r = await icuFetch(user, `/athlete/${ath}/events?oldest=${plan.date}&newest=${plan.date}`)
     if (!r.ok) return []
@@ -1706,8 +1707,9 @@ const stripIcuInstance = (s) => String(s || '').replace(/:\d{4}-\d{2}-\d{2}$/, '
 //   • else update our event (or adopt a foreign one — the other coach's — without duplicating).
 async function pushPlanToIcu(user, plan) {
   if (!user.icuKey) return { skipped: 'no intervals key' }
+  if (!user.icuAthlete) { console.warn(`[icu] blocked ${user.username || user.id}: no intervals athlete — refusing to touch the seed calendar (#456)`); return { skipped: 'no intervals athlete' } }
   if (IS_STAGING) return { skipped: 'staging (read-only toward intervals — only prod mirrors, #381)' }
-  const ath = user.icuAthlete || 'i28814'
+  const ath = user.icuAthlete
   const delEvent = async (id) => { try { await icuFetch(user, `/athlete/${ath}/events/${id}`, { method: 'DELETE' }) } catch { /* best effort */ } }
   const mineId = plan.icuEventId ? String(plan.icuEventId) : null
 
@@ -1762,8 +1764,8 @@ async function pushPlanToIcu(user, plan) {
   } catch (e) { return { error: String(e.message || e) } }
 }
 async function deleteIcuEvent(user, plan) {
-  if (!user.icuKey || !plan?.icuEventId) return
-  try { await icuFetch(user, `/athlete/${user.icuAthlete || 'i28814'}/events/${plan.icuEventId}`, { method: 'DELETE' }) } catch { /* best effort */ }
+  if (!user.icuKey || !user.icuAthlete || !plan?.icuEventId) return // #456 — no athlete → never DELETE on the seed calendar
+  try { await icuFetch(user, `/athlete/${user.icuAthlete}/events/${plan.icuEventId}`, { method: 'DELETE' }) } catch { /* best effort */ }
 }
 // #297 — guarantee a TEMPO on strength lifts (default 3-1-1-0) so the chip always shows, even when
 // the coach LLM omits it. Only reps-mode (loaded) lifts; timed/mobility holds keep no tempo.
@@ -1871,7 +1873,8 @@ function icuEventToPlan(ev) {
 }
 async function reconcileFromIcu(user, from, to) {
   if (!user.icuKey) return { skipped: 'no intervals key' }
-  const ath = user.icuAthlete || 'i28814'
+  if (!user.icuAthlete) { console.warn(`[icu] blocked ${user.username || user.id}: no intervals athlete — refusing to touch the seed calendar (#456)`); return { skipped: 'no intervals athlete' } }
+  const ath = user.icuAthlete
   let events
   try {
     const r = await icuFetch(user, `/athlete/${ath}/events?oldest=${from}&newest=${to}`)
@@ -2139,14 +2142,14 @@ function tcxFromSamples(samples, { sport, startIso, durationSec }) {
 }
 // Find a device activity already in intervals for this day+sport (so we don't dup).
 async function icuFindMatch(user, { date, sport }) {
-  const ath = user.icuAthlete || 'i28814'
+  const ath = user.icuAthlete
   const acts = await icuGet(user, `/athlete/${ath}/activities?oldest=${date}&newest=${date}`)
   if (!Array.isArray(acts)) return null
   const want = /ride|cycl|bike/i.test(sport) ? /ride|cycl|bike/i : /run/i.test(sport) ? /run/i : /weight|strength|workout/i
   return acts.find((a) => want.test(String(a.type || ''))) || null
 }
 async function icuUploadTcx(user, tcx, name) {
-  const ath = user.icuAthlete || 'i28814'
+  const ath = user.icuAthlete
   const fd = new FormData()
   fd.append('file', new Blob([tcx], { type: 'application/xml' }), `${String(name).replace(/[^\w-]/g, '_').slice(0, 40)}.tcx`)
   const r = await fetch(`${ICU_API}/athlete/${ath}/activities`, {
@@ -2181,7 +2184,7 @@ app.post('/auth/activity/complete', auth, async (req, res) => {
 
 // Upload a RAW activity file (.fit/.gpx/.tcx) straight to intervals — best fidelity.
 async function icuUploadRaw(user, buffer, filename) {
-  const ath = user.icuAthlete || 'i28814'
+  const ath = user.icuAthlete
   const fd = new FormData()
   fd.append('file', new Blob([buffer]), String(filename || 'activity').replace(/[^\w.\-]/g, '_').slice(0, 60))
   const r = await fetch(`${ICU_API}/athlete/${ath}/activities`, {
@@ -2249,7 +2252,7 @@ app.post('/auth/activity/manual', auth, async (req, res) => {
 
 app.get('/api/intervals/wellness', apiAuth, async (req, res) => {
   const days = Math.min(60, Math.max(1, Number(req.query.days) || 14))
-  const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete || 'i28814'}/wellness?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
+  const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete}/wellness?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
   if (!data) return res.json({ connected: false, wellness: [] })
   const wellness = (Array.isArray(data) ? data : []).map((d) => ({
     date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
@@ -2279,7 +2282,7 @@ async function geocodePlace(city, region, country) {
 // OUTDOOR activity's GPS. Cached. (JM: capture it in ONBOARDING too so it's reliable — separate item.)
 async function athleteLatLon(user) {
   if (user.info && Number.isFinite(user.info.lat) && Number.isFinite(user.info.lon)) return { lat: user.info.lat, lon: user.info.lon }
-  const ath = user.icuAthlete || 'i28814'
+  const ath = user.icuAthlete
   const cache = (lat, lon) => { if (Number.isFinite(lat) && Number.isFinite(lon)) { user.info = user.info || {}; user.info.lat = lat; user.info.lon = lon; save(store); return { lat, lon } } return null }
   // (2) the intervals athlete profile — lat/lng directly, else geocode the city
   const me = await icuGet(user, `/athlete/${ath}`).catch(() => null)
@@ -2325,7 +2328,7 @@ app.get('/api/weather', apiAuth, async (req, res) => {
 
 app.get('/api/intervals/activities', apiAuth, async (req, res) => {
   const days = Math.min(60, Math.max(1, Number(req.query.days) || 14))
-  const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete || 'i28814'}/activities?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
+  const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete}/activities?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
   if (!data) return res.json({ connected: false, activities: [] })
   const activities = (Array.isArray(data) ? data : []).map((a) => ({
     id: a.id, // #437 — the intervals activity id, so the coach can review/annotate THIS activity (save_coach_review activityId, set_activity_text). Was missing → the coach couldn't reliably get the id from the read (#436 caveat).
@@ -2383,7 +2386,7 @@ async function connectionsFor(user) {
   let recentActivities = 0, lastActivity = null, wellness = { hrv: false, sleep: false, restingHR: false }
   const sources = []
   if (intervals) {
-    const ath = user.icuAthlete || 'i28814'
+    const ath = user.icuAthlete
     const acts = await icuGet(user, `/athlete/${ath}/activities?oldest=${icuDay(21)}&newest=${icuDay(0)}`).catch(() => null)
     if (Array.isArray(acts)) {
       recentActivities = acts.length
@@ -2471,7 +2474,7 @@ app.post('/api/weekly-target', apiAuth, async (req, res) => {
   save(store); res.status(201).json(target)
   // mirror to intervals as a TARGET event (best-effort)
   if (req.user.icuKey) {
-    const ath = req.user.icuAthlete || 'i28814'
+    const ath = req.user.icuAthlete
     const name = `Weekly target${target.hours ? ` · ${target.hours}h` : ''}${target.load ? ` · ${target.load} load` : ''}`
     const desc = [target.focus, target.note].filter(Boolean).join('\n\n')
     icuFetch(req.user, `/athlete/${ath}/events`, { method: 'POST', body: JSON.stringify({ category: 'TARGET', start_date_local: `${weekStart}T00:00:00`, name, description: desc }) }).catch((e) => console.error('[weekly-target-mirror] ' + (e.message || e)))
@@ -2614,6 +2617,9 @@ app.all('/icu/*', auth, async (req, res) => {
   // or not-yet-synced browser another user (Xenia, athlete i628280) was fetching JM's activities and never
   // saw her own (e.g. her Jul-7 strength session). This is a personal app — each user only ever reads their
   // OWN athlete, so pinning it here is authoritative and immune to stale client state.
+  // #456 — if this is an athlete-scoped call and the user has NO athlete, BLOCK with a clear error rather
+  // than proxying the seed athlete's data (never leak/serve JM's i28814 to a user without their own).
+  if (!req.user.icuAthlete && /\/athlete\/i\d+/i.test(path)) return res.status(409).json({ error: 'No intervals.icu athlete connected — connect it in Settings.' })
   if (req.user.icuAthlete) path = path.replace(/(\/athlete\/)i\d+/i, `$1${req.user.icuAthlete}`)
   const url = ICU + path
   const headers = {}
@@ -2703,7 +2709,7 @@ async function dailyAdaptTick() {
       }
       // REFINE pass — after the early pass, once today's HRV/sleep/RHR has actually landed in intervals.
       if (user.dailyAdapt.early === today && user.dailyAdapt.refine !== today && hour >= 6 && hour < 23) {
-        const w = await icuGet(user, `/athlete/${user.icuAthlete || 'i28814'}/wellness?oldest=${today}&newest=${today}`).catch(() => null)
+        const w = await icuGet(user, `/athlete/${user.icuAthlete}/wellness?oldest=${today}&newest=${today}`).catch(() => null)
         const row = Array.isArray(w) ? w.find((d) => d.id === today) : null
         if (row && (row.hrv != null || row.sleepSecs != null || row.restingHR != null)) { user.dailyAdapt.refine = today; save(store); runDailyAdapt(user, 'refine') }
       }
