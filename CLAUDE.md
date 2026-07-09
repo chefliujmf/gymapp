@@ -112,8 +112,14 @@ memory `platyplus-readiness-model`. Build the math as a pure, unit-tested `serve
   `TARGET`, e.g. "ATP W06" ~250 TSS/wk) or NOTE is NOT a single-day load (#366). Same filter on `/auth/readiness-projection`.
 - **Daily auto-adapt (#367):** an in-process scheduler (`dailyAdaptTick`, QA/prod, ticks every 30 min) has the
   coach proactively re-plan the rolling **14-day** horizon each morning per athlete's LOCAL tz — an EARLY pass
-  ~4am (Form/freshness) + a REFINE pass once HRV/sleep lands. Runtime-message-driven (`dailyAdaptMsg`), NOT in
+  ~4am (Form/freshness) + a REFINE pass once HRV/sleep lands. Runtime-message-driven, NOT in
   `coach-engine.md` (keeps the ~128 KB systemPrompt under the argv limit, #352). Manual: `POST /api/coach/daily-adapt`.
+  **#439 — SEPARATE focused pass per topic (JM), NOT one giant prompt** (the coach gave each partial attention +
+  ran out, leaving the back half of the horizon blank): `runDailyAdapt` runs (1) `dailyAdaptMsg` = adapt the WORKOUT
+  plan + fill the horizon — **looped** with `horizonFillMsg` until `horizonCoverage().empty < 3`; (2) `reviewMsg` =
+  reviews only; (3) `roundOutMsg` = fuel/mind/recovery only. Reviews + round-out gated ONCE/day (`dailyAdapt.extras`).
+  Keep each message SINGLE-TOPIC — don't merge them back into one mega-prompt. (Coach planning is still prod-only via
+  `IS_STAGING`; the #463 daily REMINDER runs before that gate, so it fires on QA+prod.)
 - **Planned LOAD makes Form real (#372):** the forecast + intervals' own Form only drop when planned sessions carry
   load. intervals does NOT compute it for API workouts, so `planToIcuEvent` sets `icu_training_load` from `plannedTss`.
   Without it a hard week projected FLAT (~-3 Form). Backfill after a mapping change: `POST /api/plans/resync`.

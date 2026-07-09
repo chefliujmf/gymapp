@@ -819,6 +819,10 @@ test guide → the **🧪 Test guide** section below.
     LOOPS — after the adapt it re-checks `horizonCoverage` and runs up to 2 FOCUSED `horizonFillMsg` passes (FILL-ONLY, no reviews/fuel/mind)
     until `cov.empty < 3` (only rest days left blank). Deterministic control around the LLM. On QA; prod on promote → trigger a daily-adapt to
     fill JM's horizon to ~Jul 23 + verify.
+    **+ JM's idea (2026-07-09): DECOMPOSE into a SEPARATE focused pass per topic** instead of one giant prompt — the coach gave each partial
+    attention + ran out. `runDailyAdapt` now runs: (1) `dailyAdaptMsg` = adapt the WORKOUT plan + fill horizon (looped, readiness-sensitive →
+    every pass); (2) `reviewMsg` = reviews ONLY; (3) `roundOutMsg` = fuel/mind/recovery ONLY. Reviews + round-out gated ONCE/day
+    (`dailyAdapt.extras`) so they don't re-spawn on both early+refine. Each pass gets the coach's full attention. On QA.
 440. 🧪 **"Report a bug or idea" for any (non-admin) user — top bar, → backlog as "under review".** JM 2026-07-08: "for a user who is not
     admin, add a button to report bug or idea, to the left of the notification icon… added to the backlog as under review, put a reporter + a
     timestamp on each item." BUILT: `ReportButton.tsx` (top bar, left of the bell, non-admins only) → a Bug/Idea form → `POST /auth/report` (any
