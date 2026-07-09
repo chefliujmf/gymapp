@@ -46,6 +46,8 @@ write_auth_env() {
   mv "$dir/auth.env.tmp" "$dir/auth.env"
   # GH_PROMOTE_TOKEN (PAT w/ Actions:write) for the in-app Promote button (#47).
   [ -n "${GH_PROMOTE_TOKEN:-}" ] && printf 'GH_PROMOTE_TOKEN=%s\n' "$GH_PROMOTE_TOKEN" >> "$dir/auth.env"
+  # #457 — Web Push VAPID keys (own secret VAPID_ENV). Absent → phone push stays DISABLED (graceful).
+  [ -n "${VAPID_ENV:-}" ] && printf '%s\n' "$VAPID_ENV" >> "$dir/auth.env"
   echo ">> wrote $dir/auth.env from injected GitHub Secret ($(grep -c '=' "$dir/auth.env") vars)"
 }
 

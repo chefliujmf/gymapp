@@ -951,6 +951,35 @@ test guide → the **🧪 Test guide** section below.
     for an athlete-scoped call with no athlete (never proxies the seed). Connected users (JM, Xenia — athlete set) are byte-for-byte
     unaffected. 447 tests, tsc clean. On QA. Test: a user with a key but no athlete → intervals reads 409, coach plan-push logs "blocked …
     no intervals athlete" and never appears on JM's calendar.
+457. 🔨 **PHONE push notifications (Web Push) — buzz the phone when the coach changes the plan.** JM 2026-07-09: "can a PWA do push
+    notifications to a phone when there is a plan change? build it." Today `pushNotification()` only writes the in-app 🔔 bell — the
+    phone stays silent until you open the app. Add real **Web Push** (works with the app CLOSED): VAPID keys, a permission + `PushManager`
+    subscribe flow (stored per device), a `push` + `notificationclick` handler in the service worker, and fan the EXISTING
+    `pushNotification` (already fires on every coach plan-change / review) out via the `web-push` lib. ⚠️ **iOS caveat:** Web Push works
+    ONLY for a PWA **installed to the Home Screen** (iOS 16.4+) — a Safari tab gets nothing; Android works in-browser. So the opt-in UX
+    needs an "install to Home Screen" hint on iPhone. Mock the opt-in/permission UX first (options-first), then wire the plumbing.
+    Layers: `server/server.js` (VAPID + subscribe endpoints + web-push send in pushNotification) · service worker (`vite.config`/`public`) ·
+    client Settings toggle + subscribe · openapi. Test: change a plan from the coach → the phone shows a system notification, tap → opens the plan.
+    BUILT + on QA (degraded-off). ⚠️ Needs the **`VAPID_ENV` GitHub secret** set to enable (deploy scripts append it to auth.env).
+458. ✅ **Location: intervals HAS it but the Platyplus profile showed blank.** JM 2026-07-09 (QA). His saved COORDS (lat/lon) were there but
+    `info.locationName` was empty → `GET /auth/location` returned `name:null`, so Profile showed no place. Fixed: when coords are saved but the
+    NAME is blank, adopt intervals' city name (keep the saved coords) + PERSIST it. On QA. Test: Profile → Location shows the city.
+459. ⬜ **Profile: diet / height / birthdate empty ("never changed my diet").** JM 2026-07-09 (QA). His `user.info` has lat/lon/sex/sports/
+    coachName/equipment/sleepNeed/availability/trainingDays but NOT diet/heightCm/dob/locationName — on BOTH QA and PROD (so not QA-only; the UI
+    defaults diet→"no preference" when unset, which read as "changed"). Root TBD: never set on prod, OR wiped. LIKELY the QA **mirror clobbers
+    QA-only info edits** (it copies prod.info wholesale). Fix: (a) mirror PRESERVES user-entered info; (b) JM re-sets on PROD (persists). Confirm
+    with JM whether he set them on prod recently (→ hunt a wipe) or sets them now + watch.
+460. 🔨 **Notifications section shows but nothing to toggle.** JM 2026-07-09 (QA). The per-type toggles only render once the master is ON
+    (subscribed) — but push is DISABLED on QA (no VAPID yet, #457), so there's nothing actionable. Tied to #457: once VAPID is set + master on,
+    the toggles appear. Also improve the empty/disabled state (show the types greyed when push isn't on) so it's not confusing.
+461. ✅ **Estimated FTP (+ VO₂max) shown with decimals — round it.** JM 2026-07-09. `Benchmarks.tsx` FTP `computed:eftp` (intervals eFTP, a
+    decimal) used `fmt:String` → unrounded; same for VO₂max. Fixed: `fmt` now `Math.round`s (the value + the eFTP "science" row). On QA.
+462. ⬜ **Coach/benchmark should EXPLAIN computed-FTP vs CP vs manual (idea).** JM 2026-07-09: "strange the computed FTP dropped to 240, CP is 248,
+    but I trained at FTP 260 — how do you support this?" The reasoning (not a bug): **CP ≥ FTP is textbook** (CP = 30–50 min asymptote, FTP = 60 min),
+    so 248 > 240 AGREES; and **eFTP is evidence-based** — it drifts DOWN without a recent ~5–20 min near-max effort, so 240 ≠ "can't do 260", it means
+    "no fresh proof." App idea: (a) a benchmark insight line reconciling computed vs manual ("your eFTP reads 240 because your recent efforts show that;
+    a hard 20-min effort will refresh it — you may still be ~260"); (b) explain CP≥FTP where both show; (c) coach reasons off the honest number (~248),
+    not a stale manual 260, and PROMPTS a threshold test to resolve it. Ties [[platyplus-beyond-ftp-metrics]] + benchmarks manual-vs-computed.
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL

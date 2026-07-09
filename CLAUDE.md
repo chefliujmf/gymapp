@@ -144,6 +144,11 @@ memory `platyplus-readiness-model`. Build the math as a pure, unit-tested `serve
   edit the secret, redeploy. The on-box `auth.env` is now a derived runtime copy (the app
   can't read GitHub Secrets directly). The Mac hotfix path leaves it untouched (no `AUTH_ENV`).
 - `PROMOTE_TOKEN` (Actions secret) is the prod-promotion PAT — used by `promote-prod.yml` only.
+- `VAPID_ENV` (Actions secret, #457) — Web Push keys, its OWN secret (3 lines: `VAPID_PUBLIC_KEY` /
+  `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT`). Both deploy scripts append it to `auth.env` (like `GH_PROMOTE_TOKEN`);
+  the workflows pass `VAPID_ENV: ${{ secrets.VAPID_ENV }}`. ABSENT → `PUSH_ENABLED=false`, phone push disabled
+  (app degrades gracefully). Generate once with `web-push.generateVAPIDKeys()` — STABLE (changing it drops all
+  subscriptions). One keypair serves QA + prod.
 - When you change `auth.env` keys, update **both** the GitHub Secret blob and this list.
 
 ## Data store: Postgres (since 2026-06-23)

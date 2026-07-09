@@ -27,6 +27,7 @@ jobs:
       CATALOG_DIR: /home/jmf/content/generated
       AUTH_ENV: ${{ secrets.AUTH_ENV_STAGING }}   # GitHub Secrets = master; deploy-staging.sh writes auth.env from it
       GH_PROMOTE_TOKEN: ${{ secrets.PROMOTE_TOKEN }}   # reuse the existing promote PAT for the in-app Promote button (#47)
+      VAPID_ENV: ${{ secrets.VAPID_ENV }}   # #457 — Web Push VAPID keys (appended to auth.env); absent → push disabled
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

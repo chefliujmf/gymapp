@@ -32,6 +32,7 @@ import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } fro
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage)
+import webpush from 'web-push' // #457 — phone push notifications
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || '/usr/share/nginx/html'
@@ -40,6 +41,12 @@ const PORT = Number(process.env.PORT || 80)
 const RP_ID = process.env.RP_ID || 'platyplus.duckdns.org'
 const ORIGIN = process.env.ORIGIN || `https://${RP_ID}`
 const RP_NAME = 'Platyplus'
+// #457 — Web Push (phone notifications). VAPID keys from env; if ABSENT, push is DISABLED and the feature
+// degrades gracefully (client shows "unavailable"). The PUBLIC key is safe to ship; the private key is secret.
+const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY || ''
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || ''
+const PUSH_ENABLED = !!(VAPID_PUBLIC && VAPID_PRIVATE)
+if (PUSH_ENABLED) { try { webpush.setVapidDetails(process.env.VAPID_SUBJECT || `mailto:admin@${RP_ID}`, VAPID_PUBLIC, VAPID_PRIVATE) } catch (e) { console.error('[webpush] bad VAPID keys: ' + (e.message || e)) } }
 // #381 — QA/staging shares JM's ONE REAL intervals athlete (i28814) with prod (single intervals account).
 // Both envs pushing/scheduling to it collided on the shared calendar → duplicate events, double "Open in
 // Platyplus" links, empty gym shells (#377/#378/#381). Fix (JM's pick): staging is READ-ONLY toward
@@ -294,6 +301,14 @@ app.put('/auth/profile', auth, (req, res) => {
   if (req.body.statPrefs && typeof req.body.statPrefs === 'object') {
     req.user.statPrefs = req.user.statPrefs || {}
     for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed' || v === 'auto') && /^(vo2max|ftp|thresholdPace|maxHr|sleepNeed)$/.test(k)) req.user.statPrefs[k] = v
+  }
+  // #457 — per-type phone-push preferences (clamped to booleans)
+  if (req.body.pushPrefs && typeof req.body.pushPrefs === 'object') {
+    req.user.info.pushPrefs = {
+      planChanges: req.body.pushPrefs.planChanges !== false,
+      reviews: req.body.pushPrefs.reviews !== false,
+      reminders: req.body.pushPrefs.reminders === true,
+    }
   }
   save(store); res.json(pub(req.user))
 })
@@ -590,12 +605,19 @@ app.post('/auth/checkin', auth, (req, res) => {
 // `city` but IGNORES lat/lng (verified) → we geocode + keep lat/lon Platyplus-side for weather.
 app.get('/auth/location', auth, async (req, res) => {
   const u = req.user
-  if (u.info && Number.isFinite(u.info.lat) && Number.isFinite(u.info.lon)) return res.json({ name: u.info.locationName || null, lat: u.info.lat, lon: u.info.lon, source: 'saved', timezone: u.icuTimezone || null })
+  const hasSaved = u.info && Number.isFinite(u.info.lat) && Number.isFinite(u.info.lon)
+  if (hasSaved && u.info.locationName) return res.json({ name: u.info.locationName, lat: u.info.lat, lon: u.info.lon, source: 'saved', timezone: u.icuTimezone || null })
   if (u.icuKey) {
     const me = await icuGet(u, `/athlete/${u.icuAthlete}`).catch(() => null)
     if (me) {
       if (me.timezone && !u.icuTimezone) { u.icuTimezone = me.timezone; save(store) }
-      if (me.city) { const g = await geocodePlace(me.city, me.state, me.country); if (g) return res.json({ name: [me.city, me.state].filter(Boolean).join(', '), lat: g.lat, lon: g.lon, source: 'intervals', timezone: u.icuTimezone || me.timezone || null }) }
+      if (me.city) {
+        const name = [me.city, me.state].filter(Boolean).join(', ')
+        // #458 — saved COORDS but no NAME (JM: "intervals has my location but it's not in Platyplus"): keep the
+        // saved coords, adopt intervals' city name + PERSIST it so the profile shows a place instead of blank.
+        if (hasSaved) { u.info.locationName = name; save(store); return res.json({ name, lat: u.info.lat, lon: u.info.lon, source: 'intervals', timezone: u.icuTimezone || me.timezone || null }) }
+        const g = await geocodePlace(me.city, me.state, me.country); if (g) return res.json({ name, lat: g.lat, lon: g.lon, source: 'intervals', timezone: u.icuTimezone || me.timezone || null })
+      }
     }
   }
   res.json({ name: null, lat: null, lon: null, source: null, timezone: u.icuTimezone || null })
@@ -2416,6 +2438,19 @@ app.delete('/api/items/:id', apiAuth, (req, res) => { deleteItemById(req.user, r
 // Exercise catalog search — resolve a name to a real exId (with demo media).
 // Coach-activity notification: the coach posts a short note of what it just did
 // (created/adjusted the plan, reviewed a workout). Surfaces in the user's bell.
+// #457 — send a notification to the user's PHONE(S) via Web Push, gated by their per-type prefs. Prunes
+// dead subscriptions (404/410). Fire-and-forget from pushNotification so it never blocks the in-app write.
+async function sendWebPush(user, n) {
+  if (!PUSH_ENABLED || !(user.pushSubs || []).length) return
+  const prefs = user.info?.pushPrefs || { planChanges: true, reviews: true }
+  const isReview = n.subkind === 'review'
+  if (isReview ? prefs.reviews === false : prefs.planChanges === false) return // opted out of this type
+  const payload = JSON.stringify({ title: n.title, body: n.body || (n.items && n.items[0]) || '', link: n.link || '/', tag: n.subkind || 'coach' })
+  const dead = []
+  await Promise.all((user.pushSubs || []).map((s) => webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload)
+    .catch((e) => { if (e.statusCode === 404 || e.statusCode === 410) dead.push(s.endpoint); else console.warn('[webpush] ' + (e.statusCode || '') + ' ' + (e.message || e)) })))
+  if (dead.length) { user.pushSubs = (user.pushSubs || []).filter((s) => !dead.includes(s.endpoint)); save(store) }
+}
 function pushNotification(u, { title, body, items, subkind, link, score, id, date }) {
   if (!u.notifications) u.notifications = []
   const t = String(title || '').trim().slice(0, 120)
@@ -2438,8 +2473,31 @@ function pushNotification(u, { title, body, items, subkind, link, score, id, dat
   u.notifications = (u.notifications || []).filter((x) => x.id !== n.id)
   u.notifications.unshift(n)
   u.notifications = u.notifications.slice(0, 50) // cap
+  sendWebPush(u, n).catch(() => {}) // #457 — also buzz the phone (fire-and-forget, prefs-gated inside)
   return n
 }
+// #457 — Web Push subscription management (session-auth). The client subscribes its device; we fan
+// pushNotification out to all a user's devices. Config exposes the VAPID public key + current prefs.
+app.get('/auth/push/config', auth, (req, res) => res.json({
+  supported: PUSH_ENABLED,
+  publicKey: PUSH_ENABLED ? VAPID_PUBLIC : null,
+  subscribed: (req.user.pushSubs || []).length > 0,
+  prefs: req.user.info?.pushPrefs || { planChanges: true, reviews: true, reminders: false },
+}))
+app.post('/auth/push/subscribe', auth, (req, res) => {
+  const s = req.body?.subscription || req.body
+  if (!s || typeof s.endpoint !== 'string' || !s.keys?.p256dh || !s.keys?.auth) return res.status(400).json({ error: 'invalid subscription' })
+  req.user.pushSubs = (req.user.pushSubs || []).filter((x) => x.endpoint !== s.endpoint)
+  req.user.pushSubs.push({ endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth }, ua: String(req.headers['user-agent'] || '').slice(0, 200), at: Date.now() })
+  req.user.info = req.user.info || {}
+  if (!req.user.info.pushPrefs) req.user.info.pushPrefs = { planChanges: true, reviews: true, reminders: false }
+  save(store); res.json({ ok: true, subscribed: true, prefs: req.user.info.pushPrefs })
+})
+app.post('/auth/push/unsubscribe', auth, (req, res) => {
+  const ep = req.body?.endpoint
+  req.user.pushSubs = ep ? (req.user.pushSubs || []).filter((x) => x.endpoint !== ep) : []
+  save(store); res.json({ ok: true, subscribed: (req.user.pushSubs || []).length > 0 })
+})
 app.post('/api/notify', apiAuth, (req, res) => {
   const n = pushNotification(req.user, req.body || {})
   if (!n) return res.status(400).json({ error: 'title is required' })

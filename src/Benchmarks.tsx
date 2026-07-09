@@ -229,7 +229,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
 
   const defs: StatDef[] = [
     {
-      key: 'vo2max', label: 'VO₂max', computed: vo2head ? vo2head.value : null, computedSrc: vo2head ? `${confLabel(vo2head.confidence)} · ${vo2head.source}` : '', pending: vo2Gate, manual: user?.vo2max ?? null, fmt: String, parse: numParse(20, 95), save: (v) => authApi.saveProfile({ vo2max: v }).then(() => refresh()),
+      key: 'vo2max', label: 'VO₂max', computed: vo2head ? vo2head.value : null, computedSrc: vo2head ? `${confLabel(vo2head.confidence)} · ${vo2head.source}` : '', pending: vo2Gate, manual: user?.vo2max ?? null, fmt: (v: number) => String(Math.round(v)), parse: numParse(20, 95), save: (v) => authApi.saveProfile({ vo2max: v }).then(() => refresh()),
       chip: vo2Chip(),
       conf: vo2maxConfidence({ value: vo2head ? vo2head.value : null, confidence: vo2head?.confidence, gate: vo2Gate }),
       narr: vo2Narr,
@@ -238,11 +238,11 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     },
     // #362 — FTP is event-based (intervals reads eFTP from a hard effort), so give the concrete trigger, not a vague "as it sees efforts".
     {
-      key: 'ftp', label: 'FTP', unit: 'W', computed: eftp, computedSrc: 'eFTP from your power', pending: eftp ? undefined : (map5 != null ? 'after your next hard ride — a ~5–20 min near-max effort; intervals reads eFTP from it (no formal FTP test)' : 'after your first hard ride — intervals reads eFTP from a ~5–20 min effort (no formal test needed)'), manual: ftpManual, fmt: String, parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
+      key: 'ftp', label: 'FTP', unit: 'W', computed: eftp, computedSrc: 'eFTP from your power', pending: eftp ? undefined : (map5 != null ? 'after your next hard ride — a ~5–20 min near-max effort; intervals reads eFTP from it (no formal FTP test)' : 'after your first hard ride — intervals reads eFTP from a ~5–20 min effort (no formal test needed)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
       chip: 'eFTP',
       conf: ftpConfidence({ eftp }),
       narr: <>intervals derives your <b>eFTP</b> straight from your power data — no formal test. It firms up after any ~5–20 min near-max effort, and keeps tracking as your fitness moves.</>,
-      sci: [{ name: 'intervals eFTP', formula: 'model · from your power curve', value: eftp != null ? String(eftp) : '—', inUse: eftp != null }],
+      sci: [{ name: 'intervals eFTP', formula: 'model · from your power curve', value: eftp != null ? String(Math.round(eftp)) : '—', inUse: eftp != null }],
       sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your power curve → tighter eFTP.',
     },
     {
