@@ -19,11 +19,21 @@ a bug"). Order: 1) **failed bugs** → 2) **open bugs** → 3) (only when no bug
 priority. Don't sink time into a med feature (e.g. #255) while any bug is open. Type/priority = JM's triage overlay.
 
 ## The 10-at-a-time bug pipeline (JM 2026-07-09) — how we drive to ZERO
-Keep **~10 bugs in flight at all times**. Work them; as each is fixed, flip it to **`totest`** so JM has a review
-queue. JM reviews → `pass` (I promote + mark `done`) or `fail`. **When the `totest` bucket is EMPTY** (JM has
-reviewed the whole batch), I: (1) review what he FAILED + rework those, and (2) pull fresh open bugs to **refill
-the working set back to 10**. Repeat until **0 bugs remain** (then, and only then, features/ideas). Always keep
-the 10 topped up — don't let the pipeline run dry. Bugs only (features wait); order per "Priority order" above.
+Fill the **`totest` bucket to exactly 10**. **JM reviews ONLY when `totest == 10`** (not a partial batch).
+- **PROMOTE at `totest == 10`** (JM: "promote when tested is at 10 items"). The moment the bucket fills to 10,
+  push + **promote dev → prod** so the whole batch is LIVE on prod — JM tests **on prod**, where everything works
+  (incl. coach-only features like the horizon #439 / recovery #451 that QA can't exercise). This is why we ship the
+  batch before he reviews: it makes every item testable in one place.
+- **JM tests on prod → `pass` or `fail`.** A **`pass` → mark it `done`** — it's already on prod from the batch
+  promote (JM 2026-07-09, "very important": tested-OK ⇒ promoted + `done`). A **`fail` → I rework** it (bug I own);
+  it re-enters a later batch and ships on that batch's promote. Marking `pass`/`fail` empties the bucket.
+- **REFILL TRIGGER = `totest == 0`** (JM: "as soon as to test is at 0, trigger a review of bugs and items and
+  start working on 10"). The moment it hits 0: (1) mark the passes `done`; (2) rework the fails; (3) **RE-REVIEW
+  the whole backlog** with JM's LATEST triage (new reports, reprioritizations, type/priority/area) — don't work a
+  stale list; reconcile already-fixed-but-stale `todo` bugs (verify the `#NNN` code ref + test → `totest`) and fix
+  the genuinely-open ones; (4) fill the next 10 → **promote at 10** again.
+Repeat until **0 bugs** (then, and only then, features/ideas — order per "Priority order"). Poll the `totest`
+count to catch the `== 0` trigger; batch my status flips so they don't race JM's live triage writes.
 
 ## The five rules
 1. **LOG FIRST.** Every JM report → `FEEDBACK-LOG.md`, numbered, *before* touching code. Fixing

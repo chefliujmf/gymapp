@@ -802,7 +802,9 @@ app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
   if (sports.includes('cycling') || sports.length === 0) {
     const c = ((await icuGet(req.user, `/athlete/${ath}/power-curves?curves=365d&type=Ride`))?.list || [])[0] || {}
     const pm = (c.powerModels || []).find((m) => m.type === 'FFT_CURVES') || (c.powerModels || [])[0] || {}
-    const cp = pm.criticalPower ?? null, wJ = pm.wPrime ?? null, eftp = pm.ftp ?? null
+    // #464 — round the watt values (eFTP/CP) at the SOURCE so the coach never emits a raw 240.51825 in its
+    // activity text ("punchy threshold"). The set FTP is already whole; the power-model eFTP/CP are the decimals.
+    const cp = pm.criticalPower != null ? Math.round(pm.criticalPower) : null, wJ = pm.wPrime ?? null, eftp = pm.ftp != null ? Math.round(pm.ftp) : null
     const ftp = ss.cycling?.ftp ?? req.user.ftp ?? eftp
     const tte = tteFromPower(c.secs || [], c.values || [], ftp ?? eftp) ?? tteModelPower(ftp ?? eftp, cp, wJ)
     const ef = await efFor('Ride'), wKj = wJ != null ? Math.round(wJ / 100) / 10 : null
