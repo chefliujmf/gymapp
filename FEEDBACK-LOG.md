@@ -22,6 +22,20 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+466. 🔨 **ONE shared backlog — items in prod = items in QA AT ALL TIMES.** JM 2026-07-09: "backlog in QA and prod
+    don't have the same items… no reason to have it different" → picked **A (one shared store)**. Root cause: the
+    backlog triage lived per-env (each Postgres `app_meta.backlog`); JM triages on QA so prod stayed untriaged (313
+    open vs QA 155; 8 review vs 2). **Built:** the backlog (triage + added + reports) now lives in ONE **shared file**
+    `/srv/backlog/backlog.json`, bind-mounted into BOTH containers (they run on the same box) — `readBacklog`/
+    `writeBacklog` (atomic temp+rename) in `server/server.js` replace the per-env `store.backlog`; compose (prod +
+    staging) both mount `/home/jmf/backlog-shared`. Seeded from QA's authoritative board (11 added, 365 triage; all 8
+    prod reports were already present by title). **Removed** the now-redundant `report-bridge` cron. So a report on
+    prod is instantly on QA and vice-versa; JM's triage shows identically on both. On QA next → verify prod==QA.
+467. ⬜ **Backlog: filter by REPORTER + push the reporter when their bug is fixed.** JM 2026-07-09: "have a filter to
+    who reported it so my wife sees if her bug report was fixed (only show hers); if admin I see all. Once a bug report
+    is fixed, send the user a push to inform it's done." → (a) admin backlog gets a **reporter** multi-select filter;
+    (b) a NON-admin (Xenia) sees a **My reports** view auto-scoped to her own reports + status; (c) on a report → `done`,
+    **push the reporter** ("✅ Your report '…' is fixed"). Uses the shared backlog (#466) + existing Web Push (#457).
 348. 🧪 **Capture LOCATION (weather + local time) in onboarding + Profile, bi-directionally synced with intervals.** JM
     2026-07-04 (from #341/#347: "you have the location for weather right? if you need it, put it in onboarding" + "sync it
     with intervals bi-directional"). Mocked C/B/A → JM picked **C (detected + confirm)**. Done: `GET/POST /auth/location` —

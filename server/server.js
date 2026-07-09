@@ -11,7 +11,7 @@ import { randomBytes, createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { readFileSync, existsSync, writeFileSync, unlinkSync } from 'node:fs'
+import { readFileSync, existsSync, writeFileSync, unlinkSync, renameSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import {
   generateRegistrationOptions, verifyRegistrationResponse,
@@ -987,19 +987,28 @@ const PRIORITIES = ['hi', 'med', 'lo']
 const BACKLOG_STATUSES = ['review', 'todo', 'totest', 'pass', 'done', 'fail', 'discarded'] // JM's status OVERRIDES the .md-derived one; 'review' = a user report awaiting triage; 'pass' = JM tested-OK on QA (I flip pass→done on prod promote). Old 'build' merged into todo (mapped on read).
 const BACKLOG_TYPES = ['bug', 'feature', 'idea'] // #chore removed (JM) — legacy 'chore' rows just display, not settable
 const BACKLOG_AREAS = ['admin', 'cycling', 'running', 'gym', 'stats', 'eat', 'today', 'plan', 'coach', 'other'] // JM can OVERRIDE the auto-derived page/area per item
-// #438/#440 — the backlog triage + app-added items + user reports live in the SHARED global store (app_meta),
-// so a report from ANY user reaches the admin and any admin sees the same board. Claude reads it each session.
-const backlogStore = () => (store.backlog = store.backlog || { triage: {}, added: [] })
+// #438/#440/#466 — the backlog (triage + app-added items + user reports) lives in ONE SHARED FILE that is
+// bind-mounted into BOTH the prod and QA containers (/srv/backlog on the same box). So the board is IDENTICAL
+// across envs AT ALL TIMES (JM directive: "items in prod = items in QA at all time") — no per-env Postgres copy,
+// no sync cron to babysit. Every read/write hits the file directly (writes are atomic via temp+rename).
+const BACKLOG_FILE = process.env.BACKLOG_FILE || '/srv/backlog/backlog.json'
+const BACKLOG_DIR = BACKLOG_FILE.replace(/\/[^/]*$/, '') || '.'
+const readBacklog = () => { try { const b = JSON.parse(readFileSync(BACKLOG_FILE, 'utf8')); return { triage: b.triage || {}, added: b.added || [] } } catch { return { triage: {}, added: [] } } }
+const writeBacklog = (bl) => {
+  const out = { triage: bl.triage || {}, added: bl.added || [] }
+  try { mkdirSync(BACKLOG_DIR, { recursive: true }); const tmp = BACKLOG_FILE + '.tmp'; writeFileSync(tmp, JSON.stringify(out)); renameSync(tmp, BACKLOG_FILE) }
+  catch (e) { console.error('[backlog] write failed:', e?.message) }
+}
 // App-GENERATED items (user reports + admin-adds) live at #1000+ so they can NEVER collide with the
 // roadmap numbers (#1..NNN) parsed from FEEDBACK-LOG.md. (#440 bug: reports auto-numbered 439/440 and
 // OVERWROTE the real #439/#440 roadmap items in the merge — invisible reports + masked roadmap.)
 const REPORT_BASE = 1000
 const nextBacklogN = (bl) => Math.max(REPORT_BASE - 1, ...(bl.added || []).map((x) => x.n || 0)) + 1
-app.get('/auth/admin/backlog', auth, admin, (req, res) => { const bl = backlogStore(); res.json({ triage: bl.triage || {}, added: bl.added || [] }) })
+app.get('/auth/admin/backlog', auth, admin, (req, res) => { res.json(readBacklog()) })
 app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
   const n = String(Number(req.params.n) || '')
   if (!n || n === '0') return res.status(400).json({ error: 'valid item number required' })
-  const bl = backlogStore(); bl.triage = bl.triage || {}
+  const bl = readBacklog()
   const t = { comments: [], ...bl.triage[n] }
   const b = req.body || {}
   if ('priority' in b) t.priority = PRIORITIES.includes(b.priority) ? b.priority : undefined // null/other → clear
@@ -1011,7 +1020,7 @@ app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
   if (b.deleteCommentAt) t.comments = t.comments.filter((c) => c.at !== b.deleteCommentAt)
   if (!t.priority && !t.status && !t.type && !t.area && !t.discarded && !t.comments.length) delete bl.triage[n] // drop empty rows
   else bl.triage[n] = t
-  save(store)
+  writeBacklog(bl)
   res.json({ n: Number(n), triage: bl.triage[n] || null })
 })
 // ADMIN adds a backlog item directly (title + type + priority). App-added items get merged into the .md-derived
@@ -1020,7 +1029,7 @@ app.post('/auth/admin/backlog', auth, admin, (req, res) => {
   const b = req.body || {}
   const title = String(b.title || '').trim()
   if (!title) return res.status(400).json({ error: 'title required' })
-  const bl = backlogStore(); bl.added = bl.added || []; bl.triage = bl.triage || {}
+  const bl = readBacklog()
   const n = Number(b.n) >= REPORT_BASE ? Number(b.n) : nextBacklogN(bl)
   const item = { n, title: title.slice(0, 200), summary: String(b.summary || '').trim().slice(0, 1000), reporter: req.user.username || 'admin', at: Date.now() }
   bl.added = [item, ...bl.added.filter((x) => x.n !== n)]
@@ -1028,7 +1037,7 @@ app.post('/auth/admin/backlog', auth, admin, (req, res) => {
   if (BACKLOG_TYPES.includes(b.type)) seed.type = b.type
   if (PRIORITIES.includes(b.priority)) seed.priority = b.priority
   bl.triage[String(n)] = { comments: [], ...bl.triage[String(n)], ...seed }
-  save(store)
+  writeBacklog(bl)
   res.status(201).json({ item, triage: bl.triage[String(n)] || null })
 })
 // #440 — ANY signed-in user reports a bug/idea → lands in the shared backlog as status 'review' (under review),
@@ -1038,14 +1047,15 @@ app.post('/auth/report', auth, (req, res) => {
   const title = String(b.title || '').trim()
   if (!title) return res.status(400).json({ error: 'a short description is required' })
   const type = BACKLOG_TYPES.includes(b.type) ? b.type : 'bug'
-  const bl = backlogStore(); bl.added = bl.added || []; bl.triage = bl.triage || {}
+  const bl = readBacklog()
   const n = nextBacklogN(bl)
   const item = { n, title: title.slice(0, 200), summary: String(b.summary || '').trim().slice(0, 1000), reporter: req.user.username || req.user.email || 'user', at: Date.now() }
   bl.added = [item, ...bl.added]
   bl.triage[String(n)] = { comments: [], type, status: 'review' }
-  save(store)
+  writeBacklog(bl) // the report itself → shared backlog file
   // tell the OTHER admins a report came in (not the reporter themselves)
   for (const admU of (store.users || []).filter((u) => u.role === 'admin' && u.id !== req.user.id)) pushNotification(admU, { id: 'report-' + n, title: `${type === 'idea' ? '💡 Idea' : '🐛 Bug'} reported by ${item.reporter}`, body: title.slice(0, 120), link: '/admin' })
+  save(store) // persist the admins' in-app bell notifications (backlog already saved to its file above)
   res.status(201).json({ ok: true, n })
 })
 

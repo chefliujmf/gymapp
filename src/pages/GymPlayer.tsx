@@ -376,6 +376,8 @@ export default function GymPlayer() {
         {group && <div className="gp2-group">{group}</div>}
         <h2 className="gp2-name">{name}</h2>
         <div className="gp2-sub">{sub}</div>
+        {/* #255 — the per-exercise coach insight DURING the set (was only in the pre-workout preview). */}
+        {(cur.kind === 'set' || cur.kind === 'timed') && cur.ex.tip && <div className="gp2-tip">💡 {cur.ex.tip}</div>}
       </div>
 
       {cur.kind === 'set' ? (

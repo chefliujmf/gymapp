@@ -710,6 +710,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .gp2-group { text-transform:uppercase; letter-spacing:1.5px; font-size:11px; color:var(--text-dim,#999); }
 .gp2-name { margin:2px 0 0; font-size:23px; font-weight:800; }
 .gp2-sub { color:var(--text-dim,#888); font-size:13px; margin-top:2px; }
+.gp2-tip { color:var(--text-dim,#9298a6); font-size:12.5px; line-height:1.35; margin-top:7px; max-width:34ch; margin-left:auto; margin-right:auto; } /* #255 per-exercise insight during the set */
 .gp2-timer { text-align:center; font-size:58px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; padding:4px 0; }
 .gp2-timer--rest { color:#2aa7e0; }
 .gp2-timer--pulse { animation:gppulse .5s ease-in-out; }
