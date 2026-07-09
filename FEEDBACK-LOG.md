@@ -902,7 +902,7 @@ test guide → the **🧪 Test guide** section below.
     also the past-day/paired-activity guard). (2) the "Substitute on Jul 9" modal (screenshot) shows a "Search ride…" field over a wall
     of EMPTY skeleton rows that never populate — the ride list isn't loading. Repro on QA. Investigate the move/upsert dedup + the
     substitute picker's data fetch. gymapp (+ maybe intervals sync). JM: FOR LATER.
-452. 🧪 **COACH's "today" was a day AHEAD — wrong-day plan edits (Xenia, live).** JM 2026-07-08: wife asked to replan (not available
+452. ✅ **COACH's "today" was a day AHEAD — wrong-day plan edits (Xenia, live).** JM 2026-07-08: wife asked to replan (not available
     **today**); coach replied "you're not available today AND Wednesday" — but it WAS Wednesday — and did NOT remove today's workout
     until she re-asked. **Root cause:** `buildSystemPrompt` never stamped an explicit date, so the coach inferred "today" from the
     `claude` CLI's own runtime clock = **UTC**, which rolls to tomorrow every evening in the Americas (21h EDT = next-day 01h UTC),
@@ -914,7 +914,7 @@ test guide → the **🧪 Test guide** section below.
     so the CLI's own injected date matches. pregnancyStage date also switched to local today. **On QA** (server + host chat-helper on
     next promote/sync). Test: as Xenia in the evening, ask the coach "what's today?" → it names the correct local weekday/date; "I'm not
     available today, replan" → it removes/moves **today's** session (the correct date), first try. gymapp + coach.
-453. 🧪 **Xenia's Jul-7 strength workout didn't show in Platyplus — she was seeing JM's data.** JM 2026-07-08 (live). Her
+453. ✅ **Xenia's Jul-7 strength workout didn't show in Platyplus — she was seeing JM's data.** JM 2026-07-08 (live). Her
     WeightTraining "Strength" (intervals `i163669580`) IS in her athlete (i628280), but Platyplus showed nothing. **Root cause:**
     the client picks the intervals athlete from a **device-local setting** (`icu_athlete_id`) that DEFAULTS to the seed athlete
     (JM's **i28814**), and the login sync only set it `if (u.icuAthlete)` — so on a shared / not-yet-resynced browser Xenia's client
@@ -923,7 +923,7 @@ test guide → the **🧪 Test guide** section below.
     immune to any stale/shared client state (personal app: each user only reads their own athlete); (b) client `syncIcu` now ALWAYS
     writes the current user's athlete on every load (even empty), so a previous user's / the default id can never linger. On QA
     (server+client); prod on promote. Test: as Xenia, open History → her Jul-7 Strength session shows; JM's data never appears.
-454. 🧪 **Coach must respect a HARD weekly max training-days (was soft).** JM 2026-07-08: "respect the maximum number of workouts in a
+454. ✅ **Coach must respect a HARD weekly max training-days (was soft).** JM 2026-07-08: "respect the maximum number of workouts in a
     week that is setup under the profile — it's a HARD limit." The profile field (`info.trainingDays`, "days/week") was SOFT — the prompt
     said "plan exactly N + offer extras as OPTIONAL bonus", so the coach could exceed it. Now a HARD CAP, enforced the same 3 ways as
     maxPerDay (#371) + propagated: (1) dynamic prompt `# WEEKLY TRAINING DAYS — HARD CAP of N/week` (never exceed, move/combine, tell them
@@ -932,7 +932,7 @@ test guide → the **🧪 Test guide** section below.
     descriptions; (5) Profile copy reframed ("A hard cap — your coach plans up to this many days, never more", dropped "optional extras").
     On QA (prompt+guard); prod + host-MCP on promote. Test: set days/week=N, ask the coach to add an N+1th training day → it refuses /
     moves instead (409), never books past N.
-455. 🧪 **A day she TRAINED (unplanned) read "Nothing scheduled — enjoy a rest day".** JM 2026-07-08 (on Xenia's account,
+455. ✅ **A day she TRAINED (unplanned) read "Nothing scheduled — enjoy a rest day".** JM 2026-07-08 (on Xenia's account,
     screenshot): Jul 7 had a week-strip DOT — her completed strength activity now LOADS (#453 working) — but the day content
     said "Nothing scheduled". Root: Today's day content rendered only PLANS + planned EVENTS; a completed intervals activity
     showed ONLY if it MATCHED a plan by day+sport (`actFor`). Xenia's strength was UNPLANNED (no plan to attach to) → invisible
@@ -940,6 +940,17 @@ test guide → the **🧪 Test guide** section below.
     plan/event) and renders each as a read-only **"✓ Completed" ActivityCard** (sport thumb + DoneStats, taps to `/activity/:id`),
     and counts them in `hasWorkout` so a day she trained never reads "rest day". Already visible in History; now on Today too.
     On QA. Test: open a day with a completed intervals workout but no plan → the completed card shows, not "Nothing scheduled".
+    ✅ CONFIRMED by JM 2026-07-08 — "i can see her gym now on the 7th, on my side im all good too".
+456. ✅ **Never fall back to the seed athlete (i28814) — BLOCK + report when a user has no athlete (JM directive).** Found during #453;
+    JM: "for any missing athlete, you block and report an error" (sync integrity — "we had a lot of issues with dupes and bad sync").
+    There were **32 server paths** doing `user.icuAthlete || 'i28814'` — incl the coach's intervals **push, event-DELETE, reconcile,
+    findIcuEventsForPlan** — so a user with no athlete would silently READ or WRITE **JM's i28814** calendar → cross-user dupes/corruption.
+    **Fixed:** removed the `|| 'i28814'` default from ALL per-user paths (kept it ONLY on the admin SEED, `server.js` 67/80). Added clean
+    BLOCK guards: `pushPlanToIcu` / `reconcileFromIcu` return `{skipped:'no intervals athlete'}` + log a warning; `deleteIcuEvent` +
+    `findIcuEventsForPlan` bail; the shared `if (!icuKey)` endpoint guards now also require an athlete; and the **`/icu` proxy returns 409**
+    for an athlete-scoped call with no athlete (never proxies the seed). Connected users (JM, Xenia — athlete set) are byte-for-byte
+    unaffected. 447 tests, tsc clean. On QA. Test: a user with a key but no athlete → intervals reads 409, coach plan-push logs "blocked …
+    no intervals athlete" and never appears on JM's calendar.
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL
