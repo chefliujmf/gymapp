@@ -994,6 +994,12 @@ test guide → the **🧪 Test guide** section below.
     saveProfile) and the save path MERGES (can't wipe); the Jun-23 pre-migration backup had JM's `info={}` (empty); no audit trail; NO
     full `user.info=` replace anywhere server-side. So no wipe vector found. Best guess: an early save didn't persist, or a reset I can't
     see. ACTION: JM re-sets them on PROD (save path verified → they WILL stick); if they vanish AGAIN that's a live repro I trace instantly.
+464. 🧪 **FTP discrepancy — the card said 241 (computed) but the insight said 260 (manual), same page.** JM 2026-07-09 (QA, screenshot).
+    The FTP benchmark card shows the CHOSEN value (eFTP 241, since pref = AUTO·COMPUTED), but the "Punchy threshold" athlete-profile
+    insight anchored on the raw MANUAL FTP (260) → two FTP numbers on one screen. Root: `Benchmarks.tsx` passed `threshold: ftpManual` to
+    `athleteProfile`, ignoring the pref. Fixed: it now passes the CHOSEN value (`chosenFtp`, same `inUse` logic as the card — computed/auto →
+    eFTP, manual → set value); same for running threshold pace. Card + insight now always agree. On QA. Test: FTP card + insight match;
+    switching the FTP pref manual↔computed moves both together.
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL

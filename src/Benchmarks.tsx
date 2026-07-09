@@ -176,9 +176,15 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const csPace = paceCurve?.cs != null && paceCurve.cs > 0 ? Math.round(1000 / paceCurve.cs) : null // sec/km
   const dPrimeM = paceCurve?.dPrime != null ? Math.round(paceCurve.dPrime) : null // metres
   // #403 — athlete-profile synthesis (rendered when a per-sport page passes `profile`). EF wires in Phase 2.
+  // #464 — the insight must anchor on the CHOSEN FTP/pace (same `inUse` logic as the benchmark card), not the
+  // raw MANUAL value — else the FTP card showed 241 W (computed) while the insight said 260 W (manual): a
+  // confusing on-page discrepancy. computed/auto → prefer the computed estimate; manual → the set value.
+  const prefFor = (k: string) => (user?.statPrefs as Partial<Record<string, string>> | undefined)?.[k] ?? 'auto'
+  const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? eftp) : (eftp ?? ftpManual)
+  const chosenPace = prefFor('thresholdPace') === 'manual' ? (paceManual ?? paceEst) : (paceEst ?? paceManual)
   const prof = profile ? athleteProfile(profile === 'cycling'
-    ? { sport: 'cycling', threshold: ftpManual, eftp, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
-    : { sport: 'running', threshold: paceManual ?? paceEst, eftp: paceEst, tte: tteRun, cp: csPace, reserveKj: dPrimeM, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null
+    ? { sport: 'cycling', threshold: chosenFtp, eftp, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
+    : { sport: 'running', threshold: chosenPace, eftp: paceEst, tte: tteRun, cp: csPace, reserveKj: dPrimeM, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null
 
   const saveSport = (group: 'cycling' | 'running', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
   // #337 — "when will the computed estimate land?" straight from our theory gates, so nothing just says
