@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import { Trash2 } from 'lucide-react'
 import { calApi, type CalItem } from '../calendar'
 
 // #451 — recovery as a FIRST-CLASS activity (JM: "treat it as an activity, don't wall-of-text the why").
@@ -75,6 +76,12 @@ export default function RecoveryDetail() {
           <span style={{ fontSize: 20 }}>😴</span><div style={{ fontSize: 13.5, lineHeight: 1.5 }}>{item.sleep}</div>
         </div>
       )}
+
+      {/* remove lives HERE (on the activity's own page), not as a stray trash icon on Today */}
+      <button className="btn btn--ghost" style={{ marginTop: 22, width: 'auto', padding: '8px 14px', color: '#ff8f8f', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        onClick={async () => { if (confirm('Remove this recovery from your plan?')) { await calApi.delItem(item.id); nav('/') } }}>
+        <Trash2 size={15} /> Remove from plan
+      </button>
     </div>
   )
 }

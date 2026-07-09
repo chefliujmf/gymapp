@@ -11,7 +11,7 @@ import { calApi, type CalItem } from '../calendar'
 import { recipes, mindSessions } from '../data/catalog'
 import type { Recipe } from '../types'
 import { localISO } from '../date'
-import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag, Trash2 } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet } from './AddSheet'
 import { authApi, type Checkin, type Readiness } from '../auth/api'
@@ -606,7 +606,6 @@ export default function Today() {
                     <span style={{ marginLeft: 'auto', opacity: 0.4, alignSelf: 'center' }}>›</span>
                   </div>
                 </Link>
-                <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12 }} aria-label="Remove" title="Remove" onClick={() => removeItem(r)}><Trash2 size={16} /></button>
               </div>
             ))}
           </div>
