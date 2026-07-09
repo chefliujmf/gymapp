@@ -980,6 +980,16 @@ test guide → the **🧪 Test guide** section below.
     "no fresh proof." App idea: (a) a benchmark insight line reconciling computed vs manual ("your eFTP reads 240 because your recent efforts show that;
     a hard 20-min effort will refresh it — you may still be ~260"); (b) explain CP≥FTP where both show; (c) coach reasons off the honest number (~248),
     not a stale manual 260, and PROMPTS a threshold test to resolve it. Ties [[platyplus-beyond-ftp-metrics]] + benchmarks manual-vs-computed.
+463. 🧪 **Daily-reminder notification toggle was a dead switch — made it real.** JM 2026-07-09: "daily reminder not togglable yet." The
+    "Daily reminder" per-type toggle was marked `soon` (disabled). Built it: (a) toggle now works + persists (`pushPrefs.reminders`,
+    default OFF/opt-in); (b) `sendWebPush` maps subkind→pref (`review`→reviews, `reminder`→reminders, else planChanges); (c) **sender**
+    `dailyReminderPush` in the morning scheduler (`dailyAdaptTick`) — once/day in the athlete's LOCAL 7–11am window, IF opted-in +
+    subscribed + NOT already checked in today → "⏰ Ready to train? Check in + see today's plan". Runs for any subscribed user on QA + prod
+    (only sends a push, never touches intervals). On QA. Test: toggle Daily reminder on → next local morning (no check-in yet) → phone buzzes.
+459. (update 2026-07-09) INVESTIGATED — inconclusive. diet/heightCm/dob ARE capturable (diet chips + `FuelFields` render + save via
+    saveProfile) and the save path MERGES (can't wipe); the Jun-23 pre-migration backup had JM's `info={}` (empty); no audit trail; NO
+    full `user.info=` replace anywhere server-side. So no wipe vector found. Best guess: an early save didn't persist, or a reset I can't
+    see. ACTION: JM re-sets them on PROD (save path verified → they WILL stick); if they vanish AGAIN that's a live repro I trace instantly.
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL

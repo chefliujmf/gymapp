@@ -6,7 +6,7 @@ import { getPushConfig, isSubscribedHere, enablePush, disablePush, savePushPrefs
 const TYPES: { key: keyof PushPrefs; label: string; hint: string; soon?: boolean }[] = [
   { key: 'planChanges', label: 'Plan changes', hint: 'When your coach adapts your plan.' },
   { key: 'reviews', label: 'Coach reviews', hint: 'When a completed workout gets reviewed.' },
-  { key: 'reminders', label: 'Daily reminder', hint: 'A nudge to check in / train.', soon: true },
+  { key: 'reminders', label: 'Daily reminder', hint: 'A morning nudge to check in + see today’s plan.' },
 ]
 
 function Sw({ on, dim }: { on: boolean; dim?: boolean }) {

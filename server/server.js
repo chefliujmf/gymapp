@@ -2442,9 +2442,9 @@ app.delete('/api/items/:id', apiAuth, (req, res) => { deleteItemById(req.user, r
 // dead subscriptions (404/410). Fire-and-forget from pushNotification so it never blocks the in-app write.
 async function sendWebPush(user, n) {
   if (!PUSH_ENABLED || !(user.pushSubs || []).length) return
-  const prefs = user.info?.pushPrefs || { planChanges: true, reviews: true }
-  const isReview = n.subkind === 'review'
-  if (isReview ? prefs.reviews === false : prefs.planChanges === false) return // opted out of this type
+  const prefs = user.info?.pushPrefs || { planChanges: true, reviews: true, reminders: false }
+  const kind = n.subkind === 'review' ? 'reviews' : n.subkind === 'reminder' ? 'reminders' : 'planChanges' // #463
+  if (prefs[kind] === false) return // opted out of this type (reminders default OFF → opt-in)
   const payload = JSON.stringify({ title: n.title, body: n.body || (n.items && n.items[0]) || '', link: n.link || '/', tag: n.subkind || 'coach' })
   const dead = []
   await Promise.all((user.pushSubs || []).map((s) => webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload)
@@ -2754,12 +2754,25 @@ async function runDailyAdapt(user, pass) {
   } catch (e) { console.error(`[daily-adapt ${pass}] ${user.username || ''} ${e.message || e}`) }
 }
 // One scheduler tick: fire the due pass for each coached athlete. Called every ~30 min.
+// #463 — DAILY REMINDER phone push (opt-in via pushPrefs.reminders, default OFF). Once/day in the athlete's
+// local morning, nudge them to check in + see today's plan — SKIP if they already checked in today. Any
+// subscribed user (not gated on the coach), and fine on QA + prod (it only sends a push, never touches intervals).
+function dailyReminderPush(user, today, hour) {
+  if (!user.info?.pushPrefs?.reminders || !(user.pushSubs || []).length) return
+  if (hour < 7 || hour >= 11) return // local morning window only
+  if (user.dailyReminded === today) return // once per day
+  if ((user.checkins || []).some((c) => c.date === today)) return // already engaged today
+  user.dailyReminded = today; save(store)
+  sendWebPush(user, { subkind: 'reminder', title: '⏰ Ready to train?', body: 'Check in and see what your coach has planned for you today.', link: '/' }).catch(() => {})
+}
 async function dailyAdaptTick() {
-  if (IS_STAGING) return // #381 — the auto-scheduler must not run on QA (it would re-plan + collide on the shared prod athlete)
   for (const user of store.users || []) {
-    if (!user.icuKey || !user.coachProfile || !String(user.coachProfile).trim()) continue
-    const tz = user.icuTimezone || 'UTC'
+    const tz = user.icuTimezone || COACH_TZ
     const today = localTodayInTz(tz), hour = localHourInTz(tz)
+    // #463 — daily reminder runs for ANY opted-in subscribed user (independent of the coach auto-adapt below).
+    try { dailyReminderPush(user, today, hour) } catch (e) { console.error('[reminder] ' + (e.message || e)) }
+    if (IS_STAGING) continue // #381 — coach auto-adapt is PROD-only (shared athlete); the reminder above is fine on both
+    if (!user.icuKey || !user.coachProfile || !String(user.coachProfile).trim()) continue
     user.dailyAdapt = user.dailyAdapt || {}
     try {
       if (hour >= 4 && hour < 11 && user.dailyAdapt.early !== today) { // EARLY pass — from ~4am local, once/day
