@@ -136,6 +136,10 @@ export default function AdminBacklog() {
     return c
   }, [merged])
   const toggle = (set: Set<string>, key: string, apply: (s: Set<string>) => void) => { const n = new Set(set); n.has(key) ? n.delete(key) : n.add(key); apply(n) }
+  // #467 — roadmap items (#1..NNN) are JM's OWN feedback log and carry no explicit reporter → attribute them to
+  // him, so the reporter filter + counts reflect reality (jmfiset showed only ~13 app-reports vs 169 open items).
+  const OWNER = 'jmfiset'
+  const repOf = (it: Item) => it.reporter || OWNER
 
   const list = useMemo(() => {
     const ql = q.trim().toLowerCase()
@@ -146,7 +150,7 @@ export default function AdminBacklog() {
       if (areaSet.size && !areaSet.has(tr(it.n).area || it.area || 'other')) return false
       if (priSet.size && !priSet.has(t.priority || '')) return false
       if (typeSet.size && !typeSet.has(t.type || '')) return false
-      if (reporterSet.size && !reporterSet.has(it.reporter || '')) return false // #467 — filter by reporter
+      if (reporterSet.size && !reporterSet.has(repOf(it))) return false // #467 — filter by reporter (roadmap → owner)
       if (ql && !`#${it.n} ${it.title} ${it.summary}`.toLowerCase().includes(ql)) return false
       return true
     })
@@ -162,8 +166,10 @@ export default function AdminBacklog() {
     return out
   }, [merged, triage, q, statusSet, areaSet, priSet, typeSet, reporterSet, sort, dir])
 
-  // #467 — distinct reporters present on user-reported items (admin can filter to one person's reports).
-  const reporters = useMemo(() => [...new Set(added.map((a) => a.reporter).filter((r): r is string => !!r))].sort(), [added])
+  // #467 — reporters over the FULL board (roadmap → owner), with per-reporter OPEN counts so the numbers add up
+  // to the open total (jmfiset ≈ all roadmap + his reports, xenia = her reports).
+  const reporters = useMemo(() => [...new Set(merged.map(repOf))].sort((a, b) => (a === OWNER ? -1 : b === OWNER ? 1 : a.localeCompare(b))), [merged]) // eslint-disable-line react-hooks/exhaustive-deps
+  const reporterCounts = useMemo(() => { const c: Record<string, number> = {}; for (const it of merged) { const s = eff(it); if (s === 'done' || s === 'discarded') continue; c[repOf(it)] = (c[repOf(it)] || 0) + 1 } return c }, [merged, triage]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // status filter chips — each a member of statusSet (empty set = "open"). done is included so JM can filter to it.
   const statusChips: [BacklogStatus, string, number][] = [['review', 'Under review', counts.review], ['todo', 'To do', counts.todo], ['totest', 'To test', counts.totest], ['pass', 'Tested ✓', counts.pass], ['done', 'Done', counts.done], ['fail', 'Tested ✗', counts.fail], ['discarded', 'Discarded', counts.discarded]]
@@ -212,7 +218,7 @@ export default function AdminBacklog() {
       {reporters.length > 0 && (
         <div className="chips" style={{ marginBottom: 10 }}>
           <span style={FLABEL}>Reporter</span>
-          {reporters.map((r) => <button key={r} className={'chip' + (reporterSet.has(r) ? ' chip--active' : '')} onClick={() => toggle(reporterSet, r, setReporterSet)}>{r} <span style={{ opacity: .6 }}>{added.filter((a) => a.reporter === r).length}</span></button>)}
+          {reporters.map((r) => <button key={r} className={'chip' + (reporterSet.has(r) ? ' chip--active' : '')} onClick={() => toggle(reporterSet, r, setReporterSet)}>{r} <span style={{ opacity: .6 }}>{reporterCounts[r] || 0}</span></button>)}
         </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>

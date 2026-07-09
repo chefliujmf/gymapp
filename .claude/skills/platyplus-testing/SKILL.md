@@ -9,6 +9,15 @@ description: Test + verification discipline for Platyplus — log every report f
 didn't log JM's reports, so they got lost and he had to repeat them. Trust broke. This is how
 it doesn't happen again.
 
+## Priority order (JM 2026-07-09) — work the queue in THIS order
+**We fix what's BROKEN first. Features + ideas wait until ZERO bugs remain and everything works as expected**
+("we work on things that don't work first; once no bugs are reported and all works as expected, then we can work
+on ideas and features"). So: **clear ALL bugs before touching ANY feature/idea.** Within bugs: a tested-and-FAILED
+bug is highest ("bug = things we do first"; "tested failed, highest priority"). A failed **feature/idea does NOT
+jump the queue** — it stays at its own (usually med/low) priority ("[#255 is] a feature, not high priority and not
+a bug"). Order: 1) **failed bugs** → 2) **open bugs** → 3) (only when no bugs left) features/ideas by their own
+priority. Don't sink time into a med feature (e.g. #255) while any bug is open. Type/priority = JM's triage overlay.
+
 ## The five rules
 1. **LOG FIRST.** Every JM report → `FEEDBACK-LOG.md`, numbered, *before* touching code. Fixing
    without logging = the report gets lost. Never make JM re-report.

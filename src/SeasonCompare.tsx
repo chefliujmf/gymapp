@@ -63,9 +63,9 @@ export function SeasonCompareView({ sport, seasons, weight, threshold, ftp }: { 
   const tteRun = (s: PaceSeason) => (threshold != null ? (tteFromPace(s.dist, s.secs, threshold) ?? tteModelPace(threshold, s.cs ?? null, s.dPrime ?? null)) : null)
   const metrics = sport === 'cycling'
     ? [
-      { k: 'eFTP', a: (thisS as PowerSeason).ftp, b: (cmp as PowerSeason).ftp, unit: 'W', hi: true },
+      { k: 'eFTP', a: rnd0((thisS as PowerSeason).ftp), b: rnd0((cmp as PowerSeason).ftp), unit: 'W', hi: true }, // #464 round W (match the benchmark card, no 240.51825)
       { k: 'VO₂max', a: vo2(thisS as PowerSeason), b: vo2(cmp as PowerSeason), unit: '', hi: true },
-      { k: 'CP', a: (thisS as PowerSeason).cp, b: (cmp as PowerSeason).cp, unit: 'W', hi: true },
+      { k: 'CP', a: rnd0((thisS as PowerSeason).cp), b: rnd0((cmp as PowerSeason).cp), unit: 'W', hi: true },
       { k: "W′", a: kj((thisS as PowerSeason).wPrime), b: kj((cmp as PowerSeason).wPrime), unit: 'kJ', hi: true },
       { k: 'TTE', a: tteCyc(thisS as PowerSeason), b: tteCyc(cmp as PowerSeason), unit: '', hi: true, tte: true },
     ]
@@ -130,6 +130,7 @@ export function SeasonCompareView({ sport, seasons, weight, threshold, ftp }: { 
   )
 }
 
+const rnd0 = (v?: number | null) => (v == null ? null : Math.round(v)) // #464 — whole watts (eFTP/CP), matching the benchmark card
 const kj = (j?: number) => (j != null ? Math.round(j / 100) / 10 : null)
 const mtr = (m?: number) => (m != null ? Math.round(m) : null)
 const csPace = (cs?: number) => (cs != null && cs > 0 ? Math.round(1000 / cs) : null)

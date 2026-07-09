@@ -278,6 +278,10 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
     setHi(bi)
   }
   const hpx = hi != null ? (lx(pts0[hi][0]) / VW) * 100 : 0
+  // #292 — the compared-season (overlay) value at the hovered duration, so the tooltip shows BOTH curves' values.
+  const ovColor = overlay?.color || 'var(--blue, #5aa9ff)'
+  const ovHiR = (hi != null && ov0.length) ? ov0.reduce((b, p) => Math.abs(Math.log(p[0]) - Math.log(pts0[hi][0])) < Math.abs(Math.log(b[0]) - Math.log(pts0[hi][0])) ? p : b, ov0[0]) : null
+  const ovHi = (ovHiR && hi != null && Math.abs(Math.log(ovHiR[0]) - Math.log(pts0[hi][0])) < Math.log(1.3)) ? ovHiR : null
   return (
     <div className="chart2">
       <div className="chart2__y">{yLabels.map((v, i) => <span key={i} style={{ top: `${(1 - v / vTop) * 100}%` }}>{Math.round(v)} W</span>)}</div>
@@ -295,12 +299,14 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
           {hi != null && <>
             <line x1={lx(pts0[hi][0])} x2={lx(pts0[hi][0])} y1={0} y2={H} stroke="var(--text-dim)" strokeWidth="0.75" opacity="0.6" vectorEffect="non-scaling-stroke" />
             <circle cx={lx(pts0[hi][0])} cy={y(pts0[hi][1])} r="3.5" fill={color} stroke="var(--bg)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+            {ovHi && <circle cx={lx(pts0[hi][0])} cy={y(ovHi[1])} r="3.5" fill={ovColor} stroke="var(--bg)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
           </>}
         </svg>
         {hi != null && (
           <div className="chart-tip" style={{ left: `${Math.max(13, Math.min(87, hpx))}%` }}>
             <span className="chart-tip__d">{fmtS(pts0[hi][0])}</span>
             <span style={{ color }}>{Math.round(pts0[hi][1])} W</span>
+            {ovHi && <span style={{ color: ovColor }}>{Math.round(ovHi[1])} W</span>}
           </div>
         )}
       </div>
@@ -335,6 +341,10 @@ export function PaceCurveChart({ secs, pace, color = 'var(--accent, #34e07d)', h
     setHi(bi)
   }
   const hpx = hi != null ? (lx(pts0[hi][0]) / VW) * 100 : 0
+  // #292 — compared-season (overlay) value at the hovered duration, so the tooltip shows BOTH curves.
+  const ovColor = overlay?.color || 'var(--blue, #5aa9ff)'
+  const ovHiR = (hi != null && ov0.length) ? ov0.reduce((b, p) => Math.abs(Math.log(p[0]) - Math.log(pts0[hi][0])) < Math.abs(Math.log(b[0]) - Math.log(pts0[hi][0])) ? p : b, ov0[0]) : null
+  const ovHi = (ovHiR && hi != null && Math.abs(Math.log(ovHiR[0]) - Math.log(pts0[hi][0])) < Math.log(1.3)) ? ovHiR : null
   const fmtS = (s: number) => (s < 60 ? `${s}s` : s < 3600 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`)
   return (
     <div className="chart2">
@@ -353,12 +363,14 @@ export function PaceCurveChart({ secs, pace, color = 'var(--accent, #34e07d)', h
           {hi != null && <>
             <line x1={lx(pts0[hi][0])} x2={lx(pts0[hi][0])} y1={0} y2={H} stroke="var(--text-dim)" strokeWidth="0.75" opacity="0.6" vectorEffect="non-scaling-stroke" />
             <circle cx={lx(pts0[hi][0])} cy={y(pts0[hi][1])} r="3.5" fill={color} stroke="var(--bg)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+            {ovHi && <circle cx={lx(pts0[hi][0])} cy={y(ovHi[1])} r="3.5" fill={ovColor} stroke="var(--bg)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
           </>}
         </svg>
         {hi != null && (
           <div className="chart-tip" style={{ left: `${Math.max(13, Math.min(87, hpx))}%` }}>
             <span className="chart-tip__d">{fmtS(pts0[hi][0])}</span>
             <span style={{ color }}>{fmtP(pts0[hi][1])}/km</span>
+            {ovHi && <span style={{ color: ovColor }}>{fmtP(ovHi[1])}/km</span>}
           </div>
         )}
       </div>
