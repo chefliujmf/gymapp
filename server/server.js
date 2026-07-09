@@ -605,12 +605,19 @@ app.post('/auth/checkin', auth, (req, res) => {
 // `city` but IGNORES lat/lng (verified) → we geocode + keep lat/lon Platyplus-side for weather.
 app.get('/auth/location', auth, async (req, res) => {
   const u = req.user
-  if (u.info && Number.isFinite(u.info.lat) && Number.isFinite(u.info.lon)) return res.json({ name: u.info.locationName || null, lat: u.info.lat, lon: u.info.lon, source: 'saved', timezone: u.icuTimezone || null })
+  const hasSaved = u.info && Number.isFinite(u.info.lat) && Number.isFinite(u.info.lon)
+  if (hasSaved && u.info.locationName) return res.json({ name: u.info.locationName, lat: u.info.lat, lon: u.info.lon, source: 'saved', timezone: u.icuTimezone || null })
   if (u.icuKey) {
     const me = await icuGet(u, `/athlete/${u.icuAthlete}`).catch(() => null)
     if (me) {
       if (me.timezone && !u.icuTimezone) { u.icuTimezone = me.timezone; save(store) }
-      if (me.city) { const g = await geocodePlace(me.city, me.state, me.country); if (g) return res.json({ name: [me.city, me.state].filter(Boolean).join(', '), lat: g.lat, lon: g.lon, source: 'intervals', timezone: u.icuTimezone || me.timezone || null }) }
+      if (me.city) {
+        const name = [me.city, me.state].filter(Boolean).join(', ')
+        // #458 — saved COORDS but no NAME (JM: "intervals has my location but it's not in Platyplus"): keep the
+        // saved coords, adopt intervals' city name + PERSIST it so the profile shows a place instead of blank.
+        if (hasSaved) { u.info.locationName = name; save(store); return res.json({ name, lat: u.info.lat, lon: u.info.lon, source: 'intervals', timezone: u.icuTimezone || me.timezone || null }) }
+        const g = await geocodePlace(me.city, me.state, me.country); if (g) return res.json({ name, lat: g.lat, lon: g.lon, source: 'intervals', timezone: u.icuTimezone || me.timezone || null })
+      }
     }
   }
   res.json({ name: null, lat: null, lon: null, source: null, timezone: u.icuTimezone || null })

@@ -960,6 +960,20 @@ test guide → the **🧪 Test guide** section below.
     needs an "install to Home Screen" hint on iPhone. Mock the opt-in/permission UX first (options-first), then wire the plumbing.
     Layers: `server/server.js` (VAPID + subscribe endpoints + web-push send in pushNotification) · service worker (`vite.config`/`public`) ·
     client Settings toggle + subscribe · openapi. Test: change a plan from the coach → the phone shows a system notification, tap → opens the plan.
+    BUILT + on QA (degraded-off). ⚠️ Needs the **`VAPID_ENV` GitHub secret** set to enable (deploy scripts append it to auth.env).
+458. ✅ **Location: intervals HAS it but the Platyplus profile showed blank.** JM 2026-07-09 (QA). His saved COORDS (lat/lon) were there but
+    `info.locationName` was empty → `GET /auth/location` returned `name:null`, so Profile showed no place. Fixed: when coords are saved but the
+    NAME is blank, adopt intervals' city name (keep the saved coords) + PERSIST it. On QA. Test: Profile → Location shows the city.
+459. ⬜ **Profile: diet / height / birthdate empty ("never changed my diet").** JM 2026-07-09 (QA). His `user.info` has lat/lon/sex/sports/
+    coachName/equipment/sleepNeed/availability/trainingDays but NOT diet/heightCm/dob/locationName — on BOTH QA and PROD (so not QA-only; the UI
+    defaults diet→"no preference" when unset, which read as "changed"). Root TBD: never set on prod, OR wiped. LIKELY the QA **mirror clobbers
+    QA-only info edits** (it copies prod.info wholesale). Fix: (a) mirror PRESERVES user-entered info; (b) JM re-sets on PROD (persists). Confirm
+    with JM whether he set them on prod recently (→ hunt a wipe) or sets them now + watch.
+460. 🔨 **Notifications section shows but nothing to toggle.** JM 2026-07-09 (QA). The per-type toggles only render once the master is ON
+    (subscribed) — but push is DISABLED on QA (no VAPID yet, #457), so there's nothing actionable. Tied to #457: once VAPID is set + master on,
+    the toggles appear. Also improve the empty/disabled state (show the types greyed when push isn't on) so it's not confusing.
+461. ✅ **Estimated FTP (+ VO₂max) shown with decimals — round it.** JM 2026-07-09. `Benchmarks.tsx` FTP `computed:eftp` (intervals eFTP, a
+    decimal) used `fmt:String` → unrounded; same for VO₂max. Fixed: `fmt` now `Math.round`s (the value + the eFTP "science" row). On QA.
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL
