@@ -213,9 +213,13 @@ server.tool('schedule_mind',
   wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'mind', title: a.title, minutes: a.minutes, refId: a.refId, why: a.why })))
 
 server.tool('schedule_recovery',
-  'Put a RECOVERY block on a day (sauna, cold plunge, massage, mobility, foam roll, easy walk). Shows in the 🛌 Recovery section. `why` = your reason for this athlete/day.',
-  { date: DATE, title: z.string().describe('e.g. "Sauna"'), kind: z.enum(['sauna', 'cold', 'massage', 'mobility', 'foam', 'walk']).optional(), minutes: z.number().optional(), why: z.string().optional(), id: z.string().optional() },
-  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'recovery', title: a.title, kind: a.kind, minutes: a.minutes, why: a.why })))
+  'Put a RECOVERY block on a day (sauna, cold plunge, massage, mobility, foam roll, easy walk). It opens as its OWN activity view (like a workout), so give it STRUCTURE, NOT one text blob: `insight` = why THIS recovery today (the readiness reasoning — Form/HRV/soreness/fatigue in 1-2 plain sentences); `steps` = the routine as DISCRETE moves the athlete can follow one by one, each { name, dose (the amount, e.g. "60-90s/side", "2×30s", "2×8-10", "~10 min"), cue (optional one-line form tip) }; `sleep` = the day\'s sleep note. Shows in the 🛌 Recovery section → tap to open. (Do NOT dump everything into `why` — split it into insight + steps + sleep so it reads as an activity, not a wall of text.)',
+  { date: DATE, title: z.string().describe('e.g. "Recovery + Mobility"'), kind: z.enum(['sauna', 'cold', 'massage', 'mobility', 'foam', 'walk']).optional(), minutes: z.number().optional(),
+    insight: z.string().optional().describe('why THIS recovery today — the readiness reasoning, 1-2 sentences'),
+    steps: z.array(z.object({ name: z.string(), dose: z.string().optional(), cue: z.string().optional() })).optional().describe('the routine as discrete moves, each with a dose (amount/time) + optional cue'),
+    sleep: z.string().optional().describe("the day's sleep note, e.g. 'aim for ~9h'"),
+    why: z.string().optional().describe('DEPRECATED free-text — prefer insight+steps+sleep'), id: z.string().optional() },
+  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'recovery', title: a.title, kind: a.kind, minutes: a.minutes, insight: a.insight, steps: a.steps, sleep: a.sleep, why: a.why })))
 
 server.tool('schedule_supplement',
   "Put a SUPPLEMENT on a day (e.g. \"Creatine 5g\", \"Vitamin D\"). Shows as a pill under 🍽️ Fuel → Supplements. Include the dose in the title. `why` = your reason.",

@@ -830,7 +830,11 @@ test guide → the **🧪 Test guide** section below.
     info to remember it (BUILT on the History banner: duration/distance/effort/load line + a working "Show all N" expand — but per (b) this MOVES);
     (b) "I don't want the review banner in History" → build a DEDICATED review view (reached from the Today #387 card, not `/logs`); (c) tapping a
     session opens the activity normally (feedback form) = already how it works; (d) after SAVING feedback, return to the review list to knock out the
-    next one. Needs a `/review` route + return-after-save nav. Mock the dedicated view first.
+    next one. Needs a `/review` route + return-after-save nav. Mock the dedicated view first. → mocked 2 (own page vs inline), JM picked **A (own
+    review page)**. BUILT (#442b, closes the #387/#340 failures): new **`/review` `ReviewPage`** (knock-out list, oldest first, rows show activity
+    stats + missing chips, each → `/activity/:id` with `state={from:'/review'}`); the Today **`ToReviewCard` headline now links to `/review`** (not
+    `/logs`); the **IncompleteFeedbackBanner is REMOVED from History** (Logs); **`ActivityFeedback` gained `onSaved`** → after Save it returns to
+    `/review` (brief "saved" then back to the list), and the back button already returns there via history. 447 tests, tsc + build clean. On QA.
 443. 🧪 **Tempo tooltip was cut off + unclear.** JM 2026-07-08: "what is 3? lift 3s? the 1 wait? 0 restart?" ROOT: the exercise `.card` had
     `overflow:hidden` → clipped the InfoDot popover to one line. FIX (CoachPlanDetail.tsx): card `overflow` is `visible` when collapsed (thumbnail
     self-rounds so it's safe); tooltip text rewritten to number each phase explicitly (LOWER first: 3-1-1-0 = lower 3s · hold 1s · lift 1s · 0s top). On QA.
@@ -879,6 +883,18 @@ test guide → the **🧪 Test guide** section below.
     **"Rides & runs syncing to intervals"** (source-agnostic: JM uses Garmin, so "Strava" was misleading), `done` when `recentActivities>0`, and on
     first detection it PERSISTS the ack (`info.stravaAcked`) so it's a one-time check, not an intervals call every Today load. Manual "Done" stays as
     a fallback for a brand-new athlete with no activities yet. On QA. (This was the last stuck onboarding step that nagged forever.)
+451. 🧪 **Recovery/rest item on Today was a DEAD card — couldn't open it to read the how/why/execution.** JM 2026-07-08 (prod): "lost the
+    rest item… could not open the rest item so could not read description, insights or anything for execution." The item's data was fine (its
+    `why` field holds the FULL guidance — the readiness insight AND the routine, e.g. "Form −8, HRV 26… absorb it. Full-body mobility + foam roll,
+    left-calf routine: roller 60-90s/side, straight-knee + soleus 2×30s, eccentric raises 2×8-10. Sleep ~9h."), but the Today Recovery card was a
+    plain non-tappable `<div>` (unlike workouts/mind), so the `why` never showed. v1 was an inline `<details>` expand → JM: "not good, recovery is
+    an activity in itself, treat it that way; the why is a wall of text drowning the fish." → mocked 2 options, JM picked **A (own activity view)**.
+    BUILT: recovery is now a FIRST-CLASS activity — Today card is a Link → **`/recovery/:id` `RecoveryDetail`** (hero + 💡 Why today insight + 🧘 the
+    routine as NUMBERED STEPS with doses + 😴 sleep note). Structured data: `CalItem` gains `insight`/`steps[{name,dose,cue}]`/`sleep` (upsertItem
+    persists them); **MCP `schedule_recovery`** now takes insight/steps/sleep (+ tool desc says split it, don't blob); **coach brain** (daily-adapt
+    msg) says give recovery STRUCTURED. Old items (only `why`) fall back to showing the text. tsc + build. On QA. (Also: my SIGKILL prod restart for
+    a backlog cosmetic caused the transient "lost" — MISTAKE, won't bounce prod for cosmetics; item persisted fine.)
+    NOTE — earlier orphan text below belongs to #446; keeping for history.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity
     exists' error still persists a partial save AND, on the reverse move, DUPLICATES instead of moving (should update the same event by
@@ -886,6 +902,18 @@ test guide → the **🧪 Test guide** section below.
     also the past-day/paired-activity guard). (2) the "Substitute on Jul 9" modal (screenshot) shows a "Search ride…" field over a wall
     of EMPTY skeleton rows that never populate — the ride list isn't loading. Repro on QA. Investigate the move/upsert dedup + the
     substitute picker's data fetch. gymapp (+ maybe intervals sync). JM: FOR LATER.
+452. 🧪 **COACH's "today" was a day AHEAD — wrong-day plan edits (Xenia, live).** JM 2026-07-08: wife asked to replan (not available
+    **today**); coach replied "you're not available today AND Wednesday" — but it WAS Wednesday — and did NOT remove today's workout
+    until she re-asked. **Root cause:** `buildSystemPrompt` never stamped an explicit date, so the coach inferred "today" from the
+    `claude` CLI's own runtime clock = **UTC**, which rolls to tomorrow every evening in the Americas (21h EDT = next-day 01h UTC),
+    while the server's scheduling tools compute LOCAL (Toronto) today. That split made "today" (its UTC Thu) ≠ her real Wednesday →
+    it listed them as two days and deleted the wrong one. **Fixed (3 layers):** (a) `buildSystemPrompt` now stamps an AUTHORITATIVE
+    `# TODAY — it is <Weekday>, <YYYY-MM-DD> in the athlete's local time` block at the top + "this is the ONE source of truth, ignore
+    any other clock; confirm the date before moving/deleting a day"; (b) `localTodayInTz` falls back to **COACH_TZ (America/Toronto)**,
+    not UTC, closing the latent day-ahead bug for any tz-less path; (c) the host **chat-helper spawns `claude` with `TZ=America/Toronto`**
+    so the CLI's own injected date matches. pregnancyStage date also switched to local today. **On QA** (server + host chat-helper on
+    next promote/sync). Test: as Xenia in the evening, ask the coach "what's today?" → it names the correct local weekday/date; "I'm not
+    available today, replan" → it removes/moves **today's** session (the correct date), first try. gymapp + coach.
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL

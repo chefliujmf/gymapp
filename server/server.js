@@ -615,7 +615,12 @@ app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user,
 // #347 — the athlete's LOCAL "today" from their intervals timezone (not the server's UTC), so a
 // tomorrow-forecast near local midnight isn't mistaken for today (e.g. 8pm Montreal = next-day UTC).
 // Caches the tz on the user (stable); falls back to UTC.
-function localTodayInTz(tz) { try { return new Date().toLocaleDateString('en-CA', { timeZone: tz || 'UTC' }) } catch { return new Date().toISOString().slice(0, 10) } }
+// #448 — fall back to COACH_TZ (the app's real timezone), NOT UTC: UTC is a day AHEAD every evening in
+// the Americas, so an athlete with no tz set (or any UTC path) made the coach think "today" was tomorrow.
+const COACH_TZ = process.env.COACH_TZ || 'America/Toronto'
+function localTodayInTz(tz) { try { return new Date().toLocaleDateString('en-CA', { timeZone: tz || COACH_TZ }) } catch { return new Date().toLocaleDateString('en-CA', { timeZone: COACH_TZ }) } }
+// #448 — the athlete's local weekday name (e.g. "Wednesday"), for the coach's TODAY anchor.
+function localWeekdayInTz(tz) { try { return new Date().toLocaleDateString('en-US', { timeZone: tz || COACH_TZ, weekday: 'long' }) } catch { return '' } }
 // #367 — the athlete's LOCAL hour (0–23) in their intervals timezone, for the morning auto-adapt scheduler.
 function localHourInTz(tz) { try { return parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: tz || 'UTC', hour: '2-digit', hour12: false }).format(new Date()), 10) % 24 } catch { return new Date().getUTCHours() } }
 async function athleteToday(user) {
@@ -962,7 +967,11 @@ const BACKLOG_TYPES = ['bug', 'feature', 'idea', 'chore']
 // #438/#440 — the backlog triage + app-added items + user reports live in the SHARED global store (app_meta),
 // so a report from ANY user reaches the admin and any admin sees the same board. Claude reads it each session.
 const backlogStore = () => (store.backlog = store.backlog || { triage: {}, added: [] })
-const nextBacklogN = (bl) => Math.max(438, ...(bl.added || []).map((x) => x.n || 0)) + 1
+// App-GENERATED items (user reports + admin-adds) live at #1000+ so they can NEVER collide with the
+// roadmap numbers (#1..NNN) parsed from FEEDBACK-LOG.md. (#440 bug: reports auto-numbered 439/440 and
+// OVERWROTE the real #439/#440 roadmap items in the merge — invisible reports + masked roadmap.)
+const REPORT_BASE = 1000
+const nextBacklogN = (bl) => Math.max(REPORT_BASE - 1, ...(bl.added || []).map((x) => x.n || 0)) + 1
 app.get('/auth/admin/backlog', auth, admin, (req, res) => { const bl = backlogStore(); res.json({ triage: bl.triage || {}, added: bl.added || [] }) })
 app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
   const n = String(Number(req.params.n) || '')
@@ -988,7 +997,7 @@ app.post('/auth/admin/backlog', auth, admin, (req, res) => {
   const title = String(b.title || '').trim()
   if (!title) return res.status(400).json({ error: 'title required' })
   const bl = backlogStore(); bl.added = bl.added || []; bl.triage = bl.triage || {}
-  const n = Number(b.n) > 438 ? Number(b.n) : nextBacklogN(bl)
+  const n = Number(b.n) >= REPORT_BASE ? Number(b.n) : nextBacklogN(bl)
   const item = { n, title: title.slice(0, 200), summary: String(b.summary || '').trim().slice(0, 1000), reporter: req.user.username || 'admin', at: Date.now() }
   bl.added = [item, ...bl.added.filter((x) => x.n !== n)]
   const seed = {}
@@ -1184,6 +1193,13 @@ function buildSystemPrompt(user) {
   const name = user.coachName || 'Coach'
   const prof = user.coachProfile || ''
   let p = coachIdentity(name)
+  // #448 — AUTHORITATIVE "today", in the ATHLETE'S local timezone. Without this the coach inferred the
+  // date from its own runtime clock (UTC → a day ahead in the evening), so it treated the athlete's real
+  // "today" (e.g. Wednesday) as tomorrow — mislabelling days ("today AND Wednesday") and removing/moving
+  // the WRONG day when she said "I'm not available today". Your scheduling tools use this SAME local date.
+  const ptz = user.icuTimezone || COACH_TZ
+  const todayIso = localTodayInTz(ptz), todayWd = localWeekdayInTz(ptz)
+  p += `\n\n# TODAY — it is **${todayWd ? todayWd + ', ' : ''}${todayIso}** in the athlete's local time (${ptz}). This is the ONE source of truth for the date: anchor EVERY "today / tonight / tomorrow / yesterday / this week / next week" to it, and IGNORE any other clock or date you might infer. When they say "today" they mean ${todayIso} (${todayWd}). Your scheduling tools (list_schedule, create/move/delete) operate on this same local date, so a change they ask for "today" must land on ${todayIso}. Before you move or delete a session because they're unavailable, confirm the DATE you're acting on matches ${todayIso} (or the exact day they named) — don't act on the wrong day.`
   if (COACH_ENGINE) p += `\n\n# Your coaching method (the Platyplus engine — apply it to THIS athlete per their profile)\n` + COACH_ENGINE
   // Gated modules — only the athletes they apply to get them (the engine is ONE coach,
   // not cycling-for-everyone). Prefer the STRUCTURED fields (sport from onboarding, sex
@@ -1199,7 +1215,7 @@ function buildSystemPrompt(user) {
   // #329/#427 — this athlete's CURRENT repro-state block. PREGNANCY overrides everything (there is no
   // cycle); otherwise the menstrual cycle phase (from intervals, stashed by /auth/readiness) biases the PLAN.
   if (isFemale && user.info && user.info.pregnant) {
-    const pg = pregnancyStage(user.info, new Date().toISOString().slice(0, 10))
+    const pg = pregnancyStage(user.info, todayIso) // #448 local today, not UTC
     const wk = pg && pg.weeks != null ? `~week ${pg.weeks} (trimester ${pg.trimester})` : 'trimester unknown — ASK her due date (EDD) or last-period date to tailor by trimester; use first-trimester defaults until then'
     p += `\n\n# PREGNANCY — she is PREGNANT (${wk}). This OVERRIDES cycle-phase logic: there is NO menstrual cycle now, do NOT program by cycle phase. Apply the pregnancy protocol in your female-athlete guidance (§6). Core rules: goal is MAINTAIN health & fitness, never build/PR/max efforts; gauge intensity by RPE + the TALK TEST, not heart rate (pregnancy raises resting HR ~10-20 bpm); no Valsalva/breath-holding (exhale on the effort, keep ~2-3 reps in reserve); ${pg && pg.trimester >= 2 ? 'NO supine (flat-on-back) work, use incline/side-lying/upright versions, and watch for abdominal doming; ' : ''}avoid overheating (cool + hydrate, especially hot-humid days), fall/contact/collision risk, and sprinting; keep pelvic-floor + deep-core awareness. DEFER to her clinician / pelvic-floor PT. If she reports any STOP sign (vaginal bleeding, fluid leak, calf pain or swelling, chest pain, dizziness/faintness, a headache that won't clear, regular contractions, reduced fetal movement) tell her to STOP and contact her clinician. Frame everything on health & function, never weight or "getting the body back". **PRIVACY — pregnancy is PRIVATE: NEVER write "pregnancy/pregnant/trimester/prenatal/expecting/baby/bump" or anything implying it in a workout TITLE, a DESCRIPTION, a plan name, or the public activity text (set_activity_text). It must not appear ANYWHERE others could see. Apply the adjustments SILENTLY and name sessions by their normal training content ("Easy Aerobic Run", "Z2 Endurance"), never by the reason.**`
   } else if (isFemale) {
@@ -1978,7 +1994,9 @@ function validateItem(b) {
 function upsertItem(user, b) {
   const err = validateItem(b); if (err) return { status: 400, body: { error: err } }
   user.items = user.items || []
-  const item = { id: b.id || newId(), date: b.date, type: b.type, title: b.title || '', refId: b.refId || '', mealType: b.mealType || '', kind: b.kind || '', kcal: b.kcal, minutes: b.minutes, notes: b.notes || '', why: typeof b.why === 'string' ? b.why : '', updatedAt: Date.now() }
+  // #451 — RECOVERY as a first-class activity: structured insight (why today) + steps (the routine) + sleep note.
+  const steps = Array.isArray(b.steps) ? b.steps.slice(0, 12).map((s) => ({ name: String(s?.name || '').slice(0, 120), dose: String(s?.dose || '').slice(0, 60), cue: String(s?.cue || '').slice(0, 200) })).filter((s) => s.name) : undefined
+  const item = { id: b.id || newId(), date: b.date, type: b.type, title: b.title || '', refId: b.refId || '', mealType: b.mealType || '', kind: b.kind || '', kcal: b.kcal, minutes: b.minutes, notes: b.notes || '', why: typeof b.why === 'string' ? b.why : '', insight: typeof b.insight === 'string' ? b.insight.slice(0, 600) : '', steps, sleep: typeof b.sleep === 'string' ? b.sleep.slice(0, 300) : '', updatedAt: Date.now() }
   const i = user.items.findIndex((x) => x.id === item.id)
   if (i >= 0) user.items[i] = item; else user.items.push(item)
   save(store)
@@ -2645,7 +2663,7 @@ function dailyAdaptMsg(today, pass, cov) {
   const gap = cov && cov.empty >= 3
     ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. Right now only ${cov.covered}/${DAILY_HORIZON + 1} days through ${cov.end} have anything (last session ${cov.last || 'none'}; first empty day ${cov.firstEmpty}). EXTEND the plan ALL THE WAY to ${cov.end} in THIS pass — add sessions on the empty days to hit their weekly frequency per availability. Do NOT leave the back half of the horizon blank; planning only the current week is the bug you're fixing.`
     : ''
-  return `${head}${gap} Then PROACTIVELY adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule): ease / harden / shift / add sessions so the rolling ~2-week plan matches how they're recovering AND their goals, weekly frequency + availability. Keep ~${DAILY_HORIZON} days populated ahead (fill gaps toward their target frequency; never double-book a day / exceed their max sessions per day). ALSO round out the plan the way a real coach would — FUEL, MIND and RECOVERY, not just the workout: on TODAY and each clearly demanding day (hard / long / quality sessions), schedule a fitting meal or two (schedule_meal — pick a real recipe that fits their diet + daily fuel targets, more carbs around the hard work, lighter on rest days, one-line why); add a MIND session (schedule_mind) where it earns its place — a wind-down after a hard or high-stress day, something longer on a rest day; and put RECOVERY (schedule_recovery — mobility / sauna / easy walk) after the hardest days. Only where it genuinely adds value for THIS athlete on THIS day — don't drop a meal or session onto every slot for the sake of it, and don't churn what they've already got. ALSO catch up on REVIEWS: get_recent_activities now flags each activity's \`reviewed\` status + its \`id\` — for any completed activity in the last week with \`reviewed:false\`, REVIEW it (save_coach_review with that exact \`id\`, a score + one-line verdict + 2-4 takeaways — that ticks the Coach box + posts your note) and give it a public-safe title/description (set_activity_text). SKIP anything already \`reviewed:true\` (never re-review), cap at the few most recent so nothing piles up unreviewed. If a MATERIAL call is uncertain (e.g. several run-down days → cut this week's volume? a race clash?), use notify to ASK them rather than guess. When you change things, notify ONE short line of what changed + why. Don't ask trivial questions — decide and act; ask only when it truly matters. Be concise.`
+  return `${head}${gap} Then PROACTIVELY adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule): ease / harden / shift / add sessions so the rolling ~2-week plan matches how they're recovering AND their goals, weekly frequency + availability. Keep ~${DAILY_HORIZON} days populated ahead (fill gaps toward their target frequency; never double-book a day / exceed their max sessions per day). ALSO round out the plan the way a real coach would — FUEL, MIND and RECOVERY, not just the workout: on TODAY and each clearly demanding day (hard / long / quality sessions), schedule a fitting meal or two (schedule_meal — pick a real recipe that fits their diet + daily fuel targets, more carbs around the hard work, lighter on rest days, one-line why); add a MIND session (schedule_mind) where it earns its place — a wind-down after a hard or high-stress day, something longer on a rest day; and put RECOVERY (schedule_recovery — mobility / sauna / easy walk) after the hardest days, given STRUCTURED (insight = why today + steps = the routine with doses + sleep note, NOT one text blob — it opens as its own activity view). Only where it genuinely adds value for THIS athlete on THIS day — don't drop a meal or session onto every slot for the sake of it, and don't churn what they've already got. ALSO catch up on REVIEWS: get_recent_activities now flags each activity's \`reviewed\` status + its \`id\` — for any completed activity in the last week with \`reviewed:false\`, REVIEW it (save_coach_review with that exact \`id\`, a score + one-line verdict + 2-4 takeaways — that ticks the Coach box + posts your note) and give it a public-safe title/description (set_activity_text). SKIP anything already \`reviewed:true\` (never re-review), cap at the few most recent so nothing piles up unreviewed. If a MATERIAL call is uncertain (e.g. several run-down days → cut this week's volume? a race clash?), use notify to ASK them rather than guess. When you change things, notify ONE short line of what changed + why. Don't ask trivial questions — decide and act; ask only when it truly matters. Be concise.`
 }
 async function runDailyAdapt(user, pass) {
   try {

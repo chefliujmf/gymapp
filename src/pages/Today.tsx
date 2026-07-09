@@ -11,7 +11,7 @@ import { calApi, type CalItem } from '../calendar'
 import { recipes, mindSessions } from '../data/catalog'
 import type { Recipe } from '../types'
 import { localISO } from '../date'
-import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag, Trash2 } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet } from './AddSheet'
 import { authApi, type Checkin, type Readiness } from '../auth/api'
@@ -343,13 +343,13 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
   )
 }
 
-// #387 — a compact "sessions to review" headline on Today (only when there ARE gaps); taps through to the
-// full, per-session list on Logs. Keeps Today clean while making sure feedback never quietly goes stale.
+// #387/#442b — a compact "sessions to review" HEADLINE on Today (only when there ARE gaps); taps through to
+// the DEDICATED /review page (NOT History — JM's directive). Keeps Today clean while making feedback stick.
 function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
   const n = incompleteFeedback(acts).length
   if (!n) return null
   return (
-    <Link to="/logs" className="fbban" style={{ textDecoration: 'none', color: 'var(--text)', margin: '10px 0 12px' }}>
+    <Link to="/review" className="fbban" style={{ textDecoration: 'none', color: 'var(--text)', margin: '10px 0 12px' }}>
       <div className="fbban__ic">📝</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="fbban__t">{n} session{n > 1 ? 's' : ''} need{n > 1 ? '' : 's'} your feedback</div>
@@ -598,13 +598,14 @@ export default function Today() {
           <div className="stack">
             {dayRecovery.map((r) => (
               <div key={r.id} className="today-entry">
-                <div className="card">
+                {/* #451 — recovery is a first-class ACTIVITY: tap the card → its own view (why · routine · sleep) */}
+                <Link to={`/recovery/${r.id}`} state={{ item: r }} className="card" style={{ display: 'block' }}>
                   <div className="card-row">
                     <div className="thumb" style={{ fontSize: 22 }}>{RECOVERY_EMOJI[r.kind || ''] || '🛌'}</div>
-                    <div className="card-body"><h3>{r.title}</h3><div className="meta"><span>{r.minutes ? `${r.minutes} min` : 'recovery'}</span>{r.kind ? <span className="dot">{r.kind}</span> : null}</div></div>
+                    <div className="card-body" style={{ flex: 1, minWidth: 0 }}><h3>{r.title}</h3><div className="meta"><span>{r.minutes ? `${r.minutes} min` : 'recovery'}</span>{r.kind ? <span className="dot">{r.kind}</span> : null}{(r.insight || r.why || (r.steps && r.steps.length)) ? <span className="dot" style={{ color: 'var(--accent)' }}>how &amp; why ›</span> : null}</div></div>
+                    <span style={{ marginLeft: 'auto', opacity: 0.4, alignSelf: 'center' }}>›</span>
                   </div>
-                </div>
-                <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12 }} aria-label="Remove" title="Remove" onClick={() => removeItem(r)}><Trash2 size={16} /></button>
+                </Link>
               </div>
             ))}
           </div>

@@ -96,7 +96,8 @@ export default function AdminBacklog() {
     for (const a of added) m.set(a.n, { n: a.n, status: 'todo', title: a.title, summary: a.summary || '', reporter: a.reporter, at: a.at, added: true })
     return [...m.values()]
   }, [items, added])
-  const nextN = useMemo(() => Math.max(438, ...merged.map((i) => i.n)) + 1, [merged])
+  // app-generated items (reports + admin-adds) live at #1000+ so they never collide with roadmap #1..NNN (#440)
+  const nextN = useMemo(() => Math.max(999, ...added.map((a) => a.n)) + 1, [added])
 
   async function addItem() {
     const title = nt.trim(); if (!title || !ntype || !npri) return

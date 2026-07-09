@@ -6,7 +6,7 @@ import { FEEL, RPE, FIELDS } from './pages/PostWorkout'
 // #273/#285 — post-workout feedback capture for ANY completed session (device activity or gym),
 // keyed by an id. Feedback-first when unsubmitted; collapses to a one-line summary after. Saving
 // persists + triggers a coach review (server). Reuses the shared feel/RPE/fields model (#143).
-export default function ActivityFeedback({ id, sport, date, heading = 'How did it go?', icuExisting, icuNote }: { id: string; sport: string; date: string; heading?: string; icuExisting?: { feel?: string; rpe?: number; fields: Record<string, string> } | null; icuNote?: string }) {
+export default function ActivityFeedback({ id, sport, date, heading = 'How did it go?', icuExisting, icuNote, onSaved }: { id: string; sport: string; date: string; heading?: string; icuExisting?: { feel?: string; rpe?: number; fields: Record<string, string> } | null; icuNote?: string; onSaved?: () => void }) {
   const [feel, setFeel] = useState<string | undefined>()
   const [rpe, setRpe] = useState<number | undefined>()
   const [fields, setFields] = useState<Record<string, string>>({})
@@ -34,6 +34,7 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
     const prevAt = review?.at || ''
     await authApi.activityFeedback(id, { feel, rpe, fields, note, sport, date }).catch(() => {})
     setSaved(true); setEditing(false); setReviewing(true)
+    if (onSaved) setTimeout(onSaved, 800) // #442b — came from /review → knock-out loop: brief "saved" then back to the list
     let tries = 0
     const poll = () => authApi.coachReviews().then((rs) => {
       const m = matchReview(rs)

@@ -62,7 +62,9 @@ const server = http.createServer((req, res) => {
     if (p.sessionId) args.push('--resume', p.sessionId)
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' })
     const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`)
-    const env = { ...process.env, PATH: `${NODE_BIN_DIR}:${process.env.PATH || ''}` }
+    // #448 — pin the coach process to the app timezone so the claude CLI's own injected "today" matches
+    // the server's local date (UTC would put it a day ahead every evening → wrong-day plan edits).
+    const env = { ...process.env, TZ: process.env.COACH_TZ || 'America/Toronto', PATH: `${NODE_BIN_DIR}:${process.env.PATH || ''}` }
     const proc = spawn(CLAUDE_BIN, args, { env })
     proc.stdin?.end()
     let buf = '', err = '', done = false

@@ -12,6 +12,10 @@ export interface CalItem {
   minutes?: number
   notes?: string
   why?: string // coach's per-pick reason (shown as "Coach's pick: …")
+  // #451 — recovery as a first-class activity: structured content (falls back to `why` when absent)
+  insight?: string // "why today" — the readiness reasoning
+  steps?: { name: string; dose?: string; cue?: string }[] // the routine (name + dose like "60-90s/side" + optional cue)
+  sleep?: string // sleep note for the day
 }
 
 async function j<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {

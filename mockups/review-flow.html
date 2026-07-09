@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review flow — mock</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--c1:#21252f;--c2:#191c24;--amber:#ffb454;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07090c;color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .phone{max-width:430px;margin:0 auto;min-height:100vh;background:var(--bg);padding:14px 14px 60px}
+  .toggle{display:flex;gap:6px;background:#0b0e12;border:1px solid #ffffff14;border-radius:12px;padding:5px;margin-bottom:14px;position:sticky;top:8px;z-index:5}
+  .toggle button{flex:1;background:none;border:0;color:var(--dim);font:700 11.5px/1.2 inherit;padding:9px 6px;border-radius:8px;cursor:pointer}
+  .toggle button.on{background:linear-gradient(160deg,var(--c1),var(--c2));color:var(--text)}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
+  h1{font-size:24px;letter-spacing:-.02em;margin:2px 0 12px}
+  .lbl{font-size:12px;color:#5c6472;margin:2px 2px 8px;font-style:italic}
+  /* the headline on Today */
+  .head-card{display:flex;gap:12px;align-items:center;background:linear-gradient(160deg,#2a2410,#191c24);border:1px solid #ffb45440;border-radius:14px;padding:14px;margin-bottom:14px;cursor:pointer}
+  .head-card .ic{width:42px;height:42px;border-radius:12px;background:#ffb4542a;display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 42px}
+  .head-card h3{font-size:15.5px}
+  .head-card .s{font-size:12.5px;color:var(--dim);margin-top:2px}
+  .head-card .go{margin-left:auto;color:var(--amber);font-size:22px}
+  /* review list rows */
+  .back{color:var(--dim);font-size:22px;margin-bottom:6px;display:inline-block;cursor:pointer}
+  .fbrow{display:flex;gap:11px;align-items:center;background:linear-gradient(160deg,var(--c1),var(--c2));border:1px solid #ffffff12;border-radius:12px;padding:11px 12px;margin-bottom:8px;cursor:pointer}
+  .fbrow .th{width:44px;height:44px;border-radius:10px;background:#2a2f3a;display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 44px}
+  .fbrow .b{flex:1;min-width:0}
+  .fbrow h4{font-size:14px}
+  .fbrow .st{font-size:12px;color:var(--dim);margin:1px 0 4px}
+  .fbrow .miss{display:inline-block;font-size:10px;font-weight:700;color:var(--amber);background:#ffb45422;border-radius:5px;padding:1px 6px;margin-right:4px}
+  .fbrow .prog{height:4px;background:#ffffff14;border-radius:3px;overflow:hidden;margin-top:5px}
+  .fbrow .prog i{display:block;height:100%;background:var(--amber)}
+  .fbrow .cta{color:var(--accent);font-weight:800;font-size:13px;flex-shrink:0}
+  .done-note{text-align:center;color:var(--dim);font-size:13px;padding:20px;background:#34e07d0d;border:1px dashed #34e07d33;border-radius:12px;margin-top:6px}
+  /* activity feedback (where a row leads) */
+  .fb-sheet{background:linear-gradient(160deg,var(--c1),var(--c2));border:1px solid #ffffff12;border-radius:14px;padding:14px;margin-top:8px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .chip{font-size:12px;font-weight:700;padding:6px 11px;border-radius:999px;background:#0b0e12;border:1px solid #ffffff1a;color:var(--dim)}
+  .chip.on{background:var(--accent);color:#062012;border-color:var(--accent)}
+  .save{width:100%;margin-top:12px;background:var(--accent);color:#062012;border:0;border-radius:11px;padding:12px;font-weight:800;cursor:pointer}
+  .flow{background:#0b0e12;border:1px solid #ffffff14;border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--dim);margin-top:14px;line-height:1.7}
+  .flow b{color:var(--accent)}
+  .hint{text-align:center;color:#5c6472;font-size:11px;margin-top:16px}
+</style></head><body><div class="phone">
+  <div class="toggle">
+    <button id="tA" class="on" onclick="show('A')">A · Headline → own review page</button>
+    <button id="tB" onclick="show('B')">B · Headline expands on Today</button>
+  </div>
+
+  <!-- Option A -->
+  <div id="viewA">
+    <div class="lbl">1 · On Today: a real headline (not buried in History)</div>
+    <div class="eyebrow">Good evening</div><h1>Ready to train?</h1>
+    <div class="head-card"><div class="ic">📝</div><div><h3>3 sessions need your feedback</h3><div class="s">A minute each · your coach adapts your plan from it</div></div><span class="go">›</span></div>
+    <div style="opacity:.4;font-size:13px;color:var(--dim);padding:8px 2px">↓ today's plan, check-in, fuel…</div>
+
+    <div class="lbl" style="margin-top:18px">2 · Tap it → its OWN review page (not History)</div>
+    <span class="back">‹ Today</span>
+    <div class="eyebrow">To review · oldest first</div><h1 style="font-size:20px">3 sessions</h1>
+    <div class="fbrow"><div class="th">🚴</div><div class="b"><h4>Sweet-Spot 3×15</h4><div class="st">Sat Jul 11 · 1h20m · 30km · 86 TSS</div><div><span class="miss">feel</span><span class="miss">RPE</span></div><div class="prog"><i style="width:15%"></i></div></div><span class="cta">Add →</span></div>
+    <div class="fbrow"><div class="th">🏋️</div><div class="b"><h4>Full-Body Strength</h4><div class="st">Thu Jul 9 · 63min · 48 TSS</div><div><span class="miss">feel</span><span class="miss">RPE</span></div><div class="prog"><i style="width:15%"></i></div></div><span class="cta">Add →</span></div>
+    <div class="fbrow"><div class="th">🏃</div><div class="b"><h4>Easy Aerobic Run</h4><div class="st">Tue Jul 7 · 42min · 8.2km · 38 TSS</div><div><span class="miss">feel</span></div><div class="prog"><i style="width:55%"></i></div></div><span class="cta">Add →</span></div>
+
+    <div class="lbl" style="margin-top:18px">3 · Tap a row → the ACTIVITY (feedback), same as after a workout</div>
+    <span class="back">‹ Back to review</span>
+    <div class="fb-sheet"><b>🚴 Sweet-Spot 3×15</b> · Sat Jul 11
+      <div class="eyebrow" style="margin-top:10px">How did it feel?</div>
+      <div class="chips"><span class="chip">Strong</span><span class="chip on">Good</span><span class="chip">Normal</span><span class="chip">Poor</span><span class="chip">Weak</span></div>
+      <div class="eyebrow">RPE</div><div class="chips"><span class="chip">5</span><span class="chip">6</span><span class="chip on">7</span><span class="chip">8</span></div>
+      <button class="save">Save · back to review ✓</button>
+    </div>
+
+    <div class="flow">The loop: <b>Today headline</b> → <b>review list</b> → tap → <b>activity feedback</b> → Save → <b>back to the list</b> (now 2 left) → repeat → all done ✓. Back always returns where you were.</div>
+  </div>
+
+  <!-- Option B -->
+  <div id="viewB" style="display:none">
+    <div class="lbl">Same headline, but it EXPANDS the list inline on Today (no separate page)</div>
+    <div class="eyebrow">Good evening</div><h1>Ready to train?</h1>
+    <div class="head-card"><div class="ic">📝</div><div><h3>3 sessions need your feedback</h3><div class="s">A minute each · tap to review</div></div><span class="go">⌄</span></div>
+    <div class="fbrow"><div class="th">🚴</div><div class="b"><h4>Sweet-Spot 3×15</h4><div class="st">Sat Jul 11 · 1h20m · 30km · 86 TSS</div><div><span class="miss">feel</span><span class="miss">RPE</span></div></div><span class="cta">Add →</span></div>
+    <div class="fbrow"><div class="th">🏋️</div><div class="b"><h4>Full-Body Strength</h4><div class="st">Thu Jul 9 · 63min · 48 TSS</div><div><span class="miss">feel</span><span class="miss">RPE</span></div></div><span class="cta">Add →</span></div>
+    <div class="fbrow"><div class="th">🏃</div><div class="b"><h4>Easy Aerobic Run</h4><div class="st">Tue Jul 7 · 42min · 8.2km</div><div><span class="miss">feel</span></div></div><span class="cta">Add →</span></div>
+    <div style="opacity:.4;font-size:13px;color:var(--dim);padding:8px 2px">↓ today's plan, check-in…</div>
+    <div class="flow">Tap a row → the <b>activity feedback</b> → Save → back here on Today (row gone). Lighter, but the list sits above your whole Today feed.</div>
+  </div>
+  <div class="hint">Mock · both: headline on Today (not History) · tap→activity · back→where you were</div>
+</div>
+<script>function show(o){document.getElementById('tA').classList.toggle('on',o==='A');document.getElementById('tB').classList.toggle('on',o==='B');document.getElementById('viewA').style.display=o==='A'?'block':'none';document.getElementById('viewB').style.display=o==='B'?'block':'none';}</script>
+</body></html>
