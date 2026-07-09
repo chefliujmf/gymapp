@@ -883,9 +883,13 @@ test guide → the **🧪 Test guide** section below.
     rest item… could not open the rest item so could not read description, insights or anything for execution." The item's data was fine (its
     `why` field holds the FULL guidance — the readiness insight AND the routine, e.g. "Form −8, HRV 26… absorb it. Full-body mobility + foam roll,
     left-calf routine: roller 60-90s/side, straight-knee + soleus 2×30s, eccentric raises 2×8-10. Sleep ~9h."), but the Today Recovery card was a
-    plain non-tappable `<div>` (unlike workouts/mind), so the `why` never showed. FIX: recovery card is now an expandable `<details>` (Today.tsx +
-    `.rec-card` CSS) — tap "how & why ›" to read the full block. (The "lost" was a transient: my SIGKILL prod restart for a backlog cosmetic caused
-    ~10s downtime — MISTAKE, won't bounce prod for cosmetics again; the item persisted fine.) tsc + build. On QA.
+    plain non-tappable `<div>` (unlike workouts/mind), so the `why` never showed. v1 was an inline `<details>` expand → JM: "not good, recovery is
+    an activity in itself, treat it that way; the why is a wall of text drowning the fish." → mocked 2 options, JM picked **A (own activity view)**.
+    BUILT: recovery is now a FIRST-CLASS activity — Today card is a Link → **`/recovery/:id` `RecoveryDetail`** (hero + 💡 Why today insight + 🧘 the
+    routine as NUMBERED STEPS with doses + 😴 sleep note). Structured data: `CalItem` gains `insight`/`steps[{name,dose,cue}]`/`sleep` (upsertItem
+    persists them); **MCP `schedule_recovery`** now takes insight/steps/sleep (+ tool desc says split it, don't blob); **coach brain** (daily-adapt
+    msg) says give recovery STRUCTURED. Old items (only `why`) fall back to showing the text. tsc + build. On QA. (Also: my SIGKILL prod restart for
+    a backlog cosmetic caused the transient "lost" — MISTAKE, won't bounce prod for cosmetics; item persisted fine.)
     NOTE — earlier orphan text below belongs to #446; keeping for history.
     "tried to move a session Thu→Tue: didn't work — said there's an activity, still SAVED, then nothing. Then moved the Tue one to
     Thu and it CREATED A COPY, so now I have it twice." Two defects: (1) the move/reschedule path is inconsistent — a conflict/'activity

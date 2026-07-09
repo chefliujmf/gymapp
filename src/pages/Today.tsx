@@ -598,14 +598,14 @@ export default function Today() {
           <div className="stack">
             {dayRecovery.map((r) => (
               <div key={r.id} className="today-entry">
-                {/* #451 — recovery is now OPENABLE: tap to read the coach's how + why (was a dead card, JM couldn't read it) */}
-                <details className="card rec-card">
-                  <summary className="card-row" style={{ cursor: r.why ? 'pointer' : 'default' }}>
+                {/* #451 — recovery is a first-class ACTIVITY: tap the card → its own view (why · routine · sleep) */}
+                <Link to={`/recovery/${r.id}`} state={{ item: r }} className="card" style={{ display: 'block' }}>
+                  <div className="card-row">
                     <div className="thumb" style={{ fontSize: 22 }}>{RECOVERY_EMOJI[r.kind || ''] || '🛌'}</div>
-                    <div className="card-body" style={{ flex: 1, minWidth: 0 }}><h3>{r.title}</h3><div className="meta"><span>{r.minutes ? `${r.minutes} min` : 'recovery'}</span>{r.kind ? <span className="dot">{r.kind}</span> : null}{r.why ? <span className="dot" style={{ color: 'var(--accent)' }}>how &amp; why ›</span> : null}</div></div>
-                  </summary>
-                  {r.why && <div style={{ padding: '2px 14px 14px', fontSize: 13.5, lineHeight: 1.55, color: 'var(--text)', whiteSpace: 'normal' }}>{r.why}</div>}
-                </details>
+                    <div className="card-body" style={{ flex: 1, minWidth: 0 }}><h3>{r.title}</h3><div className="meta"><span>{r.minutes ? `${r.minutes} min` : 'recovery'}</span>{r.kind ? <span className="dot">{r.kind}</span> : null}{(r.insight || r.why || (r.steps && r.steps.length)) ? <span className="dot" style={{ color: 'var(--accent)' }}>how &amp; why ›</span> : null}</div></div>
+                    <span style={{ marginLeft: 'auto', opacity: 0.4, alignSelf: 'center' }}>›</span>
+                  </div>
+                </Link>
                 <button className="entry-kebab" style={{ position: 'absolute', top: 12, right: 12 }} aria-label="Remove" title="Remove" onClick={() => removeItem(r)}><Trash2 size={16} /></button>
               </div>
             ))}
