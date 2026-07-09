@@ -38,7 +38,9 @@ a { color: inherit; text-decoration: none; }
 .app-shell { min-height: 100%; display: flex; flex-direction: column; background: var(--bg); }
 .app-main {
   flex: 1; width: 100%; max-width: var(--maxw); margin: 0 auto;
-  padding: calc(env(safe-area-inset-top) + 14px) 16px calc(var(--tab-h) + env(safe-area-inset-bottom) + 24px);
+  /* bottom pad clears the tab bar AND the Coach FAB (#50, ~62px tall above the bar) so the last row —
+     e.g. a right-aligned toggle — is never hidden/blocked by the FAB (#460). */
+  padding: calc(env(safe-area-inset-top) + 14px) 16px calc(var(--tab-h) + env(safe-area-inset-bottom) + 84px);
   /* #324 mobile hard-rule: the page NEVER scrolls/clips sideways — a lone wide child (a race-time
      range, a 3-col stat grid) can't push content off-screen. Children shrink/wrap instead. */
   overflow-x: hidden;

@@ -974,6 +974,12 @@ test guide → the **🧪 Test guide** section below.
     the toggles appear. Also improve the empty/disabled state (show the types greyed when push isn't on) so it's not confusing.
 461. ✅ **Estimated FTP (+ VO₂max) shown with decimals — round it.** JM 2026-07-09. `Benchmarks.tsx` FTP `computed:eftp` (intervals eFTP, a
     decimal) used `fmt:String` → unrounded; same for VO₂max. Fixed: `fmt` now `Math.round`s (the value + the eFTP "science" row). On QA.
+462. ⬜ **Coach/benchmark should EXPLAIN computed-FTP vs CP vs manual (idea).** JM 2026-07-09: "strange the computed FTP dropped to 240, CP is 248,
+    but I trained at FTP 260 — how do you support this?" The reasoning (not a bug): **CP ≥ FTP is textbook** (CP = 30–50 min asymptote, FTP = 60 min),
+    so 248 > 240 AGREES; and **eFTP is evidence-based** — it drifts DOWN without a recent ~5–20 min near-max effort, so 240 ≠ "can't do 260", it means
+    "no fresh proof." App idea: (a) a benchmark insight line reconciling computed vs manual ("your eFTP reads 240 because your recent efforts show that;
+    a hard 20-min effort will refresh it — you may still be ~260"); (b) explain CP≥FTP where both show; (c) coach reasons off the honest number (~248),
+    not a stale manual 260, and PROMPTS a threshold test to resolve it. Ties [[platyplus-beyond-ftp-metrics]] + benchmarks manual-vs-computed.
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL
