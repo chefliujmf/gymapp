@@ -321,6 +321,30 @@ function PlanCard({ e, showDate, onSwap, onRemove, done, act }: { e: IcuEvent; s
   )
 }
 
+// #455 — a COMPLETED intervals activity that has NO matching plan/event (an unplanned workout). Renders
+// like a done PlanCard (sport thumb + name + DoneStats), taps through to its analysed result, so a day the
+// athlete actually trained never reads "Nothing scheduled". Read-only (no swap/remove — it already happened).
+function ActivityCard({ a }: { a: IcuActivity }) {
+  const sport = sportOfActivity(a) // 'run' | 'ride' | 'gym'
+  const icon = sport === 'ride' ? <Bike strokeWidth={1.75} /> : sport === 'gym' ? <Dumbbell strokeWidth={1.75} /> : <Footprints strokeWidth={1.75} />
+  const label = sport === 'ride' ? 'Ride' : sport === 'gym' ? 'Gym' : 'Run'
+  return (
+    <div className="today-entry">
+      <Link to={`/activity/${a.id}`} className="card card--done">
+        <div className="card-row">
+          <div className={'thumb thumb--' + sport}>{icon}</div>
+          <div className="card-body">
+            <span className="eyebrow">{label} · completed</span>
+            <h3 style={{ opacity: 0.6 }}>{a.name || label}</h3>
+            <DoneStats a={a} />
+          </div>
+        </div>
+      </Link>
+      <span className="done-badge">✓ Completed</span>
+    </div>
+  )
+}
+
 /** An assigned meal / mind / note item on the day — editable like everything else. */
 function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; onRemove: () => void }) {
   const label = it.type === 'meal' ? 'Meal' : it.type === 'mind' ? 'Mind' : 'Note'
@@ -460,7 +484,13 @@ export default function Today() {
   const daySupps = dayItems.filter((it) => it.type === 'supplement')
   const dayRecovery = dayItems.filter((it) => it.type === 'recovery')
   const dayNotes = dayItems.filter((it) => it.type === 'note')
-  const hasWorkout = dayEvents.length > 0 || dayPlans.length > 0
+  // #455 — completed intervals activities on this day NOT matched to any plan/event (an UNPLANNED workout,
+  // e.g. Xenia's strength session done without a prior plan). They already mark a week-strip dot, but the
+  // day content rendered ONLY plans → a day she actually trained wrongly read "Nothing scheduled / rest day".
+  const normSport = (s: string) => (s === 'cycling' ? 'ride' : s === 'running' ? 'run' : s)
+  const coveredSports = new Set<string>([...dayPlans.map((p) => normSport(p.sport)), ...dayEvents.map((e) => normSport(sportOf(e)))])
+  const orphanActs = activities.filter((a) => (a.start_date_local || '').slice(0, 10) === selDay && !coveredSports.has(sportOfActivity(a)))
+  const hasWorkout = dayEvents.length > 0 || dayPlans.length > 0 || orphanActs.length > 0
   const isFuture = selDay > todayISO() // #223: future days forecast, not a live verdict
   const verdict = isFuture ? null : readinessVerdict(checkin)
   // Days that have anything on them → a tiny dot under the WeekStrip day (#66).
@@ -558,6 +588,7 @@ export default function Today() {
         <div className="stack">
           {dayEvents.map((e) => <PlanCard key={e.id} e={e} act={actFor(selDay, sportOf(e))} done={doneTitles.has(e.name.toLowerCase().trim())} onSwap={() => swapOn(selDay)} onRemove={() => removeEvent(e)} />)}
           {dayPlans.map((p) => <CoachPlanCard key={p.id} p={p} act={actFor(selDay, p.sport)} done={doneTitles.has(p.title.toLowerCase().trim())} onRun={runPlan} fmtDay={fmtDay} onSwap={() => swapOn(selDay)} onRemove={() => removePlan(p)} />)}
+          {orphanActs.map((a) => <ActivityCard key={a.id} a={a} />)}
           {dayNotes.map((it) => <ItemCard key={it.id} it={it} onSwap={() => swapOn(selDay)} onRemove={() => removeItem(it)} />)}
         </div>
       ) : events !== null && !err ? (
