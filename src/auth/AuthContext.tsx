@@ -23,6 +23,9 @@ async function syncIcu(u: User | null) {
   // #453 — ALWAYS write the current user's athlete (even empty), so a PREVIOUS user's / the default id can
   // never linger on a shared browser and fetch the wrong athlete's data. (Server /icu proxy also forces it.)
   await setSetting('icu_athlete_id', u.icuAthlete || '')
+  // #5000 — the Profile reads the coach name from a DEVICE-local setting; on a fresh/cleared/other device it
+  // was blank and looked "removed". Re-sync it from the server (the source of truth) on every login/restore.
+  if (u.coachName) await setSetting('coachName', u.coachName)
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
