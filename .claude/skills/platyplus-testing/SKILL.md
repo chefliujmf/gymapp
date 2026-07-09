@@ -18,8 +18,11 @@ it doesn't happen again.
    how to test." So every worked item → status `totest` in the SHARED backlog (`/auth/admin/backlog/:n` or the
    shared file), and its FEEDBACK-LOG.md entry carries a **`Verify:`** clause (build-backlog surfaces it as the
    app's "What to test"). Never leave a shipped item at `todo`/`🔨` — that hides it from JM's to-test list.
-   Only **JM** flips `totest → pass` (Tested ✓) after testing on QA; I flip `pass → done` on prod promote.
-   I never self-certify UX.
+   Only **JM** flips `totest → pass` (Tested ✓) after testing on QA. **JM marking `pass` IS his promote
+   sign-off (JM 2026-07-09): the moment items are `pass`, I PROMOTE them to prod and flip `pass → done`** —
+   don't sit on tested-green work. (`done` = shipped to prod + signed off.) I never self-certify UX.
+   And a `fail` → I rework it immediately (bugs are highest priority) and re-ship it back to `totest` when fixed
+   (it stays `fail` while I work, preserving JM's signal, until it's ready to re-test).
 3. **A test ships with every fix — DEFINE a real unit test, don't hand-wave (JM 2026-06-30: "I don't see
    you define proper unit tests").** The DEFAULT is a unit test; if the logic lives inside a component,
    **extract the pure function** to a plain module so it CAN be tested (e.g. `vo2max-submax.ts`, `mind-stats.ts`,
