@@ -32,15 +32,16 @@ export default function Availability() {
     <>
       <div className="section-title" id="ob-avail">Weekly availability {saved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
 
-      {/* #316 — desired training frequency (drives base sessions; extras are optional bonus). A free
-          NUMBER field, not fixed chips (#316b — "just have a field"). */}
-      <p className="meta" style={{ margin: '2px 2px 6px' }}>How many days a week do you want to train?</p>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      {/* #316/#454 — max training days/week. A HARD CAP (JM directive): the coach plans UP TO this many
+          days and NEVER more (enforced server-side). A free NUMBER field, not fixed chips (#316b). */}
+      <p className="meta" style={{ margin: '2px 2px 6px' }}>Most days a week you want to train?</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
         <input type="number" inputMode="numeric" min={0} max={14} value={days || ''} placeholder="e.g. 4"
           className="search" style={{ maxWidth: 92, textAlign: 'center' }}
           onChange={(e) => setFreq(Math.max(0, Math.min(14, Math.round(Number(e.target.value) || 0))))} />
         <span className="meta">days / week</span>
       </div>
+      <p className="meta" style={{ margin: '0 2px 10px', opacity: .8, fontSize: 12 }}>A hard cap — your coach plans up to this many days, never more.</p>
 
       {/* #345 — most people train ONCE a day; the coach must not stack a gym + a run on the same day
           unless you say you can double. Default 1. */}
@@ -52,7 +53,7 @@ export default function Availability() {
         <span className="meta">session{maxPerDay > 1 ? 's' : ''} / day{maxPerDay === 1 ? ' — one training a day' : ' (e.g. AM + PM)'}</span>
       </div>
 
-      <p className="meta" style={{ margin: '2px 2px 8px' }}>And how long each day? Your coach fits sessions around it{days ? ` — ${days} planned, extras offered as optional` : ''}.</p>
+      <p className="meta" style={{ margin: '2px 2px 8px' }}>And how long each day? Your coach fits sessions around it{days ? ` — up to ${days} day${days > 1 ? 's' : ''}/week` : ''}.</p>
       <div className="card avail-card">
         <div className="avail-week">
           {DAYS.map(([k, d]) => { const h = avail[k] || 0; return (
