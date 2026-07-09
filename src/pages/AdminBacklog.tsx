@@ -6,14 +6,19 @@ import { authApi, type BacklogTriage, type BacklogAddedItem, type BacklogPriorit
 // + JM's app-ADDED items; his live TRIAGE (status / priority / type / comments) is the DB overlay on top.
 // His STATUS overrides my .md-derived one. Test-handoff flow: To test (I add what-to-test) → Tested ✓/✗ (JM,
 // details in comments). Filter-first (Option A). Claude reads the overlay each session.
-type Item = { n: number; status: BacklogStatus; title: string; summary: string; test?: string; env?: string; date?: string; reporter?: string; at?: number; added?: boolean }
-type StatusFilter = 'open' | BacklogStatus
+type Item = { n: number; status: BacklogStatus; title: string; summary: string; test?: string; env?: string; date?: string; reporter?: string; at?: number; added?: boolean; area?: string }
 type Sort = 'pri' | 'num' | 'status' | 'cmts'
 
-const S_LABEL: Record<BacklogStatus, string> = { review: 'Under review', todo: 'To do', build: 'Building', totest: 'To test', pass: 'Tested ✓', fail: 'Tested ✗', done: 'Done', discarded: 'Discarded' }
-const S_DOT: Record<BacklogStatus, string> = { review: '#e05d8c', todo: '#8aa0ff', build: '#ffb454', totest: '#4dd4e0', pass: '#34e07d', fail: '#ff6b6b', done: '#7a8699', discarded: '#545b68' }
-const S_RANK: Record<string, number> = { review: 0, fail: 1, build: 2, totest: 3, todo: 4, pass: 5, done: 6, discarded: 7 } // needs-attention first
-const TEST_STATUS = new Set<BacklogStatus>(['totest', 'pass', 'fail'])
+// #454 — status model simplified to 6 states: build merged into todo, pass merged into done.
+const S_LABEL: Record<BacklogStatus, string> = { review: 'Under review', todo: 'To do', totest: 'To test', done: 'Done', fail: 'Tested ✗', discarded: 'Discarded' }
+const S_DOT: Record<BacklogStatus, string> = { review: '#e05d8c', todo: '#8aa0ff', totest: '#4dd4e0', done: '#34e07d', fail: '#ff6b6b', discarded: '#545b68' }
+const S_RANK: Record<string, number> = { review: 0, fail: 1, totest: 2, todo: 3, done: 4, discarded: 5 } // needs-attention first
+const TEST_STATUS = new Set<BacklogStatus>(['totest', 'fail'])
+// map any legacy triage value (old DB rows) onto the new set so old data doesn't break
+const migrateStatus = (s?: string): BacklogStatus | undefined => (s === 'build' ? 'todo' : s === 'pass' ? 'done' : s as BacklogStatus | undefined)
+// #454 — functional AREA of an item (mirrors build-backlog.mjs areaOf); empty area filter = all
+const AREAS = ['admin', 'cycling', 'running', 'gym', 'stats', 'eat', 'today', 'plan', 'coach', 'other'] as const
+const A_LABEL: Record<string, string> = { admin: 'Admin', cycling: 'Cycling', running: 'Running', gym: 'Gym', stats: 'Stats', eat: 'Eat', today: 'Today', plan: 'Plan', coach: 'Coach', other: 'Other' }
 const fmtWhen = (v?: number | string) => { if (!v) return ''; try { const d = typeof v === 'number' ? new Date(v) : new Date(/T/.test(v) ? v : v + 'T00:00'); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) } catch { return '' } }
 const P_LABEL: Record<BacklogPriority, string> = { hi: 'HIGH', med: 'MED', lo: 'LOW' }
 const P_COLOR: Record<BacklogPriority, string> = { hi: '#ff6b6b', med: '#ffb454', lo: '#7a8699' }
@@ -25,7 +30,7 @@ const T_COLOR: Record<BacklogType, string> = { bug: '#ff6b6b', feature: '#34e07d
 const ENV_STEPS = ['dev', 'qa', 'prod'] as const
 const ENV_COLORS: Record<string, string> = { dev: '#ff9f43', qa: '#d946ef', prod: '#34e07d' } // dev orange · qa magenta · prod green (JM)
 const envReached = (env?: string) => (env === 'prod' ? 2 : env === 'qa' ? 1 : env === 'dev' ? 0 : -1)
-const STATUS_ENV: Record<BacklogStatus, string> = { review: '', todo: '', build: 'dev', totest: 'qa', pass: 'qa', fail: 'qa', done: 'prod', discarded: '' }
+const STATUS_ENV: Record<BacklogStatus, string> = { review: '', todo: '', totest: 'qa', done: 'prod', fail: 'qa', discarded: '' }
 function EnvTrack({ env, labeled = false }: { env?: string; labeled?: boolean }) {
   const r = envReached(env)
   if (r < 0) return null // ⬜ todo → not built → nowhere yet
@@ -41,7 +46,8 @@ function EnvTrack({ env, labeled = false }: { env?: string; labeled?: boolean })
   )
 }
 
-const STATUS_OPTS: [BacklogStatus, string, string][] = (['review', 'todo', 'build', 'totest', 'pass', 'fail', 'done', 'discarded'] as BacklogStatus[]).map((s) => [s, S_LABEL[s], S_DOT[s]])
+// done stays SETTABLE so JM can mark items done himself
+const STATUS_OPTS: [BacklogStatus, string, string][] = (['review', 'todo', 'totest', 'done', 'fail', 'discarded'] as BacklogStatus[]).map((s) => [s, S_LABEL[s], S_DOT[s]])
 const PRI_OPTS: [BacklogPriority, string, string][] = [['hi', 'High', P_COLOR.hi], ['med', 'Med', P_COLOR.med], ['lo', 'Low', P_COLOR.lo]]
 const TYPE_OPTS: [BacklogType, string, string][] = [['bug', 'Bug', T_COLOR.bug], ['feature', 'Feature', T_COLOR.feature], ['idea', 'Idea', T_COLOR.idea], ['chore', 'Chore', T_COLOR.chore]]
 
@@ -65,8 +71,12 @@ export default function AdminBacklog() {
   const [triage, setTriage] = useState<BacklogTriage>({})
   const [ready, setReady] = useState(false)
   const [q, setQ] = useState('')
-  const [sf, setSf] = useState<StatusFilter>('open')
-  const [pf, setPf] = useState<'' | BacklogPriority>('')
+  // #454 — every filter dimension is now MULTI-select (Set membership). Empty status set = "open"
+  // (everything except done+discarded); empty area/pri/type set = no constraint on that dimension.
+  const [statusSet, setStatusSet] = useState<Set<string>>(new Set())
+  const [areaSet, setAreaSet] = useState<Set<string>>(new Set())
+  const [priSet, setPriSet] = useState<Set<string>>(new Set())
+  const [typeSet, setTypeSet] = useState<Set<string>>(new Set())
   const [sort, setSort] = useState<Sort>('pri')
   const [dir, setDir] = useState<'desc' | 'asc'>('desc')
   const [open, setOpen] = useState<number | null>(null)
@@ -84,7 +94,8 @@ export default function AdminBacklog() {
   }, [])
 
   const tr = (n: number) => triage[String(n)] || {}
-  const eff = (it: Item): BacklogStatus => tr(it.n).status ?? (tr(it.n).discarded ? 'discarded' : it.status)
+  // effective status = triage override ?? md status; migrate legacy 'build'/'pass' rows on read (#454)
+  const eff = (it: Item): BacklogStatus => migrateStatus(tr(it.n).status) ?? (tr(it.n).discarded ? 'discarded' : (migrateStatus(it.status) as BacklogStatus))
   async function patch(n: number, body: Parameters<typeof authApi.updateBacklog>[1]) {
     try { const r = await authApi.updateBacklog(n, body); setTriage((t) => ({ ...t, [String(n)]: r.triage || {} })) } catch { /* ignore */ }
   }
@@ -105,22 +116,32 @@ export default function AdminBacklog() {
       const r = await authApi.addBacklogItem({ n: nextN, title, type: ntype, priority: npri, summary: nsum.trim() || undefined })
       setAdded((a) => [r.item, ...a.filter((x) => x.n !== r.item.n)])
       if (r.triage) setTriage((t) => ({ ...t, [String(r.item.n)]: r.triage! }))
-      setNt(''); setNsum(''); setNtype(''); setNpri(''); setAdding(false); setSf('open'); setOpen(r.item.n)
+      setNt(''); setNsum(''); setNtype(''); setNpri(''); setAdding(false); setStatusSet(new Set()); setOpen(r.item.n)
     } catch { /* ignore */ }
   }
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { open: 0, review: 0, todo: 0, build: 0, totest: 0, pass: 0, fail: 0, done: 0, discarded: 0 }
+    const c: Record<string, number> = { open: 0, review: 0, todo: 0, totest: 0, done: 0, fail: 0, discarded: 0 }
     for (const it of merged) { const s = eff(it); c[s]++; if (s !== 'done' && s !== 'discarded') c.open++ }
     return c
   }, [merged, triage])
+  // area counts (over the merged list, effective area) for the area chips
+  const areaCounts = useMemo(() => {
+    const c: Record<string, number> = {}
+    for (const it of merged) { const a = it.area || 'other'; c[a] = (c[a] || 0) + 1 }
+    return c
+  }, [merged])
+  const toggle = (set: Set<string>, key: string, apply: (s: Set<string>) => void) => { const n = new Set(set); n.has(key) ? n.delete(key) : n.add(key); apply(n) }
 
   const list = useMemo(() => {
     const ql = q.trim().toLowerCase()
     const out = merged.filter((it) => {
       const t = tr(it.n), s = eff(it)
-      if (sf === 'open') { if (s === 'done' || s === 'discarded') return false } else if (s !== sf) return false
-      if (pf && t.priority !== pf) return false
+      // status: empty set = "open" (all but done+discarded); else exactly the selected statuses
+      if (statusSet.size ? !statusSet.has(s) : (s === 'done' || s === 'discarded')) return false
+      if (areaSet.size && !areaSet.has(it.area || 'other')) return false
+      if (priSet.size && !priSet.has(t.priority || '')) return false
+      if (typeSet.size && !typeSet.has(t.type || '')) return false
       if (ql && !`#${it.n} ${it.title} ${it.summary}`.toLowerCase().includes(ql)) return false
       return true
     })
@@ -134,9 +155,10 @@ export default function AdminBacklog() {
       return dir === 'asc' ? -cmp : cmp
     })
     return out
-  }, [merged, triage, q, sf, pf, sort, dir])
+  }, [merged, triage, q, statusSet, areaSet, priSet, typeSet, sort, dir])
 
-  const statusChips: [StatusFilter, string, number][] = [['open', 'Open', counts.open], ['review', 'Under review', counts.review], ['todo', 'To do', counts.todo], ['build', 'Building', counts.build], ['totest', 'To test', counts.totest], ['pass', 'Tested ✓', counts.pass], ['fail', 'Tested ✗', counts.fail], ['done', 'Done', counts.done], ['discarded', 'Discarded', counts.discarded]]
+  // status filter chips — each a member of statusSet (empty set = "open"). done is included so JM can filter to it.
+  const statusChips: [BacklogStatus, string, number][] = [['review', 'Under review', counts.review], ['todo', 'To do', counts.todo], ['totest', 'To test', counts.totest], ['done', 'Done', counts.done], ['fail', 'Tested ✗', counts.fail], ['discarded', 'Discarded', counts.discarded]]
 
   return (
     <div>
@@ -156,11 +178,19 @@ export default function AdminBacklog() {
       )}
 
       <input className="search" placeholder="Search the backlog…" value={q} onChange={(e) => setQ(e.target.value)} />
+      {/* All filters MULTI-select (Set membership). .chips WRAPS — never horizontal-scroll (mobile-first). */}
       <div className="chips" style={{ marginBottom: 8 }}>
-        {statusChips.map(([k, label, c]) => <button key={k} className={'chip' + (sf === k ? ' chip--active' : '')} onClick={() => setSf(k)}>{label} <span style={{ opacity: .6 }}>{c}</span></button>)}
+        <button className={'chip' + (statusSet.size === 0 ? ' chip--active' : '')} onClick={() => setStatusSet(new Set())}>Open <span style={{ opacity: .6 }}>{counts.open}</span></button>
+        {statusChips.map(([k, label, c]) => <button key={k} className={'chip' + (statusSet.has(k) ? ' chip--active' : '')} onClick={() => toggle(statusSet, k, setStatusSet)}>{label} <span style={{ opacity: .6 }}>{c}</span></button>)}
+      </div>
+      <div className="chips" style={{ marginBottom: 8 }}>
+        {AREAS.map((k) => <button key={k} className={'chip' + (areaSet.has(k) ? ' chip--active' : '')} onClick={() => toggle(areaSet, k, setAreaSet)}>{A_LABEL[k]} <span style={{ opacity: .6 }}>{areaCounts[k] || 0}</span></button>)}
+      </div>
+      <div className="chips" style={{ marginBottom: 8 }}>
+        {PRI_OPTS.map(([k, label]) => <button key={k} className={'chip' + (priSet.has(k) ? ' chip--active' : '')} onClick={() => toggle(priSet, k, setPriSet)}>{label}</button>)}
       </div>
       <div className="chips" style={{ marginBottom: 10 }}>
-        {PRI_OPTS.map(([k, label]) => <button key={k} className={'chip' + (pf === k ? ' chip--active' : '')} onClick={() => setPf(pf === k ? '' : k)}>{label}</button>)}
+        {TYPE_OPTS.map(([k, label]) => <button key={k} className={'chip' + (typeSet.has(k) ? ' chip--active' : '')} onClick={() => toggle(typeSet, k, setTypeSet)}>{label}</button>)}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <span className="meta">Sort</span>
@@ -183,6 +213,7 @@ export default function AdminBacklog() {
                 <span className="meta" style={{ fontWeight: 700, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>#{it.n}</span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
                 <EnvTrack env={STATUS_ENV[s]} />
+                {it.area && <span style={chip('#ffffff0d', '#8b93a3')}>{A_LABEL[it.area] || it.area}</span>}
                 {t.type && <span style={chip(T_COLOR[t.type] + '22', T_COLOR[t.type])}>{T_LABEL[t.type]}</span>}
                 {t.priority && <span style={chip(P_COLOR[t.priority] + '22', P_COLOR[t.priority])}>{P_LABEL[t.priority]}</span>}
                 {cmts.length > 0 && <span className="meta" style={{ flexShrink: 0, fontSize: 11 }}>💬{cmts.length}</span>}
@@ -197,7 +228,7 @@ export default function AdminBacklog() {
                   {TEST_STATUS.has(s) && (
                     <div style={{ background: '#4dd4e011', border: '1px solid #4dd4e033', borderRadius: 8, padding: '8px 10px', marginBottom: 12 }}>
                       <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.04em', color: '#4dd4e0', textTransform: 'uppercase', marginBottom: 3 }}>What to test</div>
-                      <div style={{ fontSize: 12.5, color: '#c4cad4' }}>{it.test || it.summary || 'See the item detail above.'}{(s === 'pass' || s === 'fail') && <span className="meta"> · add your tested notes as a comment below.</span>}</div>
+                      <div style={{ fontSize: 12.5, color: '#c4cad4' }}>{it.test || it.summary || 'See the item detail above.'}{s === 'fail' && <span className="meta"> · add your tested notes as a comment below.</span>}</div>
                     </div>
                   )}
                   {cmts.length > 0 && (
