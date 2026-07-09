@@ -28,6 +28,7 @@ services:
       - "./dist:/usr/share/nginx/html:ro"
       - "./media:/srv/media:ro"   # self-hosted media — served at /media/* by server.js
       - "./data:/data"        # store.json (accounts/passkeys) — backed up
+      - "/home/jmf/backlog-shared:/srv/backlog"   # #466 SHARED admin backlog — one file for prod+QA (identical board across envs, both containers on this box)
       - "/home/jmf/content/generated:/catalog:ro"   # synced generated catalog (read-only)
     ports:
       - "8088:80"

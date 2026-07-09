@@ -28,6 +28,7 @@ services:
       - "./dist:/usr/share/nginx/html:ro"
       - "/home/jmf/gymapp/media:/srv/media:ro"        # share prod's self-hosted media (ro)
       - "./data:/data"                                 # ISOLATED staging accounts/passkeys
+      - "/home/jmf/backlog-shared:/srv/backlog"        # #466 SHARED admin backlog — SAME file as prod (identical board across envs)
       - "/home/jmf/content/generated:/catalog:ro"      # shared exercise catalog (ro)
     ports:
       - "8089:80"                                      # LAN+tailnet reachable so NPM (HA Green) can front it with HTTPS
