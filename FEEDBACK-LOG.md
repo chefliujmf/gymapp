@@ -813,6 +813,12 @@ test guide → the **🧪 Test guide** section below.
     over [today..today+14]) and hand the coach a non-negotiable lead directive in `dailyAdaptMsg`: "only N/15 days through {end} have anything; EXTEND
     the plan ALL THE WAY to {end} in THIS pass" (only when empty≥3). `runDailyAdapt` passes it. 441 tests. Prod-only (daily-adapt off on QA) → verify
     by triggering `POST /api/coach/daily-adapt` on prod after promote + confirm JM's plan fills to ~Jul 22. Ties #367/#433.
+    ⚠️ **RE-FAILED 2026-07-09 (JM, QA)** — still ~1 week (VALIDATED: prod plans only through Jul 15, NOT 2 weeks; the mirror DOES work, QA had
+    them too — so my "QA artifact" dismissal was WRONG). The gap directive alone didn't land: the daily-adapt asks the coach for a LOT in one
+    pass (horizon + adapt + fuel/mind/recovery + reviews) so it fills the near term + reviews and runs out. **NEW FIX:** `runDailyAdapt` now
+    LOOPS — after the adapt it re-checks `horizonCoverage` and runs up to 2 FOCUSED `horizonFillMsg` passes (FILL-ONLY, no reviews/fuel/mind)
+    until `cov.empty < 3` (only rest days left blank). Deterministic control around the LLM. On QA; prod on promote → trigger a daily-adapt to
+    fill JM's horizon to ~Jul 23 + verify.
 440. 🧪 **"Report a bug or idea" for any (non-admin) user — top bar, → backlog as "under review".** JM 2026-07-08: "for a user who is not
     admin, add a button to report bug or idea, to the left of the notification icon… added to the backlog as under review, put a reporter + a
     timestamp on each item." BUILT: `ReportButton.tsx` (top bar, left of the bell, non-admins only) → a Bug/Idea form → `POST /auth/report` (any

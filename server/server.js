@@ -2746,11 +2746,20 @@ function dailyAdaptMsg(today, pass, cov) {
     : ''
   return `${head}${gap} Then PROACTIVELY adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule): ease / harden / shift / add sessions so the rolling ~2-week plan matches how they're recovering AND their goals, weekly frequency + availability. Keep ~${DAILY_HORIZON} days populated ahead (fill gaps toward their target frequency; never double-book a day / exceed their max sessions per day / exceed their HARD weekly training-days cap). ALSO round out the plan the way a real coach would — FUEL, MIND and RECOVERY, not just the workout: on TODAY and each clearly demanding day (hard / long / quality sessions), schedule a fitting meal or two (schedule_meal — pick a real recipe that fits their diet + daily fuel targets, more carbs around the hard work, lighter on rest days, one-line why); add a MIND session (schedule_mind) where it earns its place — a wind-down after a hard or high-stress day, something longer on a rest day; and put RECOVERY (schedule_recovery — mobility / sauna / easy walk) after the hardest days, given STRUCTURED (insight = why today + steps = the routine with doses + sleep note, NOT one text blob — it opens as its own activity view). Only where it genuinely adds value for THIS athlete on THIS day — don't drop a meal or session onto every slot for the sake of it, and don't churn what they've already got. ALSO catch up on REVIEWS: get_recent_activities now flags each activity's \`reviewed\` status + its \`id\` — for any completed activity in the last week with \`reviewed:false\`, REVIEW it (save_coach_review with that exact \`id\`, a score + one-line verdict + 2-4 takeaways — that ticks the Coach box + posts your note) and give it a public-safe title/description (set_activity_text). SKIP anything already \`reviewed:true\` (never re-review), cap at the few most recent so nothing piles up unreviewed. If a MATERIAL call is uncertain (e.g. several run-down days → cut this week's volume? a race clash?), use notify to ASK them rather than guess. When you change things, notify ONE short line of what changed + why. Don't ask trivial questions — decide and act; ask only when it truly matters. Be concise.`
 }
+// #439 — FOCUSED horizon-fill (no reviews / fuel / mind distraction) so the coach actually populates the back
+// half of the ~2-week window. Used to re-drive it when one adapt pass left the horizon short.
+function horizonFillMsg(today, cov) {
+  return `HORIZON FILL — focused, non-negotiable. Their plan still has BLANK days in the next ${DAILY_HORIZON}-day window: only ${cov.covered}/${DAILY_HORIZON + 1} days through ${cov.end} are populated (first empty day ${cov.firstEmpty}). In THIS pass, do ONE thing: add a training session to EVERY empty day from ${cov.firstEmpty} through ${cov.end}, UP TO (never beyond) their HARD weekly training-days cap + availability — leave ONLY genuine rest days blank. Use list_schedule to see the gaps, then create the sessions (ride/run/gym per their sports + how the block is shaping up; keep intensity sane and spaced). Do NOT review activities, add meals/mind/recovery, or churn existing sessions now — just FILL the back half of the horizon. Be concise.`
+}
 async function runDailyAdapt(user, pass) {
   try {
     const today = await athleteToday(user)
-    const cov = horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON) // #439 — the exact gap to fill
-    await runCoachTask(user, dailyAdaptMsg(today, pass, cov))
+    const covOf = () => horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON) // #439 — the live gap
+    await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()))
+    // The coach usually fills only the near term in one pass (the message asks for a lot). Re-check and run
+    // up to 2 FOCUSED horizon-fill passes until the back half of the ~2-week window is populated (cov.empty
+    // counts blank days; a fully-planned 2 weeks leaves only ~rest days, so < 3 = done).
+    for (let i = 0; i < 2 && covOf().empty >= 3; i++) await runCoachTask(user, horizonFillMsg(today, covOf()))
   } catch (e) { console.error(`[daily-adapt ${pass}] ${user.username || ''} ${e.message || e}`) }
 }
 // One scheduler tick: fire the due pass for each coached athlete. Called every ~30 min.
