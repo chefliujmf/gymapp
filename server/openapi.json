@@ -263,6 +263,29 @@
         "responses": { "201": { "description": "{ ok, n }" } }
       }
     },
+    "/auth/push/config": {
+      "get": {
+        "summary": "#457 — Web Push config: VAPID public key, whether push is available server-side, and this user's per-type prefs + subscription state.",
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ supported, publicKey, subscribed, prefs:{planChanges,reviews,reminders} }" } }
+      }
+    },
+    "/auth/push/subscribe": {
+      "post": {
+        "summary": "#457 — register THIS device's Web Push subscription so coach notifications buzz the phone.",
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "subscription": { "type": "object", "description": "the browser PushSubscription JSON (endpoint + keys)" } } } } } },
+        "responses": { "200": { "description": "{ ok, subscribed, prefs }" }, "400": { "description": "invalid subscription" } }
+      }
+    },
+    "/auth/push/unsubscribe": {
+      "post": {
+        "summary": "#457 — drop a device's Web Push subscription (by endpoint, or all if omitted).",
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "endpoint": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "{ ok, subscribed }" } }
+      }
+    },
     "/auth/items": {
       "get": {
         "summary": "List calendar items (meal/mind/note/recovery/supplement) for the signed-in user",

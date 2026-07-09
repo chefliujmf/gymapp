@@ -17,6 +17,7 @@ import { AddSheet } from './AddSheet'
 import { authApi, type Checkin, type Readiness } from '../auth/api'
 import { InfoDot } from '../charts'
 import SetupChecklist from '../SetupChecklist'
+import PushNudge from '../PushNudge'
 
 // Obvious + funny 1–5 faces (wrecked → amazing). One set for every metric since
 // all now read higher = better.
@@ -564,6 +565,8 @@ export default function Today() {
 
       {/* #387 — nudge to review completed sessions still missing feedback (links to the full list on Logs). */}
       <ToReviewCard acts={activities} />
+      {/* #457 — one-time opt-in for phone push (plan-change alerts). */}
+      <PushNudge />
 
       {todaysLogs && todaysLogs.length > 0 && (
         <Link to="/progress" style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — see history →</Link>

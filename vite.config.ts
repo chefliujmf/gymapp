@@ -27,6 +27,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // #457 — pull our Web Push handlers (push + notificationclick) into the generated SW.
+        importScripts: ['push-sw.js'],
         // A new deploy must take over IMMEDIATELY — the old SW kept serving a stale
         // bundle until every tab closed, which broke login after a deploy. Activate
         // the new SW at once, claim open clients, and purge the previous precache.

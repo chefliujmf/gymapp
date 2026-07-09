@@ -951,6 +951,15 @@ test guide → the **🧪 Test guide** section below.
     for an athlete-scoped call with no athlete (never proxies the seed). Connected users (JM, Xenia — athlete set) are byte-for-byte
     unaffected. 447 tests, tsc clean. On QA. Test: a user with a key but no athlete → intervals reads 409, coach plan-push logs "blocked …
     no intervals athlete" and never appears on JM's calendar.
+457. 🔨 **PHONE push notifications (Web Push) — buzz the phone when the coach changes the plan.** JM 2026-07-09: "can a PWA do push
+    notifications to a phone when there is a plan change? build it." Today `pushNotification()` only writes the in-app 🔔 bell — the
+    phone stays silent until you open the app. Add real **Web Push** (works with the app CLOSED): VAPID keys, a permission + `PushManager`
+    subscribe flow (stored per device), a `push` + `notificationclick` handler in the service worker, and fan the EXISTING
+    `pushNotification` (already fires on every coach plan-change / review) out via the `web-push` lib. ⚠️ **iOS caveat:** Web Push works
+    ONLY for a PWA **installed to the Home Screen** (iOS 16.4+) — a Safari tab gets nothing; Android works in-browser. So the opt-in UX
+    needs an "install to Home Screen" hint on iPhone. Mock the opt-in/permission UX first (options-first), then wire the plumbing.
+    Layers: `server/server.js` (VAPID + subscribe endpoints + web-push send in pushNotification) · service worker (`vite.config`/`public`) ·
+    client Settings toggle + subscribe · openapi. Test: change a plan from the coach → the phone shows a system notification, tap → opens the plan.
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL

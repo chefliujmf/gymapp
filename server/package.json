@@ -17,6 +17,7 @@
     "fit-file-parser": "^3.0.2",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.9.16",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "web-push": "^3.6.7"
   }
 }
