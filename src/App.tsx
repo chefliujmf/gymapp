@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { NavLink, Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
 import { Home, CalendarDays, Dumbbell, BarChart3, Salad, MessageCircle, RotateCw } from 'lucide-react'
 import AccountMenu from './auth/AccountMenu'
 import ReleaseBell from './ReleaseBell'
@@ -32,6 +32,14 @@ function RefreshButton() {
 
 export default function App() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  // #457 — when a push notification is tapped while the app is OPEN, the service worker posts {notif-nav}
+  // and we client-side route to its link (deep-link into the activity/plan) instead of leaving them put.
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => { const d = e.data as { type?: string; link?: string } | undefined; if (d?.type === 'notif-nav' && d.link) navigate(d.link) }
+    navigator.serviceWorker?.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker?.removeEventListener('message', onMsg)
+  }, [navigate])
   // Hide chrome on detail/player pages for an immersive view.
   const isDetail = /\/(workouts|exercises|programs|recipes|trainers|mind|cycle|plan)\/[^/]+$/.test(pathname) || pathname === '/ride-player' || pathname === '/run-player' || pathname === '/build' || pathname === '/ride-builder' || pathname === '/run-builder' || pathname === '/admin' || pathname === '/chat' || /\/play$/.test(pathname)
 

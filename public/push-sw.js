@@ -20,12 +20,15 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const link = (event.notification.data && event.notification.data.link) || '/'
+  const url = new URL(link, self.location.origin).href // absolute — openWindow needs it, relative is flaky
   event.waitUntil((async () => {
-    const clientsArr = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    for (const c of clientsArr) {
-      // focus an already-open Platyplus tab and route it to the link
-      if ('focus' in c) { try { await c.navigate(link) } catch (_e) { /* cross-origin nav guard */ } return c.focus() }
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    // App already open → FOCUS it and tell the SPA to client-side route (client.navigate() throws on an
+    // uncontrolled window, which just left the user on the current page — the bug).
+    for (const c of wins) {
+      try { if (new URL(c.url).origin === self.location.origin) { await c.focus(); c.postMessage({ type: 'notif-nav', link }); return } } catch (_e) { /* skip */ }
     }
-    if (self.clients.openWindow) return self.clients.openWindow(link)
+    // App closed → open a fresh window at the absolute deep link (SPA renders /activity/:id etc).
+    if (self.clients.openWindow) return self.clients.openWindow(url)
   })())
 })
