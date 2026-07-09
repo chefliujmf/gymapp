@@ -601,7 +601,7 @@ export default function Today() {
       {/* #202 Fuel — scheduled meals shown once as 2-col chips; else carb/protein-aware suggestions; + supplements */}
       {(fuelChips.length > 0 || daySupps.length > 0) && (
         <>
-          <div className="section-title sec-ico">🍽️ Fuel <InfoDot text={`${fuelMsg}${dayMeals.length ? '' : ' Tap + to add a meal to your day.'}`} /></div>
+          <div className="section-title sec-ico">🍽️ Eat <InfoDot text={`${fuelMsg}${dayMeals.length ? '' : ' Tap + to add a meal to your day.'}`} /></div>
           {dayMeals.length === 0 && fuelChips.length > 0 && <p className="meta" style={{ margin: '-2px 2px 8px' }}>{fuelMsg}</p>}
           {fuelChips.length > 0 && (
             <div className="fuel-grid">

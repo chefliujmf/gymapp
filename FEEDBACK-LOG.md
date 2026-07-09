@@ -813,6 +813,16 @@ test guide → the **🧪 Test guide** section below.
     over [today..today+14]) and hand the coach a non-negotiable lead directive in `dailyAdaptMsg`: "only N/15 days through {end} have anything; EXTEND
     the plan ALL THE WAY to {end} in THIS pass" (only when empty≥3). `runDailyAdapt` passes it. 441 tests. Prod-only (daily-adapt off on QA) → verify
     by triggering `POST /api/coach/daily-adapt` on prod after promote + confirm JM's plan fills to ~Jul 22. Ties #367/#433.
+    ⚠️ **RE-FAILED 2026-07-09 (JM, QA)** — still ~1 week (VALIDATED: prod plans only through Jul 15, NOT 2 weeks; the mirror DOES work, QA had
+    them too — so my "QA artifact" dismissal was WRONG). The gap directive alone didn't land: the daily-adapt asks the coach for a LOT in one
+    pass (horizon + adapt + fuel/mind/recovery + reviews) so it fills the near term + reviews and runs out. **NEW FIX:** `runDailyAdapt` now
+    LOOPS — after the adapt it re-checks `horizonCoverage` and runs up to 2 FOCUSED `horizonFillMsg` passes (FILL-ONLY, no reviews/fuel/mind)
+    until `cov.empty < 3` (only rest days left blank). Deterministic control around the LLM. On QA; prod on promote → trigger a daily-adapt to
+    fill JM's horizon to ~Jul 23 + verify.
+    **+ JM's idea (2026-07-09): DECOMPOSE into a SEPARATE focused pass per topic** instead of one giant prompt — the coach gave each partial
+    attention + ran out. `runDailyAdapt` now runs: (1) `dailyAdaptMsg` = adapt the WORKOUT plan + fill horizon (looped, readiness-sensitive →
+    every pass); (2) `reviewMsg` = reviews ONLY; (3) `roundOutMsg` = fuel/mind/recovery ONLY. Reviews + round-out gated ONCE/day
+    (`dailyAdapt.extras`) so they don't re-spawn on both early+refine. Each pass gets the coach's full attention. On QA.
 440. 🧪 **"Report a bug or idea" for any (non-admin) user — top bar, → backlog as "under review".** JM 2026-07-08: "for a user who is not
     admin, add a button to report bug or idea, to the left of the notification icon… added to the backlog as under review, put a reporter + a
     timestamp on each item." BUILT: `ReportButton.tsx` (top bar, left of the bell, non-admins only) → a Bug/Idea form → `POST /auth/report` (any
@@ -994,6 +1004,12 @@ test guide → the **🧪 Test guide** section below.
     saveProfile) and the save path MERGES (can't wipe); the Jun-23 pre-migration backup had JM's `info={}` (empty); no audit trail; NO
     full `user.info=` replace anywhere server-side. So no wipe vector found. Best guess: an early save didn't persist, or a reset I can't
     see. ACTION: JM re-sets them on PROD (save path verified → they WILL stick); if they vanish AGAIN that's a live repro I trace instantly.
+464. 🧪 **FTP discrepancy — the card said 241 (computed) but the insight said 260 (manual), same page.** JM 2026-07-09 (QA, screenshot).
+    The FTP benchmark card shows the CHOSEN value (eFTP 241, since pref = AUTO·COMPUTED), but the "Punchy threshold" athlete-profile
+    insight anchored on the raw MANUAL FTP (260) → two FTP numbers on one screen. Root: `Benchmarks.tsx` passed `threshold: ftpManual` to
+    `athleteProfile`, ignoring the pref. Fixed: it now passes the CHOSEN value (`chosenFtp`, same `inUse` logic as the card — computed/auto →
+    eFTP, manual → set value); same for running threshold pace. Card + insight now always agree. On QA. Test: FTP card + insight match;
+    switching the FTP pref manual↔computed moves both together.
 413. 🧪 **FTP + threshold pace still in the GLOBAL benchmarks grid — they're SPORT-specific.** JM 2026-07-07 (screenshot): "ftp still
     in global …" + "threshold pace is also in global, it's sport specific." The earlier ADVANCED exclusion only dropped CP/W′/CS/D′/TTE;
     FTP (cycling) + threshold pace (running) stayed. Fixed: renamed `ADVANCED`→`SPORT_ONLY` and added `ftp`+`thresholdPace`, so the GLOBAL
