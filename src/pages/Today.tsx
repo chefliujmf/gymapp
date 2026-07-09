@@ -343,13 +343,13 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
   )
 }
 
-// #387 — a compact "sessions to review" headline on Today (only when there ARE gaps); taps through to the
-// full, per-session list on Logs. Keeps Today clean while making sure feedback never quietly goes stale.
+// #387/#442b — a compact "sessions to review" HEADLINE on Today (only when there ARE gaps); taps through to
+// the DEDICATED /review page (NOT History — JM's directive). Keeps Today clean while making feedback stick.
 function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
   const n = incompleteFeedback(acts).length
   if (!n) return null
   return (
-    <Link to="/logs" className="fbban" style={{ textDecoration: 'none', color: 'var(--text)', margin: '10px 0 12px' }}>
+    <Link to="/review" className="fbban" style={{ textDecoration: 'none', color: 'var(--text)', margin: '10px 0 12px' }}>
       <div className="fbban__ic">📝</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="fbban__t">{n} session{n > 1 ? 's' : ''} need{n > 1 ? '' : 's'} your feedback</div>

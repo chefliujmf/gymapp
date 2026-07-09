@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { fetchActivity, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
 import { TrendChart, PowerCurveChart, PaceCurveChart, PowerBlocks, minuteTicks } from '../charts'
 import { fmtPace } from '../running-paces'
@@ -216,6 +216,8 @@ function RunTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity 
 export default function ActivityDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const fromReview = (useLocation().state as { from?: string } | null)?.from === '/review' // #442b — return to the review list after Save
+  const afterSave = fromReview ? () => navigate('/review') : undefined
   const { user } = useAuth()
   const [a, setA] = useState<IcuActivity | null>(null)
   const [streams, setStreams] = useState<ActivityStreams>({})
@@ -309,7 +311,7 @@ export default function ActivityDetail() {
         </div>
       </div>
 
-      {!hasVerdict && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} />}
+      {!hasVerdict && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} onSaved={afterSave} />}
 
       <CoachVerdict review={review} note={note} />
       {a.description && a.description.trim() && (
@@ -332,7 +334,7 @@ export default function ActivityDetail() {
       {activeTab === 'power' && (isRun ? <RunPace streams={streams} thrPace={thrPace} /> : <RidePower streams={streams} ftp={ftp} />)}
       {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
 
-      {hasVerdict && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} />}
+      {hasVerdict && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} onSaved={afterSave} />}
 
       <div className="links" style={{ marginTop: 12 }}>
         {plan && <Link className="done-link done-link--map" to={`/coach/${plan.id}`}>📋 Planned workout →</Link>}

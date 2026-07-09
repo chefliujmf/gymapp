@@ -7,7 +7,6 @@ import { allWorkoutsById } from '../data/catalog'
 import { authApi, type Checkin } from '../auth/api'
 import { e1rm } from '../strength'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
-import { incompleteFeedback } from '../feedbackGaps'
 import { DoneStats } from '../ui'
 import { buildDayEntries } from '../logs-merge'
 import { DateRangeFilter, type RangePreset } from '../DateRange'
@@ -47,56 +46,8 @@ function ActivityLogCard({ log }: { log: WorkoutLog }) {
   )
 }
 
-// #340 — one banner rolling up sessions whose CORE feedback (feel + RPE) is still missing, then a
-// knock-out list (oldest first so nothing goes stale). Each row deep-links to the activity's feedback.
-function IncompleteFeedbackBanner({ acts }: { acts: IcuActivity[] }) {
-  const gaps = incompleteFeedback(acts)
-  const [expanded, setExpanded] = useState(false)
-  if (!gaps.length) return null
-  const show = expanded ? gaps : gaps.slice(0, 6)
-  const dayLabel = (iso?: string) => (iso ? new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '')
-  // #442 — show enough of the activity that JM remembers it without opening it (duration / distance / effort / load)
-  const statLine = (a: IcuActivity) => {
-    const b: string[] = []
-    if (a.moving_time) b.push(`${Math.round(a.moving_time / 60)} min`)
-    if (a.distance) b.push(`${(a.distance / 1000).toFixed(1)} km`)
-    if (a.icu_average_watts) b.push(`${Math.round(a.icu_average_watts)} W`)
-    else if (a.average_heartrate) b.push(`${Math.round(a.average_heartrate)} bpm`)
-    if (a.icu_training_load) b.push(`${Math.round(a.icu_training_load)} TSS`)
-    return b.join(' · ')
-  }
-  return (
-    <div className="fbgap">
-      <div className="fbban">
-        <div className="fbban__ic">📝</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="fbban__t">{gaps.length} session{gaps.length > 1 ? 's' : ''} still need your feedback</div>
-          <div className="fbban__s">Your coach reviews it and adapts your plan — a minute each. Oldest first so nothing goes stale.</div>
-        </div>
-      </div>
-      {show.map(({ act, status }) => {
-        const stats = statLine(act)
-        return (
-          <Link key={String(act.id)} to={`/activity/${act.id}`} className="fbrow">
-            <div className="fbrow__th">{SPORT_EMOJI[sportOfActivity(act)] || '⏱️'}</div>
-            <div className="fbrow__b">
-              <div className="fbrow__t">{act.name || nameFor(sportOfActivity(act))} · {dayLabel(act.start_date_local)}</div>
-              {stats && <div className="meta" style={{ fontSize: 12, margin: '1px 0 3px' }}>{stats}</div>}
-              <div className="fbrow__m">{status.missing.map((m) => <span key={m} className="fbmiss">{m}</span>)}</div>
-              <div className="fbprog"><i style={{ width: `${Math.max(6, status.pct)}%` }} /></div>
-            </div>
-            <span className="fbrow__cta">Add →</span>
-          </Link>
-        )
-      })}
-      {gaps.length > 6 && (
-        <button className="btn btn--ghost" style={{ width: 'auto', margin: '8px 2px 0', padding: '7px 14px' }} onClick={() => setExpanded((e) => !e)}>
-          {expanded ? 'Show fewer' : `Show all ${gaps.length}`}
-        </button>
-      )}
-    </div>
-  )
-}
+// #442b — the "to review" banner + knock-out list moved OFF History into its own /review page (ReviewPage),
+// reached from the Today headline. This component was removed; feedbackGaps + the /review page carry it now.
 
 // A device activity that lives in intervals (not done via Platyplus) — #130. Tap → analysis (#250).
 function DeviceActivityCard({ a }: { a: IcuActivity }) {
@@ -259,7 +210,7 @@ export default function Logs() {
       </div>
       <DateRangeFilter presets={HISTORY_PRESETS} from={from} to={to} onChange={(nf, nt) => { setFrom(nf); setTo(nt) }} />
 
-      <IncompleteFeedbackBanner acts={acts} />
+      {/* #442b — the "to review" list moved OFF History to its own /review page (reached from the Today headline). */}
 
       {logs === undefined ? <p className="meta">Loading…</p> : !days.length ? <p className="meta">{q || type !== 'all' ? 'No sessions match your filters.' : 'Nothing logged in this range — check-ins & workouts show here by day.'}</p> : (
         days.map(([date, d]) => (

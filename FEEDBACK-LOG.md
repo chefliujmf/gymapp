@@ -830,7 +830,11 @@ test guide → the **🧪 Test guide** section below.
     info to remember it (BUILT on the History banner: duration/distance/effort/load line + a working "Show all N" expand — but per (b) this MOVES);
     (b) "I don't want the review banner in History" → build a DEDICATED review view (reached from the Today #387 card, not `/logs`); (c) tapping a
     session opens the activity normally (feedback form) = already how it works; (d) after SAVING feedback, return to the review list to knock out the
-    next one. Needs a `/review` route + return-after-save nav. Mock the dedicated view first.
+    next one. Needs a `/review` route + return-after-save nav. Mock the dedicated view first. → mocked 2 (own page vs inline), JM picked **A (own
+    review page)**. BUILT (#442b, closes the #387/#340 failures): new **`/review` `ReviewPage`** (knock-out list, oldest first, rows show activity
+    stats + missing chips, each → `/activity/:id` with `state={from:'/review'}`); the Today **`ToReviewCard` headline now links to `/review`** (not
+    `/logs`); the **IncompleteFeedbackBanner is REMOVED from History** (Logs); **`ActivityFeedback` gained `onSaved`** → after Save it returns to
+    `/review` (brief "saved" then back to the list), and the back button already returns there via history. 447 tests, tsc + build clean. On QA.
 443. 🧪 **Tempo tooltip was cut off + unclear.** JM 2026-07-08: "what is 3? lift 3s? the 1 wait? 0 restart?" ROOT: the exercise `.card` had
     `overflow:hidden` → clipped the InfoDot popover to one line. FIX (CoachPlanDetail.tsx): card `overflow` is `visible` when collapsed (thumbnail
     self-rounds so it's safe); tooltip text rewritten to number each phase explicitly (LOWER first: 3-1-1-0 = lower 3s · hold 1s · lift 1s · 0s top). On QA.

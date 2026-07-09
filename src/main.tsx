@@ -72,6 +72,7 @@ import Logs from './pages/Logs'
 import LogActivity from './pages/LogActivity'
 import ActivityDetail from './pages/ActivityDetail'
 import RecoveryDetail from './pages/RecoveryDetail'
+import ReviewPage from './pages/ReviewPage'
 import AuditLog from './pages/AuditLog'
 import { TrainHub, StatsHub, MoreHub } from './pages/hubs'
 import Chat from './pages/Chat'
@@ -117,6 +118,7 @@ const router = createBrowserRouter([
       { path: 'mind', element: <Mind /> },
       { path: 'mind/:id', element: <MindDetail /> },
       { path: 'recovery/:id', element: <RecoveryDetail /> },
+      { path: 'review', element: <ReviewPage /> },
       { path: 'cycle', element: <Cycle /> },
       { path: 'run', element: <Run /> },
       { path: 'ride-builder', element: <RideBuilder sport="ride" /> },
