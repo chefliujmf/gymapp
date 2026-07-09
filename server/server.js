@@ -985,7 +985,8 @@ app.delete('/auth/users/:id', auth, admin, (req, res) => {
 // discard flag. Stored on the admin's own record (JM is the owner) so Claude can read it each session.
 const PRIORITIES = ['hi', 'med', 'lo']
 const BACKLOG_STATUSES = ['review', 'todo', 'totest', 'done', 'fail', 'discarded'] // JM's status OVERRIDES the .md-derived one; 'review' = a user report awaiting triage. (Old 'build'/'pass' merged into todo/done, mapped on read client-side.)
-const BACKLOG_TYPES = ['bug', 'feature', 'idea', 'chore']
+const BACKLOG_TYPES = ['bug', 'feature', 'idea'] // #chore removed (JM) — legacy 'chore' rows just display, not settable
+const BACKLOG_AREAS = ['admin', 'cycling', 'running', 'gym', 'stats', 'eat', 'today', 'plan', 'coach', 'other'] // JM can OVERRIDE the auto-derived page/area per item
 // #438/#440 — the backlog triage + app-added items + user reports live in the SHARED global store (app_meta),
 // so a report from ANY user reaches the admin and any admin sees the same board. Claude reads it each session.
 const backlogStore = () => (store.backlog = store.backlog || { triage: {}, added: [] })
@@ -1004,10 +1005,11 @@ app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
   if ('priority' in b) t.priority = PRIORITIES.includes(b.priority) ? b.priority : undefined // null/other → clear
   if ('status' in b) { t.status = BACKLOG_STATUSES.includes(b.status) ? b.status : undefined; delete t.discarded } // status supersedes the old discarded bool
   if ('type' in b) t.type = BACKLOG_TYPES.includes(b.type) ? b.type : undefined
+  if ('area' in b) t.area = BACKLOG_AREAS.includes(b.area) ? b.area : undefined // JM overrides the auto-derived page
   if (typeof b.discarded === 'boolean') t.discarded = b.discarded // back-compat
   if (typeof b.comment === 'string' && b.comment.trim()) { t.comments.push({ text: b.comment.trim().slice(0, 800), at: Date.now(), by: req.user.username || 'you' }); if (t.comments.length > 100) t.comments = t.comments.slice(-100) }
   if (b.deleteCommentAt) t.comments = t.comments.filter((c) => c.at !== b.deleteCommentAt)
-  if (!t.priority && !t.status && !t.type && !t.discarded && !t.comments.length) delete bl.triage[n] // drop empty rows
+  if (!t.priority && !t.status && !t.type && !t.area && !t.discarded && !t.comments.length) delete bl.triage[n] // drop empty rows
   else bl.triage[n] = t
   save(store)
   res.json({ n: Number(n), triage: bl.triage[n] || null })

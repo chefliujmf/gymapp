@@ -207,7 +207,7 @@ export const authApi = {
 
   // #438 — admin backlog triage overlay (status / priority / type / comments) on top of the bundled backlog.json
   getBacklogTriage: () => req<{ triage: BacklogTriage; added: BacklogAddedItem[] }>('/admin/backlog'),
-  updateBacklog: (n: number, patch: { priority?: BacklogPriority | null; status?: BacklogStatus | null; type?: BacklogType | null; comment?: string; deleteCommentAt?: number; discarded?: boolean }) =>
+  updateBacklog: (n: number, patch: { priority?: BacklogPriority | null; status?: BacklogStatus | null; type?: BacklogType | null; area?: string | null; comment?: string; deleteCommentAt?: number; discarded?: boolean }) =>
     req<{ n: number; triage: BacklogTriageItem | null }>(`/admin/backlog/${n}`, { method: 'PUT', body: patch }),
   addBacklogItem: (item: { n: number; title: string; type?: BacklogType; priority?: BacklogPriority; summary?: string }) =>
     req<{ item: BacklogAddedItem; triage: BacklogTriageItem | null }>('/admin/backlog', { body: item }),
@@ -218,8 +218,8 @@ export const authApi = {
 // #438 — admin backlog triage types
 export type BacklogPriority = 'hi' | 'med' | 'lo'
 export type BacklogStatus = 'review' | 'todo' | 'totest' | 'done' | 'fail' | 'discarded'
-export type BacklogType = 'bug' | 'feature' | 'idea' | 'chore'
+export type BacklogType = 'bug' | 'feature' | 'idea'
 export interface BacklogComment { text: string; at: number }
-export interface BacklogTriageItem { priority?: BacklogPriority; status?: BacklogStatus; type?: BacklogType; comments?: BacklogComment[]; discarded?: boolean }
+export interface BacklogTriageItem { priority?: BacklogPriority; status?: BacklogStatus; type?: BacklogType; area?: string; comments?: BacklogComment[]; discarded?: boolean }
 export type BacklogTriage = Record<string, BacklogTriageItem>
 export interface BacklogAddedItem { n: number; title: string; summary?: string; reporter?: string; at: number }

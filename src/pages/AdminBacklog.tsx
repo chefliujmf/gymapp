@@ -19,12 +19,15 @@ const migrateStatus = (s?: string): BacklogStatus | undefined => (s === 'build' 
 // #454 — functional AREA of an item (mirrors build-backlog.mjs areaOf); empty area filter = all
 const AREAS = ['admin', 'cycling', 'running', 'gym', 'stats', 'eat', 'today', 'plan', 'coach', 'other'] as const
 const A_LABEL: Record<string, string> = { admin: 'Admin', cycling: 'Cycling', running: 'Running', gym: 'Gym', stats: 'Stats', eat: 'Eat', today: 'Today', plan: 'Plan', coach: 'Coach', other: 'Other' }
+const AREA_OPTS: [string, string][] = AREAS.map((k) => [k, A_LABEL[k]]) // for the per-item Area editor (JM overrides the auto-tag)
+// small uppercase label that leads each filter row so the multi-select groups are clearly organized.
+const FLABEL: CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', color: '#7a8290', alignSelf: 'center', marginRight: 2 }
 const fmtWhen = (v?: number | string) => { if (!v) return ''; try { const d = typeof v === 'number' ? new Date(v) : new Date(/T/.test(v) ? v : v + 'T00:00'); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) } catch { return '' } }
 const P_LABEL: Record<BacklogPriority, string> = { hi: 'HIGH', med: 'MED', lo: 'LOW' }
 const P_COLOR: Record<BacklogPriority, string> = { hi: '#ff6b6b', med: '#ffb454', lo: '#7a8699' }
 const P_RANK: Record<string, number> = { hi: 0, med: 1, lo: 2, '': 3 }
-const T_LABEL: Record<BacklogType, string> = { bug: 'Bug', feature: 'Feature', idea: 'Idea', chore: 'Chore' }
-const T_COLOR: Record<BacklogType, string> = { bug: '#ff6b6b', feature: '#34e07d', idea: '#b98cff', chore: '#7a8699' }
+const T_LABEL: Record<string, string> = { bug: 'Bug', feature: 'Feature', idea: 'Idea', chore: 'Chore' } // chore = legacy display only
+const T_COLOR: Record<string, string> = { bug: '#ff6b6b', feature: '#34e07d', idea: '#b98cff', chore: '#7a8699' }
 // #449 — dev → qa → prod PROGRESSION, derived from the lifecycle so it's ACCURATE (a text heuristic massively
 // under-counted prod). building = on dev · to-test/tested = on QA · done = promoted to prod. Ideal = all reach prod.
 const ENV_STEPS = ['dev', 'qa', 'prod'] as const
@@ -49,7 +52,7 @@ function EnvTrack({ env, labeled = false }: { env?: string; labeled?: boolean })
 // done stays SETTABLE so JM can mark items done himself
 const STATUS_OPTS: [BacklogStatus, string, string][] = (['review', 'todo', 'totest', 'done', 'fail', 'discarded'] as BacklogStatus[]).map((s) => [s, S_LABEL[s], S_DOT[s]])
 const PRI_OPTS: [BacklogPriority, string, string][] = [['hi', 'High', P_COLOR.hi], ['med', 'Med', P_COLOR.med], ['lo', 'Low', P_COLOR.lo]]
-const TYPE_OPTS: [BacklogType, string, string][] = [['bug', 'Bug', T_COLOR.bug], ['feature', 'Feature', T_COLOR.feature], ['idea', 'Idea', T_COLOR.idea], ['chore', 'Chore', T_COLOR.chore]]
+const TYPE_OPTS: [BacklogType, string, string][] = [['bug', 'Bug', T_COLOR.bug], ['feature', 'Feature', T_COLOR.feature], ['idea', 'Idea', T_COLOR.idea]]
 
 // a labeled segmented button row (Status / Priority / Type). Highlighted = current; each option carries its colour.
 function Seg<T extends string>({ label, opts, value, onPick }: { label: string; opts: [T, string, string?][]; value?: T; onPick: (v: T) => void }) {
@@ -128,7 +131,7 @@ export default function AdminBacklog() {
   // area counts (over the merged list, effective area) for the area chips
   const areaCounts = useMemo(() => {
     const c: Record<string, number> = {}
-    for (const it of merged) { const a = it.area || 'other'; c[a] = (c[a] || 0) + 1 }
+    for (const it of merged) { const a = tr(it.n).area || it.area || 'other'; c[a] = (c[a] || 0) + 1 }
     return c
   }, [merged])
   const toggle = (set: Set<string>, key: string, apply: (s: Set<string>) => void) => { const n = new Set(set); n.has(key) ? n.delete(key) : n.add(key); apply(n) }
@@ -139,7 +142,7 @@ export default function AdminBacklog() {
       const t = tr(it.n), s = eff(it)
       // status: empty set = "open" (all but done+discarded); else exactly the selected statuses
       if (statusSet.size ? !statusSet.has(s) : (s === 'done' || s === 'discarded')) return false
-      if (areaSet.size && !areaSet.has(it.area || 'other')) return false
+      if (areaSet.size && !areaSet.has(tr(it.n).area || it.area || 'other')) return false
       if (priSet.size && !priSet.has(t.priority || '')) return false
       if (typeSet.size && !typeSet.has(t.type || '')) return false
       if (ql && !`#${it.n} ${it.title} ${it.summary}`.toLowerCase().includes(ql)) return false
@@ -178,19 +181,27 @@ export default function AdminBacklog() {
       )}
 
       <input className="search" placeholder="Search the backlog…" value={q} onChange={(e) => setQ(e.target.value)} />
-      {/* All filters MULTI-select (Set membership). .chips WRAPS — never horizontal-scroll (mobile-first). */}
+      {/* Filters — each row is its own MULTI-select group (tap several; tap again to remove). .chips WRAPS,
+          never horizontal-scroll (mobile-first). A leading label makes each group + the multi-select clear. */}
+      {(statusSet.size || areaSet.size || priSet.size || typeSet.size) ? (
+        <button className="btn btn--ghost" style={{ width: 'auto', padding: '4px 10px', fontSize: 11, marginBottom: 8 }} onClick={() => { setStatusSet(new Set()); setAreaSet(new Set()); setPriSet(new Set()); setTypeSet(new Set()) }}>✕ Clear all filters</button>
+      ) : null}
       <div className="chips" style={{ marginBottom: 8 }}>
+        <span style={FLABEL}>Status</span>
         <button className={'chip' + (statusSet.size === 0 ? ' chip--active' : '')} onClick={() => setStatusSet(new Set())}>Open <span style={{ opacity: .6 }}>{counts.open}</span></button>
         {statusChips.map(([k, label, c]) => <button key={k} className={'chip' + (statusSet.has(k) ? ' chip--active' : '')} onClick={() => toggle(statusSet, k, setStatusSet)}>{label} <span style={{ opacity: .6 }}>{c}</span></button>)}
       </div>
       <div className="chips" style={{ marginBottom: 8 }}>
+        <span style={FLABEL}>Page</span>
         {AREAS.map((k) => <button key={k} className={'chip' + (areaSet.has(k) ? ' chip--active' : '')} onClick={() => toggle(areaSet, k, setAreaSet)}>{A_LABEL[k]} <span style={{ opacity: .6 }}>{areaCounts[k] || 0}</span></button>)}
       </div>
       <div className="chips" style={{ marginBottom: 8 }}>
-        {PRI_OPTS.map(([k, label]) => <button key={k} className={'chip' + (priSet.has(k) ? ' chip--active' : '')} onClick={() => toggle(priSet, k, setPriSet)}>{label}</button>)}
+        <span style={FLABEL}>Type</span>
+        {TYPE_OPTS.map(([k, label]) => <button key={k} className={'chip' + (typeSet.has(k) ? ' chip--active' : '')} onClick={() => toggle(typeSet, k, setTypeSet)}>{label}</button>)}
       </div>
       <div className="chips" style={{ marginBottom: 10 }}>
-        {TYPE_OPTS.map(([k, label]) => <button key={k} className={'chip' + (typeSet.has(k) ? ' chip--active' : '')} onClick={() => toggle(typeSet, k, setTypeSet)}>{label}</button>)}
+        <span style={FLABEL}>Priority</span>
+        {PRI_OPTS.map(([k, label]) => <button key={k} className={'chip' + (priSet.has(k) ? ' chip--active' : '')} onClick={() => toggle(priSet, k, setPriSet)}>{label}</button>)}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <span className="meta">Sort</span>
@@ -205,7 +216,7 @@ export default function AdminBacklog() {
 
       <div className="stack">
         {list.map((it) => {
-          const t = tr(it.n), s = eff(it), exp = open === it.n, cmts = t.comments || []
+          const t = tr(it.n), s = eff(it), exp = open === it.n, cmts = t.comments || [], ea = t.area || it.area
           return (
             <div key={it.n} className="card" style={{ padding: 0, opacity: s === 'discarded' ? .55 : 1 }}>
               <div className="card-row" style={{ padding: '11px 12px', gap: 10, alignItems: 'center', cursor: 'pointer' }} onClick={() => { setOpen(exp ? null : it.n); setDraft('') }}>
@@ -213,7 +224,7 @@ export default function AdminBacklog() {
                 <span className="meta" style={{ fontWeight: 700, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>#{it.n}</span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
                 <EnvTrack env={STATUS_ENV[s]} />
-                {it.area && <span style={chip('#ffffff0d', '#8b93a3')}>{A_LABEL[it.area] || it.area}</span>}
+                {ea && <span style={chip('#ffffff0d', '#8b93a3')}>{A_LABEL[ea] || ea}</span>}
                 {t.type && <span style={chip(T_COLOR[t.type] + '22', T_COLOR[t.type])}>{T_LABEL[t.type]}</span>}
                 {t.priority && <span style={chip(P_COLOR[t.priority] + '22', P_COLOR[t.priority])}>{P_LABEL[t.priority]}</span>}
                 {cmts.length > 0 && <span className="meta" style={{ flexShrink: 0, fontSize: 11 }}>💬{cmts.length}</span>}
@@ -248,6 +259,7 @@ export default function AdminBacklog() {
                   <Seg label="Status" opts={STATUS_OPTS} value={s} onPick={(v) => patch(it.n, { status: v })} />
                   <Seg label="Priority" opts={PRI_OPTS} value={t.priority} onPick={(v) => patch(it.n, { priority: v })} />
                   <Seg label="Type" opts={TYPE_OPTS} value={t.type} onPick={(v) => patch(it.n, { type: v })} />
+                  <Seg label="Area / page" opts={AREA_OPTS} value={t.area || it.area} onPick={(v) => patch(it.n, { area: v })} />
                 </div>
               )}
             </div>
