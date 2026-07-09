@@ -33,7 +33,23 @@ that looks wrong. Code lives in `server/server.js` (`pushPlanToIcu`, `findIcuEve
   intervals does NOT remove the master plan, and a re-sync RE-CREATES it. (#160)
 - Re-sync button = Settings → Connections (`/auth/plans/resync`), reports created/exists/updated/skipped/errors.
 
+## ⚠️ Per-user athlete — NEVER default to the seed i28814 (#453/#456, JM directive 2026-07-08)
+Each user reads/writes **their OWN** intervals athlete (`user.icuAthlete`; JM = i28814, Xenia = i628280).
+Multi-user, ONE intervals account historically → the code was littered with `user.icuAthlete || 'i28814'`,
+so a user with no athlete silently hit **JM's** calendar. Two live bugs came from this: Xenia saw JM's
+activities (#453) and the coach could push/delete on JM's calendar (#456). **LOCKED rules:**
+- The client picks its athlete from a device-local `icu_athlete_id` that DEFAULTS to i28814 → on a shared/
+  unsynced browser it leaks JM's data. The **server `/icu` proxy is authoritative**: it FORCES the
+  `/athlete/<id>` segment to `req.user.icuAthlete`, and **409s** an athlete-scoped call when the user has none.
+- **NO per-user path may fall back to i28814.** The `|| 'i28814'` default was removed everywhere except the
+  admin SEED (`server.js` ~67/80). A missing athlete must **BLOCK + report an error**, never touch the seed
+  calendar: `pushPlanToIcu`/`reconcileFromIcu` return `{skipped:'no intervals athlete'}` + log; `deleteIcuEvent`/
+  `findIcuEventsForPlan` bail; endpoint `icuKey` guards also require an athlete. Don't reintroduce the default.
+- Client `syncIcu` (AuthContext) ALWAYS writes the current user's athlete on login/restore (never leaves a stale one).
+- **QA still shares i28814** for JM's account (QA+prod = one intervals athlete for him, #381); Xenia has her own.
+
 ## Diagnostic recipe (read-only — ALWAYS inspect real data, don't guess)
+**Use the USER's `icuAthlete`, not a hardcoded i28814** (i28814 = JM only; Xenia = i628280).
 Inspect the user's PLANS on the box (QA = `gymapp-staging`, prod = `gymapp`):
 ```
 ssh root@100.104.241.95 'docker exec gymapp-staging node -e "import(\"./db.js\").then(async m=>{const s=await m.loadStore();const u=(s.users||[]).find(x=>x.icuKey);for(const d of [\"YYYY-MM-DD\"]){console.log(d);(u.plans||[]).filter(p=>p.date===d).forEach(p=>console.log(JSON.stringify({id:p.id,title:p.title,origin:p.origin,icuEventId:p.icuEventId,mine:p.icuEventMine})))}process.exit(0)})"'
