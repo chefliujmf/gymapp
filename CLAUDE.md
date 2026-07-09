@@ -34,10 +34,12 @@ JM lost trust because I shipped "built" code that didn't work. The fix is non-ne
 5. **Mock-first for anything JM sees** (skill `options-first`), and **trace the real flow / check the
    source of truth** (e.g. do these choices match intervals?) — not just "does it compile?".
 6. **PRIORITY + PIPELINE (JM 2026-07-09):** fix what's BROKEN first — **ALL bugs before ANY feature/idea**
-   (failed bugs → open bugs → then features). Run the **10-at-a-time pipeline**: keep the `totest` bucket at
-   **10** (JM reviews only at 10) → he marks `pass` (I promote + `done`) / `fail` (I rework) → when it empties,
-   rework fails + refill to 10 → repeat until **0 bugs**. Many "open" `todo` bugs are already fixed (verify the
-   `#NNN` code ref + test, then flip to `totest`) — reconcile, don't re-fix. `todo` = JM's parking bucket (don't
+   (failed bugs → open bugs → then features). Run the **10-at-a-time pipeline**: fill `totest` to **10** →
+   **PROMOTE the batch dev→prod at 10** ("promote when tested is at 10") so JM tests **on prod** (coach-only
+   features like #439/#451 can't be tested on QA) → JM marks `pass` ⇒ mark **`done`** (already on prod, "very
+   important") / `fail` ⇒ rework → **`totest == 0` triggers** re-review of the whole backlog + the next 10 →
+   promote at 10 again → repeat until **0 bugs**. Many "open" `todo` bugs are already fixed (verify the `#NNN`
+   code ref + test, then flip to `totest`) — reconcile, don't re-fix. `todo` = JM's parking bucket (don't
    auto-work it). Batch status flips so my writes don't race JM's live triage on the shared backlog file.
 See skill `platyplus-testing` + memory `platyplus-testing-workflow` + `platyplus-admin-backlog`.
 
