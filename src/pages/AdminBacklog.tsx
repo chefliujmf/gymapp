@@ -10,12 +10,12 @@ type Item = { n: number; status: BacklogStatus; title: string; summary: string; 
 type Sort = 'pri' | 'num' | 'status' | 'cmts'
 
 // #454 — status model simplified to 6 states: build merged into todo, pass merged into done.
-const S_LABEL: Record<BacklogStatus, string> = { review: 'Under review', todo: 'To do', totest: 'To test', done: 'Done', fail: 'Tested ✗', discarded: 'Discarded' }
-const S_DOT: Record<BacklogStatus, string> = { review: '#e05d8c', todo: '#8aa0ff', totest: '#4dd4e0', done: '#34e07d', fail: '#ff6b6b', discarded: '#545b68' }
-const S_RANK: Record<string, number> = { review: 0, fail: 1, totest: 2, todo: 3, done: 4, discarded: 5 } // needs-attention first
-const TEST_STATUS = new Set<BacklogStatus>(['totest', 'fail'])
-// map any legacy triage value (old DB rows) onto the new set so old data doesn't break
-const migrateStatus = (s?: string): BacklogStatus | undefined => (s === 'build' ? 'todo' : s === 'pass' ? 'done' : s as BacklogStatus | undefined)
+const S_LABEL: Record<BacklogStatus, string> = { review: 'Under review', todo: 'To do', totest: 'To test', pass: 'Tested ✓', done: 'Done', fail: 'Tested ✗', discarded: 'Discarded' }
+const S_DOT: Record<BacklogStatus, string> = { review: '#e05d8c', todo: '#8aa0ff', totest: '#4dd4e0', pass: '#34e07d', done: '#7a8699', fail: '#ff6b6b', discarded: '#545b68' } // pass = green success ✓; done = grey (shipped/archived)
+const S_RANK: Record<string, number> = { review: 0, fail: 1, totest: 2, pass: 3, todo: 4, done: 5, discarded: 6 } // needs-attention first
+const TEST_STATUS = new Set<BacklogStatus>(['totest', 'pass', 'fail'])
+// map only the legacy 'build' value (old DB rows) onto the new set; 'pass' (Tested ✓) is a REAL status again.
+const migrateStatus = (s?: string): BacklogStatus | undefined => (s === 'build' ? 'todo' : s as BacklogStatus | undefined)
 // #454 — functional AREA of an item (mirrors build-backlog.mjs areaOf); empty area filter = all
 const AREAS = ['admin', 'cycling', 'running', 'gym', 'stats', 'eat', 'today', 'plan', 'coach', 'other'] as const
 const A_LABEL: Record<string, string> = { admin: 'Admin', cycling: 'Cycling', running: 'Running', gym: 'Gym', stats: 'Stats', eat: 'Eat', today: 'Today', plan: 'Plan', coach: 'Coach', other: 'Other' }
@@ -33,7 +33,7 @@ const T_COLOR: Record<string, string> = { bug: '#ff6b6b', feature: '#34e07d', id
 const ENV_STEPS = ['dev', 'qa', 'prod'] as const
 const ENV_COLORS: Record<string, string> = { dev: '#ff9f43', qa: '#d946ef', prod: '#34e07d' } // dev orange · qa magenta · prod green (JM)
 const envReached = (env?: string) => (env === 'prod' ? 2 : env === 'qa' ? 1 : env === 'dev' ? 0 : -1)
-const STATUS_ENV: Record<BacklogStatus, string> = { review: '', todo: '', totest: 'qa', done: 'prod', fail: 'qa', discarded: '' }
+const STATUS_ENV: Record<BacklogStatus, string> = { review: '', todo: '', totest: 'qa', pass: 'qa', done: 'prod', fail: 'qa', discarded: '' }
 function EnvTrack({ env, labeled = false }: { env?: string; labeled?: boolean }) {
   const r = envReached(env)
   if (r < 0) return null // ⬜ todo → not built → nowhere yet
@@ -50,7 +50,7 @@ function EnvTrack({ env, labeled = false }: { env?: string; labeled?: boolean })
 }
 
 // done stays SETTABLE so JM can mark items done himself
-const STATUS_OPTS: [BacklogStatus, string, string][] = (['review', 'todo', 'totest', 'done', 'fail', 'discarded'] as BacklogStatus[]).map((s) => [s, S_LABEL[s], S_DOT[s]])
+const STATUS_OPTS: [BacklogStatus, string, string][] = (['review', 'todo', 'totest', 'pass', 'done', 'fail', 'discarded'] as BacklogStatus[]).map((s) => [s, S_LABEL[s], S_DOT[s]])
 const PRI_OPTS: [BacklogPriority, string, string][] = [['hi', 'High', P_COLOR.hi], ['med', 'Med', P_COLOR.med], ['lo', 'Low', P_COLOR.lo]]
 const TYPE_OPTS: [BacklogType, string, string][] = [['bug', 'Bug', T_COLOR.bug], ['feature', 'Feature', T_COLOR.feature], ['idea', 'Idea', T_COLOR.idea]]
 
@@ -124,7 +124,7 @@ export default function AdminBacklog() {
   }
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { open: 0, review: 0, todo: 0, totest: 0, done: 0, fail: 0, discarded: 0 }
+    const c: Record<string, number> = { open: 0, review: 0, todo: 0, totest: 0, pass: 0, done: 0, fail: 0, discarded: 0 }
     for (const it of merged) { const s = eff(it); c[s]++; if (s !== 'done' && s !== 'discarded') c.open++ }
     return c
   }, [merged, triage])
@@ -161,7 +161,7 @@ export default function AdminBacklog() {
   }, [merged, triage, q, statusSet, areaSet, priSet, typeSet, sort, dir])
 
   // status filter chips — each a member of statusSet (empty set = "open"). done is included so JM can filter to it.
-  const statusChips: [BacklogStatus, string, number][] = [['review', 'Under review', counts.review], ['todo', 'To do', counts.todo], ['totest', 'To test', counts.totest], ['done', 'Done', counts.done], ['fail', 'Tested ✗', counts.fail], ['discarded', 'Discarded', counts.discarded]]
+  const statusChips: [BacklogStatus, string, number][] = [['review', 'Under review', counts.review], ['todo', 'To do', counts.todo], ['totest', 'To test', counts.totest], ['pass', 'Tested ✓', counts.pass], ['done', 'Done', counts.done], ['fail', 'Tested ✗', counts.fail], ['discarded', 'Discarded', counts.discarded]]
 
   return (
     <div>

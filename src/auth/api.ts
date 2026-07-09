@@ -217,7 +217,7 @@ export const authApi = {
 
 // #438 — admin backlog triage types
 export type BacklogPriority = 'hi' | 'med' | 'lo'
-export type BacklogStatus = 'review' | 'todo' | 'totest' | 'done' | 'fail' | 'discarded'
+export type BacklogStatus = 'review' | 'todo' | 'totest' | 'pass' | 'done' | 'fail' | 'discarded'
 export type BacklogType = 'bug' | 'feature' | 'idea'
 export interface BacklogComment { text: string; at: number }
 export interface BacklogTriageItem { priority?: BacklogPriority; status?: BacklogStatus; type?: BacklogType; area?: string; comments?: BacklogComment[]; discarded?: boolean }
