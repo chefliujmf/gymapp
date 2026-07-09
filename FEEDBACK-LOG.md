@@ -961,6 +961,10 @@ test guide → the **🧪 Test guide** section below.
     Layers: `server/server.js` (VAPID + subscribe endpoints + web-push send in pushNotification) · service worker (`vite.config`/`public`) ·
     client Settings toggle + subscribe · openapi. Test: change a plan from the coach → the phone shows a system notification, tap → opens the plan.
     BUILT + on QA (degraded-off). ⚠️ Needs the **`VAPID_ENV` GitHub secret** set to enable (deploy scripts append it to auth.env).
+    ✅ VAPID secret set + LIVE on prod 2026-07-09; demo coach-review push landed on JM's phone. **Follow-up fix (tap→deep-link):** tapping the
+    notification wasn't opening the page — `client.navigate()` throws on an uncontrolled window (left the user put). Now the SW FOCUSES an open
+    app + posts `{notif-nav, link}` → App client-side routes there; if closed, `openWindow` an ABSOLUTE deep link. push-sw.js served no-cache
+    (ends "sw.js") so the new SW picks it up. On QA.
 458. ✅ **Location: intervals HAS it but the Platyplus profile showed blank.** JM 2026-07-09 (QA). His saved COORDS (lat/lon) were there but
     `info.locationName` was empty → `GET /auth/location` returned `name:null`, so Profile showed no place. Fixed: when coords are saved but the
     NAME is blank, adopt intervals' city name (keep the saved coords) + PERSIST it. On QA. Test: Profile → Location shows the city.
