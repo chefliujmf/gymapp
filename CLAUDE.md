@@ -39,8 +39,10 @@ JM lost trust because I shipped "built" code that didn't work. The fix is non-ne
    features like #439/#451 can't be tested on QA) → JM marks `pass` ⇒ mark **`done`** (already on prod, "very
    important") / `fail` ⇒ rework → **`totest == 0` triggers** re-review of the whole backlog + the next 10 →
    promote at 10 again → repeat until **0 bugs**. Many "open" `todo` bugs are already fixed (verify the `#NNN`
-   code ref + test, then flip to `totest`) — reconcile, don't re-fix. `todo` = JM's parking bucket (don't
-   auto-work it). Batch status flips so my writes don't race JM's live triage on the shared backlog file.
+   code ref + test, then flip to `totest`) — reconcile, don't re-fix. **Assess RELEVANCE when reviewing ANY item
+   (bug or feature, JM 2026-07-09): old items may reference removed/redesigned features → `discarded`, don't work
+   them.** `todo` = JM's parking bucket (don't auto-work it). Batch status flips so my writes don't race JM's
+   live triage on the shared backlog file.
 See skill `platyplus-testing` + memory `platyplus-testing-workflow` + `platyplus-admin-backlog`.
 
 ## Architecture (how it runs)

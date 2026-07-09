@@ -30,7 +30,10 @@ Fill the **`totest` bucket to exactly 10**. **JM reviews ONLY when `totest == 10
 - **REFILL TRIGGER = `totest == 0`** (JM: "as soon as to test is at 0, trigger a review of bugs and items and
   start working on 10"). The moment it hits 0: (1) mark the passes `done`; (2) rework the fails; (3) **RE-REVIEW
   the whole backlog** with JM's LATEST triage (new reports, reprioritizations, type/priority/area) — don't work a
-  stale list; reconcile already-fixed-but-stale `todo` bugs (verify the `#NNN` code ref + test → `totest`) and fix
+  stale list; for EACH candidate first **ASSESS RELEVANCE (JM 2026-07-09): "when you review an item of any kind
+  (feature or bug), assess it's still valid — some are old and not relevant anymore."** If it references a
+  since-removed/redesigned feature or is clearly superseded → **`discarded`** (don't work it; that's progress to 0).
+  Otherwise reconcile already-fixed-but-stale `todo` bugs (verify the `#NNN` code ref + test → `totest`) and fix
   the genuinely-open ones; (4) fill the next 10 → **promote at 10** again.
 Repeat until **0 bugs** (then, and only then, features/ideas — order per "Priority order"). Poll the `totest`
 count to catch the `== 0` trigger; batch my status flips so they don't race JM's live triage writes.
