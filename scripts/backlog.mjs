@@ -110,9 +110,16 @@ else if (cmd === 'next') {
     const eligible = t.type === 'bug' && (s === 'fail' || s === 'review')
     if (!eligible) continue
     cands.push({ n: Number(k), title: it.title || '', area: it.area || '', status: s, type: t.type || 'bug',
-      comments: (t.comments || []).map((c) => ({ by: c.by || 'user', text: String(c.text || '').slice(0, 400) })) })
+      priority: t.priority || '', comments: (t.comments || []).map((c) => ({ by: c.by || 'user', text: String(c.text || '').slice(0, 400) })) })
   }
-  cands.sort((a, b) => (a.status === 'fail' ? 0 : 1) - (b.status === 'fail' ? 0 : 1) || a.n - b.n)
+  // PRIORITY ORDER (JM): (1) tested-FAIL before review — a fix JM tested that broke is the highest priority; then
+  // (2) HIGH > MED > LOW > unset priority (his triage priority); then (3) oldest (#) first. Bugs-only is already
+  // enforced above (eligible requires type==='bug'), so bugs always come before features/ideas by construction.
+  const PRANK = { hi: 0, med: 1, lo: 2, '': 3 }
+  cands.sort((a, b) =>
+    (a.status === 'fail' ? 0 : 1) - (b.status === 'fail' ? 0 : 1)
+    || ((PRANK[a.priority] ?? 3) - (PRANK[b.priority] ?? 3))
+    || a.n - b.n)
   process.stdout.write(cands.length ? JSON.stringify(cands[0]) : '')
 }
 else if (cmd === 'ready') {
