@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell } from 'lucide-react'
-import { allNotifications, KIND_META, type Notification } from './notifications'
+import { allNotifications, KIND_META, kindForSubkind, type Notification } from './notifications'
 import { authApi } from './auth/api'
 import { syncActivityNotifs } from './activityNotifs'
 
@@ -36,7 +36,7 @@ export default function ReleaseBell() {
     const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
     document.addEventListener('mousedown', onDoc)
     authApi.notifications().then((ns) => setCoach(ns.map((n) => ({
-      id: n.id, kind: n.subkind === 'review' ? 'review' : 'coach', date: n.date, at: n.at,
+      id: n.id, kind: kindForSubkind(n.subkind), date: n.date, at: n.at,
       title: n.title, body: n.body, items: n.items, link: n.link, score: n.score,
     })))).catch(() => {})
     syncActivityNotifs().then(setActs).catch(() => {})

@@ -1,7 +1,7 @@
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 
 export interface Passkey { id: string; label: string; createdAt: number }
-export interface CoachNotification { id: string; kind: 'coach'; subkind?: 'update' | 'review'; date: string; at: string; title: string; body?: string; items?: string[]; link?: string; score?: number; read?: boolean }
+export interface CoachNotification { id: string; kind: 'coach'; subkind?: 'update' | 'review' | 'report'; date: string; at: string; title: string; body?: string; items?: string[]; link?: string; score?: number; read?: boolean }
 export interface CoachReview { id: string; date: string; planId?: string; activityId?: string; sport?: string; score?: number; verdict?: string; execution?: string[]; body?: string; mind?: { pattern?: string; cue?: string }; next?: string; recovery?: string; takeaways?: string[]; at: string }
 // #232 — activity & changes log entry
 export interface AuditEvent { at: number; actor: 'you' | 'coach' | 'sync' | 'system'; action: string; target?: string; detail?: string; kind?: string }
