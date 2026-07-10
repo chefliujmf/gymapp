@@ -208,6 +208,7 @@ export const authApi = {
   // #438 — admin backlog triage overlay (status / priority / type / comments) on top of the bundled backlog.json
   getBacklogTriage: () => req<{ triage: BacklogTriage; added: BacklogAddedItem[] }>('/admin/backlog'),
   claudeStatus: () => req<ClaudeStatus>('/admin/claude-status'), // #468 — live "what is Claude working on"
+  triggerClaude: () => req<{ ok: boolean }>('/admin/claude-trigger', { method: 'POST' }), // #468 — "Start next batch" now
   updateBacklog: (n: number, patch: { priority?: BacklogPriority | null; status?: BacklogStatus | null; type?: BacklogType | null; area?: string | null; comment?: string; deleteCommentAt?: number; discarded?: boolean }) =>
     req<{ n: number; triage: BacklogTriageItem | null }>(`/admin/backlog/${n}`, { method: 'PUT', body: patch }),
   addBacklogItem: (item: { n: number; title: string; type?: BacklogType; priority?: BacklogPriority; summary?: string }) =>
@@ -220,7 +221,7 @@ export const authApi = {
 export interface MyReport { n: number; title: string; summary: string; at: number; status: BacklogStatus; type: BacklogType }
 // #468 — live pipeline status Claude writes as it works (Admin → Claude panel polls it). poolBugs/Features/Ideas
 // = open items left by TYPE (priority order: bugs → features → ideas), so the panel shows the whole road to 0.
-export interface ClaudeStatus { active: boolean; batch?: number; phase?: string; note?: string; done?: number; total?: number; poolRemaining?: number; poolBugs?: number; poolFeatures?: number; poolIdeas?: number; updatedAt?: number }
+export interface ClaudeStatus { active: boolean; batch?: number; phase?: string; note?: string; done?: number; total?: number; poolRemaining?: number; poolBugs?: number; poolFeatures?: number; poolIdeas?: number; updatedAt?: number; trigger?: { requestedAt: number; by: string } | null }
 
 // #438 — admin backlog triage types
 export type BacklogPriority = 'hi' | 'med' | 'lo'

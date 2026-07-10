@@ -10,11 +10,13 @@ import AdminBacklog from './AdminBacklog'
 function timeAgo(ms: number) { const s = Math.round((Date.now() - ms) / 1000); if (s < 60) return s + 's ago'; if (s < 3600) return Math.round(s / 60) + 'm ago'; return Math.round(s / 3600) + 'h ago' }
 function ClaudePanel() {
   const [s, setS] = useState<ClaudeStatus | null>(null)
+  const [req, setReq] = useState<'idle' | 'sending' | 'sent'>('idle')
   useEffect(() => {
     const load = () => authApi.claudeStatus().then(setS).catch(() => {})
     load(); const t = setInterval(load, 8000); return () => clearInterval(t)
   }, [])
   if (!s) return null
+  const trigger = () => { setReq('sending'); authApi.triggerClaude().then(() => { setReq('sent'); setTimeout(() => setReq('idle'), 5000) }).catch(() => setReq('idle')) }
   const stale = s.updatedAt ? Date.now() - s.updatedAt > 6 * 60000 : true // >6 min without an update ⇒ treat as idle
   const active = !!s.active && !stale
   const pct = s.total ? Math.min(100, Math.round(((s.done || 0) / s.total) * 100)) : 0
@@ -35,6 +37,10 @@ function ClaudePanel() {
         </div>
       ) : null}
       {s.updatedAt ? <div className="meta" style={{ fontSize: 10.5, marginTop: 7 }}>updated {timeAgo(s.updatedAt)}</div> : null}
+      {/* #468 — manual trigger: kick off the next batch on demand (not only at the auto totest==0 trigger). */}
+      <button className="btn btn--ghost" style={{ width: '100%', marginTop: 11, fontSize: 12.5, padding: '8px' }} disabled={req !== 'idle'} onClick={trigger}>
+        {req === 'sent' ? '✓ Requested — Claude will start the next batch shortly' : req === 'sending' ? 'Requesting…' : '▶ Start next batch now'}
+      </button>
     </div>
   )
 }

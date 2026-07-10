@@ -1012,7 +1012,12 @@ app.get('/auth/admin/backlog', auth, admin, (req, res) => { res.json(readBacklog
 // this file as it works (same shared /srv/backlog mount, both envs); the Admin panel polls this endpoint.
 const CLAUDE_STATUS_FILE = process.env.CLAUDE_STATUS_FILE || '/srv/backlog/claude-status.json'
 const readClaudeStatus = () => { try { return JSON.parse(readFileSync(CLAUDE_STATUS_FILE, 'utf8')) } catch { return { active: false, note: 'idle' } } }
-app.get('/auth/admin/claude-status', auth, admin, (req, res) => res.json(readClaudeStatus()))
+app.get('/auth/admin/claude-status', auth, admin, (req, res) => res.json({ ...readClaudeStatus(), trigger: readClaudeTrigger() }))
+// #468 — JM taps "Start next batch" in the panel → drop a request flag (its OWN file so it never races Claude's
+// status writes). Claude's watcher polls this + refills on demand, not only at totest==0.
+const CLAUDE_TRIGGER_FILE = process.env.CLAUDE_TRIGGER_FILE || '/srv/backlog/claude-trigger.json'
+const readClaudeTrigger = () => { try { return JSON.parse(readFileSync(CLAUDE_TRIGGER_FILE, 'utf8')) } catch { return null } }
+app.post('/auth/admin/claude-trigger', auth, admin, (req, res) => { try { writeFileSync(CLAUDE_TRIGGER_FILE, JSON.stringify({ requestedAt: Date.now(), by: req.user.username || 'you' })) } catch (e) { return res.status(500).json({ error: 'could not write trigger' }) } res.json({ ok: true }) })
 app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
   const n = String(Number(req.params.n) || '')
   if (!n || n === '0') return res.status(400).json({ error: 'valid item number required' })
