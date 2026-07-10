@@ -40,7 +40,7 @@ function LocationField() {
       {loc === null ? <p className="meta">Loading…</p>
         : (loc.name && !editing) ? (
           <div className="card" style={{ padding: '11px 13px' }}>
-            <div style={{ fontWeight: 750, fontSize: 14 }}>📍 {loc.name} <span className="meta" style={{ fontWeight: 400 }}>· {loc.source === 'intervals' ? 'from intervals' : 'saved'}</span></div>
+            <div style={{ fontWeight: 750, fontSize: 14 }}>📍 {loc.name}{loc.source === 'intervals' ? <span className="meta" style={{ fontWeight: 400 }}> · from intervals</span> : null}</div>
             <div className="meta" style={{ marginTop: 3 }}>Used for weather-aware coaching + your local time.{loc.source === 'intervals' ? ' Confirm to lock it in (and keep intervals in sync).' : ''}</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               {loc.source !== 'saved' && <button className="btn" disabled={busy} onClick={() => submit((loc.name || '').split(',')[0])} style={{ flex: 1 }}>Use this ✓</button>}
