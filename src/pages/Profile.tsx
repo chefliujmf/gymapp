@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getSetting, setSetting } from '../db'
@@ -194,6 +194,26 @@ export default function Profile() {
     ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
     : (user?.username || '?').slice(0, 2).toUpperCase()
 
+  // #5010 — the avatar was display-only. Tap it → pick a photo → center-crop to a 256px square (JPEG) so it's
+  // small enough for the server (<400 KB) and needs no manual zoom → save + refresh.
+  const avaRef = useRef<HTMLInputElement>(null)
+  const [avaBusy, setAvaBusy] = useState(false)
+  const onAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; e.target.value = ''; if (!f) return
+    setAvaBusy(true)
+    const img = new Image()
+    img.onload = () => {
+      const S = 256, c = document.createElement('canvas'); c.width = S; c.height = S
+      const ctx = c.getContext('2d'); const side = Math.min(img.width, img.height)
+      ctx?.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, S, S)
+      const url = c.toDataURL('image/jpeg', 0.85)
+      URL.revokeObjectURL(img.src)
+      authApi.saveAvatar(url).then(() => refresh()).catch(() => {}).finally(() => setAvaBusy(false))
+    }
+    img.onerror = () => setAvaBusy(false)
+    img.src = URL.createObjectURL(f)
+  }
+
   const does = (s: string) => (user?.sports || []).includes(s)
 
   return (
@@ -206,7 +226,8 @@ export default function Profile() {
 
       <div className="card" style={{ padding: '12px 14px' }}>
         <div className="card-row" style={{ gap: 12, alignItems: 'center' }}>
-          <span className="acct__avatar acct__avatar--lg">{avatar}</span>
+          <button className="acct__avatar acct__avatar--lg" onClick={() => avaRef.current?.click()} title="Change photo" style={{ border: 'none', padding: 0, cursor: 'pointer', position: 'relative', overflow: 'visible' }}>{avatar}<span style={{ position: 'absolute', right: -3, bottom: -3, fontSize: 11, background: 'var(--accent)', color: '#08130b', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{avaBusy ? '…' : '📷'}</span></button>
+          <input ref={avaRef} type="file" accept="image/*" onChange={onAvatarFile} style={{ display: 'none' }} />
           <div style={{ flex: 1 }}><strong>{user?.username}</strong><div className="meta">{user?.email} · {user?.role}</div></div>
         </div>
       </div>
