@@ -207,6 +207,7 @@ export const authApi = {
 
   // #438 — admin backlog triage overlay (status / priority / type / comments) on top of the bundled backlog.json
   getBacklogTriage: () => req<{ triage: BacklogTriage; added: BacklogAddedItem[] }>('/admin/backlog'),
+  claudeStatus: () => req<ClaudeStatus>('/admin/claude-status'), // #468 — live "what is Claude working on"
   updateBacklog: (n: number, patch: { priority?: BacklogPriority | null; status?: BacklogStatus | null; type?: BacklogType | null; area?: string | null; comment?: string; deleteCommentAt?: number; discarded?: boolean }) =>
     req<{ n: number; triage: BacklogTriageItem | null }>(`/admin/backlog/${n}`, { method: 'PUT', body: patch }),
   addBacklogItem: (item: { n: number; title: string; type?: BacklogType; priority?: BacklogPriority; summary?: string }) =>
@@ -217,6 +218,8 @@ export const authApi = {
   myReports: () => req<{ reports: MyReport[] }>('/my-reports'),
 }
 export interface MyReport { n: number; title: string; summary: string; at: number; status: BacklogStatus; type: BacklogType }
+// #468 — live pipeline status Claude writes as it works (Admin → Claude panel polls it)
+export interface ClaudeStatus { active: boolean; batch?: number; phase?: string; note?: string; done?: number; total?: number; poolRemaining?: number; updatedAt?: number }
 
 // #438 — admin backlog triage types
 export type BacklogPriority = 'hi' | 'med' | 'lo'

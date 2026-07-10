@@ -1,9 +1,40 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
-import { authApi, type User } from '../auth/api'
+import { authApi, type User, type ClaudeStatus } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import AdminBacklog from './AdminBacklog'
+
+// #468 — live "what is Claude working on" panel. Claude writes a shared status file as it runs the bug
+// pipeline; this polls it so JM can SEE the current batch, progress toward the 10-item bucket, and bugs left.
+function timeAgo(ms: number) { const s = Math.round((Date.now() - ms) / 1000); if (s < 60) return s + 's ago'; if (s < 3600) return Math.round(s / 60) + 'm ago'; return Math.round(s / 3600) + 'h ago' }
+function ClaudePanel() {
+  const [s, setS] = useState<ClaudeStatus | null>(null)
+  useEffect(() => {
+    const load = () => authApi.claudeStatus().then(setS).catch(() => {})
+    load(); const t = setInterval(load, 8000); return () => clearInterval(t)
+  }, [])
+  if (!s) return null
+  const stale = s.updatedAt ? Date.now() - s.updatedAt > 6 * 60000 : true // >6 min without an update ⇒ treat as idle
+  const active = !!s.active && !stale
+  const pct = s.total ? Math.min(100, Math.round(((s.done || 0) / s.total) * 100)) : 0
+  return (
+    <div className="card" style={{ padding: '13px 15px', marginBottom: 14, border: `1px solid ${active ? '#34e07d66' : '#2a2f3a'}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 18 }}>🤖</span><strong style={{ fontSize: 14 }}>Claude</strong>
+        <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 800, letterSpacing: '.03em', padding: '3px 10px', borderRadius: 999, color: active ? '#08130b' : '#9298a6', background: active ? '#34e07d' : '#20242e' }}>{active ? '● WORKING' : 'idle'}</span>
+      </div>
+      {s.note && <div style={{ fontSize: 13, color: '#c4cad4', marginTop: 8, lineHeight: 1.4 }}>{s.batch ? <b>Batch {s.batch} · </b> : null}{s.note}</div>}
+      {s.total ? (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ height: 8, background: '#0b0e12', borderRadius: 999, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg,#34e07d,#5be59a)', transition: 'width .5s' }} /></div>
+          <div className="meta" style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between' }}><span>{s.done || 0}/{s.total} in to-test</span>{s.poolRemaining != null ? <span>{s.poolRemaining} bugs left → 0</span> : null}</div>
+        </div>
+      ) : null}
+      {s.updatedAt ? <div className="meta" style={{ fontSize: 10.5, marginTop: 7 }}>updated {timeAgo(s.updatedAt)}</div> : null}
+    </div>
+  )
+}
 
 // Admin-only: the BACKLOG tracker (#438) + user management. Mobile-first.
 export default function Admin() {
@@ -52,6 +83,7 @@ export default function Admin() {
         <p>{tab === 'backlog' ? 'Your live backlog — filter, comment, prioritise, discard' : 'Manage who can access Platyplus'}</p>
       </div>
 
+      <ClaudePanel />
       <div className="chips" style={{ marginBottom: 14 }}>
         <button className={'chip' + (tab === 'backlog' ? ' chip--active' : '')} onClick={() => setTab('backlog')}>Backlog</button>
         <button className={'chip' + (tab === 'users' ? ' chip--active' : '')} onClick={() => setTab('users')}>Users</button>
