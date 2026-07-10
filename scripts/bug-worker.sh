@@ -82,6 +82,14 @@ Follow your operating rules exactly: assess it's a real, still-relevant bug; fix
   AFTER="$(git rev-parse HEAD)"
   [ "$DRY" = "1" ] && return 0
   if [ "$BEFORE" != "$AFTER" ]; then
+    # The Mac (features) may have pushed to dev while we worked → re-sync before pushing so we don't fail on a
+    # non-fast-forward. Our bug fix + a Mac commit touch different files, so the rebase is normally clean.
+    if ! git pull --rebase --quiet origin dev 2>/dev/null; then
+      git rebase --abort 2>/dev/null || true
+      log "couldn't rebase #$N onto latest dev — parking for JM"
+      "$NODE" scripts/backlog.mjs flip "$N" todo "Claude: fix built but couldn't cleanly rebase onto the latest dev; needs a look" --force >/dev/null 2>&1 || true
+      return 0
+    fi
     if git push --quiet origin dev 2>/dev/null; then
       log "pushed #$N to dev (QA will redeploy)"
     else
