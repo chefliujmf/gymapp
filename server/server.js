@@ -1012,7 +1012,14 @@ app.get('/auth/admin/backlog', auth, admin, (req, res) => { res.json(readBacklog
 // this file as it works (same shared /srv/backlog mount, both envs); the Admin panel polls this endpoint.
 const CLAUDE_STATUS_FILE = process.env.CLAUDE_STATUS_FILE || '/srv/backlog/claude-status.json'
 const readClaudeStatus = () => { try { return JSON.parse(readFileSync(CLAUDE_STATUS_FILE, 'utf8')) } catch { return { active: false, note: 'idle' } } }
-app.get('/auth/admin/claude-status', auth, admin, (req, res) => res.json({ ...readClaudeStatus(), trigger: readClaudeTrigger() }))
+app.get('/auth/admin/claude-status', auth, admin, (req, res) => {
+  const st = readClaudeStatus()
+  // #468 — compute the LIVE to-test bucket from the backlog (not my static write) so JM always sees the REAL
+  // remaining-to-review count + WHICH items (a lone straggler like #412 was invisible before → looked like 0).
+  const bl = readBacklog()
+  const pending = Object.entries(bl.triage || {}).filter(([, t]) => t && t.status === 'totest').map(([k]) => Number(k)).sort((a, b) => a - b)
+  res.json({ ...st, liveTotest: pending.length, pending: pending.slice(0, 15), trigger: readClaudeTrigger() })
+})
 // #468 — JM taps "Start next batch" in the panel → drop a request flag (its OWN file so it never races Claude's
 // status writes). Claude's watcher polls this + refills on demand, not only at totest==0.
 const CLAUDE_TRIGGER_FILE = process.env.CLAUDE_TRIGGER_FILE || '/srv/backlog/claude-trigger.json'

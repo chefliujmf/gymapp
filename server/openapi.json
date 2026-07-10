@@ -225,6 +225,20 @@
         }
       }
     },
+    "/auth/admin/claude-status": {
+      "get": {
+        "summary": "#468 — live 'what is Claude working on' status for the Admin panel (batch, progress toward the 10-item to-test bucket, and open items left by type: bugs → features → ideas). Session+admin.",
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ active, batch, phase, note, done, total, poolBugs, poolFeatures, poolIdeas, updatedAt, trigger }" } }
+      }
+    },
+    "/auth/admin/claude-trigger": {
+      "post": {
+        "summary": "#468 — 'Start next batch now': drop a request flag (own file) that Claude's watcher polls, so JM can kick off the next batch on demand (not only at the auto totest==0 trigger). Session+admin.",
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "{ ok: true }" }, "500": { "description": "could not write trigger" } }
+      }
+    },
     "/auth/admin/backlog": {
       "get": {
         "summary": "#438 — read the admin backlog TRIAGE overlay + app-added items. Session+admin.",
