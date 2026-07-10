@@ -22,6 +22,31 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+478. ⬜ **Eat & Mind must stay SUGGESTIONS — never auto-imposed into the calendar.** JM 2026-07-10 (3 msgs +
+    screenshots): "I prefer to keep suggestions for eat and mind; 8 and 9 imposed in my calendar is a no-no…
+    this is suggestions I want to keep… not just dinner like this, this is wrong and never asked." The coach's
+    daily-adapt is SCHEDULING a single meal (Dinner) + a Mind session INTO the day instead of leaving the Eat/Mind
+    **suggestion cards** (4 meal picks + mind picks) alone. Also the **+ button differs between Eat and Mind**
+    (visual inconsistency). Fix: coach must NOT `schedule_meal`/`schedule_mind` into the calendar by default —
+    Eat/Mind stay suggestions the user opts into via +. **Route:** bug → coach behavior (Claude to trace, not auto-worker).
+477. ⬜ **Intervals sync: event still in intervals but removed from Platyplus (delete didn't propagate).** JM
+    2026-07-10 (screenshot): "still in intervals but not in Platyplus (coach removed it, which I agree) but sync
+    issues AGAIN with intervals." Orphaned planned strength workouts ("Load 0", 0%) linger in intervals after
+    Platyplus drops them. Reconcile/orphan-GC (#414) should delete the intervals event when its plan is removed.
+    **Route:** bug → intervals sync (Claude to trace carefully — shared athlete i28814).
+476. ⬜ **Daily reminder: only push if data is MISSING from Platyplus.** JM 2026-07-10: "daily reminder to send a
+    push if data is not in Platyplus (Garmin/Coros didn't sync, or entered manually) — check if there's data and
+    notify only if needed." Add to the "A morning nudge to check in + see today's plan" reminder: gate the nudge on
+    missing wellness/activity data. **Route:** feature (this chat) → design.
+475. ✅ **XPS bug-worker LIVE + autonomous — bugs run on the box, not this chat.** JM 2026-07-10: "bugs must be run
+    through the XPS CLI Claude Code, not this chat… you work on it automatically and set it to test." Built:
+    `scripts/bug-worker.sh` (runs as jmf on jmf's Claude subscription; assess→fix→test→totest→push dev; NEVER prod),
+    `worker-system.md` rules, box-aware `backlog.mjs` (`next`/`ready`), systemd service+timer (autonomous). Proven:
+    #326 fixed+pushed to QA, #251 parked with options-first judgment. **Verify:** Admin → Claude card = live XPS worker.
+474. 🔨 **Promote ONE-BY-ONE — as soon as an item passes, promote it; don't wait for 10.** JM 2026-07-10: "once one
+    is tested successfully, you can promote, don't wait for 10 items, go one by one." Worker gate changed from
+    batch-of-10 to a rolling buffer (cap 5, `ready`=totest<cap) so totest stays topped with a few bugs to test +
+    promote individually. Pipeline rule → promote per pass → done (not batched at 10). **Route:** worker/process.
 473. 🔨 **Review flow: after saving feedback, back to the review list (keep going); the LAST one → Today.** JM
     2026-07-10 (screenshot of "To review · 24"): "when I click a review I need to see the whole activity; once I
     save, bring me back to this review screen unless we're done, then back to Today." Tap → the full activity was
