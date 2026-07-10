@@ -23,7 +23,26 @@ describe('ftpEstimate', () => {
     const e = ftpEstimate({ eftp: null, cp: null })
     expect(e.best).toBeNull()
     expect(e.conf.cls).not.toBe('strong')
-    expect(e.why).toMatch(/effort/i)
+    expect(e.why).toMatch(/effort|set the FTP/i)
+  })
+  // The value you TRAIN BY anchors the number — easy/stale data must NOT lowball your known FTP (JM: "estimate
+  // is bad if it can't see my FTP is 260").
+  it('manual 260 + stale eFTP 240 (easy rides) → shows 260, unconfirmed, not lowballed', () => {
+    const e = ftpEstimate({ eftp: 240, eftpAgeDays: 34, cp: 248, best20: 200, manual: 260 })
+    expect(e.best).toBe(260)
+    expect(e.conf.cls).not.toBe('strong')
+    expect(e.why).toMatch(/hard|confirm|effort/i)
+  })
+  it('manual 260 + a FRESH hard eFTP that agrees → confirmed strong', () => {
+    const e = ftpEstimate({ eftp: 258, eftpAgeDays: 5, manual: 260 })
+    expect(e.best).toBe(260)
+    expect(e.conf.cls).toBe('strong')
+  })
+  it('manual 240 + a FRESH hard eFTP 270 that disagrees → nudges up, re-test', () => {
+    const e = ftpEstimate({ eftp: 270, eftpAgeDays: 5, manual: 240 })
+    expect(e.best).toBeGreaterThan(245)
+    expect(e.best).toBeLessThan(266)
+    expect(e.conf.cls).not.toBe('strong')
   })
 })
 

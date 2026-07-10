@@ -395,8 +395,8 @@ select.search { appearance: none; -webkit-appearance: none; }
 .tl-chip { flex: 1; min-width: 70px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 11px; padding: 7px 10px; }
 .tl-chip span { display: block; color: var(--text-dim); font-size: 11px; }
 .tl-chip b { font-size: 16px; }
-.tl-card { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 13px; padding: 8px 6px 2px; margin-bottom: 9px; }
-.tl-clabel { font-size: 11px; font-weight: 700; color: var(--text-dim); padding: 0 6px 2px; }
+.tl-card { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 13px; padding: 11px 8px 5px; margin-bottom: 10px; }
+.tl-clabel { font-size: 11px; font-weight: 700; letter-spacing: .02em; color: var(--text-dim); padding: 0 4px 12px; } /* #483 real gap below the title so the top axis label can't overlap it */
 /* #54 Power tab: time-in-zone bar + list */
 .zbar { display: flex; height: 16px; border-radius: 6px; overflow: hidden; margin: 4px 0 10px; background: var(--bg-soft); }
 .zlist { display: flex; flex-direction: column; gap: 3px; }
@@ -838,7 +838,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .chart-tip__d { color: var(--text-dim); font-weight: 600; }
 /* gridded axis layout: y labels gutter + plot + x labels row. #286: wider gutter (breathing
    room) + taller x row so denser ticks read. */
-.chart2 { display: grid; grid-template-columns: 50px 1fr; grid-template-rows: 1fr 18px; column-gap: 8px; }
+.chart2 { display: grid; grid-template-columns: 50px 1fr; grid-template-rows: 1fr 18px; column-gap: 8px; padding-top: 8px; } /* #483 room for the top axis label's half-height (translateY(-50%)) so it doesn't spill into the title */
 .chart2__y { position: relative; grid-column: 1; grid-row: 1; }
 .chart2__y span { position: absolute; right: 2px; transform: translateY(-50%); font-size: 9.5px; font-weight: 600; color: var(--text-dim); white-space: nowrap; }
 .chart2__plot { grid-column: 2; grid-row: 1; }

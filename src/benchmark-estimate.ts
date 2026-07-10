@@ -102,35 +102,52 @@ function tagSources(sources: Src[], best: number | null, freshDays: number, tol:
 
 export interface FtpInputs {
   eftp: number | null; eftpAgeDays?: number | null   // intervals eFTP (decays between hard rides)
-  cp: number | null                                   // critical power (derived FTP ≈ CP)
+  cp?: number | null                                  // critical power (derived FTP ≈ CP)
   best20?: number | null                              // best recent 20-min power (FTP ≈ best20 × 0.95)
   manual?: number | null                              // the FTP the athlete trains by
 }
 export function ftpEstimate(inp: FtpInputs): Estimate {
-  const FRESH = 21, tol = 0.03
-  const sources: Src[] = [
-    // eFTP only refreshes off a hard near-max ride, so a FRESH eFTP means a real recent effort ('observed');
-    // when it's old it both loses weight and stops counting as test-backed.
+  const FRESH = 21, tol = 0.05
+  const eftpFresh = inp.eftp != null && inp.eftpAgeDays != null && inp.eftpAgeDays <= FRESH
+  const srcRows: Src[] = [
+    { name: 'you train by', value: inp.manual ?? null, ageDays: null, kind: 'manual' },
     { name: 'intervals eFTP', value: inp.eftp, ageDays: inp.eftpAgeDays ?? null, kind: 'observed' },
     { name: 'from CP', value: inp.cp != null ? Math.round(inp.cp) : null, ageDays: 0, kind: 'model' },
     { name: 'best 20-min ×0.95', value: inp.best20 != null ? Math.round(inp.best20 * 0.95) : null, ageDays: null, kind: 'test' },
-    { name: 'you train by', value: inp.manual ?? null, ageDays: null, kind: 'manual' },
   ]
-  const e = honestEstimate(sources, { freshDays: FRESH, tol })
-  const best = e.best != null ? Math.round(e.best) : null
-  const staleE = sources.find((s) => s.name === 'intervals eFTP' && s.ageDays != null && s.ageDays > FRESH)
-  let why: string
-  if (best == null) why = 'No power estimate yet — a hard 20–40 min effort gives you an FTP.'
-  else if (staleE && inp.cp != null && Math.abs((staleE.value as number) - inp.cp) / inp.cp > tol) {
-    why = `Your eFTP ${staleE.value} W is stale (${staleE.ageDays}d) and your CP says ~${Math.round(inp.cp)}. Blended best guess ~${best} W — a hard 20–40 min effort would confirm it.`
-  } else if (inp.manual != null && best != null && Math.abs(inp.manual - best) / best > 0.05) {
-    why = `Your sources land near ${best} W, but you train by ${inp.manual} — a hard effort settles which is real.`
-  } else if (e.conf.cls === 'strong') {
-    why = `Your independent estimates all land near ${best} W — a trustworthy FTP.`
-  } else {
-    why = `Best estimate ~${best} W from your recent efforts. A fresh hard 20–40 min ride firms it up.`
+  // The value you TRAIN BY anchors it — you know your FTP better than a stale eFTP or a CP fit from easy rides.
+  // Computed sources only MOVE the number when a genuinely FRESH hard effort (a recently-refreshed eFTP) disagrees.
+  // Easy/stale data never drags your known FTP down; it just means we can't confirm it yet.
+  if (inp.manual != null && inp.manual > 0) {
+    const m = inp.manual
+    let best = m, conf: EstConfidence, why: string
+    if (eftpFresh && Math.abs((inp.eftp as number) - m) / m > tol) {
+      best = Math.round((m + (inp.eftp as number)) / 2)
+      conf = { pct: 66, cls: 'good', label: 'Worth a re-test' }
+      why = `A recent hard effort put your eFTP at ${inp.eftp} W but you train by ${m} — it's somewhere around ${best} W. A fresh 20–40 min test settles it.`
+    } else if (eftpFresh) {
+      conf = { pct: 88, cls: 'strong', label: 'Confirmed by a recent effort' }
+      why = `A recent hard ride backs your ${m} W FTP — confirmed.`
+    } else {
+      conf = { pct: 50, cls: 'need', label: 'Unconfirmed — needs a hard effort' }
+      why = `Using your set FTP of ${m} W. Your recent rides have been too easy to confirm it${inp.cp != null ? ` (your CP curve currently reads ${Math.round(inp.cp)} W)` : ''} — a hard 20–40 min effort would prove it.`
+    }
+    const sources: TaggedSrc[] = srcRows.map((s) =>
+      s.kind === 'manual' ? { name: s.name, value: s.value, tag: 'primary' as SrcTag }
+      : s.value == null ? { name: s.name, value: s.value, tag: 'off' as SrcTag }
+      : s.name === 'intervals eFTP' ? { name: s.name, value: s.value, tag: (eftpFresh ? 'agrees' : 'stale') as SrcTag }
+      : { name: s.name, value: s.value, tag: 'agrees' as SrcTag })
+    return { best, lo: best, hi: best, conf, why, sources }
   }
-  return { best, lo: e.lo != null ? Math.round(e.lo) : null, hi: e.hi != null ? Math.round(e.hi) : null, conf: e.conf, why, sources: tagSources(sources, e.best, FRESH, tol) }
+  // No FTP set yet → blend the computed sources honestly (this is where eFTP/CP/20-min agreement matters).
+  const comp = srcRows.filter((s) => s.kind !== 'manual')
+  const e = honestEstimate(comp, { freshDays: FRESH, tol: 0.03 })
+  const best = e.best != null ? Math.round(e.best) : null
+  const staleE = inp.eftp != null && inp.eftpAgeDays != null && inp.eftpAgeDays > FRESH
+  const why = best == null ? 'No FTP yet — set the FTP you train by, or do a hard 20–40 min effort.'
+    : staleE && inp.cp != null ? `Your eFTP ${inp.eftp} W is stale and your CP reads ~${Math.round(inp.cp)} — blended ~${best} W. Set the FTP you train by, or do a hard effort to confirm.`
+    : `Best estimate ~${best} W from your recent efforts — set the FTP you train by to anchor it.`
+  return { best, lo: e.lo != null ? Math.round(e.lo) : null, hi: e.hi != null ? Math.round(e.hi) : null, conf: e.conf, why, sources: tagSources(comp, e.best, FRESH, 0.03) }
 }
 
 // Threshold pace (running), native = seconds per km (LOWER is faster). Same shape as FTP.
