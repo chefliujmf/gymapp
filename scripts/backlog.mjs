@@ -10,7 +10,7 @@
 //   node scripts/backlog.mjs flip <n> totest "note" # guarded status flip (+ optional Claude note)
 //   node scripts/backlog.mjs settype <n> <type>     # bug|feature|idea
 //   node scripts/backlog.mjs done <n>               # pass→done (only if currently pass)
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, renameSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -24,8 +24,15 @@ const REVIEWED = new Set(['pass', 'fail', 'done']) // JM's outcomes — protect 
 const SH = (cmd) => execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
 
 function reconnect() { try { SH(`bash ${join(ROOT, 'scripts/ts-up.sh')} >/dev/null 2>&1`) } catch { /* ignore */ } }
-function readBl() { reconnect(); return JSON.parse(SH(`ssh -o ConnectTimeout=15 xps 'docker exec gymapp cat /srv/backlog/backlog.json'`)) }
+// BACKLOG_FILE set = we're ON the box (the XPS worker): read/write the shared file directly (atomic temp+rename).
+// Unset = we're on the Mac: go over ssh into the container. SAME logic either way.
+const LOCAL = process.env.BACKLOG_FILE || ''
+function readBl() {
+  if (LOCAL) return JSON.parse(readFileSync(LOCAL, 'utf8'))
+  reconnect(); return JSON.parse(SH(`ssh -o ConnectTimeout=15 xps 'docker exec gymapp cat /srv/backlog/backlog.json'`))
+}
 function writeBl(bl) {
+  if (LOCAL) { const tmp = LOCAL + '.tmp'; writeFileSync(tmp, JSON.stringify(bl)); renameSync(tmp, LOCAL); return }
   reconnect()
   const tmp = join(ROOT, '.secrets/.bl-out.json'); writeFileSync(tmp, JSON.stringify(bl))
   SH(`cat ${tmp} | ssh -o ConnectTimeout=15 xps 'docker exec -i gymapp sh -c "cat > /srv/backlog/.bl.tmp && mv /srv/backlog/.bl.tmp /srv/backlog/backlog.json"'`)
@@ -85,4 +92,27 @@ else if (cmd === 'done') {
   bl.triage[k].status = 'done'; writeBl(bl); console.log(`#${k} → done`)
 }
 else if (cmd === 'rmorphan') { const before = Object.keys(bl.triage).length; const m = merged(bl); for (const k of Object.keys(bl.triage)) if (!m.has(k)) delete bl.triage[k]; writeBl(bl); console.log(`removed ${before - Object.keys(bl.triage).length} orphan(s)`) }
-else { console.log('cmds: status | flip <n> <status> [note] | settype <n> <type> | done <n> | rmorphan') }
+else if (cmd === 'next') {
+  // The XPS worker's picker: the ONE top-priority BUG to work now, as JSON (empty = nothing to do).
+  // Eligible = 'fail' (a fix JM tested that didn't work — rework, HIGHEST) OR 'review'+type:bug (a fresh report).
+  // NEVER 'todo' (that's JM's parking lot), never features/ideas/untyped (this chat handles those).
+  // Respects the to-test CAP: bucket full (>=CAP) => empty, it's JM's turn to test.
+  const CAP = Number(process.env.WORKER_TOTEST_CAP || 10)
+  const m = merged(bl)
+  let totestCount = 0
+  for (const [k, it] of m) if (effOf(bl, k, it) === 'totest') totestCount++
+  if (totestCount >= CAP) { process.stdout.write(''); process.exit(0) }
+  const cands = []
+  for (const [k, it] of m) {
+    const t = bl.triage[k] || {}, s = effOf(bl, k, it)
+    // BUGS ONLY (the XPS worker's domain). fail>review. Features/ideas/untyped are this chat's — never the worker's,
+    // even when a feature's test failed (a failed FEATURE is still a feature).
+    const eligible = t.type === 'bug' && (s === 'fail' || s === 'review')
+    if (!eligible) continue
+    cands.push({ n: Number(k), title: it.title || '', area: it.area || '', status: s, type: t.type || 'bug',
+      comments: (t.comments || []).map((c) => ({ by: c.by || 'user', text: String(c.text || '').slice(0, 400) })) })
+  }
+  cands.sort((a, b) => (a.status === 'fail' ? 0 : 1) - (b.status === 'fail' ? 0 : 1) || a.n - b.n)
+  process.stdout.write(cands.length ? JSON.stringify(cands[0]) : '')
+}
+else { console.log('cmds: status | next | flip <n> <status> [note] | settype <n> <type> | done <n> | rmorphan') }
