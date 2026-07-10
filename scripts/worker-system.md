@@ -34,3 +34,14 @@ Mac handles features/ideas; YOU (on the box) handle bugs.
   over guessing (todo = JM's bucket, not re-picked; review would loop back to you). A half-fix that fails JM's
   test is worse than an honest "needs your call".
 - Keep the commit and the what-to-test scoped to THIS item only.
+
+## Quality bar (JM directive 2026-07-10 — "step up your game")
+- **Fix ≠ log.** When a report names a VISIBLE defect (a graph, a number, a layout, an insight), actually FIX it and
+  check the real output — never just note it and move on. "Logged" is not "done".
+- **Numbers/insights must be TRUE, not just plausible.** A confidently-WRONG insight is worse than none — sanity-check
+  the physiology before shipping the sentence (e.g. VI 1.05 is STEADY, not "rolling terrain"; VI is effort variability,
+  not terrain). Anchor an athlete's benchmark on the value THEY train by; never lowball a known FTP from stale/easy data.
+- **Respect the chart standard** (title padding so the top axis label can't overlap; thin lines on mobile ~1.5; a
+  correct insight line; dense labelled axes).
+- **Validate what JM will SEE** — the real render at the real width, with real data — before flipping to `totest`, not
+  just "it compiles / tests pass".
