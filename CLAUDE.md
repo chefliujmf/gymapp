@@ -33,13 +33,19 @@ JM lost trust because I shipped "built" code that didn't work. The fix is non-ne
    unit test file + JM's manual steps + expected result + status. Keep it current.
 5. **Mock-first for anything JM sees** (skill `options-first`), and **trace the real flow / check the
    source of truth** (e.g. do these choices match intervals?) — not just "does it compile?".
-6. **PRIORITY + PIPELINE (JM 2026-07-09):** fix what's BROKEN first — **ALL bugs before ANY feature/idea**
-   (failed bugs → open bugs → then features). Run the **10-at-a-time pipeline**: fill `totest` to **10** →
-   **PROMOTE the batch dev→prod at 10** ("promote when tested is at 10") so JM tests **on prod** (coach-only
-   features like #439/#451 can't be tested on QA) → JM marks `pass` ⇒ mark **`done`** (already on prod, "very
-   important") / `fail` ⇒ rework → **`totest == 0` triggers** re-review of the whole backlog + the next 10 →
-   promote at 10 again → repeat until **0 bugs**. Many "open" `todo` bugs are already fixed (verify the `#NNN`
-   code ref + test, then flip to `totest`) — reconcile, don't re-fix. **Assess RELEVANCE when reviewing ANY item
+6. **PRIORITY + PIPELINE (JM 2026-07-10 — supersedes the old 10-at-a-time batch):** BUGS are worked by the
+   **autonomous XPS worker** (`scripts/bug-worker.sh` + systemd timer on the box), **NOT this chat** — see memory
+   `platyplus-bug-worker-architecture`. This chat = **features/ideas/ideation**. Worker pick order: **tested-`fail`
+   first, then HIGH>MED>LOW priority, then oldest #**; **bugs only** (never features/ideas). It keeps a small
+   **rolling `totest` buffer** (cap 5) on QA and goes **ONE-BY-ONE**, not a batch of 10. **PROMOTE = per item, gated
+   on "Tested Success" (`pass`):** JM tests on QA → flips an item to `pass` → promote **that item alone** with
+   **`scripts/promote-item.sh <N>`** (cherry-picks its commit onto a branch off `main` → prod PR → CI build-gates
+   auto-merge → `deploy.yml` ships prod), then mark **`done`**. **NEVER promote wholesale dev→prod** — dev carries
+   untested worker fixes + infra that must not ride along (JM directive: "don't promote dev→prod without testing +
+   approval"). `fail` ⇒ the worker reworks it (top priority). Fix what's BROKEN first — **ALL bugs before ANY
+   feature/idea**. Many "open" `todo` bugs are already fixed (verify the `#NNN` code ref + test, then flip to
+   `totest`) — reconcile, don't re-fix. ⚠️ The Mac (this chat) and the worker BOTH push `dev` → always
+   `git fetch && rebase` before pushing (the worker does this automatically since the #5003 push-race). **Assess RELEVANCE when reviewing ANY item
    (bug or feature, JM 2026-07-09): old items may reference removed/redesigned features → `discarded`, don't work
    them.** `todo` = JM's parking bucket (don't auto-work it). Batch status flips so my writes don't race JM's
    live triage on the shared backlog file.
