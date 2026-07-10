@@ -142,7 +142,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)
     fetchWellness(from, to).then((rows) => {
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break }
-      for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { setEftp(rows[i].eftp as number); break }
+      for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { setEftp(Math.round(rows[i].eftp as number)); break } // #464 whole watts at the source (feeds chosenFtp + the profile card)
       const se = estimateSleepNeed(rows); setSleepEst(se.suggested); setSleepMore(se.needMore || null); setSleepRaw(se.suggestedRaw); setSleepTop(se.topNights) // #337 sleep learning state
     }).catch(() => {})
   }, [connected])

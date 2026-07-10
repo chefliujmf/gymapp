@@ -14,6 +14,11 @@ describe('athleteProfile', () => {
     expect(p.reads.find((r) => r.k === 'TTE')?.r).toMatch(/biggest lever/i)
     expect(p.reads.find((r) => r.k === 'EF')?.r).toMatch(/rising/i)
   })
+  it('#464: a decimal eFTP/threshold renders as WHOLE watts (no 240.27774 W anywhere)', () => {
+    const p = athleteProfile({ sport: 'cycling', threshold: 240.27774, eftp: 235.51825, tte: 720, cp: 248, reserveKj: 17.1, reserveBig: 20 })
+    expect(p.reads.find((r) => r.k === 'FTP')?.v).toBe('240 W') // rounded, not "240.27774 W"
+    expect(JSON.stringify(p)).not.toMatch(/\d\.\d{2,}\s*W/) // no multi-decimal watt in reads OR focus
+  })
   it('long TTE + small reserve → diesel engine, focus on raising the ceiling', () => {
     const p = athleteProfile({ sport: 'cycling', threshold: 250, eftp: 250, tte: 3000, cp: 249, reserveKj: 12, reserveBig: 20 })
     expect(p.type).toBe('Diesel engine')
