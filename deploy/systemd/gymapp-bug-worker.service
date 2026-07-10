@@ -1,0 +1,16 @@
+# Platyplus autonomous bug worker (XPS). Install: copy to /etc/systemd/system/, `systemctl daemon-reload`.
+# Runs as jmf (so claude uses jmf's Claude subscription creds); systemd injects GH_PROMOTE_TOKEN from the
+# root-owned env file (git push only) so the token never sits on jmf-readable disk. Fixes bugs → pushes dev
+# (→ QA). NEVER promotes prod. Paired with the .timer (polls) — the script self-gates on a drained bucket.
+[Unit]
+Description=Platyplus autonomous bug worker (assess -> fix -> totest -> push dev)
+After=network.target
+
+[Service]
+Type=oneshot
+User=jmf
+Environment=HOME=/home/jmf
+Environment=MAX_ITERS=10
+EnvironmentFile=/root/.gymapp-worker.env
+ExecStart=/usr/bin/env bash /home/jmf/gymapp-worker/scripts/bug-worker.sh
+TimeoutStartSec=5400
