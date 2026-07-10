@@ -1046,7 +1046,8 @@ app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
   if (t.status === 'done' && prevStatus !== 'done') {
     const rep = (bl.added || []).find((x) => String(x.n) === n)
     const who = rep && rep.reporter && (store.users || []).find((u) => u.username === rep.reporter || u.email === rep.reporter)
-    if (who && who.id !== req.user.id) { pushNotification(who, { id: 'fixed-' + n, title: '✅ Your report is fixed', body: rep.title, link: '/reports' }); save(store) }
+    // #5003 — tag it 'report' so the bell shows a green "Your report" (not a purple "Coach update"); no link (reports live in the top-bar megaphone, there's no /reports route).
+    if (who && who.id !== req.user.id) { pushNotification(who, { id: 'fixed-' + n, subkind: 'report', title: '✅ Your report is fixed', body: rep.title }); save(store) }
   }
   res.json({ n: Number(n), triage: bl.triage[n] || null })
 })
@@ -2509,7 +2510,7 @@ function pushNotification(u, { title, body, items, subkind, link, score, id, dat
   const n = {
     id: id || ('coach-' + randomBytes(6).toString('base64url')),
     kind: 'coach',
-    subkind: subkind === 'review' ? 'review' : undefined, // #233 distinguishes review vs update in the bell
+    subkind: (subkind === 'review' || subkind === 'report') ? subkind : undefined, // #233 review vs update; #5003 'report' = the user's own bug/idea report update
     date: (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) ? date : new Date().toISOString().slice(0, 10), // #361 caller can set the SESSION date
     at: new Date().toISOString(),
     title: t,

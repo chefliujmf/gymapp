@@ -3,7 +3,7 @@
 // coach messages, system alerts…) and each item is clearly labelled.
 import { releases } from './data/releases'
 
-export type NotifKind = 'release' | 'reminder' | 'coach' | 'review' | 'activity' | 'system'
+export type NotifKind = 'release' | 'reminder' | 'coach' | 'review' | 'report' | 'activity' | 'system'
 
 export interface Notification {
   id: string
@@ -23,8 +23,17 @@ export const KIND_META: Record<NotifKind, { label: string; icon: string; color: 
   reminder: { label: 'Reminder', icon: '⏰', color: '#3b82f6' },
   coach: { label: 'Coach update', icon: '🧑‍🏫', color: '#a855f7' },
   review: { label: 'Coach review', icon: '💬', color: '#a855f7' },
+  report: { label: 'Your report', icon: '🐛', color: '#22c55e' }, // #5003 — a user's own bug/idea report update (NOT a coach note)
   activity: { label: 'New activity', icon: '🏅', color: '#f6c445' },
   system: { label: 'System', icon: '⚙️', color: '#9aa3b2' },
+}
+
+// #5003 — map a server notification's `subkind` to a bell KIND. Report-status updates ('report') and
+// coach reviews ('review') must NOT be labelled as generic "Coach update" — they get their own kind.
+export function kindForSubkind(subkind?: string): NotifKind {
+  if (subkind === 'review') return 'review'
+  if (subkind === 'report') return 'report'
+  return 'coach'
 }
 
 /** All notifications, newest first. Release notes today; other kinds plug in here. */
