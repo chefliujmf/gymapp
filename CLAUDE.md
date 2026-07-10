@@ -120,9 +120,11 @@ memory `platyplus-readiness-model`. Build the math as a pure, unit-tested `serve
   BEFORE the target only (exclude the target's own session — else a hard day projects its own post-session
   fatigue → false "wrecked"). And **skip non-session events** — an intervals ATP **weekly TARGET** (category
   `TARGET`, e.g. "ATP W06" ~250 TSS/wk) or NOTE is NOT a single-day load (#366). Same filter on `/auth/readiness-projection`.
-- **Daily auto-adapt (#367):** an in-process scheduler (`dailyAdaptTick`, QA/prod, ticks every 30 min) has the
-  coach proactively re-plan the rolling **14-day** horizon each morning per athlete's LOCAL tz — an EARLY pass
-  ~4am (Form/freshness) + a REFINE pass once HRV/sleep lands. Runtime-message-driven, NOT in
+- **Daily auto-adapt (#367 · #469):** an in-process scheduler (`dailyAdaptTick`, QA/prod, ticks every 30 min) has
+  the coach proactively re-plan the rolling **14-day** horizon per athlete's LOCAL tz. **#469 (JM 2026-07-10):
+  ONE pass per day, AFTER the athlete has CHECKED IN today** (`user.dailyAdapt.done`) — the old everyday ~4am
+  MORNING pass was REMOVED (adapting before the check-in has no readiness context, so it didn't make sense). No
+  check-in ⇒ no adapt that day (the next check-in fills/adjusts the horizon). Runtime-message-driven, NOT in
   `coach-engine.md` (keeps the ~128 KB systemPrompt under the argv limit, #352). Manual: `POST /api/coach/daily-adapt`.
   **#439 — SEPARATE focused pass per topic (JM), NOT one giant prompt** (the coach gave each partial attention +
   ran out, leaving the back half of the horizon blank): `runDailyAdapt` runs (1) `dailyAdaptMsg` = adapt the WORKOUT
