@@ -8,7 +8,8 @@ import { estimateSleepNeed } from './sleep'
 import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from './tte'
 import { athleteProfile } from './athlete-profile'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, confLabel } from './vo2max-submax'
-import { vo2maxConfidence, ftpConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, modelFitConfidence, type Confidence } from './benchmark-confidence'
+import { vo2maxConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, modelFitConfidence, type Confidence } from './benchmark-confidence'
+import { ftpEstimate } from './benchmark-estimate' // #5007 — honest multi-source estimate + confidence
 
 // #236 — benchmarks = MANUAL vs COMPUTED. Tiles show the in-use value; tap → a sheet with BOTH values,
 // an input (editable only in Manual), and a Manual|Computed toggle. A per-stat preference (user.statPrefs)
@@ -115,6 +116,8 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const [pull, setPull] = useState<IcuAthletePull | null>(null)
   const [hrRest, setHrRest] = useState<number | null>(null)
   const [eftp, setEftp] = useState<number | null>(null)
+  const [eftpAgeDays, setEftpAgeDays] = useState<number | null>(null) // #5007 recency of the eFTP (it decays between hard rides)
+  const [ftp20, setFtp20] = useState<number | null>(null) // #5007 best 20-min power → FTP ≈ ×0.95
   const [paceEst, setPaceEst] = useState<number | null>(null)
   const [map5, setMap5] = useState<number | null>(null) // #337 best 5-min power (MAP)
   const [pbWeight, setPbWeight] = useState<number | null>(null)
@@ -136,13 +139,13 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     if (!connected) return
     authApi.pullIcuAthlete().then(setPull).catch(() => {})
     authApi.runEstimate().then((r) => { if (r.available && r.thresholdPace) setPaceEst(r.thresholdPace) }).catch(() => {})
-    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? '') }).catch(() => {}) // #337
+    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? '') }).catch(() => {}) // #337 · #5007 ftp20
     fetchPowerCurve(365).then(setPowerCurve).catch(() => {}) // #401 TTE — a year of efforts for a stable CP/W′ + CS/D′ model fit
     fetchPaceCurve(365).then(setPaceCurve).catch(() => {}) // #401 running TTE
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)
     fetchWellness(from, to).then((rows) => {
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break }
-      for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { setEftp(Math.round(rows[i].eftp as number)); break } // #464 whole watts at the source (feeds chosenFtp + the profile card)
+      for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { const r = rows[i] as { eftp?: number | null; id?: string; date?: string }; setEftp(Math.round(r.eftp as number)); const d = r.date || r.id; if (d) setEftpAgeDays(Math.max(0, Math.round((Date.now() - new Date(d).getTime()) / 86400000))); break } // #464 whole watts · #5007 capture the eFTP date for recency
       const se = estimateSleepNeed(rows); setSleepEst(se.suggested); setSleepMore(se.needMore || null); setSleepRaw(se.suggestedRaw); setSleepTop(se.topNights) // #337 sleep learning state
     }).catch(() => {})
   }, [connected])
@@ -175,12 +178,17 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const wPrimeKj = powerCurve?.wPrime != null ? Math.round(powerCurve.wPrime / 100) / 10 : null // kJ, 0.1 precision
   const csPace = paceCurve?.cs != null && paceCurve.cs > 0 ? Math.round(1000 / paceCurve.cs) : null // sec/km
   const dPrimeM = paceCurve?.dPrime != null ? Math.round(paceCurve.dPrime) : null // metres
+  // #5007 — honest FTP: blend eFTP (weighted by recency) + CP-derived + best-20min×0.95; confidence from real
+  // signals so a stale eFTP that disagrees with CP can't read "Strong". toConf maps the engine's 'good' onto the
+  // existing bar classes (learn) so the CSS keeps working.
+  const ftpEst = ftpEstimate({ eftp, eftpAgeDays, cp, best20: ftp20, manual: ftpManual })
+  const toConf = (c: { pct: number; cls: string; label: string }): Confidence => ({ pct: c.pct, cls: (c.cls === 'good' ? 'learn' : c.cls) as Confidence['cls'], label: c.label })
   // #403 — athlete-profile synthesis (rendered when a per-sport page passes `profile`). EF wires in Phase 2.
   // #464 — the insight must anchor on the CHOSEN FTP/pace (same `inUse` logic as the benchmark card), not the
   // raw MANUAL value — else the FTP card showed 241 W (computed) while the insight said 260 W (manual): a
   // confusing on-page discrepancy. computed/auto → prefer the computed estimate; manual → the set value.
   const prefFor = (k: string) => (user?.statPrefs as Partial<Record<string, string>> | undefined)?.[k] ?? 'auto'
-  const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? eftp) : (eftp ?? ftpManual)
+  const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftp) : (ftpEst.best ?? eftp ?? ftpManual) // #5007 computed side = the blended estimate
   const chosenPace = prefFor('thresholdPace') === 'manual' ? (paceManual ?? paceEst) : (paceEst ?? paceManual)
   const prof = profile ? athleteProfile(profile === 'cycling'
     ? { sport: 'cycling', threshold: chosenFtp, eftp, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
@@ -244,11 +252,11 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     },
     // #362 — FTP is event-based (intervals reads eFTP from a hard effort), so give the concrete trigger, not a vague "as it sees efforts".
     {
-      key: 'ftp', label: 'FTP', unit: 'W', computed: eftp, computedSrc: 'eFTP from your power', pending: eftp ? undefined : (map5 != null ? 'after your next hard ride — a ~5–20 min near-max effort; intervals reads eFTP from it (no formal FTP test)' : 'after your first hard ride — intervals reads eFTP from a ~5–20 min effort (no formal test needed)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
+      key: 'ftp', label: 'FTP', unit: 'W', computed: ftpEst.best, computedSrc: 'blended: eFTP + CP + 20-min power', pending: ftpEst.best ? undefined : (map5 != null ? 'after your next hard ride — a ~5–20 min near-max effort; intervals reads eFTP from it (no formal FTP test)' : 'after your first hard ride — intervals reads eFTP from a ~5–20 min effort (no formal test needed)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
       chip: 'eFTP',
-      conf: ftpConfidence({ eftp, manual: ftpManual }), // #5007 — not "Strong" when eFTP disagrees with your set FTP
-      narr: <>intervals derives your <b>eFTP</b> straight from your power data — no formal test. It firms up after any ~5–20 min near-max effort, and keeps tracking as your fitness moves.</>,
-      sci: [{ name: 'intervals eFTP', formula: 'model · from your power curve', value: eftp != null ? String(Math.round(eftp)) : '—', inUse: eftp != null }],
+      conf: toConf(ftpEst.conf), // #5007 — blended estimate + honest confidence (recency · agreement · test-backed)
+      narr: <><b>{ftpEst.why}</b><br /><br />Your FTP blends three independent reads — intervals <b>eFTP</b> (from your power, no formal test), your <b>Critical Power</b>, and your best recent <b>20-min</b> effort — each weighted by how fresh it is. A stale eFTP that disagrees with your CP can't claim "Strong".</>,
+      sci: ftpEst.sources.map((s) => ({ name: s.name, formula: s.tag === 'stale' ? 'stale — refresh with a hard effort' : s.tag === 'off' ? 'not available' : 'agrees with the blend', value: s.value != null ? `${s.value} W` : '—', inUse: s.tag === 'agrees' || s.tag === 'primary' })),
       sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your power curve → tighter eFTP.',
     },
     {
