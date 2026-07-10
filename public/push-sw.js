@@ -29,6 +29,9 @@ self.addEventListener('notificationclick', (event) => {
       try { if (new URL(c.url).origin === self.location.origin) { await c.focus(); c.postMessage({ type: 'notif-nav', link }); return } } catch (_e) { /* skip */ }
     }
     // App closed → open a fresh window at the absolute deep link (SPA renders /activity/:id etc).
+    // #470 — an installed PWA cold-launched by a notification often opens at start_url (Today), IGNORING this
+    // deep link. So ALSO stash the link in a cache the app reads on startup, then navigates there itself.
+    try { const cache = await caches.open('notif-nav'); await cache.put('/pending', new Response(JSON.stringify({ link, at: Date.now() }))) } catch (_e) { /* ignore */ }
     if (self.clients.openWindow) return self.clients.openWindow(url)
   })())
 })

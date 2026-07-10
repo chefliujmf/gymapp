@@ -2853,14 +2853,12 @@ async function dailyAdaptTick() {
     if (!user.icuKey || !user.coachProfile || !String(user.coachProfile).trim()) continue
     user.dailyAdapt = user.dailyAdapt || {}
     try {
-      if (hour >= 4 && hour < 11 && user.dailyAdapt.early !== today) { // EARLY pass — from ~4am local, once/day
-        user.dailyAdapt.early = today; save(store); runDailyAdapt(user, 'early'); continue
-      }
-      // REFINE pass — after the early pass, once today's HRV/sleep/RHR has actually landed in intervals.
-      if (user.dailyAdapt.early === today && user.dailyAdapt.refine !== today && hour >= 6 && hour < 23) {
-        const w = await icuGet(user, `/athlete/${user.icuAthlete}/wellness?oldest=${today}&newest=${today}`).catch(() => null)
-        const row = Array.isArray(w) ? w.find((d) => d.id === today) : null
-        if (row && (row.hrv != null || row.sleepSecs != null || row.restingHR != null)) { user.dailyAdapt.refine = today; save(store); runDailyAdapt(user, 'refine') }
+      // #469 (JM 2026-07-10) — ONE adapt per day, AFTER the check-in. The old everyday ~4am MORNING pass was
+      // REMOVED: adapting BEFORE the check-in has no readiness context, so it didn't make sense. Run once the
+      // athlete has checked in today — their Sleep/Freshness/Energy + whatever overnight wellness landed give the
+      // coach real signal to adapt on. (No check-in today ⇒ no adapt; the next check-in fills/adjusts the horizon.)
+      if (user.dailyAdapt.done !== today && hour >= 5 && hour < 23 && (user.checkins || []).some((c) => c.date === today)) {
+        user.dailyAdapt.done = today; save(store); runDailyAdapt(user, 'refine')
       }
     } catch (e) { console.error(`[daily-adapt tick] ${user.username || ''} ${e.message || e}`) }
   }

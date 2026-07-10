@@ -40,6 +40,21 @@ export default function App() {
     navigator.serviceWorker?.addEventListener('message', onMsg)
     return () => navigator.serviceWorker?.removeEventListener('message', onMsg)
   }, [navigate])
+  // #470 — on STARTUP, consume a link the sw stashed when a notification cold-launched the PWA (which lands on
+  // Today, ignoring the deep link). Navigate there ourselves, then clear it — so tapping a notification always
+  // opens the activity/plan, not just the app.
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const cache = await caches.open('notif-nav'); const r = await cache.match('/pending')
+        if (!r) return
+        await cache.delete('/pending')
+        const { link, at } = await r.json() as { link?: string; at?: number }
+        if (link && link !== '/' && at && Date.now() - at < 120000) navigate(link)
+      } catch { /* ignore */ }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // Hide chrome on detail/player pages for an immersive view.
   const isDetail = /\/(workouts|exercises|programs|recipes|trainers|mind|cycle|plan)\/[^/]+$/.test(pathname) || pathname === '/ride-player' || pathname === '/run-player' || pathname === '/build' || pathname === '/ride-builder' || pathname === '/run-builder' || pathname === '/admin' || pathname === '/chat' || /\/play$/.test(pathname)
 
