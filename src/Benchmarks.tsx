@@ -246,7 +246,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     {
       key: 'ftp', label: 'FTP', unit: 'W', computed: eftp, computedSrc: 'eFTP from your power', pending: eftp ? undefined : (map5 != null ? 'after your next hard ride — a ~5–20 min near-max effort; intervals reads eFTP from it (no formal FTP test)' : 'after your first hard ride — intervals reads eFTP from a ~5–20 min effort (no formal test needed)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
       chip: 'eFTP',
-      conf: ftpConfidence({ eftp }),
+      conf: ftpConfidence({ eftp, manual: ftpManual }), // #5007 — not "Strong" when eFTP disagrees with your set FTP
       narr: <>intervals derives your <b>eFTP</b> straight from your power data — no formal test. It firms up after any ~5–20 min near-max effort, and keeps tracking as your fitness moves.</>,
       sci: [{ name: 'intervals eFTP', formula: 'model · from your power curve', value: eftp != null ? String(Math.round(eftp)) : '—', inUse: eftp != null }],
       sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your power curve → tighter eFTP.',
