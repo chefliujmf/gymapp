@@ -36,6 +36,10 @@ git checkout --quiet dev 2>/dev/null || git checkout --quiet -b dev origin/dev
 git reset --hard --quiet origin/dev
 git clean -fdq -e node_modules
 
+# the item list (src/data/generated/backlog.json) is a gitignored build artifact — regenerate it from
+# FEEDBACK-LOG.md so backlog.mjs sees the current items (dep-free node script).
+"$NODE" scripts/build-backlog.mjs >/dev/null 2>&1 || log "warn: build-backlog failed (item list may be stale)"
+
 # pick the top bug (empty = nothing eligible, or the to-test bucket is full = JM's turn)
 NEXT="$("$NODE" scripts/backlog.mjs next 2>/dev/null || true)"
 if [ -z "$NEXT" ]; then
