@@ -19,7 +19,8 @@ function ClaudePanel() {
   const trigger = () => { setReq('sending'); authApi.triggerClaude().then(() => { setReq('sent'); setTimeout(() => setReq('idle'), 5000) }).catch(() => setReq('idle')) }
   const stale = s.updatedAt ? Date.now() - s.updatedAt > 6 * 60000 : true // >6 min without an update ⇒ treat as idle
   const active = !!s.active && !stale
-  const pct = s.total ? Math.min(100, Math.round(((s.done || 0) / s.total) * 100)) : 0
+  const lt = s.liveTotest ?? s.done ?? 0 // LIVE to-test count (from the backlog), not my static write
+  const pct = s.total ? Math.min(100, Math.round((lt / s.total) * 100)) : 0
   return (
     <div className="card" style={{ padding: '13px 15px', marginBottom: 14, border: `1px solid ${active ? '#34e07d66' : '#2a2f3a'}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -30,7 +31,7 @@ function ClaudePanel() {
       {s.total ? (
         <div style={{ marginTop: 10 }}>
           <div style={{ height: 8, background: '#0b0e12', borderRadius: 999, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg,#34e07d,#5be59a)', transition: 'width .5s' }} /></div>
-          <div className="meta" style={{ marginTop: 6 }}>{s.done || 0}/{s.total} in to-test</div>
+          <div className="meta" style={{ marginTop: 6 }}>{lt}/{s.total} still to review{lt > 0 && s.pending?.length ? <>: <b style={{ color: '#e0a334' }}>{s.pending.map((n) => '#' + n).join(', ')}</b></> : lt === 0 ? ' — bucket clear ✓' : ''}</div>
           {(s.poolBugs != null || s.poolFeatures != null || s.poolIdeas != null) ? (
             <div className="meta" style={{ marginTop: 4 }}>Left → 0: <b style={{ color: '#ff8a8a' }}>{s.poolBugs ?? 0} bug{s.poolBugs === 1 ? '' : 's'}</b> · {s.poolFeatures ?? 0} feature{s.poolFeatures === 1 ? '' : 's'} · {s.poolIdeas ?? 0} idea{s.poolIdeas === 1 ? '' : 's'} <span style={{ opacity: .6 }}>(bugs first)</span></div>
           ) : s.poolRemaining != null ? <div className="meta" style={{ marginTop: 4 }}>{s.poolRemaining} left → 0</div> : null}
