@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { fetchActivity, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
+import { fetchActivity, fetchActivities, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
+import { incompleteFeedback } from '../feedbackGaps'
 import { TrendChart, PowerCurveChart, PaceCurveChart, PowerBlocks, minuteTicks } from '../charts'
 import { fmtPace } from '../running-paces'
 import { paceOf, bestPaceCurve, paceZoneSecs, PZONES, PZONE_PCT } from '../run-analysis'
@@ -217,7 +218,18 @@ export default function ActivityDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const fromReview = (useLocation().state as { from?: string } | null)?.from === '/review' // #442b — return to the review list after Save
-  const afterSave = fromReview ? () => navigate('/review') : undefined
+  // #473 — after saving, go BACK to the review list to keep knocking them out; but if that was the LAST one,
+  // go to Today (don't dump the user on an empty "all caught up" screen). We re-check the remaining gaps,
+  // excluding the one just saved (its feedback may not have synced back to intervals yet).
+  const afterSave = fromReview ? async () => {
+    try {
+      const now = new Date(), from = new Date(now); from.setDate(from.getDate() - 45)
+      const iso = (d: Date) => d.toISOString().slice(0, 10)
+      const acts = await fetchActivities(iso(from), iso(now))
+      const remaining = incompleteFeedback(acts).filter((g) => String(g.act.id) !== String(id))
+      navigate(remaining.length ? '/review' : '/')
+    } catch { navigate('/review') }
+  } : undefined
   const { user } = useAuth()
   const [a, setA] = useState<IcuActivity | null>(null)
   const [streams, setStreams] = useState<ActivityStreams>({})
