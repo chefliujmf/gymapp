@@ -28,7 +28,10 @@ function ClaudePanel() {
       {s.total ? (
         <div style={{ marginTop: 10 }}>
           <div style={{ height: 8, background: '#0b0e12', borderRadius: 999, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg,#34e07d,#5be59a)', transition: 'width .5s' }} /></div>
-          <div className="meta" style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between' }}><span>{s.done || 0}/{s.total} in to-test</span>{s.poolRemaining != null ? <span>{s.poolRemaining} bugs left → 0</span> : null}</div>
+          <div className="meta" style={{ marginTop: 6 }}>{s.done || 0}/{s.total} in to-test</div>
+          {(s.poolBugs != null || s.poolFeatures != null || s.poolIdeas != null) ? (
+            <div className="meta" style={{ marginTop: 4 }}>Left → 0: <b style={{ color: '#ff8a8a' }}>{s.poolBugs ?? 0} bug{s.poolBugs === 1 ? '' : 's'}</b> · {s.poolFeatures ?? 0} feature{s.poolFeatures === 1 ? '' : 's'} · {s.poolIdeas ?? 0} idea{s.poolIdeas === 1 ? '' : 's'} <span style={{ opacity: .6 }}>(bugs first)</span></div>
+          ) : s.poolRemaining != null ? <div className="meta" style={{ marginTop: 4 }}>{s.poolRemaining} left → 0</div> : null}
         </div>
       ) : null}
       {s.updatedAt ? <div className="meta" style={{ fontSize: 10.5, marginTop: 7 }}>updated {timeAgo(s.updatedAt)}</div> : null}
