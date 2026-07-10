@@ -22,6 +22,19 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+473. 🔨 **Review flow: after saving feedback, back to the review list (keep going); the LAST one → Today.** JM
+    2026-07-10 (screenshot of "To review · 24"): "when I click a review I need to see the whole activity; once I
+    save, bring me back to this review screen unless we're done, then back to Today." Tap → the full activity was
+    already right. Fixed `afterSave` in `ActivityDetail.tsx`: re-check remaining feedback gaps (excluding the just-
+    saved one, whose feedback may not have synced) → more left = `/review`, none left = `/` (Today). **Verify:**
+    open a review, Save → next lands back on the review list; save the last → Today.
+472. 🔨 **Tailscale auto-reconnect (stop the ~daily browser re-auth for box ops).** JM 2026-07-10. Node key already
+    non-expiring — the env just doesn't persist the TS login across restarts. Fix: reusable auth key in
+    `.secrets/tailscale.env` (gitignored, 600); `scripts/ts-up.sh` brings TS up non-interactively; throttled
+    `~/.zprofile` hook self-heals. `.env.example` holds a placeholder only (token was NEVER committed). Ops/infra.
+471. 🔨 **Backlog: Claude's comments show "Claude" (not "You") + "What to test" is human-readable.** JM 2026-07-10:
+    my comments were mislabeled "YOU" and "What to test" showed the raw feedback (gibberish). `AdminBacklog.tsx`:
+    comment byline reflects `by`; "What to test" = `it.test` or Claude's latest note (plain), never the raw summary.
 470. 🔨 **Tapping a push notification must open the ACTIVITY/plan, not just Today.** JM 2026-07-10: "a notification
     works great but when i click on it, it opens the today app and thats it — bring me to the notification in the
     app." Links were already correct (reviews → `/activity/:id`); the issue is an installed PWA cold-launched by a
