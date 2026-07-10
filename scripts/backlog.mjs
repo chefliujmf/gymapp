@@ -115,4 +115,17 @@ else if (cmd === 'next') {
   cands.sort((a, b) => (a.status === 'fail' ? 0 : 1) - (b.status === 'fail' ? 0 : 1) || a.n - b.n)
   process.stdout.write(cands.length ? JSON.stringify(cands[0]) : '')
 }
-else { console.log('cmds: status | next | flip <n> <status> [note] | settype <n> <type> | done <n> | rmorphan') }
+else if (cmd === 'ready') {
+  // The worker's batch gate: "1" only when the to-test bucket is DRAINED (0) AND a bug awaits. This gives clean
+  // 0→10 batch cycles (JM tests a full batch of 10, and only when he's finished it down to 0 does the next start)
+  // instead of continuously topping the bucket back up to 10 while he's mid-testing.
+  const m = merged(bl)
+  let totest = 0, bug = 0
+  for (const [k, it] of m) {
+    const t = bl.triage[k] || {}, s = effOf(bl, k, it)
+    if (s === 'totest') totest++
+    if (t.type === 'bug' && (s === 'fail' || s === 'review')) bug++
+  }
+  process.stdout.write(totest === 0 && bug > 0 ? '1' : '0')
+}
+else { console.log('cmds: status | next | ready | flip <n> <status> [note] | settype <n> <type> | done <n> | rmorphan') }

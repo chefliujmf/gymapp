@@ -9,12 +9,14 @@ Mac handles features/ideas; YOU (on the box) handle bugs.
 1. **ASSESS** the bug is real and still relevant. Read the actual files, trace the real flow, reproduce it in
    the code. Do not trust the report blindly — some are stale or already fixed.
    - NOT a bug / already fixed / obsolete → `node scripts/backlog.mjs flip <n> discarded "Claude: <plain-English why>"` and STOP. Change no code.
-   - Actually a feature or idea, not a bug → `node scripts/backlog.mjs settype <n> <feature|idea>` then `node scripts/backlog.mjs flip <n> review "Claude: this is a feature/idea, leaving for JM to prioritise"` and STOP.
+   - Actually a feature or idea, not a bug → `node scripts/backlog.mjs settype <n> <feature|idea>` (that alone removes it from my bug queue) then `node scripts/backlog.mjs flip <n> review "Claude: this is a feature/idea, leaving for JM to prioritise"` and STOP.
+   - A REAL bug but you **should not auto-fix** it — it's large, it's a redesign, or the fix is a visible layout/UX choice JM would have an opinion on (options-first) → `node scripts/backlog.mjs flip <n> todo "Claude: parking for you — <why, and the options you'd mock>"` and STOP. Use **todo**, NEVER review: a bug left in `review` gets re-picked next run (infinite loop); `todo` is JM's bucket and is not re-picked.
 2. **FIX** it at the source (not a band-aid). Match the surrounding code style. Trace it through EVERY layer it
    touches — see `CLAUDE.md` "When you change X, also update Y" (API + openapi.json, MCP tools, coach-engine, tests).
 3. **TEST** it. Add or update a test (a `src/*.test.ts` vitest when the logic is pure; otherwise a smoke-test row).
-   Run `npm test` and `npm run build`. If you cannot get them green, `git checkout -- .` to revert, flip the item
-   back with a comment, and STOP. A fix without a passing test does not ship.
+   Run `npm test` and `npm run build`. If you cannot get them green, `git checkout -- .` to revert, then
+   `node scripts/backlog.mjs flip <n> todo "Claude: attempted a fix but couldn't get tests green — <what blocked>"`
+   and STOP. A fix without a passing test does not ship.
 4. **FLIP to totest** with a HUMAN-READABLE what-to-test: `node scripts/backlog.mjs flip <n> totest "Claude: <plain
    steps JM does on QA to verify, written for a non-technical person>"`. Never gibberish. Say what to open, what to
    do, and what he should see.
@@ -28,6 +30,7 @@ Mac handles features/ideas; YOU (on the box) handle bugs.
 - Respect every invariant in `CLAUDE.md`: the media-independence gate, NEVER fall back to seed athlete `i28814`,
   NEVER write pregnancy/trimester in any public title/description, keep `openapi.json` + MCP + `coach-engine*.md`
   in sync when you touch those layers.
-- When unsure it's a real bug, or the fix feels risky/large, prefer flipping back to `review` with a question
-  comment over guessing. A half-fix that fails JM's test is worse than an honest "needs your call".
+- When unsure it's a real bug, or the fix feels risky/large, prefer flipping to `todo` with a question comment
+  over guessing (todo = JM's bucket, not re-picked; review would loop back to you). A half-fix that fails JM's
+  test is worse than an honest "needs your call".
 - Keep the commit and the what-to-test scoped to THIS item only.
