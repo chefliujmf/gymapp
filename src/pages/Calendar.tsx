@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchEvents, deleteEvent, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
+// #5013 — a completed intervals activity with no matching plan/event is an UNPLANNED workout.
 import { MiniProfile, DoneStats } from '../ui'
 import { fetchGymPlans, syncIcuPlans, setCoachPlans, type CoachPlan } from '../plan'
 import { calApi, type CalItem } from '../calendar'
@@ -10,6 +11,7 @@ import { localISO } from '../date'
 import { Plus, ChevronLeft, ChevronRight, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet, colorFor, iconFor, type SheetType } from './AddSheet'
+import { orphanActivities } from '../orphan-activities'
 import { MovePicker } from './MovePicker'
 import { useAuth } from '../auth/AuthContext'
 
@@ -28,11 +30,13 @@ const weekDays = (iso: string) => { const s = startOfWeek(iso); return Array.fro
 const fmtFull = (iso: string) => new Date(iso + 'T00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
 const fmtShort = (iso: string) => new Date(iso + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
 
-const titleOf = (e: Entry) => (e.k === 'plan' ? e.plan.title : e.k === 'event' ? e.ev.name : e.item.title)
+// #5013 — 'ride' | 'run' | 'gym' → a display label for a completed activity's title.
+const actLabel = (s: string) => (s === 'ride' ? 'Ride' : s === 'run' ? 'Run' : 'Gym')
+const titleOf = (e: Entry) => (e.k === 'plan' ? e.plan.title : e.k === 'event' ? e.ev.name : e.k === 'item' ? e.item.title : e.act.name || actLabel(sportOfActivity(e.act)))
 
-type Entry = { k: 'plan'; plan: CoachPlan } | { k: 'event'; ev: IcuEvent } | { k: 'item'; item: CalItem }
+type Entry = { k: 'plan'; plan: CoachPlan } | { k: 'event'; ev: IcuEvent } | { k: 'item'; item: CalItem } | { k: 'activity'; act: IcuActivity }
 // Substitute is type-locked to the replaced entry; map an Entry → the AddSheet's pre-selected type.
-const lockTypeOf = (e: Entry): SheetType => (e.k === 'plan' ? e.plan.sport : e.k === 'item' ? e.item.type : e.ev.type === 'Run' ? 'run' : e.ev.type === 'WeightTraining' ? 'gym' : 'ride') as SheetType
+const lockTypeOf = (e: Entry): SheetType => (e.k === 'plan' ? e.plan.sport : e.k === 'item' ? e.item.type : e.k === 'activity' ? sportOfActivity(e.act) : e.ev.type === 'Run' ? 'run' : e.ev.type === 'WeightTraining' ? 'gym' : 'ride') as SheetType
 
 // #379 — a plan/item entry carries a stable id + date, so moving = re-save with a new date.
 // icu-origin events (read-only, intervals-owned) can't be moved from here — edit them in intervals.
@@ -98,9 +102,12 @@ export default function Calendar() {
     plans.filter((p) => p.date === day).forEach((plan) => out.push({ k: 'plan', plan }))
     events.filter((e) => e.start_date_local.slice(0, 10) === day && !plans.some((p) => (e.external_id && p.id === e.external_id) || (p.icuEventId != null && String(p.icuEventId) === String(e.id)) || (p.date === day && (p.sport === 'ride' ? 'cycling' : p.sport) === sportOf(e) && String(p.title || '').trim().toLowerCase() === String(e.name || '').trim().toLowerCase()))).forEach((ev) => out.push({ k: 'event', ev }))
     items.filter((it) => it.date === day).forEach((item) => out.push({ k: 'item', item }))
+    // #5013 — completed intervals activities on this day NOT matched to any plan/event become their own
+    // entries (mirrors Today's #455 ActivityCard), so a day trained off-plan never reads "Nothing planned".
+    orphanActivities(day, plans, events, activities).forEach((act) => out.push({ k: 'activity', act }))
     return out
   }
-  const kindOf = (e: Entry) => (e.k === 'plan' ? e.plan.sport : e.k === 'event' ? sportOf(e.ev) : e.item.type)
+  const kindOf = (e: Entry) => (e.k === 'plan' ? e.plan.sport : e.k === 'event' ? sportOf(e.ev) : e.k === 'activity' ? sportOfActivity(e.act) : e.item.type)
   // intervals.icu Annual-Training-Plan phase markers ("ATP W06 - …") aren't actual workouts.
   const isAtp = (e: Entry) => e.k === 'event' && (/^ATP\b/i.test(e.ev.name) || e.ev.category === 'NOTE')
   // #379 — a "session" for the max/day (full-day) rule = a real workout (ride/run/gym plan or icu
@@ -110,7 +117,8 @@ export default function Calendar() {
   const sameEntry = (a: Entry, b: Entry): boolean =>
     a.k === b.k && (a.k === 'plan' ? a.plan.id === (b as Extract<Entry, { k: 'plan' }>).plan.id
       : a.k === 'item' ? a.item.id === (b as Extract<Entry, { k: 'item' }>).item.id
-        : String(a.ev.id) === String((b as Extract<Entry, { k: 'event' }>).ev.id))
+        : a.k === 'activity' ? String(a.act.id) === String((b as Extract<Entry, { k: 'activity' }>).act.id)
+          : String(a.ev.id) === String((b as Extract<Entry, { k: 'event' }>).ev.id))
 
   async function delEntry(e: Entry, confirmEvent = true) {
     if (e.k === 'plan') await calApi.delPlan(e.plan.id)
@@ -142,16 +150,30 @@ export default function Calendar() {
   function openEntry(e: Entry) {
     if (e.k === 'plan') navigate(`/coach/${e.plan.id}`) // open the rich detail (aim/tempo/structure); Start is in there
     else if (e.k === 'event') navigate(`/plan/${e.ev.id}`)
+    else if (e.k === 'activity') navigate(`/activity/${e.act.id}`) // #5013 — a done workout opens its analysed result
     else if (e.k === 'item' && e.item.type === 'meal' && e.item.refId) navigate(`/recipes/${e.item.refId}`)
     else if (e.k === 'item' && e.item.type === 'mind' && e.item.refId) navigate(`/mind/${e.item.refId}`)
   }
   const subOf = (e: Entry) =>
     e.k === 'plan' ? (e.plan.sport === 'gym' ? `${(e.plan.exercises || []).length} exercises` : `${Math.round((e.plan.segments || []).reduce((s, x) => s + x.duration, 0) / 60)} min`)
       : e.k === 'event' ? (e.ev.moving_time ? `${Math.round(e.ev.moving_time / 60)} min` : 'planned')
-        : e.item.type === 'meal' ? `${e.item.mealType || 'meal'}${e.item.kcal ? ` · ${e.item.kcal} kcal` : ''}` : e.item.type === 'mind' ? `${e.item.minutes || ''} min` : 'note'
+        : e.k === 'activity' ? 'completed'
+          : e.item.type === 'meal' ? `${e.item.mealType || 'meal'}${e.item.kcal ? ` · ${e.item.kcal} kcal` : ''}` : e.item.type === 'mind' ? `${e.item.minutes || ''} min` : 'note'
 
   // Entry card (used by day/week/schedule list rendering).
   const EntryCard = ({ e, day }: { e: Entry; day: string }) => {
+    // #5013 — a completed UNPLANNED activity: read-only (it already happened), taps to its result.
+    if (e.k === 'activity') {
+      const sport = sportOfActivity(e.act)
+      return (
+        <div className="card cal-entry">
+          <button className="cal-entry__main" onClick={() => navigate(`/activity/${e.act.id}`)}>
+            <span className={'cal-chip cal-chip--grad cal-chip--' + sport}>{iconFor(sport)}</span>
+            <span className="card-body"><h3>{titleOf(e)}</h3><DoneStats a={e.act} /></span>
+          </button>
+        </div>
+      )
+    }
     const kind = kindOf(e)
     const atp = isAtp(e)
     const k = kind as string
