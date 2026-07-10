@@ -5,6 +5,11 @@ description: Before implementing anything JM will see or judge (UI, charts, card
 
 # Options + mockups first
 
+**WHERE feature design happens (JM picked 2026-07-10): RIGHT HERE, in the Claude chat — NOT an in-app design tool.**
+When a FEATURE comes up: ask the questions here, show the 2-3 mockups here (render HTML → PNG → Read them inline),
+get the pick here; the backlog item just RECORDS the decision. Don't build an in-app "design/discuss" surface —
+JM considered it and chose to keep it in chat. (This is the features phase, after bugs = 0.)
+
 **Rule (JM directive):** do NOT implement a UX/visual/interaction change and let the user react. Present **2-3 distinct options as a rendered HTML mockup** — write a self-contained HTML file to `gymapp/mockups/` and `open` it in the browser (JM reads HTML far better than ASCII; a sport/variant toggle in one file lets him compare). Get the pick, THEN build only that one.
 
 **Rule — DIAGNOSE, then OPTIONS, for ANY bug / issue / improvement (JM directive 2026-07-03):** before touching code on a bug, issue, or "make this better", FIRST reply with two parts, in this order:
