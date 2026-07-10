@@ -1007,6 +1007,12 @@ const writeBacklog = (bl) => {
 const REPORT_BASE = 1000
 const nextBacklogN = (bl) => Math.max(REPORT_BASE - 1, ...(bl.added || []).map((x) => x.n || 0)) + 1
 app.get('/auth/admin/backlog', auth, admin, (req, res) => { res.json(readBacklog()) })
+// #468 — a small SHARED status file so JM can SEE (Admin → Claude panel) what Claude is working on live: which
+// batch, progress toward the 10-item bucket, the current item + a note, and how many bugs remain. Claude writes
+// this file as it works (same shared /srv/backlog mount, both envs); the Admin panel polls this endpoint.
+const CLAUDE_STATUS_FILE = process.env.CLAUDE_STATUS_FILE || '/srv/backlog/claude-status.json'
+const readClaudeStatus = () => { try { return JSON.parse(readFileSync(CLAUDE_STATUS_FILE, 'utf8')) } catch { return { active: false, note: 'idle' } } }
+app.get('/auth/admin/claude-status', auth, admin, (req, res) => res.json(readClaudeStatus()))
 app.put('/auth/admin/backlog/:n', auth, admin, (req, res) => {
   const n = String(Number(req.params.n) || '')
   if (!n || n === '0') return res.status(400).json({ error: 'valid item number required' })

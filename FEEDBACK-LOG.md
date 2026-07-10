@@ -22,6 +22,13 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+468. 🔨 **"What is Claude working on" panel in Admin (live progress).** JM 2026-07-09: "add a dialog box in admin
+    page so i can see if claude is working on a fix, at least a progress bar." Built: a 🤖 **Claude** card at the top
+    of Admin — WORKING/idle badge, current **batch + note**, a **progress bar** toward the 10-item to-test bucket,
+    and **"N bugs left → 0"**. Claude writes a SHARED status file (`/srv/backlog/claude-status.json`, both envs) as
+    it runs the pipeline; the panel polls `GET /auth/admin/claude-status` every 8 s. `ClaudePanel` in `Admin.tsx`,
+    `authApi.claudeStatus`, server endpoint + `readClaudeStatus`. **Verify:** open Admin — the Claude card shows the
+    current batch + a moving progress bar while I work, "idle" when it's your turn.
 466. 🔨 **ONE shared backlog — items in prod = items in QA AT ALL TIMES.** JM 2026-07-09: "backlog in QA and prod
     don't have the same items… no reason to have it different" → picked **A (one shared store)**. Root cause: the
     backlog triage lived per-env (each Postgres `app_meta.backlog`); JM triages on QA so prod stayed untriaged (313
