@@ -22,6 +22,17 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+470. 🔨 **Tapping a push notification must open the ACTIVITY/plan, not just Today.** JM 2026-07-10: "a notification
+    works great but when i click on it, it opens the today app and thats it — bring me to the notification in the
+    app." Links were already correct (reviews → `/activity/:id`); the issue is an installed PWA cold-launched by a
+    notification lands on `start_url` (Today), ignoring the deep link. Fix: the sw (`public/push-sw.js`) stashes the
+    link in a `caches` entry; the app (`App.tsx`) consumes it on startup + navigates (kept the postMessage path for
+    an already-open app). **Verify:** tap a coach-review push → lands on that activity, not Today.
+469. 🔨 **Coach adapts ONCE, AFTER the check-in — drop the everyday morning pass.** JM 2026-07-10: "for the coach
+    triggers I have one in the morning and one after check-in; remove the everyday one, keep only after a check-in
+    to make sense." The ~4am morning pass had no readiness context. Now `dailyAdaptTick` runs ONE adapt/day, gated
+    on the athlete having checked in today (`user.dailyAdapt.done`). No check-in ⇒ no adapt (next check-in catches
+    up the horizon). CLAUDE.md + memory updated. **Verify:** no pre-check-in re-plan; adapt happens after you check in.
 468. 🔨 **"What is Claude working on" panel in Admin (live progress).** JM 2026-07-09: "add a dialog box in admin
     page so i can see if claude is working on a fix, at least a progress bar." Built: a 🤖 **Claude** card at the top
     of Admin — WORKING/idle badge, current **batch + note**, a **progress bar** toward the 10-item to-test bucket,
