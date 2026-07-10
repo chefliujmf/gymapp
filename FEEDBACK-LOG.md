@@ -22,6 +22,21 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+483. ⬜ **Graph titles have no padding — they almost overlap the chart.** JM 2026-07-10. Chart standard: add top
+    padding/margin between a graph's title and the plot so they never collide. Shared chart component. **Route:** bug (worker).
+482. ⬜ **Graph lines are too thick on phone.** JM 2026-07-10. The chart stroke width reads heavy on mobile — thin it
+    (or make it responsive). Shared chart. Relates the chart standard. **Route:** bug (worker).
+481. ⬜ **Activity title + description too complex — keep it SIMPLE (JM set an example).** JM 2026-07-10: "description
+    and title of activity is annoying so I changed it to something simple you can use for future as example." → CHECK the
+    activity JM re-titled today, use it as the template, and simplify the coach's `set_activity_text` voice
+    ([[platyplus-coach-public-text-voice]] #425). **Route:** coach voice (this chat / coach-engine).
+480. ⬜ **Post-workout insights PER GRAPH are poor.** JM 2026-07-10: "post workout insights per graph is poor and not
+    great." The per-chart insight line (chart standard "insight line") needs to be genuinely useful, not filler.
+    **Route:** feature/quality (this chat).
+479. ⬜ **Garmin workout showed a flat 171 W, not a RANGE.** JM 2026-07-10: "today on my garmin I did not have a range
+    but just 171 watts which is wrong." A planned workout pushed to Garmin (via intervals) rendered a single target, not
+    the watt RANGE — regression against #219 (true-shape, show the range). Trace `planToIcuEvent`/workout_doc targets.
+    **Route:** bug (worker).
 478. ⬜ **Eat & Mind must stay SUGGESTIONS — never auto-imposed into the calendar.** JM 2026-07-10 (3 msgs +
     screenshots): "I prefer to keep suggestions for eat and mind; 8 and 9 imposed in my calendar is a no-no…
     this is suggestions I want to keep… not just dinner like this, this is wrong and never asked." The coach's
