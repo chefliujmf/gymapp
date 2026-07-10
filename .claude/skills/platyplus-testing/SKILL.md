@@ -35,8 +35,14 @@ Fill the **`totest` bucket to exactly 10**. **JM reviews ONLY when `totest == 10
   since-removed/redesigned feature or is clearly superseded → **`discarded`** (don't work it; that's progress to 0).
   Otherwise reconcile already-fixed-but-stale `todo` bugs (verify the `#NNN` code ref + test → `totest`) and fix
   the genuinely-open ones; (4) fill the next 10 → **promote at 10** again.
-Repeat until **0 bugs** (then, and only then, features/ideas — order per "Priority order"). Poll the `totest`
-count to catch the `== 0` trigger; batch my status flips so they don't race JM's live triage writes.
+Repeat until **0 bugs** (then, and only then, features/ideas — order per "Priority order"). Batch my status
+flips so they don't race JM's live triage writes.
+- **THE TRIGGER (#468):** run a **self-perpetuating background watcher** (`run_in_background` bash, ~90s poll)
+  that fires when **`totest == 0` OR the manual flag is set** (`/srv/backlog/claude-trigger.json`, written by the
+  panel's "▶ Start next batch now" button → `POST /auth/admin/claude-trigger`). On completion (fired OR timeout)
+  the task notification wakes me → I refill + **re-arm the watcher** (that's what makes it self-perpetuating).
+  Clear the trigger file when I act on a manual fire so it doesn't re-fire. The **#468 Admin panel** shows live
+  status (write `/srv/backlog/claude-status.json` as I work: batch, done/total, poolBugs/Features/Ideas).
 
 ## The five rules
 1. **LOG FIRST.** Every JM report → `FEEDBACK-LOG.md`, numbered, *before* touching code. Fixing
