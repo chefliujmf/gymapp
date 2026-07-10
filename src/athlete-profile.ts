@@ -33,7 +33,7 @@ export function athleteProfile(inp: ProfileInputs): AthleteProfileResult {
   else { type = bigReserve ? 'Puncheur' : 'Balanced'; badge = bigReserve ? 'punchy' : 'building'; summary = bigReserve ? `A punchy profile — a big anaerobic reserve on a solid base. Keep that spark while stretching your threshold duration.` : `A balanced base — solid across the board with room to grow your threshold duration and top end.` }
 
   const reads: MetricRead[] = []
-  if (inp.threshold != null) reads.push({ k: cyc ? 'FTP' : 'Threshold', v: cyc ? `${inp.threshold} W` : `${mmss(inp.threshold)}/km`,
+  if (inp.threshold != null) reads.push({ k: cyc ? 'FTP' : 'Threshold', v: cyc ? `${Math.round(inp.threshold)} W` : `${mmss(inp.threshold)}/km`, // #464 whole watts (was 240.27774)
     r: `Your ~1-hour ceiling — the anchor every training zone is built from. ${inp.eftp != null && inp.cp != null && ((cyc && inp.threshold > inp.cp + 4) || (!cyc && inp.threshold < inp.cp - 8))
       ? `It sits ${cyc ? 'above' : 'faster than'} your ${cyc ? 'CP' : 'critical speed'}, so it's a touch optimistic — the coach eases it toward your ${cyc ? 'eFTP' : 'modelled'} value so your zones land right.`
       : `It lines up with your ${cyc ? 'CP' : 'critical speed'} — a fair, honest threshold.`} It re-reads itself off every hard effort you do.` })
@@ -45,7 +45,7 @@ export function athleteProfile(inp: ProfileInputs): AthleteProfileResult {
   const focus: string[] = []
   if (shortTte) {
     focus.push(cyc ? 'Extensive threshold — 3×15–20 min @ 90–95% FTP → turn power into staying power (grows TTE).' : 'Extensive threshold runs — 3×15–20 min @ threshold → build the duration you can hold pace.')
-    if (inp.eftp != null && inp.threshold != null && ((cyc && inp.threshold > inp.eftp) || (!cyc && inp.threshold < inp.eftp))) focus.push(cyc ? `Ease FTP toward your eFTP (${inp.eftp} W) until your TTE reaches ~40 min.` : `Ease your threshold pace toward the modelled value until your TTE reaches ~40 min.`)
+    if (inp.eftp != null && inp.threshold != null && ((cyc && inp.threshold > inp.eftp) || (!cyc && inp.threshold < inp.eftp))) focus.push(cyc ? `Ease FTP toward your eFTP (${Math.round(inp.eftp)} W) until your TTE reaches ~40 min.` : `Ease your threshold pace toward the modelled value until your TTE reaches ~40 min.`)
   } else if (longTte) {
     focus.push(cyc ? 'Raise the ceiling — 4×8–12 min @ 100–105% FTP to lift FTP/CP.' : 'Raise the ceiling — 4×8–12 min @ ~5 k effort to lift threshold/CS.')
   } else {
