@@ -235,6 +235,10 @@ export default function AdminBacklog() {
       <div className="stack">
         {list.map((it) => {
           const t = tr(it.n), s = eff(it), exp = open === it.n, cmts = t.comments || [], ea = t.area || it.area
+          // #471 — "What to test" = a clean instruction (it.test, else Claude's latest note), never the raw feedback
+          // summary (gibberish). If Claude's note IS the what-to-test, don't repeat it in the comment history below.
+          const wttNote = !it.test ? cmts.filter((c) => c.by === 'claude').slice(-1)[0] : undefined
+          const listCmts = wttNote ? cmts.filter((c) => c.at !== wttNote.at) : cmts
           return (
             <div key={it.n} className="card" style={{ padding: 0, opacity: s === 'discarded' ? .55 : 1 }}>
               <div className="card-row" style={{ padding: '11px 12px', gap: 10, alignItems: 'center', cursor: 'pointer' }} onClick={() => { setOpen(exp ? null : it.n); setDraft('') }}>
@@ -257,14 +261,14 @@ export default function AdminBacklog() {
                   {TEST_STATUS.has(s) && (
                     <div style={{ background: '#4dd4e011', border: '1px solid #4dd4e033', borderRadius: 8, padding: '8px 10px', marginBottom: 12 }}>
                       <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.04em', color: '#4dd4e0', textTransform: 'uppercase', marginBottom: 3 }}>What to test</div>
-                      <div style={{ fontSize: 12.5, color: '#c4cad4' }}>{it.test || it.summary || 'See the item detail above.'}{s === 'fail' && <span className="meta"> · add your tested notes as a comment below.</span>}</div>
+                      <div style={{ fontSize: 12.5, color: '#c4cad4' }}>{it.test || wttNote?.text || 'Open the item and confirm it behaves as described.'}{s === 'fail' && <span className="meta"> · add your tested notes as a comment below.</span>}</div>
                     </div>
                   )}
-                  {cmts.length > 0 && (
+                  {listCmts.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                      {cmts.map((c) => (
+                      {listCmts.map((c) => (
                         <div key={c.at} style={{ background: '#0b0e12', border: '1px solid #ffffff12', borderRadius: 8, padding: '7px 10px', fontSize: 12.5, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                          <span style={{ flex: 1, minWidth: 0 }}><span style={{ color: 'var(--accent,#34e07d)', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', marginRight: 6 }}>You</span>{c.text}</span>
+                          <span style={{ flex: 1, minWidth: 0 }}><span style={{ color: c.by === 'claude' ? '#4dd4e0' : 'var(--accent,#34e07d)', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', marginRight: 6 }}>{c.by === 'claude' ? 'Claude' : 'You'}</span>{c.text}</span>
                           <button className="icon-btn" style={{ width: 24, height: 24, flexShrink: 0 }} aria-label="Delete comment" onClick={() => patch(it.n, { deleteCommentAt: c.at })}><Trash2 size={13} /></button>
                         </div>
                       ))}

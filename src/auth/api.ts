@@ -227,7 +227,7 @@ export interface ClaudeStatus { active: boolean; batch?: number; phase?: string;
 export type BacklogPriority = 'hi' | 'med' | 'lo'
 export type BacklogStatus = 'review' | 'todo' | 'totest' | 'pass' | 'done' | 'fail' | 'discarded'
 export type BacklogType = 'bug' | 'feature' | 'idea'
-export interface BacklogComment { text: string; at: number }
+export interface BacklogComment { text: string; at: number; by?: string }
 export interface BacklogTriageItem { priority?: BacklogPriority; status?: BacklogStatus; type?: BacklogType; area?: string; comments?: BacklogComment[]; discarded?: boolean }
 export type BacklogTriage = Record<string, BacklogTriageItem>
 export interface BacklogAddedItem { n: number; title: string; summary?: string; reporter?: string; at: number }
