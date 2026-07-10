@@ -171,6 +171,7 @@ export default function Profile() {
   const [coachSaved, setCoachSaved] = useState(false)
   const [sportSaved, setSportSaved] = useState(false)
   const [dietSaved, setDietSaved] = useState(false)
+  const [dietSel, setDietSel] = useState<string | null>(null) // #5005 — optimistic: reflect the tap immediately, don't wait for the save+refresh round-trip
 
   // Sex from intervals (gates the female-athlete coaching module) — optional.
   useEffect(() => {
@@ -183,8 +184,8 @@ export default function Profile() {
     const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
     authApi.saveProfile({ sports: next }).then(() => { refresh(); setSportSaved(true); setTimeout(() => setSportSaved(false), 1500) }).catch(() => {})
   }
-  const diet = (user?.info as { diet?: string } | undefined)?.diet ?? 'no preference'
-  const setDiet = (v: string) => { setSetting('diet', v); authApi.saveProfile({ diet: v }).then(() => refresh()).catch(() => {}); setDietSaved(true); setTimeout(() => setDietSaved(false), 1500) }
+  const diet = dietSel ?? ((user?.info as { diet?: string } | undefined)?.diet ?? 'no preference') // #5005 — optimistic tap, then the server value
+  const setDiet = (v: string) => { setDietSel(v); setSetting('diet', v); authApi.saveProfile({ diet: v }).then(() => refresh()).catch(() => setDietSel(null)); setDietSaved(true); setTimeout(() => setDietSaved(false), 1500) }
 
   const connected = !!user?.hasIcuKey
   // #337b — per-sport stat inputs + Daniels zones/predictions moved to Stats (single place). Profile
