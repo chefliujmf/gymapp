@@ -97,7 +97,7 @@ else if (cmd === 'next') {
   // Eligible = 'fail' (a fix JM tested that didn't work — rework, HIGHEST) OR 'review'+type:bug (a fresh report).
   // NEVER 'todo' (that's JM's parking lot), never features/ideas/untyped (this chat handles those).
   // Respects the to-test CAP: bucket full (>=CAP) => empty, it's JM's turn to test.
-  const CAP = Number(process.env.WORKER_TOTEST_CAP || 10)
+  const CAP = Number(process.env.WORKER_TOTEST_CAP || 5)
   const m = merged(bl)
   let totestCount = 0
   for (const [k, it] of m) if (effOf(bl, k, it) === 'totest') totestCount++
@@ -116,9 +116,10 @@ else if (cmd === 'next') {
   process.stdout.write(cands.length ? JSON.stringify(cands[0]) : '')
 }
 else if (cmd === 'ready') {
-  // The worker's batch gate: "1" only when the to-test bucket is DRAINED (0) AND a bug awaits. This gives clean
-  // 0→10 batch cycles (JM tests a full batch of 10, and only when he's finished it down to 0 does the next start)
-  // instead of continuously topping the bucket back up to 10 while he's mid-testing.
+  // The worker's gate: "1" when the to-test buffer has room (< CAP) AND a bug awaits. ONE-BY-ONE (JM #470):
+  // the worker keeps a small rolling buffer topped up so JM always has a bug or two to test+promote one at a
+  // time — NOT a batch of 10 he must wait to fill. He tests + promotes each as it lands; the worker refills.
+  const CAP = Number(process.env.WORKER_TOTEST_CAP || 5)
   const m = merged(bl)
   let totest = 0, bug = 0
   for (const [k, it] of m) {
@@ -126,6 +127,6 @@ else if (cmd === 'ready') {
     if (s === 'totest') totest++
     if (t.type === 'bug' && (s === 'fail' || s === 'review')) bug++
   }
-  process.stdout.write(totest === 0 && bug > 0 ? '1' : '0')
+  process.stdout.write(totest < CAP && bug > 0 ? '1' : '0')
 }
 else { console.log('cmds: status | next | ready | flip <n> <status> [note] | settype <n> <type> | done <n> | rmorphan') }

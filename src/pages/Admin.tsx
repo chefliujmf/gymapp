@@ -17,30 +17,24 @@ function ClaudePanel() {
   }, [])
   if (!s) return null
   const trigger = () => { setReq('sending'); authApi.triggerClaude().then(() => { setReq('sent'); setTimeout(() => setReq('idle'), 5000) }).catch(() => setReq('idle')) }
-  const stale = s.updatedAt ? Date.now() - s.updatedAt > 6 * 60000 : true // >6 min without an update ⇒ treat as idle
+  const stale = s.updatedAt ? Date.now() - s.updatedAt > 8 * 60000 : false // >8 min without an update ⇒ treat as idle
   const active = !!s.active && !stale
-  const lt = s.liveTotest ?? s.done ?? 0 // LIVE to-test count (from the backlog), not my static write
-  const pct = s.total ? Math.min(100, Math.round((lt / s.total) * 100)) : 0
+  const whereLabel = s.where === 'mac' ? '💻 Mac · features & ideas' : '🖥️ XPS · bugs'
   return (
     <div className="card" style={{ padding: '13px 15px', marginBottom: 14, border: `1px solid ${active ? '#34e07d66' : '#2a2f3a'}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 18 }}>🤖</span><strong style={{ fontSize: 14 }}>Claude</strong>
+        <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999, color: '#c4cad4', background: '#20242e' }}>{whereLabel}</span>
         <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 800, letterSpacing: '.03em', padding: '3px 10px', borderRadius: 999, color: active ? '#08130b' : '#9298a6', background: active ? '#34e07d' : '#20242e' }}>{active ? '● WORKING' : 'idle'}</span>
       </div>
-      {s.note && <div style={{ fontSize: 13, color: '#c4cad4', marginTop: 8, lineHeight: 1.4 }}>{s.batch ? <b>Batch {s.batch} · </b> : null}{s.note}</div>}
-      {s.total ? (
-        <div style={{ marginTop: 10 }}>
-          <div style={{ height: 8, background: '#0b0e12', borderRadius: 999, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg,#34e07d,#5be59a)', transition: 'width .5s' }} /></div>
-          <div className="meta" style={{ marginTop: 6 }}>{lt}/{s.total} still to review{lt > 0 && s.pending?.length ? <>: <b style={{ color: '#e0a334' }}>{s.pending.map((n) => '#' + n).join(', ')}</b></> : lt === 0 ? ' — bucket clear ✓' : ''}</div>
-          {(s.poolBugs != null || s.poolFeatures != null || s.poolIdeas != null) ? (
-            <div className="meta" style={{ marginTop: 4 }}>Left → 0: <b style={{ color: '#ff8a8a' }}>{s.poolBugs ?? 0} bug{s.poolBugs === 1 ? '' : 's'}</b> · {s.poolFeatures ?? 0} feature{s.poolFeatures === 1 ? '' : 's'} · {s.poolIdeas ?? 0} idea{s.poolIdeas === 1 ? '' : 's'} <span style={{ opacity: .6 }}>(bugs first)</span></div>
-          ) : s.poolRemaining != null ? <div className="meta" style={{ marginTop: 4 }}>{s.poolRemaining} left → 0</div> : null}
-        </div>
-      ) : null}
+      {s.note && <div style={{ fontSize: 13, color: '#c4cad4', marginTop: 8, lineHeight: 1.4 }}>{s.note}</div>}
+      {s.pending && s.pending.length > 0 ? (
+        <div className="meta" style={{ marginTop: 8 }}>To test now ({s.liveTotest ?? s.pending.length}): <b style={{ color: '#34e07d' }}>{s.pending.map((n) => '#' + n).join('  ')}</b> <span style={{ opacity: .6 }}>— test + promote one by one</span></div>
+      ) : <div className="meta" style={{ marginTop: 8 }}>Nothing to test right now.</div>}
       {s.updatedAt ? <div className="meta" style={{ fontSize: 10.5, marginTop: 7 }}>updated {timeAgo(s.updatedAt)}</div> : null}
-      {/* #468 — manual trigger: kick off the next batch on demand (not only at the auto totest==0 trigger). */}
+      {/* #468 — manual trigger: kick the worker to pick up the next bug now (not only on the auto-poll). */}
       <button className="btn btn--ghost" style={{ width: '100%', marginTop: 11, fontSize: 12.5, padding: '8px' }} disabled={req !== 'idle'} onClick={trigger}>
-        {req === 'sent' ? '✓ Requested — Claude will start the next batch shortly' : req === 'sending' ? 'Requesting…' : '▶ Start next batch now'}
+        {req === 'sent' ? '✓ Requested — Claude will pick up the next bug shortly' : req === 'sending' ? 'Requesting…' : '▶ Start next bug now'}
       </button>
     </div>
   )

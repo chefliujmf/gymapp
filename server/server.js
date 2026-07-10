@@ -1014,11 +1014,18 @@ const CLAUDE_STATUS_FILE = process.env.CLAUDE_STATUS_FILE || '/srv/backlog/claud
 const readClaudeStatus = () => { try { return JSON.parse(readFileSync(CLAUDE_STATUS_FILE, 'utf8')) } catch { return { active: false, note: 'idle' } } }
 app.get('/auth/admin/claude-status', auth, admin, (req, res) => {
   const st = readClaudeStatus()
-  // #468 — compute the LIVE to-test bucket from the backlog (not my static write) so JM always sees the REAL
-  // remaining-to-review count + WHICH items (a lone straggler like #412 was invisible before → looked like 0).
+  // #468 — the XPS bug-worker writes {where,state,item,dry,at}; normalise to what the panel expects so a running
+  // worker actually shows as WORKING (not idle). where distinguishes the two workers: XPS = bugs, Mac = features/ideas.
+  const active = st.state === 'working'
+  const updatedAt = st.at ? Date.parse(st.at) : (st.updatedAt || 0)
+  const where = st.where || (st.state ? 'xps' : null)
+  const note = st.note || (active
+    ? `Fixing bug #${st.item}${st.dry ? ' · dry run' : ''}`
+    : (st.worked ? `Idle — last run handled ${st.worked} item${st.worked === 1 ? '' : 's'}` : 'Idle — waiting for the next bug'))
+  // LIVE to-test bucket from the backlog (not a static write) so JM always sees the REAL items to test one-by-one.
   const bl = readBacklog()
   const pending = Object.entries(bl.triage || {}).filter(([, t]) => t && t.status === 'totest').map(([k]) => Number(k)).sort((a, b) => a - b)
-  res.json({ ...st, liveTotest: pending.length, pending: pending.slice(0, 15), trigger: readClaudeTrigger() })
+  res.json({ active, where, note, item: st.item ?? null, updatedAt, liveTotest: pending.length, pending: pending.slice(0, 15), trigger: readClaudeTrigger() })
 })
 // #468 — JM taps "Start next batch" in the panel → drop a request flag (its OWN file so it never races Claude's
 // status writes). Claude's watcher polls this + refills on demand, not only at totest==0.
