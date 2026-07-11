@@ -11,7 +11,8 @@ import { localISO } from '../date'
 import { Plus, ChevronLeft, ChevronRight, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet, colorFor, iconFor, type SheetType } from './AddSheet'
-import Today, { CheckInCard } from './Today' // #488 — Plan's DAY view = the full Today; CheckInCard compact = week/month/schedule strip
+import Today, { DayCheckinStrip, checkinVerdictTone } from './Today' // #488 — Plan DAY = full Today; per-day check-in strip/dot elsewhere
+import { authApi, type Checkin } from '../auth/api'
 import { orphanActivities } from '../orphan-activities'
 import { MovePicker } from './MovePicker'
 import { useAuth } from '../auth/AuthContext'
@@ -58,6 +59,7 @@ export default function Calendar() {
   const [activities, setActivities] = useState<IcuActivity[]>([])
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [items, setItems] = useState<CalItem[]>([])
+  const [checkins, setCheckins] = useState<Checkin[]>([]) // #488 — per-day check-ins for the visible range
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const [rideTemplates, setRideTemplates] = useState<RideTemplate[]>([])
   const [ftp, setFtp] = useState(260)
@@ -84,6 +86,7 @@ export default function Calendar() {
     fetchActivities(a, b).then(setActivities).catch(() => setActivities([]))
     syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then((pl) => { setPlans(pl); setCoachPlans(pl) }).catch(() => setPlans([])))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
+    authApi.checkins(a, b).then(setCheckins).catch(() => setCheckins([])) // #488
   }, [range])
   useEffect(() => { reload() }, [reload])
   // #379 — auto-dismiss the Undo bar after 7s.
@@ -98,6 +101,8 @@ export default function Calendar() {
     setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set('d', sel); n.set('v', view); n.delete('add'); return n }, { replace: true })
   }, [sel, view]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const checkinFor = (day: string): Checkin | null => checkins.find((c) => c.date === day) || null
+  const openDay = (day: string) => { setSel(day); changeView('day') } // #488 — tap a day's check-in → its Day view (full card + plan)
   const entriesFor = (day: string): Entry[] => {
     const out: Entry[] = []
     plans.filter((p) => p.date === day).forEach((plan) => out.push({ k: 'plan', plan }))
@@ -239,9 +244,6 @@ export default function Calendar() {
         ))}
       </div>
 
-      {/* #488 — check-in as a compact one-line strip in week/month/schedule (the FULL card lives in the Day view). */}
-      {view !== 'day' && <CheckInCard day={todayISO} compact />}
-
       {/* #488 — the DAY view is the merged Today screen (own day strip + Add), so skip Calendar's day title/nav there. */}
       {view !== 'day' && (
         <div className="cal-head">
@@ -263,6 +265,7 @@ export default function Calendar() {
                 return (
                   <button key={day} className={'cal-cell' + (day === sel ? ' cal-cell--sel' : '') + (inMonth ? '' : ' cal-cell--dim')} onClick={() => setSel(day)}>
                     <span className={'cal-num' + (day === todayISO ? ' cal-num--today' : '')}>{Number(day.slice(8, 10))}</span>
+                    {(() => { const t = checkinVerdictTone(checkinFor(day)); return t ? <span className={'cal-ci-dot cal-ci-dot--' + t} /> : null })()}
                     <Chips day={day} max={3} />
                   </button>
                 )
@@ -275,6 +278,7 @@ export default function Calendar() {
               <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setSheet({ date: sel })}><Plus size={16} /> Add</button>
             </div>
             <div className="stack">
+              <DayCheckinStrip day={sel} ci={checkinFor(sel)} today={todayISO} onOpen={() => openDay(sel)} />
               {entriesFor(sel).length === 0 && <p className="meta">Nothing planned. Tap “Add”.</p>}
               {entriesFor(sel).map((e, i) => <EntryCard key={i} e={e} day={sel} />)}
             </div>
@@ -288,20 +292,20 @@ export default function Calendar() {
           {weekDays(sel).map((day) => {
             const es = entriesFor(day)
             const isToday = day === todayISO
-            if (!es.length) return (
-              <div key={day} className="cal-wkrow cal-wkrow--rest">
-                <span><b>{fmtShort(day)}</b> · Rest day</span>
-                <button className="icon-btn" onClick={() => setSheet({ date: day })} aria-label="Add"><Plus size={15} /></button>
-              </div>
-            )
+            const hasStrip = day <= todayISO // #488 — strip only for past + today; future days show none
             return (
               <div key={day} className={'cal-wkrow' + (isToday ? ' cal-wkrow--today' : '')}>
                 <div className="cal-wkrow__head">
                   <strong>{fmtShort(day)}</strong>
-                  <span className="cal-wkrow__cnt">{es.length} planned</span>
+                  <span className="cal-wkrow__cnt">{es.length ? `${es.length} planned` : 'Rest day'}</span>
                   <button className="icon-btn" onClick={() => setSheet({ date: day })} aria-label="Add"><Plus size={16} /></button>
                 </div>
-                <div className="stack" style={{ gap: 6 }}>{es.map((e, i) => <EntryCard key={i} e={e} day={day} />)}</div>
+                {(hasStrip || es.length > 0) && (
+                  <div className="cal-wkrow__body">
+                    {hasStrip && <DayCheckinStrip day={day} ci={checkinFor(day)} today={todayISO} onOpen={() => openDay(day)} />}
+                    {es.length > 0 && <div className="stack" style={{ gap: 6 }}>{es.map((e, i) => <EntryCard key={i} e={e} day={day} />)}</div>}
+                  </div>
+                )}
               </div>
             )
           })}
@@ -330,7 +334,10 @@ export default function Calendar() {
                       <small>{dt.toLocaleDateString(undefined, { weekday: 'short' })}</small>
                       <b>{Number(day.slice(8, 10))}</b>
                     </div>
-                    <div className="cal-agcol">{entriesFor(day).map((e, i) => <EntryCard key={i} e={e} day={day} />)}</div>
+                    <div className="cal-agcol">
+                      <DayCheckinStrip day={day} ci={checkinFor(day)} today={todayISO} onOpen={() => openDay(day)} />
+                      {entriesFor(day).map((e, i) => <EntryCard key={i} e={e} day={day} />)}
+                    </div>
                   </div>
                 </Fragment>
               )

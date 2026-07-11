@@ -1224,9 +1224,14 @@ select.search { appearance: none; -webkit-appearance: none; }
 .cal-dowcell { text-align: center; font-size: 11px; color: var(--muted, #9aa3b2); font-weight: 700; padding: 2px 0; }
 .cal-cell {
   min-height: 80px; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
-  gap: 3px; padding: 4px 3px; border-radius: 10px; border: 1px solid transparent;
+  gap: 3px; padding: 4px 3px; border-radius: 10px; border: 1px solid transparent; position: relative;
   background: var(--card, #1b1e26); color: var(--text, #e7ebf0); cursor: pointer; overflow: hidden;
 }
+/* #488 — per-day check-in verdict dot (month cell, top-right) */
+.cal-ci-dot { position: absolute; top: 4px; right: 5px; width: 8px; height: 8px; border-radius: 50%; }
+.cal-ci-dot--good { background: #34e07d; }
+.cal-ci-dot--mixed { background: #ffcf5c; }
+.cal-ci-dot--low { background: #7a8cff; }
 .cal-cell--dim { opacity: .42; }
 .cal-cell--sel { border-color: var(--accent, #34e07d); }
 .cal-num { font-size: 12px; font-weight: 600; line-height: 1; align-self: flex-start; padding: 1px 2px; }
@@ -1259,6 +1264,10 @@ select.search { appearance: none; -webkit-appearance: none; }
 .cal-wkrow--today .cal-wkrow__head strong { color: var(--accent, #34e07d); }
 .cal-wkrow__cnt { flex: 1; color: var(--text-dim, #9298a6); font-size: 12px; }
 .cal-wkrow > .stack { padding: 9px 10px; }
+/* #488 — day body wraps the per-day check-in strip + entries; strip's own margin separates it from cards */
+.cal-wkrow__body { padding: 9px 10px; }
+.cal-wkrow__body .checkin-strip { margin-bottom: 0; }
+.cal-wkrow__body .checkin-strip + .stack { margin-top: 9px; }
 .cal-wkrow--rest { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; color: var(--text-dim, #9298a6); font-size: 12.5px; font-style: italic; }
 .cal-wkrow--rest b { color: var(--text, #eef1f4); font-style: normal; }
 
@@ -1430,6 +1439,8 @@ select.search { appearance: none; -webkit-appearance: none; }
 .checkin-strip__sc { color: var(--text-dim); font-weight: 800; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .checkin-strip__go { margin-left: auto; color: #7fa8ff; flex: none; }
 .checkin-strip--todo { color: var(--text-dim); }
+/* #488 — a past day with no check-in: faint, non-interactive one-liner (not a button) */
+.checkin-strip--none { background: none; border: 0; color: var(--faint, #6b7280); font-weight: 600; font-size: 12.5px; padding: 3px 2px; margin-bottom: 0; cursor: default; }
 .checkin__sum { font-size: 12.5px; color: var(--text); }
 .checkin__mhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
 .checkin__done { font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--accent, #34e07d); }

@@ -253,6 +253,34 @@ function readinessVerdict(ci: Checkin | null): { tone: 'good' | 'mixed' | 'low';
   if (avg >= 3.8 && min >= 3) return { tone: 'good', text: "You're fresh — good to train as planned." }
   return { tone: 'mixed', text: 'Moderately ready — train, but be ready to ease off.' }
 }
+// #488 — a light per-day check-in STRIP for Plan's week/schedule (Day keeps the full card). Reuses readinessVerdict
+// + CHECKIN_FACES. Future days render NOTHING (JM); a past day with no check-in reads "didn't check in"; tap → that day.
+const CI_ROWS = [{ key: 'energy' as const }, { key: 'sleep' as const }, { key: 'soreness' as const, invert: true }]
+export function DayCheckinStrip({ day, ci, today, onOpen }: { day: string; ci: Checkin | null; today: string; onOpen: () => void }) {
+  if (day > today) return null
+  const isToday = day === today
+  const checkedIn = ci != null && CI_ROWS.every((r) => ci[r.key] != null)
+  if (!checkedIn) {
+    if (isToday) return <button className="checkin-strip checkin-strip--todo" onClick={onOpen}>💬 Check in today<span className="checkin-strip__go">›</span></button>
+    return <div className="checkin-strip checkin-strip--none">— didn't check in —</div>
+  }
+  const verdict = readinessVerdict(ci)
+  const vLabel = verdict ? (verdict.tone === 'good' ? 'Fresh' : verdict.tone === 'low' ? 'Run-down' : 'Moderate') : ''
+  const scores = CI_ROWS.map((r) => { const raw = ci![r.key] as number; const d = r.invert ? 6 - raw : raw; return `${CHECKIN_FACES[d - 1]}${d}` }).join(' · ')
+  return (
+    <button className="checkin-strip" onClick={onOpen}>
+      <span className="checkin-strip__ok">✓ Checked in</span>
+      {verdict && <span className={'checkin__verdict checkin__verdict--' + verdict.tone}><span className="checkin__vdot" />{vLabel}</span>}
+      <span className="checkin-strip__sc">{scores}</span>
+      <span className="checkin-strip__go">{isToday ? 'Edit ›' : '›'}</span>
+    </button>
+  )
+}
+// #488 — month view: a small verdict dot per day (good/mixed/low), or null when there's no check-in.
+export function checkinVerdictTone(ci: Checkin | null): 'good' | 'mixed' | 'low' | null {
+  if (!ci || ci.energy == null || ci.sleep == null || ci.soreness == null) return null
+  return readinessVerdict(ci)?.tone ?? null
+}
 const RECOVERY_EMOJI: Record<string, string> = { sauna: '🔥', cold: '🧊', massage: '💆', mobility: '🧎', foam: '🪵', walk: '🚶' }
 
 /** A clean one-liner for a plan CARD — prefer the structured objective; else strip markdown/headers
