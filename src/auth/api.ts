@@ -206,7 +206,7 @@ export const authApi = {
   deleteUser: (id: string) => req<{ ok: boolean }>(`/users/${id}`, { method: 'DELETE' }),
 
   // #438 — admin backlog triage overlay (status / priority / type / comments) on top of the bundled backlog.json
-  getBacklogTriage: () => req<{ triage: BacklogTriage; added: BacklogAddedItem[] }>('/admin/backlog'),
+  getBacklogTriage: () => req<{ triage: BacklogTriage; added: BacklogAddedItem[]; items?: unknown[] }>('/admin/backlog'), // #485 items = shared list
   claudeStatus: () => req<ClaudeStatus>('/admin/claude-status'), // #468 — live "what is Claude working on"
   triggerClaude: () => req<{ ok: boolean }>('/admin/claude-trigger', { method: 'POST' }), // #468 — "Start next batch" now
   updateBacklog: (n: number, patch: { priority?: BacklogPriority | null; status?: BacklogStatus | null; type?: BacklogType | null; area?: string | null; comment?: string; deleteCommentAt?: number; discarded?: boolean }) =>

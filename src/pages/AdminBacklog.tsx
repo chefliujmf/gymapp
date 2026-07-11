@@ -93,8 +93,13 @@ export default function AdminBacklog() {
   const [nsum, setNsum] = useState('')
 
   useEffect(() => {
-    import('../data/generated/backlog.json').then((m) => setItems((m.default as Item[]) || [])).finally(() => setReady(true))
-    authApi.getBacklogTriage().then((r) => { setTriage(r.triage || {}); setAdded(r.added || []) }).catch(() => {})
+    // #485 — QA=PROD items ALWAYS: prefer the SHARED item list served by the backend (same on both envs); fall
+    // back to the per-build BUNDLED copy only if the server hasn't published one yet.
+    const bundle = () => import('../data/generated/backlog.json').then((m) => setItems((m.default as Item[]) || [])).finally(() => setReady(true))
+    authApi.getBacklogTriage().then((r) => {
+      setTriage(r.triage || {}); setAdded(r.added || [])
+      if (r.items && r.items.length) { setItems(r.items as Item[]); setReady(true) } else bundle()
+    }).catch(bundle)
   }, [])
 
   const tr = (n: number) => triage[String(n)] || {}

@@ -996,6 +996,10 @@ const BACKLOG_AREAS = ['admin', 'cycling', 'running', 'gym', 'stats', 'eat', 'to
 const BACKLOG_FILE = process.env.BACKLOG_FILE || '/srv/backlog/backlog.json'
 const BACKLOG_DIR = BACKLOG_FILE.replace(/\/[^/]*$/, '') || '.'
 const readBacklog = () => { try { const b = JSON.parse(readFileSync(BACKLOG_FILE, 'utf8')); return { triage: b.triage || {}, added: b.added || [] } } catch { return { triage: {}, added: [] } } }
+// #485 — the generated item LIST, published to the SHARED mount (newest # wins) so QA + prod show the SAME items
+// (was bundled per-build → they diverged). The frontend fetches these, falling back to its own bundle if absent/empty.
+const ITEMS_FILE = process.env.ITEMS_FILE || '/srv/backlog/items.json'
+const readItems = () => { try { const a = JSON.parse(readFileSync(ITEMS_FILE, 'utf8')); return Array.isArray(a) ? a : (Array.isArray(a?.items) ? a.items : []) } catch { return [] } }
 const writeBacklog = (bl) => {
   const out = { triage: bl.triage || {}, added: bl.added || [] }
   try { mkdirSync(BACKLOG_DIR, { recursive: true }); const tmp = BACKLOG_FILE + '.tmp'; writeFileSync(tmp, JSON.stringify(out)); renameSync(tmp, BACKLOG_FILE) }
@@ -1006,7 +1010,7 @@ const writeBacklog = (bl) => {
 // OVERWROTE the real #439/#440 roadmap items in the merge — invisible reports + masked roadmap.)
 const REPORT_BASE = 1000
 const nextBacklogN = (bl) => Math.max(REPORT_BASE - 1, ...(bl.added || []).map((x) => x.n || 0)) + 1
-app.get('/auth/admin/backlog', auth, admin, (req, res) => { res.json(readBacklog()) })
+app.get('/auth/admin/backlog', auth, admin, (req, res) => { const items = readItems(); res.json({ ...readBacklog(), ...(items.length ? { items } : {}) }) })
 // #468 — a small SHARED status file so JM can SEE (Admin → Claude panel) what Claude is working on live: which
 // batch, progress toward the 10-item bucket, the current item + a note, and how many bugs remain. Claude writes
 // this file as it works (same shared /srv/backlog mount, both envs); the Admin panel polls this endpoint.
