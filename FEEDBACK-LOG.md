@@ -36,10 +36,10 @@ test guide → the **🧪 Test guide** section below.
 493. ✅ **Plan default-view preference (Settings).** ALREADY BUILT + works (JM confirmed 2026-07-11). Settings → "Calendar
     starts on" (Day / Week / Month / Schedule) persists `calView`; Calendar reads it on mount (localStorage + setSetting,
     `?view=` overrides). On prod. **Route:** UI.
-492. 🔨 **Rename "Backlog" → "Road map" (= future to assess / consider / approve).** JM 2026-07-11. Done in nav +
+492. 🧪 **Rename "Backlog" → "Road map" (= future to assess / consider / approve).** JM 2026-07-11. Done in nav +
     Admin header (commit 67af627). Same commit also removed the **Mind card from Stats** (JM: "mind is still under stats
     too, remove"). **Route:** UI. 🧪 the tab/label reads "Road map" everywhere; no "Mind" card left on /stats.
-491. 🔨 **Deactivate Eat + Mind app-wide (keep Recovery); day dot = ACTIVITIES only.** JM 2026-07-11: "to simplify the
+491. 🧪 **Deactivate Eat + Mind app-wide (keep Recovery); day dot = ACTIVITIES only.** JM 2026-07-11: "to simplify the
     app for now, deactivate Mind and Eat; Recovery can stay; a green day-dot is only for activities (run/ride/yoga/
     pilates), not food/meditation/recovery." UI DONE — nav tabs removed, routes kept (commits 96ee927/d0c842b/67af627).
     ⚠️ **NOT propagated to the COACH: the daily-adapt ROUND-OUT pass (server.js ~2824) + MCP `schedule_meal`/`schedule_mind`
@@ -53,7 +53,7 @@ test guide → the **🧪 Test guide** section below.
     any day); the daily-adapt round-out adds recovery only. Reversible: flip `EAT_MIND_OFF=false` to bring Eat/Mind back.
 490. ⬜ **Recovery library is too small — build a MUCH larger one (LOW priority).** JM 2026-07-11: "for recovery we'll
     need a much larger library, it's not near enough." More sauna/cold/massage/mobility/breath/sleep routines. **Route:** content.
-489. 🔨 **Add sheet = ride / run / gym / recovery / note ONLY (drop mind, meal, supplement).** JM 2026-07-11: "when we
+489. 🧪 **Add sheet = ride / run / gym / recovery / note ONLY (drop mind, meal, supplement).** JM 2026-07-11: "when we
     click add be sure to not have mind or meal or supplement — it's ride, run, gym, recovery, note." (Eat+Mind are
     deactivated.) `AddSheet` in Today (+ Plan). **Route:** UI.
 488. ✅ **Merge Today INTO Plan — Plan's Day view IS the full Today screen; Week/Month/Schedule each carry the day's own check-in; default-view pref.** JM 2026-07-11 approved ("I like 488") → promoted to prod. Ask: "Today and Plan should
@@ -62,7 +62,7 @@ test guide → the **🧪 Test guide** section below.
     (check-in · verdict · plan · recovery) is Plan's Day view; Week + Schedule show each day's check-in STRIP, Month a
     verdict DOT — past = "didn't check in" / today = "check in today" / future = nothing. Mocked (options-first, JM
     picked C, refined to per-day). Default-view Settings pref = #493 (also already built — "Calendar starts on"). **Route:** UX.
-487. 🔨 **Remove the Train tab — add a workout via the Add button.** JM 2026-07-11: "remove Train tab; if a user wants
+487. 🧪 **Remove the Train tab — add a workout via the Add button.** JM 2026-07-11: "remove Train tab; if a user wants
     to add a workout they have the Add button." Drop the nav tab (keep the /train route). **Route:** UI.
 486. ⬜ **Coach task must survive switching screens (leaving the chat → "network error" on return).** JM 2026-07-11:
     "once we give a task to the coach, we should be able to switch screen without the coach interrupting; when we come
@@ -2436,7 +2436,7 @@ test guide → the **🧪 Test guide** section below.
     Today page jumps to /plan (calendar Day view) + opens the Add sheet there, instead of opening the Add
     sheet IN PLACE on Today. JM wants to add without leaving Today. (Today.tsx swapOn → navigate; #56/#57 made
     it jump — JM dislikes that.) JM screenshot 2026-06-26.
-145. 🔨 **REOPENED AGAIN #139 (JM 2026-07-11, prod screenshot) — "Ride now" still shows on desktop.** Root cause this
+145. 🧪 **REOPENED AGAIN #139 (JM 2026-07-11, prod screenshot) — "Ride now" still shows on desktop.** Root cause this
     time: the button IS gated (`canPlayHere` on CoachPlanDetail + PlanDetail), but `isMobileDevice()` returned TRUE on
     JM's Mac because of the `innerWidth < 820` clause — a NARROW DESKTOP WINDOW was treated as mobile. FIX: dropped that
     clause (real phones/tablets report `pointer:coarse`; a Mac desktop has a fine pointer + 0 touch points), gated the one
