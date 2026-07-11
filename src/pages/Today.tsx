@@ -494,11 +494,11 @@ export default function Today() {
   const hasWorkout = dayEvents.length > 0 || dayPlans.length > 0 || orphanActs.length > 0
   const isFuture = selDay > todayISO() // #223: future days forecast, not a live verdict
   const verdict = isFuture ? null : readinessVerdict(checkin)
-  // Days that have anything on them → a tiny dot under the WeekStrip day (#66).
+  // The WeekStrip day dot marks ACTIVITY days only — run/ride/gym/yoga/pilates, planned or done (#66).
+  // JM 2026-07-11: the dot is for ACTIVITIES, NOT food / meditation / recovery items — so `items` is excluded.
   const markedDays = new Set<string>([
     ...(events ?? []).map((e) => e.start_date_local.slice(0, 10)),
     ...plans.map((p) => p.date),
-    ...items.map((it) => it.date),
     ...activities.map((a) => (a.start_date_local || '').slice(0, 10)).filter(Boolean),
   ])
   // Match a completed intervals.icu activity to a planned workout by day + sport.
@@ -549,6 +549,9 @@ export default function Today() {
     ? dayMeals.map((it) => ({ key: it.id, tag: it.mealType || 'meal', title: it.title, kcal: it.kcal, recipeId: it.refId }))
     : meals.map((r) => ({ key: r.id, tag: r.category, title: r.title, kcal: r.kcal, recipeId: r.id, thumb: r.thumbnail, sug: r }))
   const mindItem = dayMindItems[0]
+  // DEACTIVATED 2026-07-11 (JM: simplify the app) — no Eat/Mind sections in Today for now (coach still tips in an
+  // activity's description). Recovery stays. `: boolean` (not the `false` literal) keeps TS's narrowing intact.
+  const SHOW_EAT: boolean = false, SHOW_MIND: boolean = false
   return (
     <div>
       <div className="page-head">
@@ -598,8 +601,9 @@ export default function Today() {
         <p className="meta">Nothing scheduled — tap Add, or enjoy a rest day.</p>
       ) : null}
 
-      {/* #202 Fuel — scheduled meals shown once as 2-col chips; else carb/protein-aware suggestions; + supplements */}
-      {(fuelChips.length > 0 || daySupps.length > 0) && (
+      {/* Eat DEACTIVATED 2026-07-11 (JM: simplify the app) — the coach still gives fuel tips in an activity's
+          description; we're just not developing the Eat section in Today for now. Flip `false` to re-enable. */}
+      {SHOW_EAT && (fuelChips.length > 0 || daySupps.length > 0) && (
         <>
           <div className="section-title sec-ico">🍽️ Eat <InfoDot text={`${fuelMsg}${dayMeals.length ? '' : ' Tap + to add a meal to your day.'}`} /></div>
           {dayMeals.length === 0 && fuelChips.length > 0 && <p className="meta" style={{ margin: '-2px 2px 8px' }}>{fuelMsg}</p>}
@@ -646,8 +650,9 @@ export default function Today() {
         </>
       )}
 
-      {/* #202 Mind — scheduled mind session shown once; else a suggested reset */}
-      {(mindItem || meditation) && (
+      {/* Mind DEACTIVATED 2026-07-11 (JM: simplify the app) — no recommended mind sessions in Today for now;
+          the coach can still tip in an activity's description. Recovery stays. Flip `false` to re-enable. */}
+      {SHOW_MIND && (mindItem || meditation) && (
         <>
           <div className="section-title sec-ico">🧠 Mind</div>
           <div className="stack">
