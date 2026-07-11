@@ -13,7 +13,9 @@ import { fetchAthleteSex } from '../intervals'
 import { dataGaps } from '../dataGaps'
 import { bmr, tdee, calorieTarget, macroSplit, ageFromDob, type Goal } from '../nutrition'
 
-const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['strength', 'Strength'], ['yoga', 'Yoga'], ['pilates', 'Pilates'], ['meditation', 'Meditation']]
+// #491 — Meditation (Mind) removed from the picker while Eat/Mind are deactivated. Yoga/Pilates STAY (they're
+// logged physical activities that count for the day dot). To restore Mind: re-add ['meditation', 'Meditation'].
+const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['strength', 'Strength'], ['yoga', 'Yoga'], ['pilates', 'Pilates']]
 const DIETS: [string, string][] = [['vegetarian', 'vegetarian'], ['vegan', 'vegan'], ['no preference', 'no preference']]
 
 
