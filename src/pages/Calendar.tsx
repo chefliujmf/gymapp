@@ -11,6 +11,7 @@ import { localISO } from '../date'
 import { Plus, ChevronLeft, ChevronRight, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet, colorFor, iconFor, type SheetType } from './AddSheet'
+import Today from './Today' // #488 — Plan's DAY view = the full Today screen (merged), driven by `sel`
 import { orphanActivities } from '../orphan-activities'
 import { MovePicker } from './MovePicker'
 import { useAuth } from '../auth/AuthContext'
@@ -217,21 +218,8 @@ export default function Calendar() {
 
   // Week scrubber (#166) — hop between the days of the selected week; coloured dots preview
   // each day's entries, today is green, the selected day is outlined. Used by the Day view.
-  const WeekScrubber = () => (
-    <div className="cal-scrub">
-      {weekDays(sel).map((day) => {
-        const es = entriesFor(day)
-        const isToday = day === todayISO
-        return (
-          <button key={day} className={'cal-scrubday' + (day === sel ? ' cal-scrubday--sel' : '') + (isToday ? ' cal-scrubday--today' : '')} onClick={() => setSel(day)}>
-            <small>{new Date(day + 'T00:00').toLocaleDateString(undefined, { weekday: 'short' })}</small>
-            <b>{Number(day.slice(8, 10))}</b>
-            <span className="cal-scrubdots">{es.slice(0, 3).map((e, i) => <i key={i} style={{ background: isToday ? '#07140c' : isAtp(e) ? '#9aa3b2' : colorFor(kindOf(e)) }} />)}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
+  // #488 — the day scrubber lived here for the old sparse day view; Plan's DAY view is now the full Today screen
+  // (which brings its own day strip), so WeekScrubber was removed.
 
   // ---- header: view switcher + contextual nav -----------------------------
   const VIEWS: [View, string][] = [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['schedule', 'Schedule']]
@@ -251,12 +239,15 @@ export default function Calendar() {
         ))}
       </div>
 
-      <div className="cal-head">
-        {view !== 'schedule' ? <button className="icon-btn" onClick={() => nav(-1)}><ChevronLeft size={20} /></button> : <span style={{ width: 36 }} />}
-        <h1 style={{ margin: 0, fontSize: 19, flex: 1, textAlign: 'center' }}>{title}</h1>
-        {view !== 'schedule' ? <button className="icon-btn" onClick={() => nav(1)}><ChevronRight size={20} /></button> : <span style={{ width: 36 }} />}
-        <button className="cal-today" onClick={goToday}>Today</button>
-      </div>
+      {/* #488 — the DAY view is the merged Today screen (own day strip + Add), so skip Calendar's day title/nav there. */}
+      {view !== 'day' && (
+        <div className="cal-head">
+          {view !== 'schedule' ? <button className="icon-btn" onClick={() => nav(-1)}><ChevronLeft size={20} /></button> : <span style={{ width: 36 }} />}
+          <h1 style={{ margin: 0, fontSize: 19, flex: 1, textAlign: 'center' }}>{title}</h1>
+          {view !== 'schedule' ? <button className="icon-btn" onClick={() => nav(1)}><ChevronRight size={20} /></button> : <span style={{ width: 36 }} />}
+          <button className="cal-today" onClick={goToday}>Today</button>
+        </div>
+      )}
 
       {/* ---- MONTH ---- */}
       {view === 'month' && (
@@ -314,20 +305,8 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* ---- DAY ---- */}
-      {view === 'day' && (
-        <>
-          <WeekScrubber />
-          <div className="cal-day-head">
-            <div className="section-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>{entriesFor(sel).length} planned{sel === todayISO && <span className="cal-todaybadge">Today</span>}</div>
-            <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setSheet({ date: sel })}><Plus size={16} /> Add</button>
-          </div>
-          <div className="stack">
-            {entriesFor(sel).length === 0 && <p className="meta">Nothing planned for {fmtShort(sel)}. Tap “Add”.</p>}
-            {entriesFor(sel).map((e, i) => <EntryCard key={i} e={e} day={sel} />)}
-          </div>
-        </>
-      )}
+      {/* ---- DAY ---- #488: the full Today screen (check-in · verdict · rich cards · recovery), day synced to Plan. */}
+      {view === 'day' && <Today embedded initialDay={sel} onDay={setSel} />}
 
       {/* ---- SCHEDULE ---- (#166: date-rail timeline, month separators; only days with entries) */}
       {view === 'schedule' && (

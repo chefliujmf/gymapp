@@ -385,9 +385,12 @@ function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
   )
 }
 
-export default function Today() {
+export default function Today({ embedded = false, initialDay, onDay }: { embedded?: boolean; initialDay?: string; onDay?: (d: string) => void } = {}) {
   // #302: the setup checklist (SetupChecklist) now owns the "meet your coach" + setup nudges.
-  const [selDay, setSelDay] = useState(todayISO())
+  // #488 — embedded=true renders this as Plan's DAY view (no page-head); the selected day is driven by / synced to Plan.
+  const [selDay, setSelDay] = useState(initialDay || todayISO())
+  useEffect(() => { if (initialDay && initialDay !== selDay) setSelDay(initialDay) }, [initialDay]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onDay?.(selDay) }, [selDay]) // eslint-disable-line react-hooks/exhaustive-deps
   const todaysLogs = useLiveQuery(() => db.logs.where('date').equals(todayISO()).toArray())
   const dayLogs = useLiveQuery(() => db.logs.where('date').equals(selDay).toArray(), [selDay]) ?? []
   const doneTitles = new Set(dayLogs.map((l) => (l.title || '').toLowerCase().trim()))
@@ -554,10 +557,12 @@ export default function Today() {
   const SHOW_EAT: boolean = false, SHOW_MIND: boolean = false
   return (
     <div>
-      <div className="page-head">
-        <span className="eyebrow">{greeting}</span>
-        <h1>Ready to train?</h1>
-      </div>
+      {!embedded && (
+        <div className="page-head">
+          <span className="eyebrow">{greeting}</span>
+          <h1>Ready to train?</h1>
+        </div>
+      )}
 
       <SetupChecklist />
 

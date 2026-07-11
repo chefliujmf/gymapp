@@ -34,7 +34,7 @@ const updateSW = registerSW({
 // waiting) before reloading, not just re-run the cached one.
 ;(window as unknown as { __pwaUpdate?: (reload?: boolean) => Promise<void> }).__pwaUpdate = updateSW
 import App from './App'
-import Today from './pages/Today'
+// #488 — Today is no longer a route; it's embedded as Plan's DAY view (Calendar imports it).
 import Admin from './pages/Admin'
 import Train from './pages/Train'
 import Workouts from './pages/Workouts'
@@ -89,7 +89,7 @@ const router = createBrowserRouter([
     path: '/',
     element: <App />,
     children: [
-      { index: true, element: <Today /> },
+      { index: true, element: <Calendar /> }, // #488 — home = Plan (its DAY view is the merged Today screen)
       { path: 'plan', element: <Calendar /> },
       { path: 'train', element: <TrainHub /> },
       { path: 'gym', element: <Train /> },

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
-import { Home, CalendarDays, BarChart3, MessageCircle, RotateCw } from 'lucide-react'
+import { CalendarDays, BarChart3, MessageCircle, RotateCw } from 'lucide-react'
 import AccountMenu from './auth/AccountMenu'
 import ReleaseBell from './ReleaseBell'
 import PromoteButton from './PromoteButton'
@@ -11,8 +11,8 @@ import PasskeyPrompt from './auth/PasskeyPrompt'
 // user's sports, so the nav stays the same for a one-sport or multi-sport athlete.
 // Eat DEACTIVATED 2026-07-11 (JM: simplify the app) — the /eat route still exists, just no nav trace.
 const tabs = [
-  { to: '/', label: 'Today', icon: <Home strokeWidth={1.75} />, end: true },
-  { to: '/plan', label: 'Plan', icon: <CalendarDays strokeWidth={1.75} />, end: false },
+  // #488 — Today merged INTO Plan (Plan's DAY view = the Today screen); Plan is now home ('/').
+  { to: '/', label: 'Plan', icon: <CalendarDays strokeWidth={1.75} />, end: true, match: /^\/plan/ },
   { to: '/stats', label: 'Stats', icon: <BarChart3 strokeWidth={1.75} />, end: false, match: /^\/(stats|fitness|strength|progress|logs)/ },
 ]
 
