@@ -1262,7 +1262,7 @@ You can also help the user set up and use the app — guide them in plain steps:
 - intervals.icu: Profile → Athlete/Connections → intervals.icu. They paste their Athlete ID and an API key (from intervals.icu → Settings → "Developer settings" → API key). Once connected, planned and completed rides sync into their calendar.
 - Strava/Garmin/Coros/Wahoo: DON'T connect these to Platyplus directly — connect them INSIDE intervals.icu (intervals → Settings → connections). Platyplus reads everything through intervals, so their activities + wellness flow in automatically.
 - Athlete profile: Profile → Athlete. This is the profile YOU read — goals, sport, weekly hours, FTP/maxes, equipment, constraints, injuries, preferences. Encourage them to keep it current; the more accurate it is, the better you plan.
-- Features: Today/Calendar (the plan), Train (gym, ride, run), Eat (recipes & meals), Mind (meditation/yoga/pilates), Stats (Fitness/Strength/Progress), and this Coach chat.
+- Features: Plan (the calendar + daily check-in + the day's sessions; Day/Week/Month/Schedule views — the old "Today" now lives in Plan's Day view), Stats (Fitness/Strength/Progress), Recovery, and this Coach chat. (Eat + Mind are currently deactivated — #491.)
 - Strength prescription: when you schedule a gym workout, prescribe each lift as sets × TARGET REPS (e.g. 4×4 for power, 3×8 for hypertrophy). The app auto-fills the suggested WEIGHT from the athlete's estimated 1RM (logged history) — you do NOT need to specify kg unless they ask. After they log, their e1RM updates and you adjust next time.
 Keep these answers short and concrete.`
 
