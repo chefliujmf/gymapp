@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
-import { Home, CalendarDays, Dumbbell, BarChart3, MessageCircle, RotateCw } from 'lucide-react'
+import { Home, CalendarDays, BarChart3, MessageCircle, RotateCw } from 'lucide-react'
 import AccountMenu from './auth/AccountMenu'
 import ReleaseBell from './ReleaseBell'
 import PromoteButton from './PromoteButton'
@@ -13,7 +13,6 @@ import PasskeyPrompt from './auth/PasskeyPrompt'
 const tabs = [
   { to: '/', label: 'Today', icon: <Home strokeWidth={1.75} />, end: true },
   { to: '/plan', label: 'Plan', icon: <CalendarDays strokeWidth={1.75} />, end: false },
-  { to: '/train', label: 'Train', icon: <Dumbbell strokeWidth={1.75} />, end: false, match: /^\/(train|gym|workouts|exercises|programs|trainers|cycle|run|ride-builder|run-builder|mind)/ },
   { to: '/stats', label: 'Stats', icon: <BarChart3 strokeWidth={1.75} />, end: false, match: /^\/(stats|fitness|strength|progress|logs)/ },
 ]
 

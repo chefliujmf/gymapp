@@ -55,7 +55,7 @@ export function statsGroups(sports: string[]): { global: Spec[]; perSport: Spec[
   if (has('cycling')) perSport.push({ key: 'cycling', label: 'Cycling', sub: 'Power curve · eFTP · VO₂max · W/kg', to: '/cycling-stats' }) // #225 per-sport page
   if (has('running')) perSport.push({ key: 'running', label: 'Running', sub: 'Threshold pace · zones · VDOT · race predictions', to: '/running-stats' }) // #225 per-sport page
   if (has('strength')) perSport.push({ key: 'strength', label: 'Strength', sub: 'Volume · PRs · est-1RM trends', to: '/progress' })
-  if (has('mind')) perSport.push({ key: 'mind', label: 'Mind', sub: 'Minutes · sessions · streak', to: '/mind-stats' }) // #194c
+  // Mind stats DEACTIVATED 2026-07-11 (JM: remove mind traces, incl. under Stats).
   return { global, perSport }
 }
 const STAT_ICON: Record<string, ReactNode> = {

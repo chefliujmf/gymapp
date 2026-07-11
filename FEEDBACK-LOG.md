@@ -22,6 +22,18 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+490. ⬜ **Recovery library is too small — build a MUCH larger one (LOW priority).** JM 2026-07-11: "for recovery we'll
+    need a much larger library, it's not near enough." More sauna/cold/massage/mobility/breath/sleep routines. **Route:** content.
+489. 🔨 **Add sheet = ride / run / gym / recovery / note ONLY (drop mind, meal, supplement).** JM 2026-07-11: "when we
+    click add be sure to not have mind or meal or supplement — it's ride, run, gym, recovery, note." (Eat+Mind are
+    deactivated.) `AddSheet` in Today (+ Plan). **Route:** UI.
+488. ⬜ **Merge Today INTO Plan — Plan gains DAY / WEEK / MONTH / SCHEDULE views; DAY = today's features; default-view
+    preference.** JM 2026-07-11: "Today and Plan should merge (keep name Plan). Today becomes part of Plan — replace
+    what we have as 'Day' in Plan with ALL the features under the Today tab (keep the label Day). In Preferences a user
+    picks the default view (day/week/month/schedule)." So: remove the Today tab; its content (check-in, verdict, plan,
+    recovery…) becomes Plan's Day view; add a default-view pref. Big restructure — mock first (options-first). **Route:** UX.
+487. 🔨 **Remove the Train tab — add a workout via the Add button.** JM 2026-07-11: "remove Train tab; if a user wants
+    to add a workout they have the Add button." Drop the nav tab (keep the /train route). **Route:** UI.
 486. ⬜ **Coach task must survive switching screens (leaving the chat → "network error" on return).** JM 2026-07-11:
     "once we give a task to the coach, we should be able to switch screen without the coach interrupting; when we come
     back it says network error." ROOT: leaving the chat closes the SSE stream → the chat-helper's `res.on('close')`

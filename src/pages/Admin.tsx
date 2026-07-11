@@ -84,12 +84,12 @@ export default function Admin() {
       <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head">
         <h1>Admin</h1>
-        <p>{tab === 'backlog' ? 'Your live backlog — filter, comment, prioritise, discard' : 'Manage who can access Platyplus'}</p>
+        <p>{tab === 'backlog' ? 'Your road map — future ideas to assess, consider and approve' : 'Manage who can access Platyplus'}</p>
       </div>
 
       <ClaudePanel />
       <div className="chips" style={{ marginBottom: 14 }}>
-        <button className={'chip' + (tab === 'backlog' ? ' chip--active' : '')} onClick={() => setTab('backlog')}>Backlog</button>
+        <button className={'chip' + (tab === 'backlog' ? ' chip--active' : '')} onClick={() => setTab('backlog')}>Road map</button>
         <button className={'chip' + (tab === 'users' ? ' chip--active' : '')} onClick={() => setTab('users')}>Users</button>
       </div>
 
