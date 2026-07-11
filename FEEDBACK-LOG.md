@@ -22,6 +22,7 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+496. ⬜ **Recurring STALE PWA CACHE — prod serves updated JS but the browser keeps the old bundle.** JM 2026-07-11 hit this repeatedly ("To test empty", "coach name missing on prod", "works on QA not prod") — each time the DEPLOYED prod JS was correct but his browser ran a cached pre-deploy bundle. #200/#218 were supposed to auto-update the SW after deploy; it is NOT reliably prompting/applying. FIX: make the service worker reliably detect + activate a new build (skipWaiting + clients.claim + a visible "new version — reload" nudge), and bust the item-list cache. Until fixed, a hard-refresh (Cmd+Shift+R) is the workaround. **Route:** PWA/infra.
 495. ⬜ **QA ≠ PROD for backlog TRIAGE + user reports (extends #485).** JM 2026-07-11: can't see #1002/#1003/#1006 in the
     QA Road map. #485 synced the generated item LIST, but the triage overlay + user-added reports (`app_meta.backlog` =
     {triage, added}) are PER-ENV Postgres — QA has 11 added, prod has 8, DIVERGED. Reports filed on one env are invisible
