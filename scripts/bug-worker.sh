@@ -99,6 +99,18 @@ Follow your operating rules exactly: assess it's a real, still-relevant bug; fix
   else
     log "no code change for #$N (assessed → discarded/re-typed/parked)"
   fi
+  # record WHAT happened for the Admin panel's recent-outcomes feed (so JM sees each item's result)
+  local st out
+  st="$("$NODE" scripts/backlog.mjs get "$N" 2>/dev/null || echo '')"
+  case "$st" in
+    totest) out="fixed → to test" ;;
+    todo) out="parked for you" ;;
+    discarded) out="not a bug — discarded" ;;
+    review) out="needs your input" ;;
+    pass|done) out="done" ;;
+    *) out="assessed" ;;
+  esac
+  "$NODE" scripts/backlog.mjs logoutcome "$N" "$out" >/dev/null 2>&1 || true
   return 0
 }
 

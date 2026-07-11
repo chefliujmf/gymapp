@@ -137,4 +137,18 @@ else if (cmd === 'ready') {
   }
   process.stdout.write(totest < CAP && bug > 0 ? '1' : '0')
 }
-else { console.log('cmds: status | next | ready | flip <n> <status> [note] | settype <n> <type> | done <n> | rmorphan') }
+else if (cmd === 'get') {
+  const k = String(n); const m = merged(bl); const it = m.get(k)
+  process.stdout.write(it ? effOf(bl, k, it) : 'unknown')
+}
+else if (cmd === 'logoutcome') {
+  // append {n, outcome, note, at} to the rolling recent-outcomes file so the Admin panel can show WHAT the worker
+  // did to each item (fixed→to-test / parked / discarded / needs-you). Box-local (uses the BACKLOG_FILE dir).
+  const RECENT = LOCAL ? LOCAL.replace(/backlog\.json$/, 'claude-recent.json') : ''
+  if (!RECENT) { console.error('logoutcome needs BACKLOG_FILE (box only)'); process.exit(1) }
+  let arr = []; try { arr = JSON.parse(readFileSync(RECENT, 'utf8')) } catch { arr = [] }
+  arr.unshift({ n: Number(n), outcome: arg2, note: note || undefined, at: Date.now() })
+  const tmp = RECENT + '.tmp'; writeFileSync(tmp, JSON.stringify(arr.slice(0, 12))); renameSync(tmp, RECENT)
+  console.log(`logged #${n} → ${arg2}`)
+}
+else { console.log('cmds: status | next | ready | get <n> | logoutcome <n> <outcome> [note] | flip <n> <status> [note] | settype <n> <type> | done <n> | rmorphan') }
