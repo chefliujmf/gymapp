@@ -22,8 +22,9 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-493. ⬜ **Plan default-view preference (Settings).** Split from #488: let the user pick which Plan view opens by default
-    (Day / Week / Month / Schedule) in Settings; Calendar reads it on mount (today it hardcodes 'month'). **Route:** UI.
+493. ✅ **Plan default-view preference (Settings).** ALREADY BUILT + works (JM confirmed 2026-07-11). Settings → "Calendar
+    starts on" (Day / Week / Month / Schedule) persists `calView`; Calendar reads it on mount (localStorage + setSetting,
+    `?view=` overrides). On prod. **Route:** UI.
 492. 🔨 **Rename "Backlog" → "Road map" (= future to assess / consider / approve).** JM 2026-07-11. Done in nav +
     Admin header (commit 67af627). Same commit also removed the **Mind card from Stats** (JM: "mind is still under stats
     too, remove"). **Route:** UI. 🧪 the tab/label reads "Road map" everywhere; no "Mind" card left on /stats.
@@ -49,7 +50,7 @@ test guide → the **🧪 Test guide** section below.
     features (keep the label Day). In Preferences a user picks the default view." DONE: Today tab removed; its content
     (check-in · verdict · plan · recovery) is Plan's Day view; Week + Schedule show each day's check-in STRIP, Month a
     verdict DOT — past = "didn't check in" / today = "check in today" / future = nothing. Mocked (options-first, JM
-    picked C, refined to per-day). ⚠️ the default-view Settings pref is split to #493 (not built yet). **Route:** UX.
+    picked C, refined to per-day). Default-view Settings pref = #493 (also already built — "Calendar starts on"). **Route:** UX.
 487. 🔨 **Remove the Train tab — add a workout via the Add button.** JM 2026-07-11: "remove Train tab; if a user wants
     to add a workout they have the Add button." Drop the nav tab (keep the /train route). **Route:** UI.
 486. ⬜ **Coach task must survive switching screens (leaving the chat → "network error" on return).** JM 2026-07-11:
