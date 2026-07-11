@@ -112,14 +112,15 @@ else if (cmd === 'next') {
     cands.push({ n: Number(k), title: it.title || '', area: it.area || '', status: s, type: t.type || 'bug',
       priority: t.priority || '', comments: (t.comments || []).map((c) => ({ by: c.by || 'user', text: String(c.text || '').slice(0, 400) })) })
   }
-  // PRIORITY ORDER (JM): (1) tested-FAIL before review — a fix JM tested that broke is the highest priority; then
-  // (2) HIGH > MED > LOW > unset priority (his triage priority); then (3) oldest (#) first. Bugs-only is already
-  // enforced above (eligible requires type==='bug'), so bugs always come before features/ideas by construction.
+  // PICK ORDER (JM 2026-07-11, exact): PRIORITY is primary, then Tested-Failed before Bugs WITHIN each priority,
+  // then OLDEST (smallest #) first. So the buckets are:
+  //   1 fail·hi → 2 bug·hi → 3 fail·med → 4 bug·med → 5 fail·lo → 6 bug·lo   (each bucket: oldest # first)
+  // A HIGH-priority bug outranks a LOW-priority fail. Bugs-only is already enforced above (type==='bug').
   const PRANK = { hi: 0, med: 1, lo: 2, '': 3 }
   cands.sort((a, b) =>
-    (a.status === 'fail' ? 0 : 1) - (b.status === 'fail' ? 0 : 1)
-    || ((PRANK[a.priority] ?? 3) - (PRANK[b.priority] ?? 3))
-    || a.n - b.n)
+    ((PRANK[a.priority] ?? 3) - (PRANK[b.priority] ?? 3))            // 1) high → med → low → unset
+    || ((a.status === 'fail' ? 0 : 1) - (b.status === 'fail' ? 0 : 1)) // 2) within a priority: Tested-Failed before Bugs
+    || a.n - b.n)                                                     // 3) oldest first
   process.stdout.write(cands.length ? JSON.stringify(cands[0]) : '')
 }
 else if (cmd === 'ready') {

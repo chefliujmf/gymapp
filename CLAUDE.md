@@ -35,8 +35,9 @@ JM lost trust because I shipped "built" code that didn't work. The fix is non-ne
    source of truth** (e.g. do these choices match intervals?) — not just "does it compile?".
 6. **PRIORITY + PIPELINE (JM 2026-07-10 — supersedes the old 10-at-a-time batch):** BUGS are worked by the
    **autonomous XPS worker** (`scripts/bug-worker.sh` + systemd timer on the box), **NOT this chat** — see memory
-   `platyplus-bug-worker-architecture`. This chat = **features/ideas/ideation**. Worker pick order: **tested-`fail`
-   first, then HIGH>MED>LOW priority, then oldest #**; **bugs only** (never features/ideas). It keeps a small
+   `platyplus-bug-worker-architecture`. This chat = **features/ideas/ideation**. Worker pick order (JM 2026-07-11, exact): **PRIORITY first
+   (HIGH>MED>LOW), then Tested-Failed before Bugs within each priority, then OLDEST # first** — so a high-priority
+   bug outranks a low-priority fail (buckets: fail·hi → bug·hi → fail·med → bug·med → fail·lo → bug·lo); **bugs only** (never features/ideas). It keeps a small
    **rolling `totest` buffer** (cap 5) on QA and goes **ONE-BY-ONE**, not a batch of 10. **PROMOTE = per item, gated
    on "Tested Success" (`pass`):** JM tests on QA → flips an item to `pass` → promote **that item alone** with
    **`scripts/promote-item.sh <N>`** (cherry-picks its commit onto a branch off `main` → prod PR → CI build-gates
