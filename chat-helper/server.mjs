@@ -53,6 +53,9 @@ const server = http.createServer((req, res) => {
     try { writeFileSync(spFile, sysPrompt) } catch (e) { res.writeHead(500); return res.end('sysprompt write failed: ' + e.message) }
     const args = [
       '-p', message,
+      // #484 perf — the coach ran on the CLI default (Opus 4.8): slow for a tool-calling coach. Sonnet is much
+      // faster and plenty capable here. Override with COACH_MODEL if ever needed.
+      '--model', process.env.COACH_MODEL || 'sonnet',
       '--output-format', 'stream-json', '--include-partial-messages', '--verbose',
       '--mcp-config', mcpConfig,
       '--allowedTools', 'mcp__platyplus',
