@@ -22,6 +22,17 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+484. 🔨 **Coach hung on "reviewing your wellness data…" then nothing (extremely slow) — on PROD.** JM 2026-07-11
+    (asked a simple task; got the preamble + tool indicator, no answer; "note but nothing"). Prod app+db+claude were
+    all HEALTHY, so it was a SLOW tool chain (get_wellness/get_checkins → intervals reads) that ran past the
+    chat-helper's **180s SIGKILL** — and `proc.on('close')` then ended SILENTLY (`{done:true}`, no error), leaving the
+    partial preamble with no answer. FIXED (`chat-helper/server.mjs`, hand-synced + both coach services restarted):
+    (a) NEVER end silently — on timeout → "that took too long, try again"; on empty → "couldn't finish, try again";
+    (b) 180s→**240s** headroom for slow intervals days; (c) **per-request logging** (`[chat] req/outcome/duration`) so
+    it's diagnosable next time (the services logged nothing before). **Verify:** retry the coach on prod — a slow one
+    now shows a clear message instead of blank. Also fixed SEPARATELY: QA (staging) was DOWN (db stopped + app exited
+    137 from rapid overlapping redeploys) — brought back up. PREVENT recurrence: a `concurrency` guard on
+    `deploy-staging.yml`. **Route:** coach robustness (done) + a deploy-workflow guard (todo).
 483. ⬜ **Graph titles have no padding — they almost overlap the chart.** JM 2026-07-10. Chart standard: add top
     padding/margin between a graph's title and the plot so they never collide. Shared chart component. **Route:** bug (worker).
 482. ⬜ **Graph lines are too thick on phone.** JM 2026-07-10. The chart stroke width reads heavy on mobile — thin it

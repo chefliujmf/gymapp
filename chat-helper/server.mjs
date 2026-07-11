@@ -66,10 +66,14 @@ const server = http.createServer((req, res) => {
     // the server's local date (UTC would put it a day ahead every evening → wrong-day plan edits).
     const env = { ...process.env, TZ: process.env.COACH_TZ || 'America/Toronto', PATH: `${NODE_BIN_DIR}:${process.env.PATH || ''}` }
     const proc = spawn(CLAUDE_BIN, args, { env })
+    console.log(`[chat] req: ${message.slice(0, 70).replace(/\s+/g, ' ')}${p.sessionId ? ' (resume)' : ''}`)
     proc.stdin?.end()
-    let buf = '', err = '', done = false
+    let buf = '', err = '', done = false, gotText = false, timedOut = false
+    const t0 = Date.now()
     const cleanup = () => { try { unlinkSync(spFile) } catch { /* already gone */ } }
-    const killer = setTimeout(() => proc.kill('SIGKILL'), 180000)
+    // give slow tool chains (intervals wellness reads) headroom; on timeout flag it so `close` reports it
+    // instead of ending silently ("note but nothing" — the exact bug JM hit).
+    const killer = setTimeout(() => { timedOut = true; proc.kill('SIGKILL') }, 240000)
     const end = () => { if (done) return; done = true; clearTimeout(killer); cleanup(); send({ done: true }); res.end() }
     proc.stdout.on('data', (d) => {
       buf += d
@@ -78,7 +82,7 @@ const server = http.createServer((req, res) => {
         const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1)
         if (!line) continue
         let ev; try { ev = JSON.parse(line) } catch { continue }
-        if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') send({ delta: ev.event.delta.text })
+        if (ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta') { gotText = true; send({ delta: ev.event.delta.text }) }
         // #353 — surface tool activity so the UI can show "reviewing your …" instead of a frozen screen.
         else if (ev.type === 'stream_event' && ev.event?.type === 'content_block_start' && ev.event.content_block?.type === 'tool_use') send({ tool: friendlyTool(ev.event.content_block.name) })
         else if (ev.type === 'result' && ev.session_id) send({ sessionId: ev.session_id })
@@ -86,7 +90,17 @@ const server = http.createServer((req, res) => {
     })
     proc.stderr.on('data', (d) => (err += d))
     proc.on('error', (e) => { if (!done) { done = true; clearTimeout(killer); cleanup(); send({ error: 'coach unavailable: ' + e.message }); res.end() } })
-    proc.on('close', () => { if (err && !buf) send({ error: err.slice(0, 200) }); end() })
+    proc.on('close', (code) => {
+      // NEVER end silently. If we produced no answer, tell the user WHY so they don't stare at "note but nothing".
+      if (!done && !gotText) {
+        if (timedOut) send({ error: 'That took too long — the coach was still gathering your data. Please try again.' })
+        else if (err) send({ error: err.slice(0, 200) })
+        else send({ error: 'The coach couldn’t finish that one — please try again.' })
+      }
+      const outcome = gotText ? 'ok' : timedOut ? 'TIMEOUT' : err ? 'err' : 'empty'
+      console.log(`[chat] ${outcome} · ${Math.round((Date.now() - t0) / 1000)}s · exit=${code}`)
+      end()
+    })
     res.on('close', () => { if (!done) { clearTimeout(killer); proc.kill('SIGKILL') } })
   })
 })
