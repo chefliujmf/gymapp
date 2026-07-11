@@ -18,46 +18,44 @@ jump the queue** — it stays at its own (usually med/low) priority ("[#255 is] 
 a bug"). Order: 1) **failed bugs** → 2) **open bugs** → 3) (only when no bugs left) features/ideas by their own
 priority. Don't sink time into a med feature (e.g. #255) while any bug is open. Type/priority = JM's triage overlay.
 
-## The 10-at-a-time bug pipeline (JM 2026-07-09) — how we drive to ZERO
-Fill the **`totest` bucket to exactly 10**. **JM reviews ONLY when `totest == 10`** (not a partial batch).
-- **PROMOTE at `totest == 10`** (JM: "promote when tested is at 10 items"). The moment the bucket fills to 10,
-  push + **promote dev → prod** so the whole batch is LIVE on prod — JM tests **on prod**, where everything works
-  (incl. coach-only features like the horizon #439 / recovery #451 that QA can't exercise). This is why we ship the
-  batch before he reviews: it makes every item testable in one place.
-- **JM tests on prod → `pass` or `fail`.** A **`pass` → mark it `done`** — it's already on prod from the batch
-  promote (JM 2026-07-09, "very important": tested-OK ⇒ promoted + `done`). A **`fail` → I rework** it (bug I own);
-  it re-enters a later batch and ships on that batch's promote. Marking `pass`/`fail` empties the bucket.
-- **REFILL TRIGGER = `totest == 0`** (JM: "as soon as to test is at 0, trigger a review of bugs and items and
-  start working on 10"). The moment it hits 0: (1) mark the passes `done`; (2) rework the fails; (3) **RE-REVIEW
-  the whole backlog** with JM's LATEST triage (new reports, reprioritizations, type/priority/area) — don't work a
-  stale list; for EACH candidate first **ASSESS RELEVANCE (JM 2026-07-09): "when you review an item of any kind
-  (feature or bug), assess it's still valid — some are old and not relevant anymore."** If it references a
-  since-removed/redesigned feature or is clearly superseded → **`discarded`** (don't work it; that's progress to 0).
-  Otherwise reconcile already-fixed-but-stale `todo` bugs (verify the `#NNN` code ref + test → `totest`) and fix
-  the genuinely-open ones; (4) fill the next 10 → **promote at 10** again.
-Repeat until **0 bugs** (then, and only then, features/ideas — order per "Priority order"). Batch my status
-flips so they don't race JM's live triage writes.
-- **THE TRIGGER (#468):** run a **self-perpetuating background watcher** (`run_in_background` bash, ~90s poll)
-  that fires when **`totest == 0` OR the manual flag is set** (`/srv/backlog/claude-trigger.json`, written by the
-  panel's "▶ Start next batch now" button → `POST /auth/admin/claude-trigger`). On completion (fired OR timeout)
-  the task notification wakes me → I refill + **re-arm the watcher** (that's what makes it self-perpetuating).
-  Clear the trigger file when I act on a manual fire so it doesn't re-fire. The **#468 Admin panel** shows live
-  status (write `/srv/backlog/claude-status.json` as I work: batch, done/total, poolBugs/Features/Ideas).
+## The ONE-BY-ONE pipeline (JM 2026-07-10/11 — SUPERSEDES the old 10-at-a-time batch) — how we drive to ZERO
+Work **ONE item at a time**, NOT a batch of 10. Keep only a small rolling `totest` buffer (cap ~5). Per item:
+1. **Build it → flip its status to `totest` (🧪)** in FEEDBACK-LOG + write the how-to-test (rule 2). This is the
+   handoff. ⚠️ It must be **🧪**, never 🔨 — see the emoji mapping in rule 2.
+2. **JM tests on QA** (a `dev` push auto-deploys to QA/staging). **NOT on prod** — `dev` IS the QA env. (Coach-only
+   bits that only run on prod, e.g. daily-adapt #439, are the rare exception JM tests on prod — but the DEFAULT is QA.)
+3. **JM flips `pass` (Tested ✓) or `fail` (✗)** in his live triage.
+   - **`pass` ⇒ PROMOTE THAT ITEM ALONE** with `scripts/promote-item.sh <N>` (cherry-picks its commit onto a branch
+     off `main` → prod PR → CI build-gates auto-merge → `deploy.yml` ships prod), then mark **`done`**. **NEVER
+     promote wholesale dev→prod** — dev carries untested worker fixes + infra that must not ride along (JM directive).
+   - **`fail` ⇒ rework immediately** (a bug I own — top priority); it stays `fail` (preserving JM's signal) until
+     fixed, then back to `totest`.
+- **Pick order (JM 2026-07-11, EXACT):** PRIORITY first (HIGH>MED>LOW), then **Tested-Failed before Bugs** within
+  each priority, then **OLDEST # first**. **ALL bugs before ANY feature/idea.** The **order mindset stays even when
+  polishing HERE in chat**, not just the worker — no ad-hoc cherry-picking.
+- **ASSESS RELEVANCE on every item** (JM 2026-07-09): old items referencing a removed/redesigned feature →
+  `discarded` (don't work it). Reconcile already-fixed-but-stale `todo` bugs (verify the `#NNN` code ref + test →
+  `totest`), don't re-fix. Batch my status flips so they don't race JM's live triage writes.
+- **The XPS worker is PARKED (JM 2026-07-11):** bugs normally run on the autonomous XPS worker (see memory
+  `platyplus-bug-worker-architecture`), but JM paused it — **THIS chat works the whole queue** (bugs included) until
+  the app is polished, then automation resumes. Don't rely on the #468 watcher/trigger while parked.
 
 ## The five rules
 1. **LOG FIRST.** Every JM report → `FEEDBACK-LOG.md`, numbered, *before* touching code. Fixing
    without logging = the report gets lost. Never make JM re-report.
-2. **`🔨 built ≠ done`. The MOMENT I finish working an item (shipped to QA), I FLIP its in-app backlog
-   status to `totest` — WITH the how-to-test (JM directive 2026-07-09).** That `totest` list IS JM's
-   testing queue: "once you've worked an item, place it under to test so I have a list of what to test and
-   how to test." So every worked item → status `totest` in the SHARED backlog (`/auth/admin/backlog/:n` or the
-   shared file), and its FEEDBACK-LOG.md entry carries a **`Verify:`** clause (build-backlog surfaces it as the
-   app's "What to test"). Never leave a shipped item at `todo`/`🔨` — that hides it from JM's to-test list.
-   Only **JM** flips `totest → pass` (Tested ✓) after testing on QA. **JM marking `pass` IS his promote
-   sign-off (JM 2026-07-09): the moment items are `pass`, I PROMOTE them to prod and flip `pass → done`** —
-   don't sit on tested-green work. (`done` = shipped to prod + signed off.) I never self-certify UX.
-   And a `fail` → I rework it immediately (bugs are highest priority) and re-ship it back to `totest` when fixed
-   (it stays `fail` while I work, preserving JM's signal, until it's ready to re-test).
+2. **`built ≠ done`. The MOMENT I finish an item (shipped to QA), I flip its FEEDBACK-LOG status to `🧪` (To test)
+   + write the how-to-test.** ⚠️ **THE STATUS EMOJI IS LOAD-BEARING — this is the rule I broke (JM caught it
+   2026-07-11).** `build-backlog.mjs` (`statusOf`) maps the FEEDBACK-LOG char to what the APP shows:
+   **`🧪 → totest` · `✅ → done` · `✗ → fail` · and `🔨 / ⬜ / anything else → todo`.** So a *built* item left at
+   **`🔨`** renders as **To-DO, not To-test** — it VANISHES from JM's test queue. **NEVER mark a done-building item
+   `🔨`; a shipped item is `🧪`.** (Use `🔨` only for genuinely mid-build/not-yet-shipped, if at all — it's just
+   `todo` to the app.) That `totest` list IS JM's testing queue: "once you've worked an item, place it under to test
+   so I have a list of what to test and how to test." The entry carries a **`Verify:` / 🧪** how-to-test clause
+   (build-backlog surfaces it as the app's "What to test"). **Update the backlog on EVERY item you finish — not in
+   a batch later (JM 2026-07-11).** Only **JM** flips `🧪 totest → pass` (Tested ✓) after testing **on QA**. **`pass`
+   IS his promote sign-off: promote THAT item alone (`scripts/promote-item.sh <N>`) → flip `pass → done`** — never sit
+   on tested-green work, never promote wholesale. A `fail` → rework immediately (bugs are top priority); it stays
+   `fail` (preserving JM's signal) until re-shipped to `🧪 totest`. I never self-certify UX.
 3. **A test ships with every fix — DEFINE a real unit test, don't hand-wave (JM 2026-06-30: "I don't see
    you define proper unit tests").** The DEFAULT is a unit test; if the logic lives inside a component,
    **extract the pure function** to a plain module so it CAN be tested (e.g. `vo2max-submax.ts`, `mind-stats.ts`,
