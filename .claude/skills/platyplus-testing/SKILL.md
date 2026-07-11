@@ -44,18 +44,19 @@ Work **ONE item at a time**, NOT a batch of 10. Keep only a small rolling `totes
 1. **LOG FIRST.** Every JM report → `FEEDBACK-LOG.md`, numbered, *before* touching code. Fixing
    without logging = the report gets lost. Never make JM re-report.
 2. **`built ≠ done`. The MOMENT I finish an item (shipped to QA), I flip its FEEDBACK-LOG status to `🧪` (To test)
-   + write the how-to-test.** ⚠️ **THE STATUS EMOJI IS LOAD-BEARING — this is the rule I broke (JM caught it
-   2026-07-11).** `build-backlog.mjs` (`statusOf`) maps the FEEDBACK-LOG char to what the APP shows:
-   **`🧪 → totest` · `✅ → done` · `✗ → fail` · and `🔨 / ⬜ / anything else → todo`.** So a *built* item left at
-   **`🔨`** renders as **To-DO, not To-test** — it VANISHES from JM's test queue. **NEVER mark a done-building item
-   `🔨`; a shipped item is `🧪`.** (Use `🔨` only for genuinely mid-build/not-yet-shipped, if at all — it's just
-   `todo` to the app.) That `totest` list IS JM's testing queue: "once you've worked an item, place it under to test
-   so I have a list of what to test and how to test." The entry carries a **`Verify:` / 🧪** how-to-test clause
-   (build-backlog surfaces it as the app's "What to test"). **Update the backlog on EVERY item you finish — not in
-   a batch later (JM 2026-07-11).** Only **JM** flips `🧪 totest → pass` (Tested ✓) after testing **on QA**. **`pass`
-   IS his promote sign-off: promote THAT item alone (`scripts/promote-item.sh <N>`) → flip `pass → done`** — never sit
-   on tested-green work, never promote wholesale. A `fail` → rework immediately (bugs are top priority); it stays
-   `fail` (preserving JM's signal) until re-shipped to `🧪 totest`. I never self-certify UX.
+   + write the how-to-test.** ⚠️ **THE TRIAGE IS THE BOARD, NOT THE .md — this is what I got wrong (JM caught it
+   2026-07-11, To-test bucket read 0 for hours).** JM's app computes each item's status as **`triage[n].status ?? .md-derived`**
+   — so the shared **triage OVERRIDES** the FEEDBACK-LOG status. Flipping the `.md` emoji only shows for the ~170 items JM
+   has NEVER triaged; **most built items already carry a triage entry** (often a stale `done`/`todo` — e.g. a REOPENED item
+   like #145 kept its old `done`), which SILENTLY HIDES my `🧪`. So to actually hand JM an item to test, **SET ITS TRIAGE
+   STATUS to `totest`** — via `PUT /auth/admin/backlog/:n {status:'totest'}` (admin) OR a safe atomic write to the shared
+   `/srv/backlog/backlog.json` on the box (`readBacklog` reads fresh, so it sticks; batch flips to avoid racing JM's live
+   edits). The `.md` still gets `🧪` + a **`Verify:`** how-to-test clause (that text is the app's "What to test"), and
+   `build-backlog.mjs` maps `🧪→totest · ✅→done · ✗→fail · 🔨/⬜→todo` — but the TRIAGE is what determines JM's bucket.
+   **Do it on EVERY item you finish, immediately — not batched later.** Only **JM** flips `totest → pass` after testing
+   **on QA**. **`pass` = his promote sign-off: promote THAT item alone (`scripts/promote-item.sh <N>`) → set triage `done`**
+   — never sit on green work, never promote wholesale. A `fail` → rework immediately; re-ship by setting triage back to
+   `totest`. I never self-certify UX.
 3. **A test ships with every fix — DEFINE a real unit test, don't hand-wave (JM 2026-06-30: "I don't see
    you define proper unit tests").** The DEFAULT is a unit test; if the logic lives inside a component,
    **extract the pure function** to a plain module so it CAN be tested (e.g. `vo2max-submax.ts`, `mind-stats.ts`,
