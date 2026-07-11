@@ -1424,6 +1424,12 @@ select.search { appearance: none; -webkit-appearance: none; }
 .coachpick b { color: var(--accent, #34e07d); }
 /* check-in collapsed summary (once all 3 logged) */
 .checkin--mini { display: block; padding: 11px 13px; }
+/* #488 — compact one-line check-in strip for Plan's week/month/schedule (full card only in Day). */
+.checkin-strip { display: flex; align-items: center; gap: 9px; width: 100%; background: linear-gradient(157deg, var(--card1, #21252f), var(--card2, #191c24)); border: 1px solid var(--line); border-radius: 12px; padding: 10px 13px; margin-bottom: 11px; font: 700 13px/1.1 inherit; color: var(--text); cursor: pointer; text-align: left; }
+.checkin-strip__ok { color: var(--accent, #34e07d); flex: none; }
+.checkin-strip__sc { color: var(--text-dim); font-weight: 800; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.checkin-strip__go { margin-left: auto; color: #7fa8ff; flex: none; }
+.checkin-strip--todo { color: var(--text-dim); }
 .checkin__sum { font-size: 12.5px; color: var(--text); }
 .checkin__mhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
 .checkin__done { font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--accent, #34e07d); }

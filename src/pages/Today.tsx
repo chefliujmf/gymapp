@@ -24,7 +24,7 @@ import PushNudge from '../PushNudge'
 const CHECKIN_FACES = ['💀', '😩', '😐', '😀', '🤩']
 
 /** Quick "how do you feel" check-in (energy/sleep/soreness) — a few taps, feeds the coach. */
-function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin | null) => void }) {
+export function CheckInCard({ day, onChange, compact = false }: { day: string; onChange?: (ci: Checkin | null) => void; compact?: boolean }) { // #488 compact = one-line strip for Plan's week/month/schedule
   const isToday = day === localISO()
   const [ci, setCi] = useState<Checkin | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -140,7 +140,20 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   // it's collapse-before-filling that gets skipped). Tap Edit to change; History → Logs.
   const verdict = readinessVerdict(ci)
   const vLabel = verdict ? (verdict.tone === 'good' ? 'Fresh' : verdict.tone === 'low' ? 'Run-down' : 'Moderate') : ''
-  if (rows.every((r) => ci?.[r.key] != null) && !editing) {
+  const checkedIn = rows.every((r) => ci?.[r.key] != null)
+  // #488 — compact one-line strip for Plan's week/month/schedule (the FULL card only shows in Day). Tap → edit.
+  if (compact && !editing) {
+    if (!checkedIn) return <button className="checkin-strip checkin-strip--todo" onClick={() => setEditing(true)}>💬 Check in today<span className="checkin-strip__go">›</span></button>
+    return (
+      <button className="checkin-strip" onClick={() => setEditing(true)}>
+        <span className="checkin-strip__ok">✓ Checked in</span>
+        {verdict && <span className={'checkin__verdict checkin__verdict--' + verdict.tone}><span className="checkin__vdot" />{vLabel}</span>}
+        <span className="checkin-strip__sc">{rows.map((r) => `${CHECKIN_FACES[(disp(r) as number) - 1]}${disp(r)}`).join(' · ')}</span>
+        <span className="checkin-strip__go">Edit ›</span>
+      </button>
+    )
+  }
+  if (checkedIn && !editing) {
     return (
       <div className="card checkin checkin--mini">
         <div className="checkin__mhead">

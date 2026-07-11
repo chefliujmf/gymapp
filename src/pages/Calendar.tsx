@@ -11,7 +11,7 @@ import { localISO } from '../date'
 import { Plus, ChevronLeft, ChevronRight, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet, colorFor, iconFor, type SheetType } from './AddSheet'
-import Today from './Today' // #488 — Plan's DAY view = the full Today screen (merged), driven by `sel`
+import Today, { CheckInCard } from './Today' // #488 — Plan's DAY view = the full Today; CheckInCard compact = week/month/schedule strip
 import { orphanActivities } from '../orphan-activities'
 import { MovePicker } from './MovePicker'
 import { useAuth } from '../auth/AuthContext'
@@ -238,6 +238,9 @@ export default function Calendar() {
           <button key={v} className={'cal-viewbtn' + (view === v ? ' cal-viewbtn--on' : '')} onClick={() => changeView(v)}>{label}</button>
         ))}
       </div>
+
+      {/* #488 — check-in as a compact one-line strip in week/month/schedule (the FULL card lives in the Day view). */}
+      {view !== 'day' && <CheckInCard day={todayISO} compact />}
 
       {/* #488 — the DAY view is the merged Today screen (own day strip + Add), so skip Calendar's day title/nav there. */}
       {view !== 'day' && (
