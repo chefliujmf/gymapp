@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { zoneColor, zoneName, segPower } from './zones'
 
 export type Series = { label: string; color: string; data: (number | null)[]; area?: boolean; dash?: boolean; faint?: boolean }
@@ -21,16 +21,38 @@ export function PowerBlocks({ watts, ftp = 260, bins = 9 }: { watts?: (number | 
   )
 }
 
+/** Horizontal offset (px) to keep an absolutely-positioned popover inside the viewport.
+ * The dot usually sits at the RIGHT edge of a title, so a left-anchored box runs off-screen
+ * (#5019). Given the box's natural left/right and the viewport width, return the translateX that
+ * pulls it back inside with an 8px margin — nudging left when it overflows the right edge, right
+ * when it overflows the left. Left-visibility wins if the box is wider than the viewport. Pure. */
+export function clampPopShift(left: number, right: number, viewportWidth: number, margin = 8): number {
+  let s = 0
+  if (right > viewportWidth - margin) s = viewportWidth - margin - right
+  if (left + s < margin) s = margin - left
+  return s
+}
+
 /** A tappable ⓘ that reveals a short plain-language explanation (popover).
  * Tap to open, tap away / blur to dismiss (mobile-friendly, keyboard-focusable). */
 export function InfoDot({ text }: { text: string }) {
   const [open, setOpen] = useState(false)
+  const [shift, setShift] = useState(0)
+  const popRef = useRef<HTMLSpanElement>(null)
+  // After open (or text change), measure and clamp so the box never overflows the screen (#5019).
+  useLayoutEffect(() => {
+    if (!open || !popRef.current) return
+    const r = popRef.current.getBoundingClientRect()
+    // r reflects the CURRENT transform, so subtract it to recover the natural (unshifted) box.
+    setShift((prev) => clampPopShift(r.left - prev, r.right - prev, window.innerWidth))
+  }, [open, text])
   return (
     <span className="infodot-wrap">
       <button type="button" className="infodot" aria-label="What is this?" aria-expanded={open}
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o) }}
         onBlur={() => setTimeout(() => setOpen(false), 120)}>i</button>
-      {open && <span className="infodot-pop" role="tooltip">{text}</span>}
+      {open && <span ref={popRef} className="infodot-pop" role="tooltip"
+        style={shift ? { transform: `translateX(${shift}px)` } : undefined}>{text}</span>}
     </span>
   )
 }
