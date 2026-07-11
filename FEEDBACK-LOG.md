@@ -33,7 +33,12 @@ test guide → the **🧪 Test guide** section below.
     ⚠️ **NOT propagated to the COACH: the daily-adapt ROUND-OUT pass (server.js ~2824) + MCP `schedule_meal`/`schedule_mind`
     still auto-schedule meals + mind onto the calendar every day** (the #478 "meal on calendar = no-no" still fires). FIX =
     a reversible server gate — round-out → recovery-only, MCP meal/mind guarded, coach told they're off, engine/openapi/
-    memory updated. **Route:** propagate-all-layers (UI ✓, coach pending). 🔨 building the coach gate now.
+    memory updated. **Route:** propagate-all-layers. 🔨 COACH GATE BUILT: `EAT_MIND_OFF=true` const (server.js, reversible);
+    `upsertItem` HARD-REJECTS meal/mind/supplement (409); `roundOutMsg` → recovery-only; system prompt emits a "# EAT &
+    MIND ARE DEACTIVATED" block + skips DIET/FUEL-TARGET blocks; MCP `schedule_meal`/`schedule_mind`/`search_recipes`/
+    `search_sessions` descriptions prefixed "[DEACTIVATED]"; openapi 409 noted. 🧪 **Manual test (prod after promote):** ask
+    the coach "plan me some meals this week" → it must DECLINE + plan training/recovery only (no meal/mind item appears on
+    any day); the daily-adapt round-out adds recovery only. Reversible: flip `EAT_MIND_OFF=false` to bring Eat/Mind back.
 490. ⬜ **Recovery library is too small — build a MUCH larger one (LOW priority).** JM 2026-07-11: "for recovery we'll
     need a much larger library, it's not near enough." More sauna/cold/massage/mobility/breath/sleep routines. **Route:** content.
 489. 🔨 **Add sheet = ride / run / gym / recovery / note ONLY (drop mind, meal, supplement).** JM 2026-07-11: "when we

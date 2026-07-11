@@ -11,10 +11,10 @@ describe('Stats hub groups (#193)', () => {
     expect(labels(perSport)).toEqual(['Strength'])
   })
 
-  it('cycling + strength + meditation: global has Form + Wellness + History; per-sport has all three', () => {
+  it('cycling + strength + meditation: global has Form + Wellness + History; per-sport = Cycling + Strength (Mind stats deactivated #492)', () => {
     const { global, perSport } = statsGroups(['cycling', 'strength', 'meditation'])
     expect(labels(global)).toEqual(['Load & Form', 'Wellness', 'History'])
-    expect(labels(perSport)).toEqual(['Cycling', 'Strength', 'Mind'])
+    expect(labels(perSport)).toEqual(['Cycling', 'Strength']) // #492 — Mind removed from Stats
   })
 
   it('no sports set: shows Form + Wellness + History globally, no per-sport cards', () => {
