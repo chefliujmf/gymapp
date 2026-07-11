@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
-import { Home, CalendarDays, Dumbbell, BarChart3, Salad, MessageCircle, RotateCw } from 'lucide-react'
+import { Home, CalendarDays, Dumbbell, BarChart3, MessageCircle, RotateCw } from 'lucide-react'
 import AccountMenu from './auth/AccountMenu'
 import ReleaseBell from './ReleaseBell'
 import PromoteButton from './PromoteButton'
 import ReportButton from './ReportButton'
 import PasskeyPrompt from './auth/PasskeyPrompt'
 
-// 5 fixed tabs (best practice). Train & Stats are hubs whose CONTENT adapts to the
+// Fixed tabs (best practice). Train & Stats are hubs whose CONTENT adapts to the
 // user's sports, so the nav stays the same for a one-sport or multi-sport athlete.
+// Eat DEACTIVATED 2026-07-11 (JM: simplify the app) — the /eat route still exists, just no nav trace.
 const tabs = [
   { to: '/', label: 'Today', icon: <Home strokeWidth={1.75} />, end: true },
   { to: '/plan', label: 'Plan', icon: <CalendarDays strokeWidth={1.75} />, end: false },
   { to: '/train', label: 'Train', icon: <Dumbbell strokeWidth={1.75} />, end: false, match: /^\/(train|gym|workouts|exercises|programs|trainers|cycle|run|ride-builder|run-builder|mind)/ },
-  { to: '/eat', label: 'Eat', icon: <Salad strokeWidth={1.75} />, end: false, match: /^\/(eat|recipes)/ },
   { to: '/stats', label: 'Stats', icon: <BarChart3 strokeWidth={1.75} />, end: false, match: /^\/(stats|fitness|strength|progress|logs)/ },
 ]
 
