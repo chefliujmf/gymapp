@@ -22,6 +22,18 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+486. ⬜ **Coach task must survive switching screens (leaving the chat → "network error" on return).** JM 2026-07-11:
+    "once we give a task to the coach, we should be able to switch screen without the coach interrupting; when we come
+    back it says network error." ROOT: leaving the chat closes the SSE stream → the chat-helper's `res.on('close')`
+    SIGKILLs the coach mid-task → nothing saved → "network error". FIX: don't kill on client disconnect; let the coach
+    FINISH and PERSIST its answer to the thread (it's multi-thread + synced #363), so returning shows the completed
+    reply. Needs the app `/auth/chat` proxy + thread-save to survive a dropped client. **Route:** coach robustness.
+485. ⬜ **QA = PROD for backlog items, ALWAYS (JM directive 2026-07-11).** Today the item LIST is the BUNDLED
+    `src/data/generated/backlog.json` (AdminBacklog.tsx:96 `import()`), baked per build → QA (dev) build has more items
+    than prod (main) build; only the shared triage (#466) matches. FIX for "always identical": serve the generated item
+    list from a SHARED source — (a) deploy publishes the freshly-built list to the shared mount (newest-wins by max #),
+    (b) server serves it (`GET /auth/admin/backlog-items` from `/srv/backlog/items.json`), (c) frontend FETCHES it with
+    the bundle as fallback. All 3 needed together. Immediate sync = promote prod to current dev. **Route:** infra/architecture.
 484. 🔨 **Coach hung on "reviewing your wellness data…" then nothing (extremely slow) — on PROD.** JM 2026-07-11
     (asked a simple task; got the preamble + tool indicator, no answer; "note but nothing"). Prod app+db+claude were
     all HEALTHY, so it was a SLOW tool chain (get_wellness/get_checkins → intervals reads) that ran past the
