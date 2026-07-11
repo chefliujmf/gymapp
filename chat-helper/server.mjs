@@ -53,9 +53,10 @@ const server = http.createServer((req, res) => {
     try { writeFileSync(spFile, sysPrompt) } catch (e) { res.writeHead(500); return res.end('sysprompt write failed: ' + e.message) }
     const args = [
       '-p', message,
-      // #484 perf — the coach ran on the CLI default (Opus 4.8): slow for a tool-calling coach. Sonnet is much
-      // faster and plenty capable here. Override with COACH_MODEL if ever needed.
-      '--model', process.env.COACH_MODEL || 'sonnet',
+      // #484 perf — the chat does heavy REPLANNING (constraint-aware plan edits), so we keep the quality model
+      // (CLI default = Opus) unless COACH_MODEL is set. Don't downgrade the planning brain to chase speed; fix the
+      // real slowness (tool round-trips / prompt caching) instead. Set COACH_MODEL=sonnet to A/B test.
+      ...(process.env.COACH_MODEL ? ['--model', process.env.COACH_MODEL] : []),
       '--output-format', 'stream-json', '--include-partial-messages', '--verbose',
       '--mcp-config', mcpConfig,
       '--allowedTools', 'mcp__platyplus',
