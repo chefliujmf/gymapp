@@ -24,7 +24,7 @@ import PushNudge from '../PushNudge'
 const CHECKIN_FACES = ['💀', '😩', '😐', '😀', '🤩']
 
 /** Quick "how do you feel" check-in (energy/sleep/soreness) — a few taps, feeds the coach. */
-function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin | null) => void }) {
+export function CheckInCard({ day, onChange, compact = false }: { day: string; onChange?: (ci: Checkin | null) => void; compact?: boolean }) { // #488 compact = one-line strip for Plan's week/month/schedule
   const isToday = day === localISO()
   const [ci, setCi] = useState<Checkin | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -140,7 +140,20 @@ function CheckInCard({ day, onChange }: { day: string; onChange?: (ci: Checkin |
   // it's collapse-before-filling that gets skipped). Tap Edit to change; History → Logs.
   const verdict = readinessVerdict(ci)
   const vLabel = verdict ? (verdict.tone === 'good' ? 'Fresh' : verdict.tone === 'low' ? 'Run-down' : 'Moderate') : ''
-  if (rows.every((r) => ci?.[r.key] != null) && !editing) {
+  const checkedIn = rows.every((r) => ci?.[r.key] != null)
+  // #488 — compact one-line strip for Plan's week/month/schedule (the FULL card only shows in Day). Tap → edit.
+  if (compact && !editing) {
+    if (!checkedIn) return <button className="checkin-strip checkin-strip--todo" onClick={() => setEditing(true)}>💬 Check in today<span className="checkin-strip__go">›</span></button>
+    return (
+      <button className="checkin-strip" onClick={() => setEditing(true)}>
+        <span className="checkin-strip__ok">✓ Checked in</span>
+        {verdict && <span className={'checkin__verdict checkin__verdict--' + verdict.tone}><span className="checkin__vdot" />{vLabel}</span>}
+        <span className="checkin-strip__sc">{rows.map((r) => `${CHECKIN_FACES[(disp(r) as number) - 1]}${disp(r)}`).join(' · ')}</span>
+        <span className="checkin-strip__go">Edit ›</span>
+      </button>
+    )
+  }
+  if (checkedIn && !editing) {
     return (
       <div className="card checkin checkin--mini">
         <div className="checkin__mhead">
@@ -239,6 +252,34 @@ function readinessVerdict(ci: Checkin | null): { tone: 'good' | 'mixed' | 'low';
   if (min <= 2 || avg < 2.8) return { tone: 'low', text: 'A bit run-down — keep it easy and listen to your body today.' }
   if (avg >= 3.8 && min >= 3) return { tone: 'good', text: "You're fresh — good to train as planned." }
   return { tone: 'mixed', text: 'Moderately ready — train, but be ready to ease off.' }
+}
+// #488 — a light per-day check-in STRIP for Plan's week/schedule (Day keeps the full card). Reuses readinessVerdict
+// + CHECKIN_FACES. Future days render NOTHING (JM); a past day with no check-in reads "didn't check in"; tap → that day.
+const CI_ROWS = [{ key: 'energy' as const }, { key: 'sleep' as const }, { key: 'soreness' as const, invert: true }]
+export function DayCheckinStrip({ day, ci, today, onOpen }: { day: string; ci: Checkin | null; today: string; onOpen: () => void }) {
+  if (day > today) return null
+  const isToday = day === today
+  const checkedIn = ci != null && CI_ROWS.every((r) => ci[r.key] != null)
+  if (!checkedIn) {
+    if (isToday) return <button className="checkin-strip checkin-strip--todo" onClick={onOpen}>💬 Check in today<span className="checkin-strip__go">›</span></button>
+    return <div className="checkin-strip checkin-strip--none">— didn't check in —</div>
+  }
+  const verdict = readinessVerdict(ci)
+  const vLabel = verdict ? (verdict.tone === 'good' ? 'Fresh' : verdict.tone === 'low' ? 'Run-down' : 'Moderate') : ''
+  const scores = CI_ROWS.map((r) => { const raw = ci![r.key] as number; const d = r.invert ? 6 - raw : raw; return `${CHECKIN_FACES[d - 1]}${d}` }).join(' · ')
+  return (
+    <button className="checkin-strip" onClick={onOpen}>
+      <span className="checkin-strip__ok">✓ Checked in</span>
+      {verdict && <span className={'checkin__verdict checkin__verdict--' + verdict.tone}><span className="checkin__vdot" />{vLabel}</span>}
+      <span className="checkin-strip__sc">{scores}</span>
+      <span className="checkin-strip__go">{isToday ? 'Edit ›' : '›'}</span>
+    </button>
+  )
+}
+// #488 — month view: a small verdict dot per day (good/mixed/low), or null when there's no check-in.
+export function checkinVerdictTone(ci: Checkin | null): 'good' | 'mixed' | 'low' | null {
+  if (!ci || ci.energy == null || ci.sleep == null || ci.soreness == null) return null
+  return readinessVerdict(ci)?.tone ?? null
 }
 const RECOVERY_EMOJI: Record<string, string> = { sauna: '🔥', cold: '🧊', massage: '💆', mobility: '🧎', foam: '🪵', walk: '🚶' }
 
@@ -385,9 +426,12 @@ function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
   )
 }
 
-export default function Today() {
+export default function Today({ embedded = false, initialDay, onDay }: { embedded?: boolean; initialDay?: string; onDay?: (d: string) => void } = {}) {
   // #302: the setup checklist (SetupChecklist) now owns the "meet your coach" + setup nudges.
-  const [selDay, setSelDay] = useState(todayISO())
+  // #488 — embedded=true renders this as Plan's DAY view (no page-head); the selected day is driven by / synced to Plan.
+  const [selDay, setSelDay] = useState(initialDay || todayISO())
+  useEffect(() => { if (initialDay && initialDay !== selDay) setSelDay(initialDay) }, [initialDay]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onDay?.(selDay) }, [selDay]) // eslint-disable-line react-hooks/exhaustive-deps
   const todaysLogs = useLiveQuery(() => db.logs.where('date').equals(todayISO()).toArray())
   const dayLogs = useLiveQuery(() => db.logs.where('date').equals(selDay).toArray(), [selDay]) ?? []
   const doneTitles = new Set(dayLogs.map((l) => (l.title || '').toLowerCase().trim()))
@@ -494,11 +538,11 @@ export default function Today() {
   const hasWorkout = dayEvents.length > 0 || dayPlans.length > 0 || orphanActs.length > 0
   const isFuture = selDay > todayISO() // #223: future days forecast, not a live verdict
   const verdict = isFuture ? null : readinessVerdict(checkin)
-  // Days that have anything on them → a tiny dot under the WeekStrip day (#66).
+  // The WeekStrip day dot marks ACTIVITY days only — run/ride/gym/yoga/pilates, planned or done (#66).
+  // JM 2026-07-11: the dot is for ACTIVITIES, NOT food / meditation / recovery items — so `items` is excluded.
   const markedDays = new Set<string>([
     ...(events ?? []).map((e) => e.start_date_local.slice(0, 10)),
     ...plans.map((p) => p.date),
-    ...items.map((it) => it.date),
     ...activities.map((a) => (a.start_date_local || '').slice(0, 10)).filter(Boolean),
   ])
   // Match a completed intervals.icu activity to a planned workout by day + sport.
@@ -549,12 +593,17 @@ export default function Today() {
     ? dayMeals.map((it) => ({ key: it.id, tag: it.mealType || 'meal', title: it.title, kcal: it.kcal, recipeId: it.refId }))
     : meals.map((r) => ({ key: r.id, tag: r.category, title: r.title, kcal: r.kcal, recipeId: r.id, thumb: r.thumbnail, sug: r }))
   const mindItem = dayMindItems[0]
+  // DEACTIVATED 2026-07-11 (JM: simplify the app) — no Eat/Mind sections in Today for now (coach still tips in an
+  // activity's description). Recovery stays. `: boolean` (not the `false` literal) keeps TS's narrowing intact.
+  const SHOW_EAT: boolean = false, SHOW_MIND: boolean = false
   return (
     <div>
-      <div className="page-head">
-        <span className="eyebrow">{greeting}</span>
-        <h1>Ready to train?</h1>
-      </div>
+      {!embedded && (
+        <div className="page-head">
+          <span className="eyebrow">{greeting}</span>
+          <h1>Ready to train?</h1>
+        </div>
+      )}
 
       <SetupChecklist />
 
@@ -598,8 +647,9 @@ export default function Today() {
         <p className="meta">Nothing scheduled — tap Add, or enjoy a rest day.</p>
       ) : null}
 
-      {/* #202 Fuel — scheduled meals shown once as 2-col chips; else carb/protein-aware suggestions; + supplements */}
-      {(fuelChips.length > 0 || daySupps.length > 0) && (
+      {/* Eat DEACTIVATED 2026-07-11 (JM: simplify the app) — the coach still gives fuel tips in an activity's
+          description; we're just not developing the Eat section in Today for now. Flip `false` to re-enable. */}
+      {SHOW_EAT && (fuelChips.length > 0 || daySupps.length > 0) && (
         <>
           <div className="section-title sec-ico">🍽️ Eat <InfoDot text={`${fuelMsg}${dayMeals.length ? '' : ' Tap + to add a meal to your day.'}`} /></div>
           {dayMeals.length === 0 && fuelChips.length > 0 && <p className="meta" style={{ margin: '-2px 2px 8px' }}>{fuelMsg}</p>}
@@ -646,8 +696,9 @@ export default function Today() {
         </>
       )}
 
-      {/* #202 Mind — scheduled mind session shown once; else a suggested reset */}
-      {(mindItem || meditation) && (
+      {/* Mind DEACTIVATED 2026-07-11 (JM: simplify the app) — no recommended mind sessions in Today for now;
+          the coach can still tip in an activity's description. Recovery stays. Flip `false` to re-enable. */}
+      {SHOW_MIND && (mindItem || meditation) && (
         <>
           <div className="section-title sec-ico">🧠 Mind</div>
           <div className="stack">

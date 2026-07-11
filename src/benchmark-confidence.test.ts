@@ -24,8 +24,14 @@ describe('vo2maxConfidence', () => {
 })
 
 describe('ftpConfidence', () => {
-  it('eFTP present → strong 90', () => expect(ftpConfidence({ eftp: 260 })).toEqual({ pct: 90, cls: 'strong', label: 'Strong' }))
+  it('eFTP present, no set FTP → strong 90', () => expect(ftpConfidence({ eftp: 260 })).toEqual({ pct: 90, cls: 'strong', label: 'Strong' }))
   it('no eFTP → learn 30', () => expect(ftpConfidence({ eftp: null })).toEqual({ pct: 30, cls: 'learn', label: 'Learning · needs a hard ride' }))
+  // #5007 — eFTP agrees with the set FTP (within 5%) → still strong.
+  it('eFTP ≈ set FTP → strong 90', () => expect(ftpConfidence({ eftp: 258, manual: 260 })).toEqual({ pct: 90, cls: 'strong', label: 'Strong' }))
+  // #5007 — the reported bug: eFTP 241 vs a proven 260 FTP (~7%) must NOT read "Strong".
+  it('eFTP materially below set FTP → learn, not strong', () => expect(ftpConfidence({ eftp: 241, manual: 260 })).toEqual({ pct: 55, cls: 'learn', label: 'Differs from your set FTP' }))
+  it('eFTP materially above set FTP → learn, not strong', () => expect(ftpConfidence({ eftp: 290, manual: 260 })).toEqual({ pct: 55, cls: 'learn', label: 'Differs from your set FTP' }))
+  it('null set FTP falls back to strong', () => expect(ftpConfidence({ eftp: 241, manual: null })).toEqual({ pct: 90, cls: 'strong', label: 'Strong' }))
 })
 
 describe('thresholdPaceConfidence', () => {

@@ -64,7 +64,8 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
         {!type && (
           <>
             <div className="sheet-types">
-              {([['ride', 'Ride', Bike], ['run', 'Run', Footprints], ['gym', 'Gym', Dumbbell], ['meal', 'Meal', Salad], ['mind', 'Mind', Brain], ['recovery', 'Recovery', Waves], ['supplement', 'Supplement', Pill], ['note', 'Note', StickyNote]] as const).filter(([t]) => !TAB_MODULE[t] || hasModule(sports, TAB_MODULE[t])).map(([t, label, Icon]) => (
+              {/* Eat/Mind deactivated 2026-07-11 (JM) — Add = ride/run/gym/recovery/note only (no meal/mind/supplement). */}
+              {([['ride', 'Ride', Bike], ['run', 'Run', Footprints], ['gym', 'Gym', Dumbbell], ['recovery', 'Recovery', Waves], ['note', 'Note', StickyNote]] as const).filter(([t]) => !TAB_MODULE[t] || hasModule(sports, TAB_MODULE[t])).map(([t, label, Icon]) => (
                 <button key={t} className="sheet-type" style={{ color: colorFor(t) }} onClick={() => setType(t)}><Icon size={22} /><span>{label}</span></button>
               ))}
             </div>

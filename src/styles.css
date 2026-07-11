@@ -395,8 +395,8 @@ select.search { appearance: none; -webkit-appearance: none; }
 .tl-chip { flex: 1; min-width: 70px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 11px; padding: 7px 10px; }
 .tl-chip span { display: block; color: var(--text-dim); font-size: 11px; }
 .tl-chip b { font-size: 16px; }
-.tl-card { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 13px; padding: 8px 6px 2px; margin-bottom: 9px; }
-.tl-clabel { font-size: 11px; font-weight: 700; color: var(--text-dim); padding: 0 6px 2px; }
+.tl-card { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 13px; padding: 11px 8px 5px; margin-bottom: 10px; }
+.tl-clabel { font-size: 11px; font-weight: 700; letter-spacing: .02em; color: var(--text-dim); padding: 0 4px 12px; } /* #483 real gap below the title so the top axis label can't overlap it */
 /* #54 Power tab: time-in-zone bar + list */
 .zbar { display: flex; height: 16px; border-radius: 6px; overflow: hidden; margin: 4px 0 10px; background: var(--bg-soft); }
 .zlist { display: flex; flex-direction: column; gap: 3px; }
@@ -838,7 +838,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .chart-tip__d { color: var(--text-dim); font-weight: 600; }
 /* gridded axis layout: y labels gutter + plot + x labels row. #286: wider gutter (breathing
    room) + taller x row so denser ticks read. */
-.chart2 { display: grid; grid-template-columns: 50px 1fr; grid-template-rows: 1fr 18px; column-gap: 8px; }
+.chart2 { display: grid; grid-template-columns: 50px 1fr; grid-template-rows: 1fr 18px; column-gap: 8px; padding-top: 8px; } /* #483 room for the top axis label's half-height (translateY(-50%)) so it doesn't spill into the title */
 .chart2__y { position: relative; grid-column: 1; grid-row: 1; }
 .chart2__y span { position: absolute; right: 2px; transform: translateY(-50%); font-size: 9.5px; font-weight: 600; color: var(--text-dim); white-space: nowrap; }
 .chart2__plot { grid-column: 2; grid-row: 1; }
@@ -1224,9 +1224,14 @@ select.search { appearance: none; -webkit-appearance: none; }
 .cal-dowcell { text-align: center; font-size: 11px; color: var(--muted, #9aa3b2); font-weight: 700; padding: 2px 0; }
 .cal-cell {
   min-height: 80px; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
-  gap: 3px; padding: 4px 3px; border-radius: 10px; border: 1px solid transparent;
+  gap: 3px; padding: 4px 3px; border-radius: 10px; border: 1px solid transparent; position: relative;
   background: var(--card, #1b1e26); color: var(--text, #e7ebf0); cursor: pointer; overflow: hidden;
 }
+/* #488 — per-day check-in verdict dot (month cell, top-right) */
+.cal-ci-dot { position: absolute; top: 4px; right: 5px; width: 8px; height: 8px; border-radius: 50%; }
+.cal-ci-dot--good { background: #34e07d; }
+.cal-ci-dot--mixed { background: #ffcf5c; }
+.cal-ci-dot--low { background: #7a8cff; }
 .cal-cell--dim { opacity: .42; }
 .cal-cell--sel { border-color: var(--accent, #34e07d); }
 .cal-num { font-size: 12px; font-weight: 600; line-height: 1; align-self: flex-start; padding: 1px 2px; }
@@ -1259,6 +1264,10 @@ select.search { appearance: none; -webkit-appearance: none; }
 .cal-wkrow--today .cal-wkrow__head strong { color: var(--accent, #34e07d); }
 .cal-wkrow__cnt { flex: 1; color: var(--text-dim, #9298a6); font-size: 12px; }
 .cal-wkrow > .stack { padding: 9px 10px; }
+/* #488 — day body wraps the per-day check-in strip + entries; strip's own margin separates it from cards */
+.cal-wkrow__body { padding: 9px 10px; }
+.cal-wkrow__body .checkin-strip { margin-bottom: 0; }
+.cal-wkrow__body .checkin-strip + .stack { margin-top: 9px; }
 .cal-wkrow--rest { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; color: var(--text-dim, #9298a6); font-size: 12.5px; font-style: italic; }
 .cal-wkrow--rest b { color: var(--text, #eef1f4); font-style: normal; }
 
@@ -1424,6 +1433,14 @@ select.search { appearance: none; -webkit-appearance: none; }
 .coachpick b { color: var(--accent, #34e07d); }
 /* check-in collapsed summary (once all 3 logged) */
 .checkin--mini { display: block; padding: 11px 13px; }
+/* #488 — compact one-line check-in strip for Plan's week/month/schedule (full card only in Day). */
+.checkin-strip { display: flex; align-items: center; gap: 9px; width: 100%; background: linear-gradient(157deg, var(--card1, #21252f), var(--card2, #191c24)); border: 1px solid var(--line); border-radius: 12px; padding: 10px 13px; margin-bottom: 11px; font: 700 13px/1.1 inherit; color: var(--text); cursor: pointer; text-align: left; }
+.checkin-strip__ok { color: var(--accent, #34e07d); flex: none; }
+.checkin-strip__sc { color: var(--text-dim); font-weight: 800; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.checkin-strip__go { margin-left: auto; color: #7fa8ff; flex: none; }
+.checkin-strip--todo { color: var(--text-dim); }
+/* #488 — a past day with no check-in: faint, non-interactive one-liner (not a button) */
+.checkin-strip--none { background: none; border: 0; color: var(--faint, #6b7280); font-weight: 600; font-size: 12.5px; padding: 3px 2px; margin-bottom: 0; cursor: default; }
 .checkin__sum { font-size: 12.5px; color: var(--text); }
 .checkin__mhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
 .checkin__done { font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--accent, #34e07d); }

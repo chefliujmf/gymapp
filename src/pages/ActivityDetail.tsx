@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { fetchActivity, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
+import { fetchActivity, fetchActivities, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
+import { incompleteFeedback } from '../feedbackGaps'
 import { TrendChart, PowerCurveChart, PaceCurveChart, PowerBlocks, minuteTicks } from '../charts'
 import { fmtPace } from '../running-paces'
 import { paceOf, bestPaceCurve, paceZoneSecs, PZONES, PZONE_PCT } from '../run-analysis'
@@ -107,7 +108,7 @@ function RideTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity
   const stat = (key: string) => { const v = data[key].filter((x): x is number => x != null); if (!v.length) return ''; const avg = Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length); return ` · avg ${avg} · max ${Math.round(Math.max(...v))}` }
   const avg = (key: string) => { const v = data[key].filter((x): x is number => x != null); return v.length ? Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length) : 0 }
   const insight = (key: string): string | null => {
-    if (key === 'watts') { const vi = a.icu_variability_index; const np = a.icu_weighted_avg_watts ? Math.round(a.icu_weighted_avg_watts) : null; if (vi) return `NP ${np ?? avg('watts')} W · VI ${vi.toFixed(2)} — ${vi >= 1.15 ? 'stochastic: surges & coasts, not steady blocks' : vi >= 1.05 ? 'somewhat variable — rolling terrain' : 'steady, well-paced'}`; return `Avg ${avg('watts')} W over the ride` }
+    if (key === 'watts') { const vi = a.icu_variability_index; const np = a.icu_weighted_avg_watts ? Math.round(a.icu_weighted_avg_watts) : null; if (vi) return `NP ${np ?? avg('watts')} W · VI ${vi.toFixed(2)} — ${vi >= 1.2 ? 'stochastic — lots of surges and coasts' : vi >= 1.08 ? 'somewhat variable — surges and easing' : 'steady, even effort'}`; return `Avg ${avg('watts')} W over the ride` }
     if (key === 'heartrate') { const mx = a.max_heartrate ? Math.round(a.max_heartrate) : Math.max(...data.heartrate.filter((x): x is number => x != null)); return `Avg ${avg('heartrate')} bpm, peaked ${mx} — effort held ${avg('heartrate') / mx >= 0.85 ? 'high' : 'moderate'} for the session` }
     if (key === 'altitude') { const g = a.total_elevation_gain ? Math.round(a.total_elevation_gain) : null; return g ? `${g} m climbed — ${g > 400 ? 'punchy up/down, hard to hold clean blocks' : g > 150 ? 'rolling terrain' : 'mostly flat'}` : null }
     if (key === 'cadence') return `Avg ${avg('cadence')} rpm${avg('cadence') < 85 ? ' — grindy, watch the knees on climbs' : ''}`
@@ -217,7 +218,18 @@ export default function ActivityDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const fromReview = (useLocation().state as { from?: string } | null)?.from === '/review' // #442b — return to the review list after Save
-  const afterSave = fromReview ? () => navigate('/review') : undefined
+  // #473 — after saving, go BACK to the review list to keep knocking them out; but if that was the LAST one,
+  // go to Today (don't dump the user on an empty "all caught up" screen). We re-check the remaining gaps,
+  // excluding the one just saved (its feedback may not have synced back to intervals yet).
+  const afterSave = fromReview ? async () => {
+    try {
+      const now = new Date(), from = new Date(now); from.setDate(from.getDate() - 45)
+      const iso = (d: Date) => d.toISOString().slice(0, 10)
+      const acts = await fetchActivities(iso(from), iso(now))
+      const remaining = incompleteFeedback(acts).filter((g) => String(g.act.id) !== String(id))
+      navigate(remaining.length ? '/review' : '/')
+    } catch { navigate('/review') }
+  } : undefined
   const { user } = useAuth()
   const [a, setA] = useState<IcuActivity | null>(null)
   const [streams, setStreams] = useState<ActivityStreams>({})

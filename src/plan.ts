@@ -88,6 +88,25 @@ export function gymSessionFromPlan(p: CoachPlan): AdHocSession {
   return { workoutId: 'plan-' + p.id, title: p.title, exercises }
 }
 
+/** #326 — find the COMPLETED gym log for a coach plan. A session started from its own
+ *  plan card logs under `plan-<id>`, but one started from a template/catalog/ad-hoc (or a
+ *  plan whose id changed on re-sync) logs under a DIFFERENT workoutId while keeping the same
+ *  title on the same day — which is exactly how Today marks the card "✓ Completed"
+ *  (title+date). Match BOTH so a completed card always opens its result, never the player.
+ *  Pure + generic (no db import) so it's unit-testable and shared by the detail + summary. */
+export function findGymLogForPlan<T extends { workoutId: string; title?: string; date: string; completedAt?: number }>(
+  plan: { id: string; title: string; date: string },
+  logs: readonly T[],
+): T | null {
+  const recent = (a: T, b: T) => (b.completedAt || 0) - (a.completedAt || 0)
+  // Exact plan-id match wins (date-agnostic: a plan done a day late still resolves to its result).
+  const byId = logs.filter((l) => l.workoutId === plan.id || l.workoutId === `plan-${plan.id}`).sort(recent)
+  if (byId.length) return byId[0]
+  // Fallback: same title on the same day (title alone isn't unique, so the day is required).
+  const t = plan.title.toLowerCase().trim()
+  return logs.filter((l) => l.date === plan.date && (l.title || '').toLowerCase().trim() === t).sort(recent)[0] || null
+}
+
 export function setPlanEvents(evs: IcuEvent[]) { sessionStorage.setItem('planEvents', JSON.stringify(evs)) }
 export function getPlanEvent(id: string): IcuEvent | undefined {
   try { return (JSON.parse(sessionStorage.getItem('planEvents') || '[]') as IcuEvent[]).find((e) => String(e.id) === id) } catch { return undefined }

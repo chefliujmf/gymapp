@@ -26,7 +26,7 @@ function learningLabel(gate: string | undefined, fallback: string): string {
 }
 
 export interface Vo2Inputs { value: number | null; confidence?: Vo2Confidence; gate?: string }
-export interface FtpInputs { eftp: number | null }
+export interface FtpInputs { eftp: number | null; manual?: number | null }
 export interface PaceInputs { paceEst: number | null; runsRecent: number | null }
 export interface MaxHrInputs { computed: number | null; from: string }
 export interface SleepInputs { est: number | null; needMore: number | null }
@@ -40,8 +40,15 @@ export function vo2maxConfidence({ value, confidence, gate }: Vo2Inputs): Confid
   return conf(35, 'learn', learningLabel(gate, 'Learning · a hard 5-min effort'))
 }
 
-export function ftpConfidence({ eftp }: FtpInputs): Confidence {
-  return eftp != null ? conf(90, 'strong', 'Strong') : conf(30, 'learn', 'Learning · needs a hard ride')
+// #5007 — eFTP confidence isn't binary. intervals only refreshes eFTP off a hard near-max effort, so it lags
+// your true FTP between hard rides. When you've SET an FTP you actually train by and it materially disagrees
+// with the computed eFTP (>5%), the estimate is NOT confidently your FTP — don't claim "Strong". Say the two
+// differ and let the "Sharpen it" callout point at the fix (a hard ride refreshes eFTP). Symmetric: a big gap
+// either way (stale eFTP, or an aspirational set value) means we can't be sure the computed number is your FTP.
+export function ftpConfidence({ eftp, manual }: FtpInputs): Confidence {
+  if (eftp == null) return conf(30, 'learn', 'Learning · needs a hard ride')
+  if (manual != null && manual > 0 && Math.abs(eftp - manual) / manual > 0.05) return conf(55, 'learn', 'Differs from your set FTP')
+  return conf(90, 'strong', 'Strong')
 }
 
 export function thresholdPaceConfidence({ paceEst, runsRecent }: PaceInputs): Confidence {

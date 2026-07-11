@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchEvents, deleteEvent, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
+// #5013 — a completed intervals activity with no matching plan/event is an UNPLANNED workout.
 import { MiniProfile, DoneStats } from '../ui'
 import { fetchGymPlans, syncIcuPlans, setCoachPlans, type CoachPlan } from '../plan'
 import { calApi, type CalItem } from '../calendar'
@@ -10,6 +11,9 @@ import { localISO } from '../date'
 import { Plus, ChevronLeft, ChevronRight, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet, colorFor, iconFor, type SheetType } from './AddSheet'
+import Today, { DayCheckinStrip, checkinVerdictTone } from './Today' // #488 — Plan DAY = full Today; per-day check-in strip/dot elsewhere
+import { authApi, type Checkin } from '../auth/api'
+import { orphanActivities } from '../orphan-activities'
 import { MovePicker } from './MovePicker'
 import { useAuth } from '../auth/AuthContext'
 
@@ -28,11 +32,13 @@ const weekDays = (iso: string) => { const s = startOfWeek(iso); return Array.fro
 const fmtFull = (iso: string) => new Date(iso + 'T00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
 const fmtShort = (iso: string) => new Date(iso + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
 
-const titleOf = (e: Entry) => (e.k === 'plan' ? e.plan.title : e.k === 'event' ? e.ev.name : e.item.title)
+// #5013 — 'ride' | 'run' | 'gym' → a display label for a completed activity's title.
+const actLabel = (s: string) => (s === 'ride' ? 'Ride' : s === 'run' ? 'Run' : 'Gym')
+const titleOf = (e: Entry) => (e.k === 'plan' ? e.plan.title : e.k === 'event' ? e.ev.name : e.k === 'item' ? e.item.title : e.act.name || actLabel(sportOfActivity(e.act)))
 
-type Entry = { k: 'plan'; plan: CoachPlan } | { k: 'event'; ev: IcuEvent } | { k: 'item'; item: CalItem }
+type Entry = { k: 'plan'; plan: CoachPlan } | { k: 'event'; ev: IcuEvent } | { k: 'item'; item: CalItem } | { k: 'activity'; act: IcuActivity }
 // Substitute is type-locked to the replaced entry; map an Entry → the AddSheet's pre-selected type.
-const lockTypeOf = (e: Entry): SheetType => (e.k === 'plan' ? e.plan.sport : e.k === 'item' ? e.item.type : e.ev.type === 'Run' ? 'run' : e.ev.type === 'WeightTraining' ? 'gym' : 'ride') as SheetType
+const lockTypeOf = (e: Entry): SheetType => (e.k === 'plan' ? e.plan.sport : e.k === 'item' ? e.item.type : e.k === 'activity' ? sportOfActivity(e.act) : e.ev.type === 'Run' ? 'run' : e.ev.type === 'WeightTraining' ? 'gym' : 'ride') as SheetType
 
 // #379 — a plan/item entry carries a stable id + date, so moving = re-save with a new date.
 // icu-origin events (read-only, intervals-owned) can't be moved from here — edit them in intervals.
@@ -53,6 +59,7 @@ export default function Calendar() {
   const [activities, setActivities] = useState<IcuActivity[]>([])
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [items, setItems] = useState<CalItem[]>([])
+  const [checkins, setCheckins] = useState<Checkin[]>([]) // #488 — per-day check-ins for the visible range
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const [rideTemplates, setRideTemplates] = useState<RideTemplate[]>([])
   const [ftp, setFtp] = useState(260)
@@ -79,6 +86,7 @@ export default function Calendar() {
     fetchActivities(a, b).then(setActivities).catch(() => setActivities([]))
     syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then((pl) => { setPlans(pl); setCoachPlans(pl) }).catch(() => setPlans([])))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
+    authApi.checkins(a, b).then(setCheckins).catch(() => setCheckins([])) // #488
   }, [range])
   useEffect(() => { reload() }, [reload])
   // #379 — auto-dismiss the Undo bar after 7s.
@@ -93,14 +101,19 @@ export default function Calendar() {
     setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set('d', sel); n.set('v', view); n.delete('add'); return n }, { replace: true })
   }, [sel, view]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const checkinFor = (day: string): Checkin | null => checkins.find((c) => c.date === day) || null
+  const openDay = (day: string) => { setSel(day); changeView('day') } // #488 — tap a day's check-in → its Day view (full card + plan)
   const entriesFor = (day: string): Entry[] => {
     const out: Entry[] = []
     plans.filter((p) => p.date === day).forEach((plan) => out.push({ k: 'plan', plan }))
     events.filter((e) => e.start_date_local.slice(0, 10) === day && !plans.some((p) => (e.external_id && p.id === e.external_id) || (p.icuEventId != null && String(p.icuEventId) === String(e.id)) || (p.date === day && (p.sport === 'ride' ? 'cycling' : p.sport) === sportOf(e) && String(p.title || '').trim().toLowerCase() === String(e.name || '').trim().toLowerCase()))).forEach((ev) => out.push({ k: 'event', ev }))
     items.filter((it) => it.date === day).forEach((item) => out.push({ k: 'item', item }))
+    // #5013 — completed intervals activities on this day NOT matched to any plan/event become their own
+    // entries (mirrors Today's #455 ActivityCard), so a day trained off-plan never reads "Nothing planned".
+    orphanActivities(day, plans, events, activities).forEach((act) => out.push({ k: 'activity', act }))
     return out
   }
-  const kindOf = (e: Entry) => (e.k === 'plan' ? e.plan.sport : e.k === 'event' ? sportOf(e.ev) : e.item.type)
+  const kindOf = (e: Entry) => (e.k === 'plan' ? e.plan.sport : e.k === 'event' ? sportOf(e.ev) : e.k === 'activity' ? sportOfActivity(e.act) : e.item.type)
   // intervals.icu Annual-Training-Plan phase markers ("ATP W06 - …") aren't actual workouts.
   const isAtp = (e: Entry) => e.k === 'event' && (/^ATP\b/i.test(e.ev.name) || e.ev.category === 'NOTE')
   // #379 — a "session" for the max/day (full-day) rule = a real workout (ride/run/gym plan or icu
@@ -110,7 +123,8 @@ export default function Calendar() {
   const sameEntry = (a: Entry, b: Entry): boolean =>
     a.k === b.k && (a.k === 'plan' ? a.plan.id === (b as Extract<Entry, { k: 'plan' }>).plan.id
       : a.k === 'item' ? a.item.id === (b as Extract<Entry, { k: 'item' }>).item.id
-        : String(a.ev.id) === String((b as Extract<Entry, { k: 'event' }>).ev.id))
+        : a.k === 'activity' ? String(a.act.id) === String((b as Extract<Entry, { k: 'activity' }>).act.id)
+          : String(a.ev.id) === String((b as Extract<Entry, { k: 'event' }>).ev.id))
 
   async function delEntry(e: Entry, confirmEvent = true) {
     if (e.k === 'plan') await calApi.delPlan(e.plan.id)
@@ -142,16 +156,30 @@ export default function Calendar() {
   function openEntry(e: Entry) {
     if (e.k === 'plan') navigate(`/coach/${e.plan.id}`) // open the rich detail (aim/tempo/structure); Start is in there
     else if (e.k === 'event') navigate(`/plan/${e.ev.id}`)
+    else if (e.k === 'activity') navigate(`/activity/${e.act.id}`) // #5013 — a done workout opens its analysed result
     else if (e.k === 'item' && e.item.type === 'meal' && e.item.refId) navigate(`/recipes/${e.item.refId}`)
     else if (e.k === 'item' && e.item.type === 'mind' && e.item.refId) navigate(`/mind/${e.item.refId}`)
   }
   const subOf = (e: Entry) =>
     e.k === 'plan' ? (e.plan.sport === 'gym' ? `${(e.plan.exercises || []).length} exercises` : `${Math.round((e.plan.segments || []).reduce((s, x) => s + x.duration, 0) / 60)} min`)
       : e.k === 'event' ? (e.ev.moving_time ? `${Math.round(e.ev.moving_time / 60)} min` : 'planned')
-        : e.item.type === 'meal' ? `${e.item.mealType || 'meal'}${e.item.kcal ? ` · ${e.item.kcal} kcal` : ''}` : e.item.type === 'mind' ? `${e.item.minutes || ''} min` : 'note'
+        : e.k === 'activity' ? 'completed'
+          : e.item.type === 'meal' ? `${e.item.mealType || 'meal'}${e.item.kcal ? ` · ${e.item.kcal} kcal` : ''}` : e.item.type === 'mind' ? `${e.item.minutes || ''} min` : 'note'
 
   // Entry card (used by day/week/schedule list rendering).
   const EntryCard = ({ e, day }: { e: Entry; day: string }) => {
+    // #5013 — a completed UNPLANNED activity: read-only (it already happened), taps to its result.
+    if (e.k === 'activity') {
+      const sport = sportOfActivity(e.act)
+      return (
+        <div className="card cal-entry">
+          <button className="cal-entry__main" onClick={() => navigate(`/activity/${e.act.id}`)}>
+            <span className={'cal-chip cal-chip--grad cal-chip--' + sport}>{iconFor(sport)}</span>
+            <span className="card-body"><h3>{titleOf(e)}</h3><DoneStats a={e.act} /></span>
+          </button>
+        </div>
+      )
+    }
     const kind = kindOf(e)
     const atp = isAtp(e)
     const k = kind as string
@@ -195,21 +223,8 @@ export default function Calendar() {
 
   // Week scrubber (#166) — hop between the days of the selected week; coloured dots preview
   // each day's entries, today is green, the selected day is outlined. Used by the Day view.
-  const WeekScrubber = () => (
-    <div className="cal-scrub">
-      {weekDays(sel).map((day) => {
-        const es = entriesFor(day)
-        const isToday = day === todayISO
-        return (
-          <button key={day} className={'cal-scrubday' + (day === sel ? ' cal-scrubday--sel' : '') + (isToday ? ' cal-scrubday--today' : '')} onClick={() => setSel(day)}>
-            <small>{new Date(day + 'T00:00').toLocaleDateString(undefined, { weekday: 'short' })}</small>
-            <b>{Number(day.slice(8, 10))}</b>
-            <span className="cal-scrubdots">{es.slice(0, 3).map((e, i) => <i key={i} style={{ background: isToday ? '#07140c' : isAtp(e) ? '#9aa3b2' : colorFor(kindOf(e)) }} />)}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
+  // #488 — the day scrubber lived here for the old sparse day view; Plan's DAY view is now the full Today screen
+  // (which brings its own day strip), so WeekScrubber was removed.
 
   // ---- header: view switcher + contextual nav -----------------------------
   const VIEWS: [View, string][] = [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['schedule', 'Schedule']]
@@ -229,12 +244,15 @@ export default function Calendar() {
         ))}
       </div>
 
-      <div className="cal-head">
-        {view !== 'schedule' ? <button className="icon-btn" onClick={() => nav(-1)}><ChevronLeft size={20} /></button> : <span style={{ width: 36 }} />}
-        <h1 style={{ margin: 0, fontSize: 19, flex: 1, textAlign: 'center' }}>{title}</h1>
-        {view !== 'schedule' ? <button className="icon-btn" onClick={() => nav(1)}><ChevronRight size={20} /></button> : <span style={{ width: 36 }} />}
-        <button className="cal-today" onClick={goToday}>Today</button>
-      </div>
+      {/* #488 — the DAY view is the merged Today screen (own day strip + Add), so skip Calendar's day title/nav there. */}
+      {view !== 'day' && (
+        <div className="cal-head">
+          {view !== 'schedule' ? <button className="icon-btn" onClick={() => nav(-1)}><ChevronLeft size={20} /></button> : <span style={{ width: 36 }} />}
+          <h1 style={{ margin: 0, fontSize: 19, flex: 1, textAlign: 'center' }}>{title}</h1>
+          {view !== 'schedule' ? <button className="icon-btn" onClick={() => nav(1)}><ChevronRight size={20} /></button> : <span style={{ width: 36 }} />}
+          <button className="cal-today" onClick={goToday}>Today</button>
+        </div>
+      )}
 
       {/* ---- MONTH ---- */}
       {view === 'month' && (
@@ -247,6 +265,7 @@ export default function Calendar() {
                 return (
                   <button key={day} className={'cal-cell' + (day === sel ? ' cal-cell--sel' : '') + (inMonth ? '' : ' cal-cell--dim')} onClick={() => setSel(day)}>
                     <span className={'cal-num' + (day === todayISO ? ' cal-num--today' : '')}>{Number(day.slice(8, 10))}</span>
+                    {(() => { const t = checkinVerdictTone(checkinFor(day)); return t ? <span className={'cal-ci-dot cal-ci-dot--' + t} /> : null })()}
                     <Chips day={day} max={3} />
                   </button>
                 )
@@ -259,6 +278,7 @@ export default function Calendar() {
               <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setSheet({ date: sel })}><Plus size={16} /> Add</button>
             </div>
             <div className="stack">
+              <DayCheckinStrip day={sel} ci={checkinFor(sel)} today={todayISO} onOpen={() => openDay(sel)} />
               {entriesFor(sel).length === 0 && <p className="meta">Nothing planned. Tap “Add”.</p>}
               {entriesFor(sel).map((e, i) => <EntryCard key={i} e={e} day={sel} />)}
             </div>
@@ -272,40 +292,28 @@ export default function Calendar() {
           {weekDays(sel).map((day) => {
             const es = entriesFor(day)
             const isToday = day === todayISO
-            if (!es.length) return (
-              <div key={day} className="cal-wkrow cal-wkrow--rest">
-                <span><b>{fmtShort(day)}</b> · Rest day</span>
-                <button className="icon-btn" onClick={() => setSheet({ date: day })} aria-label="Add"><Plus size={15} /></button>
-              </div>
-            )
+            const hasStrip = day <= todayISO // #488 — strip only for past + today; future days show none
             return (
               <div key={day} className={'cal-wkrow' + (isToday ? ' cal-wkrow--today' : '')}>
                 <div className="cal-wkrow__head">
                   <strong>{fmtShort(day)}</strong>
-                  <span className="cal-wkrow__cnt">{es.length} planned</span>
+                  <span className="cal-wkrow__cnt">{es.length ? `${es.length} planned` : 'Rest day'}</span>
                   <button className="icon-btn" onClick={() => setSheet({ date: day })} aria-label="Add"><Plus size={16} /></button>
                 </div>
-                <div className="stack" style={{ gap: 6 }}>{es.map((e, i) => <EntryCard key={i} e={e} day={day} />)}</div>
+                {(hasStrip || es.length > 0) && (
+                  <div className="cal-wkrow__body">
+                    {hasStrip && <DayCheckinStrip day={day} ci={checkinFor(day)} today={todayISO} onOpen={() => openDay(day)} />}
+                    {es.length > 0 && <div className="stack" style={{ gap: 6 }}>{es.map((e, i) => <EntryCard key={i} e={e} day={day} />)}</div>}
+                  </div>
+                )}
               </div>
             )
           })}
         </div>
       )}
 
-      {/* ---- DAY ---- */}
-      {view === 'day' && (
-        <>
-          <WeekScrubber />
-          <div className="cal-day-head">
-            <div className="section-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>{entriesFor(sel).length} planned{sel === todayISO && <span className="cal-todaybadge">Today</span>}</div>
-            <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => setSheet({ date: sel })}><Plus size={16} /> Add</button>
-          </div>
-          <div className="stack">
-            {entriesFor(sel).length === 0 && <p className="meta">Nothing planned for {fmtShort(sel)}. Tap “Add”.</p>}
-            {entriesFor(sel).map((e, i) => <EntryCard key={i} e={e} day={sel} />)}
-          </div>
-        </>
-      )}
+      {/* ---- DAY ---- #488: the full Today screen (check-in · verdict · rich cards · recovery), day synced to Plan. */}
+      {view === 'day' && <Today embedded initialDay={sel} onDay={setSel} />}
 
       {/* ---- SCHEDULE ---- (#166: date-rail timeline, month separators; only days with entries) */}
       {view === 'schedule' && (
@@ -326,7 +334,10 @@ export default function Calendar() {
                       <small>{dt.toLocaleDateString(undefined, { weekday: 'short' })}</small>
                       <b>{Number(day.slice(8, 10))}</b>
                     </div>
-                    <div className="cal-agcol">{entriesFor(day).map((e, i) => <EntryCard key={i} e={e} day={day} />)}</div>
+                    <div className="cal-agcol">
+                      <DayCheckinStrip day={day} ci={checkinFor(day)} today={todayISO} onOpen={() => openDay(day)} />
+                      {entriesFor(day).map((e, i) => <EntryCard key={i} e={e} day={day} />)}
+                    </div>
                   </div>
                 </Fragment>
               )

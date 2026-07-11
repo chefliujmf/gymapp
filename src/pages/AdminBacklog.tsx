@@ -17,8 +17,9 @@ const TEST_STATUS = new Set<BacklogStatus>(['totest', 'pass', 'fail'])
 // map only the legacy 'build' value (old DB rows) onto the new set; 'pass' (Tested ✓) is a REAL status again.
 const migrateStatus = (s?: string): BacklogStatus | undefined => (s === 'build' ? 'todo' : s as BacklogStatus | undefined)
 // #454 — functional AREA of an item (mirrors build-backlog.mjs areaOf); empty area filter = all
-const AREAS = ['admin', 'cycling', 'running', 'gym', 'stats', 'eat', 'today', 'plan', 'coach', 'other'] as const
-const A_LABEL: Record<string, string> = { admin: 'Admin', cycling: 'Cycling', running: 'Running', gym: 'Gym', stats: 'Stats', eat: 'Eat', today: 'Today', plan: 'Plan', coach: 'Coach', other: 'Other' }
+// #488 — Today merged INTO Plan (no 'today' area). #491 — Recovery is a kept section (Eat deactivated but kept for history).
+const AREAS = ['admin', 'cycling', 'running', 'gym', 'stats', 'eat', 'plan', 'recovery', 'coach', 'other'] as const
+const A_LABEL: Record<string, string> = { admin: 'Admin', cycling: 'Cycling', running: 'Running', gym: 'Gym', stats: 'Stats', eat: 'Eat', plan: 'Plan', recovery: 'Recovery', coach: 'Coach', other: 'Other' }
 const AREA_OPTS: [string, string][] = AREAS.map((k) => [k, A_LABEL[k]]) // for the per-item Area editor (JM overrides the auto-tag)
 // small uppercase label that leads each filter row so the multi-select groups are clearly organized.
 const FLABEL: CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', color: '#7a8290', alignSelf: 'center', marginRight: 2 }
@@ -93,8 +94,13 @@ export default function AdminBacklog() {
   const [nsum, setNsum] = useState('')
 
   useEffect(() => {
-    import('../data/generated/backlog.json').then((m) => setItems((m.default as Item[]) || [])).finally(() => setReady(true))
-    authApi.getBacklogTriage().then((r) => { setTriage(r.triage || {}); setAdded(r.added || []) }).catch(() => {})
+    // #485 — QA=PROD items ALWAYS: prefer the SHARED item list served by the backend (same on both envs); fall
+    // back to the per-build BUNDLED copy only if the server hasn't published one yet.
+    const bundle = () => import('../data/generated/backlog.json').then((m) => setItems((m.default as Item[]) || [])).finally(() => setReady(true))
+    authApi.getBacklogTriage().then((r) => {
+      setTriage(r.triage || {}); setAdded(r.added || [])
+      if (r.items && r.items.length) { setItems(r.items as Item[]); setReady(true) } else bundle()
+    }).catch(bundle)
   }, [])
 
   const tr = (n: number) => triage[String(n)] || {}

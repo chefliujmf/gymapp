@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { getCoachPlan, gymSessionFromPlan, setGymSession, resolveDemo, estimateGymMinutes } from '../plan'
+import { getCoachPlan, gymSessionFromPlan, setGymSession, resolveDemo, estimateGymMinutes, findGymLogForPlan } from '../plan'
 import { calApi, type CalItem } from '../calendar'
 import { MiniProfile } from '../ui'
 import { workoutSummary, structureRows, plannedLoad } from '../workout-summary'
@@ -52,10 +52,12 @@ export default function CoachPlanDetail() {
     }).catch(() => { if (!cancelled) setCheckedDone(true) })
     return () => { cancelled = true }
   }, [p?.id, p?.date, p?.sport, navigate])
-  // gym: completed if a log matches this plan (by date + workoutId) → open its summary
+  // gym: completed if a log matches this plan → open its summary. #326 — match by plan-id OR
+  // by same title+day (a session logged from a template/catalog/ad-hoc), the SAME condition Today
+  // uses to badge the card "✓ Completed" — so a done card never lands back on the "Start" screen.
   useEffect(() => {
     if (!p || p.sport !== 'gym' || logs === undefined) return
-    const done = (logs || []).find((l) => l.date === p.date && (l.workoutId === p.id || l.workoutId === `plan-${p.id}`))
+    const done = findGymLogForPlan(p, logs || [])
     if (done) navigate(`/feedback/${p.id}`, { replace: true })
     else setCheckedDone(true)
   }, [p?.id, p?.date, p?.sport, logs, navigate])

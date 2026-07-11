@@ -22,6 +22,112 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+493. ⬜ **Plan default-view preference (Settings).** Split from #488: let the user pick which Plan view opens by default
+    (Day / Week / Month / Schedule) in Settings; Calendar reads it on mount (today it hardcodes 'month'). **Route:** UI.
+492. 🔨 **Rename "Backlog" → "Road map" (= future to assess / consider / approve).** JM 2026-07-11. Done in nav +
+    Admin header (commit 67af627). Same commit also removed the **Mind card from Stats** (JM: "mind is still under stats
+    too, remove"). **Route:** UI. 🧪 the tab/label reads "Road map" everywhere; no "Mind" card left on /stats.
+491. 🔨 **Deactivate Eat + Mind app-wide (keep Recovery); day dot = ACTIVITIES only.** JM 2026-07-11: "to simplify the
+    app for now, deactivate Mind and Eat; Recovery can stay; a green day-dot is only for activities (run/ride/yoga/
+    pilates), not food/meditation/recovery." UI DONE — nav tabs removed, routes kept (commits 96ee927/d0c842b/67af627).
+    ⚠️ **NOT propagated to the COACH: the daily-adapt ROUND-OUT pass (server.js ~2824) + MCP `schedule_meal`/`schedule_mind`
+    still auto-schedule meals + mind onto the calendar every day** (the #478 "meal on calendar = no-no" still fires). FIX =
+    a reversible server gate — round-out → recovery-only, MCP meal/mind guarded, coach told they're off, engine/openapi/
+    memory updated. **Route:** propagate-all-layers. 🔨 COACH GATE BUILT: `EAT_MIND_OFF=true` const (server.js, reversible);
+    `upsertItem` HARD-REJECTS meal/mind/supplement (409); `roundOutMsg` → recovery-only; system prompt emits a "# EAT &
+    MIND ARE DEACTIVATED" block + skips DIET/FUEL-TARGET blocks; MCP `schedule_meal`/`schedule_mind`/`search_recipes`/
+    `search_sessions` descriptions prefixed "[DEACTIVATED]"; openapi 409 noted. 🧪 **Manual test (prod after promote):** ask
+    the coach "plan me some meals this week" → it must DECLINE + plan training/recovery only (no meal/mind item appears on
+    any day); the daily-adapt round-out adds recovery only. Reversible: flip `EAT_MIND_OFF=false` to bring Eat/Mind back.
+490. ⬜ **Recovery library is too small — build a MUCH larger one (LOW priority).** JM 2026-07-11: "for recovery we'll
+    need a much larger library, it's not near enough." More sauna/cold/massage/mobility/breath/sleep routines. **Route:** content.
+489. 🔨 **Add sheet = ride / run / gym / recovery / note ONLY (drop mind, meal, supplement).** JM 2026-07-11: "when we
+    click add be sure to not have mind or meal or supplement — it's ride, run, gym, recovery, note." (Eat+Mind are
+    deactivated.) `AddSheet` in Today (+ Plan). **Route:** UI.
+488. ✅ **Merge Today INTO Plan — Plan's Day view IS the full Today screen; Week/Month/Schedule each carry the day's own check-in; default-view pref.** JM 2026-07-11 approved ("I like 488") → promoted to prod. Ask: "Today and Plan should
+    merge (keep name Plan). Today becomes part of Plan — replace what we have as 'Day' in Plan with ALL the Today
+    features (keep the label Day). In Preferences a user picks the default view." DONE: Today tab removed; its content
+    (check-in · verdict · plan · recovery) is Plan's Day view; Week + Schedule show each day's check-in STRIP, Month a
+    verdict DOT — past = "didn't check in" / today = "check in today" / future = nothing. Mocked (options-first, JM
+    picked C, refined to per-day). ⚠️ the default-view Settings pref is split to #493 (not built yet). **Route:** UX.
+487. 🔨 **Remove the Train tab — add a workout via the Add button.** JM 2026-07-11: "remove Train tab; if a user wants
+    to add a workout they have the Add button." Drop the nav tab (keep the /train route). **Route:** UI.
+486. ⬜ **Coach task must survive switching screens (leaving the chat → "network error" on return).** JM 2026-07-11:
+    "once we give a task to the coach, we should be able to switch screen without the coach interrupting; when we come
+    back it says network error." ROOT: leaving the chat closes the SSE stream → the chat-helper's `res.on('close')`
+    SIGKILLs the coach mid-task → nothing saved → "network error". FIX: don't kill on client disconnect; let the coach
+    FINISH and PERSIST its answer to the thread (it's multi-thread + synced #363), so returning shows the completed
+    reply. Needs the app `/auth/chat` proxy + thread-save to survive a dropped client. **Route:** coach robustness.
+485. ⬜ **QA = PROD for backlog items, ALWAYS (JM directive 2026-07-11).** Today the item LIST is the BUNDLED
+    `src/data/generated/backlog.json` (AdminBacklog.tsx:96 `import()`), baked per build → QA (dev) build has more items
+    than prod (main) build; only the shared triage (#466) matches. FIX for "always identical": serve the generated item
+    list from a SHARED source — (a) deploy publishes the freshly-built list to the shared mount (newest-wins by max #),
+    (b) server serves it (`GET /auth/admin/backlog-items` from `/srv/backlog/items.json`), (c) frontend FETCHES it with
+    the bundle as fallback. All 3 needed together. Immediate sync = promote prod to current dev. **Route:** infra/architecture.
+484. 🔨 **Coach hung on "reviewing your wellness data…" then nothing (extremely slow) — on PROD.** JM 2026-07-11
+    (asked a simple task; got the preamble + tool indicator, no answer; "note but nothing"). Prod app+db+claude were
+    all HEALTHY, so it was a SLOW tool chain (get_wellness/get_checkins → intervals reads) that ran past the
+    chat-helper's **180s SIGKILL** — and `proc.on('close')` then ended SILENTLY (`{done:true}`, no error), leaving the
+    partial preamble with no answer. FIXED (`chat-helper/server.mjs`, hand-synced + both coach services restarted):
+    (a) NEVER end silently — on timeout → "that took too long, try again"; on empty → "couldn't finish, try again";
+    (b) 180s→**240s** headroom for slow intervals days; (c) **per-request logging** (`[chat] req/outcome/duration`) so
+    it's diagnosable next time (the services logged nothing before). **Verify:** retry the coach on prod — a slow one
+    now shows a clear message instead of blank. Also fixed SEPARATELY: QA (staging) was DOWN (db stopped + app exited
+    137 from rapid overlapping redeploys) — brought back up. PREVENT recurrence: a `concurrency` guard on
+    `deploy-staging.yml`. **Route:** coach robustness (done) + a deploy-workflow guard (todo).
+483. ⬜ **Graph titles have no padding — they almost overlap the chart.** JM 2026-07-10. Chart standard: add top
+    padding/margin between a graph's title and the plot so they never collide. Shared chart component. **Route:** bug (worker).
+482. ⬜ **Graph lines are too thick on phone.** JM 2026-07-10. The chart stroke width reads heavy on mobile — thin it
+    (or make it responsive). Shared chart. Relates the chart standard. **Route:** bug (worker).
+481. ⬜ **Activity title + description too complex — keep it SIMPLE (JM set an example).** JM 2026-07-10: "description
+    and title of activity is annoying so I changed it to something simple you can use for future as example." → CHECK the
+    activity JM re-titled today, use it as the template, and simplify the coach's `set_activity_text` voice
+    ([[platyplus-coach-public-text-voice]] #425). **Route:** coach voice (this chat / coach-engine).
+480. ⬜ **Post-workout insights PER GRAPH are poor.** JM 2026-07-10: "post workout insights per graph is poor and not
+    great." The per-chart insight line (chart standard "insight line") needs to be genuinely useful, not filler.
+    **Route:** feature/quality (this chat).
+479. ⬜ **Garmin workout showed a flat 171 W, not a RANGE.** JM 2026-07-10: "today on my garmin I did not have a range
+    but just 171 watts which is wrong." A planned workout pushed to Garmin (via intervals) rendered a single target, not
+    the watt RANGE — regression against #219 (true-shape, show the range). Trace `planToIcuEvent`/workout_doc targets.
+    **Route:** bug (worker).
+478. ⬜ **Eat & Mind must stay SUGGESTIONS — never auto-imposed into the calendar.** JM 2026-07-10 (3 msgs +
+    screenshots): "I prefer to keep suggestions for eat and mind; 8 and 9 imposed in my calendar is a no-no…
+    this is suggestions I want to keep… not just dinner like this, this is wrong and never asked." The coach's
+    daily-adapt is SCHEDULING a single meal (Dinner) + a Mind session INTO the day instead of leaving the Eat/Mind
+    **suggestion cards** (4 meal picks + mind picks) alone. Also the **+ button differs between Eat and Mind**
+    (visual inconsistency). Fix: coach must NOT `schedule_meal`/`schedule_mind` into the calendar by default —
+    Eat/Mind stay suggestions the user opts into via +. **Route:** bug → coach behavior (Claude to trace, not auto-worker).
+477. ⬜ **Intervals sync: event still in intervals but removed from Platyplus (delete didn't propagate).** JM
+    2026-07-10 (screenshot): "still in intervals but not in Platyplus (coach removed it, which I agree) but sync
+    issues AGAIN with intervals." Orphaned planned strength workouts ("Load 0", 0%) linger in intervals after
+    Platyplus drops them. Reconcile/orphan-GC (#414) should delete the intervals event when its plan is removed.
+    **Route:** bug → intervals sync (Claude to trace carefully — shared athlete i28814).
+476. ⬜ **Daily reminder: only push if data is MISSING from Platyplus.** JM 2026-07-10: "daily reminder to send a
+    push if data is not in Platyplus (Garmin/Coros didn't sync, or entered manually) — check if there's data and
+    notify only if needed." Add to the "A morning nudge to check in + see today's plan" reminder: gate the nudge on
+    missing wellness/activity data. **Route:** feature (this chat) → design.
+475. ✅ **XPS bug-worker LIVE + autonomous — bugs run on the box, not this chat.** JM 2026-07-10: "bugs must be run
+    through the XPS CLI Claude Code, not this chat… you work on it automatically and set it to test." Built:
+    `scripts/bug-worker.sh` (runs as jmf on jmf's Claude subscription; assess→fix→test→totest→push dev; NEVER prod),
+    `worker-system.md` rules, box-aware `backlog.mjs` (`next`/`ready`), systemd service+timer (autonomous). Proven:
+    #326 fixed+pushed to QA, #251 parked with options-first judgment. **Verify:** Admin → Claude card = live XPS worker.
+474. 🔨 **Promote ONE-BY-ONE — as soon as an item passes, promote it; don't wait for 10.** JM 2026-07-10: "once one
+    is tested successfully, you can promote, don't wait for 10 items, go one by one." Worker gate changed from
+    batch-of-10 to a rolling buffer (cap 5, `ready`=totest<cap) so totest stays topped with a few bugs to test +
+    promote individually. Pipeline rule → promote per pass → done (not batched at 10). **Route:** worker/process.
+473. 🔨 **Review flow: after saving feedback, back to the review list (keep going); the LAST one → Today.** JM
+    2026-07-10 (screenshot of "To review · 24"): "when I click a review I need to see the whole activity; once I
+    save, bring me back to this review screen unless we're done, then back to Today." Tap → the full activity was
+    already right. Fixed `afterSave` in `ActivityDetail.tsx`: re-check remaining feedback gaps (excluding the just-
+    saved one, whose feedback may not have synced) → more left = `/review`, none left = `/` (Today). **Verify:**
+    open a review, Save → next lands back on the review list; save the last → Today.
+472. 🔨 **Tailscale auto-reconnect (stop the ~daily browser re-auth for box ops).** JM 2026-07-10. Node key already
+    non-expiring — the env just doesn't persist the TS login across restarts. Fix: reusable auth key in
+    `.secrets/tailscale.env` (gitignored, 600); `scripts/ts-up.sh` brings TS up non-interactively; throttled
+    `~/.zprofile` hook self-heals. `.env.example` holds a placeholder only (token was NEVER committed). Ops/infra.
+471. 🔨 **Backlog: Claude's comments show "Claude" (not "You") + "What to test" is human-readable.** JM 2026-07-10:
+    my comments were mislabeled "YOU" and "What to test" showed the raw feedback (gibberish). `AdminBacklog.tsx`:
+    comment byline reflects `by`; "What to test" = `it.test` or Claude's latest note (plain), never the raw summary.
 470. 🔨 **Tapping a push notification must open the ACTIVITY/plan, not just Today.** JM 2026-07-10: "a notification
     works great but when i click on it, it opens the today app and thats it — bring me to the notification in the
     app." Links were already correct (reviews → `/activity/:id`); the issue is an installed PWA cold-launched by a
@@ -1037,7 +1143,7 @@ test guide → the **🧪 Test guide** section below.
     `dailyReminderPush` in the morning scheduler (`dailyAdaptTick`) — once/day in the athlete's LOCAL 7–11am window, IF opted-in +
     subscribed + NOT already checked in today → "⏰ Ready to train? Check in + see today's plan". Runs for any subscribed user on QA + prod
     (only sends a push, never touches intervals). On QA. Test: toggle Daily reminder on → next local morning (no check-in yet) → phone buzzes.
-459. (update 2026-07-09) INVESTIGATED — inconclusive. diet/heightCm/dob ARE capturable (diet chips + `FuelFields` render + save via
+    (update 2026-07-09) INVESTIGATED — inconclusive. diet/heightCm/dob ARE capturable (diet chips + `FuelFields` render + save via
     saveProfile) and the save path MERGES (can't wipe); the Jun-23 pre-migration backup had JM's `info={}` (empty); no audit trail; NO
     full `user.info=` replace anywhere server-side. So no wipe vector found. Best guess: an early save didn't persist, or a reset I can't
     see. ACTION: JM re-sets them on PROD (save path verified → they WILL stick); if they vanish AGAIN that's a live repro I trace instantly.

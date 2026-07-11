@@ -1,0 +1,14 @@
+# Polls the bug worker every ~2 min. The worker self-gates (scripts/bug-worker.sh): it idles out fast unless the
+# to-test bucket is drained to 0 with a bug waiting, OR JM pressed "Start next batch" (the trigger flag) — so a
+# frequent poll is cheap and makes the manual button feel responsive (<=2 min). Install alongside the .service,
+# then `systemctl enable --now gymapp-bug-worker.timer`.
+[Unit]
+Description=Poll the Platyplus bug worker
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=2min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

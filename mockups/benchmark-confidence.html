@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benchmarks — honest confidence (#5007)</title>
+<style>
+  :root{
+    --text:#eef1f4; --dim:#9298a6; --faint:#6b7280; --accent:#34e07d; --bg:#0f1216;
+    --card1:#21252f; --card2:#191c24; --line:#2a2f3a;
+    --amber:#e0a334; --red:#ff7a7a; --blue:#5aa9ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:440px;margin:0 auto;padding:16px 14px 60px}
+  h1{font-size:20px;margin:2px 0 2px}
+  .sub{color:var(--dim);font-size:13px;margin:0 0 14px}
+  .toggles{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 8px}
+  .seg{display:flex;background:#11141b;border:1px solid var(--line);border-radius:999px;padding:3px}
+  .seg button{border:0;background:transparent;color:var(--dim);font:600 12px/1 inherit;padding:7px 12px;border-radius:999px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#08130b}
+  .opthelp{font-size:12px;color:var(--dim);margin:6px 2px 14px;min-height:16px}
+  .grp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:18px 2px 8px;font-weight:700}
+  .card{background:linear-gradient(157deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:15px;padding:13px 14px;margin-bottom:11px}
+  .top{display:flex;align-items:baseline;gap:8px}
+  .name{font-weight:700;font-size:14.5px}
+  .unit{color:var(--dim);font-size:11.5px;margin-left:auto;font-weight:600}
+  .val{font-size:26px;font-weight:800;letter-spacing:-.5px;margin:4px 0 2px}
+  .val small{font-size:14px;font-weight:600;color:var(--dim);letter-spacing:0}
+  .range{font-size:22px;font-weight:800}
+  .range b{color:var(--accent)}
+  .range .lo,.range .hi{color:var(--dim);font-weight:700;font-size:18px}
+  /* confidence bar */
+  .bar{height:7px;background:#0b0e12;border-radius:999px;overflow:hidden;margin:9px 0 6px}
+  .fill{height:100%;border-radius:999px}
+  .fill.strong{background:linear-gradient(90deg,#34e07d,#5be59a)}
+  .fill.good{background:linear-gradient(90deg,#8bd17c,#b6e39a)}
+  .fill.learn{background:linear-gradient(90deg,#5aa9ff,#78c0ff)}
+  .fill.need{background:linear-gradient(90deg,#e0a334,#f0c15a)}
+  .clabel{display:flex;gap:6px;align-items:center;font-size:12px;font-weight:700}
+  .clabel .dot{width:7px;height:7px;border-radius:50%}
+  .dot.strong{background:#34e07d}.dot.good{background:#8bd17c}.dot.learn{background:#5aa9ff}.dot.need{background:#e0a334}
+  .cl-strong{color:#7fe4a6}.cl-good{color:#a9d99a}.cl-learn{color:#8ec4ff}.cl-need{color:#e6b866}
+  .why{font-size:12.5px;color:#c4cad4;margin-top:7px;line-height:1.4}
+  .why b{color:var(--text)}
+  /* source rows (option C) */
+  .srcs{margin-top:9px;border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:5px}
+  .src{display:flex;align-items:center;gap:8px;font-size:12.5px}
+  .src .sn{color:var(--dim);width:96px;flex:none}
+  .src .sv{font-weight:700;font-variant-numeric:tabular-nums}
+  .src .tag{margin-left:auto;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px}
+  .tag.ok{background:#34e07d22;color:#7fe4a6}.tag.stale{background:#e0a33422;color:#e6b866}.tag.off{background:#ff7a7a22;color:#ff9a9a}
+  .agree{font-size:12px;color:var(--dim);margin-top:7px}
+  .foot{margin-top:22px;padding:12px 14px;border:1px dashed var(--line);border-radius:12px;color:var(--dim);font-size:12.5px;line-height:1.5}
+  .foot b{color:var(--text)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Your benchmarks — honest confidence</h1>
+  <p class="sub">#5007 · every stat shows a <b style="color:var(--text)">smarter estimate</b> + a confidence that reflects real signals (recency · cross-check · test-backed). No more "Strong 240" when your CP says 248.</p>
+
+  <div class="toggles">
+    <div class="seg" id="sportSeg">
+      <button data-sport="cyc" class="on">🚴 Cycling</button>
+      <button data-sport="run">🏃 Running</button>
+    </div>
+    <div class="seg" id="optSeg">
+      <button data-opt="A" class="on">A · Why-line</button>
+      <button data-opt="B" class="opt">B · Range</button>
+      <button data-opt="C" class="opt">C · Sources</button>
+    </div>
+  </div>
+  <div class="opthelp" id="opthelp"></div>
+
+  <div id="cards"></div>
+
+  <div class="foot">
+    <b>How confidence is scored (all options, per sport):</b><br>
+    ① <b>Recency</b> — how fresh the backing effort is (eFTP decays between hard rides).
+    ② <b>Cross-check</b> — do independent estimates agree? (eFTP vs CP vs 20-min power).
+    ③ <b>Test-backed vs modeled</b> — a real near-max/threshold hold beats an extrapolation.
+    ④ <b>Fit / sample</b> — model r² and how many efforts back it.<br>
+    "<b style="color:#7fe4a6">Strong</b>" is earned only when a recent effort actually backs the number.
+  </div>
+</div>
+
+<script>
+// ---- data: JM's real cycling scenario + plausible running, per metric ----
+const DATA = {
+  cyc: {
+    label:'Cycling', items:[
+      { name:'FTP', unit:'1-hour power', best:247, lo:240, hi:250,
+        cls:'need', pct:58, clabel:'Estimate · not test-backed',
+        why:`Your intervals <b>eFTP is 240 W</b> but hasn't refreshed in <b>34 days</b>, and your <b>CP says ~248</b>. Blended best guess <b>~247 W</b> — a hard 20–40 min effort would confirm it and could lift it toward the 260 you train by.`,
+        srcs:[['intervals eFTP','240 W','stale'],['from CP (248)','~248 W','ok'],['best 20-min ×0.95','~246 W','ok']],
+        agree:`Sources agree near 247 — only the stale eFTP drags it down.` },
+      { name:'CP', unit:'critical power', best:248, lo:245, hi:251,
+        cls:'strong', pct:90, clabel:'Strong fit',
+        why:`From your power-duration curve (3 hard efforts, r²&nbsp;0.98, newest 6 days ago). Well supported.`,
+        srcs:[['curve fit','248 W','ok'],['r² 0.98','high','ok'],['efforts','3 · 5–20 min','ok']],
+        agree:`Tight fit across durations — trustworthy.` },
+      { name:'W′', unit:'anaerobic reserve', best:21.5, unitTxt:'kJ', lo:20, hi:23,
+        cls:'good', pct:74, clabel:'Good fit',
+        why:`Same curve as CP (r²&nbsp;0.98). Solid, but a fresh short max effort (~1–3 min) would firm it up.`,
+        srcs:[['curve fit','21.5 kJ','ok'],['short efforts','2 · 1–3 min','stale']],
+        agree:`Fit is good; the anaerobic end is thinner on data.` },
+      { name:'TTE', unit:'time at threshold', best:'34:00', lo:'30:00', hi:'38:00',
+        cls:'strong', pct:88, clabel:'Observed hold',
+        why:`You've actually <b>held ~threshold for 34 min</b> — a real read, not a model guess.`,
+        srcs:[['observed hold','34 min','ok'],['modeled (CP)','~36 min','ok']],
+        agree:`Observed ≈ modeled — dependable.` },
+      { name:'Max HR', unit:'cycling', best:186, unitTxt:'bpm', lo:186, hi:190,
+        cls:'good', pct:70, clabel:'Observed peak · aging',
+        why:`Seen <b>186 bpm</b> on a hard climb, but <b>42 days</b> ago. Real, just getting old — and bike max often reads a few beats under run max.`,
+        srcs:[['observed peak','186 bpm','stale'],['intervals ceiling','188 bpm','ok']],
+        agree:`Observed peak is the truth; refresh it on your next all-out effort.` },
+    ]},
+  run: {
+    label:'Running', items:[
+      { name:'Threshold pace', unit:'~1-hour pace', best:'4:12', unitTxt:'/km', lo:'4:18', hi:'4:06',
+        cls:'need', pct:55, clabel:'Estimate · few recent runs',
+        why:`Modeled from your <b>critical speed</b>, but only <b>2 quality runs</b> in 6 weeks and no recent TT. Best guess <b>~4:12/km</b> — a hard 20-min run would firm it and cross-check the pace.`,
+        srcs:[['from critical speed','~4:12/km','ok'],['recent TT / race','none','off'],['VDOT (best 5k)','~4:15/km','stale']],
+        agree:`Model + VDOT roughly agree; missing a fresh hard effort.` },
+      { name:'Critical Speed', unit:'CS', best:'3.92', unitTxt:'m/s', lo:'3.85', hi:'3.98',
+        cls:'good', pct:76, clabel:'Good fit',
+        why:`From your pace-duration curve (r²&nbsp;0.96, newest 9 days ago). Reliable; one more hard effort tightens it.`,
+        srcs:[['curve fit','3.92 m/s','ok'],['r² 0.96','good','ok'],['efforts','3','ok']],
+        agree:`Solid fit; add a long effort to raise confidence.` },
+      { name:"D′", unit:'anaerobic distance', best:185, unitTxt:'m', lo:170, hi:200,
+        cls:'learn', pct:60, clabel:'Modeled · thin data',
+        why:`Same pace-duration model. The short end needs a fresh <b>near-max ~1–2 min</b> effort to pin down.`,
+        srcs:[['curve fit','185 m','ok'],['short efforts','1','stale']],
+        agree:`Long end is fine; short end is under-sampled.` },
+      { name:'TTE', unit:'time at threshold', best:'~32:00', lo:'26:00', hi:'38:00',
+        cls:'learn', pct:52, clabel:'Estimated · confirm with a run',
+        why:`Only <b>modeled from CS</b> — you haven't held threshold pace long recently. A sustained 25–30 min run makes it real.`,
+        srcs:[['modeled (CS)','~32 min','stale'],['observed hold','none','off']],
+        agree:`No real hold on record yet — treat as a placeholder.` },
+      { name:'Max HR', unit:'running', best:192, unitTxt:'bpm', lo:192, hi:195,
+        cls:'strong', pct:88, clabel:'Observed peak',
+        why:`Hit <b>192 bpm</b> on a hard finish 11 days ago — recent and real. Run max sits above your bike max (186), as expected.`,
+        srcs:[['observed peak','192 bpm','ok'],['intervals ceiling','193 bpm','ok']],
+        agree:`Fresh observed peak — trustworthy.` },
+    ]},
+};
+const OPTHELP = {
+  A:'Option A — keep the bar, but derive it from real signals and add one honest "why" line. Smallest change, biggest honesty gain.',
+  B:'Option B — show an estimate RANGE; confidence = how tight the sources agree. More informative at a glance.',
+  C:'Option C — show every source (eFTP · CP · 20-min…) so you see exactly what agrees and what\'s stale. Most transparent.',
+};
+let sport='cyc', opt='A';
+const _h=(location.hash||'').replace('#','').toUpperCase(); if(['A','B','C'].includes(_h)) opt=_h;
+const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
+
+function card(it){
+  const c = el('div','card');
+  const top = el('div','top');
+  top.appendChild(el('span','name',it.name));
+  top.appendChild(el('span','unit',it.unit));
+  c.appendChild(top);
+
+  if(opt==='B'){
+    c.appendChild(el('div','range',`<span class="lo">${it.lo}</span> – <span class="hi">${it.hi}</span> <b>${it.unitTxt?'':''}</b>`));
+    c.appendChild(el('div','val',`<small>best</small> ${it.best}${it.unitTxt?' <small>'+it.unitTxt+'</small>':''}`));
+  } else {
+    c.appendChild(el('div','val',`${it.best}${it.unitTxt?' <small>'+it.unitTxt+'</small>':''}`));
+  }
+
+  const bar = el('div','bar'); const fill = el('div','fill '+it.cls); fill.style.width=it.pct+'%'; bar.appendChild(fill); c.appendChild(bar);
+  c.appendChild(el('div','clabel cl-'+it.cls,`<span class="dot ${it.cls}"></span>${it.clabel}`));
+
+  if(opt==='A'){ c.appendChild(el('div','why',it.why)); }
+  if(opt==='B'){ c.appendChild(el('div','agree',it.agree)); }
+  if(opt==='C'){
+    const s = el('div','srcs');
+    it.srcs.forEach(([n,v,tag])=>{
+      const r=el('div','src');
+      r.appendChild(el('span','sn',n));
+      r.appendChild(el('span','sv',v));
+      const label = tag==='ok'?'agrees':tag==='stale'?'stale':'missing';
+      r.appendChild(el('span','tag '+tag,label));
+      s.appendChild(r);
+    });
+    c.appendChild(s);
+    c.appendChild(el('div','agree',it.agree));
+  }
+  return c;
+}
+function render(){
+  document.getElementById('opthelp').textContent = OPTHELP[opt];
+  const wrap = document.getElementById('cards'); wrap.innerHTML='';
+  const d = DATA[sport];
+  wrap.appendChild(el('div','grp',d.label+' benchmarks'));
+  d.items.forEach(it=>wrap.appendChild(card(it)));
+}
+document.getElementById('sportSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return; sport=b.dataset.sport; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); render();});
+document.getElementById('optSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return; opt=b.dataset.opt; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); render();});
+document.querySelectorAll('#optSeg button').forEach(x=>x.classList.toggle('on',x.dataset.opt===opt));
+render();
+</script>
+</body>
+</html>

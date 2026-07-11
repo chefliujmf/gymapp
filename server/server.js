@@ -53,6 +53,10 @@ if (PUSH_ENABLED) { try { webpush.setVapidDetails(process.env.VAPID_SUBJECT || `
 // intervals — it never MIRRORS plans out (pushPlanToIcu) and never runs the auto-scheduler. Only prod
 // writes. QA still reconciles IN (read) so it shows the calendar. Detected from the QA RP_ID/ORIGIN.
 const IS_STAGING = process.env.STAGING === '1' || /-qa\.|staging/i.test(`${RP_ID} ${ORIGIN}`)
+// #491 — Eat + Mind are DEACTIVATED app-wide (JM 2026-07-11, "simplify for now"): nav tabs are gone, so the coach
+// must NOT put meals / mind / supplements on the calendar (they'd be orphan items with no section to show them).
+// Training + Recovery + notes stay. Reversible: flip to false to bring Eat/Mind back (and restore the nav tabs).
+const EAT_MIND_OFF = true
 const COOKIE = 'gymapp_sess'
 const ICU = 'https://intervals.icu'
 
@@ -996,6 +1000,10 @@ const BACKLOG_AREAS = ['admin', 'cycling', 'running', 'gym', 'stats', 'eat', 'to
 const BACKLOG_FILE = process.env.BACKLOG_FILE || '/srv/backlog/backlog.json'
 const BACKLOG_DIR = BACKLOG_FILE.replace(/\/[^/]*$/, '') || '.'
 const readBacklog = () => { try { const b = JSON.parse(readFileSync(BACKLOG_FILE, 'utf8')); return { triage: b.triage || {}, added: b.added || [] } } catch { return { triage: {}, added: [] } } }
+// #485 — the generated item LIST, published to the SHARED mount (newest # wins) so QA + prod show the SAME items
+// (was bundled per-build → they diverged). The frontend fetches these, falling back to its own bundle if absent/empty.
+const ITEMS_FILE = process.env.ITEMS_FILE || '/srv/backlog/items.json'
+const readItems = () => { try { const a = JSON.parse(readFileSync(ITEMS_FILE, 'utf8')); return Array.isArray(a) ? a : (Array.isArray(a?.items) ? a.items : []) } catch { return [] } }
 const writeBacklog = (bl) => {
   const out = { triage: bl.triage || {}, added: bl.added || [] }
   try { mkdirSync(BACKLOG_DIR, { recursive: true }); const tmp = BACKLOG_FILE + '.tmp'; writeFileSync(tmp, JSON.stringify(out)); renameSync(tmp, BACKLOG_FILE) }
@@ -1006,19 +1014,29 @@ const writeBacklog = (bl) => {
 // OVERWROTE the real #439/#440 roadmap items in the merge — invisible reports + masked roadmap.)
 const REPORT_BASE = 1000
 const nextBacklogN = (bl) => Math.max(REPORT_BASE - 1, ...(bl.added || []).map((x) => x.n || 0)) + 1
-app.get('/auth/admin/backlog', auth, admin, (req, res) => { res.json(readBacklog()) })
+app.get('/auth/admin/backlog', auth, admin, (req, res) => { const items = readItems(); res.json({ ...readBacklog(), ...(items.length ? { items } : {}) }) })
 // #468 — a small SHARED status file so JM can SEE (Admin → Claude panel) what Claude is working on live: which
 // batch, progress toward the 10-item bucket, the current item + a note, and how many bugs remain. Claude writes
 // this file as it works (same shared /srv/backlog mount, both envs); the Admin panel polls this endpoint.
 const CLAUDE_STATUS_FILE = process.env.CLAUDE_STATUS_FILE || '/srv/backlog/claude-status.json'
 const readClaudeStatus = () => { try { return JSON.parse(readFileSync(CLAUDE_STATUS_FILE, 'utf8')) } catch { return { active: false, note: 'idle' } } }
+// #468 — the worker's rolling recent-outcomes feed (what it did to each item) so JM sees per-item results.
+const CLAUDE_RECENT_FILE = process.env.CLAUDE_RECENT_FILE || '/srv/backlog/claude-recent.json'
+const readClaudeRecent = () => { try { const a = JSON.parse(readFileSync(CLAUDE_RECENT_FILE, 'utf8')); return Array.isArray(a) ? a.slice(0, 8) : [] } catch { return [] } }
 app.get('/auth/admin/claude-status', auth, admin, (req, res) => {
   const st = readClaudeStatus()
-  // #468 — compute the LIVE to-test bucket from the backlog (not my static write) so JM always sees the REAL
-  // remaining-to-review count + WHICH items (a lone straggler like #412 was invisible before → looked like 0).
+  // #468 — the XPS bug-worker writes {where,state,item,dry,at}; normalise to what the panel expects so a running
+  // worker actually shows as WORKING (not idle). where distinguishes the two workers: XPS = bugs, Mac = features/ideas.
+  const active = st.state === 'working'
+  const updatedAt = st.at ? Date.parse(st.at) : (st.updatedAt || 0)
+  const where = st.where || (st.state ? 'xps' : null)
+  const note = st.note || (active
+    ? `Fixing bug #${st.item}${st.dry ? ' · dry run' : ''}`
+    : (st.worked ? `Idle — last run handled ${st.worked} item${st.worked === 1 ? '' : 's'}` : 'Idle — waiting for the next bug'))
+  // LIVE to-test bucket from the backlog (not a static write) so JM always sees the REAL items to test one-by-one.
   const bl = readBacklog()
   const pending = Object.entries(bl.triage || {}).filter(([, t]) => t && t.status === 'totest').map(([k]) => Number(k)).sort((a, b) => a - b)
-  res.json({ ...st, liveTotest: pending.length, pending: pending.slice(0, 15), trigger: readClaudeTrigger() })
+  res.json({ active, where, note, item: st.item ?? null, updatedAt, liveTotest: pending.length, pending: pending.slice(0, 15), recent: readClaudeRecent(), trigger: readClaudeTrigger() })
 })
 // #468 — JM taps "Start next batch" in the panel → drop a request flag (its OWN file so it never races Claude's
 // status writes). Claude's watcher polls this + refills on demand, not only at totest==0.
@@ -1357,12 +1375,15 @@ function buildSystemPrompt(user) {
   }
   // #284 — gym prescription depth: tempo (time-under-tension) + per-lift + session tips.
   p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): for each lift set sets×reps and ALWAYS set a TEMPO on strength lifts — 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower · 1s pause · 1s lift · 0s top (slower eccentric ⇒ more time-under-tension ⇒ hypertrophy/control; faster ⇒ power). Default to "3-1-1-0" for main + accessory strength work; only omit tempo for pure mobility/holds/plyometrics. This is REQUIRED, not optional — the app shows it as a chip. Add a one-line FORM tip per lift, and ONE whole-session \`tip\`. Don't set weight — the app fills it from the athlete's e1RM. Keep tips short and practical.`
+  // #491 — Eat & Mind deactivated: tell the coach up-front so it plans training+recovery only (the server also
+  // hard-rejects meal/mind/supplement items). Placed before the DIET/FUEL/MIND blocks so it overrides them for planning.
+  if (EAT_MIND_OFF) p += `\n\n# EAT & MIND ARE DEACTIVATED right now (the app was simplified). Do NOT schedule OR suggest meals, recipes, supplements, or mind / meditation / yoga sessions — the server rejects those calendar items and they'd be orphaned with no section to show them. Plan TRAINING + RECOVERY only. Treat any DIET / FUEL-TARGET / MIND guidance below as reference for chat answers ONLY, never as a cue to create calendar items. (You may still answer a nutrition or mindfulness question briefly in chat.)`
   const diet = String(user.info?.diet || '').toLowerCase()
-  if (diet === 'vegetarian' || diet === 'vegan') p += `\n\n# DIET: the athlete is ${diet.toUpperCase()}.\nEVERY meal you pick or suggest MUST be ${diet}. search_recipes already returns ONLY ${diet}-compatible recipes for this athlete, so pick from those — never recommend a meal outside their diet, and don't suggest meat${diet === 'vegan' ? ', fish, dairy, eggs, or honey' : ' or fish'}. (They set this in Settings → Preferences.)`
+  if (!EAT_MIND_OFF && (diet === 'vegetarian' || diet === 'vegan')) p += `\n\n# DIET: the athlete is ${diet.toUpperCase()}.\nEVERY meal you pick or suggest MUST be ${diet}. search_recipes already returns ONLY ${diet}-compatible recipes for this athlete, so pick from those — never recommend a meal outside their diet, and don't suggest meat${diet === 'vegan' ? ', fish, dairy, eggs, or honey' : ' or fish'}. (They set this in Settings → Preferences.)`
   // #265 — daily FUEL TARGETS (mirror src/nutrition.ts: Mifflin-St Jeor BMR → TDEE → goal calories + protein).
   const fKg = Number(user.weight) || null, fCm = Number(user.info?.heightCm) || null
   const fAge = user.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
-  if (user.sex && fKg && fCm && fAge && fAge > 12 && fAge < 100) {
+  if (!EAT_MIND_OFF && user.sex && fKg && fCm && fAge && fAge > 12 && fAge < 100) { // #491 — no fuel targets while Eat is off
     const bmr = Math.round(10 * fKg + 6.25 * fCm - 5 * fAge + (user.sex === 'female' ? -161 : 5))
     const days = Number(user.info?.trainingDays) || 0
     const act = days >= 7 ? 1.9 : days >= 5 ? 1.725 : days >= 3 ? 1.55 : 1.375
@@ -2079,6 +2100,9 @@ function validateItem(b) {
 }
 function upsertItem(user, b) {
   const err = validateItem(b); if (err) return { status: 400, body: { error: err } }
+  // #491 — Eat/Mind deactivated: hard-reject any meal/mind/supplement so the coach can't leave orphan calendar items.
+  if (EAT_MIND_OFF && ['meal', 'mind', 'supplement'].includes(b.type))
+    return { status: 409, body: { error: `'${b.type}' is deactivated right now (Eat & Mind are off). Only ride / run / gym / recovery / note are schedulable — plan training + recovery instead.` } }
   user.items = user.items || []
   // #451 — RECOVERY as a first-class activity: structured insight (why today) + steps (the routine) + sleep note.
   const steps = Array.isArray(b.steps) ? b.steps.slice(0, 12).map((s) => ({ name: String(s?.name || '').slice(0, 120), dose: String(s?.dose || '').slice(0, 60), cue: String(s?.cue || '').slice(0, 200) })).filter((s) => s.name) : undefined
@@ -2809,6 +2833,7 @@ function reviewMsg(today) {
 }
 // ROUND-OUT pass — FUEL / MIND / RECOVERY around the (already-set) plan:
 function roundOutMsg(today) {
+  if (EAT_MIND_OFF) return `Daily RECOVERY pass (${today}) — Eat & Mind are OFF right now, so add ONLY recovery around the plan (the workouts are already set; don't change them). After the hardest / longest days, put a RECOVERY session where it genuinely helps THIS athlete (schedule_recovery — mobility / sauna / easy walk, given STRUCTURED: insight = why today + steps = the routine with doses + a sleep note, NOT one text blob — it opens as its own activity view). Don't drop one onto every day. Do NOT schedule meals, supplements, or mind/meditation sessions (those sections are deactivated — the server rejects them). Be concise.`
   return `Daily ROUND-OUT pass (${today}) — add FUEL, MIND and RECOVERY around the plan (the workouts are already set; don't change them). On TODAY and each clearly demanding day (hard / long / quality), schedule a fitting meal or two (schedule_meal — a real recipe fitting their diet + daily fuel targets, more carbs around hard work, lighter on rest days, one-line why); add a MIND session (schedule_mind) where it earns its place (a wind-down after a hard/high-stress day, longer on a rest day); put RECOVERY (schedule_recovery — mobility / sauna / easy walk) after the hardest days, given STRUCTURED (insight = why + steps = the routine with doses + sleep note, NOT one text blob — it opens as its own activity view). ONLY where it genuinely adds value for THIS athlete on THIS day — don't drop one onto every slot, and don't churn what they've got. Be concise.`
 }
 async function runDailyAdapt(user, pass) {

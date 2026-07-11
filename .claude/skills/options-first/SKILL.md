@@ -5,7 +5,21 @@ description: Before implementing anything JM will see or judge (UI, charts, card
 
 # Options + mockups first
 
+**WHERE feature design happens (JM picked 2026-07-10): RIGHT HERE, in the Claude chat — NOT an in-app design tool.**
+When a FEATURE comes up: ask the questions here, show the 2-3 mockups here (render HTML → PNG → Read them inline),
+get the pick here; the backlog item just RECORDS the decision. Don't build an in-app "design/discuss" surface —
+JM considered it and chose to keep it in chat. (This is the features phase, after bugs = 0.)
+
 **Rule (JM directive):** do NOT implement a UX/visual/interaction change and let the user react. Present **2-3 distinct options as a rendered HTML mockup** — write a self-contained HTML file to `gymapp/mockups/` and `open` it in the browser (JM reads HTML far better than ASCII; a sport/variant toggle in one file lets him compare). Get the pick, THEN build only that one.
+
+**⚠️ MOCK THE SPECIFIC FINAL RESULT — and get EXPLICIT approval BEFORE writing code (JM 2026-07-11).** For a MERGE or
+REPLACE ("Today becomes Plan's DAY view"), mock the EXACT merged screen with the REAL content — not a generic or
+simplified stand-in. What went wrong: I mocked generic Plan views, JM said "488 yes", and I jumped straight to BUILDING
+the merge without ever mocking the actual merged Day view; he pushed back ("not what I asked… review mockup to see what
+you understand before approval"). Rules: (1) the mock must faithfully show what will SHIP, keeping every element the user
+named (e.g. the FULL check-in card, not a "Checked in" chip). (2) "yes" to a rough/partial mock is NOT approval to build
+the whole thing — re-mock the SPECIFIC screen and get an explicit "build it". (3) Do NOT push code ahead of an approved
+mock, even if you're confident. Mock → approve → build, in that order.
 
 **Rule — DIAGNOSE, then OPTIONS, for ANY bug / issue / improvement (JM directive 2026-07-03):** before touching code on a bug, issue, or "make this better", FIRST reply with two parts, in this order:
 1. **What I understand & what I see** — restate the problem in my own words + the *diagnosis*: the root cause / what the code, data, or screenshot actually shows (cite `file:line`, the real values, the failing path). Prove I've understood before proposing anything. If I haven't found the cause yet, say so and investigate first.

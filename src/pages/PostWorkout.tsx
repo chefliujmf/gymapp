@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getCoachPlan } from '../plan'
+import { getCoachPlan, findGymLogForPlan } from '../plan'
 import { authApi, type CoachReview } from '../auth/api'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
 import { DoneStats } from '../ui'
-import { lastLogForWorkout, db, type WorkoutLog } from '../db'
+import { db, type WorkoutLog } from '../db'
 import { bestE1rmByExercise } from '../strength'
 import GymSummary from '../GymSummary'
 
@@ -33,8 +33,9 @@ export default function PostWorkout() {
   useEffect(() => { if (p && p.sport !== 'gym') fetchActivities(p.date, p.date).then((a) => setAct(a.find((x) => sportOfActivity(x) === p.sport))).catch(() => {}) }, [p?.date, p?.sport])
   useEffect(() => {
     if (!p || p.sport !== 'gym') return
-    lastLogForWorkout('plan-' + p.id).then((l) => setGymLog(l || null)).catch(() => {})
-    db.logs.toArray().then((ls) => setBestE1rm(bestE1rmByExercise(ls))).catch(() => {})
+    // #326 — resolve the completed log the SAME way the card/detail do (plan-id OR title+day), so the
+    // rich summary shows even when the session was logged under a non-`plan-<id>` workoutId.
+    db.logs.toArray().then((ls) => { setBestE1rm(bestE1rmByExercise(ls)); setGymLog(findGymLogForPlan(p, ls)) }).catch(() => {})
     authApi.coachReviews().then((r) => setReview(r.find((x) => x.planId === p.id) || r.find((x) => x.date === p.date && (x.sport === 'gym' || !x.sport)) || null)).catch(() => {})
   }, [p?.id, p?.date, p?.sport])
 
