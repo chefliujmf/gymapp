@@ -22,16 +22,29 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+493. ⬜ **Plan default-view preference (Settings).** Split from #488: let the user pick which Plan view opens by default
+    (Day / Week / Month / Schedule) in Settings; Calendar reads it on mount (today it hardcodes 'month'). **Route:** UI.
+492. 🔨 **Rename "Backlog" → "Road map" (= future to assess / consider / approve).** JM 2026-07-11. Done in nav +
+    Admin header (commit 67af627). Same commit also removed the **Mind card from Stats** (JM: "mind is still under stats
+    too, remove"). **Route:** UI. 🧪 the tab/label reads "Road map" everywhere; no "Mind" card left on /stats.
+491. 🔨 **Deactivate Eat + Mind app-wide (keep Recovery); day dot = ACTIVITIES only.** JM 2026-07-11: "to simplify the
+    app for now, deactivate Mind and Eat; Recovery can stay; a green day-dot is only for activities (run/ride/yoga/
+    pilates), not food/meditation/recovery." UI DONE — nav tabs removed, routes kept (commits 96ee927/d0c842b/67af627).
+    ⚠️ **NOT propagated to the COACH: the daily-adapt ROUND-OUT pass (server.js ~2824) + MCP `schedule_meal`/`schedule_mind`
+    still auto-schedule meals + mind onto the calendar every day** (the #478 "meal on calendar = no-no" still fires). FIX =
+    a reversible server gate — round-out → recovery-only, MCP meal/mind guarded, coach told they're off, engine/openapi/
+    memory updated. **Route:** propagate-all-layers (UI ✓, coach pending). 🔨 building the coach gate now.
 490. ⬜ **Recovery library is too small — build a MUCH larger one (LOW priority).** JM 2026-07-11: "for recovery we'll
     need a much larger library, it's not near enough." More sauna/cold/massage/mobility/breath/sleep routines. **Route:** content.
 489. 🔨 **Add sheet = ride / run / gym / recovery / note ONLY (drop mind, meal, supplement).** JM 2026-07-11: "when we
     click add be sure to not have mind or meal or supplement — it's ride, run, gym, recovery, note." (Eat+Mind are
     deactivated.) `AddSheet` in Today (+ Plan). **Route:** UI.
-488. ⬜ **Merge Today INTO Plan — Plan gains DAY / WEEK / MONTH / SCHEDULE views; DAY = today's features; default-view
-    preference.** JM 2026-07-11: "Today and Plan should merge (keep name Plan). Today becomes part of Plan — replace
-    what we have as 'Day' in Plan with ALL the features under the Today tab (keep the label Day). In Preferences a user
-    picks the default view (day/week/month/schedule)." So: remove the Today tab; its content (check-in, verdict, plan,
-    recovery…) becomes Plan's Day view; add a default-view pref. Big restructure — mock first (options-first). **Route:** UX.
+488. ✅ **Merge Today INTO Plan — Plan's Day view IS the full Today screen; Week/Month/Schedule each carry the day's own check-in; default-view pref.** JM 2026-07-11 approved ("I like 488") → promoted to prod. Ask: "Today and Plan should
+    merge (keep name Plan). Today becomes part of Plan — replace what we have as 'Day' in Plan with ALL the Today
+    features (keep the label Day). In Preferences a user picks the default view." DONE: Today tab removed; its content
+    (check-in · verdict · plan · recovery) is Plan's Day view; Week + Schedule show each day's check-in STRIP, Month a
+    verdict DOT — past = "didn't check in" / today = "check in today" / future = nothing. Mocked (options-first, JM
+    picked C, refined to per-day). ⚠️ the default-view Settings pref is split to #493 (not built yet). **Route:** UX.
 487. 🔨 **Remove the Train tab — add a workout via the Add button.** JM 2026-07-11: "remove Train tab; if a user wants
     to add a workout they have the Add button." Drop the nav tab (keep the /train route). **Route:** UI.
 486. ⬜ **Coach task must survive switching screens (leaving the chat → "network error" on return).** JM 2026-07-11:
@@ -1125,7 +1138,7 @@ test guide → the **🧪 Test guide** section below.
     `dailyReminderPush` in the morning scheduler (`dailyAdaptTick`) — once/day in the athlete's LOCAL 7–11am window, IF opted-in +
     subscribed + NOT already checked in today → "⏰ Ready to train? Check in + see today's plan". Runs for any subscribed user on QA + prod
     (only sends a push, never touches intervals). On QA. Test: toggle Daily reminder on → next local morning (no check-in yet) → phone buzzes.
-459. (update 2026-07-09) INVESTIGATED — inconclusive. diet/heightCm/dob ARE capturable (diet chips + `FuelFields` render + save via
+    (update 2026-07-09) INVESTIGATED — inconclusive. diet/heightCm/dob ARE capturable (diet chips + `FuelFields` render + save via
     saveProfile) and the save path MERGES (can't wipe); the Jun-23 pre-migration backup had JM's `info={}` (empty); no audit trail; NO
     full `user.info=` replace anywhere server-side. So no wipe vector found. Best guess: an early save didn't persist, or a reset I can't
     see. ACTION: JM re-sets them on PROD (save path verified → they WILL stick); if they vanish AGAIN that's a live repro I trace instantly.
