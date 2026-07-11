@@ -40,9 +40,15 @@ describe('ride/run gate — mobile-first (#139)', () => {
     expect(canPlayHere(false)).toBe(true)
   })
 
-  it('a narrow (<820) viewport counts as mobile', () => {
+  it('a NARROW DESKTOP window (fine pointer, no touch) is NOT mobile — #139/#145: no "Ride now" leak', () => {
     vi.stubGlobal('window', { matchMedia: () => ({ matches: false }), innerWidth: 500 })
     vi.stubGlobal('navigator', { maxTouchPoints: 0 })
+    expect(isMobileDevice()).toBe(false) // narrow ≠ mobile; a Mac desktop resized small must stay desktop
+  })
+
+  it('a touch device is mobile regardless of width (coarse pointer OR touch points)', () => {
+    vi.stubGlobal('window', { matchMedia: () => ({ matches: false }), innerWidth: 1400 })
+    vi.stubGlobal('navigator', { maxTouchPoints: 5 })
     expect(isMobileDevice()).toBe(true)
   })
 })

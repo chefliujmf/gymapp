@@ -51,5 +51,9 @@ export function wattsAt(seg: Segment, _elapsedSec: number, ftp: number): number 
 // Mobile-first (#109/#139): a guided ride/run only starts on a touch device — OR on a
 // desktop when the sensor bridge is connected. Gate the "Ride/Run now" BUTTON with this
 // (not just the player), so you can't even try from a sensor-less desktop.
-export const isMobileDevice = () => typeof window !== 'undefined' && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || window.innerWidth < 820)
+// #139/#145 (reopened) — a REAL touch device is what matters: pointer:coarse OR touch points.
+// The old `innerWidth < 820` clause wrongly treated a NARROW DESKTOP WINDOW as mobile (a Mac
+// desktop has a FINE pointer + 0 touch points), so "Ride now" leaked onto desktop. Dropped it —
+// real phones/tablets report a coarse pointer, so they're still covered.
+export const isMobileDevice = () => typeof window !== 'undefined' && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0)
 export const canPlayHere = (hasBridge?: boolean) => isMobileDevice() || !!hasBridge

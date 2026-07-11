@@ -22,6 +22,17 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+495. ⬜ **QA ≠ PROD for backlog TRIAGE + user reports (extends #485).** JM 2026-07-11: can't see #1002/#1003/#1006 in the
+    QA Road map. #485 synced the generated item LIST, but the triage overlay + user-added reports (`app_meta.backlog` =
+    {triage, added}) are PER-ENV Postgres — QA has 11 added, prod has 8, DIVERGED. Reports filed on one env are invisible
+    on the other (and #1007: can't even file on QA). FIX: share the whole overlay (triage+added) across QA+prod like the
+    item list, newest-wins. **Route:** infra/architecture.
+494. ⬜ **New "Road map" STATUS = future work to review later (JM 2026-07-11).** A PARKING bucket distinct from To-do —
+    items JM wants to assess/consider/approve LATER, kept out of the active queue. Add to the triage status set
+    (`BacklogStatus` + S_LABEL + S_DOT + STATUS_OPTS + statusChips in AdminBacklog + build-backlog `statusOf`). ⚠️ naming:
+    the TAB is already "Road map" — confirm the STATUS label (Road map? Future? Later?) + whether the tab reverts to
+    "Backlog". **Route:** admin/backlog. Mock the chip + settle the naming first (options-first). JM's clarification: "this
+    is backlog but I want a new status to reflect future work (road map) I'll review later."
 493. ✅ **Plan default-view preference (Settings).** ALREADY BUILT + works (JM confirmed 2026-07-11). Settings → "Calendar
     starts on" (Day / Week / Month / Schedule) persists `calView`; Calendar reads it on mount (localStorage + setSetting,
     `?view=` overrides). On prod. **Route:** UI.
@@ -2425,10 +2436,14 @@ test guide → the **🧪 Test guide** section below.
     Today page jumps to /plan (calendar Day view) + opens the Add sheet there, instead of opening the Add
     sheet IN PLACE on Today. JM wants to add without leaving Today. (Today.tsx swapOn → navigate; #56/#57 made
     it jump — JM dislikes that.) JM screenshot 2026-06-26.
-145. 🧪 **REOPENED #139 — desktop CAN still start a ride; the BUTTON isn't gated.** I gated the PLAYER (and
-    RunPlayer) but the "▶ Ride now" button on the ride-detail pages (CoachPlanDetail + PlanDetail) is still
-    actionable on desktop. JM has said 2-3× you CANNOT ride from desktop. FIX: gate the BUTTON itself
-    (canPlayHere = isMobile || sensor-bridge) so it shows "Open on your phone" on a sensor-less desktop. JM 2026-06-26.
+145. 🔨 **REOPENED AGAIN #139 (JM 2026-07-11, prod screenshot) — "Ride now" still shows on desktop.** Root cause this
+    time: the button IS gated (`canPlayHere` on CoachPlanDetail + PlanDetail), but `isMobileDevice()` returned TRUE on
+    JM's Mac because of the `innerWidth < 820` clause — a NARROW DESKTOP WINDOW was treated as mobile. FIX: dropped that
+    clause (real phones/tablets report `pointer:coarse`; a Mac desktop has a fine pointer + 0 touch points), gated the one
+    remaining ungated launcher (CycleDetail), and pointed RidePlayer/RunPlayer at the shared `isMobileDevice()` (killed
+    their inline `<820` copies). Gym "Start workout" stays open (gym works on desktop). Test flipped: narrow desktop ≠
+    mobile. 🧪 **JM test (prod, after promote):** open a coach ride/template on desktop (even a narrow window) → NO "Ride
+    now", shows "Open on your phone"; on your phone it still shows. Was 🧪 REOPENED #139 (JM 2026-06-26).
 144. 🧪 **In-app Promote button → GitHub 403 — FIXED IN CODE.** The button POSTed a workflow_dispatch,
     which needs `actions: write`; the PAT has Contents+PRs only → 403. Rather than ask JM to widen the PAT,
     rewrote `/auth/promote-prod` to open/reuse a dev→main PR + enable auto-merge directly (Contents+PRs —

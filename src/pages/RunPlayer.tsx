@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { getCurrentRide } from '../ride'
+import { getCurrentRide, isMobileDevice } from '../ride'
 import { zoneColor, sportIcon } from '../ui'
 import { useBeeper, useNow, useWakeLock, useSpeech } from '../hooks'
 import { logWorkout, getSetting } from '../db'
@@ -149,7 +149,7 @@ export default function RunPlayer() {
 
   // Mobile-first (#109/#139): on a desktop without the sensor bridge, send them to
   // the phone instead of a sensor-less run (mirrors RidePlayer's gate).
-  const isMobile = typeof window !== 'undefined' && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || window.innerWidth < 820)
+  const isMobile = isMobileDevice() // #139/#145 — shared gate (narrow desktop window ≠ mobile)
   if (!isMobile && !ble.bridge) return (
     <div className="rp">
       <div className="rp-top"><button className="rp-x" onClick={() => navigate(-1)}>✕</button><div className="rp-title">{sportIcon[run.sport]} {run.title}</div><div style={{ width: 34 }} /></div>

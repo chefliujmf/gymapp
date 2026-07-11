@@ -1,7 +1,8 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { allEnduranceById } from '../data/catalog'
 import { IntervalProfile, zoneColor, sportIcon, computeTSS } from '../ui'
-import { setCurrentRide, segmentsFromEndurance } from '../ride'
+import { setCurrentRide, segmentsFromEndurance, canPlayHere } from '../ride'
+import { useBle } from '../BleContext'
 import { getSetting } from '../db'
 
 function fmtDur(s: number) {
@@ -13,6 +14,7 @@ function fmtDur(s: number) {
 export default function CycleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const ble = useBle()
   const w = id ? allEnduranceById[id] : undefined
   const isRun = w?.sport === 'running'
   if (!w) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button><h1>Not found</h1></div>
@@ -42,8 +44,12 @@ export default function CycleDetail() {
 
       {w.description && <p className="meta" style={{ marginTop: 12 }}>{w.description}</p>}
 
-      <button className="btn" style={{ marginTop: 10 }} onClick={start}>▶ {isRun ? 'Start run (audio cues)' : 'Ride now'}</button>
-      <p className="meta" style={{ marginTop: 8 }}>{isRun ? 'Spoken cues call out each interval & target — eyes up, treadmill or outdoor.' : 'Guided ERG workout on a smart trainer. Outdoor rides sync from your bike computer.'}</p>
+      {canPlayHere(!!ble.bridge)
+        ? <>
+            <button className="btn" style={{ marginTop: 10 }} onClick={start}>▶ {isRun ? 'Start run (audio cues)' : 'Ride now'}</button>
+            <p className="meta" style={{ marginTop: 8 }}>{isRun ? 'Spoken cues call out each interval & target — eyes up, treadmill or outdoor.' : 'Guided ERG workout on a smart trainer. Outdoor rides sync from your bike computer.'}</p>
+          </>
+        : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to {isRun ? 'run with audio cues' : 'ride'} — that's where your HR strap &amp; trainer connect.</div>}
 
       <div className="section-title" style={{ marginTop: 18 }}>Structure</div>
       <div className="stack">
