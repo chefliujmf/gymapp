@@ -242,13 +242,19 @@ export function tteEstimate(inp: TteInputs): Estimate {
   return { best: e.best != null ? Math.round(e.best) : null, lo: e.lo != null ? Math.round(e.lo) : null, hi: e.hi != null ? Math.round(e.hi) : null, conf: e.conf, why, sources: tagSources(sources, e.best, FRESH, 0.12) }
 }
 
+// #501 — age-based max HR (Tanaka 2001, `208 − 0.7·age`) — more accurate than the old `220−age`. A rough FALLBACK.
+export const maxHrFromAge = (age: number | null | undefined): number | null => (typeof age === 'number' && age > 8 && age < 100 ? Math.round(208 - 0.7 * age) : null)
 // Max HR — observed peak per sport beats an intervals ceiling; it ages slowly.
-export interface MaxHrInputs { observed?: number | null; observedAgeDays?: number | null; ceiling?: number | null; sport?: string }
+export interface MaxHrInputs { observed?: number | null; observedAgeDays?: number | null; ceiling?: number | null; sport?: string; age?: number | null }
 export function maxHrEstimate(inp: MaxHrInputs): Estimate {
   const FRESH = 120
+  const ageEst = maxHrFromAge(inp.age)
   const sources: Src[] = [
     { name: 'observed peak', value: inp.observed ?? null, ageDays: inp.observedAgeDays ?? null, kind: 'observed' },
     { name: 'intervals ceiling', value: inp.ceiling ?? null, ageDays: null, kind: 'model' },
+    // #501 (JM) — the age formula is a LOW-confidence FALLBACK: include it ONLY when there's nothing observed and no
+    // ceiling, so a real observed peak / zone ceiling is never dragged down by it.
+    ...(inp.observed == null && inp.ceiling == null && ageEst != null ? [{ name: 'age estimate', value: ageEst, ageDays: null, kind: 'model' as const }] : []),
   ]
   const e = honestEstimate(sources, { freshDays: FRESH, tol: 0.02 })
   const sp = inp.sport ? ` (${inp.sport})` : ''
@@ -256,6 +262,7 @@ export function maxHrEstimate(inp: MaxHrInputs): Estimate {
   if (e.best == null) why = `No max HR yet${sp} — it shows up after an all-out effort.`
   else if (inp.observed != null && inp.observedAgeDays != null && inp.observedAgeDays <= FRESH) why = `Seen ${inp.observed} bpm${sp} on a hard effort ${inp.observedAgeDays}d ago — recent and real.`
   else if (inp.observed != null) why = `Seen ${inp.observed} bpm${sp}, but a while back — a fresh all-out effort refreshes it.`
+  else if (inp.ceiling == null && ageEst != null) why = `Estimated from your age (208 − 0.7 × age)${sp} — a rough starting point; an all-out effort with a strap reveals your true peak.`
   else why = `Only an intervals ceiling so far${sp} — a real all-out effort gives you a true peak.`
   return { best: e.best != null ? Math.round(e.best) : null, lo: e.lo != null ? Math.round(e.lo) : null, hi: e.hi != null ? Math.round(e.hi) : null, conf: e.conf, why, sources: tagSources(sources, e.best, FRESH, 0.02) }
 }

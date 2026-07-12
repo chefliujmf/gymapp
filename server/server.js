@@ -349,8 +349,9 @@ app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
   const pc = await icuGet(req.user, `/athlete/${ath}/pace-curves?type=Run`)
   const est = pc ? runThresholdFromPaceCurve(pc) : null
   if (!est) return res.json({ available: false, reason: 'no-model' })
-  // How much running is behind this estimate? Count recent runs (42d) + a hard effort.
-  const DAYS = 42
+  // How much running is behind this estimate? #501 (JM) — widened 42d → 180d so a valid full-history pace-curve
+  // isn't hidden just because the last 6 weeks were light. The ESTIMATE is from intervals' full-history curve.
+  const DAYS = 180
   const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(DAYS)}&newest=${icuDay(0)}`)
   const runs = Array.isArray(acts) ? acts.filter((a) => /run/i.test(a.type || '') && a.distance > 0) : []
   const totalKm = runs.reduce((s, a) => s + a.distance, 0) / 1000
@@ -359,9 +360,11 @@ app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
   let confidence = 'low'
   if (runs.length >= 8 && totalKm >= 60 && r2 >= 0.85) confidence = 'high'
   else if (runs.length >= 4 && totalKm >= 25 && r2 >= 0.7) confidence = 'medium'
-  // Not confident → assessed, but DON'T present it as a suggestion. Tell the UI why.
-  if (confidence === 'low') {
-    return res.json({ available: false, assessed: true, reason: runs.length < 4 ? 'too-few-runs' : 'low-fit', runs: runs.length, weeklyKm: +(totalKm / (DAYS / 7)).toFixed(1) })
+  // #501 (JM: "estimate with the data you have") — only WITHHOLD when the model itself is weak (poor fit). Thin
+  // RECENT running with a good full-history curve → still present the number as a ROUGH estimate (honest low
+  // confidence), never a bare "needs 4 runs" when intervals holds the history to model it.
+  if (r2 < 0.7) {
+    return res.json({ available: false, assessed: true, reason: 'low-fit', runs: runs.length, weeklyKm: +(totalKm / (DAYS / 7)).toFixed(1) })
   }
   if (est.thresholdPace > 0) { req.user.runPaceEst = Math.round(est.thresholdPace); save(store) } // #236 stash computed pace for the coach
   res.json({ available: true, ...est, confidence, runs: runs.length, source: 'critical speed (your recent runs)' })
@@ -394,8 +397,12 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
     const am = runs.map((a) => Number(a.athlete_max_hr) || 0).find((h) => h >= 120 && h <= 230)
     if (am) icuMaxHr = am
   }
-  const computedMaxHr = Math.max(observedMaxHr || 0, icuMaxHr || 0) || null
-  const maxHrFrom = computedMaxHr == null ? '' : (observedMaxHr && observedMaxHr >= (icuMaxHr || 0) ? 'observed' : 'intervals')
+  // #501 (JM) — age-based fallback (Tanaka 208−0.7·age) so a brand-new athlete with no HR history still gets a
+  // real starting max HR, never a blank. Only used when there's nothing observed AND no intervals ceiling.
+  const ageYr = req.user.info?.dob ? Math.floor((Date.now() - new Date(req.user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
+  const ageMaxHr = ageYr != null && ageYr > 8 && ageYr < 100 ? Math.round(208 - 0.7 * ageYr) : null
+  const computedMaxHr = (Math.max(observedMaxHr || 0, icuMaxHr || 0) || null) ?? ageMaxHr ?? null
+  const maxHrFrom = computedMaxHr == null ? '' : (observedMaxHr && observedMaxHr >= (icuMaxHr || 0) ? 'observed' : icuMaxHr ? 'intervals' : 'age')
   res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent, observedMaxHr, maxHrSamples, icuMaxHr, computedMaxHr, maxHrFrom })
 })
 
