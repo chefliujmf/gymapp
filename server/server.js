@@ -291,6 +291,13 @@ app.put('/auth/icu', auth, async (req, res) => {
     if (me && me.id) {
       if (!req.user.icuAthlete) req.user.icuAthlete = String(me.id)
       syncAthleteProfile(req.user, me)
+      // #497/#501 (JM: "for a new user, be sure this analysis is done") — stash the coach ANCHORS (FTP/maxHR + the
+      // per-sport thresholds) from the athlete's intervals sport-settings ON CONNECT, so the coach has real numbers
+      // immediately without the user opening Stats. Fill-if-empty; the Stats cards refine them from the curves later.
+      const mapped = fromIcuSportSettings(me.sportSettings || [])
+      req.user.sportSettings = { ...(req.user.sportSettings || {}), ...mapped }
+      if (mapped.cycling?.ftp != null && req.user.ftp == null) req.user.ftp = mapped.cycling.ftp
+      if (mapped.cycling?.maxHr != null && req.user.maxHR == null) req.user.maxHR = mapped.cycling.maxHr
     }
   }
   save(store); res.json(pub(req.user))
