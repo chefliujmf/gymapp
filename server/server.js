@@ -2810,6 +2810,21 @@ app.all('/icu/*', auth, async (req, res) => {
 // ---- static SPA ----------------------------------------------------------
 // Self-hosted media (range requests for video seeking + long immutable cache).
 app.use('/media', express.static(MEDIA_DIR, { maxAge: '365d', immutable: true }))
+// #496 — build-version endpoint the SW CAN'T cache (it's not a precached asset, so the service worker passes it
+// straight to the network). The client polls it to DETECT a new deploy reliably even when the SW is serving a stale
+// shell, then offers a real one-tap "update" (unregister SW + clear caches + reload). Returns the DEPLOYED main bundle.
+let _verCache = { at: 0, bundle: '' }
+app.get('/version', (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  try {
+    if (Date.now() - _verCache.at > 30000) {
+      const html = readFileSync(join(STATIC_DIR, 'index.html'), 'utf8')
+      const m = html.match(/\/assets\/index-[A-Za-z0-9_]+\.js/)
+      _verCache = { at: Date.now(), bundle: m ? m[0] : '' }
+    }
+  } catch { /* fall through with whatever we have */ }
+  res.json({ bundle: _verCache.bundle })
+})
 app.use(express.static(STATIC_DIR, { index: false, setHeaders: (res, p) => { if (p.endsWith('index.html') || p.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache') } }))
 app.get('*', (req, res) => res.sendFile(join(STATIC_DIR, 'index.html')))
 
