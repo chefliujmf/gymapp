@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest'
-import { ftpEstimate, thresholdPaceEstimate, modelEstimate, tteEstimate, maxHrEstimate, honestEstimate, ftpFromHrPower, type Src } from './benchmark-estimate'
+import { ftpEstimate, thresholdPaceEstimate, modelEstimate, tteEstimate, maxHrEstimate, honestEstimate, ftpFromHrPower, maxHrFromAge, type Src } from './benchmark-estimate'
+
+// #501 — age-based max HR is a FALLBACK: it fills a data-less athlete but must NOT drag a real observed peak down.
+describe('maxHrFromAge + fallback', () => {
+  it('Tanaka: 208 − 0.7·age', () => { expect(maxHrFromAge(40)).toBe(180); expect(maxHrFromAge(30)).toBe(187) })
+  it('rejects nonsense ages', () => { expect(maxHrFromAge(null)).toBeNull(); expect(maxHrFromAge(4)).toBeNull(); expect(maxHrFromAge(120)).toBeNull() })
+  it('no observed + no ceiling → uses the age estimate', () => {
+    const e = maxHrEstimate({ observed: null, ceiling: null, age: 40 })
+    expect(e.best).toBe(180)
+    expect(e.why).toMatch(/age/i)
+  })
+  it('a real observed peak is NOT dragged down by the age formula', () => {
+    const e = maxHrEstimate({ observed: 195, observedAgeDays: 30, ceiling: null, age: 40 }) // age would say 180
+    expect(e.best).toBe(195)
+    expect(e.sources.find((s) => s.name === 'age estimate')).toBeUndefined()
+  })
+})
 
 // #497 — infer FTP from the HR cost of steady rides (no test needed). JM's example: easy at 200 W ⇒ high FTP.
 describe('ftpFromHrPower', () => {
