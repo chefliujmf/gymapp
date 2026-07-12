@@ -39,6 +39,9 @@ test guide → the **🧪 Test guide** section below.
     `search_sessions` descriptions prefixed "[DEACTIVATED]"; openapi 409 noted. 🧪 **Manual test (prod after promote):** ask
     the coach "plan me some meals this week" → it must DECLINE + plan training/recovery only (no meal/mind item appears on
     any day); the daily-adapt round-out adds recovery only. Reversible: flip `EAT_MIND_OFF=false` to bring Eat/Mind back.
+    ↺ **REWORK 2026-07-11 (JM failed: "meditation is in sports you do"):** Meditation (Mind) was still selectable in
+    Profile → "Sports you do" — removed it there + from MCP `set_sports` allowed list + fixed the stale coach-prompt nav
+    (Today/Train/Eat/Mind → Plan/Stats). Yoga/Pilates STAY (logged activities). Re-test the Profile sports chips on QA.
 490. ⬜ **Recovery library is too small — build a MUCH larger one (LOW priority).** JM 2026-07-11: "for recovery we'll
     need a much larger library, it's not near enough." More sauna/cold/massage/mobility/breath/sleep routines. **Route:** content.
 489. 🔨 **Add sheet = ride / run / gym / recovery / note ONLY (drop mind, meal, supplement).** JM 2026-07-11: "when we

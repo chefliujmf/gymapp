@@ -108,7 +108,7 @@ server.tool('save_coach_memory',
   wrap((a) => api('PUT', '/api/coach-memory', { memory: a.memory })))
 
 server.tool('set_sports',
-  'Set the athlete\'s sports (drives the app navigation + which coaching modules apply). Allowed: cycling, running, strength, yoga, pilates, meditation.',
+  'Set the athlete\'s sports (drives the app navigation + which coaching modules apply). Allowed: cycling, running, strength, yoga, pilates. (Meditation is deactivated along with Mind — #491; do not set it.)',
   { sports: z.array(z.string()).describe('e.g. ["cycling","strength"]') },
   wrap((a) => api('PUT', '/api/profile', { sports: a.sports })))
 
