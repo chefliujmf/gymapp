@@ -96,6 +96,34 @@ function tagSources(sources: Src[], best: number | null, freshDays: number, tol:
   })
 }
 
+// #497 — infer FTP from the SUBMAXIMAL HR–power relationship (Friel's HR-power / efficiency approach, docs/
+// beyond-ftp-metrics.md). Fit watts = a + b·HR from steady (power, HR) points and extrapolate to threshold HR (a
+// share of max HR). This lets an athlete who's only ridden EASY get a real FTP read — 200 W @ 110 bpm (max 185 =
+// 59%) ⇒ FTP well above 200, not 200. HONEST band: the true HR-power curve FLATTENS near threshold so a straight
+// line slightly OVER-reads (we shade the point down the further we extrapolate), and the threshold-HR share itself
+// varies per athlete (~0.85–0.91 of max) — that's the dominant spread. Needs ≥2 points across a real HR range.
+export interface HrPowerPoint { watts: number; hr: number }
+export interface HrPowerFtp { best: number; lo: number; hi: number; r2: number; n: number; extrapBpm: number }
+export function ftpFromHrPower(points: HrPowerPoint[], maxHr: number | null | undefined): HrPowerFtp | null {
+  const pts = (points || []).filter((p) => p && p.watts > 0 && p.hr > 0)
+  if (pts.length < 2 || !maxHr || maxHr < 120) return null
+  const n = pts.length
+  const mHr = pts.reduce((s, p) => s + p.hr, 0) / n
+  const mW = pts.reduce((s, p) => s + p.watts, 0) / n
+  let sHrW = 0, sHrHr = 0, sWW = 0
+  for (const p of pts) { const dh = p.hr - mHr, dw = p.watts - mW; sHrW += dh * dw; sHrHr += dh * dh; sWW += dw * dw }
+  if (sHrHr <= 0) return null // all points at ~one HR → no slope to fit (need a range of intensities)
+  const slope = sHrW / sHrHr // watts per bpm
+  if (slope <= 0) return null // power must rise with HR for this to mean anything
+  const intercept = mW - slope * mHr
+  const r2 = sWW > 0 ? (sHrW * sHrW) / (sHrHr * sWW) : 0
+  const at = (pct: number) => intercept + slope * (maxHr * pct) // extrapolated watts at a threshold-HR share
+  const hrHi = Math.max(...pts.map((p) => p.hr))
+  const extrapBpm = Math.max(0, maxHr * 0.88 - hrHi) // bpm we project past the data's top point
+  const curve = Math.min(0.06, (extrapBpm / (maxHr * 0.10)) * 0.05) // linear over-reads near threshold → shade down
+  return { best: Math.round(at(0.88) * (1 - curve)), lo: Math.round(at(0.85) * (1 - curve)), hi: Math.round(at(0.91)), r2, n, extrapBpm }
+}
+
 // ---------------------------------------------------------------------------
 // Per-metric assemblers — build the sources, run the engine, craft an honest why.
 // ---------------------------------------------------------------------------
@@ -105,15 +133,19 @@ export interface FtpInputs {
   cp?: number | null                                  // critical power (derived FTP ≈ CP)
   best20?: number | null                              // best recent 20-min power (FTP ≈ best20 × 0.95)
   manual?: number | null                              // the FTP the athlete trains by
+  hrPower?: HrPowerPoint[]                             // #497 (power, HR) points from steady rides → HR-power FTP
+  maxHr?: number | null                               // #497 needed to extrapolate the HR-power line to threshold HR
 }
 export function ftpEstimate(inp: FtpInputs): Estimate {
   const FRESH = 21, tol = 0.05
   const eftpFresh = inp.eftp != null && inp.eftpAgeDays != null && inp.eftpAgeDays <= FRESH
+  const hrp = ftpFromHrPower(inp.hrPower || [], inp.maxHr) // #497 — submaximal HR-power FTP (great when there's no test)
   const srcRows: Src[] = [
     { name: 'you train by', value: inp.manual ?? null, ageDays: null, kind: 'manual' },
     { name: 'intervals eFTP', value: inp.eftp, ageDays: inp.eftpAgeDays ?? null, kind: 'observed' },
     { name: 'from CP', value: inp.cp != null ? Math.round(inp.cp) : null, ageDays: 0, kind: 'model' },
     { name: 'best 20-min ×0.95', value: inp.best20 != null ? Math.round(inp.best20 * 0.95) : null, ageDays: null, kind: 'test' },
+    { name: 'HR vs power', value: hrp ? hrp.best : null, ageDays: null, kind: 'model' }, // #497 — from the HR cost of steady rides
   ]
   // The value you TRAIN BY anchors it — you know your FTP better than a stale eFTP or a CP fit from easy rides.
   // Computed sources only MOVE the number when a genuinely FRESH hard effort (a recently-refreshed eFTP) disagrees.

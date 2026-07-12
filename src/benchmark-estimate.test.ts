@@ -1,5 +1,38 @@
 import { describe, it, expect } from 'vitest'
-import { ftpEstimate, thresholdPaceEstimate, modelEstimate, tteEstimate, maxHrEstimate, honestEstimate, type Src } from './benchmark-estimate'
+import { ftpEstimate, thresholdPaceEstimate, modelEstimate, tteEstimate, maxHrEstimate, honestEstimate, ftpFromHrPower, type Src } from './benchmark-estimate'
+
+// #497 — infer FTP from the HR cost of steady rides (no test needed). JM's example: easy at 200 W ⇒ high FTP.
+describe('ftpFromHrPower', () => {
+  it("JM's case: rides spanning 150-250 W read a high FTP (~320), not 200", () => {
+    const e = ftpFromHrPower([{ watts: 150, hr: 95 }, { watts: 200, hr: 110 }, { watts: 250, hr: 130 }], 185)!
+    expect(e).not.toBeNull()
+    expect(e.best).toBeGreaterThanOrEqual(315)
+    expect(e.best).toBeLessThanOrEqual(335)
+    expect(e.lo).toBeLessThan(e.best)
+    expect(e.hi).toBeGreaterThan(e.best) // honest band, not a false-precise single number
+  })
+  it('needs a range of intensities: all points at one HR → null (no slope to fit)', () => {
+    expect(ftpFromHrPower([{ watts: 200, hr: 110 }, { watts: 205, hr: 110 }], 185)).toBeNull()
+  })
+  it('needs ≥2 points and a max HR', () => {
+    expect(ftpFromHrPower([{ watts: 200, hr: 110 }], 185)).toBeNull()
+    expect(ftpFromHrPower([{ watts: 150, hr: 95 }, { watts: 250, hr: 130 }], null)).toBeNull()
+  })
+  it('a stronger engine (lower HR at the same powers) reads a higher FTP', () => {
+    const weak = ftpFromHrPower([{ watts: 150, hr: 120 }, { watts: 250, hr: 160 }], 185)!
+    const strong = ftpFromHrPower([{ watts: 150, hr: 100 }, { watts: 250, hr: 130 }], 185)!
+    expect(strong.best).toBeGreaterThan(weak.best)
+  })
+})
+
+// #497 — the HR-power read shows up as a source in the card (no manual/eFTP needed to get a real number).
+describe('ftpEstimate + HR-power', () => {
+  it('with only HR-power data, still produces an FTP + surfaces the source', () => {
+    const e = ftpEstimate({ eftp: null, hrPower: [{ watts: 150, hr: 95 }, { watts: 200, hr: 110 }, { watts: 250, hr: 130 }], maxHr: 185 })
+    expect(e.best).toBeGreaterThanOrEqual(300) // reads high, not 'no data'
+    expect(e.sources.find((s) => s.name === 'HR vs power')?.value).toBeGreaterThan(300)
+  })
+})
 
 // #5007 — the whole point: a stale intervals eFTP that disagrees with CP must NOT read "Strong", and the number
 // should lean toward the agreeing sources. A fresh, agreeing set CAN read strong.
