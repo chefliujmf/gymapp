@@ -992,7 +992,7 @@ app.delete('/auth/users/:id', auth, admin, (req, res) => {
 // this is JM's LIVE triage on top of it — per item number: priority (hi|med|lo), a comment thread, and a
 // discard flag. Stored on the admin's own record (JM is the owner) so Claude can read it each session.
 const PRIORITIES = ['hi', 'med', 'lo']
-const BACKLOG_STATUSES = ['review', 'todo', 'totest', 'pass', 'done', 'fail', 'discarded'] // JM's status OVERRIDES the .md-derived one; 'review' = a user report awaiting triage; 'pass' = JM tested-OK on QA (I flip pass→done on prod promote). Old 'build' merged into todo (mapped on read).
+const BACKLOG_STATUSES = ['review', 'todo', 'roadmap', 'totest', 'pass', 'done', 'fail', 'discarded'] // JM's status OVERRIDES the .md-derived one; 'review' = a user report awaiting triage; 'roadmap' (#494) = future work to assess/approve later (parked); 'pass' = JM tested-OK on QA (I flip pass→done on prod promote). Old 'build' merged into todo (mapped on read).
 const BACKLOG_TYPES = ['bug', 'feature', 'idea'] // #chore removed (JM) — legacy 'chore' rows just display, not settable
 const BACKLOG_AREAS = ['admin', 'cycling', 'running', 'gym', 'stats', 'eat', 'today', 'plan', 'coach', 'other'] // JM can OVERRIDE the auto-derived page/area per item
 // #438/#440/#466 — the backlog (triage + app-added items + user reports) lives in ONE SHARED FILE that is

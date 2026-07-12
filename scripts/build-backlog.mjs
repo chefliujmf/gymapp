@@ -16,7 +16,7 @@ const HEAD = /^(\d+)\.\s+(.+?)\s*\*\*(.+?)\*\*(.*)$/u
 // whole item vanished from the Road map (silent drop). HEAD_OPEN catches "NNN. <status> **…" with no close yet; the
 // parser then gathers continuation lines into the title until the closing **. Tried only AFTER HEAD fails.
 const HEAD_OPEN = /^(\d+)\.\s+(.+?)\s*\*\*(.*)$/u
-const statusOf = (e) => (e.includes('✅') ? 'done' : e.includes('🧪') ? 'totest' : e.includes('✗') ? 'fail' : 'todo') // ✅→done · 🧪→totest · ✗→fail · 🔨/⬜/anything else → todo (build merged into todo)
+const statusOf = (e) => (e.includes('✅') ? 'done' : e.includes('🧪') ? 'totest' : e.includes('✗') ? 'fail' : e.includes('🗺') ? 'roadmap' : 'todo') // ✅→done · 🧪→totest · ✗→fail · 🗺️→roadmap (#494 future/parked) · 🔨/⬜/anything else → todo
 // what to test — the "Verify:/Manual test:" clause I write in the entry (shown as a callout in a test status)
 const testOf = (body) => { const m = body.match(/\b(?:Verify|Manual test|To test)\b\s*:?\s*(.{5,240}?)(?:\.\s|\.$|$)/i); return m ? m[1].trim() : '' }
 // #449 — how FAR through dev→qa→prod the item has propagated. A BUILT item (🧪/✗/✅) is, by our pipeline,

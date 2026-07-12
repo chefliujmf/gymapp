@@ -48,12 +48,12 @@ test guide → the **🧪 Test guide** section below.
     {triage, added}) are PER-ENV Postgres — QA has 11 added, prod has 8, DIVERGED. Reports filed on one env are invisible
     on the other (and #1007: can't even file on QA). FIX: share the whole overlay (triage+added) across QA+prod like the
     item list, newest-wins. **Route:** infra/architecture.
-494. ⬜ **New "Road map" STATUS = future work to review later (JM 2026-07-11).** A PARKING bucket distinct from To-do —
-    items JM wants to assess/consider/approve LATER, kept out of the active queue. Add to the triage status set
-    (`BacklogStatus` + S_LABEL + S_DOT + STATUS_OPTS + statusChips in AdminBacklog + build-backlog `statusOf`). ⚠️ naming:
-    the TAB is already "Road map" — confirm the STATUS label (Road map? Future? Later?) + whether the tab reverts to
-    "Backlog". **Route:** admin/backlog. Mock the chip + settle the naming first (options-first). JM's clarification: "this
-    is backlog but I want a new status to reflect future work (road map) I'll review later."
+494. 🧪 **New "Road map" STATUS = future work to review later (JM 2026-07-12 picked: Backlog tab + Road map status).**
+    A PARKING bucket distinct from To-do — items to assess/consider/approve LATER, kept OUT of the active "Open" count.
+    BUILT: `BacklogStatus` +'roadmap' (api.ts + server `BACKLOG_STATUSES`); AdminBacklog S_LABEL/S_DOT (violet #b98cff)/
+    S_RANK/STATUS_ENV/STATUS_OPTS/counts (excluded from Open)/status chip by "To do"; `build-backlog statusOf` (🗺️→
+    roadmap); Admin tab reverted "Road map" → **"Backlog"**. **Route:** admin/backlog. 🧪 Test (QA): Admin → the tab reads
+    "Backlog"; a new "Road map" chip sits next to "To do"; set an item to Road map → it leaves Open + shows a violet dot.
 493. ✅ **Plan default-view preference (Settings).** ALREADY BUILT + works (JM confirmed 2026-07-11). Settings → "Calendar
     starts on" (Day / Week / Month / Schedule) persists `calView`; Calendar reads it on mount (localStorage + setSetting,
     `?view=` overrides). On prod. **Route:** UI.
