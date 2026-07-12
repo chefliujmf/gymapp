@@ -261,14 +261,28 @@ app.delete('/auth/passkeys/:id', auth, (req, res) => {
 })
 
 // intervals.icu key, stored server-side so the plan follows the account
+// #265/#1003/#459 (JM) — sync profile BASICS from the intervals athlete record. They ARE there (verified: `height`
+// in METRES, `icu_date_of_birth` YYYY-MM-DD, `sex` M/F, `icu_weight`) — Platyplus just never read them, so height +
+// birthday showed empty. FILL-IF-EMPTY so a manual Platyplus value is never clobbered.
+function syncAthleteProfile(user, me) {
+  if (!me || typeof me !== 'object') return
+  user.info = user.info || {}
+  if (me.height > 0 && user.info.heightCm == null) user.info.heightCm = me.height < 3 ? Math.round(me.height * 100) : Math.round(me.height)
+  if (/^\d{4}-\d{2}-\d{2}/.test(me.icu_date_of_birth || '') && !user.info.dob) user.info.dob = String(me.icu_date_of_birth).slice(0, 10)
+  if (me.sex && !user.sex) user.sex = me.sex === 'M' ? 'male' : me.sex === 'F' ? 'female' : user.sex
+  if (me.icu_weight > 0 && !user.weight) user.weight = Math.round(me.icu_weight * 10) / 10
+}
 app.put('/auth/icu', auth, async (req, res) => {
   if (typeof req.body.icuKey === 'string') req.user.icuKey = req.body.icuKey.trim()
   if (typeof req.body.icuAthlete === 'string') req.user.icuAthlete = req.body.icuAthlete.trim()
-  // #262: if a key is set but no athlete was given, resolve THIS user's own athlete id from
-  // intervals (athlete/0 = the authenticated athlete). Never inherit JM's 'i28814'.
-  if (req.user.icuKey && !req.user.icuAthlete) {
-    const me = await icuGet(req.user, '/athlete/0').catch(() => null)
-    if (me && me.id) req.user.icuAthlete = String(me.id)
+  // #262: resolve THIS user's own athlete (athlete/0 = the authenticated athlete). Never inherit JM's 'i28814'.
+  // #265/#1003: also fetch the athlete record to sync height/DOB/sex/weight (fill-if-empty).
+  if (req.user.icuKey) {
+    const me = await icuGet(req.user, req.user.icuAthlete ? `/athlete/${req.user.icuAthlete}` : '/athlete/0').catch(() => null)
+    if (me && me.id) {
+      if (!req.user.icuAthlete) req.user.icuAthlete = String(me.id)
+      syncAthleteProfile(req.user, me)
+    }
   }
   save(store); res.json(pub(req.user))
   // #288: make sure this athlete has our custom feedback fields in intervals (new accounts don't),
@@ -623,6 +637,7 @@ app.get('/auth/location', auth, async (req, res) => {
   if (u.icuKey) {
     const me = await icuGet(u, `/athlete/${u.icuAthlete}`).catch(() => null)
     if (me) {
+      syncAthleteProfile(u, me); save(store) // #265/#1003 — backfill height/DOB/sex/weight for already-connected users
       if (me.timezone && !u.icuTimezone) { u.icuTimezone = me.timezone; save(store) }
       if (me.city) {
         const name = [me.city, me.state].filter(Boolean).join(', ')
