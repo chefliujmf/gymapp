@@ -89,7 +89,7 @@ export default function Admin() {
 
       <ClaudePanel />
       <div className="chips" style={{ marginBottom: 14 }}>
-        <button className={'chip' + (tab === 'backlog' ? ' chip--active' : '')} onClick={() => setTab('backlog')}>Road map</button>
+        <button className={'chip' + (tab === 'backlog' ? ' chip--active' : '')} onClick={() => setTab('backlog')}>Backlog</button>
         <button className={'chip' + (tab === 'users' ? ' chip--active' : '')} onClick={() => setTab('users')}>Users</button>
       </div>
 

@@ -1139,6 +1139,9 @@ select.search { appearance: none; -webkit-appearance: none; }
 .act-row--del:active { background: rgba(255,107,107,.12); }
 
 /* ---- top app bar (brand left, Profile + Log out right) ----------------- */
+/* #496 — new-version banner: sticky at the very top, one tap to hard-update (clears the SW + caches). */
+.update-banner { position: sticky; top: 0; z-index: 200; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 9px 14px; background: linear-gradient(90deg, #34e07d, #2fb968); color: #06130b; font-weight: 700; font-size: 13.5px; text-align: center; }
+.update-banner button { background: #06130b; color: #eafff2; border: 0; border-radius: 999px; padding: 6px 15px; font-weight: 800; font-size: 12.5px; cursor: pointer; flex: none; }
 .app-bar {
   position: relative; z-index: 50;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;

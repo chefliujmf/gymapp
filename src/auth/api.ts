@@ -225,7 +225,7 @@ export interface ClaudeStatus { active: boolean; where?: 'xps' | 'mac'; item?: n
 
 // #438 — admin backlog triage types
 export type BacklogPriority = 'hi' | 'med' | 'lo'
-export type BacklogStatus = 'review' | 'todo' | 'totest' | 'pass' | 'done' | 'fail' | 'discarded'
+export type BacklogStatus = 'review' | 'todo' | 'roadmap' | 'totest' | 'pass' | 'done' | 'fail' | 'discarded' // #494 roadmap = future work to assess/approve later (parked, not in the active queue)
 export type BacklogType = 'bug' | 'feature' | 'idea'
 export interface BacklogComment { text: string; at: number; by?: string }
 export interface BacklogTriageItem { priority?: BacklogPriority; status?: BacklogStatus; type?: BacklogType; area?: string; comments?: BacklogComment[]; discarded?: boolean }
