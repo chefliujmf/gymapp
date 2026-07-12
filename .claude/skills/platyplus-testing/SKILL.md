@@ -53,10 +53,15 @@ Work **ONE item at a time**, NOT a batch of 10. Keep only a small rolling `totes
    `/srv/backlog/backlog.json` on the box (`readBacklog` reads fresh, so it sticks; batch flips to avoid racing JM's live
    edits). The `.md` still gets `🧪` + a **`Verify:`** how-to-test clause (that text is the app's "What to test"), and
    `build-backlog.mjs` maps `🧪→totest · ✅→done · ✗→fail · 🔨/⬜→todo` — but the TRIAGE is what determines JM's bucket.
-   **Do it on EVERY item you finish, immediately — not batched later.** Only **JM** flips `totest → pass` after testing
-   **on QA**. **`pass` = his promote sign-off: promote THAT item alone (`scripts/promote-item.sh <N>`) → set triage `done`**
-   — never sit on green work, never promote wholesale. A `fail` → rework immediately; re-ship by setting triage back to
-   `totest`. I never self-certify UX.
+   **Do it on EVERY item you finish, immediately — not batched later.** ⚠️ **AND post a triage COMMENT (`by:'claude'`)
+   saying WHAT you fixed + HOW to test it** — the app's "What to test" box shows the LATEST `by:'claude'` comment
+   (`AdminBacklog` wttNote), so a status flip WITHOUT a fresh comment leaves JM reading the STALE how-to-test (JM caught
+   this on #5019 — reworked to a timezone fix but the note still described the old overflow fix). If you REWORK or
+   re-scope an item, the new comment SUPERSEDES the old (it's the latest, so it wins). Say plainly what changed + the
+   exact steps + expected result. Only **JM** flips `totest → pass` after testing **on QA** (coach-only bits run
+   prod-only → he tests those on prod). **`pass` = his promote sign-off: promote THAT item alone
+   (`scripts/promote-item.sh <N>`) → set triage `done`** — never sit on green work, never promote wholesale. A `fail` →
+   rework immediately; re-ship by setting triage back to `totest` (with a fresh comment). I never self-certify UX.
 3. **A test ships with every fix — DEFINE a real unit test, don't hand-wave (JM 2026-06-30: "I don't see
    you define proper unit tests").** The DEFAULT is a unit test; if the logic lives inside a component,
    **extract the pure function** to a plain module so it CAN be tested (e.g. `vo2max-submax.ts`, `mind-stats.ts`,
