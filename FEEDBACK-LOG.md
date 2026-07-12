@@ -30,6 +30,18 @@ test guide → the **🧪 Test guide** section below.
     Added an **update check on in-app navigation** (App.tsx → `__pwaCheck`, throttled 20 s) so a fresh deploy applies
     within a tap or two. 🧪 **Test (QA):** with the app open, after a new deploy lands, navigate Plan↔Stats a couple
     times → it should quietly reload to the new build (no hard-refresh). **Route:** PWA/infra.
+500. ⬜ **Coach must NOT use acronyms/jargon in explanations (JM 2026-07-12).** "not all users know what TTE or other
+    terms mean." The coach's notifications + chat explanations should use plain language — spell out or avoid TTE, CTL,
+    ATL, VI, W′, IF, NP, etc. (or gloss them in one plain phrase). **Route:** coach voice (coach-engine + notify guidance).
+499. ⬜ **Coach notification must clearly explain WHAT he changed (JM 2026-07-12).** When the coach adapts the plan, the
+    `notify` message should describe the change well ("moved Thursday's ride to Friday and cut it to 45 min because…"),
+    not a vague "plan updated." **Route:** coach voice / daily-adapt notify.
+498. ⬜ **ONE coach trigger after check-in, not two (JM 2026-07-12).** This morning: one coach action right after
+    check-in (intended), then a SECOND "mystery" one ~30 min later saying "plan updated." JM: we want **exactly one**
+    coach trigger after check-in, plus coach action **only when the user asks for a specific change** — no surprise
+    second re-plan. ROOT (to confirm): the check-in coach decision (server.js ~598) AND the daily-adapt scheduler
+    (`runDailyAdapt`, multi-pass) likely BOTH fire post-check-in; consolidate to one, and don't let later passes
+    (horizon-fill / review / round-out) each send their own notify. **Route:** coach triggers / daily-adapt.
 497. ⬜ **(enhancement) Smarter FTP estimate — use HR-vs-power (JM #5007).** JM: "can we be smarter … estimate based on other factors, like my HR vs power for 12min?" Add an HR-anchored source to `ftpEstimate` (power held at threshold HR over ~10-12 min → implied FTP) alongside eFTP/CP/20-min, so a rider with no formal test still gets a defensible number. Feature, not a bug. **Route:** stats/benchmarks.
 495. ⬜ **QA ≠ PROD for backlog TRIAGE + user reports (extends #485).** JM 2026-07-11: can't see #1002/#1003/#1006 in the
     QA Road map. #485 synced the generated item LIST, but the triage overlay + user-added reports (`app_meta.backlog` =

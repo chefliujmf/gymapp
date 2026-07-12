@@ -595,10 +595,16 @@ app.post('/auth/checkin', auth, (req, res) => {
   try {
     const today = localTodayInTz(req.user.icuTimezone) // #347 — local today (cached tz), so a near-midnight check-in still fires
     const complete = ci.energy != null && ci.sleep != null && ci.soreness != null
-    if (req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && !ci.coachDecided) {
-      ci.coachDecided = true; save(store)
+    // #498 (JM 2026-07-12) — the post-check-in coach trigger + its push notification fire on PROD ONLY, never QA/dev
+    // (like the daily-adapt scheduler). So a check-in on staging never pushes a coach notification.
+    if (!IS_STAGING && req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && !ci.coachDecided) {
+      ci.coachDecided = true
+      // #498 (JM 2026-07-12) — this check-in call is the ONE coach trigger after check-in. Mark the daily-adapt
+      // DONE for today so the scheduler's separate ~30-min-later pass does NOT also fire (JM saw two triggers).
+      req.user.dailyAdapt = { ...(req.user.dailyAdapt || {}), done: today }
+      save(store)
       const poor = ci.energy <= 2 || ci.sleep <= 2 || ci.soreness >= 4
-      const msg = `Morning check-in is in for today (${today}) — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore)${poor ? ' — this reads run-down' : ''}. IMPORTANT: overnight HRV/sleep from their watch often hasn't synced to intervals this early, so decide from (a) this subjective check-in and (b) their FRESHNESS / Form (CTL−ATL, always available — read get_wellness). Look at TODAY's planned session(s) with list_schedule and make a STICK-OR-ADJUST call: if they're ready, leave the plan and send a one-line "stick with it" via notify; if run-down (poor check-in and/or deeply negative Form), EASE today — cut intensity/volume, swap to recovery, or move it — with the tools, then notify what changed and why. If today is already rest/easy, a one-line reassurance. Be concise; don't ask questions — decide and act.`
+      const msg = `Morning check-in is in for today (${today}) — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore)${poor ? ' — this reads run-down' : ''}. This is the ONE proactive coach action for today — there is NO separate later re-plan, so handle it fully here (adjust the next day or two as well if this clearly calls for it; anything beyond that waits until they ASK). Overnight HRV/sleep from their watch often hasn't synced to intervals this early, so decide from (a) this subjective check-in and (b) their freshness / form — read get_wellness. Look at TODAY's planned session(s) with list_schedule and make a STICK-OR-ADJUST call: if they're ready, keep the plan; if run-down, EASE today — cut intensity/volume, swap to recovery, or move it — with the tools. Then send EXACTLY ONE notify that explains in PLAIN language what you did and why, e.g. "I moved your Thursday ride to Friday and shortened it to 45 min because your legs are sore" or "Sticking with today's easy spin — you're recovered." Write it so a non-athlete understands: NO abbreviations or jargon (never "TTE", "CTL", "ATL", "IF", "NP", "VI", "Form", "eFTP" — say "how fresh you are", "your threshold power", etc.). One notify only. Don't ask questions — decide and act.`
       runCoachTask(req.user, msg).catch((e) => console.error('[checkin-decide] ' + (e.message || e)))
     }
   } catch (e) { console.error('[checkin-decide] trigger ' + e.message) }
@@ -1291,6 +1297,8 @@ function buildSystemPrompt(user) {
   const ptz = user.icuTimezone || COACH_TZ
   const todayIso = localTodayInTz(ptz), todayWd = localWeekdayInTz(ptz)
   p += `\n\n# TODAY — it is **${todayWd ? todayWd + ', ' : ''}${todayIso}** in the athlete's local time (${ptz}). This is the ONE source of truth for the date: anchor EVERY "today / tonight / tomorrow / yesterday / this week / next week" to it, and IGNORE any other clock or date you might infer. When they say "today" they mean ${todayIso} (${todayWd}). Your scheduling tools (list_schedule, create/move/delete) operate on this same local date, so a change they ask for "today" must land on ${todayIso}. Before you move or delete a session because they're unavailable, confirm the DATE you're acting on matches ${todayIso} (or the exact day they named) — don't act on the wrong day.`
+  // #500 (JM 2026-07-12) — plain language, no jargon, in ANYTHING the athlete reads.
+  p += `\n\n# PLAIN LANGUAGE — no jargon: the athlete may NOT be technical, so in everything they read — notify messages, activity titles/descriptions, chat replies — NEVER use abbreviations or coaching shorthand. Do not write "TTE", "CTL", "ATL", "IF", "NP", "VI", "W′", "eFTP", "FTP", "Form", "Z2/Z4", "TSS". Say it in plain words instead: "how fresh you are" (not Form), "your threshold power / the hardest pace you can hold ~an hour" (not FTP/eFTP), "how hard it was compared with your threshold" (not IF), "training load" (not TSS), "easy / hard" (not zone numbers). If a number genuinely helps, describe what it means in the same breath. When you explain a plan CHANGE, be specific and concrete about WHAT you changed and WHY (which day, which session, longer/shorter/easier, the reason) — never a vague "plan updated".`
   if (COACH_ENGINE) p += `\n\n# Your coaching method (the Platyplus engine — apply it to THIS athlete per their profile)\n` + COACH_ENGINE
   // Gated modules — only the athletes they apply to get them (the engine is ONE coach,
   // not cycling-for-everyone). Prefer the STRUCTURED fields (sport from onboarding, sex
