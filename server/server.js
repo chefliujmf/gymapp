@@ -154,7 +154,16 @@ app.post('/auth/login', (req, res) => {
   setSession(res, u); res.json(pub(u))
 })
 app.post('/auth/logout', (req, res) => { res.clearCookie(COOKIE); res.json({ ok: true }) })
-app.get('/auth/me', auth, (req, res) => res.json(pub(req.user)))
+app.get('/auth/me', auth, async (req, res) => {
+  // #265/#1003 — backfill height/DOB/sex/weight from the intervals athlete record on session load if still missing.
+  // GUARDED to only fetch while something's absent, so it stops as soon as they're filled (no per-load overhead after).
+  const u = req.user
+  if (u.icuKey && u.icuAthlete && (u.info?.heightCm == null || !u.info?.dob)) {
+    const me = await icuGet(u, `/athlete/${u.icuAthlete}`).catch(() => null)
+    if (me) { syncAthleteProfile(u, me); save(store) }
+  }
+  res.json(pub(req.user))
+})
 
 // passkey login
 app.post('/auth/passkey/login/options', async (req, res) => {
