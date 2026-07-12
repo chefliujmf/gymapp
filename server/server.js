@@ -154,7 +154,16 @@ app.post('/auth/login', (req, res) => {
   setSession(res, u); res.json(pub(u))
 })
 app.post('/auth/logout', (req, res) => { res.clearCookie(COOKIE); res.json({ ok: true }) })
-app.get('/auth/me', auth, (req, res) => res.json(pub(req.user)))
+app.get('/auth/me', auth, async (req, res) => {
+  // #265/#1003 — backfill height/DOB/sex/weight from the intervals athlete record on session load if still missing.
+  // GUARDED to only fetch while something's absent, so it stops as soon as they're filled (no per-load overhead after).
+  const u = req.user
+  if (u.icuKey && u.icuAthlete && (u.info?.heightCm == null || !u.info?.dob)) {
+    const me = await icuGet(u, `/athlete/${u.icuAthlete}`).catch(() => null)
+    if (me) { syncAthleteProfile(u, me); save(store) }
+  }
+  res.json(pub(req.user))
+})
 
 // passkey login
 app.post('/auth/passkey/login/options', async (req, res) => {
@@ -261,14 +270,28 @@ app.delete('/auth/passkeys/:id', auth, (req, res) => {
 })
 
 // intervals.icu key, stored server-side so the plan follows the account
+// #265/#1003/#459 (JM) — sync profile BASICS from the intervals athlete record. They ARE there (verified: `height`
+// in METRES, `icu_date_of_birth` YYYY-MM-DD, `sex` M/F, `icu_weight`) — Platyplus just never read them, so height +
+// birthday showed empty. FILL-IF-EMPTY so a manual Platyplus value is never clobbered.
+function syncAthleteProfile(user, me) {
+  if (!me || typeof me !== 'object') return
+  user.info = user.info || {}
+  if (me.height > 0 && user.info.heightCm == null) user.info.heightCm = me.height < 3 ? Math.round(me.height * 100) : Math.round(me.height)
+  if (/^\d{4}-\d{2}-\d{2}/.test(me.icu_date_of_birth || '') && !user.info.dob) user.info.dob = String(me.icu_date_of_birth).slice(0, 10)
+  if (me.sex && !user.sex) user.sex = me.sex === 'M' ? 'male' : me.sex === 'F' ? 'female' : user.sex
+  if (me.icu_weight > 0 && !user.weight) user.weight = Math.round(me.icu_weight * 10) / 10
+}
 app.put('/auth/icu', auth, async (req, res) => {
   if (typeof req.body.icuKey === 'string') req.user.icuKey = req.body.icuKey.trim()
   if (typeof req.body.icuAthlete === 'string') req.user.icuAthlete = req.body.icuAthlete.trim()
-  // #262: if a key is set but no athlete was given, resolve THIS user's own athlete id from
-  // intervals (athlete/0 = the authenticated athlete). Never inherit JM's 'i28814'.
-  if (req.user.icuKey && !req.user.icuAthlete) {
-    const me = await icuGet(req.user, '/athlete/0').catch(() => null)
-    if (me && me.id) req.user.icuAthlete = String(me.id)
+  // #262: resolve THIS user's own athlete (athlete/0 = the authenticated athlete). Never inherit JM's 'i28814'.
+  // #265/#1003: also fetch the athlete record to sync height/DOB/sex/weight (fill-if-empty).
+  if (req.user.icuKey) {
+    const me = await icuGet(req.user, req.user.icuAthlete ? `/athlete/${req.user.icuAthlete}` : '/athlete/0').catch(() => null)
+    if (me && me.id) {
+      if (!req.user.icuAthlete) req.user.icuAthlete = String(me.id)
+      syncAthleteProfile(req.user, me)
+    }
   }
   save(store); res.json(pub(req.user))
   // #288: make sure this athlete has our custom feedback fields in intervals (new accounts don't),
@@ -349,8 +372,9 @@ app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
   const pc = await icuGet(req.user, `/athlete/${ath}/pace-curves?type=Run`)
   const est = pc ? runThresholdFromPaceCurve(pc) : null
   if (!est) return res.json({ available: false, reason: 'no-model' })
-  // How much running is behind this estimate? Count recent runs (42d) + a hard effort.
-  const DAYS = 42
+  // How much running is behind this estimate? #501 (JM) — widened 42d → 180d so a valid full-history pace-curve
+  // isn't hidden just because the last 6 weeks were light. The ESTIMATE is from intervals' full-history curve.
+  const DAYS = 180
   const acts = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(DAYS)}&newest=${icuDay(0)}`)
   const runs = Array.isArray(acts) ? acts.filter((a) => /run/i.test(a.type || '') && a.distance > 0) : []
   const totalKm = runs.reduce((s, a) => s + a.distance, 0) / 1000
@@ -359,9 +383,11 @@ app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
   let confidence = 'low'
   if (runs.length >= 8 && totalKm >= 60 && r2 >= 0.85) confidence = 'high'
   else if (runs.length >= 4 && totalKm >= 25 && r2 >= 0.7) confidence = 'medium'
-  // Not confident → assessed, but DON'T present it as a suggestion. Tell the UI why.
-  if (confidence === 'low') {
-    return res.json({ available: false, assessed: true, reason: runs.length < 4 ? 'too-few-runs' : 'low-fit', runs: runs.length, weeklyKm: +(totalKm / (DAYS / 7)).toFixed(1) })
+  // #501 (JM: "estimate with the data you have") — only WITHHOLD when the model itself is weak (poor fit). Thin
+  // RECENT running with a good full-history curve → still present the number as a ROUGH estimate (honest low
+  // confidence), never a bare "needs 4 runs" when intervals holds the history to model it.
+  if (r2 < 0.7) {
+    return res.json({ available: false, assessed: true, reason: 'low-fit', runs: runs.length, weeklyKm: +(totalKm / (DAYS / 7)).toFixed(1) })
   }
   if (est.thresholdPace > 0) { req.user.runPaceEst = Math.round(est.thresholdPace); save(store) } // #236 stash computed pace for the coach
   res.json({ available: true, ...est, confidence, runs: runs.length, source: 'critical speed (your recent runs)' })
@@ -394,8 +420,12 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
     const am = runs.map((a) => Number(a.athlete_max_hr) || 0).find((h) => h >= 120 && h <= 230)
     if (am) icuMaxHr = am
   }
-  const computedMaxHr = Math.max(observedMaxHr || 0, icuMaxHr || 0) || null
-  const maxHrFrom = computedMaxHr == null ? '' : (observedMaxHr && observedMaxHr >= (icuMaxHr || 0) ? 'observed' : 'intervals')
+  // #501 (JM) — age-based fallback (Tanaka 208−0.7·age) so a brand-new athlete with no HR history still gets a
+  // real starting max HR, never a blank. Only used when there's nothing observed AND no intervals ceiling.
+  const ageYr = req.user.info?.dob ? Math.floor((Date.now() - new Date(req.user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
+  const ageMaxHr = ageYr != null && ageYr > 8 && ageYr < 100 ? Math.round(208 - 0.7 * ageYr) : null
+  const computedMaxHr = (Math.max(observedMaxHr || 0, icuMaxHr || 0) || null) ?? ageMaxHr ?? null
+  const maxHrFrom = computedMaxHr == null ? '' : (observedMaxHr && observedMaxHr >= (icuMaxHr || 0) ? 'observed' : icuMaxHr ? 'intervals' : 'age')
   res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent, observedMaxHr, maxHrSamples, icuMaxHr, computedMaxHr, maxHrFrom })
 })
 
@@ -616,6 +646,7 @@ app.get('/auth/location', auth, async (req, res) => {
   if (u.icuKey) {
     const me = await icuGet(u, `/athlete/${u.icuAthlete}`).catch(() => null)
     if (me) {
+      syncAthleteProfile(u, me); save(store) // #265/#1003 — backfill height/DOB/sex/weight for already-connected users
       if (me.timezone && !u.icuTimezone) { u.icuTimezone = me.timezone; save(store) }
       if (me.city) {
         const name = [me.city, me.state].filter(Boolean).join(', ')
@@ -992,7 +1023,7 @@ app.delete('/auth/users/:id', auth, admin, (req, res) => {
 // this is JM's LIVE triage on top of it — per item number: priority (hi|med|lo), a comment thread, and a
 // discard flag. Stored on the admin's own record (JM is the owner) so Claude can read it each session.
 const PRIORITIES = ['hi', 'med', 'lo']
-const BACKLOG_STATUSES = ['review', 'todo', 'totest', 'pass', 'done', 'fail', 'discarded'] // JM's status OVERRIDES the .md-derived one; 'review' = a user report awaiting triage; 'pass' = JM tested-OK on QA (I flip pass→done on prod promote). Old 'build' merged into todo (mapped on read).
+const BACKLOG_STATUSES = ['review', 'todo', 'roadmap', 'totest', 'pass', 'done', 'fail', 'discarded'] // JM's status OVERRIDES the .md-derived one; 'review' = a user report awaiting triage; 'roadmap' (#494) = future work to assess/approve later (parked); 'pass' = JM tested-OK on QA (I flip pass→done on prod promote). Old 'build' merged into todo (mapped on read).
 const BACKLOG_TYPES = ['bug', 'feature', 'idea'] // #chore removed (JM) — legacy 'chore' rows just display, not settable
 const BACKLOG_AREAS = ['admin', 'cycling', 'running', 'gym', 'stats', 'eat', 'today', 'plan', 'coach', 'other'] // JM can OVERRIDE the auto-derived page/area per item
 // #438/#440/#466 — the backlog (triage + app-added items + user reports) lives in ONE SHARED FILE that is
@@ -2788,6 +2819,21 @@ app.all('/icu/*', auth, async (req, res) => {
 // ---- static SPA ----------------------------------------------------------
 // Self-hosted media (range requests for video seeking + long immutable cache).
 app.use('/media', express.static(MEDIA_DIR, { maxAge: '365d', immutable: true }))
+// #496 — build-version endpoint the SW CAN'T cache (it's not a precached asset, so the service worker passes it
+// straight to the network). The client polls it to DETECT a new deploy reliably even when the SW is serving a stale
+// shell, then offers a real one-tap "update" (unregister SW + clear caches + reload). Returns the DEPLOYED main bundle.
+let _verCache = { at: 0, bundle: '' }
+app.get('/version', (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  try {
+    if (Date.now() - _verCache.at > 30000) {
+      const html = readFileSync(join(STATIC_DIR, 'index.html'), 'utf8')
+      const m = html.match(/\/assets\/index-[A-Za-z0-9_]+\.js/)
+      _verCache = { at: Date.now(), bundle: m ? m[0] : '' }
+    }
+  } catch { /* fall through with whatever we have */ }
+  res.json({ bundle: _verCache.bundle })
+})
 app.use(express.static(STATIC_DIR, { index: false, setHeaders: (res, p) => { if (p.endsWith('index.html') || p.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache') } }))
 app.get('*', (req, res) => res.sendFile(join(STATIC_DIR, 'index.html')))
 

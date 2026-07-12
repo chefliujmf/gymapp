@@ -29,6 +29,49 @@ function RefreshButton() {
   return <button className="refresh-btn" onClick={refresh} aria-label="Refresh" title="Refresh the app"><RotateCw size={17} className={busy ? 'spin' : undefined} /></button>
 }
 
+// #496 — RELIABLE update detection. The service worker can serve a stale shell, so instead of trusting it, we poll a
+// tiny `/version` endpoint (which the SW passes straight to the network) for the DEPLOYED main bundle and compare it to
+// the one THIS page is running. On a mismatch we show a one-tap banner that does a HARD update: unregister the SW +
+// clear all caches + reload → guaranteed fresh build. This is why "everything failed" could happen — a wedged SW.
+const RUNNING_BUNDLE = (typeof document !== 'undefined'
+  ? ([...document.scripts].map((s) => s.src).find((s) => /\/assets\/index-[A-Za-z0-9_]+\.js/.test(s)) || '').match(/\/assets\/index-[A-Za-z0-9_]+\.js/)?.[0]
+  : '') || ''
+function UpdateBanner() {
+  const [stale, setStale] = useState(false)
+  useEffect(() => {
+    if (!RUNNING_BUNDLE) return
+    let alive = true
+    const check = async () => {
+      try {
+        const r = await fetch('/version', { cache: 'no-store' })
+        const { bundle } = await r.json()
+        if (alive && bundle && bundle !== RUNNING_BUNDLE) setStale(true)
+      } catch { /* offline / dev — ignore */ }
+    }
+    check()
+    const iv = window.setInterval(check, 120000)
+    const onVis = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { alive = false; clearInterval(iv); document.removeEventListener('visibilitychange', onVis) }
+  }, [])
+  const hardUpdate = async () => {
+    try {
+      const rs = (await navigator.serviceWorker?.getRegistrations?.()) || []
+      await Promise.all(rs.map((r) => r.unregister()))
+      const ks = (await window.caches?.keys?.()) || []
+      await Promise.all(ks.map((k) => caches.delete(k)))
+    } catch { /* best effort — reload anyway */ }
+    window.location.reload()
+  }
+  if (!stale) return null
+  return (
+    <div className="update-banner" role="alert">
+      <span>✨ A new version of Platyplus is ready.</span>
+      <button onClick={hardUpdate}>Update now</button>
+    </div>
+  )
+}
+
 export default function App() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -62,6 +105,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <UpdateBanner />
       {!isDetail && (
         <header className="app-bar">
           <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=4" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</Link>
