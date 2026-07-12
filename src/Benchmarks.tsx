@@ -118,6 +118,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const [eftp, setEftp] = useState<number | null>(null)
   const [eftpAgeDays, setEftpAgeDays] = useState<number | null>(null) // #5007 recency of the eFTP (it decays between hard rides)
   const [ftp20, setFtp20] = useState<number | null>(null) // #5007 best 20-min power → FTP ≈ ×0.95
+  const [hrPower, setHrPower] = useState<{ watts: number; hr: number }[]>([]) // #497 (power,HR) points → infer FTP from the HR cost of rides
   const [paceEst, setPaceEst] = useState<number | null>(null)
   const [map5, setMap5] = useState<number | null>(null) // #337 best 5-min power (MAP)
   const [pbWeight, setPbWeight] = useState<number | null>(null)
@@ -139,7 +140,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     if (!connected) return
     authApi.pullIcuAthlete().then(setPull).catch(() => {})
     authApi.runEstimate().then((r) => { if (r.available && r.thresholdPace) setPaceEst(r.thresholdPace) }).catch(() => {})
-    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? '') }).catch(() => {}) // #337 · #5007 ftp20
+    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? ''); setHrPower((p as { hrPower?: { watts: number; hr: number }[] }).hrPower ?? []) }).catch(() => {}) // #337 · #5007 ftp20 · #497 hrPower
     fetchPowerCurve(365).then(setPowerCurve).catch(() => {}) // #401 TTE — a year of efforts for a stable CP/W′ + CS/D′ model fit
     fetchPaceCurve(365).then(setPaceCurve).catch(() => {}) // #401 running TTE
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)
@@ -181,7 +182,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // #5007 — honest FTP: blend eFTP (weighted by recency) + CP-derived + best-20min×0.95; confidence from real
   // signals so a stale eFTP that disagrees with CP can't read "Strong". toConf maps the engine's 'good' onto the
   // existing bar classes (learn) so the CSS keeps working.
-  const ftpEst = ftpEstimate({ eftp, eftpAgeDays, cp, best20: ftp20, manual: ftpManual })
+  const ftpEst = ftpEstimate({ eftp, eftpAgeDays, cp, best20: ftp20, manual: ftpManual, hrPower, maxHr: maxHr ?? compMaxHr }) // #497 — HR-power method now fed real ride data
   const toConf = (c: { pct: number; cls: string; label: string }): Confidence => ({ pct: c.pct, cls: (c.cls === 'good' ? 'learn' : c.cls) as Confidence['cls'], label: c.label })
   // #403 — athlete-profile synthesis (rendered when a per-sport page passes `profile`). EF wires in Phase 2.
   // #464 — the insight must anchor on the CHOSEN FTP/pace (same `inUse` logic as the benchmark card), not the
