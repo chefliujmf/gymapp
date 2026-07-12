@@ -2425,16 +2425,24 @@ app.get('/api/weather', apiAuth, async (req, res) => {
 
 app.get('/api/intervals/activities', apiAuth, async (req, res) => {
   const days = Math.min(60, Math.max(1, Number(req.query.days) || 14))
+  const today = await athleteToday(req.user) // #5019 — athlete's LOCAL today, to label each activity's relative day
   const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete}/activities?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
   if (!data) return res.json({ connected: false, activities: [] })
-  const activities = (Array.isArray(data) ? data : []).map((a) => ({
+  const activities = (Array.isArray(data) ? data : []).map((a) => {
+    // #5019 — pre-compute the relative day (calendar-day diff of local dates), so the coach NEVER mislabels a
+    // 2-days-ago ride as "yesterday". Both are the athlete's local YYYY-MM-DD → a clean date subtraction, tz-safe.
+    const date = (a.start_date_local || '').slice(0, 10)
+    const daysAgo = date ? Math.round((Date.parse(today + 'T00:00:00Z') - Date.parse(date + 'T00:00:00Z')) / 86400000) : null
+    const when = daysAgo == null ? null : daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : daysAgo < 0 ? `in ${-daysAgo} day${daysAgo === -1 ? '' : 's'}` : `${daysAgo} days ago`
+    return {
     id: a.id, // #437 — the intervals activity id, so the coach can review/annotate THIS activity (save_coach_review activityId, set_activity_text). Was missing → the coach couldn't reliably get the id from the read (#436 caveat).
-    date: (a.start_date_local || '').slice(0, 10), type: a.type, indoor: a.trainer === true || /virtual/i.test(a.type || ''),
+    date, daysAgo, when, // #5019 — `when`/`daysAgo` are authoritative: use them for "today/yesterday/N days ago", don't eyeball
+    type: a.type, indoor: a.trainer === true || /virtual/i.test(a.type || ''),
     minutes: a.moving_time ? Math.round(a.moving_time / 60) : null, km: a.distance ? +(a.distance / 1000).toFixed(1) : null,
     avgHR: a.average_heartrate ? Math.round(a.average_heartrate) : null, avgW: a.icu_average_watts ? Math.round(a.icu_average_watts) : null,
     load: a.icu_training_load ?? null, intensity: a.icu_intensity ?? null, rpe: a.icu_rpe ?? null, feel: a.feel ?? null, name: a.name,
     reviewed: a.coach_tick != null, coachTick: a.coach_tick ?? null, // #437 — the reviewed/NOT-reviewed tracker: has the coach ticked this activity yet (coach_tick 1-5)?
-  }))
+  } })
   res.json({ connected: true, activities })
 })
 
