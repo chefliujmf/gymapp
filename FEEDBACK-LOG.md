@@ -42,7 +42,20 @@ test guide → the **🧪 Test guide** section below.
     second re-plan. ROOT (to confirm): the check-in coach decision (server.js ~598) AND the daily-adapt scheduler
     (`runDailyAdapt`, multi-pass) likely BOTH fire post-check-in; consolidate to one, and don't let later passes
     (horizon-fill / review / round-out) each send their own notify. **Route:** coach triggers / daily-adapt.
-497. ⬜ **(enhancement) Smarter FTP estimate — use HR-vs-power (JM #5007).** JM: "can we be smarter … estimate based on other factors, like my HR vs power for 12min?" Add an HR-anchored source to `ftpEstimate` (power held at threshold HR over ~10-12 min → implied FTP) alongside eFTP/CP/20-min, so a rider with no formal test still gets a defensible number. Feature, not a bug. **Route:** stats/benchmarks.
+497. ⬜ **Confidence-scored, auto-updating benchmark ANCHORS across ALL sports (JM 2026-07-12, expands #5007).** The
+    anchors everything scales from — cycling FTP·CP·W′·TTE, running threshold-pace·CS·D′·VDOT, gym e1RM per lift — must
+    be ACCURATE, auto-update from NORMAL training, and carry an HONEST confidence band; when the band is too wide, the
+    coach + MCP PRESCRIBE a targeted refining effort (not necessarily an all-out test). Estimators:
+    • **Cycling** = submaximal **HR-power** model (infer FTP from the HR cost of easy/varied rides — e.g. 200 W @ 110 bpm,
+      max 185 ⇒ FTP ~320-340, not 200) + EF + Pw:Hr decoupling + the FTP·CP·W′·TTE consistency check.
+    • **Running** = **HR-pace / GAP** model + Daniels VDOT + CS·D′ (pace is noisier than power — terrain/GPS/wind — so
+      lean on grade-adjusted pace + a wider band).
+    • **Gym** = **e1RM** from working sets (weight × reps × RPE/RIR; Epley/Brzycki) — "as far as we can go" (no HR-power
+      analog; needs some near-failure sets to be accurate). A heavy low-rep set tightens it, no true 1RM grind.
+    Report number + band + "what's driving it + how to sharpen"; band NARROWS automatically as varied data accumulates.
+    Grounded in `docs/beyond-ftp-metrics.md` + `docs/tte.md` + `src/running-paces.ts` (Daniels) [+ add a gym e1RM ref doc].
+    Build order: MOCK the per-sport benchmark card → estimator engines (pure + tested vs the docs) → coach/MCP
+    test-prescription → plumbing/UI. Everything checked against the source formulas so nothing drifts. **Route:** stats/benchmarks + coach/MCP.
 495. ⬜ **QA ≠ PROD for backlog TRIAGE + user reports (extends #485).** JM 2026-07-11: can't see #1002/#1003/#1006 in the
     QA Road map. #485 synced the generated item LIST, but the triage overlay + user-added reports (`app_meta.backlog` =
     {triage, added}) are PER-ENV Postgres — QA has 11 added, prod has 8, DIVERGED. Reports filed on one env are invisible
