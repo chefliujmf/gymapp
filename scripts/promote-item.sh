@@ -15,10 +15,9 @@ cd "$(dirname "$0")/.."
 ORIG="$(git rev-parse --abbrev-ref HEAD)"
 git fetch -q origin
 
-# already on prod?
-if git log origin/main --oneline --format='%s' --grep="#$N" | grep -qE "(^|[^0-9])#$N([^0-9]|$)"; then
-  echo "#$N already appears on prod (main). Nothing to promote."; exit 0
-fi
+# NOTE: no "already on prod?" pre-check — it false-matched a PR NUMBER (#145) or an item's ORIGINAL commit and
+# wrongly skipped a REOPENED/REWORKED item's new fix (JM 2026-07-11). The SHAS scan below only finds dev-not-main
+# commits, so if the fix is already on prod SHAS is empty and we exit cleanly there.
 
 # its commit(s) on dev-not-main, oldest→newest (match #N as a whole token: '#N ', '#N:', '#N)')
 SHAS=()
