@@ -22,7 +22,14 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-496. ⬜ **Recurring STALE PWA CACHE — prod serves updated JS but the browser keeps the old bundle.** JM 2026-07-11 hit this repeatedly ("To test empty", "coach name missing on prod", "works on QA not prod") — each time the DEPLOYED prod JS was correct but his browser ran a cached pre-deploy bundle. #200/#218 were supposed to auto-update the SW after deploy; it is NOT reliably prompting/applying. FIX: make the service worker reliably detect + activate a new build (skipWaiting + clients.claim + a visible "new version — reload" nudge), and bust the item-list cache. Until fixed, a hard-refresh (Cmd+Shift+R) is the workaround. **Route:** PWA/infra.
+496. 🧪 **PWA freshness — pick up a new build faster.** JM 2026-07-11 kept seeing "old" prod. INVESTIGATED: the SW
+    mechanism was actually SOUND — `sw.js` + `index.html` are served `no-cache` (verified on prod, no proxy cache), and
+    main.tsx already skipWaiting+clientsClaim+reloads on controllerchange. The real staleness was **prod LAGGING dev**
+    (fixes lived on dev until the #163 promote ~3h ago) plus the triage/publish bugs (#485/#495) — NOT the browser cache.
+    Remaining gap closed: the open app only re-checked on focus/online/every-30-min, so it could sit on the old bundle.
+    Added an **update check on in-app navigation** (App.tsx → `__pwaCheck`, throttled 20 s) so a fresh deploy applies
+    within a tap or two. 🧪 **Test (QA):** with the app open, after a new deploy lands, navigate Plan↔Stats a couple
+    times → it should quietly reload to the new build (no hard-refresh). **Route:** PWA/infra.
 497. ⬜ **(enhancement) Smarter FTP estimate — use HR-vs-power (JM #5007).** JM: "can we be smarter … estimate based on other factors, like my HR vs power for 12min?" Add an HR-anchored source to `ftpEstimate` (power held at threshold HR over ~10-12 min → implied FTP) alongside eFTP/CP/20-min, so a rider with no formal test still gets a defensible number. Feature, not a bug. **Route:** stats/benchmarks.
 495. ⬜ **QA ≠ PROD for backlog TRIAGE + user reports (extends #485).** JM 2026-07-11: can't see #1002/#1003/#1006 in the
     QA Road map. #485 synced the generated item LIST, but the triage overlay + user-added reports (`app_meta.backlog` =

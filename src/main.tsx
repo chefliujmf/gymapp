@@ -24,10 +24,14 @@ const updateSW = registerSW({
   immediate: true,
   onRegisteredSW(_swUrl, r) {
     if (!r) return
-    const check = () => { r.update().catch(() => {}) }
-    setInterval(check, 30 * 60 * 1000)
+    // #496 — check for a new build on focus / online / every 30 min AND on in-app navigation (below), throttled
+    // to once per 20 s so a fresh deploy is picked up within a tap or two instead of waiting for the 30-min timer.
+    let last = 0
+    const check = () => { const now = Date.now(); if (now - last < 20000) return; last = now; r.update().catch(() => {}) }
+    setInterval(() => { last = 0; check() }, 30 * 60 * 1000)
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check() })
     window.addEventListener('online', check)
+    ;(window as unknown as { __pwaCheck?: () => void }).__pwaCheck = check // #496 — route changes call this
   },
 })
 // #370 — expose the PWA updater so the desktop "Refresh" button can pull a newer bundle (if one's
