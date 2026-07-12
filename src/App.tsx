@@ -32,6 +32,9 @@ function RefreshButton() {
 export default function App() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  // #496 — check for a newer build whenever the user navigates (throttled in main.tsx), so a fresh deploy
+  // applies within a tap or two instead of sitting on the old bundle until the 30-min timer or a re-focus.
+  useEffect(() => { (window as unknown as { __pwaCheck?: () => void }).__pwaCheck?.() }, [pathname])
   // #457 — when a push notification is tapped while the app is OPEN, the service worker posts {notif-nav}
   // and we client-side route to its link (deep-link into the activity/plan) instead of leaving them put.
   useEffect(() => {

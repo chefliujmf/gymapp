@@ -595,10 +595,12 @@ app.post('/auth/checkin', auth, (req, res) => {
   try {
     const today = localTodayInTz(req.user.icuTimezone) // #347 — local today (cached tz), so a near-midnight check-in still fires
     const complete = ci.energy != null && ci.sleep != null && ci.soreness != null
-    if (req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && !ci.coachDecided) {
+    // #498 (JM 2026-07-12) — the post-check-in coach trigger + its push notification fire on PROD ONLY, never QA/dev
+    // (like the daily-adapt scheduler). So a check-in on staging never pushes a coach notification.
+    if (!IS_STAGING && req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && !ci.coachDecided) {
       ci.coachDecided = true; save(store)
       const poor = ci.energy <= 2 || ci.sleep <= 2 || ci.soreness >= 4
-      const msg = `Morning check-in is in for today (${today}) — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore)${poor ? ' — this reads run-down' : ''}. IMPORTANT: overnight HRV/sleep from their watch often hasn't synced to intervals this early, so decide from (a) this subjective check-in and (b) their FRESHNESS / Form (CTL−ATL, always available — read get_wellness). Look at TODAY's planned session(s) with list_schedule and make a STICK-OR-ADJUST call: if they're ready, leave the plan and send a one-line "stick with it" via notify; if run-down (poor check-in and/or deeply negative Form), EASE today — cut intensity/volume, swap to recovery, or move it — with the tools, then notify what changed and why. If today is already rest/easy, a one-line reassurance. Be concise; don't ask questions — decide and act.`
+      const msg = `Morning check-in is in for today (${today}) — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore)${poor ? ' — this reads run-down' : ''}. This is the ONE coach notification the athlete gets after checking in — keep it to TODAY; the rest of their plan is kept up to date separately and SILENTLY (no push), so don't re-plan the whole week here. Overnight HRV/sleep from their watch often hasn't synced to intervals this early, so decide from (a) this subjective check-in and (b) their freshness / form — read get_wellness. Look at TODAY's planned session(s) with list_schedule and make a STICK-OR-ADJUST call: if they're ready, keep the plan; if run-down, EASE today — cut intensity/volume, swap to recovery, or move it — with the tools. Then send EXACTLY ONE notify that explains in PLAIN language what you did and why, e.g. "I moved your Thursday ride to Friday and shortened it to 45 min because your legs are sore" or "Sticking with today's easy spin — you're recovered." Write it so a non-athlete understands: NO abbreviations or jargon (never "TTE", "CTL", "ATL", "IF", "NP", "VI", "Form", "eFTP" — say "how fresh you are", "your threshold power", etc.). One notify only. Don't ask questions — decide and act.`
       runCoachTask(req.user, msg).catch((e) => console.error('[checkin-decide] ' + (e.message || e)))
     }
   } catch (e) { console.error('[checkin-decide] trigger ' + e.message) }
@@ -1291,6 +1293,8 @@ function buildSystemPrompt(user) {
   const ptz = user.icuTimezone || COACH_TZ
   const todayIso = localTodayInTz(ptz), todayWd = localWeekdayInTz(ptz)
   p += `\n\n# TODAY — it is **${todayWd ? todayWd + ', ' : ''}${todayIso}** in the athlete's local time (${ptz}). This is the ONE source of truth for the date: anchor EVERY "today / tonight / tomorrow / yesterday / this week / next week" to it, and IGNORE any other clock or date you might infer. When they say "today" they mean ${todayIso} (${todayWd}). Your scheduling tools (list_schedule, create/move/delete) operate on this same local date, so a change they ask for "today" must land on ${todayIso}. Before you move or delete a session because they're unavailable, confirm the DATE you're acting on matches ${todayIso} (or the exact day they named) — don't act on the wrong day.`
+  // #500 (JM 2026-07-12) — plain language, no jargon, in ANYTHING the athlete reads.
+  p += `\n\n# PLAIN LANGUAGE — no jargon: the athlete may NOT be technical, so in everything they read — notify messages, activity titles/descriptions, chat replies — NEVER use abbreviations or coaching shorthand. Do not write "TTE", "CTL", "ATL", "IF", "NP", "VI", "W′", "eFTP", "FTP", "Form", "Z2/Z4", "TSS". Say it in plain words instead: "how fresh you are" (not Form), "your threshold power / the hardest pace you can hold ~an hour" (not FTP/eFTP), "how hard it was compared with your threshold" (not IF), "training load" (not TSS), "easy / hard" (not zone numbers). If a number genuinely helps, describe what it means in the same breath. When you explain a plan CHANGE, be specific and concrete about WHAT you changed and WHY (which day, which session, longer/shorter/easier, the reason) — never a vague "plan updated".`
   if (COACH_ENGINE) p += `\n\n# Your coaching method (the Platyplus engine — apply it to THIS athlete per their profile)\n` + COACH_ENGINE
   // Gated modules — only the athletes they apply to get them (the engine is ONE coach,
   // not cycling-for-everyone). Prefer the STRUCTURED fields (sport from onboarding, sex
@@ -2425,16 +2429,24 @@ app.get('/api/weather', apiAuth, async (req, res) => {
 
 app.get('/api/intervals/activities', apiAuth, async (req, res) => {
   const days = Math.min(60, Math.max(1, Number(req.query.days) || 14))
+  const today = await athleteToday(req.user) // #5019 — athlete's LOCAL today, to label each activity's relative day
   const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete}/activities?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
   if (!data) return res.json({ connected: false, activities: [] })
-  const activities = (Array.isArray(data) ? data : []).map((a) => ({
+  const activities = (Array.isArray(data) ? data : []).map((a) => {
+    // #5019 — pre-compute the relative day (calendar-day diff of local dates), so the coach NEVER mislabels a
+    // 2-days-ago ride as "yesterday". Both are the athlete's local YYYY-MM-DD → a clean date subtraction, tz-safe.
+    const date = (a.start_date_local || '').slice(0, 10)
+    const daysAgo = date ? Math.round((Date.parse(today + 'T00:00:00Z') - Date.parse(date + 'T00:00:00Z')) / 86400000) : null
+    const when = daysAgo == null ? null : daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : daysAgo < 0 ? `in ${-daysAgo} day${daysAgo === -1 ? '' : 's'}` : `${daysAgo} days ago`
+    return {
     id: a.id, // #437 — the intervals activity id, so the coach can review/annotate THIS activity (save_coach_review activityId, set_activity_text). Was missing → the coach couldn't reliably get the id from the read (#436 caveat).
-    date: (a.start_date_local || '').slice(0, 10), type: a.type, indoor: a.trainer === true || /virtual/i.test(a.type || ''),
+    date, daysAgo, when, // #5019 — `when`/`daysAgo` are authoritative: use them for "today/yesterday/N days ago", don't eyeball
+    type: a.type, indoor: a.trainer === true || /virtual/i.test(a.type || ''),
     minutes: a.moving_time ? Math.round(a.moving_time / 60) : null, km: a.distance ? +(a.distance / 1000).toFixed(1) : null,
     avgHR: a.average_heartrate ? Math.round(a.average_heartrate) : null, avgW: a.icu_average_watts ? Math.round(a.icu_average_watts) : null,
     load: a.icu_training_load ?? null, intensity: a.icu_intensity ?? null, rpe: a.icu_rpe ?? null, feel: a.feel ?? null, name: a.name,
     reviewed: a.coach_tick != null, coachTick: a.coach_tick ?? null, // #437 — the reviewed/NOT-reviewed tracker: has the coach ticked this activity yet (coach_tick 1-5)?
-  }))
+  } })
   res.json({ connected: true, activities })
 })
 
@@ -2819,7 +2831,7 @@ function dailyAdaptMsg(today, pass, cov) {
   const gap = cov && cov.tail >= 3
     ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. Your plan currently REACHES only ${cov.last || 'today'} — ${cov.tail} days SHORT of the ~2-week window end (${cov.end}). EXTEND it to ~${cov.end} in THIS pass: add training sessions across the days from ${cov.firstEmpty} through ${cov.end}, UP TO (never beyond) their HARD weekly training-days cap + availability — leave genuine REST days blank (don't force a session onto every day). Planning only the current week + leaving the back half blank is exactly the bug you're fixing.`
     : ''
-  return `${head}${gap} Then PROACTIVELY adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule): ease / harden / shift / add sessions so the rolling ~2-week plan matches how they're recovering AND their goals, weekly frequency + availability. Keep ~${DAILY_HORIZON} days populated ahead (fill gaps toward their target frequency; never double-book a day / exceed their max sessions per day / exceed their HARD weekly training-days cap). This pass is ONLY the WORKOUT plan — create / move / ease / harden the training days + fill the horizon. Do NOT review past activities or add meals / mind / recovery now; those run as their OWN focused passes right after this one. If a MATERIAL call is uncertain (e.g. several run-down days → cut this week's volume? a race clash?), use notify to ASK them rather than guess. When you change things, notify ONE short line of what changed + why. Don't ask trivial questions — decide and act; ask only when it truly matters. Be concise.`
+  return `${head}${gap} Then PROACTIVELY adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule): ease / harden / shift / add sessions so the rolling ~2-week plan matches how they're recovering AND their goals, weekly frequency + availability. Keep ~${DAILY_HORIZON} days populated ahead (fill gaps toward their target frequency; never double-book a day / exceed their max sessions per day / exceed their HARD weekly training-days cap). This pass is ONLY the WORKOUT plan — create / move / ease / harden the training days + fill the horizon. Do NOT review past activities or add meals / mind / recovery now; those run as their OWN focused passes right after this one. This horizon upkeep is SILENT (#498, JM 2026-07-12): make the changes with the tools but do NOT notify — no push. The athlete already got their ONE check-in notification today; this background maintenance must never send a second one. If a call is genuinely uncertain, make the sensible conservative choice rather than asking — do NOT push a notification to ask a question here (the coach only pings them at check-in or when THEY ask). Decide and act. Be concise.`
 }
 // #439 — FOCUSED horizon-fill (no reviews / fuel / mind distraction) so the coach actually populates the back
 // half of the ~2-week window. Used to re-drive it when one adapt pass left the horizon short.
