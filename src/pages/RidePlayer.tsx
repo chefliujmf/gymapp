@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getCurrentRide, wattsAt, segPct } from '../ride'
+import { getCurrentRide, wattsAt, segPct, isMobileDevice } from '../ride'
 import { zoneColor, sportIcon } from '../ui'
 import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { logWorkout } from '../db'
@@ -129,7 +129,7 @@ export default function RidePlayer() {
 
   // Riding is mobile-first (#109): on a desktop without the sensor bridge, point to
   // the phone instead of launching a sensor-less ride. The bridge is the exception.
-  const isMobile = typeof window !== 'undefined' && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || window.innerWidth < 820)
+  const isMobile = isMobileDevice() // #139/#145 — shared gate (narrow desktop window ≠ mobile)
   if (!isMobile && !ble.bridge) return (
     <div className="rp">
       <div className="rp-top"><button className="rp-x" onClick={() => navigate(-1)}>✕</button><div className="rp-title">{sportIcon[ride.sport]} {ride.title}</div><div style={{ width: 34 }} /></div>
