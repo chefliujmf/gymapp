@@ -162,14 +162,6 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const paceManual = ss.running?.thresholdPace ?? user?.runThresholdPace ?? null
   const weight = pbWeight ?? pull?.weight ?? null
   const vdot = user?.runVdot ?? null
-  // #337 computed VO₂max — cycling from 5-min MAP (not FTP), running suppressed when run volume is thin,
-  // ordered by the sport the athlete actually does (so a cyclist's number comes from cycling).
-  const estBySport: Record<'running' | 'cycling', ReturnType<typeof cyclingVo2max>> = {
-    running: runningVo2max({ vdot, hrMax: maxHr, hrRest, runsRecent }),
-    cycling: cyclingVo2max({ ftp: ftpManual, weightKg: weight, hrMax: maxHr, hrRest, map5min: map5 }),
-  }
-  const vo2Order = [...(user?.sports || []).filter((s): s is 'running' | 'cycling' => s === 'running' || s === 'cycling'), 'cycling', 'running'].filter((s, i, a) => a.indexOf(s) === i) as ('running' | 'cycling')[]
-  const vo2head = headlineVo2max(null, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
   // #403 — CP/W′ (cycling) + CS/D′ (running) from the power/pace-duration model fit. CS shown as a pace (sec/km).
   const cp = powerCurve?.cp ?? null
   const wPrimeKj = powerCurve?.wPrime != null ? Math.round(powerCurve.wPrime / 100) / 10 : null // kJ, 0.1 precision
@@ -192,6 +184,17 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const prefFor = (k: string) => (user?.statPrefs as Partial<Record<string, string>> | undefined)?.[k] ?? 'auto'
   const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftp) : (ftpEst.best ?? eftp ?? ftpManual) // #5007 computed side = the blended estimate
   const chosenPace = prefFor('thresholdPace') === 'manual' ? (paceManual ?? paceComputed) : (paceComputed ?? paceManual)
+  // #506e — CONSISTENCY (JM): dependent stats must move WITH the anchor. VO₂max now reads the CHOSEN FTP + max-HR
+  // (what the picker has in use), NOT the raw manual — so switching FTP to Auto moves VO₂max the same way it moves
+  // TTE. Computed here (after chosenFtp/chosenPace) so it can feed on them. Cycling from 5-min MAP (not FTP) when
+  // available; running suppressed on thin volume; ordered by the sport the athlete actually does.
+  const chosenMaxHr = prefFor('maxHr') === 'manual' ? (maxHr ?? compMaxHr) : (compMaxHr ?? maxHr)
+  const estBySport: Record<'running' | 'cycling', ReturnType<typeof cyclingVo2max>> = {
+    running: runningVo2max({ vdot, hrMax: chosenMaxHr, hrRest, runsRecent }),
+    cycling: cyclingVo2max({ ftp: chosenFtp, weightKg: weight, hrMax: chosenMaxHr, hrRest, map5min: map5 }),
+  }
+  const vo2Order = [...(user?.sports || []).filter((s): s is 'running' | 'cycling' => s === 'running' || s === 'cycling'), 'cycling', 'running'].filter((s, i, a) => a.indexOf(s) === i) as ('running' | 'cycling')[]
+  const vo2head = headlineVo2max(null, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
   // #401/#506 — TTE reads off your curve at the FTP/pace ACTUALLY IN USE (chosenFtp/chosenPace), so it MOVES when you
   // switch the picker (JM: set FTP to auto→250 but TTE stayed on 260 because it used the raw manual). OBSERVED off the
   // curve when held long enough, else ESTIMATED from the CP/CS model so it shows a value pre-effort.
@@ -223,7 +226,8 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // #374 — method chip on the VO₂max card, from the headline source (MAP / VDOT / HR).
   const vo2Chip = (): string => {
     const s = vo2head?.source || ''
-    if (/5-?min|MAP|power/i.test(s)) return 'MAP'
+    if (/\bFTP\b/i.test(s)) return 'FTP→MAP' // #5 — FTP scaled to MAP, NOT a real 5-min effort — check this BEFORE the MAP regex ('est. MAP' contains MAP)
+    if (/5-?min|max power|MAP/i.test(s)) return 'MAP'
     if (/pace|VDOT/i.test(s)) return 'VDOT'
     if (/HR|heart/i.test(s)) return 'HR'
     return doesCycle ? 'MAP' : 'VDOT'
@@ -244,7 +248,8 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const vo2Narr = ((): ReactNode => {
     const s = vo2head?.source || ''
     const tail = ' It re-computes automatically — no lab or ramp test needed.'
-    if (/5-?min|MAP|power/i.test(s)) return <>Estimated from your <b>best 5-minute bike power</b> (your MAP), cross-checked against your heart-rate profile.{tail}</>
+    if (/\bFTP\b/i.test(s)) return <>Estimated from your <b>FTP</b>, scaled up to an estimated MAP — a real hard <b>5-min</b> effort would sharpen it (that's your true MAP).{tail}</>
+    if (/5-?min|max power|MAP/i.test(s)) return <>Estimated from your <b>best 5-minute bike power</b> (your MAP), cross-checked against your heart-rate profile.{tail}</>
     if (/pace|VDOT/i.test(s)) return <>Estimated from your <b>running pace</b> (VDOT), cross-checked against your heart-rate profile.{tail}</>
     if (/HR|heart/i.test(s)) return <>Estimated from your <b>heart-rate profile</b> (max vs resting HR) — a submax proxy until you log a hard ~5-min ride or a few runs.{tail}</>
     return <>Estimated from your <b>best efforts</b>, cross-checked against your heart-rate profile.{tail}</>
@@ -261,7 +266,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     },
     // #362 — FTP is event-based (intervals reads eFTP from a hard effort), so give the concrete trigger, not a vague "as it sees efforts".
     {
-      key: 'ftp', label: 'FTP', unit: 'W', computed: ftpEst.best, computedSrc: 'Platyplus blend · eFTP + CP + 20-min + HR-cost', pending: ftpEst.best ? undefined : (map5 != null ? 'after your next hard effort — a ~5–20 min near-max or a 2×8; Platyplus reads your threshold from it (no formal test)' : 'after your first hard effort — a ~5–20 min or 2×8; Platyplus reads your threshold from it (no formal test)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
+      key: 'ftp', label: 'FTP', unit: 'W', computed: ftpEst.best, computedSrc: ftpManual != null ? 'anchored on your value · cross-checked below' : 'Platyplus blend · eFTP + CP + 20-min + HR-cost', pending: ftpEst.best ? undefined : (map5 != null ? 'after your next hard effort — a ~5–20 min near-max or a 2×8; Platyplus reads your threshold from it (no formal test)' : 'after your first hard effort — a ~5–20 min or 2×8; Platyplus reads your threshold from it (no formal test)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
       chip: 'eFTP',
       conf: toConf(ftpEst.conf), // #5007 — blended estimate + honest confidence (recency · agreement · test-backed)
       narr: <><b>{ftpEst.why}</b><br /><br /><b>Platyplus's own</b> read — we blend several independent signals: your power-based <b>eFTP</b>, your <b>Critical Power</b>, your best recent <b>20-min</b>, and the <b>HR cost</b> of your rides — each weighted by how fresh it is. No single test defines it, and a stale source that disagrees with the others can't claim "Strong". (Folding in cardiac drift + next-day recovery is on the roadmap.)</>,
@@ -292,11 +297,11 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     },
     // #401 — TTE (time to exhaustion at threshold), a LEARNED benchmark per sport, read off the mean-max curve.
     {
-      key: 'tteRide', label: 'TTE', computed: tteRide, computedSrc: tteRideEstimated ? 'estimated from your power model (W′/CP)' : 'longest you held your eFTP', pending: tteRide == null ? (powerCurve ? 'after a sustained near-FTP effort (10–40 min)' : 'after your next ride — read from your power curve') : undefined, manual: (ss.cycling as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('cycling', { tte: v }),
+      key: 'tteRide', label: 'TTE', computed: tteRide, computedSrc: tteRideEstimated ? 'estimated from your power model (W′/CP)' : 'longest you held your FTP', pending: tteRide == null ? (powerCurve ? 'after a sustained near-FTP effort (10–40 min)' : 'after your next ride — read from your power curve') : undefined, manual: (ss.cycling as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('cycling', { tte: v }),
       chip: tteRideEstimated ? 'CP model' : 'Curve',
       conf: tteConfidence({ tte: tteRide, estimated: tteRideEstimated }),
-      narr: <>How long you can hold your <b>FTP</b> before fatigue — normally <b>30–70 min</b>. Read off your power curve once you've held it that long, else estimated from your power-duration model. A short TTE is a <b>training target</b>: extend it with sustained threshold work (3×15–20 min @ 90–95%), not more watts. Far below 30 min? Your FTP may be a touch high vs your eFTP.</>,
-      sci: [{ name: 'From your power curve', formula: 'longest time ≥ eFTP', value: tteRideObs != null ? fmtTte(tteRideObs) : '—', inUse: !tteRideEstimated && tteRide != null }, { name: 'Modeled', formula: 'from your power-duration fit', value: tteRideEst != null ? fmtTte(tteRideEst) : '—', inUse: tteRideEstimated }],
+      narr: <>How long you can hold your <b>FTP</b> before fatigue — normally <b>30–70 min</b>. Read off your power curve once you've held it that long, else estimated from your power-duration model. A short TTE is a <b>training target</b>: extend it with sustained threshold work (3×15–20 min @ 90–95%), not more watts. Far below 30 min? Your FTP may be set higher than your true threshold — check it against your CP.</>,
+      sci: [{ name: 'From your power curve', formula: 'longest time ≥ your FTP', value: tteRideObs != null ? fmtTte(tteRideObs) : '—', inUse: !tteRideEstimated && tteRide != null }, { name: 'Modeled', formula: 'from your power-duration fit', value: tteRideEst != null ? fmtTte(tteRideEst) : '—', inUse: tteRideEstimated }],
       sharpen: 'extensive threshold work — 3×15–20 min @ 90–95% FTP — extends your TTE (longer durations, not more power).',
     },
     {
@@ -312,7 +317,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     {
       key: 'cp', label: 'Critical Power', unit: 'W', computed: cp, computedSrc: 'your sustainable ceiling (power-duration fit)', pending: cp == null ? 'after a few hard efforts across durations — the model needs points to fit' : undefined, manual: (ss.cycling as { cp?: number })?.cp ?? null, fmt: String, parse: numParse(60, 500), save: (v) => saveSport('cycling', { cp: v }),
       chip: 'Curve', conf: modelFitConfidence({ value: cp, r2: powerCurve?.r2 }),
-      narr: <>Your <b>Critical Power</b> — the highest power you can hold near-indefinitely (the asymptote of your power curve): your true aerobic ceiling, which FTP sits just above. More precise than FTP because it's modelled from efforts across many durations.</>,
+      narr: <>Your <b>Critical Power</b> — the highest power you can hold near-indefinitely (the asymptote of your power curve): your true aerobic ceiling, which FTP normally sits near or just above. More precise than FTP because it's modelled from efforts across many durations.</>,
       sci: [{ name: 'Power-duration model', formula: '2-param CP/W′ fit', value: cp != null ? `${cp} W` : '—', inUse: cp != null }],
       sharpen: 'hard efforts of varied length (1–20 min) sharpen the CP/W′ fit.',
     },

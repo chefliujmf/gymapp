@@ -53,7 +53,7 @@ export default function CyclingStats() {
     <div>
       <div className="sub-head">
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
-        <div className="sub-head-t"><h1>Cycling</h1><p>Power curve · eFTP · VO₂max · W/kg, from intervals.icu</p></div>
+        <div className="sub-head-t"><h1>Cycling</h1><p>Power curve · eFTP · VO₂max, from intervals.icu</p></div>
       </div>
       {!isCycling ? (
         <p className="meta">Add Cycling in <span style={{ color: 'var(--accent)' }}>Profile</span> to see your power stats.</p>
