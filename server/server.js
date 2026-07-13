@@ -2986,6 +2986,13 @@ function roundOutMsg(today) {
   if (EAT_MIND_OFF) return `Daily RECOVERY pass (${today}) — Eat & Mind are OFF right now, so add ONLY recovery around the plan (the workouts are already set; don't change them). After the hardest / longest days, put a RECOVERY session where it genuinely helps THIS athlete (schedule_recovery — mobility / sauna / easy walk, given STRUCTURED: insight = why today + steps = the routine with doses + a sleep note, NOT one text blob — it opens as its own activity view). Don't drop one onto every day. Do NOT schedule meals, supplements, or mind/meditation sessions (those sections are deactivated — the server rejects them). Be concise.`
   return `Daily ROUND-OUT pass (${today}) — add FUEL, MIND and RECOVERY around the plan (the workouts are already set; don't change them). On TODAY and each clearly demanding day (hard / long / quality), schedule a fitting meal or two (schedule_meal — a real recipe fitting their diet + daily fuel targets, more carbs around hard work, lighter on rest days, one-line why); add a MIND session (schedule_mind) where it earns its place (a wind-down after a hard/high-stress day, longer on a rest day); put RECOVERY (schedule_recovery — mobility / sauna / easy walk) after the hardest days, given STRUCTURED (insight = why + steps = the routine with doses + sleep note, NOT one text blob — it opens as its own activity view). ONLY where it genuinely adds value for THIS athlete on THIS day — don't drop one onto every slot, and don't churn what they've got. Be concise.`
 }
+// #508 (JM: "coach must review the metrics OFTEN in a SEPARATE prompt + fold what to sharpen into the plan — ideally
+// not all-out tests, just enough — CRITICAL") — a FOCUSED daily pass: review each benchmark's freshness and, for the
+// stalest one, fold ONE low-cost refining effort into the rolling horizon. Single-topic (own pass), never demands a
+// dreaded max test. Mirrors the # KEEP THE ANCHORS SHARP system-prompt block but runs it as an active daily job.
+function sharpenMsg(today) {
+  return `Daily METRICS-SHARPEN pass (${today}) — keep the athlete's benchmarks HONEST, without demanding tests. Their threshold power / pace, CP·W′ (or CS·D′), VO₂max, TTE and max-HR are in your profile; each is only as good as the last quality effort behind it, and EVERYTHING you prescribe scales from them. Review freshness: get_recent_activities and, for EACH anchor, ask "is there a recent effort that would set it?" — a tempo/threshold effort for the threshold; a hard ~5-min effort for VO₂max/MAP; short near-max reps for W′/D′; an all-out finish for max-HR. For any anchor with NO recent effort behind it (e.g. weeks of only easy rides → the threshold is really a guess), fold ONE targeted, LOW-COST refining effort into the rolling ${DAILY_HORIZON}-day plan (list_schedule → create_ride/run/workout) — NEVER an all-out max test, never a dreaded 20-min: cycling → one 8–15 min hard sustained effort up a climb/segment when fresh (intervals reads eFTP straight from it), or a structured 2×8 only if they'd like a cleaner number; running → a hard 20 min or a 5 k / parkrun; gym → a heavy 3–5 rep top set. Just ENOUGH to re-read the anchor. Rules: at most ONE such effort per pass — pick the STALEST, most important anchor; place it on a day they're FRESH, within their weekly training-day + recovery limits, and never stacked against another hard day; if every anchor already has a recent effort behind it, change nothing. This pass is SILENT (background upkeep — no push; the athlete gets only their one check-in ping). When you DO add one, its title/description explains WHY in plain words ("one harder 15-minute stretch so I can dial in the hardest pace you can hold"), never "to update your FTP". Be concise.`
+}
 async function runDailyAdapt(user, pass) {
   try {
     const today = await athleteToday(user)
@@ -3002,6 +3009,7 @@ async function runDailyAdapt(user, pass) {
     user.dailyAdapt = user.dailyAdapt || {}
     if (user.dailyAdapt.extras !== today) {
       user.dailyAdapt.extras = today; save(store)
+      await runCoachTask(user, sharpenMsg(today)) // #508 — review benchmarks + fold ONE refining effort into the plan (before round-out, so recovery accounts for it)
       await runCoachTask(user, reviewMsg(today))
       await runCoachTask(user, roundOutMsg(today))
     }

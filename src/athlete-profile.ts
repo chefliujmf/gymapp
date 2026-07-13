@@ -71,9 +71,9 @@ export function athleteProfile(inp: ProfileInputs): AthleteProfileResult {
     focus.push(cyc ? 'Extensive threshold — 3×15–20 min @ 90–95% FTP → turn power into staying power (grows TTE).' : 'Extensive threshold runs — 3×15–20 min @ threshold → build the duration you can hold pace.')
     if (inp.eftp != null && inp.threshold != null && ((cyc && inp.threshold > inp.eftp) || (!cyc && inp.threshold < inp.eftp))) focus.push(cyc ? `Ease FTP toward your eFTP (${Math.round(inp.eftp)} W) until your TTE reaches ~40 min.` : `Ease your threshold pace toward the modelled value until your TTE reaches ~40 min.`)
   } else if (longTte) {
-    focus.push(cyc ? 'Raise the ceiling — 4×8–12 min @ 100–105% FTP to lift FTP/CP.' : 'Raise the ceiling — 4×8–12 min @ ~5 k effort to lift threshold/CS.')
+    focus.push(cyc ? 'Raise the ceiling — short VO₂ intervals (4–5×3–4 min @ ~108–112% FTP), 1–2 a week, to lift FTP/CP: hard but brief.' : 'Raise the ceiling — short VO₂ intervals (5–6×3 min @ ~3 k–5 k pace), 1–2 a week, to lift threshold/CS: hard but brief.')
   } else {
-    focus.push(cyc ? 'Alternate a threshold-endurance week (3×20 min @ 90–95%) with an FTP week (4×10 min @ 100–105%).' : 'Alternate threshold-endurance (3×15–20 min) with 5 k-pace intervals.')
+    focus.push(cyc ? 'Alternate a threshold-endurance week (3×15–20 min @ 88–94% FTP) with a VO₂ week (5×3–4 min @ ~110%).' : 'Alternate threshold-endurance (3×15–20 min @ threshold) with short 5 k-pace reps (5–6×3 min).')
   }
   if (!bigReserve) focus.push(cyc ? 'Keep the punch — a weekly short-sprint set (30 s–3 min) holds/grows W′.' : 'Keep the kick — weekly short fast reps (200–600 m) hold/grow D′.')
   focus.push(cyc ? 'Aerobic volume underneath — feeds a rising EF and a higher future FTP.' : 'Easy aerobic volume underneath — feeds a rising EF and future pace.')
