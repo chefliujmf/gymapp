@@ -189,7 +189,14 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // Critical-Speed model isn't ready (few/no hard runs) but there's HR-paired running, we still show a real number
   // instead of "needs 4 runs" — so a runner's analysis is done off history, and it shows as its own method below.
   const paceHr = thresholdPaceFromHrPace(hrPace, maxHr ?? compMaxHr)
-  const paceComputed = paceEst ?? (paceHr ? paceHr.best : null)
+  const paceHrBest = paceHr ? paceHr.best : null
+  // #508 (JM: "running is weird — CS/threshold should be better") — the Critical-Speed pace-model UNDER-reads when
+  // every run is easy: with no fast points to anchor the curve it fits SLOWER than the HR cost of those same easy
+  // runs (impossible — a CS slower than an easy run). When HR-pace reads meaningfully faster (>12 s/km, higher =
+  // slower), the curve is under-constrained → trust HR-pace, the way eFTP anchors cycling. (JM: CS 5:21 vs a 5:06 run.)
+  const csUnderReads = paceEst != null && paceHrBest != null && paceEst - paceHrBest > 12
+  const paceFromHr = csUnderReads || paceEst == null
+  const paceComputed = csUnderReads ? paceHrBest : (paceEst ?? paceHrBest)
   const toConf = (c: { pct: number; cls: string; label: string }): Confidence => ({ pct: c.pct, cls: (c.cls === 'good' ? 'learn' : c.cls) as Confidence['cls'], label: c.label })
   // #403 — athlete-profile synthesis (rendered when a per-sport page passes `profile`). EF wires in Phase 2.
   // #464 — the insight must anchor on the CHOSEN FTP/pace (same `inUse` logic as the benchmark card), not the
@@ -319,12 +326,14 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your power curve → tighter eFTP.',
     },
     {
-      key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceComputed, computedSrc: paceEst != null ? 'from your recent runs (Critical Speed)' : 'from the HR cost of your runs', pending: paceGate, manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }),
-      chip: paceEst != null ? 'Critical Speed' : 'HR vs pace',
+      key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceComputed, computedSrc: paceFromHr ? 'from the HR cost of your runs' : 'from your recent runs (Critical Speed)', pending: paceGate, manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }),
+      chip: paceFromHr ? 'HR vs pace' : 'Critical Speed',
       conf: thresholdPaceConfidence({ paceEst: paceComputed, runsRecent }),
-      narr: paceEst != null
+      narr: !paceFromHr
         ? <>Modelled from your <b>recent runs</b> using the Critical-Speed method — the pace you could hold for ~an hour. It sharpens as you log more runs, especially harder efforts.</>
-        : <>Inferred from the <b>heart-rate cost</b> of your steady runs — projecting your pace out to threshold HR — because there aren't enough hard efforts yet for the Critical-Speed model. A hard 20-min run gives a firmer read.</>,
+        : csUnderReads
+          ? <>Read from the <b>heart-rate cost</b> of your runs. Your Critical-Speed curve fits slow ({csPace != null ? fmtPace(csPace) : '—'}) because <b>every recent run is easy</b> — with no hard efforts, the model has no fast points and under-reads. Your HR cost says your true threshold is nearer this. One hard 20-min run would set it properly.</>
+          : <>Inferred from the <b>heart-rate cost</b> of your steady runs — projecting your pace out to threshold HR — because there aren't enough hard efforts yet for the Critical-Speed model. A hard 20-min run gives a firmer read.</>,
       sci: [
         { name: 'Critical Speed', formula: 'from your recent runs · ~1 h pace', value: paceEst != null ? fmtPace(paceEst) : '—', inUse: paceEst != null },
         { name: 'HR vs pace', formula: 'the HR cost of your steady runs → threshold HR', value: paceHr ? fmtPace(paceHr.best) : '—', inUse: paceEst == null && paceHr != null }, // #497
@@ -367,7 +376,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     {
       key: 'cs', label: 'Critical Speed', unit: '/km', computed: csPace, computedSrc: 'your sustainable running ceiling', pending: csPace == null ? 'after a few hard runs across distances — the model needs points' : undefined, manual: (ss.running as { cs?: number })?.cs ?? null, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { cs: v }),
       chip: 'Curve', conf: modelFitConfidence({ value: csPace, r2: paceCurve?.r2 }),
-      narr: <>Your <b>Critical Speed</b> — the running analogue of Critical Power: the fastest pace you can hold near-indefinitely, your true aerobic ceiling. If your threshold pace is much faster than this, it's set too optimistic.</>,
+      narr: <>Your <b>Critical Speed</b> — the running analogue of Critical Power: the fastest pace you can hold near-indefinitely, modelled independently from your pace curve.{csUnderReads ? <><br /><br />Right now it fits <b>slow</b> — every recent run is easy, so the curve has no fast points and under-reads (it even lands slower than your easy-run pace). A couple of hard efforts across distances (1 k–5 k) let it read true; until then your threshold pace is the better guide.</> : null}</>,
       sci: [{ name: 'Pace-duration model', formula: '2-param CS/D′ fit', value: csPace != null ? `${fmtPace(csPace)}/km` : '—', inUse: csPace != null }],
       sharpen: 'hard runs of varied distance (1 k–5 k) sharpen the CS/D′ fit.',
     },
