@@ -4,6 +4,10 @@ import { ftpEstimate, thresholdPaceEstimate, modelEstimate, tteEstimate, maxHrEs
 // #501 — age-based max HR is a FALLBACK: it fills a data-less athlete but must NOT drag a real observed peak down.
 describe('maxHrFromAge + fallback', () => {
   it('Tanaka: 208 − 0.7·age', () => { expect(maxHrFromAge(40)).toBe(180); expect(maxHrFromAge(30)).toBe(187) })
+  it('#508 Gulati for females: 206 − 0.88·age (lower than the male formula)', () => {
+    expect(maxHrFromAge(40, 'female')).toBe(171) // 206 − 35.2
+    expect(maxHrFromAge(40, 'female')!).toBeLessThan(maxHrFromAge(40, 'male')!)
+  })
   it('rejects nonsense ages', () => { expect(maxHrFromAge(null)).toBeNull(); expect(maxHrFromAge(4)).toBeNull(); expect(maxHrFromAge(120)).toBeNull() })
   it('no observed + no ceiling → uses the age estimate', () => {
     const e = maxHrEstimate({ observed: null, ceiling: null, age: 40 })

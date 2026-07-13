@@ -294,7 +294,10 @@ export function tteEstimate(inp: TteInputs): Estimate {
 }
 
 // #501 — age-based max HR (Tanaka 2001, `208 − 0.7·age`) — more accurate than the old `220−age`. A rough FALLBACK.
-export const maxHrFromAge = (age: number | null | undefined): number | null => (typeof age === 'number' && age > 8 && age < 100 ? Math.round(208 - 0.7 * age) : null)
+// #508 — sex-specific age max-HR (JM's research doc): Gulati (2010) for females (male-centric formulas over-read
+// female max HR), Tanaka (2001) for males/general (208−0.7·age; flatter + tighter than the old 220−age).
+export const maxHrFromAge = (age: number | null | undefined, sex?: string | null): number | null =>
+  (typeof age === 'number' && age > 8 && age < 100 ? Math.round(sex === 'female' ? 206 - 0.88 * age : 208 - 0.7 * age) : null)
 // Max HR — observed peak per sport beats an intervals ceiling; it ages slowly.
 export interface MaxHrInputs { observed?: number | null; observedAgeDays?: number | null; ceiling?: number | null; sport?: string; age?: number | null }
 export function maxHrEstimate(inp: MaxHrInputs): Estimate {

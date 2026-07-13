@@ -321,7 +321,7 @@ async function computeAndStashAnchors(user) {
       if (hrs.length) observed = hrs[0]
       if (!observed) { const am = acts.map((a) => Number(a.athlete_max_hr) || 0).find((h) => h >= 120 && h <= 230); if (am) observed = am }
     }
-    if (!observed) { const ageYr = user.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null; if (ageYr != null && ageYr > 8 && ageYr < 100) observed = Math.round(208 - 0.7 * ageYr) }
+    if (!observed) { const ageYr = user.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null; if (ageYr != null && ageYr > 8 && ageYr < 100) observed = Math.round(user.sex === 'female' ? 206 - 0.88 * ageYr : 208 - 0.7 * ageYr) } // #508 sex-specific (Gulati/Tanaka)
     if (observed) { user.maxHR = observed; changed = true }
   }
   // Running threshold pace from the pace curve (Critical Speed) — the coach's run anchor.
@@ -502,7 +502,7 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
   // #501 (JM) — age-based fallback (Tanaka 208−0.7·age) so a brand-new athlete with no HR history still gets a
   // real starting max HR, never a blank. Only used when there's nothing observed AND no intervals ceiling.
   const ageYr = req.user.info?.dob ? Math.floor((Date.now() - new Date(req.user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
-  const ageMaxHr = ageYr != null && ageYr > 8 && ageYr < 100 ? Math.round(208 - 0.7 * ageYr) : null
+  const ageMaxHr = ageYr != null && ageYr > 8 && ageYr < 100 ? Math.round(req.user.sex === 'female' ? 206 - 0.88 * ageYr : 208 - 0.7 * ageYr) : null // #508 sex-specific (Gulati/Tanaka)
   const computedMaxHr = (Math.max(observedMaxHr || 0, icuMaxHr || 0) || null) ?? ageMaxHr ?? null
   const maxHrFrom = computedMaxHr == null ? '' : (observedMaxHr && observedMaxHr >= (icuMaxHr || 0) ? 'observed' : icuMaxHr ? 'intervals' : 'age')
   res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent, observedMaxHr, maxHrSamples, icuMaxHr, computedMaxHr, maxHrFrom, hrPower, hrPace, rideSignals }) // #497 hrPower/hrPace · #508 rideSignals = per-ride NP/decoupling/EF for the threshold engine
