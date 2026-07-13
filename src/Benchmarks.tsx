@@ -6,7 +6,6 @@ import { fmtPace, parsePace } from './running-paces'
 import { fetchWellness, fetchPowerCurve, fetchPaceCurve, fetchEfTrend, type PowerCurve, type PaceCurve, type EfTrend } from './intervals'
 import { estimateSleepNeed } from './sleep'
 import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, pickTte, fmtTte } from './tte'
-import { cpFromFtp } from './cp-model' // #508 — CP sits above FTP; used to floor an under-read CP fit
 import { athleteProfile } from './athlete-profile'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, vo2ScienceRows, confLabel } from './vo2max-submax'
 import { vo2maxConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, modelFitConfidence, type Confidence } from './benchmark-confidence'
@@ -60,6 +59,7 @@ function ConfBar({ conf, big = false }: { conf: Confidence; big?: boolean }) {
 function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; prefer: Pref; onPref: (p: Pref) => void; onSaveManual: (v: number | null) => void; onClose: () => void }) {
   const [p, setP] = useState<Pref>(prefer)
   const [txt, setTxt] = useState(def.manual != null ? def.fmt(def.manual) : '')
+  const [showWork, setShowWork] = useState(false) // #508 — the cross-checks collapse behind "How we got this"
   const commit = () => {
     // #247: the input is always editable — typing saves your manual value regardless of mode; the
     // toggle just picks which one DRIVES. (Was locked on Computed — JM wanted to type a value anytime.)
@@ -68,31 +68,60 @@ function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; p
     onPref(p)
     onClose()
   }
+  // #508 — CLEAN layout (FTP first; roll to the rest once JM signs off). One number + confidence + a short
+  // paragraph; the method wall hides behind a tap. The number tracks the toggle live so switching Manual/Auto
+  // previews the value that will drive. Edit controls below are UNCHANGED (JM: "don't change the front-end logic").
+  const clean = def.key === 'ftp'
+  const inUse = p === 'manual' ? def.manual : (def.computed ?? def.manual) // the value actually driving, per the toggle
+  const sciRows = def.sci.map((r, i) => (
+    <div key={i} className={'bm-mrow' + (r.inUse ? ' use' : '')}>
+      <div className={'bm-mn' + (r.value === '—' ? ' dim' : '')}>{r.name}<small>{r.formula}</small></div>
+      {r.inUse && <span className="bm-use-tag">IN USE</span>}
+      <div className={'bm-mv' + (r.value === '—' ? ' dim' : '')}>{r.value}</div>
+    </div>
+  ))
+  const sharpenEl = def.conf.cls !== 'strong' && def.sharpen ? <div className="bm-sharpen">💪 <b>Sharpen it:</b> {def.sharpen}</div> : null
   return (
     <div className="bsheet__scrim" onClick={onClose}>
       <div className="bsheet" onClick={(e) => e.stopPropagation()}>
         <div className="bsheet__h"><h3>{def.label}</h3><button className="bsheet__x" onClick={onClose}>✕</button></div>
         {/* #374 — confidence bar up top (same data as the card). */}
         <ConfBar conf={def.conf} big />
-        <div className="bsheet__two">
-          <div className={'bsheet__opt' + (p === 'computed' ? ' on' : '')}><div className="bsheet__ol">Computed</div><div className="bsheet__ov" style={{ color: '#5ec8ff' }}>{def.computed != null ? def.fmt(def.computed) : '—'}</div><div className="bsheet__os">{def.computed != null ? def.computedSrc : (def.pending ? `⏳ ${def.pending}` : 'not available yet')}</div></div>
-          <div className={'bsheet__opt' + (p === 'manual' ? ' on' : '')}><div className="bsheet__ol">Manual</div><div className="bsheet__ov" style={{ color: '#9b8cff' }}>{def.manual != null ? def.fmt(def.manual) : '—'}</div><div className="bsheet__os">your value</div></div>
-        </div>
+        {clean ? (
+          /* #508 — ONE number (tracks the toggle) + a source line; replaces the dual Computed/Manual tiles. */
+          <div style={{ textAlign: 'center', padding: '4px 0 2px' }}>
+            <div style={{ fontSize: 50, fontWeight: 750, letterSpacing: '-.02em', lineHeight: 1 }}>{inUse != null ? def.fmt(inUse) : '—'}{def.unit && <span style={{ fontSize: 21, color: 'var(--text-dim)', fontWeight: 600, marginLeft: 3 }}>{def.unit}</span>}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 7 }}>{p === 'manual' ? 'the power you train by' : (inUse != null ? def.computedSrc : (def.pending ? `⏳ ${def.pending}` : ''))}</div>
+          </div>
+        ) : (
+          <div className="bsheet__two">
+            <div className={'bsheet__opt' + (p === 'computed' ? ' on' : '')}><div className="bsheet__ol">Computed</div><div className="bsheet__ov" style={{ color: '#5ec8ff' }}>{def.computed != null ? def.fmt(def.computed) : '—'}</div><div className="bsheet__os">{def.computed != null ? def.computedSrc : (def.pending ? `⏳ ${def.pending}` : 'not available yet')}</div></div>
+            <div className={'bsheet__opt' + (p === 'manual' ? ' on' : '')}><div className="bsheet__ol">Manual</div><div className="bsheet__ov" style={{ color: '#9b8cff' }}>{def.manual != null ? def.fmt(def.manual) : '—'}</div><div className="bsheet__os">your value</div></div>
+          </div>
+        )}
         {/* #374 — plain-language explanation of how this stat is computed. */}
         <div className="bm-narr">{def.narr}</div>
-        {/* #374 — "The science" — every method + which one drives. */}
-        <div className="bm-sci">
-          <h4>The science · {def.sci.length} method{def.sci.length === 1 ? '' : 's'}</h4>
-          {def.sci.map((r, i) => (
-            <div key={i} className={'bm-mrow' + (r.inUse ? ' use' : '')}>
-              <div className={'bm-mn' + (r.value === '—' ? ' dim' : '')}>{r.name}<small>{r.formula}</small></div>
-              {r.inUse && <span className="bm-use-tag">IN USE</span>}
-              <div className={'bm-mv' + (r.value === '—' ? ' dim' : '')}>{r.value}</div>
+        {clean ? (
+          /* #508 — the method wall, collapsed. Only appears on tap. */
+          <div style={{ borderTop: '1px solid #20242e', marginTop: 16, paddingTop: 14 }}>
+            <button onClick={() => setShowWork((v) => !v)} style={{ background: 'none', border: 0, width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-dim)', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+              <span>How we got this · {def.sci.length} cross-check{def.sci.length === 1 ? '' : 's'}</span>
+              <span style={{ display: 'inline-block', transform: showWork ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }}>›</span>
+            </button>
+            {showWork && <div className="bm-sci" style={{ marginTop: 12 }}>{sciRows}</div>}
+            {showWork && sharpenEl}
+          </div>
+        ) : (
+          <>
+            {/* #374 — "The science" — every method + which one drives. */}
+            <div className="bm-sci">
+              <h4>The science · {def.sci.length} method{def.sci.length === 1 ? '' : 's'}</h4>
+              {sciRows}
             </div>
-          ))}
-        </div>
-        {/* #374 — how to sharpen the estimate (only when it's not already strong). */}
-        {def.conf.cls !== 'strong' && def.sharpen && <div className="bm-sharpen">💪 <b>Sharpen it:</b> {def.sharpen}</div>}
+            {/* #374 — how to sharpen the estimate (only when it's not already strong). */}
+            {sharpenEl}
+          </>
+        )}
         <div className="bsheet__lbl">Your value</div>
         <input className="bsheet__in" value={txt} placeholder={def.computed != null ? def.fmt(def.computed) : 'enter a value'} onChange={(e) => setTxt(e.target.value)} />
         <div className="bsheet__lbl">Use which?</div>
@@ -166,14 +195,14 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const weight = pbWeight ?? pull?.weight ?? null
   const vdot = user?.runVdot ?? null
   // #403 — CP/W′ (cycling) + CS/D′ (running) from the power/pace-duration model fit. CS shown as a pace (sec/km).
-  const cpRaw = powerCurve?.cp ?? null // the raw power-duration fit; floored below once chosenFtp is known (#508)
+  const cp = powerCurve?.cp ?? null // #508 — the INDEPENDENT power-duration fit. NEVER derive it from FTP (that's circular); its whole job is to cross-check FTP.
   const wPrimeKj = powerCurve?.wPrime != null ? Math.round(powerCurve.wPrime / 100) / 10 : null // kJ, 0.1 precision
   const csPace = paceCurve?.cs != null && paceCurve.cs > 0 ? Math.round(1000 / paceCurve.cs) : null // sec/km
   const dPrimeM = paceCurve?.dPrime != null ? Math.round(paceCurve.dPrime) : null // metres
   // #5007 — honest FTP: blend eFTP (weighted by recency) + CP-derived + best-20min×0.95; confidence from real
   // signals so a stale eFTP that disagrees with CP can't read "Strong". toConf maps the engine's 'good' onto the
   // existing bar classes (learn) so the CSS keeps working.
-  const ftpEst = ftpEstimate({ eftp, eftpAgeDays, cp: cpRaw, best20: ftp20, manual: ftpManual, hrPower, maxHr: maxHr ?? compMaxHr }) // #497 — HR-power method now fed real ride data
+  const ftpEst = ftpEstimate({ eftp, eftpAgeDays, cp, best20: ftp20, manual: ftpManual, hrPower, maxHr: maxHr ?? compMaxHr }) // #497 — HR-power method now fed real ride data
   // #497 running analog — threshold pace inferred from the HR cost of steady runs. Used as a FALLBACK: when the
   // Critical-Speed model isn't ready (few/no hard runs) but there's HR-paired running, we still show a real number
   // instead of "needs 4 runs" — so a runner's analysis is done off history, and it shows as its own method below.
@@ -188,13 +217,11 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftp) : (ftpEst.best ?? eftp ?? ftpManual) // #5007 computed side = the blended estimate
   const decoupCheck = decouplingCheck(rideSignals, chosenFtp) // #508 — does your near-FTP riding hold steady (confirms) or drift (FTP too high)?
   const aeroFloor = aerobicFloor(rideSignals, maxHr ?? compMaxHr) // #508 — your Z2 efficiency proves FTP is AT LEAST this (JM: 170 W steady in Z2 ⇒ not 220)
-  // #508 (research doc) — CP sits ~10–15 W ABOVE FTP, and submaximal data UNDER-reads the power-duration fit. So a
-  // fitted CP that lands BELOW the FTP you actually train by is an under-read (your curve lacks true max efforts),
-  // NOT your real ceiling — floor it at the CP your trained FTP implies. Never lowball what you demonstrably hold
-  // (JM: fit read 248 W while he trains at 260). If the fit already sits above FTP, it's used as-is.
-  const cpFloor = chosenFtp != null ? cpFromFtp(chosenFtp) : null
-  const cpUnderRead = cpRaw != null && cpFloor != null && cpRaw < cpFloor
-  const cp = cpUnderRead ? cpFloor : cpRaw
+  // #508 (JM: "the point of CP is to see through the weakness of FTP") — CP stays the INDEPENDENT curve read; we do
+  // NOT floor it at FTP+offset (circular — it'd stop being able to challenge FTP). Instead the GAP is the signal:
+  // a CP meaningfully BELOW the trained FTP means either FTP is a touch optimistic OR the curve lacks max efforts
+  // (submaximal data under-reads CP). Surface that as the insight; never paper over it. cpVsFtp: <0 CP below FTP.
+  const cpVsFtp = cp != null && chosenFtp != null ? cp - chosenFtp : null
   const chosenPace = prefFor('thresholdPace') === 'manual' ? (paceManual ?? paceComputed) : (paceComputed ?? paceManual)
   // #506e — CONSISTENCY (JM): dependent stats must move WITH the anchor. VO₂max now reads the CHOSEN FTP + max-HR
   // (what the picker has in use), NOT the raw manual — so switching FTP to Auto moves VO₂max the same way it moves
@@ -341,10 +368,10 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     // #403 — CP · W′ (cycling) and CS · D′ (running): the power/pace-duration model. Modelled from the curve (no
     // test); manual override persists via the sport-stat whitelist. Per-sport pages only.
     {
-      key: 'cp', label: 'Critical Power', unit: 'W', computed: cp, computedSrc: cpUnderRead ? 'raised to sit just above your trained FTP' : 'your sustainable ceiling (power-duration fit)', pending: cp == null ? 'after a few hard efforts across durations — the model needs points to fit' : undefined, manual: (ss.cycling as { cp?: number })?.cp ?? null, fmt: String, parse: numParse(60, 500), save: (v) => saveSport('cycling', { cp: v }),
+      key: 'cp', label: 'Critical Power', unit: 'W', computed: cp, computedSrc: 'independent read from your power curve', pending: cp == null ? 'after a few hard efforts across durations — the model needs points to fit' : undefined, manual: (ss.cycling as { cp?: number })?.cp ?? null, fmt: String, parse: numParse(60, 500), save: (v) => saveSport('cycling', { cp: v }),
       chip: 'Curve', conf: modelFitConfidence({ value: cp, r2: powerCurve?.r2 }),
-      narr: <>Your <b>Critical Power</b> — the highest power you can hold near-indefinitely (the asymptote of your power curve): your true aerobic ceiling, which normally sits <b>~10–15 W above your FTP</b>. More precise than FTP because it's modelled from efforts across many durations.{cpUnderRead ? <><br /><br />Your curve currently fits <b>below</b> your trained FTP — a sign it's missing true max efforts across durations (submaximal data under-reads CP), so we've raised it to sit just above the threshold you demonstrably hold. A few hard efforts of varied length will let the fit stand on its own.</> : null}</>,
-      sci: [{ name: 'Power-duration model', formula: cpUnderRead ? `fit read ${cpRaw} W — under-read, raised above FTP` : '2-param CP/W′ fit', value: cp != null ? `${cp} W` : '—', inUse: cp != null }],
+      narr: <>Your <b>Critical Power</b> — the highest power you can hold near-indefinitely (the asymptote of your power curve), modelled <b>independently</b> from efforts across many durations. That independence is the point: it's a second opinion on your FTP.{cpVsFtp != null && cpVsFtp <= -4 ? <><br /><br />Right now CP reads <b>{Math.abs(cpVsFtp)} W below</b> the {chosenFtp} W you train at. Two honest reads of that: your FTP may be a touch optimistic (your true ~1 h power could be nearer {cp}), <b>or</b> your curve is missing hard max efforts, which makes the fit read low. A couple of all-out efforts (short + ~5 min) will settle it.</> : cpVsFtp != null && cpVsFtp >= 6 ? <><br /><br />CP sits <b>{cpVsFtp} W above</b> your {chosenFtp} W FTP — consistent with a well-characterised curve. Your FTP looks honest.</> : null}</>,
+      sci: [{ name: 'Power-duration model', formula: '2-param CP/W′ fit · independent of FTP', value: cp != null ? `${cp} W` : '—', inUse: cp != null }],
       sharpen: 'hard efforts of varied length (1–20 min) sharpen the CP/W′ fit.',
     },
     {
