@@ -62,3 +62,18 @@ export function headlineVo2max(manual: number | null | undefined, perSport: { sp
 }
 
 export const confLabel = (c: Vo2Confidence) => (c === 'high' ? 'measured' : c === 'medium' ? 'estimated' : 'rough estimate')
+
+// #506 — which VO₂max methods to SHOW in "The science". The old card emitted all three raw methods regardless of
+// sport or data quality, so a RUNNER saw a bike number (Cycling MAP) next to the crude HR-ratio (Uth), which
+// inflates off an assumed/stale max HR — three figures 13 points apart, reading as broken (Xenia: 34 vs 39 vs 47).
+// Rule: show only the sport-specific method(s) the athlete actually does + that rest on real data; HR-ratio is a
+// LAST-RESORT proxy shown only when there's nothing better, never a co-equal cross-check beside VDOT/MAP.
+export interface Vo2Method { name: string; formula: string; value: number | null; inUse: boolean }
+export function vo2ScienceRows(inp: { doesCycle: boolean; cyc: Vo2Estimate | null; run: Vo2Estimate | null; hr: number | null; headSource?: string | null }): Vo2Method[] {
+  const { doesCycle, cyc, run, hr, headSource } = inp
+  const rows: Vo2Method[] = []
+  if (doesCycle && cyc && /power|MAP|FTP/i.test(cyc.source)) rows.push({ name: 'Cycling MAP', formula: 'power-based · 10.8 × MAP/kg + 7', value: cyc.value, inUse: !!headSource && cyc.source === headSource })
+  if (run) rows.push({ name: 'Running VDOT', formula: 'pace-based · from your runs', value: run.value, inUse: !!headSource && run.source === headSource })
+  if (!rows.length && hr != null) rows.push({ name: 'HR-ratio', formula: 'rough submax proxy · until you log efforts', value: hr, inUse: true })
+  return rows
+}
