@@ -1,5 +1,28 @@
 import { describe, it, expect } from 'vitest'
-import { hrRatioVo2max, runningVo2max, cyclingVo2max, headlineVo2max, confLabel } from './vo2max-submax'
+import { hrRatioVo2max, runningVo2max, cyclingVo2max, headlineVo2max, vo2ScienceRows, confLabel } from './vo2max-submax'
+
+// #506 — the "science" panel must show only methods this athlete's SPORT + data support (a runner never sees a bike
+// number; the crude HR-ratio never sits next to a real VDOT/MAP as a co-equal figure). Xenia: 34 vs 39 vs 47 → broken.
+describe('vo2ScienceRows (#506)', () => {
+  const cyc = { value: 39.2, source: 'your FTP (→ est. MAP)', confidence: 'low' as const }
+  const run = { value: 34, source: 'your running pace (VDOT)', confidence: 'medium' as const }
+  it('a RUNNER (no cycling) sees only the running method — no bike number, no co-equal HR-ratio', () => {
+    const rows = vo2ScienceRows({ doesCycle: false, cyc, run, hr: 47.4, headSource: 'your running pace (VDOT)' })
+    expect(rows.map((r) => r.name)).toEqual(['Running VDOT'])
+    expect(rows[0].inUse).toBe(true)
+  })
+  it('a CYCLIST with real power sees the MAP method (power-based only)', () => {
+    const powerCyc = { value: 50, source: 'your 5-min max power', confidence: 'medium' as const }
+    const rows = vo2ScienceRows({ doesCycle: true, cyc: powerCyc, run: null, hr: 47, headSource: 'your 5-min max power' })
+    expect(rows.map((r) => r.name)).toEqual(['Cycling MAP'])
+    expect(rows[0].inUse).toBe(true)
+  })
+  it('with NO sport-specific read, HR-ratio is the last-resort proxy (only then)', () => {
+    const rows = vo2ScienceRows({ doesCycle: false, cyc: null, run: null, hr: 45, headSource: 'your max & resting HR' })
+    expect(rows.map((r) => r.name)).toEqual(['HR-ratio'])
+    expect(rows[0].value).toBe(45)
+  })
+})
 
 // #234 — submaximal per-sport VO₂max.
 describe('hrRatioVo2max (15.3 × HRmax/HRrest)', () => {

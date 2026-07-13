@@ -22,7 +22,9 @@ export interface Src {
   ageDays?: number | null   // how old the backing effort is (undefined/null = unknown age)
   kind: SourceKind
 }
-export type SrcTag = 'primary' | 'agrees' | 'stale' | 'off'
+// #506 — 'low'/'high' = a source that IS available but reads meaningfully below/above the number in use (so the
+// card can say "reads lower" honestly instead of rubber-stamping everything "agrees"). 'off' = genuinely missing.
+export type SrcTag = 'primary' | 'agrees' | 'low' | 'high' | 'stale' | 'off'
 export interface TaggedSrc { name: string; value: number | null; tag: SrcTag }
 export interface Estimate {
   best: number | null
@@ -91,7 +93,7 @@ function tagSources(sources: Src[], best: number | null, freshDays: number, tol:
   return sources.map((s) => {
     if (s.value == null) return { name: s.name, value: null, tag: 'off' as SrcTag }
     if (isStale(s, freshDays)) return { name: s.name, value: s.value, tag: 'stale' as SrcTag }
-    if (best != null && Math.abs(s.value - best) / Math.abs(best) > tol * 2.5) return { name: s.name, value: s.value, tag: 'off' as SrcTag }
+    if (best != null && Math.abs(s.value - best) / Math.abs(best) > tol * 2.5) return { name: s.name, value: s.value, tag: (s.value < best ? 'low' : 'high') as SrcTag } // available but disagrees — say which way, don't hide it as "off"
     return { name: s.name, value: s.value, tag: 'agrees' as SrcTag }
   })
 }
@@ -190,11 +192,17 @@ export function ftpEstimate(inp: FtpInputs): Estimate {
       conf = { pct: 50, cls: 'need', label: 'Unconfirmed — needs a hard effort' }
       why = `Using your set FTP of ${m} W. Your recent rides have been too easy to confirm it${inp.cp != null ? ` (your CP curve currently reads ${Math.round(inp.cp)} W)` : ''} — a hard 20–40 min effort would prove it.`
     }
-    const sources: TaggedSrc[] = srcRows.map((s) =>
-      s.kind === 'manual' ? { name: s.name, value: s.value, tag: 'primary' as SrcTag }
-      : s.value == null ? { name: s.name, value: s.value, tag: 'off' as SrcTag }
-      : s.name === 'intervals eFTP' ? { name: s.name, value: s.value, tag: (eftpFresh ? 'agrees' : 'stale') as SrcTag }
-      : { name: s.name, value: s.value, tag: 'agrees' as SrcTag })
+    // #506 — tag each computed source by whether it ACTUALLY agrees with the value you train by (within tol), else
+    // say which way it reads. The old code blind-tagged everything 'agrees', so 220 W read "agrees" next to a 260 W
+    // manual (JM: "all diff numbers but agrees with the blend?"). Only the manual value is 'primary' / in use here.
+    const sources: TaggedSrc[] = srcRows.map((s) => {
+      if (s.kind === 'manual') return { name: s.name, value: s.value, tag: 'primary' as SrcTag }
+      if (s.value == null) return { name: s.name, value: s.value, tag: 'off' as SrcTag }
+      if (s.name === 'intervals eFTP' && !eftpFresh) return { name: s.name, value: s.value, tag: 'stale' as SrcTag }
+      const d = (s.value - m) / m
+      // #506b — 3% (~8 W) tolerance: 248 vs 260 (4.6%) must read LOWER, not "agrees" (JM: "I put 260 and it shows 248 agrees?!").
+      return { name: s.name, value: s.value, tag: (Math.abs(d) <= 0.03 ? 'agrees' : d < 0 ? 'low' : 'high') as SrcTag }
+    })
     return { best, lo: best, hi: best, conf, why, sources }
   }
   // No FTP set yet → blend the computed sources honestly (this is where eFTP/CP/20-min agreement matters).
