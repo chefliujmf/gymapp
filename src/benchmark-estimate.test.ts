@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ftpEstimate, thresholdPaceEstimate, modelEstimate, tteEstimate, maxHrEstimate, honestEstimate, ftpFromHrPower, maxHrFromAge, type Src } from './benchmark-estimate'
+import { ftpEstimate, thresholdPaceEstimate, modelEstimate, tteEstimate, maxHrEstimate, honestEstimate, ftpFromHrPower, thresholdPaceFromHrPace, maxHrFromAge, type Src } from './benchmark-estimate'
 
 // #501 — age-based max HR is a FALLBACK: it fills a data-less athlete but must NOT drag a real observed peak down.
 describe('maxHrFromAge + fallback', () => {
@@ -38,6 +38,36 @@ describe('ftpFromHrPower', () => {
     const weak = ftpFromHrPower([{ watts: 150, hr: 120 }, { watts: 250, hr: 160 }], 185)!
     const strong = ftpFromHrPower([{ watts: 150, hr: 100 }, { watts: 250, hr: 130 }], 185)!
     expect(strong.best).toBeGreaterThan(weak.best)
+  })
+})
+
+// #497 running analog — infer threshold pace from the HR cost of steady runs (no hard test needed).
+describe('thresholdPaceFromHrPace', () => {
+  it('steady runs → a sensible threshold pace (~4:30/km), pace falling as HR rises', () => {
+    const e = thresholdPaceFromHrPace([{ paceSecKm: 360, hr: 130 }, { paceSecKm: 300, hr: 150 }, { paceSecKm: 270, hr: 165 }], 185)!
+    expect(e).not.toBeNull()
+    expect(e.best).toBeGreaterThanOrEqual(260) // ~4:20–4:45/km
+    expect(e.best).toBeLessThanOrEqual(285)
+    expect(e.lo).toBeLessThan(e.best) // lo = faster pace (lower sec/km)
+    expect(e.hi).toBeGreaterThan(e.best) // hi = slower
+  })
+  it('a fitter runner (faster pace at the same HR) reads a FASTER threshold', () => {
+    const slow = thresholdPaceFromHrPace([{ paceSecKm: 360, hr: 140 }, { paceSecKm: 300, hr: 165 }], 185)!
+    const fast = thresholdPaceFromHrPace([{ paceSecKm: 300, hr: 140 }, { paceSecKm: 260, hr: 165 }], 185)!
+    expect(fast.best).toBeLessThan(slow.best)
+  })
+  it('all at one HR → null (no slope); and needs ≥2 points + a max HR', () => {
+    expect(thresholdPaceFromHrPace([{ paceSecKm: 300, hr: 150 }, { paceSecKm: 302, hr: 150 }], 185)).toBeNull()
+    expect(thresholdPaceFromHrPace([{ paceSecKm: 300, hr: 150 }], 185)).toBeNull()
+    expect(thresholdPaceFromHrPace([{ paceSecKm: 360, hr: 130 }, { paceSecKm: 270, hr: 165 }], null)).toBeNull()
+  })
+  it('pace that RISES with HR (noise) → null', () => {
+    expect(thresholdPaceFromHrPace([{ paceSecKm: 300, hr: 130 }, { paceSecKm: 360, hr: 165 }], 185)).toBeNull()
+  })
+  it('surfaces as an "HR vs pace" source in thresholdPaceEstimate', () => {
+    const e = thresholdPaceEstimate({ csDerived: null, hrPace: [{ paceSecKm: 360, hr: 130 }, { paceSecKm: 300, hr: 150 }, { paceSecKm: 270, hr: 165 }], maxHr: 185 })
+    expect(e.best).not.toBeNull()
+    expect(e.sources.find((s) => s.name === 'HR vs pace')?.value).toBeGreaterThan(200)
   })
 })
 
