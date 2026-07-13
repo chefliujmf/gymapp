@@ -23,6 +23,15 @@ describe('athleteProfile', () => {
     expect(p.strength.lead).toBe('Speed at threshold')
     expect(p.weakness.lead).toBe('Staying power')
   })
+  it('#508 running: a manual TTE override flips the profile + coach focus (insight tracks the in-use value)', () => {
+    const base = { sport: 'running' as const, threshold: 297, eftp: 297, cp: 321, reserveKj: 72, reserveBig: 200 }
+    const short = athleteProfile({ ...base, tte: 900 })  // 15 min → punchy
+    const long = athleteProfile({ ...base, tte: 3000 })  // 50 min → not punchy
+    expect(short.type).toBe('Punchy threshold')
+    expect(long.type).not.toBe('Punchy threshold')                 // the read flips with the value
+    expect(short.strength.lead).not.toBe(long.strength.lead)       // strength/weakness follow
+    expect(short.focus.join('|')).not.toBe(long.focus.join('|'))   // "what your coach will work on" follows too
+  })
   it('#464: a decimal eFTP/threshold renders as WHOLE watts (no 240.27774 W anywhere)', () => {
     const p = athleteProfile({ sport: 'cycling', threshold: 240.27774, eftp: 235.51825, tte: 720, cp: 248, reserveKj: 17.1, reserveBig: 20 })
     expect(p.reads.find((r) => r.k === 'FTP')?.v).toBe('240 W') // rounded, not "240.27774 W"
