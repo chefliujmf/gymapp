@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { decouplingCheck, recoveryCheck, efTrend, type RideSignal } from './threshold-signals'
+import { decouplingCheck, recoveryCheck, efTrend, aerobicFloor, type RideSignal } from './threshold-signals'
 
 const ride = (np: number, decoupling: number, durationMin = 45, vi = 1.03): RideSignal => ({ np, hr: 150, decoupling, durationMin, vi })
 
@@ -27,6 +27,25 @@ describe('decouplingCheck', () => {
   })
   it('ignores INTERVAL/surgey rides near the FTP (high VI) — drift is only valid on a steady effort (JM: "bogus")', () => {
     expect(decouplingCheck([ride(248, 9, 45, 1.15), ride(250, 11, 45, 1.22)], 250).verdict).toBe('thin')
+  })
+})
+
+// #508 — the aerobic-efficiency floor (JM: 170 W steady in Z2 ⇒ FTP well above a 220 read)
+describe('aerobicFloor', () => {
+  it('holding 170 W at a steady Z2 HR (75% of max) ⇒ FTP ≥ ~220+ (a lower bound, not a lowball)', () => {
+    const r = aerobicFloor([{ np: 170, hr: 139, decoupling: 2, durationMin: 60, vi: 1.03 }], 185)!
+    expect(r).not.toBeNull()
+    expect(r.floor).toBeGreaterThanOrEqual(220)
+    expect(r.note).toMatch(/at least/i)
+  })
+  it('a stronger aerobic ride raises the floor', () => {
+    const easy = aerobicFloor([{ np: 150, hr: 135, decoupling: 2, durationMin: 45, vi: 1.03 }], 185)!
+    const strong = aerobicFloor([{ np: 200, hr: 140, decoupling: 2, durationMin: 45, vi: 1.03 }], 185)!
+    expect(strong.floor).toBeGreaterThan(easy.floor)
+  })
+  it('needs a max HR; ignores near-max / surgey rides (not aerobic)', () => {
+    expect(aerobicFloor([{ np: 170, hr: 139, decoupling: 2, durationMin: 60, vi: 1.03 }], null)).toBeNull()
+    expect(aerobicFloor([{ np: 260, hr: 178, decoupling: 8, durationMin: 30, vi: 1.2 }], 185)).toBeNull()
   })
 })
 

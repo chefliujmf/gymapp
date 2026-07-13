@@ -23,6 +23,23 @@ export function decouplingCheck(rides: RideSignal[], ftp: number | null | undefi
   return { verdict: 'too-high', nearN: near.length, avgDrift, note: `at ~${ftp} W your heart rate crept up ${avgDrift}% — that's above what you can hold, so ${ftp} W looks high` }
 }
 
+// ── Aerobic-efficiency FLOOR (JM's Z2 argument) ──────────────────────────────
+// Holding a power at a clearly sub-threshold, STEADY heart rate means that power is only a FRACTION of FTP (the HR
+// zone caps how hard it can be) — so FTP is AT LEAST power / (that fraction's upper bound). This CONFIRMS a higher
+// FTP from easy riding and REFUTES a too-low estimate: 170 W held at a steady Z2 HR ⇒ FTP ≥ ~227, so a 220 read is
+// wrong (if FTP were 220, 170 W would be Z3, not Z2). A conservative lower bound — never over-claims.
+export interface AerobicFloor { floor: number; atW: number; note: string }
+export function aerobicFloor(rides: RideSignal[], maxHr: number | null | undefined): AerobicFloor | null {
+  if (!maxHr || maxHr < 120) return null
+  const cands = (rides || []).filter((r) => r && r.np > 0 && r.hr >= maxHr * 0.6 && r.hr <= maxHr * 0.88 && r.durationMin >= 30 && (r.vi == null || r.vi <= 1.06))
+  if (!cands.length) return null
+  // upper bound on how much of FTP the power can be, given its HR zone (% of max HR) → a CONSERVATIVE floor
+  const fracUpper = (hr: number) => { const p = hr / maxHr; return p <= 0.78 ? 0.75 : p <= 0.88 ? 0.9 : 0.98 } // Z2 ≤75% FTP · Z3 ≤90% · near-threshold ≤98%
+  let floor = 0, atW = 0
+  for (const r of cands) { const f = r.np / fracUpper(r.hr); if (f > floor) { floor = f; atW = r.np } }
+  return { floor: Math.round(floor), atW: Math.round(atW), note: `you hold ${Math.round(atW)} W at an easy, steady heart rate — so your FTP is at least ~${Math.round(floor)} W` }
+}
+
 // ── Next-day recovery (HRV response) ─────────────────────────────────────────
 // A session AT/below threshold is recoverable — HRV rebounds by the next morning; a session ABOVE it suppresses HRV.
 // Given a hard ride's intensity-factor (NP/FTP) and the HRV change the next morning vs the athlete's baseline, tell

@@ -10,7 +10,7 @@ import { athleteProfile } from './athlete-profile'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, vo2ScienceRows, confLabel } from './vo2max-submax'
 import { vo2maxConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, modelFitConfidence, type Confidence } from './benchmark-confidence'
 import { ftpEstimate, thresholdPaceFromHrPace, maxHrFromAge } from './benchmark-estimate' // #5007 — honest multi-source estimate + confidence · #497 HR-pace threshold · #507 age max-HR
-import { decouplingCheck, type RideSignal } from './threshold-signals' // #508 — multi-signal engine: cardiac-drift confirms/flags the FTP
+import { decouplingCheck, aerobicFloor, type RideSignal } from './threshold-signals' // #508 — multi-signal engine: cardiac-drift + aerobic-efficiency floor confirm/flag the FTP
 
 // #236 — benchmarks = MANUAL vs COMPUTED. Tiles show the in-use value; tap → a sheet with BOTH values,
 // an input (editable only in Manual), and a Manual|Computed toggle. A per-stat preference (user.statPrefs)
@@ -186,6 +186,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const prefFor = (k: string) => (user?.statPrefs as Partial<Record<string, string>> | undefined)?.[k] ?? 'auto'
   const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftp) : (ftpEst.best ?? eftp ?? ftpManual) // #5007 computed side = the blended estimate
   const decoupCheck = decouplingCheck(rideSignals, chosenFtp) // #508 — does your near-FTP riding hold steady (confirms) or drift (FTP too high)?
+  const aeroFloor = aerobicFloor(rideSignals, maxHr ?? compMaxHr) // #508 — your Z2 efficiency proves FTP is AT LEAST this (JM: 170 W steady in Z2 ⇒ not 220)
   const chosenPace = prefFor('thresholdPace') === 'manual' ? (paceManual ?? paceComputed) : (paceComputed ?? paceManual)
   // #506e — CONSISTENCY (JM): dependent stats must move WITH the anchor. VO₂max now reads the CHOSEN FTP + max-HR
   // (what the picker has in use), NOT the raw manual — so switching FTP to Auto moves VO₂max the same way it moves
@@ -290,6 +291,8 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
         if (showBlend) rows.unshift({ name: 'Platyplus estimate', formula: 'the computed blend', value: `${ftpEst.best} W`, inUse: true })
         // #508 — cardiac-drift confirmation is KEY info → place it right UNDER the value in use, not at the bottom.
         rows.splice(1, 0, { name: 'Cardiac drift', formula: decoupCheck.note, value: decoupCheck.avgDrift != null ? `${decoupCheck.avgDrift}%` : (decoupCheck.verdict === 'confirms' ? '✓' : decoupCheck.verdict === 'too-high' ? '⚠︎' : '—'), inUse: false })
+        // #508 — aerobic-efficiency FLOOR: your Z2 riding proves FTP is AT LEAST this (JM's argument, refutes a low read).
+        if (aeroFloor) rows.splice(2, 0, { name: 'Aerobic efficiency', formula: aeroFloor.note, value: `≥ ${aeroFloor.floor} W`, inUse: false })
         return rows
       })(),
       sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your power curve → tighter eFTP.',
