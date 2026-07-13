@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { localISO } from '../date'
-import { fetchWellness, fetchEfTrend, fetchPowerCurve, type IcuWellness, type EfTrend, type PowerCurve } from '../intervals'
+import { fetchWellness, fetchEfTrend, type IcuWellness, type EfTrend } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
-import { TrendChart, InfoDot, DurationCurve } from '../charts'
+import { TrendChart, InfoDot } from '../charts'
 import { hasModule } from '../modules'
 import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
 import { last } from './Fitness'
@@ -20,27 +20,8 @@ function eftpInsight(a: (number | null)[]): string {
 import { BenchmarksCard } from '../Benchmarks'
 import SeasonCompare from '../SeasonCompare'
 
-// #508 — the engine's centrepiece on the Cycling page: your power-duration curve, fitted, with the CP asymptote + W′.
-// Every benchmark below (FTP · CP · W′ · TTE · VO₂max) is derived from THIS curve — one coherent read.
-function PowerCurveCard() {
-  const [curve, setCurve] = useState<PowerCurve | null>(null)
-  useEffect(() => { fetchPowerCurve(365).then(setCurve).catch(() => {}) }, [])
-  if (!curve || !(curve.secs && curve.secs.length >= 3)) return null
-  const cp = curve.cp ?? null
-  const wPrime = curve.wPrime != null ? Math.round(curve.wPrime / 100) / 10 : null // kJ, 0.1 precision
-  const at = (t: number) => { for (let i = 0; i < curve.secs.length; i++) if (curve.secs[i] >= t) return curve.watts[i]; return null }
-  const map5 = at(300)
-  const insight = cp != null
-    ? `One fit, your whole engine: Critical Power ${Math.round(cp)} W is the sustainable floor${wPrime != null ? `, W′ ${wPrime} kJ the battery above it` : ''}. FTP, TTE and your zones all read off this curve — change one, the rest follow.`
-    : 'Your power-duration curve. CP, W′, FTP and TTE will all read off it once intervals has efforts across durations.'
-  return (
-    <div className="card" style={{ padding: 14, marginBottom: 12 }}>
-      <div className="section-title" style={{ fontSize: 13, marginBottom: 4 }}>Your power curve, fitted <InfoDot text="The best power you can hold for each duration (log-time axis). The dashed line is Critical Power — the floor you can sustain indefinitely; the shaded area above it is W′, your anaerobic battery. FTP, TTE and your zones are all derived from this one curve." /></div>
-      <DurationCurve secs={curve.secs} values={curve.watts} asymptote={cp} reserve={curve.wPrime} unit=" W" reserveLabel={wPrime != null ? `W′ ${wPrime} kJ` : undefined} anchors={[{ sec: 300, label: map5 != null ? `${map5} · MAP` : '5m' }, { sec: 1200, label: '20m' }]} />
-      <p className="meta" style={{ marginTop: 6, color: 'var(--text-dim)' }}>{insight}</p>
-    </div>
-  )
-}
+// #508 — the power-duration curve now lives INSIDE SeasonCompare (one merged curve: fitted CP/W′ model + a season
+// toggle), so the standalone PowerCurveCard was removed to avoid two curves (JM: "why 2 power curves").
 
 // #225 — Cycling per-sport stats: power curve · eFTP · VO₂max · W/kg. Split out of /fitness (which
 // is now global Load & Form only).
@@ -86,7 +67,6 @@ export default function CyclingStats() {
           {/* #385 — same polished benchmark cards as Global, filtered to cycling (FTP · VO₂max · Max HR). */}
           <BenchmarksCard only={['ftp', 'cp', 'wPrime', 'vo2max', 'tteRide', 'maxHr']} profile="cycling" />
           {/* #508 — the power-duration curve BELOW the benchmarks (JM: not at the top). */}
-          <PowerCurveCard />
           <DateRangeFilter presets={TRAINING_PRESETS} from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
           {rows === null ? <p className="meta">Loading…</p> : (
             <>

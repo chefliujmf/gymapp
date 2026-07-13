@@ -76,34 +76,36 @@ function valueAtSec(pts: [number, number][], sec: number): number | null {
   for (const [s, v] of pts) if (s >= sec) return v
   return pts.length ? pts[pts.length - 1][1] : null
 }
-export function DurationCurve({ secs, values, asymptote, reserve, unit = '', fmt = (v) => String(Math.round(v)), reserveLabel, anchors = [], height = 168 }: {
-  secs: number[]; values: number[]; asymptote?: number | null; reserve?: number | null; unit?: string; fmt?: (v: number) => string
-  reserveLabel?: string; anchors?: { sec: number; label: string }[]; height?: number
+export function DurationCurve({ secs, values, asymptote, reserve, compare, unit = '', fmt = (v) => String(Math.round(v)), reserveLabel, anchors = [], height = 168 }: {
+  secs: number[]; values: number[]; asymptote?: number | null; reserve?: number | null
+  compare?: { asymptote?: number | null; reserve?: number | null; secs?: number[]; values?: number[] } | null // #508 overlay a 2nd season
+  unit?: string; fmt?: (v: number) => string; reserveLabel?: string; anchors?: { sec: number; label: string }[]; height?: number
 }) {
   const clipId = useId()
   const W = 344, padL = 48, padR = 12, padT = 14, padB = 22
   const plotW = W - padL - padR, plotH = height - padT - padB
   const sMin = 180, sMax = 3600, L = Math.log10(sMin), R = Math.log10(sMax)
   const lx = (s: number) => padL + (Math.log10(Math.max(sMin, Math.min(sMax, s))) - L) / (R - L) * plotW
-  // #508 — render the FITTED model curve value(t) = asymptote + reserve/t (CP + W′/t · CS + D′/t): a smooth descent to
-  // the CP/CS floor, NO jagged raw-mean-max cliff (JM: "wtf are those graphs / too thick"). Fall back to a sampled
-  // real mean-max only when the model params aren't available. 3–60 min aerobic/threshold window, log-time x-axis.
+  // #508 — a season's curve = the FITTED model value(t)=asymptote+reserve/t (CP+W′/t · CS+D′/t): a smooth descent to the
+  // CP/CS floor, NO jagged mean-max cliff (JM: "wtf are those graphs / too thick") — or a sampled real mean-max when the
+  // model params are absent. `compare` overlays a 2nd season (JM's merged curve: this=green + compared=blue + a toggle).
+  const build = (a?: number | null, r?: number | null, ss?: number[], vv?: number[]): [number, number][] => {
+    if (a != null && a > 0 && r != null && r > 0) return Array.from({ length: 48 }, (_, i) => { const t = Math.pow(10, L + ((R - L) * i) / 47); return [t, a + r / t] as [number, number] })
+    const raw = (ss || []).map((s, i) => [s, (vv || [])[i]] as [number, number]).filter(([, v]) => v > 0).sort((x, y) => x[0] - y[0])
+    const atSec = (t: number): number | null => { for (const [s, v] of raw) if (s >= t) return v; return null }
+    return [180, 240, 300, 420, 600, 780, 1020, 1200, 1500, 1800, 2400, 3000, 3600].map((t) => { const v = atSec(t); return v != null ? ([t, v] as [number, number]) : null }).filter((p): p is [number, number] => p != null)
+  }
   const haveModel = asymptote != null && asymptote > 0 && reserve != null && reserve > 0
   const modelV = (t: number) => (asymptote as number) + (reserve as number) / t
-  let pts: [number, number][]
-  if (haveModel) {
-    pts = Array.from({ length: 48 }, (_, i) => { const t = Math.pow(10, L + ((R - L) * i) / 47); return [t, modelV(t)] as [number, number] })
-  } else {
-    const raw = secs.map((s, i) => [s, values[i]] as [number, number]).filter(([, v]) => v > 0).sort((a, b) => a[0] - b[0])
-    const atSec = (t: number): number | null => { for (const [s, v] of raw) if (s >= t) return v; return null }
-    const KEY = [180, 240, 300, 420, 600, 780, 1020, 1200, 1500, 1800, 2400, 3000, 3600]
-    pts = KEY.map((t) => { const v = atSec(t); return v != null ? ([t, v] as [number, number]) : null }).filter((p): p is [number, number] => p != null)
-  }
+  const pts = build(asymptote, reserve, secs, values)
+  const cmp = compare ? build(compare.asymptote, compare.reserve, compare.secs, compare.values) : []
   if (pts.length < 3) return <div className="meta" style={{ padding: '10px 4px' }}>Your curve appears here once intervals has efforts across a few durations.</div>
-  const vs = pts.map((p) => p[1])
-  const vMax = Math.max(...vs) * 1.03, vMin = Math.min(asymptote ?? Math.min(...vs), Math.min(...vs)) * 0.97
+  const allV = [...pts, ...cmp].map((p) => p[1])
+  const asyms = [asymptote, compare?.asymptote].filter((a): a is number => a != null && a > 0)
+  const vMax = Math.max(...allV) * 1.03, vMin = Math.min(...allV, ...asyms) * 0.97
   const ly = (v: number) => padT + (1 - (v - vMin) / (vMax - vMin)) * plotH
   const xy = pts.map((p) => [lx(p[0]), ly(p[1])] as [number, number])
+  const cmpXy = cmp.map((p) => [lx(p[0]), ly(p[1])] as [number, number])
   const cpY = asymptote != null ? ly(asymptote) : null
   const ticks: [number, string][] = [[180, '3m'], [300, '5m'], [1200, '20m'], [3600, '60m']]
   // #508 — Y-AXIS: 4 labelled gridlines through fmt (watts, or pace as m:ss). JM: "NO Y AXIS".
@@ -122,6 +124,7 @@ export function DurationCurve({ secs, values, asymptote, reserve, unit = '', fmt
       {cpY != null && <path d={`M${xy[0][0]},${xy[0][1]} ${xy.map((p) => `L${p[0]},${p[1]}`).join(' ')} L${xy[xy.length - 1][0]},${cpY} L${xy[0][0]},${cpY} Z`} fill="rgba(155,140,255,.12)" clipPath={`url(#${clipId})`} />}
       {cpY != null && <line x1={padL} y1={cpY} x2={W - padR} y2={cpY} stroke="#9b8cff" strokeWidth={1.3} strokeDasharray="5 4" />}
       {cpY != null && <text x={W - padR} y={cpY - 4} fill="#9b8cff" fontSize={10} textAnchor="end" fontWeight={700}>{fmt(asymptote as number)}{unit}</text>}
+      {cmpXy.length > 2 && <path d={smoothPath(cmpXy)} fill="none" stroke="#5ec8ff" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />}
       <path d={smoothPath(xy)} fill="none" stroke="#34e07d" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
       {anchors.map((a, i) => { const v = haveModel ? modelV(a.sec) : valueAtSec(pts, a.sec); if (v == null) return null; return <circle key={i} cx={lx(a.sec)} cy={ly(v)} r={3} fill="#34e07d" /> })}
       {reserveLabel && cpY != null && <text x={lx(480)} y={Math.max(padT + 11, cpY - 12)} fill="#9b8cff" fontSize={10} fontWeight={700} textAnchor="middle">{reserveLabel}</text>}

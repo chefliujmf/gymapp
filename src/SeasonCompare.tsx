@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchPowerSeasons, fetchPaceSeasons, type PowerSeason, type PaceSeason } from './intervals'
-import { PowerCurveChart, PaceCurveChart } from './charts'
+import { DurationCurve } from './charts' // #508 — merged fitted curve (was PowerCurveChart/PaceCurveChart)
 import { POWER_DURATIONS, PACE_DISTANCES, seasonDelta } from './season-compare'
 import { fmtPace } from './running-paces'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, fmtTte } from './tte'
@@ -28,21 +28,18 @@ export default function SeasonCompare({ sport, weight, threshold, ftp }: { sport
   }, [sport])
   const seasons: (PowerSeason | PaceSeason)[] | null | undefined = sport === 'cycling' ? power : pace
   if (seasons === undefined) return <div className="card"><div className="sc-load">Loading season comparison…</div></div>
-  if (!seasons || seasons.length < 2) return null // no key / not enough data → hide (benchmarks above still show)
+  if (!seasons || seasons.length < 1 || !seasons[0]?.secs?.length) return null // #508 — was <2; the curve is now the ONLY curve, so show it with 1 season too (compare is gated on a 2nd below). No key / no data → hide.
   return <SeasonCompareView sport={sport} seasons={seasons} weight={weight} threshold={threshold} ftp={ftp} />
 }
 
 // Presentational (given loaded season data) — separated so it can be render-verified with real data.
 export function SeasonCompareView({ sport, seasons, weight, threshold, ftp }: { sport: 'cycling' | 'running'; seasons: (PowerSeason | PaceSeason)[]; weight?: number | null; threshold?: number | null; ftp?: number | null }) {
-  const [pick, setPick] = useState('all') // compared season key
+  const [pick, setPick] = useState('all') // #508 'this' = this-season only; else the compared season key
+  const canCompare = seasons.length >= 2 // #508 — only overlay/toggle when there's a 2nd season to compare
+  const comparing = canCompare && pick !== 'this'
   const thisS = seasons[0]
-  const cmp = seasons.find((s) => s.key === pick) || seasons[seasons.length - 1]
+  const cmp = seasons.find((s) => s.key === (comparing ? pick : 'all')) || seasons[seasons.length - 1]
   const wkg = (w: number | null) => (w != null && weight ? ` ${(w / weight).toFixed(2)}` : '')
-
-  // curve overlay + insight
-  const overlay = sport === 'cycling'
-    ? { secs: (cmp as PowerSeason).secs, watts: (cmp as PowerSeason).watts, color: 'var(--blue, #5aa9ff)' }
-    : { secs: (cmp as PaceSeason).secs, pace: (cmp as PaceSeason).pace, color: 'var(--blue, #5aa9ff)' }
 
   const rows = sport === 'cycling'
     ? POWER_DURATIONS.map((d, i) => {
@@ -78,22 +75,26 @@ export function SeasonCompareView({ sport, seasons, weight, threshold, ftp }: { 
   return (
     <>
       <div className="card sc-card">
-        <div className="sc-title">{sport === 'cycling' ? 'Power' : 'Pace'} curve · 2-season overlay</div>
+        <div className="sc-title">Your {sport === 'cycling' ? 'power' : 'pace'} curve</div>
         <div className="sc-legend">
           <span><i className="sc-dot" style={{ background: 'var(--accent)' }} />This season</span>
-          <span><i className="sc-dot" style={{ background: 'var(--blue, #5aa9ff)' }} />{cmp.label}</span>
+          {comparing && <span><i className="sc-dot" style={{ background: '#5ec8ff' }} />{cmp.label}</span>}
         </div>
         {sport === 'cycling'
-          ? <PowerCurveChart secs={(thisS as PowerSeason).secs} watts={(thisS as PowerSeason).watts} overlay={overlay as { secs: number[]; watts: number[]; color?: string }} height={190} />
-          : <PaceCurveChart secs={(thisS as PaceSeason).secs} pace={(thisS as PaceSeason).pace} overlay={overlay as { secs: number[]; pace: number[]; color?: string }} height={190} />}
+          ? <DurationCurve secs={(thisS as PowerSeason).secs} values={(thisS as PowerSeason).watts} asymptote={(thisS as PowerSeason).cp} reserve={(thisS as PowerSeason).wPrime} compare={comparing ? { asymptote: (cmp as PowerSeason).cp, reserve: (cmp as PowerSeason).wPrime, secs: (cmp as PowerSeason).secs, values: (cmp as PowerSeason).watts } : null} unit=" W" reserveLabel={kj((thisS as PowerSeason).wPrime) != null ? `W′ ${kj((thisS as PowerSeason).wPrime)} kJ` : undefined} height={176} />
+          : <DurationCurve secs={(thisS as PaceSeason).secs} values={(thisS as PaceSeason).pace.map((p) => (p > 0 ? 1000 / p : 0))} asymptote={(thisS as PaceSeason).cs} reserve={(thisS as PaceSeason).dPrime} compare={comparing ? { asymptote: (cmp as PaceSeason).cs, reserve: (cmp as PaceSeason).dPrime, secs: (cmp as PaceSeason).secs, values: (cmp as PaceSeason).pace.map((p) => (p > 0 ? 1000 / p : 0)) } : null} unit="/km" fmt={(mps) => fmtPace(Math.round(1000 / mps))} reserveLabel={mtr((thisS as PaceSeason).dPrime) != null ? `D′ ${mtr((thisS as PaceSeason).dPrime)} m` : undefined} height={176} />}
+        {canCompare && (
         <div className="sc-pick">
-          <span className="meta">Compare to:</span>
+          <span className="meta">Show:</span>
+          <button className={'sc-pill' + (!comparing ? ' on' : '')} onClick={() => setPick('this')}>This season</button>
           {seasons.slice(1).map((s) => (
-            <button key={s.key} className={'sc-pill' + (pick === s.key ? ' on' : '')} onClick={() => setPick(s.key)}>{s.label}</button>
+            <button key={s.key} className={'sc-pill' + (pick === s.key ? ' on' : '')} onClick={() => setPick(s.key)}>vs {s.label}</button>
           ))}
         </div>
+        )}
       </div>
 
+      {comparing && (
       <div className="card sc-card">
         <div className="sc-title">Best efforts · this season vs {cmp.label.toLowerCase()}</div>
         <div className="sc-tablewrap">
@@ -126,6 +127,7 @@ export function SeasonCompareView({ sport, seasons, weight, threshold, ftp }: { 
         </div>
         <p className="sc-insight">{seasonInsight(sport, thisS, cmp)}</p>
       </div>
+      )}
     </>
   )
 }
