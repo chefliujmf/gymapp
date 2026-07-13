@@ -83,9 +83,12 @@ export function DurationCurve({ secs, values, asymptote, unit = '', fmt = (v) =>
   const clipId = useId()
   const W = 344, padL = 36, padR = 12, padT = 16, padB = 22
   const plotW = W - padL - padR, plotH = height - padT - padB
-  const pts = secs.map((s, i) => [s, values[i]] as [number, number]).filter(([s, v]) => s >= 55 && s <= 4200 && v > 0).sort((a, b) => a[0] - b[0])
-  if (pts.length < 3) return <div className="meta" style={{ padding: '10px 4px' }}>Your curve appears here once intervals has a few efforts across durations.</div>
-  const sMin = 60, sMax = 3600, L = Math.log10(sMin), R = Math.log10(sMax)
+  // #508 — focus on the AEROBIC/threshold range (≈3–60 min). Short sprints (<3 min) are W′-dominated and compress the
+  // FTP-relevant region into the bottom of the chart; dropping them makes the curve read like the mock (clean descent
+  // to the CP/CS floor). W′/D′ still shows as the area above the asymptote at the short (3–15 min) end.
+  const pts = secs.map((s, i) => [s, values[i]] as [number, number]).filter(([s, v]) => s >= 175 && s <= 4200 && v > 0).sort((a, b) => a[0] - b[0])
+  if (pts.length < 3) return <div className="meta" style={{ padding: '10px 4px' }}>Your curve appears here once intervals has efforts across a few durations.</div>
+  const sMin = 180, sMax = 3600, L = Math.log10(sMin), R = Math.log10(sMax)
   const lx = (s: number) => padL + (Math.log10(Math.max(sMin, Math.min(sMax, s))) - L) / (R - L) * plotW
   const vs = pts.map((p) => p[1])
   const vMax = Math.max(...vs) * 1.04, vMin = Math.min(asymptote ?? Math.min(...vs), Math.min(...vs)) * 0.96

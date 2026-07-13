@@ -17,10 +17,10 @@ export function decouplingCheck(rides: RideSignal[], ftp: number | null | undefi
   // "near threshold" = a STEADY effort (variability index ≤ 1.06 — NOT intervals/surges, which spike drift regardless),
   // ≥30 min, with normalized power within 88–102% of the candidate FTP. Decoupling off a surgey ride is meaningless.
   const near = (rides || []).filter((r) => r && r.np > 0 && r.durationMin >= 30 && r.np >= ftp * 0.88 && r.np <= ftp * 1.02 && r.vi != null && r.vi <= 1.06)
-  if (near.length < 2) return { verdict: 'thin', nearN: near.length, avgDrift: null, note: `not enough STEADY riding near ${ftp} W to confirm it — one steady effort there would` }
+  if (near.length < 2) return { verdict: 'thin', nearN: near.length, avgDrift: null, note: `to confirm ${ftp} W: ride at ~${ftp} W and HOLD it for 20+ min (flat road or trainer, no surges). None logged near it yet.` }
   const avgDrift = Math.round((near.reduce((s, r) => s + r.decoupling, 0) / near.length) * 10) / 10
-  if (avgDrift <= 5) return { verdict: 'confirms', nearN: near.length, avgDrift, note: `your rides near ${ftp} W hold steady (${avgDrift}% HR drift) — it's sustainable` }
-  return { verdict: 'too-high', nearN: near.length, avgDrift, note: `your HR drifts ${avgDrift}% at ~${ftp} W — above a sustainable threshold, so ${ftp} W looks high` }
+  if (avgDrift <= 5) return { verdict: 'confirms', nearN: near.length, avgDrift, note: `you held ~${ftp} W and your heart rate stayed flat (${avgDrift}% drift) — it's sustainable` }
+  return { verdict: 'too-high', nearN: near.length, avgDrift, note: `at ~${ftp} W your heart rate crept up ${avgDrift}% — that's above what you can hold, so ${ftp} W looks high` }
 }
 
 // ── Next-day recovery (HRV response) ─────────────────────────────────────────

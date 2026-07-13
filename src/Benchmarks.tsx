@@ -274,16 +274,20 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       conf: toConf(ftpEst.conf), // #5007 — blended estimate + honest confidence (recency · agreement · test-backed)
       narr: <><b>{ftpEst.why}</b><br /><br /><b>Platyplus's own</b> multi-signal read — your eFTP, Critical Power, best 20-min, HR cost and cardiac drift, weighted by freshness. No single test defines it.</>,
       sci: (() => { // #506e — show what each source IS (the numbers already show higher/lower — no repeated "reads lower than X", JM). IN USE follows the PICKER: the blend when Auto/Computed, your value when Manual.
-        const usingComputed = prefFor('ftp') !== 'manual' && ftpEst.best != null
-        const DESC: Record<string, string> = { 'you train by': 'the value you train by', 'intervals eFTP': 'from your power · no formal test', 'from CP': 'your power-duration ceiling', 'best 20-min ×0.95': 'your best recent 20-min', 'HR vs power': 'the HR cost of your rides' }
+        // #508 (JM: "260 low-confidence but all reads below — inconsistent") — the number in use is your TRAINED value
+        // (kept as the anchor, since the low reads are under-reads, not proof it's wrong). Only show a separate
+        // "Platyplus estimate" row when there's a GENUINE computed blend that DIFFERS from your value — else 260 was
+        // being mislabeled as "the blend" while every source read lower. When anchored, "you train by" is IN USE.
+        const anchored = ftpManual != null && ftpEst.best != null && Math.abs((ftpEst.best as number) - ftpManual) <= 2
+        const showBlend = prefFor('ftp') !== 'manual' && ftpEst.best != null && !anchored
+        const DESC: Record<string, string> = { 'you train by': 'the value you train by', 'intervals eFTP': 'from your power · no formal test', 'from CP': 'your power-duration ceiling', 'best 20-min ×0.95': 'your best recent 20-min', 'HR vs power': 'rough — extrapolated from easy rides, under-reads' }
         const rows: SciRow[] = ftpEst.sources.map((s) => ({
           name: s.name,
           formula: s.tag === 'stale' ? 'stale — refresh with a hard effort' : s.tag === 'off' ? 'not available' : (DESC[s.name] || ''),
           value: s.value != null ? `${s.value} W` : '—',
-          inUse: !usingComputed && s.tag === 'primary', // your value is IN USE only when the picker is on Manual
+          inUse: !showBlend && s.tag === 'primary', // your trained value is in use unless a distinct computed blend is
         }))
-        // #506e — when Auto/Computed, the BLEND is what's in use (fixes "IN USE 260" while the header shows 250)
-        if (usingComputed) rows.unshift({ name: 'Platyplus estimate', formula: 'the blend now in use', value: `${ftpEst.best} W`, inUse: true })
+        if (showBlend) rows.unshift({ name: 'Platyplus estimate', formula: 'the computed blend', value: `${ftpEst.best} W`, inUse: true })
         // #508 — cardiac-drift confirmation is KEY info → place it right UNDER the value in use, not at the bottom.
         rows.splice(1, 0, { name: 'Cardiac drift', formula: decoupCheck.note, value: decoupCheck.avgDrift != null ? `${decoupCheck.avgDrift}%` : (decoupCheck.verdict === 'confirms' ? '✓' : decoupCheck.verdict === 'too-high' ? '⚠︎' : '—'), inUse: false })
         return rows
