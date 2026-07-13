@@ -124,6 +124,32 @@ export function ftpFromHrPower(points: HrPowerPoint[], maxHr: number | null | un
   return { best: Math.round(at(0.88) * (1 - curve)), lo: Math.round(at(0.85) * (1 - curve)), hi: Math.round(at(0.91)), r2, n, extrapBpm }
 }
 
+// #497 running analog of ftpFromHrPower — infer THRESHOLD PACE from the HR cost of steady/easy runs when there's
+// no recent hard test. Regress pace (sec/km) on HR and extrapolate to threshold HR (~0.88·maxHr). Pace FALLS as HR
+// rises (negative slope); linear extrapolation over-reads speed near threshold (the pace–HR curve flattens), so we
+// shade the projected pace conservatively SLOWER. Returns null unless there's a real HR range and a sane slope.
+export interface HrPacePoint { paceSecKm: number; hr: number }
+export interface HrPaceThreshold { best: number; lo: number; hi: number; r2: number; n: number; extrapBpm: number }
+export function thresholdPaceFromHrPace(points: HrPacePoint[], maxHr: number | null | undefined): HrPaceThreshold | null {
+  const pts = (points || []).filter((p) => p && p.paceSecKm > 120 && p.paceSecKm < 900 && p.hr > 0)
+  if (pts.length < 2 || !maxHr || maxHr < 120) return null
+  const n = pts.length
+  const mHr = pts.reduce((s, p) => s + p.hr, 0) / n
+  const mP = pts.reduce((s, p) => s + p.paceSecKm, 0) / n
+  let sHrP = 0, sHrHr = 0, sPP = 0
+  for (const p of pts) { const dh = p.hr - mHr, dp = p.paceSecKm - mP; sHrP += dh * dp; sHrHr += dh * dh; sPP += dp * dp }
+  if (sHrHr <= 0) return null // all at ~one HR → no slope to fit
+  const slope = sHrP / sHrHr // sec/km per bpm
+  if (slope >= 0) return null // pace must FALL (get faster) as HR rises for this to mean anything
+  const intercept = mP - slope * mHr
+  const r2 = sPP > 0 ? (sHrP * sHrP) / (sHrHr * sPP) : 0
+  const at = (pct: number) => intercept + slope * (maxHr * pct) // extrapolated pace at a threshold-HR share
+  const hrHi = Math.max(...pts.map((p) => p.hr))
+  const extrapBpm = Math.max(0, maxHr * 0.88 - hrHi) // bpm projected past the data's top point
+  const curve = Math.min(0.06, (extrapBpm / (maxHr * 0.10)) * 0.05) // over-reads speed near threshold → shade pace slower
+  return { best: Math.round(at(0.88) * (1 + curve)), lo: Math.round(at(0.91)), hi: Math.round(at(0.85) * (1 + curve)), r2, n, extrapBpm }
+}
+
 // ---------------------------------------------------------------------------
 // Per-metric assemblers — build the sources, run the engine, craft an honest why.
 // ---------------------------------------------------------------------------
@@ -188,13 +214,17 @@ export interface ThresholdPaceInputs {
   recentTt?: number | null; ttAgeDays?: number | null  // a recent time-trial / race threshold pace
   vdot?: number | null                                  // pace implied by best 5k (VDOT)
   manual?: number | null
+  hrPace?: HrPacePoint[]                                 // #497 (pace, HR) points from steady runs → HR-pace threshold
+  maxHr?: number | null                                  // #497 needed to extrapolate the HR-pace line to threshold HR
 }
 export function thresholdPaceEstimate(inp: ThresholdPaceInputs): Estimate {
   const FRESH = 21, tol = 0.02
+  const hrp = thresholdPaceFromHrPace(inp.hrPace || [], inp.maxHr) // #497 — submaximal HR-pace threshold (great when there's no test)
   const sources: Src[] = [
     { name: 'from critical speed', value: inp.csDerived, ageDays: inp.csAgeDays ?? null, kind: 'model' },
     { name: 'recent TT / race', value: inp.recentTt ?? null, ageDays: inp.ttAgeDays ?? null, kind: 'test' },
     { name: 'VDOT (best 5k)', value: inp.vdot ?? null, ageDays: null, kind: 'derived' },
+    { name: 'HR vs pace', value: hrp ? hrp.best : null, ageDays: null, kind: 'model' }, // #497 — from the HR cost of steady runs
     { name: 'you train by', value: inp.manual ?? null, ageDays: null, kind: 'manual' },
   ]
   const e = honestEstimate(sources, { freshDays: FRESH, tol })

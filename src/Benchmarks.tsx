@@ -9,7 +9,7 @@ import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from '
 import { athleteProfile } from './athlete-profile'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, confLabel } from './vo2max-submax'
 import { vo2maxConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, modelFitConfidence, type Confidence } from './benchmark-confidence'
-import { ftpEstimate } from './benchmark-estimate' // #5007 — honest multi-source estimate + confidence
+import { ftpEstimate, thresholdPaceFromHrPace } from './benchmark-estimate' // #5007 — honest multi-source estimate + confidence · #497 HR-pace threshold
 
 // #236 — benchmarks = MANUAL vs COMPUTED. Tiles show the in-use value; tap → a sheet with BOTH values,
 // an input (editable only in Manual), and a Manual|Computed toggle. A per-stat preference (user.statPrefs)
@@ -119,6 +119,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const [eftpAgeDays, setEftpAgeDays] = useState<number | null>(null) // #5007 recency of the eFTP (it decays between hard rides)
   const [ftp20, setFtp20] = useState<number | null>(null) // #5007 best 20-min power → FTP ≈ ×0.95
   const [hrPower, setHrPower] = useState<{ watts: number; hr: number }[]>([]) // #497 (power,HR) points → infer FTP from the HR cost of rides
+  const [hrPace, setHrPace] = useState<{ paceSecKm: number; hr: number }[]>([]) // #497 (pace,HR) points → infer threshold pace from the HR cost of runs
   const [paceEst, setPaceEst] = useState<number | null>(null)
   const [map5, setMap5] = useState<number | null>(null) // #337 best 5-min power (MAP)
   const [pbWeight, setPbWeight] = useState<number | null>(null)
@@ -140,7 +141,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     if (!connected) return
     authApi.pullIcuAthlete().then(setPull).catch(() => {})
     authApi.runEstimate().then((r) => { if (r.available && r.thresholdPace) setPaceEst(r.thresholdPace) }).catch(() => {})
-    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? ''); setHrPower((p as { hrPower?: { watts: number; hr: number }[] }).hrPower ?? []) }).catch(() => {}) // #337 · #5007 ftp20 · #497 hrPower
+    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? ''); setHrPower((p as { hrPower?: { watts: number; hr: number }[] }).hrPower ?? []); setHrPace((p as { hrPace?: { paceSecKm: number; hr: number }[] }).hrPace ?? []) }).catch(() => {}) // #337 · #5007 ftp20 · #497 hrPower/hrPace
     fetchPowerCurve(365).then(setPowerCurve).catch(() => {}) // #401 TTE — a year of efforts for a stable CP/W′ + CS/D′ model fit
     fetchPaceCurve(365).then(setPaceCurve).catch(() => {}) // #401 running TTE
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)
@@ -183,6 +184,11 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // signals so a stale eFTP that disagrees with CP can't read "Strong". toConf maps the engine's 'good' onto the
   // existing bar classes (learn) so the CSS keeps working.
   const ftpEst = ftpEstimate({ eftp, eftpAgeDays, cp, best20: ftp20, manual: ftpManual, hrPower, maxHr: maxHr ?? compMaxHr }) // #497 — HR-power method now fed real ride data
+  // #497 running analog — threshold pace inferred from the HR cost of steady runs. Used as a FALLBACK: when the
+  // Critical-Speed model isn't ready (few/no hard runs) but there's HR-paired running, we still show a real number
+  // instead of "needs 4 runs" — so a runner's analysis is done off history, and it shows as its own method below.
+  const paceHr = thresholdPaceFromHrPace(hrPace, maxHr ?? compMaxHr)
+  const paceComputed = paceEst ?? (paceHr ? paceHr.best : null)
   const toConf = (c: { pct: number; cls: string; label: string }): Confidence => ({ pct: c.pct, cls: (c.cls === 'good' ? 'learn' : c.cls) as Confidence['cls'], label: c.label })
   // #403 — athlete-profile synthesis (rendered when a per-sport page passes `profile`). EF wires in Phase 2.
   // #464 — the insight must anchor on the CHOSEN FTP/pace (same `inUse` logic as the benchmark card), not the
@@ -190,7 +196,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // confusing on-page discrepancy. computed/auto → prefer the computed estimate; manual → the set value.
   const prefFor = (k: string) => (user?.statPrefs as Partial<Record<string, string>> | undefined)?.[k] ?? 'auto'
   const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftp) : (ftpEst.best ?? eftp ?? ftpManual) // #5007 computed side = the blended estimate
-  const chosenPace = prefFor('thresholdPace') === 'manual' ? (paceManual ?? paceEst) : (paceEst ?? paceManual)
+  const chosenPace = prefFor('thresholdPace') === 'manual' ? (paceManual ?? paceComputed) : (paceComputed ?? paceManual)
   const prof = profile ? athleteProfile(profile === 'cycling'
     ? { sport: 'cycling', threshold: chosenFtp, eftp, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
     : { sport: 'running', threshold: chosenPace, eftp: paceEst, tte: tteRun, cp: csPace, reserveKj: dPrimeM, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null
@@ -201,7 +207,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // a hard ~5-min effort. maxHR: no safe estimate exists — it needs a real max.
   const runsShort = runsRecent != null ? Math.max(1, 4 - runsRecent) : null
   const runsWord = runsShort === 1 ? '' : 's'
-  const paceGate = paceEst ? undefined : (runsRecent != null ? `after ~${runsShort} more run${runsWord} — needs ≥4 runs + ~25 km in 6 weeks incl. a hard effort (Critical-Speed model)` : 'after a few runs incl. one hard effort (Critical-Speed model)')
+  const paceGate = paceComputed ? undefined : (runsRecent != null ? `after ~${runsShort} more run${runsWord} — needs ≥4 runs + ~25 km in 6 weeks incl. a hard effort (Critical-Speed model)` : 'after a few runs incl. one hard effort (Critical-Speed model)')
   const doesCycle = (user?.sports || []).includes('cycling')
   // #362 — every learned stat answers "when will Computed land?" consistently: a COUNT where we can
   // count it (runs/nights), else the exact trigger event. VO₂max: cycling = a hard 5-min effort (MAP);
@@ -261,11 +267,16 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your power curve → tighter eFTP.',
     },
     {
-      key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceEst, computedSrc: 'from your recent runs (Critical Speed)', pending: paceGate, manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }),
-      chip: 'Critical Speed',
-      conf: thresholdPaceConfidence({ paceEst, runsRecent }),
-      narr: <>Modelled from your <b>recent runs</b> using the Critical-Speed method — the pace you could hold for ~an hour. It sharpens as you log more runs, especially harder efforts.</>,
-      sci: [{ name: 'Critical Speed', formula: 'from your recent runs · ~1 h pace', value: paceEst != null ? fmtPace(paceEst) : '—', inUse: paceEst != null }],
+      key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceComputed, computedSrc: paceEst != null ? 'from your recent runs (Critical Speed)' : 'from the HR cost of your runs', pending: paceGate, manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }),
+      chip: paceEst != null ? 'Critical Speed' : 'HR vs pace',
+      conf: thresholdPaceConfidence({ paceEst: paceComputed, runsRecent }),
+      narr: paceEst != null
+        ? <>Modelled from your <b>recent runs</b> using the Critical-Speed method — the pace you could hold for ~an hour. It sharpens as you log more runs, especially harder efforts.</>
+        : <>Inferred from the <b>heart-rate cost</b> of your steady runs — projecting your pace out to threshold HR — because there aren't enough hard efforts yet for the Critical-Speed model. A hard 20-min run gives a firmer read.</>,
+      sci: [
+        { name: 'Critical Speed', formula: 'from your recent runs · ~1 h pace', value: paceEst != null ? fmtPace(paceEst) : '—', inUse: paceEst != null },
+        { name: 'HR vs pace', formula: 'the HR cost of your steady runs → threshold HR', value: paceHr ? fmtPace(paceHr.best) : '—', inUse: paceEst == null && paceHr != null }, // #497
+      ],
       sharpen: 'log a few more runs incl. a hard effort → the Critical-Speed fit tightens.',
     },
     // #401 — TTE (time to exhaustion at threshold), a LEARNED benchmark per sport, read off the mean-max curve.
