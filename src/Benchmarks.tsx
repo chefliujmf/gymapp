@@ -237,9 +237,19 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const tteRunObs = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, chosenPace ?? paceComputed) : null
   const tteRunEst = paceCurve ? tteModelPace(chosenPace ?? paceComputed, paceCurve.cs, paceCurve.dPrime) : null
   const tteRunPick = pickTte(tteRunObs, tteRunEst), tteRun = tteRunPick.sec, tteRunEstimated = tteRunPick.estimated
+  // #508 (JM: "how will the insight AND coach focus update when I change a value?") — the profile must read the IN-USE
+  // value per metric (a Manual override wins in Manual mode, exactly like chosenFtp), so editing TTE/CP/W′/CS/D′ flows
+  // into the reads AND the coach focus (athleteProfile derives BOTH from these inputs). Manual → the saved value; else computed.
+  const pickChosen = (key: string, manual: number | null, computed: number | null) => (prefFor(key) === 'manual' ? (manual ?? computed) : (computed ?? manual))
+  const chosenTteRide = pickChosen('tteRide', (ss.cycling as { tte?: number })?.tte ?? null, tteRide)
+  const chosenCp = pickChosen('cp', (ss.cycling as { cp?: number })?.cp ?? null, cp)
+  const chosenWprime = pickChosen('wPrime', (ss.cycling as { wPrime?: number })?.wPrime ?? null, wPrimeKj)
+  const chosenTteRun = pickChosen('tteRun', (ss.running as { tte?: number })?.tte ?? null, tteRun)
+  const chosenCs = pickChosen('cs', (ss.running as { cs?: number })?.cs ?? null, csPace)
+  const chosenDprime = pickChosen('dPrime', (ss.running as { dPrime?: number })?.dPrime ?? null, dPrimeM)
   const prof = profile ? athleteProfile(profile === 'cycling'
-    ? { sport: 'cycling', threshold: chosenFtp, eftp: eftpVal, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
-    : { sport: 'running', threshold: chosenPace, eftp: paceEst, tte: tteRun, cp: csPace, reserveKj: dPrimeM, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null
+    ? { sport: 'cycling', threshold: chosenFtp, eftp: eftpVal, tte: chosenTteRide, cp: chosenCp, reserveKj: chosenWprime, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
+    : { sport: 'running', threshold: chosenPace, eftp: paceEst, tte: chosenTteRun, cp: chosenCs, reserveKj: chosenDprime, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null
 
   const saveSport = (group: 'cycling' | 'running', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
   // #337 — "when will the computed estimate land?" straight from our theory gates, so nothing just says
