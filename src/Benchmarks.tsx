@@ -144,7 +144,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? ''); setHrPower((p as { hrPower?: { watts: number; hr: number }[] }).hrPower ?? []); setHrPace((p as { hrPace?: { paceSecKm: number; hr: number }[] }).hrPace ?? []) }).catch(() => {}) // #337 · #5007 ftp20 · #497 hrPower/hrPace
     fetchPowerCurve(365).then(setPowerCurve).catch(() => {}) // #401 TTE — a year of efforts for a stable CP/W′ + CS/D′ model fit
     fetchPaceCurve(365).then(setPaceCurve).catch(() => {}) // #401 running TTE
-    const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)
+    const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10) // #501 — 180d (was 60d): Garmin often has far more than 21 nights synced; fetch enough to actually clear the sleep-need window
     fetchWellness(from, to).then((rows) => {
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break }
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].eftp != null) { const r = rows[i] as { eftp?: number | null; id?: string; date?: string }; setEftp(Math.round(r.eftp as number)); const d = r.date || r.id; if (d) setEftpAgeDays(Math.max(0, Math.round((Date.now() - new Date(d).getTime()) / 86400000))); break } // #464 whole watts · #5007 capture the eFTP date for recency

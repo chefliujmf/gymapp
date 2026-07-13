@@ -27,7 +27,7 @@ export default function SleepNeed() {
   const [, force] = useState(0)
   useEffect(() => {
     if (!user?.hasIcuKey) return
-    const to = new Date(), from = new Date(); from.setDate(to.getDate() - 45)
+    const to = new Date(), from = new Date(); from.setDate(to.getDate() - 180) // #501 — 180d (was 45d): use the fuller Garmin sleep+HRV history so the 21-night baseline can actually be reached
     const iso = (d: Date) => d.toISOString().slice(0, 10)
     fetchWellness(iso(from), iso(to)).then((w) => setEst(estimateSleepNeed(w))).catch(() => {})
   }, [user?.hasIcuKey])
