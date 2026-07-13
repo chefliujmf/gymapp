@@ -260,10 +260,10 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     },
     // #362 — FTP is event-based (intervals reads eFTP from a hard effort), so give the concrete trigger, not a vague "as it sees efforts".
     {
-      key: 'ftp', label: 'FTP', unit: 'W', computed: ftpEst.best, computedSrc: 'blended: eFTP + CP + 20-min power', pending: ftpEst.best ? undefined : (map5 != null ? 'after your next hard ride — a ~5–20 min near-max effort; intervals reads eFTP from it (no formal FTP test)' : 'after your first hard ride — intervals reads eFTP from a ~5–20 min effort (no formal test needed)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
+      key: 'ftp', label: 'FTP', unit: 'W', computed: ftpEst.best, computedSrc: 'Platyplus blend · eFTP + CP + 20-min + HR-cost', pending: ftpEst.best ? undefined : (map5 != null ? 'after your next hard effort — a ~5–20 min near-max or a 2×8; Platyplus reads your threshold from it (no formal test)' : 'after your first hard effort — a ~5–20 min or 2×8; Platyplus reads your threshold from it (no formal test)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
       chip: 'eFTP',
       conf: toConf(ftpEst.conf), // #5007 — blended estimate + honest confidence (recency · agreement · test-backed)
-      narr: <><b>{ftpEst.why}</b><br /><br />Your FTP blends three independent reads — intervals <b>eFTP</b> (from your power, no formal test), your <b>Critical Power</b>, and your best recent <b>20-min</b> effort — each weighted by how fresh it is. A stale eFTP that disagrees with your CP can't claim "Strong".</>,
+      narr: <><b>{ftpEst.why}</b><br /><br /><b>Platyplus's own</b> read — we blend several independent signals: your power-based <b>eFTP</b>, your <b>Critical Power</b>, your best recent <b>20-min</b>, and the <b>HR cost</b> of your rides — each weighted by how fresh it is. No single test defines it, and a stale source that disagrees with the others can't claim "Strong". (Folding in cardiac drift + next-day recovery is on the roadmap.)</>,
       sci: (() => { // #506 — honest tags: only the value in use reads IN USE; a computed source that disagrees says which way (not a blanket "agrees")
         const hasPrimary = ftpEst.sources.some((s) => s.tag === 'primary')
         const ref = hasPrimary ? 'your value' : 'the blend'
