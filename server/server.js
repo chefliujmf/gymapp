@@ -482,6 +482,12 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
     .map((a) => ({ paceSecKm: Math.round(a.moving_time / (a.distance / 1000)), hr: Math.round(a.average_heartrate) }))
     .filter((p) => p.paceSecKm > 120 && p.paceSecKm < 900)
     .slice(0, 80)
+  // #508 — per-ride signals for the multi-signal threshold ENGINE: normalized power + Pw:Hr DECOUPLING (aerobic drift %)
+  // + efficiency factor, on real steady rides (≥30 min). decouplingCheck() uses these to CONFIRM or FLAG a candidate FTP.
+  const rideSignals = (Array.isArray(runs) ? runs : [])
+    .filter((a) => /ride|virtualride|cycl/i.test(a.type || '') && (a.icu_weighted_avg_watts || a.icu_average_watts) > 0 && a.average_heartrate > 60 && (a.moving_time || 0) >= 1800)
+    .map((a) => ({ np: Math.round(a.icu_weighted_avg_watts || a.icu_average_watts), hr: Math.round(a.average_heartrate), decoupling: Math.round((Number(a.decoupling) || 0) * 10) / 10, durationMin: Math.round((a.moving_time || 0) / 60), ef: a.icu_efficiency_factor ? Math.round(a.icu_efficiency_factor * 100) / 100 : null }))
+    .slice(0, 60)
   // #337c — Max HR is COMPUTABLE (JM): NOT an age formula, but a real observed ceiling. Two honest
   // sources — (a) the highest per-activity max HR she's actually hit over 180d, and (b) intervals'
   // athlete_max_hr (her zone ceiling). Max HR is a CEILING, so take the higher of the two. Source line
@@ -499,7 +505,7 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
   const ageMaxHr = ageYr != null && ageYr > 8 && ageYr < 100 ? Math.round(208 - 0.7 * ageYr) : null
   const computedMaxHr = (Math.max(observedMaxHr || 0, icuMaxHr || 0) || null) ?? ageMaxHr ?? null
   const maxHrFrom = computedMaxHr == null ? '' : (observedMaxHr && observedMaxHr >= (icuMaxHr || 0) ? 'observed' : icuMaxHr ? 'intervals' : 'age')
-  res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent, observedMaxHr, maxHrSamples, icuMaxHr, computedMaxHr, maxHrFrom, hrPower, hrPace }) // #497 hrPower/hrPace = (watts|pace, HR) points for the HR-power FTP + HR-pace threshold methods
+  res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent, observedMaxHr, maxHrSamples, icuMaxHr, computedMaxHr, maxHrFrom, hrPower, hrPace, rideSignals }) // #497 hrPower/hrPace · #508 rideSignals = per-ride NP/decoupling/EF for the threshold engine
 })
 
 // #216 — running endurance base for the marathon-realism range: longest single run +

@@ -10,6 +10,7 @@ import { athleteProfile } from './athlete-profile'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, vo2ScienceRows, confLabel } from './vo2max-submax'
 import { vo2maxConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, modelFitConfidence, type Confidence } from './benchmark-confidence'
 import { ftpEstimate, thresholdPaceFromHrPace, maxHrFromAge } from './benchmark-estimate' // #5007 — honest multi-source estimate + confidence · #497 HR-pace threshold · #507 age max-HR
+import { decouplingCheck, type RideSignal } from './threshold-signals' // #508 — multi-signal engine: cardiac-drift confirms/flags the FTP
 
 // #236 — benchmarks = MANUAL vs COMPUTED. Tiles show the in-use value; tap → a sheet with BOTH values,
 // an input (editable only in Manual), and a Manual|Computed toggle. A per-stat preference (user.statPrefs)
@@ -120,6 +121,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const [ftp20, setFtp20] = useState<number | null>(null) // #5007 best 20-min power → FTP ≈ ×0.95
   const [hrPower, setHrPower] = useState<{ watts: number; hr: number }[]>([]) // #497 (power,HR) points → infer FTP from the HR cost of rides
   const [hrPace, setHrPace] = useState<{ paceSecKm: number; hr: number }[]>([]) // #497 (pace,HR) points → infer threshold pace from the HR cost of runs
+  const [rideSignals, setRideSignals] = useState<RideSignal[]>([]) // #508 per-ride NP/decoupling/EF → confirm/flag the FTP
   const [paceEst, setPaceEst] = useState<number | null>(null)
   const [map5, setMap5] = useState<number | null>(null) // #337 best 5-min power (MAP)
   const [pbWeight, setPbWeight] = useState<number | null>(null)
@@ -143,7 +145,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     if (!connected) return
     authApi.pullIcuAthlete().then(setPull).catch(() => {})
     authApi.runEstimate().then((r) => { if (r.available && r.thresholdPace) setPaceEst(r.thresholdPace) }).catch(() => {})
-    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? ''); setObservedMaxHr((p as { observedMaxHr?: number | null }).observedMaxHr ?? null); setIcuMaxHr((p as { icuMaxHr?: number | null }).icuMaxHr ?? null); setHrPower((p as { hrPower?: { watts: number; hr: number }[] }).hrPower ?? []); setHrPace((p as { hrPace?: { paceSecKm: number; hr: number }[] }).hrPace ?? []) }).catch(() => {}) // #337 · #5007 ftp20 · #497 hrPower/hrPace
+    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? ''); setObservedMaxHr((p as { observedMaxHr?: number | null }).observedMaxHr ?? null); setIcuMaxHr((p as { icuMaxHr?: number | null }).icuMaxHr ?? null); setHrPower((p as { hrPower?: { watts: number; hr: number }[] }).hrPower ?? []); setHrPace((p as { hrPace?: { paceSecKm: number; hr: number }[] }).hrPace ?? []); setRideSignals((p as { rideSignals?: RideSignal[] }).rideSignals ?? []) }).catch(() => {}) // #337 · #5007 ftp20 · #497 hrPower/hrPace · #508 rideSignals
     fetchPowerCurve(365).then(setPowerCurve).catch(() => {}) // #401 TTE — a year of efforts for a stable CP/W′ + CS/D′ model fit
     fetchPaceCurve(365).then(setPaceCurve).catch(() => {}) // #401 running TTE
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10) // #501 — 180d (was 60d): Garmin often has far more than 21 nights synced; fetch enough to actually clear the sleep-need window
@@ -183,6 +185,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // confusing on-page discrepancy. computed/auto → prefer the computed estimate; manual → the set value.
   const prefFor = (k: string) => (user?.statPrefs as Partial<Record<string, string>> | undefined)?.[k] ?? 'auto'
   const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftp) : (ftpEst.best ?? eftp ?? ftpManual) // #5007 computed side = the blended estimate
+  const decoupCheck = decouplingCheck(rideSignals, chosenFtp) // #508 — does your near-FTP riding hold steady (confirms) or drift (FTP too high)?
   const chosenPace = prefFor('thresholdPace') === 'manual' ? (paceManual ?? paceComputed) : (paceComputed ?? paceManual)
   // #506e — CONSISTENCY (JM): dependent stats must move WITH the anchor. VO₂max now reads the CHOSEN FTP + max-HR
   // (what the picker has in use), NOT the raw manual — so switching FTP to Auto moves VO₂max the same way it moves
@@ -273,12 +276,15 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sci: (() => { // #506/#506b — honest + EXPLICIT: name the value being compared to; only the value in use reads IN USE
         const hasPrimary = ftpEst.sources.some((s) => s.tag === 'primary')
         const ref = hasPrimary && ftpManual != null ? `your ${ftpManual} W` : 'the blend'
-        return ftpEst.sources.map((s) => ({
+        const rows: SciRow[] = ftpEst.sources.map((s) => ({
           name: s.name,
           formula: s.tag === 'primary' ? 'the value you train by' : s.tag === 'stale' ? 'stale — refresh with a hard effort' : s.tag === 'off' ? 'not available' : s.tag === 'low' ? `reads lower than ${ref}` : s.tag === 'high' ? `reads higher than ${ref}` : `within 3% of ${ref}`,
           value: s.value != null ? `${s.value} W` : '—',
           inUse: hasPrimary ? s.tag === 'primary' : s.tag === 'agrees',
         }))
+        // #508 — cardiac-drift confirmation from real rides: does near-FTP riding hold steady, or drift (FTP too high)?
+        if (decoupCheck.verdict !== 'thin') rows.push({ name: 'Cardiac drift', formula: decoupCheck.note, value: decoupCheck.avgDrift != null ? `${decoupCheck.avgDrift}%` : '—', inUse: false })
+        return rows
       })(),
       sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your power curve → tighter eFTP.',
     },
