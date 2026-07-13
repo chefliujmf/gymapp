@@ -7,7 +7,7 @@ import { fetchWellness, fetchPowerCurve, fetchPaceCurve, fetchEfTrend, type Powe
 import { estimateSleepNeed } from './sleep'
 import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from './tte'
 import { athleteProfile } from './athlete-profile'
-import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, confLabel } from './vo2max-submax'
+import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, vo2ScienceRows, confLabel } from './vo2max-submax'
 import { vo2maxConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, modelFitConfidence, type Confidence } from './benchmark-confidence'
 import { ftpEstimate, thresholdPaceFromHrPace } from './benchmark-estimate' // #5007 — honest multi-source estimate + confidence · #497 HR-pace threshold
 
@@ -127,6 +127,8 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const [compMaxHr, setCompMaxHr] = useState<number | null>(null) // #337c computed Max HR (observed peak ∨ intervals ceiling)
   const [maxHrSamples, setMaxHrSamples] = useState<number>(0)
   const [maxHrFrom, setMaxHrFrom] = useState<string>('')
+  const [observedMaxHr, setObservedMaxHr] = useState<number | null>(null) // #507 raw observed peak — shown as its own method even when the zone ceiling is the headline
+  const [icuMaxHr, setIcuMaxHr] = useState<number | null>(null) // #507 intervals zone ceiling — its own method row
   const [sleepEst, setSleepEst] = useState<number | null>(null) // computed sleep need (null until learned)
   const [sleepMore, setSleepMore] = useState<number | null>(null) // nights still needed
   const [sleepRaw, setSleepRaw] = useState<number | null>(null) // unrounded best-nights avg (h) — shown in the sheet
@@ -141,7 +143,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     if (!connected) return
     authApi.pullIcuAthlete().then(setPull).catch(() => {})
     authApi.runEstimate().then((r) => { if (r.available && r.thresholdPace) setPaceEst(r.thresholdPace) }).catch(() => {})
-    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? ''); setHrPower((p as { hrPower?: { watts: number; hr: number }[] }).hrPower ?? []); setHrPace((p as { hrPace?: { paceSecKm: number; hr: number }[] }).hrPace ?? []) }).catch(() => {}) // #337 · #5007 ftp20 · #497 hrPower/hrPace
+    authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? ''); setObservedMaxHr((p as { observedMaxHr?: number | null }).observedMaxHr ?? null); setIcuMaxHr((p as { icuMaxHr?: number | null }).icuMaxHr ?? null); setHrPower((p as { hrPower?: { watts: number; hr: number }[] }).hrPower ?? []); setHrPace((p as { hrPace?: { paceSecKm: number; hr: number }[] }).hrPace ?? []) }).catch(() => {}) // #337 · #5007 ftp20 · #497 hrPower/hrPace
     fetchPowerCurve(365).then(setPowerCurve).catch(() => {}) // #401 TTE — a year of efforts for a stable CP/W′ + CS/D′ model fit
     fetchPaceCurve(365).then(setPaceCurve).catch(() => {}) // #401 running TTE
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10) // #501 — 180d (was 60d): Garmin often has far more than 21 nights synced; fetch enough to actually clear the sleep-need window
@@ -167,14 +169,6 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   }
   const vo2Order = [...(user?.sports || []).filter((s): s is 'running' | 'cycling' => s === 'running' || s === 'cycling'), 'cycling', 'running'].filter((s, i, a) => a.indexOf(s) === i) as ('running' | 'cycling')[]
   const vo2head = headlineVo2max(null, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
-  // #401 — TTE (how long you hold threshold): OBSERVED off your curve when you've held it long enough, else
-  // ESTIMATED from the Critical-Power/Speed model (W′/(eFTP−CP) · D′/(v−CS)) so it shows a value pre-effort.
-  const tteRideObs = powerCurve ? tteFromPower(powerCurve.secs, powerCurve.watts, ftpManual ?? eftp) : null
-  const tteRideEst = powerCurve ? tteModelPower(ftpManual ?? eftp, powerCurve.cp, powerCurve.wPrime) : null
-  const tteRide = tteRideObs ?? tteRideEst, tteRideEstimated = tteRideObs == null && tteRideEst != null
-  const tteRunObs = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, paceManual ?? paceEst) : null
-  const tteRunEst = paceCurve ? tteModelPace(paceManual ?? paceEst, paceCurve.cs, paceCurve.dPrime) : null
-  const tteRun = tteRunObs ?? tteRunEst, tteRunEstimated = tteRunObs == null && tteRunEst != null
   // #403 — CP/W′ (cycling) + CS/D′ (running) from the power/pace-duration model fit. CS shown as a pace (sec/km).
   const cp = powerCurve?.cp ?? null
   const wPrimeKj = powerCurve?.wPrime != null ? Math.round(powerCurve.wPrime / 100) / 10 : null // kJ, 0.1 precision
@@ -197,6 +191,15 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const prefFor = (k: string) => (user?.statPrefs as Partial<Record<string, string>> | undefined)?.[k] ?? 'auto'
   const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftp) : (ftpEst.best ?? eftp ?? ftpManual) // #5007 computed side = the blended estimate
   const chosenPace = prefFor('thresholdPace') === 'manual' ? (paceManual ?? paceComputed) : (paceComputed ?? paceManual)
+  // #401/#506 — TTE reads off your curve at the FTP/pace ACTUALLY IN USE (chosenFtp/chosenPace), so it MOVES when you
+  // switch the picker (JM: set FTP to auto→250 but TTE stayed on 260 because it used the raw manual). OBSERVED off the
+  // curve when held long enough, else ESTIMATED from the CP/CS model so it shows a value pre-effort.
+  const tteRideObs = powerCurve ? tteFromPower(powerCurve.secs, powerCurve.watts, chosenFtp ?? eftp) : null
+  const tteRideEst = powerCurve ? tteModelPower(chosenFtp ?? eftp, powerCurve.cp, powerCurve.wPrime) : null
+  const tteRide = tteRideObs ?? tteRideEst, tteRideEstimated = tteRideObs == null && tteRideEst != null
+  const tteRunObs = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, chosenPace ?? paceComputed) : null
+  const tteRunEst = paceCurve ? tteModelPace(chosenPace ?? paceComputed, paceCurve.cs, paceCurve.dPrime) : null
+  const tteRun = tteRunObs ?? tteRunEst, tteRunEstimated = tteRunObs == null && tteRunEst != null
   const prof = profile ? athleteProfile(profile === 'cycling'
     ? { sport: 'cycling', threshold: chosenFtp, eftp, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
     : { sport: 'running', threshold: chosenPace, eftp: paceEst, tte: tteRun, cp: csPace, reserveKj: dPrimeM, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null
@@ -228,14 +231,12 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // #374 — VO₂max "The science" — up to 3 methods computed live; the one whose .source == headline is IN USE.
   const vo2Sci = ((): SciRow[] => {
     const cyc = cyclingVo2max({ ftp: ftpManual, weightKg: weight, hrMax: maxHr, hrRest, map5min: map5 })
-    const hr = hrRatioVo2max(maxHr, hrRest)
     const run = runningVo2max({ vdot, hrMax: maxHr, hrRest, runsRecent })
-    const head = vo2head?.source
-    return [
-      { name: 'Cycling MAP', formula: 'power-based · 10.8 × MAP/kg + 7', value: cyc != null ? String(cyc.value) : '—', inUse: !!head && cyc?.source === head },
-      { name: 'HR-ratio', formula: 'submax · 15.3 × HRmax/HRrest', value: hr != null ? String(hr) : '—', inUse: !!head && head === 'your max & resting HR' },
-      { name: 'Running VDOT', formula: 'pace-based · needs ≥4 runs', value: run != null ? String(run.value) : '—', inUse: !!head && run?.source === head },
-    ]
+    const hr = hrRatioVo2max(maxHr, hrRest)
+    // #506 — sport-aware + honest: only the methods this athlete's sport & data support (a runner never sees a bike
+    // number, and the crude HR-ratio isn't shown next to a real VDOT/MAP as a co-equal figure).
+    return vo2ScienceRows({ doesCycle, cyc, run, hr, headSource: vo2head?.source })
+      .map((m) => ({ name: m.name, formula: m.formula, value: m.value != null ? String(m.value) : '—', inUse: m.inUse }))
   })()
   // Name the method ACTUALLY driving the number (headline source — same signal as the IN USE badge), not just
   // the sport: a non-cyclist, or an HR-only estimate, must never falsely read "bike power" (JM 2026-07-07).
@@ -263,7 +264,16 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       chip: 'eFTP',
       conf: toConf(ftpEst.conf), // #5007 — blended estimate + honest confidence (recency · agreement · test-backed)
       narr: <><b>{ftpEst.why}</b><br /><br />Your FTP blends three independent reads — intervals <b>eFTP</b> (from your power, no formal test), your <b>Critical Power</b>, and your best recent <b>20-min</b> effort — each weighted by how fresh it is. A stale eFTP that disagrees with your CP can't claim "Strong".</>,
-      sci: ftpEst.sources.map((s) => ({ name: s.name, formula: s.tag === 'stale' ? 'stale — refresh with a hard effort' : s.tag === 'off' ? 'not available' : 'agrees with the blend', value: s.value != null ? `${s.value} W` : '—', inUse: s.tag === 'agrees' || s.tag === 'primary' })),
+      sci: (() => { // #506 — honest tags: only the value in use reads IN USE; a computed source that disagrees says which way (not a blanket "agrees")
+        const hasPrimary = ftpEst.sources.some((s) => s.tag === 'primary')
+        const ref = hasPrimary ? 'your value' : 'the blend'
+        return ftpEst.sources.map((s) => ({
+          name: s.name,
+          formula: s.tag === 'primary' ? 'the value you train by' : s.tag === 'stale' ? 'stale — refresh with a hard effort' : s.tag === 'off' ? 'not available' : s.tag === 'low' ? `reads lower than ${ref}` : s.tag === 'high' ? `reads higher than ${ref}` : `agrees with ${ref}`,
+          value: s.value != null ? `${s.value} W` : '—',
+          inUse: hasPrimary ? s.tag === 'primary' : s.tag === 'agrees',
+        }))
+      })(),
       sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your power curve → tighter eFTP.',
     },
     {
@@ -327,15 +337,15 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sharpen: 'short fast reps (200–600 m) build D′.',
     },
     {
-      key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: compMaxHr, computedSrc: maxHrFrom === 'observed' ? `observed peak — highest HR in your last 180 days${maxHrSamples > 1 ? ` (hit ${maxHrSamples}×)` : ''}` : 'your zone ceiling from intervals — beat it in an all-out effort to raise it', pending: 'after your next all-out effort with a HR strap/watch — we read your true peak, not an age formula', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }),
+      key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: compMaxHr, computedSrc: maxHrFrom === 'observed' ? `observed peak — highest HR in the last 12 months${maxHrSamples > 1 ? ` (hit ${maxHrSamples}×)` : ''}` : maxHrFrom === 'age' ? 'age estimate (Tanaka) until we catch a real peak' : 'your zone ceiling from intervals — beat it in an all-out effort to raise it', pending: 'after your next all-out effort with a HR strap/watch — we read your true peak, not an age formula', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }),
       chip: maxHrFrom === 'observed' ? 'Observed' : 'Ceiling',
       conf: maxHrConfidence({ computed: compMaxHr, from: maxHrFrom }),
       narr: maxHrFrom === 'observed'
         ? <>Your <b>true observed peak</b> — the highest heart rate seen in your recent efforts, not an age formula. Beat it in an all-out effort and it moves up.</>
         : <>We use your <b>zone ceiling</b> from intervals until we catch a real peak — no age formula. An all-out effort with a strap reveals your true max HR.</>,
-      sci: [
-        { name: 'Observed peak', formula: 'highest HR · last 180 days', value: (compMaxHr != null && maxHrFrom === 'observed') ? String(compMaxHr) : '—', inUse: compMaxHr != null && maxHrFrom === 'observed' },
-        { name: 'Zone ceiling', formula: 'from intervals zones', value: (compMaxHr != null && maxHrFrom !== 'observed') ? String(compMaxHr) : '—', inUse: compMaxHr != null && maxHrFrom !== 'observed' },
+      sci: [ // #507 — each row shows its OWN real value (observed peak was empty because it read the headline, not the raw peak)
+        { name: 'Observed peak', formula: `highest HR · last 12 months${maxHrSamples > 1 ? ` · hit ${maxHrSamples}×` : ''}`, value: observedMaxHr != null ? String(observedMaxHr) : '—', inUse: maxHrFrom === 'observed' },
+        { name: 'Zone ceiling', formula: 'from intervals zones', value: icuMaxHr != null ? String(icuMaxHr) : '—', inUse: maxHrFrom === 'intervals' },
       ],
       sharpen: 'an all-out effort with a HR strap/watch reveals your true peak → we read it, not an age formula.',
     },

@@ -123,6 +123,17 @@ describe('ftpEstimate', () => {
     expect(e.best).toBeLessThan(266)
     expect(e.conf.cls).not.toBe('strong')
   })
+  // #506 — JM: "all diff numbers but agrees with the blend?" A computed source far from the value you train by must
+  // be tagged low/high (reads lower/higher), NOT blanket 'agrees', and only your manual value is 'primary' (in use).
+  it('manual value: sources are tagged by REAL agreement, not rubber-stamped "agrees"', () => {
+    const e = ftpEstimate({ eftp: 240, eftpAgeDays: 40, cp: 248, best20: 232, manual: 260 })
+    const tag = (n: string) => e.sources.find((s) => s.name === n)?.tag
+    expect(tag('you train by')).toBe('primary')       // the only one in use
+    expect(tag('from CP')).toBe('agrees')              // 248 within 5% of 260
+    expect(tag('best 20-min ×0.95')).toBe('low')       // 220 reads well below 260
+    expect(tag('intervals eFTP')).toBe('stale')        // age 40 > fresh window
+    expect(e.sources.filter((s) => s.tag === 'agrees').length).toBeLessThan(3) // NOT everything agrees
+  })
 })
 
 describe('thresholdPaceEstimate (sec/km)', () => {
