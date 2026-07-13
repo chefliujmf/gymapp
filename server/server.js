@@ -396,7 +396,10 @@ app.put('/auth/profile', auth, (req, res) => {
   // #236 — per-stat MANUAL vs COMPUTED preference. { vo2max:'manual'|'computed', ftp:…, thresholdPace:…, maxHr:… }
   if (req.body.statPrefs && typeof req.body.statPrefs === 'object') {
     req.user.statPrefs = req.user.statPrefs || {}
-    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed' || v === 'auto') && /^(vo2max|ftp|thresholdPace|maxHr|sleepNeed)$/.test(k)) req.user.statPrefs[k] = v
+    // #508 — the whitelist was missing the model benchmarks (tteRide/tteRun/cp/wPrime/cs/dPrime), so switching one of
+    // them to Manual silently dropped the MODE server-side → the card stayed on Auto/computed and the manual value the
+    // user typed was never used (JM: "TTE manual won't save"). The VALUE saved (sportSettings); the PREF did not.
+    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed' || v === 'auto') && /^(vo2max|ftp|thresholdPace|maxHr|sleepNeed|tteRide|tteRun|cp|wPrime|cs|dPrime)$/.test(k)) req.user.statPrefs[k] = v
   }
   // #457 — per-type phone-push preferences (clamped to booleans)
   if (req.body.pushPrefs && typeof req.body.pushPrefs === 'object') {
