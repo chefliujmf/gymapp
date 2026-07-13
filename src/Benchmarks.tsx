@@ -282,8 +282,9 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
           value: s.value != null ? `${s.value} W` : '—',
           inUse: hasPrimary ? s.tag === 'primary' : s.tag === 'agrees',
         }))
-        // #508 — cardiac-drift confirmation from real rides: does near-FTP riding hold steady, or drift (FTP too high)?
-        if (decoupCheck.verdict !== 'thin') rows.push({ name: 'Cardiac drift', formula: decoupCheck.note, value: decoupCheck.avgDrift != null ? `${decoupCheck.avgDrift}%` : '—', inUse: false })
+        // #508 — cardiac-drift confirmation from real rides, ALWAYS shown (even 'thin') so you see the signal + what it
+        // needs: near-FTP riding either holds steady (confirms) / drifts (FTP too high) / or there's not enough of it yet.
+        rows.push({ name: 'Cardiac drift', formula: decoupCheck.note, value: decoupCheck.avgDrift != null ? `${decoupCheck.avgDrift}%` : (decoupCheck.verdict === 'confirms' ? '✓' : decoupCheck.verdict === 'too-high' ? '⚠︎' : '—'), inUse: false })
         return rows
       })(),
       sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your power curve → tighter eFTP.',
