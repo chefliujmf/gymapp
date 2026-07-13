@@ -12,6 +12,33 @@ export function e1rm(weight: number, reps: number): number {
   return (epley + brzycki) / 2
 }
 
+/** RPE-adjusted e1RM (#497 — the gym analog of "estimate from the effort you actually gave"). A set stopped at
+ * `rpe` left (10 − rpe) reps in reserve, so it equals a set of reps+(10−rpe) taken to failure (RTS / Tuchscherer).
+ * This is more honest than assuming every logged set was maximal — 5 @ RPE 8 implies a higher 1RM than 5 to failure.
+ * No RPE → falls back to plain e1rm (treats the set as near-failure, the existing behaviour). See docs/e1rm.md. */
+export function e1rmRpe(weight: number, reps: number, rpe?: number | null): number {
+  if (!weight || !reps) return 0
+  const rir = rpe != null && rpe > 0 && rpe <= 10 ? Math.max(0, 10 - rpe) : 0
+  return e1rm(weight, reps + rir)
+}
+
+/** Honest confidence in an e1RM read (#497 — the gym "same concept" as the FTP/pace estimates). Tightest from a
+ * heavy low-rep set; loosest when extrapolating from a high-rep set or stale data. `reps`/`rpe` describe the SET the
+ * estimate came from; effective reps = reps + reps-in-reserve. Pure so it's unit-tested alongside the formulas. */
+export function e1rmConfidence(inp: { reps: number; rpe?: number | null; ageDays?: number | null }): { pct: number; cls: 'strong' | 'good' | 'need' | 'learn'; label: string } {
+  const reps = inp.reps || 0
+  const hasRpe = inp.rpe != null && inp.rpe > 0 && inp.rpe <= 10
+  const rir = hasRpe ? Math.max(0, 10 - (inp.rpe as number)) : 0
+  let pct = reps <= 5 ? 90 : reps <= 8 ? 80 : reps <= 12 ? 65 : 45 // Epley/Brzycki extrapolate least from a low-rep set
+  if (!hasRpe) pct -= 8 // no RPE → we had to assume the set was near failure; it might not have been
+  else pct -= rir * 3 // we knew the effort, but a big reserve means a longer extrapolation to a true 1RM
+  if (inp.ageDays != null && inp.ageDays > 42) pct -= 15 // a stale max is a weaker claim on today's strength
+  pct = Math.max(30, Math.min(95, pct))
+  const cls = pct >= 85 ? 'strong' : pct >= 68 ? 'good' : pct >= 50 ? 'need' : 'learn'
+  const label = reps <= 5 ? 'Heavy set — dependable' : reps <= 12 ? 'Moderate reps — solid' : 'High-rep set — rough guide'
+  return { pct, cls, label }
+}
+
 /** Inverse: the weight that should let you hit `reps` given an estimated 1RM. */
 export function weightForReps(oneRM: number, reps: number): number {
   if (!oneRM) return 0
