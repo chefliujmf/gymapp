@@ -6,6 +6,7 @@ import { fmtPace, parsePace } from './running-paces'
 import { fetchWellness, fetchPowerCurve, fetchPaceCurve, fetchEfTrend, type PowerCurve, type PaceCurve, type EfTrend } from './intervals'
 import { estimateSleepNeed } from './sleep'
 import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from './tte'
+import { cpFromFtp } from './cp-model' // #508 — CP sits above FTP; used to floor an under-read CP fit
 import { athleteProfile } from './athlete-profile'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, vo2ScienceRows, confLabel } from './vo2max-submax'
 import { vo2maxConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, modelFitConfidence, type Confidence } from './benchmark-confidence'
@@ -165,14 +166,14 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const weight = pbWeight ?? pull?.weight ?? null
   const vdot = user?.runVdot ?? null
   // #403 — CP/W′ (cycling) + CS/D′ (running) from the power/pace-duration model fit. CS shown as a pace (sec/km).
-  const cp = powerCurve?.cp ?? null
+  const cpRaw = powerCurve?.cp ?? null // the raw power-duration fit; floored below once chosenFtp is known (#508)
   const wPrimeKj = powerCurve?.wPrime != null ? Math.round(powerCurve.wPrime / 100) / 10 : null // kJ, 0.1 precision
   const csPace = paceCurve?.cs != null && paceCurve.cs > 0 ? Math.round(1000 / paceCurve.cs) : null // sec/km
   const dPrimeM = paceCurve?.dPrime != null ? Math.round(paceCurve.dPrime) : null // metres
   // #5007 — honest FTP: blend eFTP (weighted by recency) + CP-derived + best-20min×0.95; confidence from real
   // signals so a stale eFTP that disagrees with CP can't read "Strong". toConf maps the engine's 'good' onto the
   // existing bar classes (learn) so the CSS keeps working.
-  const ftpEst = ftpEstimate({ eftp, eftpAgeDays, cp, best20: ftp20, manual: ftpManual, hrPower, maxHr: maxHr ?? compMaxHr }) // #497 — HR-power method now fed real ride data
+  const ftpEst = ftpEstimate({ eftp, eftpAgeDays, cp: cpRaw, best20: ftp20, manual: ftpManual, hrPower, maxHr: maxHr ?? compMaxHr }) // #497 — HR-power method now fed real ride data
   // #497 running analog — threshold pace inferred from the HR cost of steady runs. Used as a FALLBACK: when the
   // Critical-Speed model isn't ready (few/no hard runs) but there's HR-paired running, we still show a real number
   // instead of "needs 4 runs" — so a runner's analysis is done off history, and it shows as its own method below.
@@ -187,6 +188,13 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftp) : (ftpEst.best ?? eftp ?? ftpManual) // #5007 computed side = the blended estimate
   const decoupCheck = decouplingCheck(rideSignals, chosenFtp) // #508 — does your near-FTP riding hold steady (confirms) or drift (FTP too high)?
   const aeroFloor = aerobicFloor(rideSignals, maxHr ?? compMaxHr) // #508 — your Z2 efficiency proves FTP is AT LEAST this (JM: 170 W steady in Z2 ⇒ not 220)
+  // #508 (research doc) — CP sits ~10–15 W ABOVE FTP, and submaximal data UNDER-reads the power-duration fit. So a
+  // fitted CP that lands BELOW the FTP you actually train by is an under-read (your curve lacks true max efforts),
+  // NOT your real ceiling — floor it at the CP your trained FTP implies. Never lowball what you demonstrably hold
+  // (JM: fit read 248 W while he trains at 260). If the fit already sits above FTP, it's used as-is.
+  const cpFloor = chosenFtp != null ? cpFromFtp(chosenFtp) : null
+  const cpUnderRead = cpRaw != null && cpFloor != null && cpRaw < cpFloor
+  const cp = cpUnderRead ? cpFloor : cpRaw
   const chosenPace = prefFor('thresholdPace') === 'manual' ? (paceManual ?? paceComputed) : (paceComputed ?? paceManual)
   // #506e — CONSISTENCY (JM): dependent stats must move WITH the anchor. VO₂max now reads the CHOSEN FTP + max-HR
   // (what the picker has in use), NOT the raw manual — so switching FTP to Auto moves VO₂max the same way it moves
@@ -330,10 +338,10 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     // #403 — CP · W′ (cycling) and CS · D′ (running): the power/pace-duration model. Modelled from the curve (no
     // test); manual override persists via the sport-stat whitelist. Per-sport pages only.
     {
-      key: 'cp', label: 'Critical Power', unit: 'W', computed: cp, computedSrc: 'your sustainable ceiling (power-duration fit)', pending: cp == null ? 'after a few hard efforts across durations — the model needs points to fit' : undefined, manual: (ss.cycling as { cp?: number })?.cp ?? null, fmt: String, parse: numParse(60, 500), save: (v) => saveSport('cycling', { cp: v }),
+      key: 'cp', label: 'Critical Power', unit: 'W', computed: cp, computedSrc: cpUnderRead ? 'raised to sit just above your trained FTP' : 'your sustainable ceiling (power-duration fit)', pending: cp == null ? 'after a few hard efforts across durations — the model needs points to fit' : undefined, manual: (ss.cycling as { cp?: number })?.cp ?? null, fmt: String, parse: numParse(60, 500), save: (v) => saveSport('cycling', { cp: v }),
       chip: 'Curve', conf: modelFitConfidence({ value: cp, r2: powerCurve?.r2 }),
-      narr: <>Your <b>Critical Power</b> — the highest power you can hold near-indefinitely (the asymptote of your power curve): your true aerobic ceiling, which FTP normally sits near or just above. More precise than FTP because it's modelled from efforts across many durations.</>,
-      sci: [{ name: 'Power-duration model', formula: '2-param CP/W′ fit', value: cp != null ? `${cp} W` : '—', inUse: cp != null }],
+      narr: <>Your <b>Critical Power</b> — the highest power you can hold near-indefinitely (the asymptote of your power curve): your true aerobic ceiling, which normally sits <b>~10–15 W above your FTP</b>. More precise than FTP because it's modelled from efforts across many durations.{cpUnderRead ? <><br /><br />Your curve currently fits <b>below</b> your trained FTP — a sign it's missing true max efforts across durations (submaximal data under-reads CP), so we've raised it to sit just above the threshold you demonstrably hold. A few hard efforts of varied length will let the fit stand on its own.</> : null}</>,
+      sci: [{ name: 'Power-duration model', formula: cpUnderRead ? `fit read ${cpRaw} W — under-read, raised above FTP` : '2-param CP/W′ fit', value: cp != null ? `${cp} W` : '—', inUse: cp != null }],
       sharpen: 'hard efforts of varied length (1–20 min) sharpen the CP/W′ fit.',
     },
     {
