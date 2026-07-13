@@ -1,5 +1,84 @@
 import { describe, it, expect } from 'vitest'
-import { ftpEstimate, thresholdPaceEstimate, modelEstimate, tteEstimate, maxHrEstimate, honestEstimate, type Src } from './benchmark-estimate'
+import { ftpEstimate, thresholdPaceEstimate, modelEstimate, tteEstimate, maxHrEstimate, honestEstimate, ftpFromHrPower, thresholdPaceFromHrPace, maxHrFromAge, type Src } from './benchmark-estimate'
+
+// #501 — age-based max HR is a FALLBACK: it fills a data-less athlete but must NOT drag a real observed peak down.
+describe('maxHrFromAge + fallback', () => {
+  it('Tanaka: 208 − 0.7·age', () => { expect(maxHrFromAge(40)).toBe(180); expect(maxHrFromAge(30)).toBe(187) })
+  it('rejects nonsense ages', () => { expect(maxHrFromAge(null)).toBeNull(); expect(maxHrFromAge(4)).toBeNull(); expect(maxHrFromAge(120)).toBeNull() })
+  it('no observed + no ceiling → uses the age estimate', () => {
+    const e = maxHrEstimate({ observed: null, ceiling: null, age: 40 })
+    expect(e.best).toBe(180)
+    expect(e.why).toMatch(/age/i)
+  })
+  it('a real observed peak is NOT dragged down by the age formula', () => {
+    const e = maxHrEstimate({ observed: 195, observedAgeDays: 30, ceiling: null, age: 40 }) // age would say 180
+    expect(e.best).toBe(195)
+    expect(e.sources.find((s) => s.name === 'age estimate')).toBeUndefined()
+  })
+})
+
+// #497 — infer FTP from the HR cost of steady rides (no test needed). JM's example: easy at 200 W ⇒ high FTP.
+describe('ftpFromHrPower', () => {
+  it("JM's case: rides spanning 150-250 W read a high FTP (~320), not 200", () => {
+    const e = ftpFromHrPower([{ watts: 150, hr: 95 }, { watts: 200, hr: 110 }, { watts: 250, hr: 130 }], 185)!
+    expect(e).not.toBeNull()
+    expect(e.best).toBeGreaterThanOrEqual(315)
+    expect(e.best).toBeLessThanOrEqual(335)
+    expect(e.lo).toBeLessThan(e.best)
+    expect(e.hi).toBeGreaterThan(e.best) // honest band, not a false-precise single number
+  })
+  it('needs a range of intensities: all points at one HR → null (no slope to fit)', () => {
+    expect(ftpFromHrPower([{ watts: 200, hr: 110 }, { watts: 205, hr: 110 }], 185)).toBeNull()
+  })
+  it('needs ≥2 points and a max HR', () => {
+    expect(ftpFromHrPower([{ watts: 200, hr: 110 }], 185)).toBeNull()
+    expect(ftpFromHrPower([{ watts: 150, hr: 95 }, { watts: 250, hr: 130 }], null)).toBeNull()
+  })
+  it('a stronger engine (lower HR at the same powers) reads a higher FTP', () => {
+    const weak = ftpFromHrPower([{ watts: 150, hr: 120 }, { watts: 250, hr: 160 }], 185)!
+    const strong = ftpFromHrPower([{ watts: 150, hr: 100 }, { watts: 250, hr: 130 }], 185)!
+    expect(strong.best).toBeGreaterThan(weak.best)
+  })
+})
+
+// #497 running analog — infer threshold pace from the HR cost of steady runs (no hard test needed).
+describe('thresholdPaceFromHrPace', () => {
+  it('steady runs → a sensible threshold pace (~4:30/km), pace falling as HR rises', () => {
+    const e = thresholdPaceFromHrPace([{ paceSecKm: 360, hr: 130 }, { paceSecKm: 300, hr: 150 }, { paceSecKm: 270, hr: 165 }], 185)!
+    expect(e).not.toBeNull()
+    expect(e.best).toBeGreaterThanOrEqual(260) // ~4:20–4:45/km
+    expect(e.best).toBeLessThanOrEqual(285)
+    expect(e.lo).toBeLessThan(e.best) // lo = faster pace (lower sec/km)
+    expect(e.hi).toBeGreaterThan(e.best) // hi = slower
+  })
+  it('a fitter runner (faster pace at the same HR) reads a FASTER threshold', () => {
+    const slow = thresholdPaceFromHrPace([{ paceSecKm: 360, hr: 140 }, { paceSecKm: 300, hr: 165 }], 185)!
+    const fast = thresholdPaceFromHrPace([{ paceSecKm: 300, hr: 140 }, { paceSecKm: 260, hr: 165 }], 185)!
+    expect(fast.best).toBeLessThan(slow.best)
+  })
+  it('all at one HR → null (no slope); and needs ≥2 points + a max HR', () => {
+    expect(thresholdPaceFromHrPace([{ paceSecKm: 300, hr: 150 }, { paceSecKm: 302, hr: 150 }], 185)).toBeNull()
+    expect(thresholdPaceFromHrPace([{ paceSecKm: 300, hr: 150 }], 185)).toBeNull()
+    expect(thresholdPaceFromHrPace([{ paceSecKm: 360, hr: 130 }, { paceSecKm: 270, hr: 165 }], null)).toBeNull()
+  })
+  it('pace that RISES with HR (noise) → null', () => {
+    expect(thresholdPaceFromHrPace([{ paceSecKm: 300, hr: 130 }, { paceSecKm: 360, hr: 165 }], 185)).toBeNull()
+  })
+  it('surfaces as an "HR vs pace" source in thresholdPaceEstimate', () => {
+    const e = thresholdPaceEstimate({ csDerived: null, hrPace: [{ paceSecKm: 360, hr: 130 }, { paceSecKm: 300, hr: 150 }, { paceSecKm: 270, hr: 165 }], maxHr: 185 })
+    expect(e.best).not.toBeNull()
+    expect(e.sources.find((s) => s.name === 'HR vs pace')?.value).toBeGreaterThan(200)
+  })
+})
+
+// #497 — the HR-power read shows up as a source in the card (no manual/eFTP needed to get a real number).
+describe('ftpEstimate + HR-power', () => {
+  it('with only HR-power data, still produces an FTP + surfaces the source', () => {
+    const e = ftpEstimate({ eftp: null, hrPower: [{ watts: 150, hr: 95 }, { watts: 200, hr: 110 }, { watts: 250, hr: 130 }], maxHr: 185 })
+    expect(e.best).toBeGreaterThanOrEqual(300) // reads high, not 'no data'
+    expect(e.sources.find((s) => s.name === 'HR vs power')?.value).toBeGreaterThan(300)
+  })
+})
 
 // #5007 — the whole point: a stale intervals eFTP that disagrees with CP must NOT read "Strong", and the number
 // should lean toward the agreeing sources. A fresh, agreeing set CAN read strong.

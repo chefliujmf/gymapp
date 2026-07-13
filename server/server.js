@@ -162,6 +162,11 @@ app.get('/auth/me', auth, async (req, res) => {
     const me = await icuGet(u, `/athlete/${u.icuAthlete}`).catch(() => null)
     if (me) { syncAthleteProfile(u, me); save(store) }
   }
+  // #497/#501 — also backfill the COMPUTED coach anchors (FTP/maxHR/run pace) for already-connected users who
+  // predate the connect-time stash, so nobody is left un-analysed. Guarded: runs only while an anchor is still blank.
+  if (u.icuKey && u.icuAthlete && (u.ftp == null || u.maxHR == null || u.runPaceEst == null)) {
+    if (await computeAndStashAnchors(u).catch(() => false)) save(store)
+  }
   res.json(pub(req.user))
 })
 
@@ -281,6 +286,51 @@ function syncAthleteProfile(user, me) {
   if (me.sex && !user.sex) user.sex = me.sex === 'M' ? 'male' : me.sex === 'F' ? 'female' : user.sex
   if (me.icu_weight > 0 && !user.weight) user.weight = Math.round(me.icu_weight * 10) / 10
 }
+// #497/#501 (JM: "for a new user, BE SURE this analysis is done — it's important") — when the athlete's intervals
+// SETTINGS don't carry a stat (an unconfigured account with only ridden/run history), COMPUTE the coach anchor from
+// their ACTUAL history so the coach has a real number immediately, without the user ever opening Stats. Fill-if-empty
+// (never overrides a manual/configured value); best-effort + parallel; the Stats cards refine these from the full
+// curves later with honest confidence. This is the difference between "Platyplus never analysed my data" and not.
+async function computeAndStashAnchors(user) {
+  if (!user.icuKey || !user.icuAthlete) return false
+  const ath = user.icuAthlete
+  const needFtp = user.ftp == null, needMaxHr = user.maxHR == null, needPace = user.runPaceEst == null
+  if (!needFtp && !needMaxHr && !needPace) return false
+  const [pc, acts, pace] = await Promise.all([
+    needFtp ? icuGet(user, `/athlete/${ath}/power-curves?type=Ride&start=${icuDay(365)}&end=${icuDay(0)}`).catch(() => null) : Promise.resolve(null),
+    needMaxHr ? icuGet(user, `/athlete/${ath}/activities?oldest=${icuDay(365)}&newest=${icuDay(0)}`).catch(() => null) : Promise.resolve(null),
+    needPace ? icuGet(user, `/athlete/${ath}/pace-curves?type=Run`).catch(() => null) : Promise.resolve(null),
+  ])
+  let changed = false
+  // FTP from the best 20-min on the power curve (classic 95%). A real anchor even off steady rides — it's their best
+  // sustained 20-min, ×0.95; the HR-power method + eFTP refine it on the card. Only if settings gave no FTP.
+  if (needFtp && pc) {
+    const curve = Array.isArray(pc.list) ? pc.list[0] : null
+    if (curve && Array.isArray(curve.secs)) {
+      const vals = curve.values || curve.watts || curve.best || []
+      const at = (t) => { for (let i = 0; i < curve.secs.length; i++) if (curve.secs[i] >= t) return Number(vals[i]) || null; return null }
+      const ftp20 = at(1200)
+      if (ftp20 > 0) { user.ftp = Math.round(ftp20 * 0.95); changed = true }
+    }
+  }
+  // Max HR from the real observed ceiling over a year (or intervals' zone ceiling), else the Tanaka age formula.
+  if (needMaxHr) {
+    let observed = null
+    if (Array.isArray(acts)) {
+      const hrs = acts.map((a) => Number(a.max_heartrate ?? a.max_hr ?? a.icu_hr_max) || 0).filter((h) => h >= 120 && h <= 230).sort((x, y) => y - x)
+      if (hrs.length) observed = hrs[0]
+      if (!observed) { const am = acts.map((a) => Number(a.athlete_max_hr) || 0).find((h) => h >= 120 && h <= 230); if (am) observed = am }
+    }
+    if (!observed) { const ageYr = user.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null; if (ageYr != null && ageYr > 8 && ageYr < 100) observed = Math.round(208 - 0.7 * ageYr) }
+    if (observed) { user.maxHR = observed; changed = true }
+  }
+  // Running threshold pace from the pace curve (Critical Speed) — the coach's run anchor.
+  if (needPace && pace) {
+    const est = runThresholdFromPaceCurve(pace)
+    if (est && est.thresholdPace > 0) { user.runPaceEst = Math.round(est.thresholdPace); changed = true }
+  }
+  return changed
+}
 app.put('/auth/icu', auth, async (req, res) => {
   if (typeof req.body.icuKey === 'string') req.user.icuKey = req.body.icuKey.trim()
   if (typeof req.body.icuAthlete === 'string') req.user.icuAthlete = req.body.icuAthlete.trim()
@@ -291,6 +341,16 @@ app.put('/auth/icu', auth, async (req, res) => {
     if (me && me.id) {
       if (!req.user.icuAthlete) req.user.icuAthlete = String(me.id)
       syncAthleteProfile(req.user, me)
+      // #497/#501 (JM: "for a new user, be sure this analysis is done") — stash the coach ANCHORS (FTP/maxHR + the
+      // per-sport thresholds) from the athlete's intervals sport-settings ON CONNECT, so the coach has real numbers
+      // immediately without the user opening Stats. Fill-if-empty; the Stats cards refine them from the curves later.
+      const mapped = fromIcuSportSettings(me.sportSettings || [])
+      req.user.sportSettings = { ...(req.user.sportSettings || {}), ...mapped }
+      if (mapped.cycling?.ftp != null && req.user.ftp == null) req.user.ftp = mapped.cycling.ftp
+      if (mapped.cycling?.maxHr != null && req.user.maxHR == null) req.user.maxHR = mapped.cycling.maxHr
+      // …and if settings still left an anchor blank (unconfigured account), COMPUTE it from their history so the
+      // analysis is genuinely done on connect (#497/#501). Best-effort; won't block a successful key save.
+      await computeAndStashAnchors(req.user).catch(() => false)
     }
   }
   save(store); res.json(pub(req.user))
@@ -407,8 +467,21 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
     const at = (t) => { for (let i = 0; i < curve.secs.length; i++) if (curve.secs[i] >= t) return Number(vals[i]) || null; return null }
     map5 = at(300); ftp20 = at(1200); weight = curve.weight || null
   }
-  const runs = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(180)}&newest=${icuDay(0)}`)
+  const runs = await icuGet(req.user, `/athlete/${ath}/activities?oldest=${icuDay(365)}&newest=${icuDay(0)}`) // #501 — a full YEAR (was 180d) so the observed max-HR peak + HR-power points use more of the athlete's history
   const runsRecent = Array.isArray(runs) ? runs.filter((a) => /run/i.test(a.type || '') && a.distance > 800).length : null
+  // #497 — (power, HR) points from steady RIDES (≥20 min, with power+HR) → the HR-power FTP estimator infers FTP from
+  // the HR COST of normal/easy rides. Normalized power (icu_weighted_avg_watts) vs avg HR is the cleaner signal.
+  const hrPower = (Array.isArray(runs) ? runs : [])
+    .filter((a) => /ride|virtualride|cycl/i.test(a.type || '') && (a.icu_weighted_avg_watts || a.icu_average_watts) > 0 && a.average_heartrate > 60 && (a.moving_time || 0) >= 1200)
+    .map((a) => ({ watts: Math.round(a.icu_weighted_avg_watts || a.icu_average_watts), hr: Math.round(a.average_heartrate) }))
+    .slice(0, 80)
+  // #497 running analog — (pace, HR) points from steady RUNS → the HR-pace threshold estimator infers threshold pace
+  // from the HR cost of easy/steady runs. Avg pace (moving_time ÷ km) vs avg HR; ≥10 min and ≥1.5 km to skip warm-ups.
+  const hrPace = (Array.isArray(runs) ? runs : [])
+    .filter((a) => /run/i.test(a.type || '') && a.distance > 1500 && (a.moving_time || 0) >= 600 && a.average_heartrate > 60)
+    .map((a) => ({ paceSecKm: Math.round(a.moving_time / (a.distance / 1000)), hr: Math.round(a.average_heartrate) }))
+    .filter((p) => p.paceSecKm > 120 && p.paceSecKm < 900)
+    .slice(0, 80)
   // #337c — Max HR is COMPUTABLE (JM): NOT an age formula, but a real observed ceiling. Two honest
   // sources — (a) the highest per-activity max HR she's actually hit over 180d, and (b) intervals'
   // athlete_max_hr (her zone ceiling). Max HR is a CEILING, so take the higher of the two. Source line
@@ -426,7 +499,7 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
   const ageMaxHr = ageYr != null && ageYr > 8 && ageYr < 100 ? Math.round(208 - 0.7 * ageYr) : null
   const computedMaxHr = (Math.max(observedMaxHr || 0, icuMaxHr || 0) || null) ?? ageMaxHr ?? null
   const maxHrFrom = computedMaxHr == null ? '' : (observedMaxHr && observedMaxHr >= (icuMaxHr || 0) ? 'observed' : icuMaxHr ? 'intervals' : 'age')
-  res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent, observedMaxHr, maxHrSamples, icuMaxHr, computedMaxHr, maxHrFrom })
+  res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent, observedMaxHr, maxHrSamples, icuMaxHr, computedMaxHr, maxHrFrom, hrPower, hrPace }) // #497 hrPower/hrPace = (watts|pace, HR) points for the HR-power FTP + HR-pace threshold methods
 })
 
 // #216 — running endurance base for the marathon-realism range: longest single run +
@@ -1376,6 +1449,10 @@ function buildSystemPrompt(user) {
   if (user.rhrBaseline?.mean) bl2.push(`resting HR baseline ~${user.rhrBaseline.mean}±${user.rhrBaseline.sd} bpm`)
   if (bl2.length) p += `\n\n# THIS ATHLETE'S LEARNED BASELINES (their OWN ~60-day norm) — ${bl2.join(', ')}.\nInterpret today's HRV/resting-HR as a DEVIATION from these, never as textbook absolutes: a clear HRV drop or resting-HR rise vs baseline (beyond ~1 SD, especially multi-day) signals accumulating fatigue, poor sleep, or oncoming illness → ease off; within the normal band → train as planned. Rising 7-day HRV variability is itself a fatigue flag. Always cross-check with their check-in and Form before deciding.`
   if (stats.length) p += `\n\n# THIS ATHLETE'S BENCHMARKS — ${stats.join(', ')}.\nJudge how hard a session is FOR THEM against these: prescribe ride intensities as % of THEIR FTP and RUN intensities as a pace off THEIR threshold pace (Daniels E/M/T/I/R), set HR zones off THEIR max HR, and gym loads by reps (the app fills the weight). Their sleep NEED is ~${user.sleepNeed || 8} h — score sleep against that, not a generic 8 h.`
+  // #497 — the anchors are only as good as the last quality effort behind them; when one is UNCONFIRMED, have the
+  // coach proactively work in a single targeted refining effort (NOT an all-out test — JM's rule). Heuristic-based:
+  // the coach already reads recent activities, so it can judge "no recent hard effort" without any confidence plumbing.
+  if (stats.length) p += `\n\n# KEEP THE ANCHORS SHARP — those benchmarks are only as good as the last quality effort behind them, and everything you prescribe scales from them, so keep them honest. When one looks UNCONFIRMED — check get_recent_activities and if you don't see a recent effort that would set it (e.g. weeks of only easy rides so the threshold power is really a guess, no recent tempo/threshold run, no heavy low-rep set) — proactively fold in ONE targeted refining effort rather than waiting for a formal test: cycling → a hard 15–20 min near-threshold effort; running → a hard 20 min or a 5k / parkrun; gym → a heavy 3–5 rep top set. One quality effort is enough — NEVER prescribe an all-out max test or stack hard days to chase a number, and place it on a day they're fresh, within their weekly training-day + recovery limits. Tell them in plain words WHY ("let's do one harder 20-minute stretch so I can dial in the hardest pace you can hold") — never "to update your FTP".`
   p += `\n\n# Data you have — and don't\nPlatyplus does NOT collect passive analytics: no HRV, resting HR, sleep, body weight, or Form/Fitness/CTL/ATL here. Those live in the athlete's intervals.icu (read them with get_wellness / get_recent_activities WHEN connected). What Platyplus DOES have: the plan, logged workouts, and the athlete's quick DAILY CHECK-IN, all 1-5 (energy: 5=energized, sleep: 5=fully rested, soreness: 5=very sore) — read get_checkins; it's your main recovery signal when intervals isn't connected. When you lack data, say what you'd want to check, then ADAPT to what you DO have rather than inventing numbers. Make plan changes with the platyplus tools.`
   const ownedEq = Array.isArray(user.info?.equipment) ? user.info.equipment.filter((e) => typeof e === 'string') : []
   if (ownedEq.length) p += `\n\n# Equipment the athlete OWNS: ${ownedEq.join(', ')}.\nWhen building gym/strength sessions, prescribe ONLY exercises that use this gear or Bodyweight — pass \`equipment="${ownedEq.join(',')}"\` to search_exercises so you never pick something they can't do. (They set this in Settings → Equipment.)`
