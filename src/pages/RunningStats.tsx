@@ -4,11 +4,32 @@ import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, type RunVolume } from '../running-paces'
 import { runningVo2max } from '../vo2max-submax'
-import { fetchWellness, fetchEfTrend, type EfTrend } from '../intervals'
+import { fetchWellness, fetchEfTrend, fetchPaceCurve, type EfTrend, type PaceCurve } from '../intervals'
 import { authApi } from '../auth/api'
-import { TrendChart } from '../charts'
+import { TrendChart, InfoDot, DurationCurve } from '../charts'
 import { BenchmarksCard } from '../Benchmarks'
 import SeasonCompare from '../SeasonCompare'
+
+// #508 — the running engine's curve: your pace-duration curve, fitted (as SPEED so faster reads higher), with the
+// Critical-Speed asymptote + D′ reserve. Threshold pace · CS · D′ · TTE all derive from THIS one curve.
+function PaceCurveCard() {
+  const [curve, setCurve] = useState<PaceCurve | null>(null)
+  useEffect(() => { fetchPaceCurve(365).then(setCurve).catch(() => {}) }, [])
+  if (!curve || !(curve.secs && curve.secs.length >= 3)) return null
+  const cs = curve.cs ?? null // m/s
+  const dPrime = curve.dPrime != null ? Math.round(curve.dPrime) : null
+  const speed = curve.pace.map((p) => (p > 0 ? 1000 / p : 0)) // m/s — higher is faster (top of the chart)
+  const insight = cs != null
+    ? `One fit, your whole engine: Critical Speed ${fmtPace(Math.round(1000 / cs))}/km is the sustainable floor${dPrime != null ? `, D′ ${dPrime} m the reserve above it` : ''}. Threshold pace, TTE and your zones all read off this curve.`
+    : 'Your pace-duration curve. Critical Speed, D′, threshold pace and TTE will all read off it once intervals has efforts across distances.'
+  return (
+    <div className="card" style={{ padding: 14, marginBottom: 12 }}>
+      <div className="section-title" style={{ fontSize: 13, marginBottom: 4 }}>Your pace curve, fitted <InfoDot text="The fastest pace you can hold for each duration (log-time axis, faster = higher). The dashed line is Critical Speed — the pace you can sustain; the shaded area above is D′, your distance reserve for a kick. Threshold pace, TTE and your zones are all derived from this one curve." /></div>
+      <DurationCurve secs={curve.secs} values={speed} asymptote={cs} unit="/km" fmt={(mps) => fmtPace(Math.round(1000 / mps))} reserveLabel={dPrime != null ? `D′ ${dPrime} m` : undefined} anchors={[{ sec: 300, label: '5m' }, { sec: 1200, label: '20m' }]} />
+      <p className="meta" style={{ marginTop: 6, color: 'var(--text-dim)' }}>{insight}</p>
+    </div>
+  )
+}
 // #398 — the Threshold benchmark card (edit + confidence + science) is the ONE place for threshold pace; the
 // old duplicate inline ThresholdCell was removed (JM: "threshold there 2 times").
 
@@ -68,6 +89,7 @@ export default function RunningStats() {
         <>
           {/* #385/#398 — the benchmark cards (Threshold pace · VO₂max · Max HR) are the single source: each shows the
               value + confidence and taps open a sheet to edit (manual value) / switch manual↔computed. No duplicate cell. */}
+          <PaceCurveCard />
           <BenchmarksCard only={['thresholdPace', 'cs', 'dPrime', 'vo2max', 'tteRun', 'maxHr']} profile="running" />
           {vo2 && hrRatioMismatch &&<p className="meta" style={{ margin: '10px 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
 
