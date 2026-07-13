@@ -203,7 +203,10 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // raw MANUAL value — else the FTP card showed 241 W (computed) while the insight said 260 W (manual): a
   // confusing on-page discrepancy. computed/auto → prefer the computed estimate; manual → the set value.
   const prefFor = (k: string) => (user?.statPrefs as Partial<Record<string, string>> | undefined)?.[k] ?? 'auto'
-  const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftpVal) : (ftpEst.best ?? eftpVal ?? ftpManual) // #5007 computed side = the blended estimate
+  // #508 (JM: "text says 260 while FTP is auto at 253") — chosenFtp MUST equal the card tile's in-use value so the
+  // profile/insights/TTE/VO₂max all agree with the number on the card. The tile uses def.computed = eftpVal (253) on
+  // auto, so mirror that here (was ftpEst.best = 260, anchored to the manual — the source of the mismatch).
+  const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? eftpVal ?? ftpEst.best) : (eftpVal ?? ftpEst.best ?? ftpManual)
   const decoupCheck = decouplingCheck(rideSignals, chosenFtp) // #508 — does your near-FTP riding hold steady (confirms) or drift (FTP too high)?
   const aeroFloor = aerobicFloor(rideSignals, maxHr ?? compMaxHr) // #508 — your Z2 efficiency proves FTP is AT LEAST this (JM: 170 W steady in Z2 ⇒ not 220)
   // #508 (JM: "CP and FTP measure the same thing — CP+15 makes no sense vs my training") — CP stays the INDEPENDENT

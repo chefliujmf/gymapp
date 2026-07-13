@@ -29,6 +29,15 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIs
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
+// #508 — DEEP-merge intervals sport-settings into ours PER GROUP. intervals only knows ftp/maxHr/lthr/thresholdPace;
+// our LOCAL benchmarks (cp/wPrime/tte/cs/dPrime) live in the same per-sport object. A shallow `{...ours, ...mapped}`
+// makes mapped.cycling REPLACE the whole cycling object → wipes cp/W′/TTE on every session-load/pull (JM: "manual
+// value does not save" — it saved, then the next sync deleted it). Overlay intervals' fields, keep everything else.
+function mergeIcuSportSettings(existing, mapped) {
+  const out = { ...(existing || {}) }
+  for (const g of Object.keys(mapped || {})) out[g] = { ...(out[g] || {}), ...(mapped[g] || {}) }
+  return out
+}
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage)
@@ -345,7 +354,7 @@ app.put('/auth/icu', auth, async (req, res) => {
       // per-sport thresholds) from the athlete's intervals sport-settings ON CONNECT, so the coach has real numbers
       // immediately without the user opening Stats. Fill-if-empty; the Stats cards refine them from the curves later.
       const mapped = fromIcuSportSettings(me.sportSettings || [])
-      req.user.sportSettings = { ...(req.user.sportSettings || {}), ...mapped }
+      req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped)
       if (mapped.cycling?.ftp != null && req.user.ftp == null) req.user.ftp = mapped.cycling.ftp
       if (mapped.cycling?.maxHr != null && req.user.maxHR == null) req.user.maxHR = mapped.cycling.maxHr
       // …and if settings still left an anchor blank (unconfigured account), COMPUTE it from their history so the
@@ -411,7 +420,7 @@ app.get('/auth/intervals/athlete', auth, async (req, res) => {
   if (!a) return res.status(502).json({ connected: true, error: 'could not read intervals athlete' })
   const mapped = fromIcuSportSettings(a.sportSettings || [])
   // refresh the local mirror from intervals (canonical), keeping Platyplus-only fields
-  req.user.sportSettings = { ...(req.user.sportSettings || {}), ...mapped }
+  req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped)
   if (mapped.cycling?.ftp != null) req.user.ftp = mapped.cycling.ftp
   if (mapped.cycling?.maxHr != null) req.user.maxHR = mapped.cycling.maxHr
   const weight = a.icu_weight != null ? a.icu_weight : (a.weight != null ? a.weight : null)
