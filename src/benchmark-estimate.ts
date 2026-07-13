@@ -21,6 +21,7 @@ export interface Src {
   value: number | null      // native unit; null = source unavailable
   ageDays?: number | null   // how old the backing effort is (undefined/null = unknown age)
   kind: SourceKind
+  weight?: number           // #508 — explicit base reliability override (0-1), from the research: lean on CP, down-weight the known under-reads (95%-rule + HR-power off an uncertain max HR). Falls back to the kind-based base.
 }
 // #506 — 'low'/'high' = a source that IS available but reads meaningfully below/above the number in use (so the
 // card can say "reads lower" honestly instead of rubber-stamping everything "agrees"). 'off' = genuinely missing.
@@ -39,7 +40,7 @@ const clampPct = (n: number): number => Math.min(100, Math.max(8, Math.round(n))
 
 // how much a source counts, from its kind and freshness (fresh window is metric-specific)
 export function sourceWeight(s: Src, freshDays: number): number {
-  const base = s.kind === 'test' ? 1 : s.kind === 'observed' ? 0.95 : s.kind === 'derived' ? 0.82 : s.kind === 'model' ? 0.75 : 0.6 // manual
+  const base = s.weight != null ? s.weight : s.kind === 'test' ? 1 : s.kind === 'observed' ? 0.95 : s.kind === 'derived' ? 0.82 : s.kind === 'model' ? 0.75 : 0.6 // manual
   const fresh = s.ageDays == null ? 0.7 : s.ageDays <= freshDays ? 1 : s.ageDays <= freshDays * 2 ? 0.5 : 0.28
   return base * fresh
 }
@@ -168,12 +169,15 @@ export function ftpEstimate(inp: FtpInputs): Estimate {
   const FRESH = 21, tol = 0.05
   const eftpFresh = inp.eftp != null && inp.eftpAgeDays != null && inp.eftpAgeDays <= FRESH
   const hrp = ftpFromHrPower(inp.hrPower || [], inp.maxHr) // #497 — submaximal HR-power FTP (great when there's no test)
+  // #508 — weights from the platform research: CP is the most mechanistically valid (≈ FTP) → lean on it; the 95%
+  // rule UNDER-reads aerobic riders and HR-power under-reads off an uncertain max HR → both down-weighted so they
+  // can't drag the estimate down; eFTP is a solid cross-check.
   const srcRows: Src[] = [
     { name: 'you train by', value: inp.manual ?? null, ageDays: null, kind: 'manual' },
-    { name: 'intervals eFTP', value: inp.eftp, ageDays: inp.eftpAgeDays ?? null, kind: 'observed' },
-    { name: 'from CP', value: inp.cp != null ? Math.round(inp.cp) : null, ageDays: 0, kind: 'model' },
-    { name: 'best 20-min ×0.95', value: inp.best20 != null ? Math.round(inp.best20 * 0.95) : null, ageDays: null, kind: 'test' },
-    { name: 'HR vs power', value: hrp ? hrp.best : null, ageDays: null, kind: 'model' }, // #497 — from the HR cost of steady rides
+    { name: 'intervals eFTP', value: inp.eftp, ageDays: inp.eftpAgeDays ?? null, kind: 'observed', weight: 0.9 },
+    { name: 'from CP', value: inp.cp != null ? Math.round(inp.cp) : null, ageDays: 0, kind: 'model', weight: 1 },
+    { name: 'best 20-min ×0.95', value: inp.best20 != null ? Math.round(inp.best20 * 0.95) : null, ageDays: null, kind: 'test', weight: 0.5 },
+    { name: 'HR vs power', value: hrp ? hrp.best : null, ageDays: null, kind: 'model', weight: 0.3 }, // #497 — from the HR cost of steady rides; #508 low weight (under-reads off an uncertain max HR)
   ]
   // The value you TRAIN BY anchors it — you know your FTP better than a stale eFTP or a CP fit from easy rides.
   // Computed sources only MOVE the number when a genuinely FRESH hard effort (a recently-refreshed eFTP) disagrees.
