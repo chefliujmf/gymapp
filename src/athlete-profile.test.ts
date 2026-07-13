@@ -13,6 +13,15 @@ describe('athleteProfile', () => {
     expect(p.focus.some((f) => /only if the fit goes stale/i.test(f))).toBe(true) // #408: not "never", triggered
     expect(p.reads.find((r) => r.k === 'TTE')?.r).toMatch(/biggest lever/i)
     expect(p.reads.find((r) => r.k === 'EF')?.r).toMatch(/rising/i)
+    // #508 — explicit strength / weakness for a punchy profile
+    expect(p.strength.lead).toMatch(/power at threshold/i)
+    expect(p.weakness.lead).toBe('Staying power')
+    expect(p.weakness.body).toMatch(/12:00/) // references the real short TTE
+  })
+  it('#508 running punchy: strength = speed, weakness = staying power', () => {
+    const p = athleteProfile({ sport: 'running', threshold: 297, eftp: 297, tte: 900, cp: 321, reserveKj: 72, reserveBig: 200 })
+    expect(p.strength.lead).toBe('Speed at threshold')
+    expect(p.weakness.lead).toBe('Staying power')
   })
   it('#464: a decimal eFTP/threshold renders as WHOLE watts (no 240.27774 W anywhere)', () => {
     const p = athleteProfile({ sport: 'cycling', threshold: 240.27774, eftp: 235.51825, tte: 720, cp: 248, reserveKj: 17.1, reserveBig: 20 })

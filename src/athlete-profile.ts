@@ -16,7 +16,8 @@ export interface ProfileInputs {
   efTrend?: Trend             // EF direction over recent weeks
 }
 export interface MetricRead { k: string; v: string; r: string }
-export interface AthleteProfileResult { type: string; emoji: string; badge: string; summary: string; reads: MetricRead[]; focus: string[] }
+export interface SwRead { lead: string; body: string } // #508 — one explicit strength + one thing to improve
+export interface AthleteProfileResult { type: string; emoji: string; badge: string; summary: string; strength: SwRead; weakness: SwRead; reads: MetricRead[]; focus: string[] }
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
 
@@ -31,6 +32,29 @@ export function athleteProfile(inp: ProfileInputs): AthleteProfileResult {
   if (shortTte) { type = 'Punchy threshold'; badge = 'building endurance'; summary = `Good ${cyc ? 'power' : 'speed'}, short staying power — you can HIT threshold but not HOLD it yet. The opportunity is turning that into endurance.` }
   else if (longTte) { type = bigReserve ? 'All-rounder' : 'Diesel engine'; badge = bigReserve ? 'well-rounded' : 'raise the ceiling'; summary = bigReserve ? `Strong fatigue resistance AND a healthy kick — a genuine all-rounder. Sharpen the top end.` : `Strong fatigue resistance, modest kick — a classic diesel. Your ${cyc ? 'FTP' : 'threshold'} has room to climb.` }
   else { type = bigReserve ? 'Puncheur' : 'Balanced'; badge = bigReserve ? 'punchy' : 'building'; summary = bigReserve ? `A punchy profile — a big anaerobic reserve on a solid base. Keep that spark while stretching your threshold duration.` : `A balanced base — solid across the board with room to grow your threshold duration and top end.` }
+
+  // #508 — ONE explicit strength + ONE thing to improve (JM). This is what the coach reads to know you. Derived from
+  // the same type/metrics, sport-aware; references the real number where it helps (TTE, the kick reserve).
+  const kick = cyc ? 'W′' : 'D′'
+  const kickV = inp.reserveKj != null ? (cyc ? `${inp.reserveKj} kJ` : `${inp.reserveKj} m`) : ''
+  const tteTxt = inp.tte != null ? mmss(inp.tte) : null
+  let strength: SwRead, weakness: SwRead
+  if (shortTte) {
+    strength = { lead: cyc ? 'Power at threshold' : 'Speed at threshold', body: `You reach a strong ${cyc ? 'wattage' : 'pace'}${kickV ? `, and your kick (${kick} ${kickV}) covers surges` : ''} — you can hit hard efforts.` }
+    weakness = { lead: 'Staying power', body: `You can't hold threshold long yet${tteTxt ? ` — your TTE is short (${tteTxt} vs a normal 30–70 min)` : ''}. Turning ${cyc ? 'power' : 'speed'} into duration is your single biggest lever.` }
+  } else if (longTte && !bigReserve) {
+    strength = { lead: 'Endurance', body: `Strong fatigue resistance — you hold ${cyc ? 'power' : 'pace'} a long time${tteTxt ? ` (TTE ${tteTxt})` : ''} and recover fast between efforts.` }
+    weakness = { lead: 'Top-end ceiling', body: `Your ${cyc ? 'FTP' : 'threshold'} has room to climb — the gain now is raising the roof (VO₂ / short-max work), not more duration.` }
+  } else if (longTte && bigReserve) {
+    strength = { lead: 'Well-rounded', body: `Strong endurance${tteTxt ? ` (TTE ${tteTxt})` : ''} and a real kick${kickV ? ` (${kick} ${kickV})` : ''} — few weak spots.` }
+    weakness = { lead: 'Sharpen the top', body: `Little to fix — polish the very top end (short VO₂ / neuromuscular efforts) to squeeze out more.` }
+  } else if (bigReserve) {
+    strength = { lead: 'Punch', body: `A big anaerobic reserve${kickV ? ` (${kick} ${kickV})` : ''} — attacks, surges and the ${cyc ? 'sprint' : 'kick'} are your weapon.` }
+    weakness = { lead: 'Threshold duration', body: `You fade on sustained efforts${tteTxt ? ` — your TTE (${tteTxt}) is the lever` : ''}. Extensive tempo turns punch into staying power.` }
+  } else {
+    strength = { lead: 'Balanced base', body: `Solid across the board — no glaring weakness, a good platform to build from.` }
+    weakness = { lead: 'Lift it all a notch', body: `Grow your threshold duration (tempo) and your top end (VO₂) together for steady, broad progress.` }
+  }
 
   const reads: MetricRead[] = []
   if (inp.threshold != null) reads.push({ k: cyc ? 'FTP' : 'Threshold', v: cyc ? `${Math.round(inp.threshold)} W` : `${mmss(inp.threshold)}/km`, // #464 whole watts (was 240.27774)
@@ -54,5 +78,5 @@ export function athleteProfile(inp: ProfileInputs): AthleteProfileResult {
   if (!bigReserve) focus.push(cyc ? 'Keep the punch — a weekly short-sprint set (30 s–3 min) holds/grows W′.' : 'Keep the kick — weekly short fast reps (200–600 m) hold/grow D′.')
   focus.push(cyc ? 'Aerobic volume underneath — feeds a rising EF and a higher future FTP.' : 'Easy aerobic volume underneath — feeds a rising EF and future pace.')
   focus.push('Mostly the efforts ARE the data — your CP/W′/TTE models sharpen as you do them; a short benchmark test only if the fit goes stale.')
-  return { type, emoji, badge, summary, reads, focus }
+  return { type, emoji, badge, summary, strength, weakness, reads, focus }
 }

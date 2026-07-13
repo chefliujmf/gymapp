@@ -450,6 +450,15 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
         <div className="prof">
           <div className="prof__type">{prof.emoji} {prof.type} <span className="prof__badge">{prof.badge}</span></div>
           <div className="prof__say">{prof.summary}</div>
+          {/* #508 — explicit STRENGTH + TO-IMPROVE (JM approved). What the coach reads to know you. */}
+          <div style={{ background: '#12151b', border: '1px solid #242a34', borderRadius: 12, padding: '2px 13px', margin: '4px 0 14px' }}>
+            {([{ ic: '💪', lb: 'Your strength', c: 'var(--accent)', d: prof.strength }, { ic: '🎯', lb: 'To improve', c: '#f5b53d', d: prof.weakness }] as const).map((row, i) => (
+              <div key={row.lb} style={{ display: 'flex', gap: 11, alignItems: 'flex-start', padding: '11px 0', borderTop: i ? '1px solid #21252e' : undefined }}>
+                <span style={{ fontSize: 17, lineHeight: 1.3 }}>{row.ic}</span>
+                <div><div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.07em', fontWeight: 800, color: row.c, marginBottom: 2 }}>{row.lb}</div><div style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5 }}><b style={{ color: 'var(--text)' }}>{row.d.lead}.</b> {row.d.body}</div></div>
+              </div>
+            ))}
+          </div>
           {prof.reads.map((m) => <div key={m.k} className="prof__m"><div className="prof__mk"><span className="k">{m.k}</span><b>{m.v}</b></div><div className="r">{m.r}</div></div>)}
           <div className="prof__foc"><h4>🎯 What your coach will work on</h4><ul>{prof.focus.map((f, i) => <li key={i}>{f}</li>)}</ul></div>
         </div>
