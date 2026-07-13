@@ -181,16 +181,25 @@ export function ftpEstimate(inp: FtpInputs): Estimate {
   if (inp.manual != null && inp.manual > 0) {
     const m = inp.manual
     let best = m, conf: EstConfidence, why: string
-    if (eftpFresh && Math.abs((inp.eftp as number) - m) / m > tol) {
+    // #508 (JM: "if 260 were too high I couldn't follow the workouts") — ASYMMETRIC: a fresh effort reading ABOVE your
+    // set FTP can nudge you up (you're stronger than you thought); a read BELOW is almost always an UNDER-READ off
+    // submaximal riding, NOT proof you're weaker — so it must NOT drag a training-validated FTP down.
+    const eftpHi = eftpFresh && ((inp.eftp as number) - m) / m > tol
+    const eftpLo = eftpFresh && (m - (inp.eftp as number)) / m > tol
+    if (eftpHi) {
       best = Math.round((m + (inp.eftp as number)) / 2)
-      conf = { pct: 66, cls: 'good', label: 'Worth a re-test' }
-      why = `A recent hard effort put your eFTP at ${inp.eftp} W but you train by ${m} — it's somewhere around ${best} W. A fresh 20–40 min test settles it.`
+      conf = { pct: 66, cls: 'good', label: 'You may be stronger — worth a test' }
+      why = `A recent effort put your eFTP at ${inp.eftp} W — ABOVE the ${m} you train by. You may be stronger than you set; a fresh 20–40 min test confirms it.`
+    } else if (eftpLo) {
+      best = m // keep the trained FTP; a low submaximal read doesn't lower it
+      conf = { pct: 62, cls: 'need', label: 'Your FTP — computed reads run low on easy rides' }
+      why = `You train by ${m} W and your workouts follow from it — that's real validation. Your recent riding has been easy, so the computed reads sit lower (eFTP ${inp.eftp} W) — that's under-reading, not proof ${m} is too high. A hard 20–40 min effort would pin a precise number.`
     } else if (eftpFresh) {
       conf = { pct: 88, cls: 'strong', label: 'Confirmed by a recent effort' }
       why = `A recent hard ride backs your ${m} W FTP — confirmed.`
     } else {
-      conf = { pct: 50, cls: 'need', label: 'Unconfirmed — needs a hard effort' }
-      why = `Using your set FTP of ${m} W. Your recent rides have been too easy to confirm it${inp.cp != null ? ` (your CP curve currently reads ${Math.round(inp.cp)} W)` : ''} — a hard 20–40 min effort would prove it.`
+      conf = { pct: 55, cls: 'need', label: 'Your FTP — a hard effort would confirm it' }
+      why = `Using the ${m} W you train by${inp.cp != null ? ` (your CP curve reads ${Math.round(inp.cp)} W)` : ''}. Recent rides have been easy, so nothing's confirmed it lately — a hard 20–40 min effort would.`
     }
     // #506 — tag each computed source by whether it ACTUALLY agrees with the value you train by (within tol), else
     // say which way it reads. The old code blind-tagged everything 'agrees', so 220 W read "agrees" next to a 260 W

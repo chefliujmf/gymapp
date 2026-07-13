@@ -123,6 +123,13 @@ describe('ftpEstimate', () => {
     expect(e.best).toBeLessThan(266)
     expect(e.conf.cls).not.toBe('strong')
   })
+  // #508 (JM: "if 260 were too high I couldn't follow the workouts") — a FRESH but LOW eFTP is an under-read off easy
+  // riding; it must NOT drag a training-validated FTP down (the old code blended 260→250).
+  it('a fresh LOW eFTP does NOT lower a trained FTP — stays at your value, not blended down', () => {
+    const e = ftpEstimate({ eftp: 240, eftpAgeDays: 5, cp: 248, best20: 246, manual: 260 })
+    expect(e.best).toBe(260) // NOT 250
+    expect(e.why).toMatch(/under-read|validation|too high/i)
+  })
   // #506 — JM: "all diff numbers but agrees with the blend?" A computed source far from the value you train by must
   // be tagged low/high (reads lower/higher), NOT blanket 'agrees', and only your manual value is 'primary' (in use).
   it('manual value: sources are tagged by REAL agreement, not rubber-stamped "agrees"', () => {
