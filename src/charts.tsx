@@ -69,6 +69,46 @@ function smoothPath(pts: [number, number][]): string {
   return d
 }
 
+// #508 — the ENGINE's centrepiece: the mean-max power/pace-duration curve on a log-time axis, with the CP/CS
+// asymptote (the sustainable floor) + the W′/D′ reserve shaded above it + labelled anchor points. Generic over
+// sport: pass `values` as the "higher is better" quantity (watts, or SPEED m/s for running) + `fmt` for display.
+function valueAtSec(pts: [number, number][], sec: number): number | null {
+  for (const [s, v] of pts) if (s >= sec) return v
+  return pts.length ? pts[pts.length - 1][1] : null
+}
+export function DurationCurve({ secs, values, asymptote, unit = '', fmt = (v) => String(Math.round(v)), reserveLabel, anchors = [], height = 156 }: {
+  secs: number[]; values: number[]; asymptote?: number | null; unit?: string; fmt?: (v: number) => string
+  reserveLabel?: string; anchors?: { sec: number; label: string }[]; height?: number
+}) {
+  const clipId = useId()
+  const W = 344, padL = 36, padR = 12, padT = 16, padB = 22
+  const plotW = W - padL - padR, plotH = height - padT - padB
+  const pts = secs.map((s, i) => [s, values[i]] as [number, number]).filter(([s, v]) => s >= 55 && s <= 4200 && v > 0).sort((a, b) => a[0] - b[0])
+  if (pts.length < 3) return <div className="meta" style={{ padding: '10px 4px' }}>Your curve appears here once intervals has a few efforts across durations.</div>
+  const sMin = 60, sMax = 3600, L = Math.log10(sMin), R = Math.log10(sMax)
+  const lx = (s: number) => padL + (Math.log10(Math.max(sMin, Math.min(sMax, s))) - L) / (R - L) * plotW
+  const vs = pts.map((p) => p[1])
+  const vMax = Math.max(...vs) * 1.04, vMin = Math.min(asymptote ?? Math.min(...vs), Math.min(...vs)) * 0.96
+  const ly = (v: number) => padT + (1 - (v - vMin) / (vMax - vMin)) * plotH
+  const xy = pts.map((p) => [lx(p[0]), ly(p[1])] as [number, number])
+  const cpY = asymptote != null ? ly(asymptote) : null
+  const ticks: [number, string][] = [[60, '1m'], [300, '5m'], [1200, '20m'], [3600, '60m']]
+  return (
+    <svg viewBox={`0 0 ${W} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="power-duration curve">
+      <line x1={padL} y1={padT - 4} x2={padL} y2={height - padB} stroke="#333a45" />
+      <line x1={padL} y1={height - padB} x2={W - padR} y2={height - padB} stroke="#333a45" />
+      {cpY != null && <defs><clipPath id={clipId}><rect x={padL} y={padT - 4} width={plotW} height={Math.max(0, cpY - (padT - 4))} /></clipPath></defs>}
+      {cpY != null && <path d={`M${xy[0][0]},${xy[0][1]} ${xy.map((p) => `L${p[0]},${p[1]}`).join(' ')} L${xy[xy.length - 1][0]},${cpY} L${xy[0][0]},${cpY} Z`} fill="rgba(155,140,255,.14)" clipPath={`url(#${clipId})`} />}
+      {cpY != null && <line x1={padL} y1={cpY} x2={W - padR} y2={cpY} stroke="#9b8cff" strokeWidth={1.4} strokeDasharray="5 4" />}
+      {cpY != null && <text x={W - padR} y={cpY - 4} fill="#9b8cff" fontSize={10} textAnchor="end" fontWeight={700}>{fmt(asymptote as number)}{unit}</text>}
+      <path d={smoothPath(xy)} fill="none" stroke="#34e07d" strokeWidth={2.4} strokeLinecap="round" />
+      {anchors.map((a, i) => { const v = valueAtSec(pts, a.sec); if (v == null) return null; const x = lx(a.sec), y = ly(v); return <g key={i}><circle cx={x} cy={y} r={3.6} fill="#34e07d" /><text x={Math.min(W - 24, Math.max(padL + 12, x))} y={y - 7} fill="#eef1f4" fontSize={9.5} textAnchor="middle">{a.label}</text></g> })}
+      {reserveLabel && <text x={lx(150)} y={ly(vMax) + 12} fill="#9b8cff" fontSize={10.5} fontWeight={700}>{reserveLabel}</text>}
+      {ticks.map(([s, l], i) => <text key={i} x={lx(s)} y={height - 6} fill="#9298a6" fontSize={10} textAnchor="middle">{l}</text>)}
+    </svg>
+  )
+}
+
 const VW = 320
 /** Round-minute x-axis marks (0m · 10m · … · h:mm) for a time-based chart of `totalSec`. #286/#280 */
 export function minuteTicks(totalSec: number): { frac: number; label: string }[] {
