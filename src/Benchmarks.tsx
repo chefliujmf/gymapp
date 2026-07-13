@@ -67,18 +67,10 @@ function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; p
     onPref(p)
     onClose()
   }
-  // #508 — CLEAN layout (FTP first; roll to the rest once JM signs off). One number + confidence + a short
-  // paragraph; the method wall hides behind a tap. The number tracks the toggle live so switching Manual/Auto
-  // previews the value that will drive. Edit controls below are UNCHANGED (JM: "don't change the front-end logic").
-  const clean = def.key === 'ftp'
+  // #508 — CLEAN layout for EVERY benchmark, all sports (JM: "same clean-up for running, all metrics for all
+  // sports"). One number + confidence + a short paragraph; NO dual tiles, NO "The science" method wall. The number
+  // tracks the toggle live so switching Manual/Auto previews the value that will drive. Edit controls below UNCHANGED.
   const inUse = p === 'manual' ? def.manual : (def.computed ?? def.manual) // the value actually driving, per the toggle
-  const sciRows = def.sci.map((r, i) => (
-    <div key={i} className={'bm-mrow' + (r.inUse ? ' use' : '')}>
-      <div className={'bm-mn' + (r.value === '—' ? ' dim' : '')}>{r.name}<small>{r.formula}</small></div>
-      {r.inUse && <span className="bm-use-tag">IN USE</span>}
-      <div className={'bm-mv' + (r.value === '—' ? ' dim' : '')}>{r.value}</div>
-    </div>
-  ))
   const sharpenEl = def.conf.cls !== 'strong' && def.sharpen ? <div className="bm-sharpen">💪 <b>Sharpen it:</b> {def.sharpen}</div> : null
   return (
     <div className="bsheet__scrim" onClick={onClose}>
@@ -86,35 +78,16 @@ function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; p
         <div className="bsheet__h"><h3>{def.label}</h3><button className="bsheet__x" onClick={onClose}>✕</button></div>
         {/* #374 — confidence bar up top (same data as the card). */}
         <ConfBar conf={def.conf} big />
-        {clean ? (
-          /* #508 — ONE number (tracks the toggle) + a source line; replaces the dual Computed/Manual tiles. */
-          <div style={{ textAlign: 'center', padding: '4px 0 2px' }}>
-            <div style={{ fontSize: 50, fontWeight: 750, letterSpacing: '-.02em', lineHeight: 1 }}>{inUse != null ? def.fmt(inUse) : '—'}{def.unit && <span style={{ fontSize: 21, color: 'var(--text-dim)', fontWeight: 600, marginLeft: 3 }}>{def.unit}</span>}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 7 }}>{p === 'manual' ? 'the power you train by' : (inUse != null ? def.computedSrc : (def.pending ? `⏳ ${def.pending}` : ''))}</div>
-          </div>
-        ) : (
-          <div className="bsheet__two">
-            <div className={'bsheet__opt' + (p === 'computed' ? ' on' : '')}><div className="bsheet__ol">Computed</div><div className="bsheet__ov" style={{ color: '#5ec8ff' }}>{def.computed != null ? def.fmt(def.computed) : '—'}</div><div className="bsheet__os">{def.computed != null ? def.computedSrc : (def.pending ? `⏳ ${def.pending}` : 'not available yet')}</div></div>
-            <div className={'bsheet__opt' + (p === 'manual' ? ' on' : '')}><div className="bsheet__ol">Manual</div><div className="bsheet__ov" style={{ color: '#9b8cff' }}>{def.manual != null ? def.fmt(def.manual) : '—'}</div><div className="bsheet__os">your value</div></div>
-          </div>
-        )}
+        {/* #508 — ONE number (tracks the toggle) + a source line; replaces the dual Computed/Manual tiles. */}
+        <div style={{ textAlign: 'center', padding: '4px 0 2px' }}>
+          <div style={{ fontSize: 50, fontWeight: 750, letterSpacing: '-.02em', lineHeight: 1 }}>{inUse != null ? def.fmt(inUse) : '—'}{def.unit && <span style={{ fontSize: 21, color: 'var(--text-dim)', fontWeight: 600, marginLeft: 3 }}>{def.unit}</span>}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 7 }}>{p === 'manual' ? 'your value' : (inUse != null ? def.computedSrc : (def.pending ? `⏳ ${def.pending}` : ''))}</div>
+        </div>
         {/* #374 — plain-language explanation of how this stat is computed. */}
         <div className="bm-narr">{def.narr}</div>
-        {clean ? (
-          /* #508 (JM: "I don't want another link there … not all that crap") — NO expander, NO method wall. The
-             narrative above already carries the one honest read; only the sharpen tip stays when it's not strong. */
-          sharpenEl
-        ) : (
-          <>
-            {/* #374 — "The science" — every method + which one drives. */}
-            <div className="bm-sci">
-              <h4>The science · {def.sci.length} method{def.sci.length === 1 ? '' : 's'}</h4>
-              {sciRows}
-            </div>
-            {/* #374 — how to sharpen the estimate (only when it's not already strong). */}
-            {sharpenEl}
-          </>
-        )}
+        {/* #508 (JM: "not all that crap") — NO method wall; the narrative carries the one honest read. Only the
+            sharpen tip stays, when it's not already strong. */}
+        {sharpenEl}
         <div className="bsheet__lbl">Your value</div>
         <input className="bsheet__in" value={txt} placeholder={def.computed != null ? def.fmt(def.computed) : 'enter a value'} onChange={(e) => setTxt(e.target.value)} />
         <div className="bsheet__lbl">Use which?</div>
