@@ -11,7 +11,6 @@ import GoalsPicker from '../GoalsPicker'
 import OnboardReturnBar from '../OnboardReturnBar'
 import { fetchAthleteSex } from '../intervals'
 import { dataGaps } from '../dataGaps'
-import { bmr, tdee, calorieTarget, macroSplit, ageFromDob, type Goal } from '../nutrition'
 
 // #491 — Meditation (Mind) removed from the picker while Eat/Mind are deactivated. Yoga/Pilates STAY (they're
 // logged physical activities that count for the day dot). To restore Mind: re-add ['meditation', 'Meditation'].
@@ -117,50 +116,29 @@ function CycleFields({ user, refresh }: { user: User; refresh: () => Promise<voi
   )
 }
 
-// #265 — daily fuel targets (BMR→TDEE→calories/protein/macros). Captures the missing inputs (height +
-// birth date; sex/weight come from About-you/intervals) and shows the athlete their numbers. The coach
-// gets the same targets injected server-side so meal picks match.
-const ACT_FOR_DAYS = (d?: number): 'light' | 'moderate' | 'active' | 'athlete' => { const n = Number(d) || 0; return n >= 7 ? 'athlete' : n >= 5 ? 'active' : n >= 3 ? 'moderate' : 'light' }
+// #265 / #505(roadmap) — capture the athlete's HEIGHT + BIRTH DATE (used for age-based training stats like an
+// age max-HR and VO₂max; they also sync from intervals). The calorie/macro fuel TARGETS were REMOVED 2026-07-13
+// (JM: "too complicated" — Eat is deactivated so the coach can't use them to plan, and showing a weight-loss cut
+// is wrong, especially during pregnancy). The engine (src/nutrition.ts) is kept for the parked roadmap item #505.
 function FuelFields({ user, refresh }: { user: User; refresh: () => Promise<void> }) {
-  const info = (user.info || {}) as { heightCm?: number; dob?: string; fuelGoal?: Goal; trainingDays?: number; weight?: number }
+  const info = (user.info || {}) as { heightCm?: number; dob?: string }
   const [heightCm, setHeightCm] = useState<number | ''>(info.heightCm || '')
   const [dob, setDob] = useState(info.dob || '')
-  const [goal, setGoal] = useState<Goal>(info.fuelGoal || 'maintain')
-  const [weight, setWeight] = useState<number | null>(info.weight ?? null)
   const [saved, setSaved] = useState(false)
-  useEffect(() => { if (user.hasIcuKey) authApi.pullIcuAthlete().then((p) => { if (p.weight) setWeight(p.weight) }).catch(() => {}) }, [user.hasIcuKey])
   const save = (patch: Record<string, unknown>) => { authApi.saveProfile(patch).then(() => { refresh().catch(() => {}); setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {}) }
-  const sex = user.sex as 'male' | 'female' | undefined
-  const age = ageFromDob(dob)
-  const b = bmr({ sex, weightKg: weight || undefined, heightCm: heightCm || undefined, age: age || undefined })
-  const td = tdee(b, { activity: ACT_FOR_DAYS(info.trainingDays) })
-  const cal = calorieTarget(td, goal)
-  const macros = macroSplit(cal, weight, goal)
-  const GOALS: [Goal, string][] = [['lose', 'Lose'], ['maintain', 'Maintain'], ['gain', 'Gain']]
-  const need = [!sex && 'sex', !weight && 'weight', !heightCm && 'height', !dob && 'birth date'].filter(Boolean)
   return (
     <div style={{ marginTop: 6 }}>
-      <div className="section-title" style={{ fontSize: 13 }}>Daily fuel targets <span className="meta" style={{ fontWeight: 400 }}>· BMR/TDEE{saved ? ' · Saved ✓' : ''}</span></div>
+      <div className="section-title" style={{ fontSize: 13 }}>Height & birth date <span className="meta" style={{ fontWeight: 400 }}>· for your training stats{saved ? ' · Saved ✓' : ''}</span></div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Height (cm)
-          {/* #424 — DON'T clamp to min on every keystroke (typing "1" jumped straight to 100 → impossible to build 175).
-              Type freely; clamp to [100,230] + save on BLUR. */}
+          {/* #424 — type freely; clamp to [100,230] + save on BLUR (clamping per keystroke made 175 impossible to type). */}
           <input type="number" inputMode="numeric" min={100} max={230} className="search" style={{ maxWidth: 92, textAlign: 'center' }} value={heightCm}
             onChange={(e) => setHeightCm(e.target.value === '' ? '' : Math.round(Number(e.target.value)))}
             onBlur={() => { if (heightCm === '') return; const v = Math.max(100, Math.min(230, Number(heightCm))); setHeightCm(v); save({ heightCm: v }) }} /></label>
         <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Birth date
           <input type="date" className="search" style={{ maxWidth: 160 }} value={dob} onChange={(e) => { setDob(e.target.value); save({ dob: e.target.value }) }} /></label>
       </div>
-      <div className="chips" style={{ marginTop: 8 }}>
-        {GOALS.map(([v, label]) => <button key={v} className={'chip' + (goal === v ? ' chip--active' : '')} onClick={() => { setGoal(v); save({ fuelGoal: v }) }}>{label}</button>)}
-      </div>
-      {cal && macros
-        ? <div className="card" style={{ marginTop: 8, padding: '10px 12px' }}>
-            <div style={{ fontWeight: 800, fontSize: 15 }}>~{cal} kcal/day <span className="meta" style={{ fontWeight: 400 }}>· {goal === 'maintain' ? 'maintain' : goal === 'lose' ? 'lean cut' : 'lean gain'}</span></div>
-            <div className="meta" style={{ marginTop: 3, color: 'var(--text)' }}>Protein <b>{macros.protein} g</b> · Fat <b>{macros.fat} g</b> · Carbs <b>{macros.carbs} g</b></div>
-            <div className="meta" style={{ marginTop: 3 }}>BMR ~{b} · TDEE ~{td} kcal ({ACT_FOR_DAYS(info.trainingDays)}). Your coach uses these to pick meals.</div>
-          </div>
-        : <p className="meta" style={{ margin: '8px 2px 4px' }}>Add {need.join(' + ')} to see your daily calorie + protein targets{need.includes('weight') ? ' (weight comes from intervals)' : ''}.</p>}
+      <p className="meta" style={{ margin: '6px 2px 0' }}>Used to personalise your training stats — e.g. an age-based max HR when you haven't hit a real one. These also sync from intervals when it's connected.</p>
     </div>
   )
 }
@@ -296,7 +274,7 @@ export default function Profile() {
       </div>
       <p className="meta" style={{ margin: '6px 2px 4px' }}>Your coach picks ONLY meals that match — vegetarian shows veg + vegan; vegan shows vegan only.</p>
 
-      {/* #265 — daily fuel targets (BMR/TDEE/protein) from sex+weight+height+age */}
+      {/* #265 — height + birth date capture (calorie/fuel targets removed 2026-07-13 → roadmap #505) */}
       <FuelFields user={user!} refresh={refresh} />
 
       {/* #337b — Profile is PREFERENCES. Your benchmarks (VO₂max, FTP, threshold pace, zones, predictions)
