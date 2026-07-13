@@ -5,7 +5,7 @@ import { authApi, type IcuAthletePull } from './auth/api'
 import { fmtPace, parsePace } from './running-paces'
 import { fetchWellness, fetchPowerCurve, fetchPaceCurve, fetchEfTrend, type PowerCurve, type PaceCurve, type EfTrend } from './intervals'
 import { estimateSleepNeed } from './sleep'
-import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from './tte'
+import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, pickTte, fmtTte } from './tte'
 import { cpFromFtp } from './cp-model' // #508 — CP sits above FTP; used to floor an under-read CP fit
 import { athleteProfile } from './athlete-profile'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, vo2ScienceRows, confLabel } from './vo2max-submax'
@@ -207,15 +207,18 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   }
   const vo2Order = [...(user?.sports || []).filter((s): s is 'running' | 'cycling' => s === 'running' || s === 'cycling'), 'cycling', 'running'].filter((s, i, a) => a.indexOf(s) === i) as ('running' | 'cycling')[]
   const vo2head = headlineVo2max(null, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
-  // #401/#506 — TTE reads off your curve at the FTP/pace ACTUALLY IN USE (chosenFtp/chosenPace), so it MOVES when you
-  // switch the picker (JM: set FTP to auto→250 but TTE stayed on 260 because it used the raw manual). OBSERVED off the
-  // curve when held long enough, else ESTIMATED from the CP/CS model so it shows a value pre-effort.
+  // #401/#506/#508 — TTE reads at the FTP/pace ACTUALLY IN USE (chosenFtp/chosenPace), so it MOVES when you switch the
+  // picker. It's INFERRED from the CP/CS model (W′/CP · D′/CS) — we never ask for a test. The curve's "longest you
+  // actually held it" only wins when it's LONGER than the model (a real longer hold beats the prediction); a short
+  // observed hold under-states you (you rarely ride to exhaustion), so it must NOT drag TTE down to 12 min + beg for
+  // an effort (JM: "I don't see you inferring TTE, you ask again for a test"). Model uses the RAW CP so FTP>CP gives a
+  // finite time (the floored display-CP would make FTP<CP → falsely "unbounded").
   const tteRideObs = powerCurve ? tteFromPower(powerCurve.secs, powerCurve.watts, chosenFtp ?? eftp) : null
   const tteRideEst = powerCurve ? tteModelPower(chosenFtp ?? eftp, powerCurve.cp, powerCurve.wPrime) : null
-  const tteRide = tteRideObs ?? tteRideEst, tteRideEstimated = tteRideObs == null && tteRideEst != null
+  const tteRidePick = pickTte(tteRideObs, tteRideEst), tteRide = tteRidePick.sec, tteRideEstimated = tteRidePick.estimated
   const tteRunObs = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, chosenPace ?? paceComputed) : null
   const tteRunEst = paceCurve ? tteModelPace(chosenPace ?? paceComputed, paceCurve.cs, paceCurve.dPrime) : null
-  const tteRun = tteRunObs ?? tteRunEst, tteRunEstimated = tteRunObs == null && tteRunEst != null
+  const tteRunPick = pickTte(tteRunObs, tteRunEst), tteRun = tteRunPick.sec, tteRunEstimated = tteRunPick.estimated
   const prof = profile ? athleteProfile(profile === 'cycling'
     ? { sport: 'cycling', threshold: chosenFtp, eftp, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
     : { sport: 'running', threshold: chosenPace, eftp: paceEst, tte: tteRun, cp: csPace, reserveKj: dPrimeM, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null

@@ -51,6 +51,16 @@ export function tteModelPace(thresholdSecKm: number | null | undefined, cs: numb
   return t >= MIN_TTE_SEC ? Math.min(7200, t) : null
 }
 
+/** Which TTE to SHOW. The model estimate IS the inference — we never beg for a test (JM #508). A curve/observed
+ *  TTE is only a FLOOR (you rarely ride your FTP to true exhaustion, so "longest you happened to hold it" under-
+ *  states you), so it wins ONLY when it's LONGER than the model — a genuine longer hold that beats the prediction.
+ *  Otherwise the modeled W′/CP (or D′/CS) value is shown, flagged estimated. */
+export function pickTte(observed: number | null | undefined, modeled: number | null | undefined): { sec: number | null; estimated: boolean } {
+  const obs = observed ?? null, mod = modeled ?? null
+  if (mod != null && (obs == null || mod >= obs)) return { sec: mod, estimated: true }
+  return { sec: obs, estimated: false }
+}
+
 /** m:ss (or h:mm:ss) for a TTE in seconds. */
 export function fmtTte(sec: number): string {
   const s = Math.round(sec)
