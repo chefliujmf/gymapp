@@ -272,19 +272,20 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       key: 'ftp', label: 'FTP', unit: 'W', computed: ftpEst.best, computedSrc: ftpManual != null ? 'anchored on your value · cross-checked below' : 'Platyplus blend · eFTP + CP + 20-min + HR-cost', pending: ftpEst.best ? undefined : (map5 != null ? 'after your next hard effort — a ~5–20 min near-max or a 2×8; Platyplus reads your threshold from it (no formal test)' : 'after your first hard effort — a ~5–20 min or 2×8; Platyplus reads your threshold from it (no formal test)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
       chip: 'eFTP',
       conf: toConf(ftpEst.conf), // #5007 — blended estimate + honest confidence (recency · agreement · test-backed)
-      narr: <><b>{ftpEst.why}</b><br /><br /><b>Platyplus's own</b> read — we blend several independent signals: your power-based <b>eFTP</b>, your <b>Critical Power</b>, your best recent <b>20-min</b>, and the <b>HR cost</b> of your rides — each weighted by how fresh it is. No single test defines it, and a stale source that disagrees with the others can't claim "Strong". (Folding in cardiac drift + next-day recovery is on the roadmap.)</>,
-      sci: (() => { // #506/#506b — honest + EXPLICIT: name the value being compared to; only the value in use reads IN USE
-        const hasPrimary = ftpEst.sources.some((s) => s.tag === 'primary')
-        const ref = hasPrimary && ftpManual != null ? `your ${ftpManual} W` : 'the blend'
+      narr: <><b>{ftpEst.why}</b><br /><br /><b>Platyplus's own</b> multi-signal read — your eFTP, Critical Power, best 20-min, HR cost and cardiac drift, weighted by freshness. No single test defines it.</>,
+      sci: (() => { // #506e — show what each source IS (the numbers already show higher/lower — no repeated "reads lower than X", JM). IN USE follows the PICKER: the blend when Auto/Computed, your value when Manual.
+        const usingComputed = prefFor('ftp') !== 'manual' && ftpEst.best != null
+        const DESC: Record<string, string> = { 'you train by': 'the value you train by', 'intervals eFTP': 'from your power · no formal test', 'from CP': 'your power-duration ceiling', 'best 20-min ×0.95': 'your best recent 20-min', 'HR vs power': 'the HR cost of your rides' }
         const rows: SciRow[] = ftpEst.sources.map((s) => ({
           name: s.name,
-          formula: s.tag === 'primary' ? 'the value you train by' : s.tag === 'stale' ? 'stale — refresh with a hard effort' : s.tag === 'off' ? 'not available' : s.tag === 'low' ? `reads lower than ${ref}` : s.tag === 'high' ? `reads higher than ${ref}` : `within 3% of ${ref}`,
+          formula: s.tag === 'stale' ? 'stale — refresh with a hard effort' : s.tag === 'off' ? 'not available' : (DESC[s.name] || ''),
           value: s.value != null ? `${s.value} W` : '—',
-          inUse: hasPrimary ? s.tag === 'primary' : s.tag === 'agrees',
+          inUse: !usingComputed && s.tag === 'primary', // your value is IN USE only when the picker is on Manual
         }))
-        // #508 — cardiac-drift confirmation from real rides, ALWAYS shown (even 'thin') so you see the signal + what it
-        // needs: near-FTP riding either holds steady (confirms) / drifts (FTP too high) / or there's not enough of it yet.
-        rows.push({ name: 'Cardiac drift', formula: decoupCheck.note, value: decoupCheck.avgDrift != null ? `${decoupCheck.avgDrift}%` : (decoupCheck.verdict === 'confirms' ? '✓' : decoupCheck.verdict === 'too-high' ? '⚠︎' : '—'), inUse: false })
+        // #506e — when Auto/Computed, the BLEND is what's in use (fixes "IN USE 260" while the header shows 250)
+        if (usingComputed) rows.unshift({ name: 'Platyplus estimate', formula: 'the blend now in use', value: `${ftpEst.best} W`, inUse: true })
+        // #508 — cardiac-drift confirmation is KEY info → place it right UNDER the value in use, not at the bottom.
+        rows.splice(1, 0, { name: 'Cardiac drift', formula: decoupCheck.note, value: decoupCheck.avgDrift != null ? `${decoupCheck.avgDrift}%` : (decoupCheck.verdict === 'confirms' ? '✓' : decoupCheck.verdict === 'too-high' ? '⚠︎' : '—'), inUse: false })
         return rows
       })(),
       sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your power curve → tighter eFTP.',
