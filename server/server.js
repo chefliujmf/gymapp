@@ -162,6 +162,11 @@ app.get('/auth/me', auth, async (req, res) => {
     const me = await icuGet(u, `/athlete/${u.icuAthlete}`).catch(() => null)
     if (me) { syncAthleteProfile(u, me); save(store) }
   }
+  // #497/#501 — also backfill the COMPUTED coach anchors (FTP/maxHR/run pace) for already-connected users who
+  // predate the connect-time stash, so nobody is left un-analysed. Guarded: runs only while an anchor is still blank.
+  if (u.icuKey && u.icuAthlete && (u.ftp == null || u.maxHR == null || u.runPaceEst == null)) {
+    if (await computeAndStashAnchors(u).catch(() => false)) save(store)
+  }
   res.json(pub(req.user))
 })
 
@@ -281,6 +286,51 @@ function syncAthleteProfile(user, me) {
   if (me.sex && !user.sex) user.sex = me.sex === 'M' ? 'male' : me.sex === 'F' ? 'female' : user.sex
   if (me.icu_weight > 0 && !user.weight) user.weight = Math.round(me.icu_weight * 10) / 10
 }
+// #497/#501 (JM: "for a new user, BE SURE this analysis is done — it's important") — when the athlete's intervals
+// SETTINGS don't carry a stat (an unconfigured account with only ridden/run history), COMPUTE the coach anchor from
+// their ACTUAL history so the coach has a real number immediately, without the user ever opening Stats. Fill-if-empty
+// (never overrides a manual/configured value); best-effort + parallel; the Stats cards refine these from the full
+// curves later with honest confidence. This is the difference between "Platyplus never analysed my data" and not.
+async function computeAndStashAnchors(user) {
+  if (!user.icuKey || !user.icuAthlete) return false
+  const ath = user.icuAthlete
+  const needFtp = user.ftp == null, needMaxHr = user.maxHR == null, needPace = user.runPaceEst == null
+  if (!needFtp && !needMaxHr && !needPace) return false
+  const [pc, acts, pace] = await Promise.all([
+    needFtp ? icuGet(user, `/athlete/${ath}/power-curves?type=Ride&start=${icuDay(365)}&end=${icuDay(0)}`).catch(() => null) : Promise.resolve(null),
+    needMaxHr ? icuGet(user, `/athlete/${ath}/activities?oldest=${icuDay(365)}&newest=${icuDay(0)}`).catch(() => null) : Promise.resolve(null),
+    needPace ? icuGet(user, `/athlete/${ath}/pace-curves?type=Run`).catch(() => null) : Promise.resolve(null),
+  ])
+  let changed = false
+  // FTP from the best 20-min on the power curve (classic 95%). A real anchor even off steady rides — it's their best
+  // sustained 20-min, ×0.95; the HR-power method + eFTP refine it on the card. Only if settings gave no FTP.
+  if (needFtp && pc) {
+    const curve = Array.isArray(pc.list) ? pc.list[0] : null
+    if (curve && Array.isArray(curve.secs)) {
+      const vals = curve.values || curve.watts || curve.best || []
+      const at = (t) => { for (let i = 0; i < curve.secs.length; i++) if (curve.secs[i] >= t) return Number(vals[i]) || null; return null }
+      const ftp20 = at(1200)
+      if (ftp20 > 0) { user.ftp = Math.round(ftp20 * 0.95); changed = true }
+    }
+  }
+  // Max HR from the real observed ceiling over a year (or intervals' zone ceiling), else the Tanaka age formula.
+  if (needMaxHr) {
+    let observed = null
+    if (Array.isArray(acts)) {
+      const hrs = acts.map((a) => Number(a.max_heartrate ?? a.max_hr ?? a.icu_hr_max) || 0).filter((h) => h >= 120 && h <= 230).sort((x, y) => y - x)
+      if (hrs.length) observed = hrs[0]
+      if (!observed) { const am = acts.map((a) => Number(a.athlete_max_hr) || 0).find((h) => h >= 120 && h <= 230); if (am) observed = am }
+    }
+    if (!observed) { const ageYr = user.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null; if (ageYr != null && ageYr > 8 && ageYr < 100) observed = Math.round(208 - 0.7 * ageYr) }
+    if (observed) { user.maxHR = observed; changed = true }
+  }
+  // Running threshold pace from the pace curve (Critical Speed) — the coach's run anchor.
+  if (needPace && pace) {
+    const est = runThresholdFromPaceCurve(pace)
+    if (est && est.thresholdPace > 0) { user.runPaceEst = Math.round(est.thresholdPace); changed = true }
+  }
+  return changed
+}
 app.put('/auth/icu', auth, async (req, res) => {
   if (typeof req.body.icuKey === 'string') req.user.icuKey = req.body.icuKey.trim()
   if (typeof req.body.icuAthlete === 'string') req.user.icuAthlete = req.body.icuAthlete.trim()
@@ -298,6 +348,9 @@ app.put('/auth/icu', auth, async (req, res) => {
       req.user.sportSettings = { ...(req.user.sportSettings || {}), ...mapped }
       if (mapped.cycling?.ftp != null && req.user.ftp == null) req.user.ftp = mapped.cycling.ftp
       if (mapped.cycling?.maxHr != null && req.user.maxHR == null) req.user.maxHR = mapped.cycling.maxHr
+      // …and if settings still left an anchor blank (unconfigured account), COMPUTE it from their history so the
+      // analysis is genuinely done on connect (#497/#501). Best-effort; won't block a successful key save.
+      await computeAndStashAnchors(req.user).catch(() => false)
     }
   }
   save(store); res.json(pub(req.user))
