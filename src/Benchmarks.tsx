@@ -264,12 +264,12 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       chip: 'eFTP',
       conf: toConf(ftpEst.conf), // #5007 — blended estimate + honest confidence (recency · agreement · test-backed)
       narr: <><b>{ftpEst.why}</b><br /><br /><b>Platyplus's own</b> read — we blend several independent signals: your power-based <b>eFTP</b>, your <b>Critical Power</b>, your best recent <b>20-min</b>, and the <b>HR cost</b> of your rides — each weighted by how fresh it is. No single test defines it, and a stale source that disagrees with the others can't claim "Strong". (Folding in cardiac drift + next-day recovery is on the roadmap.)</>,
-      sci: (() => { // #506 — honest tags: only the value in use reads IN USE; a computed source that disagrees says which way (not a blanket "agrees")
+      sci: (() => { // #506/#506b — honest + EXPLICIT: name the value being compared to; only the value in use reads IN USE
         const hasPrimary = ftpEst.sources.some((s) => s.tag === 'primary')
-        const ref = hasPrimary ? 'your value' : 'the blend'
+        const ref = hasPrimary && ftpManual != null ? `your ${ftpManual} W` : 'the blend'
         return ftpEst.sources.map((s) => ({
           name: s.name,
-          formula: s.tag === 'primary' ? 'the value you train by' : s.tag === 'stale' ? 'stale — refresh with a hard effort' : s.tag === 'off' ? 'not available' : s.tag === 'low' ? `reads lower than ${ref}` : s.tag === 'high' ? `reads higher than ${ref}` : `agrees with ${ref}`,
+          formula: s.tag === 'primary' ? 'the value you train by' : s.tag === 'stale' ? 'stale — refresh with a hard effort' : s.tag === 'off' ? 'not available' : s.tag === 'low' ? `reads lower than ${ref}` : s.tag === 'high' ? `reads higher than ${ref}` : `within 3% of ${ref}`,
           value: s.value != null ? `${s.value} W` : '—',
           inUse: hasPrimary ? s.tag === 'primary' : s.tag === 'agrees',
         }))
