@@ -39,7 +39,7 @@ describe('runThresholdFromPaceCurve (#215 estimate from Critical Speed)', () => 
   const REAL_PC = { list: [{ paceModels: [{ type: 'CS', criticalSpeed: 3.1173706, dPrime: 148, r2: 0.99911654 }] }] }
   it('derives threshold pace from Critical Speed', () => {
     const e = runThresholdFromPaceCurve(REAL_PC)
-    expect(e!.thresholdPace).toBe(321)
+    expect(e!.thresholdPace).toBe(329) // #506d — 1000/3.117 = 321, ×1.025 offset (CS overestimates MLSS ~2-3%) → 329
     expect(e!.criticalSpeed).toBeCloseTo(3.117, 2)
     expect(e!.r2).toBeCloseTo(0.999, 2)
   })
@@ -53,7 +53,7 @@ describe('runThresholdFromPaceCurve (#215 estimate from Critical Speed)', () => 
   })
   it('takes the first window that has a good CS fit', () => {
     const pc = { list: [{ paceModels: [] }, { paceModels: [{ type: 'CS', criticalSpeed: 4.0, r2: 0.95 }] }] }
-    expect(runThresholdFromPaceCurve(pc)!.thresholdPace).toBe(250)
+    expect(runThresholdFromPaceCurve(pc)!.thresholdPace).toBe(256) // #506d — 1000/4.0 = 250, ×1.025 → 256
   })
 })
 
