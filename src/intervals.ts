@@ -67,7 +67,7 @@ export async function fetchAthleteFtp(): Promise<number | undefined> {
 }
 
 /** A mean-max power curve (best watts sustainable for each duration). */
-export interface PowerCurve { secs: number[]; watts: number[]; cp?: number; wPrime?: number; r2?: number } // #401/#403 CP/W′ + fit quality (FFT/Morton model)
+export interface PowerCurve { secs: number[]; watts: number[]; cp?: number; wPrime?: number; r2?: number; eftp?: number } // #401/#403 CP/W′ + fit quality (FFT/Morton model) · #508 eFTP straight from the power model (the real current one; the wellness/sportInfo eFTP lags)
 /** Athlete mean-max POWER curve from intervals.icu over the last N days (cycling).
  * Read-only; null on no key/error/unexpected shape (graceful). */
 export async function fetchPowerCurve(days: number): Promise<PowerCurve | null> {
@@ -84,7 +84,7 @@ export async function fetchPowerCurve(days: number): Promise<PowerCurve | null> 
     const watts: number[] = curve?.values || curve?.watts || []
     if (!secs.length || !watts.length) return null
     const pm = (curve?.powerModels || []).find((m: { type?: string }) => m.type === 'FFT_CURVES') || (curve?.powerModels || [])[0]
-    return { secs, watts, cp: pm?.criticalPower, wPrime: pm?.wPrime, r2: pm?.r2 }
+    return { secs, watts, cp: pm?.criticalPower, wPrime: pm?.wPrime, r2: pm?.r2, eftp: pm?.ftp != null ? Math.round(pm.ftp) : undefined }
   } catch { return null }
 }
 

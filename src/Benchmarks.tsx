@@ -199,11 +199,14 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // #5007 — honest FTP: blend eFTP (weighted by recency) + CP-derived + best-20min×0.95; confidence from real
   // signals so a stale eFTP that disagrees with CP can't read "Strong". toConf maps the engine's 'good' onto the
   // existing bar classes (learn) so the CSS keeps working.
-  const ftpEst = ftpEstimate({ eftp, eftpAgeDays, cp, best20: ftp20, manual: ftpManual, hrPower, maxHr: maxHr ?? compMaxHr }) // #497 — HR-power method now fed real ride data
+  // #508 (JM: "I see 260 as computed and not 253") — the REAL current eFTP is the power-model one (from the 365-day
+  // curve, ~253), not the wellness/sportInfo eFTP the card was reading (~240, it lags). Prefer the power-model value.
+  const eftpVal = powerCurve?.eftp ?? eftp
+  const ftpEst = ftpEstimate({ eftp: eftpVal, eftpAgeDays, cp, best20: ftp20, manual: ftpManual, hrPower, maxHr: maxHr ?? compMaxHr }) // #497 — HR-power method now fed real ride data
   // #508 (JM) — the honest computed threshold, eFTP-anchored (intervals' standard read), CP as the corroborator. This
   // is the ONE number the FTP card explains — no wall of 6 conflicting methods. eftpAndCpAgree → "it's solid".
-  const ftpThreshold = eftp ?? ftpEst.best ?? ftpManual
-  const eftpCpAgree = eftp != null && cp != null && Math.abs(eftp - cp) <= 12
+  const ftpThreshold = eftpVal ?? ftpEst.best ?? ftpManual
+  const eftpCpAgree = eftpVal != null && cp != null && Math.abs(eftpVal - cp) <= 12
   // #497 running analog — threshold pace inferred from the HR cost of steady runs. Used as a FALLBACK: when the
   // Critical-Speed model isn't ready (few/no hard runs) but there's HR-paired running, we still show a real number
   // instead of "needs 4 runs" — so a runner's analysis is done off history, and it shows as its own method below.
@@ -215,7 +218,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // raw MANUAL value — else the FTP card showed 241 W (computed) while the insight said 260 W (manual): a
   // confusing on-page discrepancy. computed/auto → prefer the computed estimate; manual → the set value.
   const prefFor = (k: string) => (user?.statPrefs as Partial<Record<string, string>> | undefined)?.[k] ?? 'auto'
-  const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftp) : (ftpEst.best ?? eftp ?? ftpManual) // #5007 computed side = the blended estimate
+  const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftpVal) : (ftpEst.best ?? eftpVal ?? ftpManual) // #5007 computed side = the blended estimate
   const decoupCheck = decouplingCheck(rideSignals, chosenFtp) // #508 — does your near-FTP riding hold steady (confirms) or drift (FTP too high)?
   const aeroFloor = aerobicFloor(rideSignals, maxHr ?? compMaxHr) // #508 — your Z2 efficiency proves FTP is AT LEAST this (JM: 170 W steady in Z2 ⇒ not 220)
   // #508 (JM: "CP and FTP measure the same thing — CP+15 makes no sense vs my training") — CP stays the INDEPENDENT
@@ -240,14 +243,14 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // observed hold under-states you (you rarely ride to exhaustion), so it must NOT drag TTE down to 12 min + beg for
   // an effort (JM: "I don't see you inferring TTE, you ask again for a test"). Model uses the RAW CP so FTP>CP gives a
   // finite time (the floored display-CP would make FTP<CP → falsely "unbounded").
-  const tteRideObs = powerCurve ? tteFromPower(powerCurve.secs, powerCurve.watts, chosenFtp ?? eftp) : null
-  const tteRideEst = powerCurve ? tteModelPower(chosenFtp ?? eftp, powerCurve.cp, powerCurve.wPrime) : null
+  const tteRideObs = powerCurve ? tteFromPower(powerCurve.secs, powerCurve.watts, chosenFtp ?? eftpVal) : null
+  const tteRideEst = powerCurve ? tteModelPower(chosenFtp ?? eftpVal, powerCurve.cp, powerCurve.wPrime) : null
   const tteRidePick = pickTte(tteRideObs, tteRideEst), tteRide = tteRidePick.sec, tteRideEstimated = tteRidePick.estimated
   const tteRunObs = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, chosenPace ?? paceComputed) : null
   const tteRunEst = paceCurve ? tteModelPace(chosenPace ?? paceComputed, paceCurve.cs, paceCurve.dPrime) : null
   const tteRunPick = pickTte(tteRunObs, tteRunEst), tteRun = tteRunPick.sec, tteRunEstimated = tteRunPick.estimated
   const prof = profile ? athleteProfile(profile === 'cycling'
-    ? { sport: 'cycling', threshold: chosenFtp, eftp, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
+    ? { sport: 'cycling', threshold: chosenFtp, eftp: eftpVal, tte: tteRide, cp, reserveKj: wPrimeKj, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
     : { sport: 'running', threshold: chosenPace, eftp: paceEst, tte: tteRun, cp: csPace, reserveKj: dPrimeM, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null
 
   const saveSport = (group: 'cycling' | 'running', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
@@ -308,12 +311,12 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     },
     // #362 — FTP is event-based (intervals reads eFTP from a hard effort), so give the concrete trigger, not a vague "as it sees efforts".
     {
-      key: 'ftp', label: 'FTP', unit: 'W', computed: ftpEst.best, computedSrc: ftpManual != null ? 'anchored on your value · cross-checked below' : 'Platyplus blend · eFTP + CP + 20-min + HR-cost', pending: ftpEst.best ? undefined : (map5 != null ? 'after your next hard effort — a ~5–20 min near-max or a 2×8; Platyplus reads your threshold from it (no formal test)' : 'after your first hard effort — a ~5–20 min or 2×8; Platyplus reads your threshold from it (no formal test)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
+      key: 'ftp', label: 'FTP', unit: 'W', computed: eftpVal ?? ftpEst.best, computedSrc: 'your threshold from your power (eFTP · no test)', pending: (eftpVal ?? ftpEst.best) ? undefined : (map5 != null ? 'after your next hard effort — a ~5–20 min near-max or a 2×8; Platyplus reads your threshold from it (no formal test)' : 'after your first hard effort — a ~5–20 min or 2×8; Platyplus reads your threshold from it (no formal test)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
       chip: 'eFTP',
       conf: toConf(ftpEst.conf), // #5007 — blended estimate + honest confidence (recency · agreement · test-backed)
       // #508 (JM: "the card has to have all info relevant accurate, not a wall of crap") — ONE honest read, no method
       // list: threshold ~eFTP, CP as the corroborator, and where the value you train by sits vs it.
-      narr: <>Your threshold reads <b>~{ftpThreshold != null ? ftpThreshold : '—'} W</b>{eftpCpAgree ? <> — your eFTP ({eftp}) and Critical Power ({cp}) agree, so it's solid</> : null}.{ftpManual != null && ftpThreshold != null ? <> You train at <b>{ftpManual} W</b>{ftpManual - ftpThreshold >= 5 ? ', a touch generous but well within range' : ftpManual - ftpThreshold <= -5 ? ', a little conservative — you likely have more' : ' — right in line'}.</> : null} Easy weeks pull the estimate down a little; one hard 20–40 min effort tightens it.</>,
+      narr: <>Your threshold reads <b>~{ftpThreshold != null ? ftpThreshold : '—'} W</b>{eftpCpAgree ? <> — your eFTP ({eftpVal}) and Critical Power ({cp}) agree, so it's solid</> : null}.{ftpManual != null && ftpThreshold != null ? <> You train at <b>{ftpManual} W</b>{ftpManual - ftpThreshold >= 5 ? ', a touch generous but well within range' : ftpManual - ftpThreshold <= -5 ? ', a little conservative — you likely have more' : ' — right in line'}.</> : null} Easy weeks pull the estimate down a little; one hard 20–40 min effort tightens it.</>,
       sci: (() => { // #506e — show what each source IS (the numbers already show higher/lower — no repeated "reads lower than X", JM). IN USE follows the PICKER: the blend when Auto/Computed, your value when Manual.
         // #508 (JM: "260 low-confidence but all reads below — inconsistent") — the number in use is your TRAINED value
         // (kept as the anchor, since the low reads are under-reads, not proof it's wrong). Only show a separate
@@ -372,7 +375,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     {
       key: 'cp', label: 'Critical Power', unit: 'W', computed: cp, computedSrc: 'independent read from your power curve', pending: cp == null ? 'after a few hard efforts across durations — the model needs points to fit' : undefined, manual: (ss.cycling as { cp?: number })?.cp ?? null, fmt: String, parse: numParse(60, 500), save: (v) => saveSport('cycling', { cp: v }),
       chip: 'Curve', conf: modelFitConfidence({ value: cp, r2: powerCurve?.r2 }),
-      narr: <>Your <b>Critical Power</b> — the top of your aerobic engine, modelled independently from your power curve. It measures the same threshold your FTP does, so they sit close{cpAgrees && eftp != null ? <> — yours ({cp} W) lines up with your eFTP ({eftp} W)</> : null}. Its real value is paired with <b>W′ ({wPrimeKj != null ? wPrimeKj : '—'} kJ)</b>: CP is your engine size, W′ your anaerobic kick — together {riderType ? <>they read as <b>{riderType}</b></> : <>they profile your rider type</>}.</>,
+      narr: <>Your <b>Critical Power</b> — the top of your aerobic engine, modelled independently from your power curve. It measures the same threshold your FTP does, so they sit close{cpAgrees && eftpVal != null ? <> — yours ({cp} W) lines up with your eFTP ({eftpVal} W)</> : null}. Its real value is paired with <b>W′ ({wPrimeKj != null ? wPrimeKj : '—'} kJ)</b>: CP is your engine size, W′ your anaerobic kick — together {riderType ? <>they read as <b>{riderType}</b></> : <>they profile your rider type</>}.</>,
       sci: [{ name: 'Power-duration model', formula: '2-param CP/W′ fit · independent of FTP', value: cp != null ? `${cp} W` : '—', inUse: cp != null }],
       sharpen: 'hard efforts of varied length (1–20 min) sharpen the CP/W′ fit.',
     },
