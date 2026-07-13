@@ -59,6 +59,11 @@ test guide → the **🧪 Test guide** section below.
     Grounded in `docs/beyond-ftp-metrics.md` + `docs/tte.md` + `src/running-paces.ts` (Daniels) [+ add a gym e1RM ref doc].
     Build order: MOCK the per-sport benchmark card → estimator engines (pure + tested vs the docs) → coach/MCP
     test-prescription → plumbing/UI. Everything checked against the source formulas so nothing drifts. **Route:** stats/benchmarks + coach/MCP.
+    🔧 SHIPPED so far (QA, 2026-07-12): **Cycling HR-power** (`ftpFromHrPower`, fed real ride data on the card); **Running HR-pace**
+    (`thresholdPaceFromHrPace` — infers threshold pace from the HR cost of steady runs; shows as its own method + fallback when the
+    Critical-Speed model is thin); **Gym e1RM** (`e1rmRpe` RPE/RIR + `e1rmConfidence`, `docs/e1rm.md`); **new-user analysis on connect**
+    (`computeAndStashAnchors` computes FTP/maxHR/run-pace from history so the coach has anchors without opening Stats). All pure +
+    unit-tested (44 green). ⬜ REMAINING: coach/MCP **prescribe a refining effort when the band is too wide**; per-set RPE capture (gym).
 495. ⬜ **QA ≠ PROD for backlog TRIAGE + user reports (extends #485).** JM 2026-07-11: can't see #1002/#1003/#1006 in the
     QA Road map. #485 synced the generated item LIST, but the triage overlay + user-added reports (`app_meta.backlog` =
     {triage, added}) are PER-ENV Postgres — QA has 11 added, prod has 8, DIVERGED. Reports filed on one env are invisible
