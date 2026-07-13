@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
-import { authApi, type IcuAthletePull } from './auth/api'
+import { authApi, type IcuAthletePull, type SportStat } from './auth/api'
 import { fmtPace, parsePace } from './running-paces'
 import { fetchWellness, fetchPowerCurve, fetchPaceCurve, fetchEfTrend, type PowerCurve, type PaceCurve, type EfTrend } from './intervals'
 import { estimateSleepNeed } from './sleep'
@@ -153,7 +153,12 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   }, [connected])
   useEffect(() => { if (connected && profile) fetchEfTrend(profile === 'cycling' ? 'Ride' : 'Run').then(setEfTrend).catch(() => {}) }, [connected, profile]) // #403 EF for the profile
 
-  const ss = pull?.sportSettings || {}
+  // #508 (JM: "entering a value in CP does not save") — CP/W′/TTE/CS/D′ are OUR local benchmark fields, saved to the
+  // DB (user.sportSettings), NOT to intervals — so the intervals pull never carries them and they read back empty
+  // ("won't save"). Merge: user (DB, has the local fields) as base, the fresh intervals pull overlaid for
+  // ftp/maxHr/thresholdPace. Now every manual value round-trips after save+refresh.
+  const mss = (g: 'cycling' | 'running'): SportStat => ({ ...(user?.sportSettings?.[g] || {}), ...(pull?.sportSettings?.[g] || {}) })
+  const ss = { cycling: mss('cycling'), running: mss('running') }
   const ftpManual = ss.cycling?.ftp ?? user?.ftp ?? null
   const maxHr = ss.cycling?.maxHr ?? user?.maxHR ?? null
   const ageMaxHr = maxHrFromAge(user?.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null, user?.sex) // #507/#508 — sex-specific age max HR (Gulati/Tanaka)
