@@ -405,20 +405,28 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
  * short bursts fast at the left, easing to the right. `pace` in sec/km. */
 export function PaceCurveChart({ secs, pace, color = 'var(--accent, #34e07d)', height = 200, overlay }: { secs: number[]; pace: number[]; color?: string; height?: number; overlay?: { secs: number[]; pace: number[]; color?: string } | null }) {
   const [hi, setHi] = useState<number | null>(null)
-  const pts0 = secs.map((s, i) => [s, pace[i]] as [number, number]).filter(([s, p]) => s > 0 && s <= MAX_DUR && p != null && p > 0)
+  // #508 — start at 1 min: sub-minute "pace" is sprint noise that blows the Y-range out (JM: "too broad") and isn't
+  // meaningful running pace (intervals starts at 400 m for the same reason). Also require a sane pace (>90 s/km).
+  const PMINS = 60
+  const okP = ([s, p]: [number, number]) => s >= PMINS && s <= MAX_DUR && p != null && p > 90
+  const pts0 = secs.map((s, i) => [s, pace[i]] as [number, number]).filter(okP)
   if (pts0.length < 2) return <div className="chart-empty">No pace curve yet</div>
-  const ov0 = overlay ? overlay.secs.map((s, i) => [s, overlay.pace[i]] as [number, number]).filter(([s, p]) => s > 0 && s <= MAX_DUR && p != null && p > 0) : [] // #407 overlay
+  const ov0 = overlay ? overlay.secs.map((s, i) => [s, overlay.pace[i]] as [number, number]).filter(okP) : [] // #407 overlay
   const allPts = ov0.length ? pts0.concat(ov0) : pts0
   const sMin = Math.min(...allPts.map((p) => p[0])), sMax = Math.max(...allPts.map((p) => p[0]))
   const pMin = Math.min(...allPts.map((p) => p[1])), pMax = Math.max(...allPts.map((p) => p[1])) // sec/km: min = fastest
   const H = height, padT = 8, padB = 6, pad = 6
-  const span = Math.max(pMax - pMin, 20) // avoid a collapsed axis on a steady run
-  const lo = pMin - span * 0.08, range2 = span * 1.16
   const fmtP = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
+  // #508 — ROUND pace ticks (JM: "weird numbers"); tickLo is clamped to ≥ one step so the top tick can NEVER go negative
+  // ("-1:-28" bug). Faster (smaller sec/km) sits at the TOP.
+  const pStep = (pMax - pMin) > 180 ? 60 : (pMax - pMin) > 75 ? 30 : 15
+  const tickLo = Math.max(pStep, Math.floor((pMin - pStep * 0.35) / pStep) * pStep)
+  const tickHi = Math.ceil((pMax + pStep * 0.35) / pStep) * pStep
+  const lo = tickLo, range2 = Math.max(tickHi - tickLo, pStep)
   const lx = (s: number) => pad + ((Math.log(s) - Math.log(sMin)) / (Math.log(sMax) - Math.log(sMin) || 1)) * (VW - 2 * pad)
   const y = (p: number) => padT + ((p - lo) / (range2 || 1)) * (H - padT - padB) // faster (smaller sec/km) → TOP
   const ticks = DUR_TICKS.filter(([s]) => s >= sMin && s <= sMax)
-  const yLabels = [0, 0.25, 0.5, 0.75, 1].map((f) => lo + f * range2)
+  const yLabels: number[] = []; for (let p = tickLo; p <= tickHi + 0.5; p += pStep) yLabels.push(p)
   const d = 'M' + pts0.map((p) => `${lx(p[0])},${y(p[1])}`).join(' L')
   const onMove = (ev: React.PointerEvent) => {
     const rect = ev.currentTarget.getBoundingClientRect(); const xPx = ((ev.clientX - rect.left) / rect.width) * VW

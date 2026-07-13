@@ -82,7 +82,7 @@ export function SeasonCompareView({ sport, seasons, weight, threshold, ftp }: { 
         </div>
         {sport === 'cycling'
           ? <PowerCurveChart secs={(thisS as PowerSeason).secs} watts={(thisS as PowerSeason).watts} overlay={comparing ? { secs: (cmp as PowerSeason).secs, watts: (cmp as PowerSeason).watts, color: '#5ec8ff' } : null} height={190} />
-          : <PaceCurveChart secs={(thisS as PaceSeason).secs} pace={(thisS as PaceSeason).pace} overlay={comparing ? { secs: (cmp as PaceSeason).secs, pace: (cmp as PaceSeason).pace, color: '#5ec8ff' } : null} height={190} />}
+          : <PaceCurveChart {...paceCurvePts(thisS as PaceSeason)} overlay={comparing ? { ...paceCurvePts(cmp as PaceSeason), color: '#5ec8ff' } : null} height={190} />}
         {canCompare && (
         <div className="sc-pick">
           <span className="meta">Show:</span>
@@ -132,6 +132,14 @@ export function SeasonCompareView({ sport, seasons, weight, threshold, ftp }: { 
   )
 }
 
+// #508 — the pace CURVE from the CLEAN, sanity-filtered best-distance times (400 m … 10 k), NOT the raw time-based
+// mean-max, which is riddled with GPS glitches (JM had a raw "pace" of 0:04/km → negative axis + a fake super-fast
+// all-time line). Same data the best-efforts table uses, and the same distance basis intervals plots.
+function paceCurvePts(s: PaceSeason): { secs: number[]; pace: number[] } {
+  const secs: number[] = [], pace: number[] = []
+  PACE_DISTANCES.forEach((pd, i) => { const t = s.best[i]; if (t != null && t > 0 && pd.m > 0) { secs.push(t); pace.push(Math.round((t / pd.m) * 1000)) } })
+  return { secs, pace }
+}
 const rnd0 = (v?: number | null) => (v == null ? null : Math.round(v)) // #464 — whole watts (eFTP/CP), matching the benchmark card
 const kj = (j?: number) => (j != null ? Math.round(j / 100) / 10 : null)
 const mtr = (m?: number) => (m != null ? Math.round(m) : null)
