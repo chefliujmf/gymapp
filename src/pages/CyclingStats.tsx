@@ -83,10 +83,10 @@ export default function CyclingStats() {
         <p className="meta">Connect intervals.icu in <span style={{ color: 'var(--accent)' }}>Profile</span> to see your power curve & FTP.</p>
       ) : (
         <>
-          {/* #508 — the power-duration curve first (the engine), then the metrics that all read off it. */}
-          <PowerCurveCard />
           {/* #385 — same polished benchmark cards as Global, filtered to cycling (FTP · VO₂max · Max HR). */}
           <BenchmarksCard only={['ftp', 'cp', 'wPrime', 'vo2max', 'tteRide', 'maxHr']} profile="cycling" />
+          {/* #508 — the power-duration curve BELOW the benchmarks (JM: not at the top). */}
+          <PowerCurveCard />
           <DateRangeFilter presets={TRAINING_PRESETS} from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
           {rows === null ? <p className="meta">Loading…</p> : (
             <>

@@ -86,7 +86,12 @@ export function DurationCurve({ secs, values, asymptote, unit = '', fmt = (v) =>
   // #508 — focus on the AEROBIC/threshold range (≈3–60 min). Short sprints (<3 min) are W′-dominated and compress the
   // FTP-relevant region into the bottom of the chart; dropping them makes the curve read like the mock (clean descent
   // to the CP/CS floor). W′/D′ still shows as the area above the asymptote at the short (3–15 min) end.
-  const pts = secs.map((s, i) => [s, values[i]] as [number, number]).filter(([s, v]) => s >= 175 && s <= 4200 && v > 0).sort((a, b) => a[0] - b[0])
+  // #508 — the raw mean-max curve has ~200 points → a jagged line. SAMPLE it at a handful of key durations so the
+  // curve reads clean (like the fitted model), on the 3–60 min aerobic range.
+  const raw = secs.map((s, i) => [s, values[i]] as [number, number]).filter(([, v]) => v > 0).sort((a, b) => a[0] - b[0])
+  const atSec = (t: number): number | null => { for (const [s, v] of raw) if (s >= t) return v; return null }
+  const KEY = [180, 240, 300, 420, 600, 780, 1020, 1200, 1500, 1800, 2400, 3000, 3600]
+  const pts = KEY.map((t) => { const v = atSec(t); return v != null ? ([t, v] as [number, number]) : null }).filter((p): p is [number, number] => p != null)
   if (pts.length < 3) return <div className="meta" style={{ padding: '10px 4px' }}>Your curve appears here once intervals has efforts across a few durations.</div>
   const sMin = 180, sMax = 3600, L = Math.log10(sMin), R = Math.log10(sMax)
   const lx = (s: number) => padL + (Math.log10(Math.max(sMin, Math.min(sMax, s))) - L) / (R - L) * plotW
@@ -95,7 +100,7 @@ export function DurationCurve({ secs, values, asymptote, unit = '', fmt = (v) =>
   const ly = (v: number) => padT + (1 - (v - vMin) / (vMax - vMin)) * plotH
   const xy = pts.map((p) => [lx(p[0]), ly(p[1])] as [number, number])
   const cpY = asymptote != null ? ly(asymptote) : null
-  const ticks: [number, string][] = [[60, '1m'], [300, '5m'], [1200, '20m'], [3600, '60m']]
+  const ticks: [number, string][] = [[180, '3m'], [300, '5m'], [1200, '20m'], [3600, '60m']]
   return (
     <svg viewBox={`0 0 ${W} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="power-duration curve">
       <line x1={padL} y1={padT - 4} x2={padL} y2={height - padB} stroke="#333a45" />
@@ -105,8 +110,9 @@ export function DurationCurve({ secs, values, asymptote, unit = '', fmt = (v) =>
       {cpY != null && <line x1={padL} y1={cpY} x2={W - padR} y2={cpY} stroke="#9b8cff" strokeWidth={1.4} strokeDasharray="5 4" />}
       {cpY != null && <text x={W - padR} y={cpY - 4} fill="#9b8cff" fontSize={10} textAnchor="end" fontWeight={700}>{fmt(asymptote as number)}{unit}</text>}
       <path d={smoothPath(xy)} fill="none" stroke="#34e07d" strokeWidth={2.4} strokeLinecap="round" />
-      {anchors.map((a, i) => { const v = valueAtSec(pts, a.sec); if (v == null) return null; const x = lx(a.sec), y = ly(v); return <g key={i}><circle cx={x} cy={y} r={3.6} fill="#34e07d" /><text x={Math.min(W - 24, Math.max(padL + 12, x))} y={y - 7} fill="#eef1f4" fontSize={9.5} textAnchor="middle">{a.label}</text></g> })}
-      {reserveLabel && <text x={lx(150)} y={ly(vMax) + 12} fill="#9b8cff" fontSize={10.5} fontWeight={700}>{reserveLabel}</text>}
+      {/* #508 — anchors as plain dots (durations are on the x-axis; text labels collided). */}
+      {anchors.map((a, i) => { const v = valueAtSec(pts, a.sec); if (v == null) return null; return <circle key={i} cx={lx(a.sec)} cy={ly(v)} r={3.6} fill="#34e07d" /> })}
+      {reserveLabel && cpY != null && <text x={lx(480)} y={Math.max(padT + 12, cpY - 13)} fill="#9b8cff" fontSize={10.5} fontWeight={700} textAnchor="middle">{reserveLabel}</text>}
       {ticks.map(([s, l], i) => <text key={i} x={lx(s)} y={height - 6} fill="#9298a6" fontSize={10} textAnchor="middle">{l}</text>)}
     </svg>
   )
