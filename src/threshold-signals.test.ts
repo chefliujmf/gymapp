@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { decouplingCheck, recoveryCheck, efTrend, type RideSignal } from './threshold-signals'
 
-const ride = (np: number, decoupling: number, durationMin = 45): RideSignal => ({ np, hr: 150, decoupling, durationMin })
+const ride = (np: number, decoupling: number, durationMin = 45, vi = 1.03): RideSignal => ({ np, hr: 150, decoupling, durationMin, vi })
 
 // #508 — decoupling CONFIRMS or FLAGS a candidate FTP; it can't invent one from easy riding.
 describe('decouplingCheck', () => {
@@ -24,6 +24,9 @@ describe('decouplingCheck', () => {
   })
   it('ignores short efforts (< 30 min) — drift needs a sustained ride', () => {
     expect(decouplingCheck([ride(245, 3, 20), ride(248, 4, 15)], 250).verdict).toBe('thin')
+  })
+  it('ignores INTERVAL/surgey rides near the FTP (high VI) — drift is only valid on a steady effort (JM: "bogus")', () => {
+    expect(decouplingCheck([ride(248, 9, 45, 1.15), ride(250, 11, 45, 1.22)], 250).verdict).toBe('thin')
   })
 })
 

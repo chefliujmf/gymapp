@@ -486,7 +486,7 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
   // + efficiency factor, on real steady rides (≥30 min). decouplingCheck() uses these to CONFIRM or FLAG a candidate FTP.
   const rideSignals = (Array.isArray(runs) ? runs : [])
     .filter((a) => /ride|virtualride|cycl/i.test(a.type || '') && (a.icu_weighted_avg_watts || a.icu_average_watts) > 0 && a.average_heartrate > 60 && (a.moving_time || 0) >= 1800)
-    .map((a) => ({ np: Math.round(a.icu_weighted_avg_watts || a.icu_average_watts), hr: Math.round(a.average_heartrate), decoupling: Math.round((Number(a.decoupling) || 0) * 10) / 10, durationMin: Math.round((a.moving_time || 0) / 60), ef: a.icu_efficiency_factor ? Math.round(a.icu_efficiency_factor * 100) / 100 : null }))
+    .map((a) => ({ np: Math.round(a.icu_weighted_avg_watts || a.icu_average_watts), hr: Math.round(a.average_heartrate), decoupling: Math.round((Number(a.decoupling) || 0) * 10) / 10, durationMin: Math.round((a.moving_time || 0) / 60), ef: a.icu_efficiency_factor ? Math.round(a.icu_efficiency_factor * 100) / 100 : null, vi: a.icu_variability_index ? Math.round(a.icu_variability_index * 100) / 100 : null })) // #508 vi = variability index — decoupling is only valid on a STEADY effort (VI≈1.0), not intervals
     .slice(0, 60)
   // #337c — Max HR is COMPUTABLE (JM): NOT an age formula, but a real observed ceiling. Two honest
   // sources — (a) the highest per-activity max HR she's actually hit over 180d, and (b) intervals'

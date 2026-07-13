@@ -4,7 +4,7 @@
 // All pure + unit-tested (threshold-signals.test.ts). Signals sourced from intervals: per-ride `decoupling`
 // (Pw:Hr aerobic drift %) + `icu_efficiency_factor`; per-night `hrv`.
 
-export interface RideSignal { np: number; hr: number; decoupling: number; durationMin: number; ef?: number | null }
+export interface RideSignal { np: number; hr: number; decoupling: number; durationMin: number; ef?: number | null; vi?: number | null }
 
 // ── Cardiac drift / Pw:Hr decoupling ─────────────────────────────────────────
 // Friel: aerobic decoupling < ~5% over a steady effort = aerobically sustainable AT that intensity. So if the athlete
@@ -14,9 +14,10 @@ export type DecouplingVerdict = 'confirms' | 'too-high' | 'thin'
 export interface DecouplingCheck { verdict: DecouplingVerdict; nearN: number; avgDrift: number | null; note: string }
 export function decouplingCheck(rides: RideSignal[], ftp: number | null | undefined): DecouplingCheck {
   if (!ftp || ftp <= 0) return { verdict: 'thin', nearN: 0, avgDrift: null, note: 'set an FTP to check it against your rides' }
-  // "near threshold" = a real steady effort (≥30 min) with normalized power within 88–102% of the candidate FTP
-  const near = (rides || []).filter((r) => r && r.np > 0 && r.durationMin >= 30 && r.np >= ftp * 0.88 && r.np <= ftp * 1.02)
-  if (near.length < 2) return { verdict: 'thin', nearN: near.length, avgDrift: null, note: `not enough riding near ${ftp} W to confirm it — one steady effort there would` }
+  // "near threshold" = a STEADY effort (variability index ≤ 1.06 — NOT intervals/surges, which spike drift regardless),
+  // ≥30 min, with normalized power within 88–102% of the candidate FTP. Decoupling off a surgey ride is meaningless.
+  const near = (rides || []).filter((r) => r && r.np > 0 && r.durationMin >= 30 && r.np >= ftp * 0.88 && r.np <= ftp * 1.02 && r.vi != null && r.vi <= 1.06)
+  if (near.length < 2) return { verdict: 'thin', nearN: near.length, avgDrift: null, note: `not enough STEADY riding near ${ftp} W to confirm it — one steady effort there would` }
   const avgDrift = Math.round((near.reduce((s, r) => s + r.decoupling, 0) / near.length) * 10) / 10
   if (avgDrift <= 5) return { verdict: 'confirms', nearN: near.length, avgDrift, note: `your rides near ${ftp} W hold steady (${avgDrift}% HR drift) — it's sustainable` }
   return { verdict: 'too-high', nearN: near.length, avgDrift, note: `your HR drifts ${avgDrift}% at ~${ftp} W — above a sustainable threshold, so ${ftp} W looks high` }
