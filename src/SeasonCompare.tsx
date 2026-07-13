@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchPowerSeasons, fetchPaceSeasons, type PowerSeason, type PaceSeason } from './intervals'
-import { DurationCurve } from './charts' // #508 — merged fitted curve (was PowerCurveChart/PaceCurveChart)
+import { PowerCurveChart, PaceCurveChart } from './charts' // #508 — REVERTED to the real full-range mean-max overlay: the fitted model fit IDENTICAL cp/wPrime across seasons → the two lines overlapped (invisible compare); the real curve shows the sprint/short-power differences that ARE the season delta. niceTicks Y-axis, full 1s–1h range.
 import { POWER_DURATIONS, PACE_DISTANCES, seasonDelta } from './season-compare'
 import { fmtPace } from './running-paces'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, fmtTte } from './tte'
@@ -81,8 +81,8 @@ export function SeasonCompareView({ sport, seasons, weight, threshold, ftp }: { 
           {comparing && <span><i className="sc-dot" style={{ background: '#5ec8ff' }} />{cmp.label}</span>}
         </div>
         {sport === 'cycling'
-          ? <DurationCurve secs={(thisS as PowerSeason).secs} values={(thisS as PowerSeason).watts} asymptote={(thisS as PowerSeason).cp} reserve={(thisS as PowerSeason).wPrime} compare={comparing ? { asymptote: (cmp as PowerSeason).cp, reserve: (cmp as PowerSeason).wPrime, secs: (cmp as PowerSeason).secs, values: (cmp as PowerSeason).watts } : null} unit=" W" reserveLabel={kj((thisS as PowerSeason).wPrime) != null ? `W′ ${kj((thisS as PowerSeason).wPrime)} kJ` : undefined} height={176} />
-          : <DurationCurve secs={(thisS as PaceSeason).secs} values={(thisS as PaceSeason).pace.map((p) => (p > 0 ? 1000 / p : 0))} asymptote={(thisS as PaceSeason).cs} reserve={(thisS as PaceSeason).dPrime} compare={comparing ? { asymptote: (cmp as PaceSeason).cs, reserve: (cmp as PaceSeason).dPrime, secs: (cmp as PaceSeason).secs, values: (cmp as PaceSeason).pace.map((p) => (p > 0 ? 1000 / p : 0)) } : null} unit="/km" fmt={(mps) => fmtPace(Math.round(1000 / mps))} reserveLabel={mtr((thisS as PaceSeason).dPrime) != null ? `D′ ${mtr((thisS as PaceSeason).dPrime)} m` : undefined} height={176} />}
+          ? <PowerCurveChart secs={(thisS as PowerSeason).secs} watts={(thisS as PowerSeason).watts} overlay={comparing ? { secs: (cmp as PowerSeason).secs, watts: (cmp as PowerSeason).watts, color: '#5ec8ff' } : null} height={190} />
+          : <PaceCurveChart secs={(thisS as PaceSeason).secs} pace={(thisS as PaceSeason).pace} overlay={comparing ? { secs: (cmp as PaceSeason).secs, pace: (cmp as PaceSeason).pace, color: '#5ec8ff' } : null} height={190} />}
         {canCompare && (
         <div className="sc-pick">
           <span className="meta">Show:</span>
