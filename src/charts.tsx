@@ -76,44 +76,56 @@ function valueAtSec(pts: [number, number][], sec: number): number | null {
   for (const [s, v] of pts) if (s >= sec) return v
   return pts.length ? pts[pts.length - 1][1] : null
 }
-export function DurationCurve({ secs, values, asymptote, unit = '', fmt = (v) => String(Math.round(v)), reserveLabel, anchors = [], height = 156 }: {
-  secs: number[]; values: number[]; asymptote?: number | null; unit?: string; fmt?: (v: number) => string
+export function DurationCurve({ secs, values, asymptote, reserve, unit = '', fmt = (v) => String(Math.round(v)), reserveLabel, anchors = [], height = 168 }: {
+  secs: number[]; values: number[]; asymptote?: number | null; reserve?: number | null; unit?: string; fmt?: (v: number) => string
   reserveLabel?: string; anchors?: { sec: number; label: string }[]; height?: number
 }) {
   const clipId = useId()
-  const W = 344, padL = 36, padR = 12, padT = 16, padB = 22
+  const W = 344, padL = 48, padR = 12, padT = 14, padB = 22
   const plotW = W - padL - padR, plotH = height - padT - padB
-  // #508 — focus on the AEROBIC/threshold range (≈3–60 min). Short sprints (<3 min) are W′-dominated and compress the
-  // FTP-relevant region into the bottom of the chart; dropping them makes the curve read like the mock (clean descent
-  // to the CP/CS floor). W′/D′ still shows as the area above the asymptote at the short (3–15 min) end.
-  // #508 — the raw mean-max curve has ~200 points → a jagged line. SAMPLE it at a handful of key durations so the
-  // curve reads clean (like the fitted model), on the 3–60 min aerobic range.
-  const raw = secs.map((s, i) => [s, values[i]] as [number, number]).filter(([, v]) => v > 0).sort((a, b) => a[0] - b[0])
-  const atSec = (t: number): number | null => { for (const [s, v] of raw) if (s >= t) return v; return null }
-  const KEY = [180, 240, 300, 420, 600, 780, 1020, 1200, 1500, 1800, 2400, 3000, 3600]
-  const pts = KEY.map((t) => { const v = atSec(t); return v != null ? ([t, v] as [number, number]) : null }).filter((p): p is [number, number] => p != null)
-  if (pts.length < 3) return <div className="meta" style={{ padding: '10px 4px' }}>Your curve appears here once intervals has efforts across a few durations.</div>
   const sMin = 180, sMax = 3600, L = Math.log10(sMin), R = Math.log10(sMax)
   const lx = (s: number) => padL + (Math.log10(Math.max(sMin, Math.min(sMax, s))) - L) / (R - L) * plotW
+  // #508 — render the FITTED model curve value(t) = asymptote + reserve/t (CP + W′/t · CS + D′/t): a smooth descent to
+  // the CP/CS floor, NO jagged raw-mean-max cliff (JM: "wtf are those graphs / too thick"). Fall back to a sampled
+  // real mean-max only when the model params aren't available. 3–60 min aerobic/threshold window, log-time x-axis.
+  const haveModel = asymptote != null && asymptote > 0 && reserve != null && reserve > 0
+  const modelV = (t: number) => (asymptote as number) + (reserve as number) / t
+  let pts: [number, number][]
+  if (haveModel) {
+    pts = Array.from({ length: 48 }, (_, i) => { const t = Math.pow(10, L + ((R - L) * i) / 47); return [t, modelV(t)] as [number, number] })
+  } else {
+    const raw = secs.map((s, i) => [s, values[i]] as [number, number]).filter(([, v]) => v > 0).sort((a, b) => a[0] - b[0])
+    const atSec = (t: number): number | null => { for (const [s, v] of raw) if (s >= t) return v; return null }
+    const KEY = [180, 240, 300, 420, 600, 780, 1020, 1200, 1500, 1800, 2400, 3000, 3600]
+    pts = KEY.map((t) => { const v = atSec(t); return v != null ? ([t, v] as [number, number]) : null }).filter((p): p is [number, number] => p != null)
+  }
+  if (pts.length < 3) return <div className="meta" style={{ padding: '10px 4px' }}>Your curve appears here once intervals has efforts across a few durations.</div>
   const vs = pts.map((p) => p[1])
-  const vMax = Math.max(...vs) * 1.04, vMin = Math.min(asymptote ?? Math.min(...vs), Math.min(...vs)) * 0.96
+  const vMax = Math.max(...vs) * 1.03, vMin = Math.min(asymptote ?? Math.min(...vs), Math.min(...vs)) * 0.97
   const ly = (v: number) => padT + (1 - (v - vMin) / (vMax - vMin)) * plotH
   const xy = pts.map((p) => [lx(p[0]), ly(p[1])] as [number, number])
   const cpY = asymptote != null ? ly(asymptote) : null
   const ticks: [number, string][] = [[180, '3m'], [300, '5m'], [1200, '20m'], [3600, '60m']]
+  // #508 — Y-AXIS: 4 labelled gridlines through fmt (watts, or pace as m:ss). JM: "NO Y AXIS".
+  const yTicks = Array.from({ length: 4 }, (_, i) => vMin + ((vMax - vMin) * (i + 0.5)) / 4)
   return (
-    <svg viewBox={`0 0 ${W} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="power-duration curve">
+    <svg viewBox={`0 0 ${W} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="duration curve">
+      {yTicks.map((v, i) => (
+        <g key={`y${i}`}>
+          <line x1={padL} y1={ly(v)} x2={W - padR} y2={ly(v)} stroke="#242a33" strokeWidth={1} />
+          <text x={padL - 6} y={ly(v) + 3} fill="#9298a6" fontSize={9.5} textAnchor="end">{fmt(v)}</text>
+        </g>
+      ))}
       <line x1={padL} y1={padT - 4} x2={padL} y2={height - padB} stroke="#333a45" />
       <line x1={padL} y1={height - padB} x2={W - padR} y2={height - padB} stroke="#333a45" />
       {cpY != null && <defs><clipPath id={clipId}><rect x={padL} y={padT - 4} width={plotW} height={Math.max(0, cpY - (padT - 4))} /></clipPath></defs>}
-      {cpY != null && <path d={`M${xy[0][0]},${xy[0][1]} ${xy.map((p) => `L${p[0]},${p[1]}`).join(' ')} L${xy[xy.length - 1][0]},${cpY} L${xy[0][0]},${cpY} Z`} fill="rgba(155,140,255,.14)" clipPath={`url(#${clipId})`} />}
-      {cpY != null && <line x1={padL} y1={cpY} x2={W - padR} y2={cpY} stroke="#9b8cff" strokeWidth={1.4} strokeDasharray="5 4" />}
+      {cpY != null && <path d={`M${xy[0][0]},${xy[0][1]} ${xy.map((p) => `L${p[0]},${p[1]}`).join(' ')} L${xy[xy.length - 1][0]},${cpY} L${xy[0][0]},${cpY} Z`} fill="rgba(155,140,255,.12)" clipPath={`url(#${clipId})`} />}
+      {cpY != null && <line x1={padL} y1={cpY} x2={W - padR} y2={cpY} stroke="#9b8cff" strokeWidth={1.3} strokeDasharray="5 4" />}
       {cpY != null && <text x={W - padR} y={cpY - 4} fill="#9b8cff" fontSize={10} textAnchor="end" fontWeight={700}>{fmt(asymptote as number)}{unit}</text>}
-      <path d={smoothPath(xy)} fill="none" stroke="#34e07d" strokeWidth={2.4} strokeLinecap="round" />
-      {/* #508 — anchors as plain dots (durations are on the x-axis; text labels collided). */}
-      {anchors.map((a, i) => { const v = valueAtSec(pts, a.sec); if (v == null) return null; return <circle key={i} cx={lx(a.sec)} cy={ly(v)} r={3.6} fill="#34e07d" /> })}
-      {reserveLabel && cpY != null && <text x={lx(480)} y={Math.max(padT + 12, cpY - 13)} fill="#9b8cff" fontSize={10.5} fontWeight={700} textAnchor="middle">{reserveLabel}</text>}
-      {ticks.map(([s, l], i) => <text key={i} x={lx(s)} y={height - 6} fill="#9298a6" fontSize={10} textAnchor="middle">{l}</text>)}
+      <path d={smoothPath(xy)} fill="none" stroke="#34e07d" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      {anchors.map((a, i) => { const v = haveModel ? modelV(a.sec) : valueAtSec(pts, a.sec); if (v == null) return null; return <circle key={i} cx={lx(a.sec)} cy={ly(v)} r={3} fill="#34e07d" /> })}
+      {reserveLabel && cpY != null && <text x={lx(480)} y={Math.max(padT + 11, cpY - 12)} fill="#9b8cff" fontSize={10} fontWeight={700} textAnchor="middle">{reserveLabel}</text>}
+      {ticks.map(([s, l], i) => <text key={`x${i}`} x={lx(s)} y={height - 6} fill="#9298a6" fontSize={10} textAnchor="middle">{l}</text>)}
     </svg>
   )
 }

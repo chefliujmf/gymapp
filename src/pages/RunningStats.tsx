@@ -25,7 +25,7 @@ function PaceCurveCard() {
   return (
     <div className="card" style={{ padding: 14, marginBottom: 12 }}>
       <div className="section-title" style={{ fontSize: 13, marginBottom: 4 }}>Your pace curve, fitted <InfoDot text="The fastest pace you can hold for each duration (log-time axis, faster = higher). The dashed line is Critical Speed — the pace you can sustain; the shaded area above is D′, your distance reserve for a kick. Threshold pace, TTE and your zones are all derived from this one curve." /></div>
-      <DurationCurve secs={curve.secs} values={speed} asymptote={cs} unit="/km" fmt={(mps) => fmtPace(Math.round(1000 / mps))} reserveLabel={dPrime != null ? `D′ ${dPrime} m` : undefined} anchors={[{ sec: 300, label: '5m' }, { sec: 1200, label: '20m' }]} />
+      <DurationCurve secs={curve.secs} values={speed} asymptote={cs} reserve={curve.dPrime} unit="/km" fmt={(mps) => fmtPace(Math.round(1000 / mps))} reserveLabel={dPrime != null ? `D′ ${dPrime} m` : undefined} anchors={[{ sec: 300, label: '5m' }, { sec: 1200, label: '20m' }]} />
       <p className="meta" style={{ marginTop: 6, color: 'var(--text-dim)' }}>{insight}</p>
     </div>
   )
