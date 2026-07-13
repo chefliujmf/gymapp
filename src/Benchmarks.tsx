@@ -9,7 +9,7 @@ import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from '
 import { athleteProfile } from './athlete-profile'
 import { headlineVo2max, runningVo2max, cyclingVo2max, hrRatioVo2max, vo2ScienceRows, confLabel } from './vo2max-submax'
 import { vo2maxConfidence, thresholdPaceConfidence, maxHrConfidence, sleepNeedConfidence, tteConfidence, modelFitConfidence, type Confidence } from './benchmark-confidence'
-import { ftpEstimate, thresholdPaceFromHrPace } from './benchmark-estimate' // #5007 — honest multi-source estimate + confidence · #497 HR-pace threshold
+import { ftpEstimate, thresholdPaceFromHrPace, maxHrFromAge } from './benchmark-estimate' // #5007 — honest multi-source estimate + confidence · #497 HR-pace threshold · #507 age max-HR
 
 // #236 — benchmarks = MANUAL vs COMPUTED. Tiles show the in-use value; tap → a sheet with BOTH values,
 // an input (editable only in Manual), and a Manual|Computed toggle. A per-stat preference (user.statPrefs)
@@ -158,6 +158,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const ss = pull?.sportSettings || {}
   const ftpManual = ss.cycling?.ftp ?? user?.ftp ?? null
   const maxHr = ss.cycling?.maxHr ?? user?.maxHR ?? null
+  const ageMaxHr = maxHrFromAge(user?.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null) // #507 — Tanaka age formula, shown as a method row
   const paceManual = ss.running?.thresholdPace ?? user?.runThresholdPace ?? null
   const weight = pbWeight ?? pull?.weight ?? null
   const vdot = user?.runVdot ?? null
@@ -346,6 +347,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sci: [ // #507 — each row shows its OWN real value (observed peak was empty because it read the headline, not the raw peak)
         { name: 'Observed peak', formula: `highest HR · last 12 months${maxHrSamples > 1 ? ` · hit ${maxHrSamples}×` : ''}`, value: observedMaxHr != null ? String(observedMaxHr) : '—', inUse: maxHrFrom === 'observed' },
         { name: 'Zone ceiling', formula: 'from intervals zones', value: icuMaxHr != null ? String(icuMaxHr) : '—', inUse: maxHrFrom === 'intervals' },
+        { name: 'Age estimate', formula: 'Tanaka · 208 − 0.7 × age', value: ageMaxHr != null ? String(ageMaxHr) : '—', inUse: maxHrFrom === 'age' }, // #507 — the age formula, visible as a method (used only when no real peak/ceiling)
       ],
       sharpen: 'an all-out effort with a HR strap/watch reveals your true peak → we read it, not an age formula.',
     },

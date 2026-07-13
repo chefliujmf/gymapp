@@ -72,7 +72,11 @@ export interface Vo2Method { name: string; formula: string; value: number | null
 export function vo2ScienceRows(inp: { doesCycle: boolean; cyc: Vo2Estimate | null; run: Vo2Estimate | null; hr: number | null; headSource?: string | null }): Vo2Method[] {
   const { doesCycle, cyc, run, hr, headSource } = inp
   const rows: Vo2Method[] = []
-  if (doesCycle && cyc && /power|MAP|FTP/i.test(cyc.source)) rows.push({ name: 'Cycling MAP', formula: 'power-based · 10.8 × MAP/kg + 7', value: cyc.value, inUse: !!headSource && cyc.source === headSource })
+  // Cycling MAP shows when the athlete CYCLES, or whenever it rests on a REAL best-5-min max effort — so a runner who
+  // goes hard on the bike DOES see it appear (JM: "if she does a max bike effort, will it show in her VO₂max?"), but a
+  // stale/default FTP with no actual rides does NOT surface a bogus bike number.
+  const realMap = !!cyc && /5-?min|max power/i.test(cyc.source)
+  if (cyc && (doesCycle || realMap)) rows.push({ name: 'Cycling MAP', formula: realMap ? 'power-based · your best 5-min effort' : 'power-based · 10.8 × MAP/kg + 7', value: cyc.value, inUse: !!headSource && cyc.source === headSource })
   if (run) rows.push({ name: 'Running VDOT', formula: 'pace-based · from your runs', value: run.value, inUse: !!headSource && run.source === headSource })
   if (!rows.length && hr != null) rows.push({ name: 'HR-ratio', formula: 'rough submax proxy · until you log efforts', value: hr, inUse: true })
   return rows

@@ -26,7 +26,12 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // #506c — DON'T precache index.html. The SW was serving a stale precached shell (pointing at old asset
+        // hashes), so every deploy needed a manual hard-refresh (JM + Xenia stuck on old bundles all session). The
+        // hashed JS/CSS ARE precached (immutable); the HTML shell is served NetworkFirst below → a normal reload
+        // after a deploy picks up the new bundle. `navigateFallback` points at it so offline still works once cached.
+        globPatterns: ['**/*.{js,css,svg,png,woff2}'],
+        navigateFallback: null,
         // #457 — pull our Web Push handlers (push + notificationclick) into the generated SW.
         importScripts: ['push-sw.js'],
         // A new deploy must take over IMMEDIATELY — the old SW kept serving a stale
@@ -44,6 +49,18 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         // Media streams from origin at runtime — cache thumbnails only.
         runtimeCaching: [
+          {
+            // #506c — the HTML shell NetworkFirst: always fetch fresh when online (so a deploy is picked up on a
+            // normal reload), fall back to the cached copy offline. The hashed JS/CSS stay precached (immutable).
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-shell',
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
           {
             urlPattern: ({ request }) => request.destination === 'image',
             handler: 'CacheFirst',
