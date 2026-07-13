@@ -58,3 +58,8 @@ faster reads higher; `fmt` converts back to pace. ONE curve per page: `SeasonCom
 a `compare` prop for a 2nd season's line + a This/vs-Last/vs-All-time toggle); the standalone Pace/PowerCurveCard were
 removed (JM: "why 2 curves"). ALWAYS screenshot the mock (`mockups/curve-*.html`) and eyeball it BEFORE pushing — this
 curve shipped broken multiple times.
+
+**CORRECTION:** the season-compare curve is the REAL mean-max overlay (`PowerCurveChart`/`PaceCurveChart`) — full 1s-1h
+range + `niceTicks` round Y-axis — NOT the fitted `DurationCurve`. Fitted lines fit identical CP/W′ across seasons and
+overlap (invisible compare); the season delta is in the sprints the model window hides. `DurationCurve` = single-season
+capacity only. Render with REAL athlete data before pushing.
