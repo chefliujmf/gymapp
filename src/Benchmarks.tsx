@@ -59,7 +59,6 @@ function ConfBar({ conf, big = false }: { conf: Confidence; big?: boolean }) {
 function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; prefer: Pref; onPref: (p: Pref) => void; onSaveManual: (v: number | null) => void; onClose: () => void }) {
   const [p, setP] = useState<Pref>(prefer)
   const [txt, setTxt] = useState(def.manual != null ? def.fmt(def.manual) : '')
-  const [showWork, setShowWork] = useState(false) // #508 — the cross-checks collapse behind "How we got this"
   const commit = () => {
     // #247: the input is always editable — typing saves your manual value regardless of mode; the
     // toggle just picks which one DRIVES. (Was locked on Computed — JM wanted to type a value anytime.)
@@ -102,15 +101,9 @@ function Sheet({ def, prefer, onPref, onSaveManual, onClose }: { def: StatDef; p
         {/* #374 — plain-language explanation of how this stat is computed. */}
         <div className="bm-narr">{def.narr}</div>
         {clean ? (
-          /* #508 — the method wall, collapsed. Only appears on tap. */
-          <div style={{ borderTop: '1px solid #20242e', marginTop: 16, paddingTop: 14 }}>
-            <button onClick={() => setShowWork((v) => !v)} style={{ background: 'none', border: 0, width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-dim)', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-              <span>How we got this · {def.sci.length} cross-check{def.sci.length === 1 ? '' : 's'}</span>
-              <span style={{ display: 'inline-block', transform: showWork ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }}>›</span>
-            </button>
-            {showWork && <div className="bm-sci" style={{ marginTop: 12 }}>{sciRows}</div>}
-            {showWork && sharpenEl}
-          </div>
+          /* #508 (JM: "I don't want another link there … not all that crap") — NO expander, NO method wall. The
+             narrative above already carries the one honest read; only the sharpen tip stays when it's not strong. */
+          sharpenEl
         ) : (
           <>
             {/* #374 — "The science" — every method + which one drives. */}
@@ -195,14 +188,22 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const weight = pbWeight ?? pull?.weight ?? null
   const vdot = user?.runVdot ?? null
   // #403 — CP/W′ (cycling) + CS/D′ (running) from the power/pace-duration model fit. CS shown as a pace (sec/km).
-  const cp = powerCurve?.cp ?? null // #508 — the INDEPENDENT power-duration fit. NEVER derive it from FTP (that's circular); its whole job is to cross-check FTP.
+  const cp = powerCurve?.cp ?? null // #508 — the INDEPENDENT power-duration fit. NEVER derive it from FTP (that's circular); it measures the SAME threshold FTP does, so they should sit CLOSE (not 10–15 W apart — that "rule" produces nonsense vs real training).
   const wPrimeKj = powerCurve?.wPrime != null ? Math.round(powerCurve.wPrime / 100) / 10 : null // kJ, 0.1 precision
+  // #508 (JM: "CP is to see the STRENGTH of a rider") — CP (engine size) + W′ (anaerobic kick) = the rider profile.
+  // Normalise W′ per kg: <250 J/kg diesel (big aerobic base, modest top-end) · 250–360 balanced · >360 puncheur.
+  const wPerKg = wPrimeKj != null && weight ? Math.round((wPrimeKj * 1000) / weight) : null
+  const riderType = wPerKg == null ? null : wPerKg < 250 ? 'a diesel — big aerobic engine, modest top-end kick' : wPerKg > 360 ? 'a puncheur — strong anaerobic kick over your aerobic base' : 'a balanced rider — steady engine with a real kick'
   const csPace = paceCurve?.cs != null && paceCurve.cs > 0 ? Math.round(1000 / paceCurve.cs) : null // sec/km
   const dPrimeM = paceCurve?.dPrime != null ? Math.round(paceCurve.dPrime) : null // metres
   // #5007 — honest FTP: blend eFTP (weighted by recency) + CP-derived + best-20min×0.95; confidence from real
   // signals so a stale eFTP that disagrees with CP can't read "Strong". toConf maps the engine's 'good' onto the
   // existing bar classes (learn) so the CSS keeps working.
   const ftpEst = ftpEstimate({ eftp, eftpAgeDays, cp, best20: ftp20, manual: ftpManual, hrPower, maxHr: maxHr ?? compMaxHr }) // #497 — HR-power method now fed real ride data
+  // #508 (JM) — the honest computed threshold, eFTP-anchored (intervals' standard read), CP as the corroborator. This
+  // is the ONE number the FTP card explains — no wall of 6 conflicting methods. eftpAndCpAgree → "it's solid".
+  const ftpThreshold = eftp ?? ftpEst.best ?? ftpManual
+  const eftpCpAgree = eftp != null && cp != null && Math.abs(eftp - cp) <= 12
   // #497 running analog — threshold pace inferred from the HR cost of steady runs. Used as a FALLBACK: when the
   // Critical-Speed model isn't ready (few/no hard runs) but there's HR-paired running, we still show a real number
   // instead of "needs 4 runs" — so a runner's analysis is done off history, and it shows as its own method below.
@@ -217,11 +218,10 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const chosenFtp = prefFor('ftp') === 'manual' ? (ftpManual ?? ftpEst.best ?? eftp) : (ftpEst.best ?? eftp ?? ftpManual) // #5007 computed side = the blended estimate
   const decoupCheck = decouplingCheck(rideSignals, chosenFtp) // #508 — does your near-FTP riding hold steady (confirms) or drift (FTP too high)?
   const aeroFloor = aerobicFloor(rideSignals, maxHr ?? compMaxHr) // #508 — your Z2 efficiency proves FTP is AT LEAST this (JM: 170 W steady in Z2 ⇒ not 220)
-  // #508 (JM: "the point of CP is to see through the weakness of FTP") — CP stays the INDEPENDENT curve read; we do
-  // NOT floor it at FTP+offset (circular — it'd stop being able to challenge FTP). Instead the GAP is the signal:
-  // a CP meaningfully BELOW the trained FTP means either FTP is a touch optimistic OR the curve lacks max efforts
-  // (submaximal data under-reads CP). Surface that as the insight; never paper over it. cpVsFtp: <0 CP below FTP.
-  const cpVsFtp = cp != null && chosenFtp != null ? cp - chosenFtp : null
+  // #508 (JM: "CP and FTP measure the same thing — CP+15 makes no sense vs my training") — CP stays the INDEPENDENT
+  // curve read, but it estimates the SAME threshold as FTP, so the honest check is whether they CLUSTER (they should).
+  // cpAgrees: CP within ~15 W of the trained FTP → threshold is solid; we stop implying one is "wrong".
+  const cpAgrees = cp != null && chosenFtp != null && Math.abs(cp - chosenFtp) <= 15
   const chosenPace = prefFor('thresholdPace') === 'manual' ? (paceManual ?? paceComputed) : (paceComputed ?? paceManual)
   // #506e — CONSISTENCY (JM): dependent stats must move WITH the anchor. VO₂max now reads the CHOSEN FTP + max-HR
   // (what the picker has in use), NOT the raw manual — so switching FTP to Auto moves VO₂max the same way it moves
@@ -311,7 +311,9 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       key: 'ftp', label: 'FTP', unit: 'W', computed: ftpEst.best, computedSrc: ftpManual != null ? 'anchored on your value · cross-checked below' : 'Platyplus blend · eFTP + CP + 20-min + HR-cost', pending: ftpEst.best ? undefined : (map5 != null ? 'after your next hard effort — a ~5–20 min near-max or a 2×8; Platyplus reads your threshold from it (no formal test)' : 'after your first hard effort — a ~5–20 min or 2×8; Platyplus reads your threshold from it (no formal test)'), manual: ftpManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(50, 600), save: (v) => saveSport('cycling', { ftp: v }),
       chip: 'eFTP',
       conf: toConf(ftpEst.conf), // #5007 — blended estimate + honest confidence (recency · agreement · test-backed)
-      narr: <><b>{ftpEst.why}</b><br /><br /><b>Platyplus's own</b> multi-signal read — your eFTP, Critical Power, best 20-min, HR cost and cardiac drift, weighted by freshness. No single test defines it.</>,
+      // #508 (JM: "the card has to have all info relevant accurate, not a wall of crap") — ONE honest read, no method
+      // list: threshold ~eFTP, CP as the corroborator, and where the value you train by sits vs it.
+      narr: <>Your threshold reads <b>~{ftpThreshold != null ? ftpThreshold : '—'} W</b>{eftpCpAgree ? <> — your eFTP ({eftp}) and Critical Power ({cp}) agree, so it's solid</> : null}.{ftpManual != null && ftpThreshold != null ? <> You train at <b>{ftpManual} W</b>{ftpManual - ftpThreshold >= 5 ? ', a touch generous but well within range' : ftpManual - ftpThreshold <= -5 ? ', a little conservative — you likely have more' : ' — right in line'}.</> : null} Easy weeks pull the estimate down a little; one hard 20–40 min effort tightens it.</>,
       sci: (() => { // #506e — show what each source IS (the numbers already show higher/lower — no repeated "reads lower than X", JM). IN USE follows the PICKER: the blend when Auto/Computed, your value when Manual.
         // #508 (JM: "260 low-confidence but all reads below — inconsistent") — the number in use is your TRAINED value
         // (kept as the anchor, since the low reads are under-reads, not proof it's wrong). Only show a separate
@@ -370,7 +372,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     {
       key: 'cp', label: 'Critical Power', unit: 'W', computed: cp, computedSrc: 'independent read from your power curve', pending: cp == null ? 'after a few hard efforts across durations — the model needs points to fit' : undefined, manual: (ss.cycling as { cp?: number })?.cp ?? null, fmt: String, parse: numParse(60, 500), save: (v) => saveSport('cycling', { cp: v }),
       chip: 'Curve', conf: modelFitConfidence({ value: cp, r2: powerCurve?.r2 }),
-      narr: <>Your <b>Critical Power</b> — the highest power you can hold near-indefinitely (the asymptote of your power curve), modelled <b>independently</b> from efforts across many durations. That independence is the point: it's a second opinion on your FTP.{cpVsFtp != null && cpVsFtp <= -4 ? <><br /><br />Right now CP reads <b>{Math.abs(cpVsFtp)} W below</b> the {chosenFtp} W you train at. Two honest reads of that: your FTP may be a touch optimistic (your true ~1 h power could be nearer {cp}), <b>or</b> your curve is missing hard max efforts, which makes the fit read low. A couple of all-out efforts (short + ~5 min) will settle it.</> : cpVsFtp != null && cpVsFtp >= 6 ? <><br /><br />CP sits <b>{cpVsFtp} W above</b> your {chosenFtp} W FTP — consistent with a well-characterised curve. Your FTP looks honest.</> : null}</>,
+      narr: <>Your <b>Critical Power</b> — the top of your aerobic engine, modelled independently from your power curve. It measures the same threshold your FTP does, so they sit close{cpAgrees && eftp != null ? <> — yours ({cp} W) lines up with your eFTP ({eftp} W)</> : null}. Its real value is paired with <b>W′ ({wPrimeKj != null ? wPrimeKj : '—'} kJ)</b>: CP is your engine size, W′ your anaerobic kick — together {riderType ? <>they read as <b>{riderType}</b></> : <>they profile your rider type</>}.</>,
       sci: [{ name: 'Power-duration model', formula: '2-param CP/W′ fit · independent of FTP', value: cp != null ? `${cp} W` : '—', inUse: cp != null }],
       sharpen: 'hard efforts of varied length (1–20 min) sharpen the CP/W′ fit.',
     },
