@@ -200,7 +200,8 @@ export function ftpEstimate(inp: FtpInputs): Estimate {
       if (s.value == null) return { name: s.name, value: s.value, tag: 'off' as SrcTag }
       if (s.name === 'intervals eFTP' && !eftpFresh) return { name: s.name, value: s.value, tag: 'stale' as SrcTag }
       const d = (s.value - m) / m
-      return { name: s.name, value: s.value, tag: (Math.abs(d) <= tol ? 'agrees' : d < 0 ? 'low' : 'high') as SrcTag }
+      // #506b — 3% (~8 W) tolerance: 248 vs 260 (4.6%) must read LOWER, not "agrees" (JM: "I put 260 and it shows 248 agrees?!").
+      return { name: s.name, value: s.value, tag: (Math.abs(d) <= 0.03 ? 'agrees' : d < 0 ? 'low' : 'high') as SrcTag }
     })
     return { best, lo: best, hi: best, conf, why, sources }
   }

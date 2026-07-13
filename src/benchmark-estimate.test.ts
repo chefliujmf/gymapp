@@ -126,13 +126,18 @@ describe('ftpEstimate', () => {
   // #506 — JM: "all diff numbers but agrees with the blend?" A computed source far from the value you train by must
   // be tagged low/high (reads lower/higher), NOT blanket 'agrees', and only your manual value is 'primary' (in use).
   it('manual value: sources are tagged by REAL agreement, not rubber-stamped "agrees"', () => {
-    const e = ftpEstimate({ eftp: 240, eftpAgeDays: 40, cp: 248, best20: 232, manual: 260 })
+    const e = ftpEstimate({ eftp: 240, eftpAgeDays: 40, cp: 256, best20: 232, manual: 260 })
     const tag = (n: string) => e.sources.find((s) => s.name === n)?.tag
     expect(tag('you train by')).toBe('primary')       // the only one in use
-    expect(tag('from CP')).toBe('agrees')              // 248 within 5% of 260
+    expect(tag('from CP')).toBe('agrees')              // 256 within 3% of 260
     expect(tag('best 20-min ×0.95')).toBe('low')       // 220 reads well below 260
     expect(tag('intervals eFTP')).toBe('stale')        // age 40 > fresh window
     expect(e.sources.filter((s) => s.tag === 'agrees').length).toBeLessThan(3) // NOT everything agrees
+  })
+  // #506b — JM's exact case: CP 248 vs a 260 manual (4.6% off) must read LOWER, not "agrees".
+  it('CP 248 vs manual 260 reads "low" (4.6% off is not agreement)', () => {
+    const e = ftpEstimate({ eftp: null, cp: 248, manual: 260 })
+    expect(e.sources.find((s) => s.name === 'from CP')?.tag).toBe('low')
   })
 })
 
