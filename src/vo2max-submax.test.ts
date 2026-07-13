@@ -11,6 +11,11 @@ describe('vo2ScienceRows (#506)', () => {
     expect(rows.map((r) => r.name)).toEqual(['Running VDOT'])
     expect(rows[0].inUse).toBe(true)
   })
+  it('a RUNNER who does a REAL max bike effort DOES see Cycling MAP appear (#508 — JM)', () => {
+    const realBike = { value: 50, source: 'your 5-min max power', confidence: 'medium' as const }
+    const rows = vo2ScienceRows({ doesCycle: false, cyc: realBike, run, hr: 47, headSource: 'your running pace (VDOT)' })
+    expect(rows.map((r) => r.name)).toEqual(['Cycling MAP', 'Running VDOT'])
+  })
   it('a CYCLIST with real power sees the MAP method (power-based only)', () => {
     const powerCyc = { value: 50, source: 'your 5-min max power', confidence: 'medium' as const }
     const rows = vo2ScienceRows({ doesCycle: true, cyc: powerCyc, run: null, hr: 47, headSource: 'your 5-min max power' })

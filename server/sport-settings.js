@@ -89,7 +89,11 @@ export function runThresholdFromPaceCurve(paceCurve, minR2 = 0.7) {
   for (const c of list) {
     const cs = ((c && c.paceModels) || []).find((m) => m.type === 'CS' && m.criticalSpeed > 0)
     if (cs && (cs.r2 == null || cs.r2 >= minR2)) {
-      return { thresholdPace: Math.round(1000 / cs.criticalSpeed), criticalSpeed: cs.criticalSpeed, r2: cs.r2 != null ? cs.r2 : null }
+      // #506d — Critical Speed OVERESTIMATES lactate threshold / MLSS by ~2-3% (Jones & Vanhatalo 2017); the ~1-hour
+      // threshold pace sits slightly SLOWER than the CS asymptote. Apply a 2.5% slow-down so Threshold Pace is a real
+      // threshold read (not just CS relabelled) — this also stops the Threshold-Pace and Critical-Speed cards showing
+      // the identical number. The CS card keeps the raw asymptote (1000/cs); this is the derived coaching pace.
+      return { thresholdPace: Math.round(1000 / cs.criticalSpeed * 1.025), criticalSpeed: cs.criticalSpeed, r2: cs.r2 != null ? cs.r2 : null }
     }
   }
   return null
