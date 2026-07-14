@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getSetting, setSetting } from '../db'
-import NotificationsSettings from '../NotificationsSettings'
 import { authApi, type User } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import Availability from '../Availability'
@@ -287,8 +286,7 @@ export default function Profile() {
         <input type="checkbox" className="toggle-row__cb" checked={user?.learnReadiness !== false} onChange={(e) => authApi.saveProfile({ learnReadiness: e.target.checked }).then(() => refresh()).catch(() => {})} />
       </label>
 
-      {/* #457 — phone push notifications (per-type) */}
-      <NotificationsSettings />
+      {/* #511 — Notifications moved to Settings → Notifications (JM 2026-07-14). */}
 
     </div>
   )

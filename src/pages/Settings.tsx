@@ -5,6 +5,7 @@ import { ChevronDown } from 'lucide-react'
 import { db, getSetting, setSetting, clearLogs } from '../db'
 import AccountSection from '../auth/AccountSection'
 import OnboardReturnBar from '../OnboardReturnBar'
+import NotificationsSettings from '../NotificationsSettings' // #511 — moved here from Profile (JM)
 
 /** A chip-group setting that autosaves on tap and flashes "Saved ✓". */
 function ChipSetting({ title, hint, value, options, onPick }: {
@@ -74,6 +75,10 @@ export default function Settings() {
           options={[['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['schedule', 'Schedule']]} />
         <ChipSetting title="Exercise demos" value={stills ?? '0'} onPick={(v) => setSetting('exerciseStills', v)}
           hint="Stills save data and load instantly; tap a video in a workout to pause it." options={[['0', 'Video'], ['1', 'Stills only']]} />
+      </Collapsible>
+
+      <Collapsible title="Notifications" subtitle="Phone push · check-in reminders · coach updates">
+        <NotificationsSettings />
       </Collapsible>
 
       <Collapsible title="Data" subtitle="Activity log · clear cached data">

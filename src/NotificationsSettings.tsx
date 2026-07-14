@@ -49,7 +49,7 @@ export default function NotificationsSettings() {
 
   return (
     <div>
-      <div className="section-title">🔔 Notifications</div>
+      {/* #511 — title comes from the Settings "Notifications" Collapsible now (moved from Profile, JM 2026-07-14). */}
       {!supported ? (
         <p className="meta" style={{ margin: '2px 2px 10px' }}>Phone notifications aren’t supported in this browser.</p>
       ) : avail === false ? (
