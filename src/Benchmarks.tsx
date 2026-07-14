@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import { authApi, type IcuAthletePull, type SportStat } from './auth/api'
-import { fmtPace, parsePace } from './running-paces'
+import { fmtPace, parsePace, tteAtThresholdSec } from './running-paces'
 import { fetchWellness, fetchPowerCurve, fetchPaceCurve, fetchEfTrend, type PowerCurve, type PaceCurve, type EfTrend } from './intervals'
 import { estimateSleepNeed } from './sleep'
 import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, pickTte, fmtTte } from './tte'
@@ -119,6 +119,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const [hrPace, setHrPace] = useState<{ paceSecKm: number; hr: number }[]>([]) // #497 (pace,HR) points → infer threshold pace from the HR cost of runs
   const [rideSignals, setRideSignals] = useState<RideSignal[]>([]) // #508 per-ride NP/decoupling/EF → confirm/flag the FTP
   const [paceEst, setPaceEst] = useState<number | null>(null)
+  const [runEst, setRunEst] = useState<Awaited<ReturnType<typeof authApi.runEstimate>> | null>(null) // #512 full VDOT estimate (threshold + CS + vdot + source)
   const [map5, setMap5] = useState<number | null>(null) // #337 best 5-min power (MAP)
   const [pbWeight, setPbWeight] = useState<number | null>(null)
   const [runsRecent, setRunsRecent] = useState<number | null>(null)
@@ -140,7 +141,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   useEffect(() => {
     if (!connected) return
     authApi.pullIcuAthlete().then(setPull).catch(() => {})
-    authApi.runEstimate().then((r) => { if (r.available && r.thresholdPace) setPaceEst(r.thresholdPace) }).catch(() => {})
+    authApi.runEstimate().then((r) => { if (r.available) { setRunEst(r); if (r.thresholdPace) setPaceEst(r.thresholdPace) } }).catch(() => {}) // #512 keep the full VDOT read
     authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? ''); setObservedMaxHr((p as { observedMaxHr?: number | null }).observedMaxHr ?? null); setIcuMaxHr((p as { icuMaxHr?: number | null }).icuMaxHr ?? null); setHrPower((p as { hrPower?: { watts: number; hr: number }[] }).hrPower ?? []); setHrPace((p as { hrPace?: { paceSecKm: number; hr: number }[] }).hrPace ?? []); setRideSignals((p as { rideSignals?: RideSignal[] }).rideSignals ?? []) }).catch(() => {}) // #337 · #5007 ftp20 · #497 hrPower/hrPace · #508 rideSignals
     fetchPowerCurve(365).then(setPowerCurve).catch(() => {}) // #401 TTE — a year of efforts for a stable CP/W′ + CS/D′ model fit
     fetchPaceCurve(365).then(setPaceCurve).catch(() => {}) // #401 running TTE
@@ -162,9 +163,17 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const ftpManual = ss.cycling?.ftp ?? user?.ftp ?? null
   const maxHr = ss.cycling?.maxHr ?? user?.maxHR ?? null
   const ageMaxHr = maxHrFromAge(user?.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null, user?.sex) // #507/#508 — sex-specific age max HR (Gulati/Tanaka)
+  // #512 — pregnancy guardrail. VDOT is sex-FAIR by construction (performance-based), so male/female needs no fudge. But
+  // a pregnant athlete's benchmarks are PRE-pregnancy BASELINES — never current targets. We keep the numbers (honest
+  // baseline to return to) but strip every hard-effort "sharpen" prescription + flag them, so Xenia never sees an
+  // aggressive pace nudged as a goal. Menstrual-cycle adaptation is day-to-day readiness (handled server-side), not a
+  // benchmark shift — VDOT is a fitness measure, not a daily-readiness one. Coach owns pregnancy planning (#427).
+  const pregnant = !!user?.info?.pregnant
+  const PREG_SHARPEN = 'While pregnant, this is a baseline — not a target. Train by feel (talk-test); your coach adapts every session for you.'
   const paceManual = ss.running?.thresholdPace ?? user?.runThresholdPace ?? null
   const weight = pbWeight ?? pull?.weight ?? null
-  const vdot = user?.runVdot ?? null
+  const isVdotRun = runEst?.source === 'race VDOT' // #512 — threshold is grounded in real race bests (Daniels VDOT): sex-fair + reliable → trust it directly, skip the HR-cost workaround
+  const vdot = runEst?.vdot ?? user?.runVdot ?? null // #512 — prefer the freshly-computed race VDOT
   // #403 — CP/W′ (cycling) + CS/D′ (running) from the power/pace-duration model fit. CS shown as a pace (sec/km).
   const cp = powerCurve?.cp ?? null // #508 — the INDEPENDENT power-duration fit. NEVER derive it from FTP (that's circular); it measures the SAME threshold FTP does, so they should sit CLOSE (not 10–15 W apart — that "rule" produces nonsense vs real training).
   const wPrimeKj = powerCurve?.wPrime != null ? Math.round(powerCurve.wPrime / 100) / 10 : null // kJ, 0.1 precision
@@ -172,7 +181,9 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // Normalise W′ per kg: <250 J/kg diesel (big aerobic base, modest top-end) · 250–360 balanced · >360 puncheur.
   const wPerKg = wPrimeKj != null && weight ? Math.round((wPrimeKj * 1000) / weight) : null
   const riderType = wPerKg == null ? null : wPerKg < 250 ? 'a diesel — big aerobic engine, modest top-end kick' : wPerKg > 360 ? 'a puncheur — strong anaerobic kick over your aerobic base' : 'a balanced rider — steady engine with a real kick'
-  const csPace = paceCurve?.cs != null && paceCurve.cs > 0 ? Math.round(1000 / paceCurve.cs) : null // sec/km
+  // #512 — prefer the VDOT-derived CS (sec/km): it sits just ABOVE threshold by construction (90% vs 88% VO₂max), so
+  // threshold ≤ CS ALWAYS holds — killing the under-read-CS bug where the pace-curve fit CS slower than the real threshold.
+  const csPace = runEst?.csPace ?? (paceCurve?.cs != null && paceCurve.cs > 0 ? Math.round(1000 / paceCurve.cs) : null) // sec/km
   const dPrimeM = paceCurve?.dPrime != null ? Math.round(paceCurve.dPrime) : null // metres
   // #5007 — honest FTP: blend eFTP (weighted by recency) + CP-derived + best-20min×0.95; confidence from real
   // signals so a stale eFTP that disagrees with CP can't read "Strong". toConf maps the engine's 'good' onto the
@@ -194,9 +205,11 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // every run is easy: with no fast points to anchor the curve it fits SLOWER than the HR cost of those same easy
   // runs (impossible — a CS slower than an easy run). When HR-pace reads meaningfully faster (>12 s/km, higher =
   // slower), the curve is under-constrained → trust HR-pace, the way eFTP anchors cycling. (JM: CS 5:21 vs a 5:06 run.)
-  const csUnderReads = paceEst != null && paceHrBest != null && paceEst - paceHrBest > 12
-  const paceFromHr = csUnderReads || paceEst == null
-  const paceComputed = csUnderReads ? paceHrBest : (paceEst ?? paceHrBest)
+  // #512 — with a race-VDOT read the threshold is race-grounded (reliable), so we DON'T fall back to the HR-cost of easy
+  // runs. The HR-cost/CS-under-read workaround only applies to the legacy CS-model path (no race bests to anchor VDOT).
+  const csUnderReads = !isVdotRun && paceEst != null && paceHrBest != null && paceEst - paceHrBest > 12
+  const paceFromHr = !isVdotRun && (csUnderReads || paceEst == null)
+  const paceComputed = isVdotRun && paceEst != null ? paceEst : (csUnderReads ? paceHrBest : (paceEst ?? paceHrBest))
   const toConf = (c: { pct: number; cls: string; label: string }): Confidence => ({ pct: c.pct, cls: (c.cls === 'good' ? 'learn' : c.cls) as Confidence['cls'], label: c.label })
   // #403 — athlete-profile synthesis (rendered when a per-sport page passes `profile`). EF wires in Phase 2.
   // #464 — the insight must anchor on the CHOSEN FTP/pace (same `inUse` logic as the benchmark card), not the
@@ -236,14 +249,16 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const tteRidePick = pickTte(tteRideObs, tteRideEst), tteRide = tteRidePick.sec, tteRideEstimated = tteRidePick.estimated
   const thPace = chosenPace ?? paceComputed
   const tteRunObs = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, thPace) : null
-  const tteRunEst = paceCurve ? tteModelPace(thPace, paceCurve.cs, paceCurve.dPrime) : null
-  // #508 (JM: "5:46 TTE = threshold too high OR TTE inaccurate — check my races"). His threshold (4:57) MATCHES his real
-  // 5k (VDOT 42 → 4:55), so it's NOT too fast. The problem is CS: the model reads it SLOWER than his threshold — but CS
-  // is the CEILING (threshold ≤ CS), so CS is UNDER-READ, and the short modeled TTE (threshold appears far above CS) is a
-  // FANTASY. When threshold reads faster than CS, the CS fit is under-constrained → we DON'T show the bogus short TTE.
-  const csUnderReadRun = csPace != null && thPace != null && thPace < csPace - 6
+  // #512 — running TTE. On the VDOT read threshold ≤ CS (threshold is your ~1-hour pace, BELOW critical speed), so the
+  // CS/D′ "above-critical" depletion model gives no finite time — the honest model is the Daniels pctMax AEROBIC ceiling
+  // (~67 min at threshold). The OBSERVED longest hold (from real tempo/race efforts) is the personal, trainable number
+  // and LEADS; the model is the inferred fallback so we never beg for a test. Legacy path keeps the CS/D′ model + guard.
+  const tteRunEst = isVdotRun ? tteAtThresholdSec() : (paceCurve ? tteModelPace(thPace, paceCurve.cs, paceCurve.dPrime) : null)
+  // csUnderReadRun only guards the LEGACY CS-model path; the VDOT read has threshold ≤ CS by construction (never bogus).
+  const csUnderReadRun = !isVdotRun && csPace != null && thPace != null && thPace < csPace - 6
   const tteRunPick = pickTte(tteRunObs, tteRunEst)
-  const tteRun = csUnderReadRun ? null : tteRunPick.sec, tteRunEstimated = tteRunPick.estimated
+  const tteRun = csUnderReadRun ? null : (isVdotRun ? (tteRunObs ?? tteRunEst) : tteRunPick.sec)
+  const tteRunEstimated = isVdotRun ? tteRunObs == null : tteRunPick.estimated
   // #508 (JM: "how will the insight AND coach focus update when I change a value?") — the profile must read the IN-USE
   // value per metric (a Manual override wins in Manual mode, exactly like chosenFtp), so editing TTE/CP/W′/CS/D′ flows
   // into the reads AND the coach focus (athleteProfile derives BOTH from these inputs). Manual → the saved value; else computed.
@@ -346,19 +361,22 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your best efforts → tighter eFTP.',
     },
     {
-      key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceComputed, computedSrc: paceFromHr ? 'from the HR cost of your runs' : 'from your recent runs (Critical Speed)', pending: paceGate, manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }),
-      chip: paceFromHr ? 'HR vs pace' : 'Critical Speed',
+      key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceComputed, computedSrc: isVdotRun ? 'from your best race efforts (Daniels VDOT)' : (paceFromHr ? 'from the HR cost of your runs' : 'from your recent runs (Critical Speed)'), pending: paceGate, manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }),
+      chip: isVdotRun ? 'Race VDOT' : paceFromHr ? 'HR vs pace' : 'Critical Speed',
       conf: thresholdPaceConfidence({ paceEst: paceComputed, runsRecent }),
-      narr: !paceFromHr
+      narr: isVdotRun
+        ? <>Anchored in your <b>best race efforts</b> via Daniels' <b>VDOT</b>{vdot != null ? <> (VDOT {vdot})</> : null} — the running gold standard: your fastest sustained runs place your aerobic power, and threshold is <b>~88% of it</b> — the pace you could hold for ~an hour. It's grounded in real performances (not the heart-rate cost of easy runs), so it's honest and fair. It sharpens with every hard effort or race.</>
+        : !paceFromHr
         ? <>Modelled from your <b>recent runs</b> using the Critical-Speed method — the pace you could hold for ~an hour. It sharpens as you log more runs, especially harder efforts.</>
         : csUnderReads
           ? <>Read from the <b>heart-rate cost</b> of your runs. Your Critical-Speed curve fits slow ({csPace != null ? fmtPace(csPace) : '—'}) because <b>every recent run is easy</b> — with no hard efforts, the model has no fast points and under-reads. Your HR cost says your true threshold is nearer this. One hard 20-min run would set it properly.</>
           : <>Inferred from the <b>heart-rate cost</b> of your steady runs — projecting your pace out to threshold HR — because there aren't enough hard efforts yet for the Critical-Speed model. A hard 20-min run gives a firmer read.</>,
       sci: [
-        { name: 'Critical Speed', formula: 'from your recent runs · ~1 h pace', value: paceEst != null ? fmtPace(paceEst) : '—', inUse: paceEst != null },
-        { name: 'HR vs pace', formula: 'the HR cost of your steady runs → threshold HR', value: paceHr ? fmtPace(paceHr.best) : '—', inUse: paceEst == null && paceHr != null }, // #497
+        { name: 'Race VDOT', formula: 'Daniels VDOT from your best efforts · threshold = 88% VO₂max', value: isVdotRun && paceEst != null ? fmtPace(paceEst) : '—', inUse: isVdotRun }, // #512
+        { name: 'Critical Speed', formula: 'from your recent runs · ~1 h pace', value: !isVdotRun && paceEst != null ? fmtPace(paceEst) : '—', inUse: !isVdotRun && !paceFromHr && paceEst != null },
+        { name: 'HR vs pace', formula: 'the HR cost of your steady runs → threshold HR', value: paceHr ? fmtPace(paceHr.best) : '—', inUse: !isVdotRun && paceEst == null && paceHr != null }, // #497
       ],
-      sharpen: 'log a few more runs incl. a hard effort → the Critical-Speed fit tightens.',
+      sharpen: isVdotRun ? 'a hard 5 k–10 k effort or a race gives VDOT a fresh, faster anchor → a tighter threshold.' : 'log a few more runs incl. a hard effort → the Critical-Speed fit tightens.',
     },
     // #401 — TTE (time to exhaustion at threshold), a LEARNED benchmark per sport, read off the mean-max curve.
     {
@@ -370,11 +388,11 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sharpen: 'extensive threshold work — 3×15–20 min @ 90–95% FTP — extends your TTE (longer durations, not more power).',
     },
     {
-      key: 'tteRun', label: 'TTE', computed: tteRun, computedSrc: tteRunEstimated ? 'estimated from your Critical-Speed model' : 'longest you held threshold pace', pending: tteRun == null ? (csUnderReadRun ? 'your Critical-Speed model reads SLOWER than your race pace — since CS is the ceiling, it\'s under-read, so TTE can\'t be pinned yet. One hard sustained 20–40 min run fits it true.' : paceCurve ? 'after a sustained threshold run (15–40 min)' : 'after a few runs — read from your best runs') : undefined, manual: (ss.running as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('running', { tte: v }),
-      chip: csUnderReadRun ? 'CS under-read' : tteRunEstimated ? 'CS model' : 'Curve',
+      key: 'tteRun', label: 'TTE', computed: tteRun, computedSrc: tteRunEstimated ? (isVdotRun ? 'estimated at threshold (your ~1-hour pace)' : 'estimated from your Critical-Speed model') : 'longest you held threshold pace', pending: tteRun == null ? (csUnderReadRun ? 'your Critical-Speed model reads SLOWER than your race pace — since CS is the ceiling, it\'s under-read, so TTE can\'t be pinned yet. One hard sustained 20–40 min run fits it true.' : paceCurve ? 'after a sustained threshold run (15–40 min)' : 'after a few runs — read from your best runs') : undefined, manual: (ss.running as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('running', { tte: v }),
+      chip: csUnderReadRun ? 'CS under-read' : tteRunEstimated ? (isVdotRun ? 'Aerobic ceiling' : 'CS model') : 'Curve',
       conf: tteConfidence({ tte: tteRun, estimated: tteRunEstimated }),
-      narr: <>How long you can hold your <b>threshold pace</b> before fatigue — <b>~30–70 min by definition</b> (threshold IS your ~1-hour pace). {csUnderReadRun ? <>Right now your <b>Critical-Speed model reads slower than your race pace</b> — but CS is the ceiling, so it's <b>under-read</b> (your CS fit needs more hard efforts across distances). That's why a precise TTE can't be pinned yet — NOT that your threshold is too fast. One hard sustained 20–40 min run settles it.</> : <>Read from your best runs once you've held it that long, else from your pace-duration model. Extend it with sustained threshold runs (3×15–20 min @ threshold).</>}</>,
-      sci: [{ name: 'From your best runs', formula: 'longest time ≤ threshold', value: tteRunObs != null ? fmtTte(tteRunObs) : '—', inUse: !tteRunEstimated && tteRun != null }, { name: 'Modeled', formula: 'from your pace-duration fit', value: tteRunEst != null ? fmtTte(tteRunEst) : '—', inUse: tteRunEstimated }],
+      narr: <>How long you can hold your <b>threshold pace</b> before fatigue — <b>~30–70 min by definition</b> (threshold IS your ~1-hour pace). {csUnderReadRun ? <>Right now your <b>Critical-Speed model reads slower than your race pace</b> — but CS is the ceiling, so it's <b>under-read</b> (your CS fit needs more hard efforts across distances). That's why a precise TTE can't be pinned yet — NOT that your threshold is too fast. One hard sustained 20–40 min run settles it.</> : isVdotRun ? <>Read from the <b>longest you've actually held threshold pace</b> (your real durability). Until you've done a sustained effort we show the aerobic ceiling (~1 h). Extend it with tempo runs (3×15–20 min @ threshold).</> : <>Read from your best runs once you've held it that long, else from your pace-duration model. Extend it with sustained threshold runs (3×15–20 min @ threshold).</>}</>,
+      sci: [{ name: 'From your best runs', formula: 'longest time ≤ threshold', value: tteRunObs != null ? fmtTte(tteRunObs) : '—', inUse: !tteRunEstimated && tteRun != null }, { name: isVdotRun ? 'Aerobic ceiling' : 'Modeled', formula: isVdotRun ? 'Daniels pctMax @ threshold (~1 h)' : 'from your pace-duration fit', value: tteRunEst != null ? fmtTte(tteRunEst) : '—', inUse: tteRunEstimated }],
       sharpen: 'sustained threshold runs (15–40 min, ~5 k–10 k effort) extend your TTE — or ease your threshold pace toward your critical speed.',
     },
     // #403 — CP · W′ (cycling) and CS · D′ (running): the power/pace-duration model. Modelled from the curve (no
@@ -394,11 +412,13 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sharpen: 'short near-max repeats (30 s–3 min) build W′.',
     },
     {
-      key: 'cs', label: 'Critical Speed', unit: '/km', computed: csPace, computedSrc: 'your sustainable running ceiling', pending: csPace == null ? 'after a few hard runs across distances — the model needs points' : undefined, manual: (ss.running as { cs?: number })?.cs ?? null, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { cs: v }),
-      chip: 'Curve', conf: modelFitConfidence({ value: csPace, r2: paceCurve?.r2 }),
-      narr: <>Your <b>Critical Speed</b> — the running analogue of Critical Power: the fastest pace you can hold near-indefinitely, modelled independently from your best runs.{csUnderReads ? <><br /><br />Right now it fits <b>slow</b> — every recent run is easy, so the curve has no fast points and under-reads (it even lands slower than your easy-run pace). A couple of hard efforts across distances (1 k–5 k) let it read true; until then your threshold pace is the better guide.</> : null}</>,
-      sci: [{ name: 'Pace-duration model', formula: '2-param CS/D′ fit', value: csPace != null ? `${fmtPace(csPace)}/km` : '—', inUse: csPace != null }],
-      sharpen: 'hard runs of varied distance (1 k–5 k) sharpen the CS/D′ fit.',
+      key: 'cs', label: 'Critical Speed', unit: '/km', computed: csPace, computedSrc: isVdotRun ? 'from your race VDOT — just above threshold' : 'your sustainable running ceiling', pending: csPace == null ? 'after a few hard runs across distances — the model needs points' : undefined, manual: (ss.running as { cs?: number })?.cs ?? null, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { cs: v }),
+      chip: isVdotRun ? 'VDOT' : 'Curve', conf: modelFitConfidence({ value: csPace, r2: isVdotRun ? (runEst?.r2 ?? 0.9) : paceCurve?.r2 }),
+      narr: isVdotRun
+        ? <>Your <b>Critical Speed</b> — the fastest pace you can hold near-indefinitely. Derived from the same <b>race VDOT</b> as your threshold (~90% VO₂max vs threshold's 88%), so it sits <b>just faster than threshold</b> by construction — never the under-read fantasy the pace-curve fit used to produce off easy runs.</>
+        : <>Your <b>Critical Speed</b> — the running analogue of Critical Power: the fastest pace you can hold near-indefinitely, modelled independently from your best runs.{csUnderReads ? <><br /><br />Right now it fits <b>slow</b> — every recent run is easy, so the curve has no fast points and under-reads (it even lands slower than your easy-run pace). A couple of hard efforts across distances (1 k–5 k) let it read true; until then your threshold pace is the better guide.</> : null}</>,
+      sci: [{ name: isVdotRun ? 'Race VDOT' : 'Pace-duration model', formula: isVdotRun ? 'Daniels VDOT · CS = 90% VO₂max' : '2-param CS/D′ fit', value: csPace != null ? `${fmtPace(csPace)}/km` : '—', inUse: csPace != null }],
+      sharpen: isVdotRun ? 'a hard 5 k–10 k or a race lifts VDOT → a faster critical speed.' : 'hard runs of varied distance (1 k–5 k) sharpen the CS/D′ fit.',
     },
     {
       key: 'dPrime', label: 'D′', unit: 'm', computed: dPrimeM, computedSrc: 'anaerobic distance reserve above CS', pending: dPrimeM == null ? 'after some short fast reps — the model needs sprint points' : undefined, manual: (ss.running as { dPrime?: number })?.dPrime ?? null, fmt: String, parse: numParse(50, 400), save: (v) => saveSport('running', { dPrime: v }),
@@ -438,7 +458,9 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // (via `only`), never in the global mix (JM directive: nothing activity-specific in global): FTP (cycling) +
   // threshold pace (running), and the advanced curve metrics TTE · CP · W′ · CS · D′.
   const SPORT_ONLY: Key[] = ['ftp', 'thresholdPace', 'tteRide', 'tteRun', 'cp', 'wPrime', 'cs', 'dPrime']
-  const shown = only ? only.map((k) => defs.find((d) => d.key === k)).filter((d): d is StatDef => !!d) : defs.filter((d) => !SPORT_ONLY.includes(d.key))
+  const shownRaw = only ? only.map((k) => defs.find((d) => d.key === k)).filter((d): d is StatDef => !!d) : defs.filter((d) => !SPORT_ONLY.includes(d.key))
+  // #512 — pregnancy: strip hard-effort "sharpen" tips (keep maxHr/sleep — not training loads). Numbers stay; no nudges.
+  const shown = pregnant ? shownRaw.map((d) => (d.key === 'maxHr' || d.key === 'sleepNeed' ? d : { ...d, sharpen: PREG_SHARPEN })) : shownRaw
   const showsFtp = shown.some((d) => d.key === 'ftp')
   // #277: default is AUTO — prefer the computed estimate once it's ready, manual until then.
   const prefOf = (d: StatDef): Pref => (user?.statPrefs as Partial<Record<Key, Pref>> | undefined)?.[d.key] ?? 'auto'
@@ -450,6 +472,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   return (
     <div className="card bm-card">
       <div className="bm-card__h"><h3>Your benchmarks</h3>{connected && <span className="sync-pill">⇄ intervals</span>}</div>
+      {pregnant && <p className="bm-note" style={{ background: '#161a13', border: '1px solid #2a3a24', borderRadius: 10, padding: '9px 12px', color: 'var(--accent)', margin: '0 0 11px', lineHeight: 1.5 }}>🤍 These are your <b>pre-pregnancy baselines</b> — informational, not training targets. Your coach adapts every session for pregnancy; train by how you feel (the talk-test), not these paces.</p>}
       <div className="bm-grid">
         {shown.map((d) => {
           const v = inUse(d), p = prefOf(d), src = activeSrc(d)
@@ -480,7 +503,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
             ))}
           </div>
           {prof.reads.map((m) => <div key={m.k} className="prof__m"><div className="prof__mk"><span className="k">{m.k}</span><b>{m.v}</b></div><div className="r">{m.r}</div></div>)}
-          <div className="prof__foc"><h4>🎯 What your coach will work on</h4><ul>{prof.focus.map((f, i) => <li key={i}>{f}</li>)}</ul></div>
+          <div className="prof__foc"><h4>🎯 What your coach will work on</h4>{pregnant ? <ul><li>Health &amp; function first — a strong, comfortable pregnancy, adapted by trimester. These metrics are a baseline to return to after, not targets now.</li></ul> : <ul>{prof.focus.map((f, i) => <li key={i}>{f}</li>)}</ul>}</div>
         </div>
       )}
       {showTrendsLink && <Link to="/stats" className="bm-trends">See trends &amp; race predictions in Stats ›</Link>}

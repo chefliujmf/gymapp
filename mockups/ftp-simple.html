@@ -1,0 +1,46 @@
+<style>
+  :root{ --text:#eef1f4; --dim:#9298a6; --accent:#34e07d; --bg:#0f1216; --card1:#21252f; --card2:#191c24; --blue:#5ec8ff; --violet:#9b8cff; }
+  *{ box-sizing:border-box; margin:0; padding:0 }
+  body{ background:var(--bg); color:var(--text); font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; display:flex; justify-content:center; padding:18px 12px 40px; gap:14px; flex-wrap:wrap }
+  .sheet{ width:360px; max-width:100%; background:linear-gradient(160deg,var(--card1),var(--card2)); border:1px solid #2c313d; border-radius:18px; padding:18px }
+  .hd{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px } .hd h3{ font-size:17px } .x{ color:var(--dim) }
+  .big{ font-size:52px; font-weight:800; letter-spacing:-.02em; line-height:1 } .big small{ font-size:20px; color:var(--dim); font-weight:600 }
+  .bar{ height:8px; border-radius:5px; background:#2b303b; margin:14px 0 5px; overflow:hidden } .bar>i{ display:block; height:100%; border-radius:5px }
+  .g .bar>i{ width:76%; background:linear-gradient(90deg,var(--blue),var(--accent)) }
+  .cl{ font-size:13px; font-weight:700 } .g .cl{ color:var(--accent) }
+  .why{ font-size:13.5px; color:#c3c9d4; margin:14px 0 16px } .why b{ color:var(--text) }
+  .seg{ display:flex; background:#171b22; border:1px solid #2a2f3a; border-radius:11px; overflow:hidden; margin-bottom:12px }
+  .seg button{ flex:1; border:0; background:transparent; color:var(--dim); font:600 13px inherit; padding:9px 0; cursor:pointer }
+  .seg button.on{ background:var(--accent); color:#08130b }
+  .yv{ display:flex; align-items:center; gap:9px; font-size:13px; color:var(--dim) } .yv input{ width:78px; background:#171b22; border:1px solid #2a2f3a; border-radius:9px; color:var(--text); padding:8px 10px; font:700 15px inherit; text-align:center }
+  .more{ margin-top:14px; font-size:12px; color:var(--dim); text-align:center; border-top:1px solid #262b35; padding-top:10px } .more span{ color:var(--blue) }
+  .lbl{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); margin:0 2px 8px }
+</style>
+
+<div>
+  <div class="lbl">Mock · simple card</div>
+  <div class="sheet g">
+    <div class="hd"><h3>FTP</h3><span class="x">✕</span></div>
+    <div class="big">255<small> W</small></div>
+    <div class="bar"><i></i></div>
+    <div class="cl">Good confidence</div>
+    <div class="why">Your <b>Critical Power</b> and the <b>260 you train by</b> line up here, and your easy rides show you'd hold it comfortably. A single clean <b>20-minute effort</b> would lock it in exactly.</div>
+    <div class="seg"><button>Manual</button><button class="on">Auto</button><button>Computed</button></div>
+    <div class="yv">Your value <input value="260"> W</div>
+    <div class="more"><span>How we got this ›</span></div>
+  </div>
+</div>
+
+<div>
+  <div class="lbl">Mock · another (needs an effort)</div>
+  <div class="sheet g" style="--accent:#ffb454">
+    <div class="hd"><h3>TTE</h3><span class="x">✕</span></div>
+    <div class="big" style="color:#ffb454">12<small>:00</small></div>
+    <div class="bar" style="--accent:#ffb454"><i style="width:38%;background:linear-gradient(90deg,#5ec8ff,#ffb454)"></i></div>
+    <div class="cl" style="color:#ffb454">Learning</div>
+    <div class="why">How long you hold threshold. Yours reads short because your FTP is set a touch high for your current curve — a <b>longer steady effort</b> (a 20-min at threshold) will grow it and sharpen this.</div>
+    <div class="seg" style="--accent:#ffb454"><button>Manual</button><button class="on" style="background:#ffb454;color:#1a1206">Auto</button><button>Computed</button></div>
+    <div class="yv">Your value <input value="—"> </div>
+    <div class="more"><span>How we got this ›</span></div>
+  </div>
+</div>

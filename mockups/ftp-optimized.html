@@ -1,0 +1,50 @@
+<style>
+  :root{ --text:#eef1f4; --dim:#9298a6; --accent:#34e07d; --bg:#0f1216; --card1:#21252f; --card2:#191c24;
+    --blue:#5ec8ff; --violet:#9b8cff; --amber:#ffb454; --red:#ff7a7a; }
+  *{ box-sizing:border-box; margin:0; padding:0 }
+  body{ background:var(--bg); color:var(--text); font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; display:flex; justify-content:center; padding:16px 12px 40px }
+  .sheet{ width:400px; max-width:100%; background:linear-gradient(160deg,var(--card1),var(--card2)); border:1px solid #2c313d; border-radius:18px; padding:16px }
+  .hd{ display:flex; align-items:center; justify-content:space-between } .hd h3{ font-size:19px } .x{ color:var(--dim) }
+  .bar{ height:7px; border-radius:5px; background:#2b303b; margin:12px 0 4px; overflow:hidden } .bar>i{ display:block; height:100%; width:74%; border-radius:5px; background:linear-gradient(90deg,var(--blue),var(--accent)) }
+  .cl{ font-size:12.5px; color:var(--accent); font-weight:700 }
+  .two{ display:grid; grid-template-columns:1fr 1fr; gap:9px; margin:12px 0 4px }
+  .opt{ border:1px solid #2a2f3a; border-radius:12px; padding:10px 12px; text-align:center } .opt.on{ border-color:var(--accent) }
+  .opt .ol{ font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--dim); font-weight:700 }
+  .opt .ov{ font-size:26px; font-weight:800; margin:1px 0 } .opt.comp .ov{ color:var(--blue) } .opt.man .ov{ color:var(--violet) }
+  .opt .os{ font-size:10.5px; color:var(--dim) }
+  .narr{ font-size:13.5px; color:#c9cfda; margin:10px 0 4px; line-height:1.5 } .narr b{ color:var(--text) }
+  .sci h4{ font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--dim); margin:12px 0 2px }
+  .row{ display:flex; align-items:center; gap:9px; padding:9px 0; border-top:1px solid #262b35 } .row:first-of-type{ border-top:0 }
+  .row .nm{ flex:1; min-width:0 } .row .nm b{ font-weight:650; font-size:14px } .row .nm small{ display:block; color:var(--dim); font-size:11px; line-height:1.35; margin-top:1px }
+  .wt{ display:inline-flex; gap:2px; margin-right:2px } .wt i{ width:6px; height:6px; border-radius:50%; background:#3a4150 } .wt i.on{ background:var(--accent) } .wt i.lo{ background:var(--amber) }
+  .val{ font-weight:800; font-size:15px; font-variant-numeric:tabular-nums; white-space:nowrap } .val.dn{ color:var(--amber) } .val.up{ color:var(--accent) }
+  .tag{ font-size:9px; font-weight:800; letter-spacing:.03em; padding:2px 6px; border-radius:999px }
+  .t-use{ background:rgba(52,224,125,.16); color:var(--accent) } .t-down{ background:rgba(255,180,84,.14); color:var(--amber) }
+  .ins{ margin-top:12px; padding:11px 12px; border:1px solid #2f6b4a; background:rgba(52,224,125,.07); border-radius:11px; font-size:13px; line-height:1.5 } .ins b{ color:var(--accent) }
+</style>
+
+<div class="sheet">
+  <div class="hd"><h3>FTP</h3><span class="x">✕</span></div>
+  <div class="bar"><i></i></div>
+  <div class="cl">Good confidence · CP + your training agree</div>
+
+  <div class="two">
+    <div class="opt comp on"><div class="ol">Computed</div><div class="ov">252</div><div class="os">CP-led · confirmed</div></div>
+    <div class="opt man"><div class="ol">Manual</div><div class="ov">260</div><div class="os">your value</div></div>
+  </div>
+
+  <div class="narr"><b>~252-260 W.</b> Your <b>Critical Power (248)</b> — the most reliable read — and the <b>260 you train by</b> agree, and your <b>Z2 efficiency + completed workouts</b> confirm it. The two low reads are known under-estimates, so they're down-weighted, not dragging you down.</div>
+
+  <div class="sci">
+    <h4>The science · weighted by reliability</h4>
+    <div class="row"><span class="wt"><i class="on"></i><i class="on"></i><i class="on"></i></span><div class="nm"><b>Critical Power</b><small>the power-duration model · most valid (≈ FTP)</small></div><span class="tag t-use">PRIMARY</span><div class="val">248 W</div></div>
+    <div class="row"><span class="wt"><i class="on"></i><i class="on"></i><i></i></span><div class="nm"><b>Aerobic efficiency</b><small>you hold 170 W at an easy steady HR → FTP is at least this</small></div><div class="val up">≥ 227 W</div></div>
+    <div class="row"><span class="wt"><i class="on"></i><i class="on"></i><i></i></span><div class="nm"><b>Workout execution</b><small>you complete the zones prescribed off 260 W</small></div><div class="val up">✓ confirms</div></div>
+    <div class="row"><span class="wt"><i class="on"></i><i class="on"></i><i></i></span><div class="nm"><b>you train by</b><small>your value — the anchor</small></div><div class="val">260 W</div></div>
+    <div class="row"><span class="wt"><i class="on"></i><i></i><i></i></span><div class="nm"><b>intervals eFTP</b><small>from your power, no formal test</small></div><div class="val">240 W</div></div>
+    <div class="row"><span class="wt"><i class="lo"></i><i></i><i></i></span><div class="nm"><b>best 20-min ×0.95</b><small>the 95% rule UNDER-reads aerobic riders</small></div><span class="tag t-down">under-reads</span><div class="val dn">234 W</div></div>
+    <div class="row"><span class="wt"><i class="lo"></i><i></i><i></i></span><div class="nm"><b>HR vs power</b><small>needs a confirmed max HR — yours is uncertain</small></div><span class="tag t-down">unreliable</span><div class="val dn">220 W</div></div>
+  </div>
+
+  <div class="ins"><b>Why it's not 245 anymore.</b> The old blend averaged in two known under-reads (the 95% rule + an HR extrapolation off an uncertain max HR) and lowballed you. Now it leans on <b>CP</b>, uses your <b>Z2 efficiency</b> as a floor and your <b>training</b> as validation — so it reads honestly at ~252, respecting your 260. A single clean 20-min effort would pin it exactly and likely confirm 260.</div>
+</div>

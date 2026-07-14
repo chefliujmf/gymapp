@@ -59,6 +59,18 @@ export function csPaceFromVdot(vdot: number): number {
   return Math.round(paceForPct(vdot, 0.90))
 }
 
+/** #512 — running TTE at THRESHOLD, from Daniels' pctMax curve: the duration at which sustainable %VO₂max falls to
+ *  threshold intensity (T_PCT). Threshold is BY DEFINITION your ~1-hour pace, so this is the AEROBIC ceiling (~67 min)
+ *  and — correctly — VDOT-INDEPENDENT (a fitter runner's threshold is FASTER, but the TIME they hold it is the same).
+ *  Used as the running-TTE model when threshold ≤ CS (the VDOT read), where the CS/D′ "above-critical" formula gives
+ *  no depletion. The PERSONAL number is still the observed longest hold; this is the inferred fallback (never a test).
+ *  Returns SECONDS. */
+export function tteAtThresholdSec(): number {
+  let lo = 1, hi = 240 // minutes
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (pctMax(m) > T_PCT) lo = m; else hi = m }
+  return Math.round(((lo + hi) / 2) * 60)
+}
+
 export interface PaceZones {
   easy: [number, number] // [fast, slow] sec/km
   marathon: number

@@ -158,7 +158,7 @@ export const authApi = {
   saveProfile: (info: Record<string, unknown>) => req<User>('/profile', { method: 'PUT', body: info }),
   // #210 per-sport stats two-way sync
   pullIcuAthlete: () => req<IcuAthletePull>('/intervals/athlete'),
-  runEstimate: () => req<{ available: boolean; thresholdPace?: number; criticalSpeed?: number; r2?: number | null; source?: string; confidence?: 'high' | 'medium' | 'low'; assessed?: boolean; reason?: string; runs?: number; weeklyKm?: number }>('/intervals/run-estimate'),
+  runEstimate: () => req<{ available: boolean; thresholdPace?: number; csPace?: number; vdot?: number; criticalSpeed?: number; r2?: number | null; source?: string; confidence?: 'high' | 'medium' | 'low'; assessed?: boolean; reason?: string; runs?: number; weeklyKm?: number }>('/intervals/run-estimate'), // #512 csPace/vdot from race-VDOT
   powerBenchmarks: () => req<{ available: boolean; map5min?: number | null; ftp20?: number | null; weight?: number | null; runsRecent?: number | null; observedMaxHr?: number | null; maxHrSamples?: number; icuMaxHr?: number | null; computedMaxHr?: number | null; maxHrFrom?: string }>('/intervals/power-benchmarks'), // #337
   runVolume: () => req<{ available: boolean; longestKm?: number; weeklyKm?: number; runs?: number; windowDays?: number }>('/intervals/run-volume'),
   runPaceTrend: () => req<{ available: boolean; paces?: (number | null)[]; weeks?: number }>('/intervals/run-pace-trend'), // #230 per-week avg pace

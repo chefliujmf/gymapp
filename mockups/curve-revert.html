@@ -1,0 +1,44 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Power curve — reverted (real data)</title>
+<style>
+  body{background:#0f1216;color:#eef1f4;font:14px/1.5 -apple-system,sans-serif;padding:18px;display:flex;justify-content:center}
+  .card{background:linear-gradient(#21252f,#191c24);border:1px solid #262c37;border-radius:16px;padding:14px;width:420px}
+  .t{font-size:13px;font-weight:700;margin-bottom:2px}
+  .lg{display:flex;gap:14px;font-size:11px;color:#9298a6;margin:2px 0 10px}
+  .lg i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+  .chart2{display:grid;grid-template-columns:44px 1fr;gap:6px}
+  .chart2__y{position:relative;height:190px;font-size:10px;color:#9298a6}
+  .chart2__y span{position:absolute;right:0;transform:translateY(-50%)}
+  .chart2__plot{position:relative}
+  .xlab{display:flex;justify-content:space-between;font-size:10px;color:#9298a6;margin:3px 0 0 44px}
+</style></head>
+<body>
+<div class="card">
+  <div class="t">Your power curve</div>
+  <div class="lg"><span><i style="background:#34e07d"></i>This season</span><span><i style="background:#5ec8ff"></i>All time</span></div>
+  <div class="chart2"><div class="chart2__y" id="yax"></div><div class="chart2__plot"><svg id="svg" viewBox="0 0 320 190" preserveAspectRatio="none" width="100%" height="190"></svg></div></div>
+  <div class="xlab" id="xlab"></div>
+</div>
+<script>
+// JM's REAL data (from intervals, key durations)
+const THIS=[[5,837],[15,536],[30,480],[60,392],[180,312],[300,310],[600,256],[1200,229],[2400,220],[3600,213]]
+const ALL =[[5,1079],[15,761],[30,620],[60,448],[180,329],[300,310],[600,276],[1200,246],[2400,221],[3600,214]]
+function niceTicks(min,max,count){const rawStep=(max-min)/(count-1);const mag=Math.pow(10,Math.floor(Math.log10(rawStep)));const norm=rawStep/mag;const step=(norm<1.5?1:norm<3?2:norm<7?5:10)*mag;const nMin=Math.floor(min/step)*step,nMax=Math.ceil(max/step)*step;const ticks=[];for(let v=nMin;v<=nMax+step*0.001;v+=step)ticks.push(Math.round(v));return{min:nMin,max:nMax,ticks}}
+const VW=320,H=190,padT=8,padB=6,pad=6
+const all=THIS.concat(ALL)
+const sMin=Math.min(...all.map(p=>p[0])),sMax=Math.max(...all.map(p=>p[0])),vMax=Math.max(...all.map(p=>p[1]))
+const yt=niceTicks(0,vMax,7),vTop=Math.max(vMax,yt.max)
+const lx=s=>pad+((Math.log(s)-Math.log(sMin))/(Math.log(sMax)-Math.log(sMin)))*(VW-2*pad)
+const y=v=>padT+(1-v/vTop)*(H-padT-padB)
+const path=pts=>'M'+pts.map(p=>lx(p[0])+','+y(p[1])).join(' L')
+let svg=''
+for(const v of yt.ticks.filter(v=>v<=vTop))svg+=`<line x1="0" x2="${VW}" y1="${y(v)}" y2="${y(v)}" stroke="#2a2f3a" stroke-width="0.5" opacity="0.5"/>`
+svg+=`<path d="${path(ALL)}" fill="none" stroke="#5ec8ff" stroke-width="1.4" vector-effect="non-scaling-stroke"/>`
+svg+=`<path d="${path(THIS)}" fill="none" stroke="#34e07d" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`
+document.getElementById('svg').innerHTML=svg
+document.getElementById('yax').innerHTML=yt.ticks.filter(v=>v<=vTop).map(v=>`<span style="top:${(1-v/vTop)*100}%">${v} W</span>`).join('')
+const XT=[[5,'5s'],[30,'30s'],[60,'1m'],[300,'5m'],[1200,'20m'],[3600,'1h']]
+document.getElementById('xlab').innerHTML=XT.map(([s,l])=>`<span>${l}</span>`).join('')
+</script>
+</body></html>

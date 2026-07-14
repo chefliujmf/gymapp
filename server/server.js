@@ -28,7 +28,7 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
-import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
+import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec } from './sport-settings.js'
 // #508 — DEEP-merge intervals sport-settings into ours PER GROUP. intervals only knows ftp/maxHr/lthr/thresholdPace;
 // our LOCAL benchmarks (cp/wPrime/tte/cs/dPrime) live in the same per-sport object. A shallow `{...ours, ...mapped}`
 // makes mapped.cycling REPLACE the whole cycling object → wipes cp/W′/TTE on every session-load/pull (JM: "manual
@@ -462,7 +462,9 @@ app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
     return res.json({ available: false, assessed: true, reason: 'low-fit', runs: runs.length, weeklyKm: +(totalKm / (DAYS / 7)).toFixed(1) })
   }
   if (est.thresholdPace > 0) { req.user.runPaceEst = Math.round(est.thresholdPace); save(store) } // #236 stash computed pace for the coach
-  res.json({ available: true, ...est, confidence, runs: runs.length, source: 'critical speed (your recent runs)' })
+  // #512 — a race-VDOT read is reliable (from actual race times), so never call it "low" — floor it to medium.
+  if (est.source === 'race VDOT' && confidence === 'low') confidence = 'medium'
+  res.json({ available: true, ...est, confidence, runs: runs.length, source: est.source === 'race VDOT' ? 'race VDOT (your best times)' : 'critical speed (your recent runs)' })
 })
 
 // #337 — cycling power benchmarks for a PROPER VO₂max: best 5-min power (≈ maximal aerobic power, MAP)
@@ -939,13 +941,18 @@ app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
     out.cycling = { ftp, eftp, cp, wPrimeKj: wKj, tteSec: tte, ef, profile: computeAthleteProfile({ sport: 'cycling', threshold: ftp, eftp, tte, cp, reserveKj: wKj, reserveBig: 20, ef: ef.latest, efTrend: ef.trend }) }
   }
   if (sports.includes('running') || sports.length === 0) {
-    const c = ((await icuGet(req.user, `/athlete/${ath}/pace-curves?curves=365d&type=Run`))?.list || [])[0] || {}
+    const pcFull = (await icuGet(req.user, `/athlete/${ath}/pace-curves?curves=365d&type=Run`)) || {}
+    const c = (pcFull.list || [])[0] || {}
     const pmodel = (c.paceModels || [])[0] || {}
-    const cs = pmodel.criticalSpeed ?? null, dP = pmodel.dPrime ?? null, csPace = cs > 0 ? Math.round(1000 / cs) : null
-    const thr = ss.running?.thresholdPace ?? req.user.runThresholdPace ?? null
-    const tte = tteFromPace(c.distance || [], c.values || [], thr) ?? tteModelPace(thr, cs, dP)
+    const est = runThresholdFromPaceCurve(pcFull) // #512 — race-VDOT preferred (sex-fair, reliable), CS-model fallback; keeps get_metrics in step with the athlete's benchmark card
+    const cs = pmodel.criticalSpeed ?? null, dP = pmodel.dPrime ?? null
+    const csPace = est?.csPace ?? (cs > 0 ? Math.round(1000 / cs) : null) // VDOT CS sits just above threshold → threshold ≤ CS
+    const thr = ss.running?.thresholdPace ?? req.user.runThresholdPace ?? est?.thresholdPace ?? null
+    // #512 — on the VDOT read threshold ≤ CS, so the CS/D′ "above-critical" TTE is void → use the observed hold, else
+    // the Daniels aerobic ceiling at threshold (~67 min). Never the old fantasy short TTE the coach used to see.
+    const tte = tteFromPace(c.distance || [], c.values || [], thr) ?? tteModelPace(thr, cs, dP) ?? tteAtThresholdSec()
     const ef = await efFor('Run')
-    out.running = { thresholdPaceSec: thr, csPaceSec: csPace, dPrimeM: dP != null ? Math.round(dP) : null, tteSec: tte, ef, profile: computeAthleteProfile({ sport: 'running', threshold: thr, eftp: csPace, tte, cp: csPace, reserveKj: dP != null ? Math.round(dP) : null, reserveBig: 200, ef: ef.latest, efTrend: ef.trend }) }
+    out.running = { thresholdPaceSec: thr, csPaceSec: csPace, dPrimeM: dP != null ? Math.round(dP) : null, tteSec: tte, vdot: est?.vdot ?? null, ef, profile: computeAthleteProfile({ sport: 'running', threshold: thr, eftp: csPace, tte, cp: csPace, reserveKj: dP != null ? Math.round(dP) : null, reserveBig: 200, ef: ef.latest, efTrend: ef.trend }) }
   }
   res.json(out)
 })

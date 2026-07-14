@@ -1,0 +1,48 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pace curve — fixed</title>
+<style>
+ body{background:#0f1216;color:#eef1f4;font:14px/1.5 -apple-system,sans-serif;padding:18px;display:flex;justify-content:center}
+ .card{background:linear-gradient(#21252f,#191c24);border:1px solid #262c37;border-radius:16px;padding:14px;width:420px}
+ .t{font-size:13px;font-weight:700;margin-bottom:2px}
+ .lg{display:flex;gap:14px;font-size:11px;color:#9298a6;margin:2px 0 10px}
+ .lg i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+ .chart2{display:grid;grid-template-columns:44px 1fr;gap:6px}
+ .chart2__y{position:relative;height:190px;font-size:10px;color:#9298a6}
+ .chart2__y span{position:absolute;right:0;transform:translateY(-50%)}
+ .xlab{display:flex;justify-content:space-between;font-size:10px;color:#9298a6;margin:3px 0 0 44px}
+</style></head>
+<body>
+<div class="card">
+ <div class="t">Your pace curve</div>
+ <div class="lg"><span><i style="background:#34e07d"></i>This season</span><span><i style="background:#5ec8ff"></i>All time</span></div>
+ <div class="chart2"><div class="chart2__y" id="yax"></div><div><svg id="svg" viewBox="0 0 320 190" preserveAspectRatio="none" width="100%" height="190"></svg></div></div>
+ <div class="xlab" id="xlab"></div>
+</div>
+<script>
+// clean best-distance points: [timeSec, paceSecKm] — from JM's real best times (400m..10k)
+const THIS=[[120,230],[180,254],[240,266],[300,277],[420,290],[600,297],[900,304],[1200,308],[1800,312],[2400,314],[3000,315],[3600,316]]
+const ALL =[[120,183],[180,217],[240,238],[300,253],[420,272],[600,290],[900,302],[1200,313],[1800,321],[2400,325],[3000,328],[3600,330]]
+const fmtP=s=>Math.floor(s/60)+':'+String(Math.round(s%60)).padStart(2,'0')
+const VW=320,H=190,padT=8,padB=6,pad=6
+const all=THIS.concat(ALL)
+const sMin=Math.min(...all.map(p=>p[0])),sMax=Math.max(...all.map(p=>p[0]))
+const pMin=Math.min(...all.map(p=>p[1])),pMax=Math.max(...all.map(p=>p[1]))
+const pStep=(pMax-pMin)>180?60:(pMax-pMin)>75?30:15
+const tickLo=Math.max(pStep,Math.floor((pMin-pStep*0.35)/pStep)*pStep)
+const tickHi=Math.ceil((pMax+pStep*0.35)/pStep)*pStep
+const lo=tickLo,range2=Math.max(tickHi-tickLo,pStep)
+const lx=s=>pad+((Math.log(s)-Math.log(sMin))/(Math.log(sMax)-Math.log(sMin)||1))*(VW-2*pad)
+const y=p=>padT+((p-lo)/(range2||1))*(H-padT-padB)
+const path=pts=>'M'+pts.map(p=>lx(p[0])+','+y(p[1])).join(' L')
+const yLabels=[];for(let p=tickLo;p<=tickHi+0.5;p+=pStep)yLabels.push(p)
+let svg=''
+for(const p of yLabels)svg+=`<line x1="0" x2="${VW}" y1="${y(p)}" y2="${y(p)}" stroke="#2a2f3a" stroke-width="0.5" opacity="0.5"/>`
+svg+=`<path d="${path(ALL)}" fill="none" stroke="#5ec8ff" stroke-width="1.4" vector-effect="non-scaling-stroke"/>`
+svg+=`<path d="${path(THIS)}" fill="none" stroke="#34e07d" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`
+document.getElementById('svg').innerHTML=svg
+document.getElementById('yax').innerHTML=yLabels.map(p=>`<span style="top:${((p-lo)/range2)*100}%">${fmtP(p)}</span>`).join('')
+const XT=[[60,'1m'],[300,'5m'],[600,'10m'],[1200,'20m'],[3600,'1h']]
+document.getElementById('xlab').innerHTML=XT.filter(([s])=>s>=sMin&&s<=sMax).map(([s,l])=>`<span>${l}</span>`).join('')
+</script>
+</body></html>

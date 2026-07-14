@@ -77,24 +77,60 @@ export function icuPatchForGroup(sportSettings, group, patch) {
 /** Which Platyplus sport name (Profile chips) maps to which intervals group. */
 export const SPORT_TO_GROUP = { cycling: 'cycling', running: 'running', swimming: 'swimming' }
 
+// #512 — Daniels VDOT from RACE times: the reliable running anchor. MIRRORS src/running-paces.ts — KEEP IN SYNC.
+const _vo2 = (v) => -4.6 + 0.182258 * v + 0.000104 * v * v
+const _pctMax = (t) => 0.8 + 0.1894393 * Math.exp(-0.012778 * t) + 0.2989558 * Math.exp(-0.1932605 * t)
+const _velForVo2 = (o2) => { const a = 0.000104, b = 0.182258, c = -(o2 + 4.6); return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a) }
+const vdotFromRace = (distM, timeSec) => (distM > 0 && timeSec > 0 ? _vo2(distM / (timeSec / 60)) / _pctMax(timeSec / 60) : NaN)
+const thresholdFromVdot = (vdot) => Math.round(60000 / _velForVo2(vdot * 0.88))
+const csFromVdot = (vdot) => Math.round(60000 / _velForVo2(vdot * 0.90)) // CS just above threshold → threshold ≤ CS holds
+function bestVdotFromRaces(races) {
+  const vs = races.map((r) => vdotFromRace(r.distM, r.timeSec)).filter((v) => Number.isFinite(v) && v >= 20 && v <= 82).sort((a, b) => a - b)
+  if (!vs.length) return null
+  const med = vs[Math.floor(vs.length / 2)], clean = vs.filter((v) => v <= med * 1.12)
+  return Math.round(Math.max(...(clean.length ? clean : vs)) * 10) / 10
+}
+// intervals pace-curve = distance[] + values[] (best TIME per distance). Pull the best time at each standard race
+// distance (nearest bucket within 10%) — a best over ≥1.5 km can't be faked by one GPS spike, so it's a clean anchor.
+function raceBestsFromPaceCurve(paceCurve) {
+  const list = (paceCurve && paceCurve.list) || []
+  const c = list.find((x) => Array.isArray(x.distance) && Array.isArray(x.values)) || list[0] || {}
+  const D = c.distance || [], V = c.values || [], out = []
+  for (const target of [1500, 3000, 5000, 10000, 21097]) {
+    let bi = -1, bd = Infinity
+    for (let i = 0; i < D.length; i++) if (D[i] > 0 && V[i] > 0) { const dd = Math.abs(D[i] - target); if (dd < bd) { bd = dd; bi = i } }
+    if (bi >= 0 && bd <= target * 0.1) out.push({ distM: D[bi], timeSec: V[bi] })
+  }
+  return out
+}
+/** #512 — running TTE at THRESHOLD from Daniels' pctMax curve (mirror of src/running-paces.ts tteAtThresholdSec).
+ *  Threshold is by definition your ~1-hour pace → the aerobic ceiling is ~67 min, VDOT-independent. Used as the TTE
+ *  fallback when threshold ≤ CS (the VDOT read), where the CS/D′ "above-critical" model gives no finite time. Seconds. */
+export function tteAtThresholdSec() {
+  let lo = 1, hi = 240
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (_pctMax(m) > 0.88) lo = m; else hi = m }
+  return Math.round(((lo + hi) / 2) * 60)
+}
+/** #512 — the runner's threshold from their RACE VDOT (reliable) if there are sane race bests, else null. */
+export function runVdotFromPaceCurve(paceCurve) {
+  const bests = raceBestsFromPaceCurve(paceCurve)
+  const vdot = bestVdotFromRaces(bests)
+  return vdot ? { vdot, thresholdPace: thresholdFromVdot(vdot), csPace: csFromVdot(vdot), nRaces: bests.length } : null
+}
+
 /**
- * #215 — estimate the runner's threshold pace from intervals' pace curve (the running analog
- * of eFTP). intervals fits a **Critical Speed** model (`paceModels` type 'CS') to the athlete's
- * best efforts; criticalSpeed (m/s) ≈ threshold/lactate-threshold pace. Returns
- * { thresholdPace: sec/km, criticalSpeed, r2 } from the best-fit recent window, or null.
- * Only trust a decent fit (r2 ≥ 0.7) so a noisy curve doesn't produce a junk estimate.
+ * #215/#512 — the runner's threshold pace. PREFER race VDOT (Daniels, from actual race times — the running gold
+ * standard) over intervals' Critical-Speed model, which UNDER-READS off mostly-easy runs (it can even fit CS slower
+ * than the athlete's real threshold → a bogus short TTE, JM's bug). Falls back to the CS asymptote when there's no
+ * sane race. Returns { thresholdPace, csPace, vdot?, criticalSpeed?, source, r2 }.
  */
 export function runThresholdFromPaceCurve(paceCurve, minR2 = 0.7) {
+  const v = runVdotFromPaceCurve(paceCurve)
   const list = (paceCurve && paceCurve.list) || []
-  for (const c of list) {
-    const cs = ((c && c.paceModels) || []).find((m) => m.type === 'CS' && m.criticalSpeed > 0)
-    if (cs && (cs.r2 == null || cs.r2 >= minR2)) {
-      // #506d — Critical Speed OVERESTIMATES lactate threshold / MLSS by ~2-3% (Jones & Vanhatalo 2017); the ~1-hour
-      // threshold pace sits slightly SLOWER than the CS asymptote. Apply a 2.5% slow-down so Threshold Pace is a real
-      // threshold read (not just CS relabelled) — this also stops the Threshold-Pace and Critical-Speed cards showing
-      // the identical number. The CS card keeps the raw asymptote (1000/cs); this is the derived coaching pace.
-      return { thresholdPace: Math.round(1000 / cs.criticalSpeed * 1.025), criticalSpeed: cs.criticalSpeed, r2: cs.r2 != null ? cs.r2 : null }
-    }
-  }
+  let raw = null
+  for (const c of list) { const cs = ((c && c.paceModels) || []).find((m) => m.type === 'CS' && m.criticalSpeed > 0); if (cs && (cs.r2 == null || cs.r2 >= minR2)) { raw = cs; break } }
+  if (v) return { thresholdPace: v.thresholdPace, csPace: v.csPace, vdot: v.vdot, criticalSpeed: raw ? raw.criticalSpeed : null, source: 'race VDOT', r2: 0.9 }
+  // #506d — no race: fall back to the CS asymptote, slowed 2.5% (CS overestimates MLSS by ~2-3%, Jones & Vanhatalo 2017).
+  if (raw) return { thresholdPace: Math.round(1000 / raw.criticalSpeed * 1.025), csPace: Math.round(1000 / raw.criticalSpeed), criticalSpeed: raw.criticalSpeed, source: 'critical speed', r2: raw.r2 != null ? raw.r2 : null }
   return null
 }

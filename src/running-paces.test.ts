@@ -3,7 +3,7 @@ import {
   vdotFromThresholdPace, thresholdPaceFromVdot, paceZones,
   racePredict, racePredictions, fmtPace, fmtTime, parsePace, zonePaceForPct,
   marathonDurabilityPenalty, marathonRealism, MAX_DURABILITY_PENALTY, DEFAULT_DURABILITY_PENALTY, MARATHON_READY,
-  estimateVo2max, vdotFromRace, bestVdotFromRaces, csPaceFromVdot,
+  estimateVo2max, vdotFromRace, bestVdotFromRaces, csPaceFromVdot, tteAtThresholdSec,
 } from './running-paces'
 
 // #512 — VDOT from RACE times (the reliable running anchor). Grounded in JM's real intervals bests.
@@ -24,6 +24,11 @@ describe('VDOT from races (#512)', () => {
     expect(withGlitch).toBeCloseTo(41.8, 0)
   })
   it('null when there is no sane race', () => expect(bestVdotFromRaces([])).toBeNull())
+  it('TTE at threshold ≈ 60–70 min (aerobic ceiling, VDOT-independent) — not the absurd 5:46', () => {
+    const t = tteAtThresholdSec()
+    expect(t).toBeGreaterThan(55 * 60)
+    expect(t).toBeLessThan(72 * 60)
+  })
 })
 
 // Daniels' published VDOT 50 table values — our model should land within tolerance.
