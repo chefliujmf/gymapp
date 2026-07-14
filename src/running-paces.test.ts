@@ -3,8 +3,28 @@ import {
   vdotFromThresholdPace, thresholdPaceFromVdot, paceZones,
   racePredict, racePredictions, fmtPace, fmtTime, parsePace, zonePaceForPct,
   marathonDurabilityPenalty, marathonRealism, MAX_DURABILITY_PENALTY, DEFAULT_DURABILITY_PENALTY, MARATHON_READY,
-  estimateVo2max,
+  estimateVo2max, vdotFromRace, bestVdotFromRaces, csPaceFromVdot,
 } from './running-paces'
+
+// #512 — VDOT from RACE times (the reliable running anchor). Grounded in JM's real intervals bests.
+describe('VDOT from races (#512)', () => {
+  it('JM 5k 23:12 → VDOT ~42', () => {
+    expect(vdotFromRace(5000, 23 * 60 + 12)).toBeCloseTo(41.8, 0)
+  })
+  it('threshold from race-VDOT ~4:56/km, CS just faster (threshold ≤ CS)', () => {
+    const v = bestVdotFromRaces([{ distM: 3000, timeSec: 822 }, { distM: 5000, timeSec: 1392 }, { distM: 10000, timeSec: 3059 }])!
+    expect(v).toBeCloseTo(41.8, 0)
+    const th = thresholdPaceFromVdot(v), cs = csPaceFromVdot(v)
+    expect(th).toBeGreaterThan(cs) // sec/km: threshold is SLOWER (bigger) than CS → threshold ≤ CS in speed
+    expect(th).toBeGreaterThan(280); expect(th).toBeLessThan(310) // ~4:40–5:10
+  })
+  it('rejects a GPS-glitch race (JM 1.5k in 3:20 → fantasy VDOT 86, dropped)', () => {
+    const withGlitch = bestVdotFromRaces([{ distM: 1500, timeSec: 200 }, { distM: 5000, timeSec: 1392 }, { distM: 10000, timeSec: 3059 }])!
+    expect(withGlitch).toBeLessThan(45) // the 86 glitch must not inflate it
+    expect(withGlitch).toBeCloseTo(41.8, 0)
+  })
+  it('null when there is no sane race', () => expect(bestVdotFromRaces([])).toBeNull())
+})
 
 // Daniels' published VDOT 50 table values — our model should land within tolerance.
 describe('VDOT ↔ threshold pace', () => {
