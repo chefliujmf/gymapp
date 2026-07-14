@@ -29,6 +29,7 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIs
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch } from './sport-settings.js'
+import { planCapViolation } from './plan-cap.js'
 // #508 — DEEP-merge intervals sport-settings into ours PER GROUP. intervals only knows ftp/maxHr/lthr/thresholdPace;
 // our LOCAL benchmarks (cp/wPrime/tte/cs/dPrime) live in the same per-sport object. A shallow `{...ours, ...mapped}`
 // makes mapped.cycling REPLACE the whole cycling object → wipes cp/W′/TTE on every session-load/pull (JM: "manual
@@ -2024,29 +2025,22 @@ async function upsertPlan(user, body, actor = 'coach') {
   // is exempt — a person can double-book if they want). Instruction alone drifted: the coach was stacking two
   // same-sport rides on a day (max 1). REJECT a NEW session on a day already at the cap → it must COMBINE into
   // the existing session (same id = update) or move to a free day. Doesn't block updates (same id).
-  if (actor === 'coach' && i < 0) {
-    // #431 A1 (ROOT of the DUPLICATE bug) — a coach "create" for a day+sport that ALREADY has a plan is a
-    // RE-PLAN, not a second session. The MCP tools mint a NEW id when the LLM omits one, which used to push a
-    // 2nd event + ORPHAN the old one. REUSE the existing same-slot plan's id → in-place UPDATE of the SAME
-    // event (no duplicate). Idempotent regardless of what id the coach sent; the #371 cap still guards real stacking.
-    const sameSlot = (user.plans || []).find((p) => p.date === body.date && p.sport === body.sport)
-    if (sameSlot) { body = { ...body, id: sameSlot.id }; i = user.plans.findIndex((p) => p.id === body.id) }
-    else {
-    const maxPerDay = Math.max(1, Number(user.info?.maxPerDay) || 1)
-    const sameDay = (user.plans || []).filter((p) => p.date === body.date)
-    if (sameDay.length >= maxPerDay) {
-      return { status: 409, body: { error: `Rejected — ${body.date} already has ${sameDay.length} session(s) and the athlete's max is ${maxPerDay}/day (${sameDay.map((p) => `"${p.title}"`).join(', ')}). Do NOT stack sessions: either COMBINE this into that day's existing session (re-call create_* with THAT session's id to make it one longer/richer workout) or move it to a free day. Two short rides of the same sport should be ONE session, not two.` } }
-    }
-    // #454 (JM directive) — HARD weekly cap: at most `trainingDays` distinct TRAINING DAYS per Mon–Sun week.
-    // Adding a session on a NEW day when the week is already full is rejected (move/combine instead).
-    const freq = Math.max(0, Number(user.info?.trainingDays) || 0)
-    if (freq > 0) {
-      const wkStart = isoMonday(body.date), wkEnd = addDays(wkStart, 6)
-      const daysThisWeek = new Set((user.plans || []).filter((p) => p.date >= wkStart && p.date <= wkEnd).map((p) => p.date))
-      if (!daysThisWeek.has(body.date) && daysThisWeek.size >= freq) {
-        return { status: 409, body: { error: `Rejected — the week of ${wkStart} already has ${daysThisWeek.size} training day(s) and the athlete's HARD weekly cap is ${freq}/week (${[...daysThisWeek].sort().join(', ')}). Do NOT exceed it: MOVE an existing session onto ${body.date}, or fold this into a day that's already training. If they genuinely want more days, they must raise the cap in their profile first.` } }
+  // #371/#454/#5014 — ENFORCE the athlete's max-sessions/day + weekly-training-days caps for COACH plans (the UI path
+  // uses actor 'you' and is exempt). Fire on a CREATE (i<0) AND on a coach MOVE onto another day (i≥0 with a changed
+  // date) — the #5014 gap was that the old guard only ran on create, so the coach could MOVE a session onto a full day
+  // and stack two (JM: "2 exercices on jul 11 while max is 1"). A same-day UPDATE (id + same date) stays exempt.
+  if (actor === 'coach') {
+    const cur = i >= 0 ? user.plans[i] : null
+    const isCoachMove = !!(cur && cur.date !== body.date)
+    if (i < 0 || isCoachMove) {
+      // #431 — on CREATE only, a same date+sport plan is a RE-PLAN → reuse its id (in-place update, no duplicate/orphan).
+      // A MOVE keeps its own id (it IS an existing plan), so we skip the reuse and just cap-check it against the target day.
+      const sameSlot = i < 0 ? (user.plans || []).find((p) => p.date === body.date && p.sport === body.sport) : null
+      if (sameSlot) { body = { ...body, id: sameSlot.id }; i = user.plans.findIndex((p) => p.id === body.id) }
+      else {
+        const cap = planCapViolation(user.plans, body, user.info) // pure + unit-tested; EXCLUDES body.id so a move is checked vs the OTHER sessions
+        if (cap) return cap
       }
-    }
     }
   }
   const plan = {
