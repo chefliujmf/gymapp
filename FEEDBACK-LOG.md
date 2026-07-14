@@ -1202,7 +1202,7 @@ test guide → the **🧪 Test guide** section below.
 458. ✅ **Location: intervals HAS it but the Platyplus profile showed blank.** JM 2026-07-09 (QA). His saved COORDS (lat/lon) were there but
     `info.locationName` was empty → `GET /auth/location` returned `name:null`, so Profile showed no place. Fixed: when coords are saved but the
     NAME is blank, adopt intervals' city name (keep the saved coords) + PERSIST it. On QA. Test: Profile → Location shows the city.
-459. ⬜ **Profile: diet / height / birthdate empty ("never changed my diet").** JM 2026-07-09 (QA). His `user.info` has lat/lon/sex/sports/
+459. ✅ **DONE (shipped prod, JM verified 2026-07-14) — Profile height/birthdate now TWO-WAY synced with intervals.** Read side (`syncAthleteProfile` fill-if-empty) populates height/DOB/sex/weight (verified prod+QA: 175 cm / 1985-08-16); write side (`athleteBasicsPatch` → `PUT /athlete/{id}`, PROD-only) pushes Platyplus edits back to intervals — JM confirmed a height change lands on intervals. (Diet field dropped — Eat is off.) Combined with #268/#1003. Original: **Profile: diet / height / birthdate empty ("never changed my diet").** JM 2026-07-09 (QA). His `user.info` has lat/lon/sex/sports/
     coachName/equipment/sleepNeed/availability/trainingDays but NOT diet/heightCm/dob/locationName — on BOTH QA and PROD (so not QA-only; the UI
     defaults diet→"no preference" when unset, which read as "changed"). Root TBD: never set on prod, OR wiped. LIKELY the QA **mirror clobbers
     QA-only info edits** (it copies prod.info wholesale). Fix: (a) mirror PRESERVES user-entered info; (b) JM re-sets on PROD (persists). Confirm
@@ -1774,7 +1774,7 @@ test guide → the **🧪 Test guide** section below.
     `headlineVo2max([running, cycling])` with per-sport max HR; running (medium conf, incl. HR-ratio) beats the low-conf
     cycling Coggan, so a high HRmax/HRrest reads a believable higher value. Copy shows source + confidence; manual wins.
     Tests: vo2max-submax (12) still green. Manual test: Profile VO₂max ≈ HR-ratio value, not 43.9. gymapp-only.
-268. ⬜ **Two-way sync the intervals Basic Settings profile fields (don't re-enter them).** JM 2026-06-30 (screenshot of
+268. ✅ **DONE (shipped prod, JM verified 2026-07-14) — basics are TWO-WAY synced.** height/DOB/sex read from intervals (fill-if-empty) AND written back on Profile edit (`athleteBasicsPatch` → `PUT /athlete/{id}`, PROD-only `!IS_STAGING`; city write-back also guarded). +8 unit tests. See #1003/#459 + CLAUDE.md "Change how profile BASICS sync". Original: **Two-way sync the intervals Basic Settings profile fields (don't re-enter them).** JM 2026-06-30 (screenshot of
     intervals → Settings → Basic Settings): instead of capturing profile data manually, **bi-directionally sync** the
     canonical fields from intervals.icu: **Sex, Weight, Height, Date of Birth (→ age), Resting HR** (+ units already there).
     intervals is the hub (architecture) — extend the athlete PULL (`/auth/intervals/athlete`, `fromIcuSportSettings` /
