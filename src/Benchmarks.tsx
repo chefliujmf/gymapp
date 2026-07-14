@@ -236,8 +236,15 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     running: runningVo2max({ vdot, hrMax: chosenMaxHr, hrRest, runsRecent }),
     cycling: cyclingVo2max({ ftp: chosenFtp, weightKg: weight, hrMax: chosenMaxHr, hrRest, map5min: map5 }),
   }
-  const vo2Order = [...(user?.sports || []).filter((s): s is 'running' | 'cycling' => s === 'running' || s === 'cycling'), 'cycling', 'running'].filter((s, i, a) => a.indexOf(s) === i) as ('running' | 'cycling')[]
-  const vo2head = headlineVo2max(null, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
+  // #514 — the athlete's ACTUAL aerobic sports feed VO₂max (no blind cycling+running append — that forced bike/run
+  // framing onto a gym-only athlete). Primary sport first.
+  const vo2Order = (user?.sports || []).filter((s): s is 'running' | 'cycling' => s === 'running' || s === 'cycling')
+  const sportVo2 = headlineVo2max(null, vo2Order.map((sport) => ({ sport, est: estBySport[sport] })))
+  // #514 (JM) — a NON-endurance athlete (gym/yoga only) still gets a VO₂max: a rough read from max vs resting HR,
+  // captured by their WATCH or WRIST BAND (no chest strap needed). So the card is useful for everyone, not just
+  // cyclists/runners — and never blank with a wrong "log 4 runs" prompt.
+  const hrVo2 = hrRatioVo2max(chosenMaxHr, hrRest)
+  const vo2head = sportVo2 ?? (hrVo2 != null ? { value: hrVo2, sport: '', source: 'your heart rate (max vs resting)', confidence: 'low' as const } : null)
   // #401/#506/#508 — TTE reads at the FTP/pace ACTUALLY IN USE (chosenFtp/chosenPace), so it MOVES when you switch the
   // picker. It's INFERRED from the CP/CS model (W′/CP · D′/CS) — we never ask for a test. The curve's "longest you
   // actually held it" only wins when it's LONGER than the model (a real longer hold beats the prediction); a short
@@ -281,12 +288,14 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const runsWord = runsShort === 1 ? '' : 's'
   const paceGate = paceComputed ? undefined : (runsRecent != null ? `after ~${runsShort} more run${runsWord} — needs ≥4 runs + ~25 km in 6 weeks incl. a hard effort (Critical-Speed model)` : 'after a few runs incl. one hard effort (Critical-Speed model)')
   const doesCycle = (user?.sports || []).includes('cycling')
+  const doesRun = (user?.sports || []).includes('running') // #514 — for the sport-appropriate VO₂max gate
   // #362 — every learned stat answers "when will Computed land?" consistently: a COUNT where we can
   // count it (runs/nights), else the exact trigger event. VO₂max: cycling = a hard 5-min effort (MAP);
   // running = the same run gate as pace (count-based).
   const vo2Gate = (vo2head && vo2head.value != null) ? undefined
-    : (doesCycle ? 'after your next hard ~5-min bike effort (a near-max 5 min) — that’s your MAP → VO₂max'
-      : (runsRecent != null ? `after ~${runsShort} more run${runsWord} — your pace VDOT firms up over ≥4 runs` : 'after ~4 runs so your pace VDOT is reliable'))
+    : doesCycle ? 'after your next hard ~5-min bike effort (a near-max 5 min) — that’s your MAP → VO₂max'
+      : doesRun ? (runsRecent != null ? `after ~${runsShort} more run${runsWord} — your pace VDOT firms up over ≥4 runs` : 'after ~4 runs so your pace VDOT is reliable')
+      : 'wear your watch or band on any cardio (we read it from your heart rate), or log a bike/run — or tap to set it yourself' // #514 — gym-only: never the wrong "after 4 runs"
 
   // #374 — method chip on the VO₂max card, from the headline source (MAP / VDOT / HR).
   const vo2Chip = (): string => {
@@ -295,7 +304,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     if (/5-?min|max power|MAP/i.test(s)) return 'MAP'
     if (/pace|VDOT/i.test(s)) return 'VDOT'
     if (/HR|heart/i.test(s)) return 'HR'
-    return doesCycle ? 'MAP' : 'VDOT'
+    return doesCycle ? 'MAP' : doesRun ? 'VDOT' : 'HR'
   }
 
   // #374 — VO₂max "The science" — up to 3 methods computed live; the one whose .source == headline is IN USE.
@@ -316,7 +325,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     if (/\bFTP\b/i.test(s)) return <>Estimated from your <b>FTP</b>, scaled up to an estimated MAP — a real hard <b>5-min</b> effort would sharpen it (that's your true MAP).{tail}</>
     if (/5-?min|max power|MAP/i.test(s)) return <>Estimated from your <b>best 5-minute bike power</b> (your MAP), cross-checked against your heart-rate profile.{tail}</>
     if (/pace|VDOT/i.test(s)) return <>Estimated from your <b>running pace</b> (VDOT), cross-checked against your heart-rate profile.{tail}</>
-    if (/HR|heart/i.test(s)) return <>Estimated from your <b>heart-rate profile</b> (max vs resting HR) — a submax proxy until you log a hard ~5-min ride or a few runs.{tail}</>
+    if (/HR|heart/i.test(s)) return <>A <b>rough read</b> from your heart rate (max vs resting), captured by your <b>watch or band</b> — a submax proxy. Log a bike or run effort to place it precisely, or set it yourself.{tail}</>
     return <>Estimated from your <b>best efforts</b>, cross-checked against your heart-rate profile.{tail}</>
   })()
 
@@ -428,18 +437,18 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sharpen: 'short fast reps (200–600 m) build D′.',
     },
     {
-      key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: compMaxHr, computedSrc: maxHrFrom === 'observed' ? `observed peak — highest HR in the last 12 months${maxHrSamples > 1 ? ` (hit ${maxHrSamples}×)` : ''}` : maxHrFrom === 'age' ? 'age estimate (Tanaka) until we catch a real peak' : 'your zone ceiling from intervals — beat it in an all-out effort to raise it', pending: 'after your next all-out effort with a HR strap/watch — we read your true peak, not an age formula', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }),
+      key: 'maxHr', label: 'Max HR', unit: 'bpm', computed: compMaxHr, computedSrc: maxHrFrom === 'observed' ? `observed peak — highest HR in the last 12 months${maxHrSamples > 1 ? ` (hit ${maxHrSamples}×)` : ''}` : maxHrFrom === 'age' ? 'age estimate (Tanaka) until we catch a real peak' : 'your zone ceiling from intervals — beat it in an all-out effort to raise it', pending: 'after your next all-out effort — we read your true peak from your watch or band, not an age formula', manual: maxHr, fmt: String, parse: numParse(120, 230), save: (v) => saveSport('cycling', { maxHr: v }),
       chip: maxHrFrom === 'observed' ? 'Observed' : 'Ceiling',
       conf: maxHrConfidence({ computed: compMaxHr, from: maxHrFrom }),
       narr: maxHrFrom === 'observed'
         ? <>Your <b>true observed peak</b> — the highest heart rate seen in your recent efforts, not an age formula. Beat it in an all-out effort and it moves up.</>
-        : <>We use your <b>zone ceiling</b> from intervals until we catch a real peak — no age formula. An all-out effort with a strap reveals your true max HR.</>,
+        : <>We use your <b>zone ceiling</b> from intervals until we catch a real peak — no age formula. An all-out effort (with your watch or band) reveals your true max HR.</>,
       sci: [ // #507 — each row shows its OWN real value (observed peak was empty because it read the headline, not the raw peak)
         { name: 'Observed peak', formula: `highest HR · last 12 months${maxHrSamples > 1 ? ` · hit ${maxHrSamples}×` : ''}`, value: observedMaxHr != null ? String(observedMaxHr) : '—', inUse: maxHrFrom === 'observed' },
         { name: 'Zone ceiling', formula: 'from intervals zones', value: icuMaxHr != null ? String(icuMaxHr) : '—', inUse: maxHrFrom === 'intervals' },
         { name: 'Age estimate', formula: 'Tanaka · 208 − 0.7 × age', value: ageMaxHr != null ? String(ageMaxHr) : '—', inUse: maxHrFrom === 'age' }, // #507 — the age formula, visible as a method (used only when no real peak/ceiling)
       ],
-      sharpen: 'an all-out effort with a HR strap/watch reveals your true peak → we read it, not an age formula.',
+      sharpen: 'an all-out effort (watch or band) reveals your true peak → we read it, not an age formula.',
     },
     // #337 — sleep need joins the SAME picker (was a bespoke card). Learned from best-recovery nights.
     {
