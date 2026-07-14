@@ -336,7 +336,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
         if (aeroFloor) rows.splice(2, 0, { name: 'Aerobic efficiency', formula: aeroFloor.note, value: `≥ ${aeroFloor.floor} W`, inUse: false })
         return rows
       })(),
-      sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your power curve → tighter eFTP.',
+      sharpen: 'a ~5–20 min hard ride gives intervals a fresh, harder point on your best efforts → tighter eFTP.',
     },
     {
       key: 'thresholdPace', label: 'Threshold pace', unit: '/km', computed: paceComputed, computedSrc: paceFromHr ? 'from the HR cost of your runs' : 'from your recent runs (Critical Speed)', pending: paceGate, manual: paceManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { thresholdPace: v }),
@@ -355,27 +355,27 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     },
     // #401 — TTE (time to exhaustion at threshold), a LEARNED benchmark per sport, read off the mean-max curve.
     {
-      key: 'tteRide', label: 'TTE', computed: tteRide, computedSrc: tteRideEstimated ? 'estimated from your power model (W′/CP)' : 'longest you held your FTP', pending: tteRide == null ? (powerCurve ? 'after a sustained near-FTP effort (10–40 min)' : 'after your next ride — read from your power curve') : undefined, manual: (ss.cycling as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('cycling', { tte: v }),
+      key: 'tteRide', label: 'TTE', computed: tteRide, computedSrc: tteRideEstimated ? 'estimated from your power model (W′/CP)' : 'longest you held your FTP', pending: tteRide == null ? (powerCurve ? 'after a sustained near-FTP effort (10–40 min)' : 'after your next ride — read from your best efforts') : undefined, manual: (ss.cycling as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('cycling', { tte: v }),
       chip: tteRideEstimated ? 'CP model' : 'Curve',
       conf: tteConfidence({ tte: tteRide, estimated: tteRideEstimated }),
-      narr: <>How long you can hold your <b>FTP</b> before fatigue — normally <b>30–70 min</b>. Read off your power curve once you've held it that long, else estimated from your power-duration model. A short TTE is a <b>training target</b>: extend it with sustained threshold work (3×15–20 min @ 90–95%), not more watts. Far below 30 min? Your FTP may be set higher than your true threshold — check it against your CP.</>,
-      sci: [{ name: 'From your power curve', formula: 'longest time ≥ your FTP', value: tteRideObs != null ? fmtTte(tteRideObs) : '—', inUse: !tteRideEstimated && tteRide != null }, { name: 'Modeled', formula: 'from your power-duration fit', value: tteRideEst != null ? fmtTte(tteRideEst) : '—', inUse: tteRideEstimated }],
+      narr: <>How long you can hold your <b>FTP</b> before fatigue — normally <b>30–70 min</b>. Read off your best efforts once you've held it that long, else estimated from your power-duration model. A short TTE is a <b>training target</b>: extend it with sustained threshold work (3×15–20 min @ 90–95%), not more watts. Far below 30 min? Your FTP may be set higher than your true threshold — check it against your CP.</>,
+      sci: [{ name: 'From your best efforts', formula: 'longest time ≥ your FTP', value: tteRideObs != null ? fmtTte(tteRideObs) : '—', inUse: !tteRideEstimated && tteRide != null }, { name: 'Modeled', formula: 'from your power-duration fit', value: tteRideEst != null ? fmtTte(tteRideEst) : '—', inUse: tteRideEstimated }],
       sharpen: 'extensive threshold work — 3×15–20 min @ 90–95% FTP — extends your TTE (longer durations, not more power).',
     },
     {
-      key: 'tteRun', label: 'TTE', computed: tteRun, computedSrc: tteRunEstimated ? 'estimated from your Critical-Speed model' : 'longest you held threshold pace', pending: tteRun == null ? (paceCurve ? 'after a sustained threshold run (15–40 min)' : 'after a few runs — read from your pace curve') : undefined, manual: (ss.running as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('running', { tte: v }),
+      key: 'tteRun', label: 'TTE', computed: tteRun, computedSrc: tteRunEstimated ? 'estimated from your Critical-Speed model' : 'longest you held threshold pace', pending: tteRun == null ? (paceCurve ? 'after a sustained threshold run (15–40 min)' : 'after a few runs — read from your best runs') : undefined, manual: (ss.running as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('running', { tte: v }),
       chip: tteRunEstimated ? 'CS model' : 'Curve',
       conf: tteConfidence({ tte: tteRun, estimated: tteRunEstimated }),
-      narr: <>How long you can hold your <b>threshold pace</b> before fatigue — normally <b>30–70 min</b>. Read off your pace curve once you've held it that long, else estimated from your pace-duration model. A short one usually means your threshold pace is set too fast — or extend it with sustained threshold runs (3×15–20 min @ threshold).</>,
-      sci: [{ name: 'From your pace curve', formula: 'longest time ≤ threshold', value: tteRunObs != null ? fmtTte(tteRunObs) : '—', inUse: !tteRunEstimated && tteRun != null }, { name: 'Modeled', formula: 'from your pace-duration fit', value: tteRunEst != null ? fmtTte(tteRunEst) : '—', inUse: tteRunEstimated }],
+      narr: <>How long you can hold your <b>threshold pace</b> before fatigue — normally <b>30–70 min</b>. Read off your best runs once you've held it that long, else estimated from your pace-duration model. A short one usually means your threshold pace is set too fast — or extend it with sustained threshold runs (3×15–20 min @ threshold).</>,
+      sci: [{ name: 'From your best runs', formula: 'longest time ≤ threshold', value: tteRunObs != null ? fmtTte(tteRunObs) : '—', inUse: !tteRunEstimated && tteRun != null }, { name: 'Modeled', formula: 'from your pace-duration fit', value: tteRunEst != null ? fmtTte(tteRunEst) : '—', inUse: tteRunEstimated }],
       sharpen: 'sustained threshold runs (15–40 min, ~5 k–10 k effort) extend your TTE — or ease your threshold pace toward your critical speed.',
     },
     // #403 — CP · W′ (cycling) and CS · D′ (running): the power/pace-duration model. Modelled from the curve (no
     // test); manual override persists via the sport-stat whitelist. Per-sport pages only.
     {
-      key: 'cp', label: 'Critical Power', unit: 'W', computed: cp, computedSrc: 'independent read from your power curve', pending: cp == null ? 'after a few hard efforts across durations — the model needs points to fit' : undefined, manual: (ss.cycling as { cp?: number })?.cp ?? null, fmt: String, parse: numParse(60, 500), save: (v) => saveSport('cycling', { cp: v }),
+      key: 'cp', label: 'Critical Power', unit: 'W', computed: cp, computedSrc: 'independent read from your best efforts', pending: cp == null ? 'after a few hard efforts across durations — the model needs points to fit' : undefined, manual: (ss.cycling as { cp?: number })?.cp ?? null, fmt: String, parse: numParse(60, 500), save: (v) => saveSport('cycling', { cp: v }),
       chip: 'Curve', conf: modelFitConfidence({ value: cp, r2: powerCurve?.r2 }),
-      narr: <>Your <b>Critical Power</b> — the top of your aerobic engine, modelled independently from your power curve. It measures the same threshold your FTP does, so they sit close{cpAgrees && eftpVal != null ? <> — yours ({cp} W) lines up with your eFTP ({eftpVal} W)</> : null}. Its real value is paired with <b>W′ ({wPrimeKj != null ? wPrimeKj : '—'} kJ)</b>: CP is your engine size, W′ your anaerobic kick — together {riderType ? <>they read as <b>{riderType}</b></> : <>they profile your rider type</>}.</>,
+      narr: <>Your <b>Critical Power</b> — the top of your aerobic engine, modelled independently from your best efforts. It measures the same threshold your FTP does, so they sit close{cpAgrees && eftpVal != null ? <> — yours ({cp} W) lines up with your eFTP ({eftpVal} W)</> : null}. Its real value is paired with <b>W′ ({wPrimeKj != null ? wPrimeKj : '—'} kJ)</b>: CP is your engine size, W′ your anaerobic kick — together {riderType ? <>they read as <b>{riderType}</b></> : <>they profile your rider type</>}.</>,
       sci: [{ name: 'Power-duration model', formula: '2-param CP/W′ fit · independent of FTP', value: cp != null ? `${cp} W` : '—', inUse: cp != null }],
       sharpen: 'hard efforts of varied length (1–20 min) sharpen the CP/W′ fit.',
     },
@@ -389,7 +389,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     {
       key: 'cs', label: 'Critical Speed', unit: '/km', computed: csPace, computedSrc: 'your sustainable running ceiling', pending: csPace == null ? 'after a few hard runs across distances — the model needs points' : undefined, manual: (ss.running as { cs?: number })?.cs ?? null, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { cs: v }),
       chip: 'Curve', conf: modelFitConfidence({ value: csPace, r2: paceCurve?.r2 }),
-      narr: <>Your <b>Critical Speed</b> — the running analogue of Critical Power: the fastest pace you can hold near-indefinitely, modelled independently from your pace curve.{csUnderReads ? <><br /><br />Right now it fits <b>slow</b> — every recent run is easy, so the curve has no fast points and under-reads (it even lands slower than your easy-run pace). A couple of hard efforts across distances (1 k–5 k) let it read true; until then your threshold pace is the better guide.</> : null}</>,
+      narr: <>Your <b>Critical Speed</b> — the running analogue of Critical Power: the fastest pace you can hold near-indefinitely, modelled independently from your best runs.{csUnderReads ? <><br /><br />Right now it fits <b>slow</b> — every recent run is easy, so the curve has no fast points and under-reads (it even lands slower than your easy-run pace). A couple of hard efforts across distances (1 k–5 k) let it read true; until then your threshold pace is the better guide.</> : null}</>,
       sci: [{ name: 'Pace-duration model', formula: '2-param CS/D′ fit', value: csPace != null ? `${fmtPace(csPace)}/km` : '—', inUse: csPace != null }],
       sharpen: 'hard runs of varied distance (1 k–5 k) sharpen the CS/D′ fit.',
     },
