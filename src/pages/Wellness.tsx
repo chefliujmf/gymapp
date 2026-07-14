@@ -103,11 +103,16 @@ function CheckinBreakdown({ series, dates }: { series: Record<'sleep' | 'energy'
   const all = drawn.flat().filter((v): v is number => v != null)
   if (all.length < 2 || !overallStat) return <p className="meta" style={{ margin: '8px 2px' }}>Not enough check-ins in this range.</p>
 
-  const latest = (arr: (number | null)[]) => { const v = arr.filter((x): x is number => x != null); return v.length ? v[v.length - 1] : null }
   const focused = focus ? CB_METRICS.find((m) => m.key === focus)! : null
   const headTitle = focused ? focused.name : 'Check-in breakdown'
-  const headNow = focused ? latest(avgLines[focus!]) : overallStat.avg
   const headColor = focused ? focused.color : 'var(--text)'
+  // #513 (JM: "3.9 floating just like that huh?") — headline = the LATEST reading (labelled with its date), like the
+  // metric cards — NOT a bare average float (which also just duplicated the "Overall avg" in the subtitle). Unfocused =
+  // latest overall daily readiness; focused = that metric's latest daily value.
+  const headSeries = focused ? series[focus!] : overallDaily
+  const headIdx = (() => { for (let i = headSeries.length - 1; i >= 0; i--) if (headSeries[i] != null) return i; return -1 })()
+  const headNow = headIdx >= 0 ? round1(headSeries[headIdx] as number) : null
+  const headDate = headIdx >= 0 && dates[headIdx] ? fmtDayLabel(dates[headIdx]) : null
   // #395/#397 — the SHARED TrendChart (hover scrubber + tooltip showing every value on a day). Tap-to-focus now
   // dims the others via `faint`; the overall average stays dashed. Same standard as the metric charts above.
   const cbSeries = [
@@ -131,9 +136,9 @@ function CheckinBreakdown({ series, dates }: { series: Record<'sleep' | 'energy'
     <div className="card wcard">
       <div className="wcard__h">
         <h3>📝 {headTitle} (1–5)</h3>
-        <span className="wcard__now" style={{ color: headColor }}>{headNow ?? '—'}</span>
+        <span className="wcard__now" style={{ color: headColor }}><small className="meta" style={{ fontWeight: 600, marginRight: 5 }}>latest{headDate ? ` · ${headDate}` : ''}</small>{headNow ?? '—'}</span>
       </div>
-      <div className="wcard__sub">Overall avg {overallStat.avg} · min {overallStat.min} · max {overallStat.max}{!focus ? ' — tap a metric to focus' : ''}</div>
+      <div className="wcard__sub">{(() => { const s = (focused ? stats[focus!] : overallStat) ?? overallStat; return <>{focused ? `${focused.name} — ` : 'Overall '}avg {s.avg} · min {s.min} · max {s.max}</> })()}{!focus ? ' — tap a metric to focus' : ''}</div>
       <TrendChart height={150} axes labels={labels} minSpan={2} series={cbSeries} />
       {cbInsight && <p className="fit-insight">{cbInsight}</p>}
       <div className="cb__leg">
