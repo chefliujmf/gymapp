@@ -279,7 +279,6 @@ export default function Profile() {
       {/* #337b — Profile is PREFERENCES. Your benchmarks (VO₂max, FTP, threshold pace, zones, predictions)
           live in ONE place — Stats — with the Manual/Auto/Computed picker. No duplicate UX here. */}
       <div className="section-title" id="ob-numbers">Your data</div>
-      <Link to="/stats" className="btn btn--ghost" style={{ marginBottom: 8 }}>📊 Benchmarks, VO₂max, zones & trends — open Stats ›</Link>
       {/* #235 — turn the readiness self-learning on/off */}
       <label className="toggle-row">
         <span className="toggle-row__t"><b>Learn from my check-ins</b><span className="meta">Auto-adapt your Sleep/Freshness/Energy scores toward how you actually rate them over time.</span></span>
