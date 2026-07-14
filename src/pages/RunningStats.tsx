@@ -48,7 +48,9 @@ export default function RunningStats() {
   const vo2 = user?.vo2max ? { value: user.vo2max, source: 'you set it', confidence: 'high' as const } : runningVo2max({ vdot, hrMax: user?.maxHR, hrRest })
   // #237: HR says you're fitter than your (stale) threshold pace → flag it
   const hrRatioMismatch = !!(vo2 && vdot && !user?.vo2max && vo2.value - vdot >= 5)
-  const zStr = (k: keyof ReturnType<typeof paceZones>) => { const z = zones![k]; return Array.isArray(z) ? `${fmtPace(z[1])}–${fmtPace(z[0])}` : fmtPace(z) }
+  // #515 (JM: "always the smallest number before") — a pace RANGE reads low→high (6:13–6:53), never reversed. min/max
+  // so it's correct regardless of the zone tuple's internal order (paceZones stores easy as [fast, slow]).
+  const zStr = (k: keyof ReturnType<typeof paceZones>) => { const z = zones![k]; return Array.isArray(z) ? `${fmtPace(Math.min(z[0], z[1]))}–${fmtPace(Math.max(z[0], z[1]))}` : fmtPace(z) }
 
   return (
     <div>

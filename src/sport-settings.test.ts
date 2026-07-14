@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { fromIcuSportSettings, icuPatchForGroup, paceFromMps, mpsFromPace, runThresholdFromPaceCurve } from '../server/sport-settings.js'
+import { fromIcuSportSettings, icuPatchForGroup, paceFromMps, mpsFromPace, runThresholdFromPaceCurve, athleteBasicsPatch } from '../server/sport-settings.js'
 
 // jmfiset's real intervals athlete shape (#210 findings): per-sport settings array, each with an id.
 const REAL = [
@@ -81,4 +81,24 @@ describe('icuPatchForGroup (push) — per-entry PUT body, only the changed field
   it('returns null when the entry has no id (cannot address the per-entry endpoint)', () => {
     expect(icuPatchForGroup([{ types: ['Ride'] }], 'cycling', { ftp: 270 })).toBeNull()
   })
+})
+
+// #268/#1003/#459 — write profile basics BACK to the intervals athlete record (two-way sync).
+describe('athleteBasicsPatch (write-back to intervals)', () => {
+  it('height cm → metres', () => expect(athleteBasicsPatch(['heightCm'], { heightCm: 175 })).toEqual({ height: 1.75 }))
+  it('dob passes through (YYYY-MM-DD)', () => expect(athleteBasicsPatch(['dob'], { dob: '1985-08-16' })).toEqual({ icu_date_of_birth: '1985-08-16' }))
+  it('sex male → M, female → F', () => {
+    expect(athleteBasicsPatch(['sex'], { sex: 'male' })).toEqual({ sex: 'M' })
+    expect(athleteBasicsPatch(['sex'], { sex: 'female' })).toEqual({ sex: 'F' })
+  })
+  it('only maps the keys the user actually CHANGED (never clobbers an untouched field)', () => {
+    expect(athleteBasicsPatch(['heightCm'], { heightCm: 180, dob: '1990-01-01', sex: 'male' })).toEqual({ height: 1.8 })
+  })
+  it('ignores blank / invalid values (no accidental wipe)', () => {
+    expect(athleteBasicsPatch(['heightCm'], { heightCm: 0 })).toEqual({})
+    expect(athleteBasicsPatch(['dob'], { dob: '' })).toEqual({})
+    expect(athleteBasicsPatch(['sex'], { sex: 'other' })).toEqual({})
+  })
+  it('empty when nothing relevant changed', () => expect(athleteBasicsPatch(['coachName', 'sleepNeed'], { heightCm: 175 })).toEqual({}))
+  it('maps several changed fields at once', () => expect(athleteBasicsPatch(['heightCm', 'dob', 'sex'], { heightCm: 175, dob: '1985-08-16', sex: 'female' })).toEqual({ height: 1.75, icu_date_of_birth: '1985-08-16', sex: 'F' }))
 })

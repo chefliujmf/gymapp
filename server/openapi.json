@@ -975,6 +975,14 @@
         }
       }
     },
+    "/auth/profile": {
+      "put": {
+        "summary": "Update the signed-in user's profile (info fields, coachName, sports, sex, sleepNeed/maxHR/ftp/vo2max, statPrefs, pushPrefs). #268/#1003/#459 — WRITES BACK the changed BASICS (heightCm→height m, dob→icu_date_of_birth, sex→M/F) to the intervals athlete record (PROD only; QA is read-only toward the shared athlete).",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "the updated public user object" } }
+      }
+    },
     "/auth/profile/athlete": {
       "get": {
         "summary": "Get the signed-in user's athlete coaching profile (engine-native markdown)",
