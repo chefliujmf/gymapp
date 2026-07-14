@@ -1,0 +1,106 @@
+<style>
+  :root{ --text:#eef1f4; --dim:#9298a6; --accent:#34e07d; --bg:#0f1216; --card1:#21252f; --card2:#191c24;
+    --blue:#5ec8ff; --violet:#9b8cff; --amber:#ffb454; --red:#ff6b6b; }
+  *{ box-sizing:border-box; margin:0; padding:0 }
+  body{ background:var(--bg); color:var(--text); font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    display:flex; justify-content:center; padding:18px 12px 40px }
+  .phone{ width:414px; max-width:100% }
+  .h1{ font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); margin:2px 2px 10px }
+  .card{ background:linear-gradient(160deg,var(--card1),var(--card2)); border:1px solid #2c313d; border-radius:16px;
+    padding:16px 16px 14px; margin-bottom:14px }
+  .top{ display:flex; align-items:baseline; gap:10px }
+  .big{ font-size:38px; font-weight:800; letter-spacing:-.01em }
+  .unit{ color:var(--dim); font-weight:600 }
+  .band{ color:var(--dim); font-size:13px; margin-left:auto; text-align:right }
+  .conf{ height:7px; border-radius:5px; background:#2b303b; margin:12px 0 4px; overflow:hidden }
+  .conf > i{ display:block; height:100%; width:84%; border-radius:5px;
+    background:linear-gradient(90deg,var(--blue),var(--accent)) }
+  .conflabel{ font-size:12.5px; color:var(--accent); font-weight:600 }
+  .sub{ font-size:13px; color:var(--dim); margin:9px 0 2px }
+  .sig{ display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid #262b35 }
+  .sig:first-of-type{ border-top:0 }
+  .sig .nm{ flex:1; min-width:0 }
+  .sig .nm b{ font-weight:650; font-size:14px }
+  .sig .nm small{ display:block; color:var(--dim); font-size:11.5px; line-height:1.35; margin-top:1px }
+  .sig .val{ font-weight:800; font-size:16px; font-variant-numeric:tabular-nums; white-space:nowrap }
+  .wt{ display:inline-flex; gap:2px; margin-left:2px; vertical-align:middle }
+  .wt i{ width:6px; height:6px; border-radius:50%; background:#3a4150 }
+  .wt i.on{ background:var(--accent) }
+  .fuse{ margin-top:12px; padding:12px; border:1px solid #2f6b4a; background:rgba(52,224,125,.07); border-radius:12px }
+  .fuse b{ color:var(--accent) }
+  .flag{ margin-top:10px; padding:11px 12px; border-radius:11px; background:rgba(255,180,84,.09);
+    border:1px solid #6b5a2f; font-size:13px }
+  .flag b{ color:var(--amber) }
+  .chip{ display:inline-block; font-size:11px; font-weight:700; letter-spacing:.03em; padding:3px 8px; border-radius:999px;
+    background:rgba(94,200,255,.14); color:var(--blue); margin-left:6px; vertical-align:middle }
+  .foot{ font-size:11.5px; color:var(--dim); margin-top:12px; line-height:1.45; border-top:1px solid #262b35; padding-top:10px }
+  .foot b{ color:var(--text); font-weight:600 }
+</style>
+
+<div class="phone">
+  <div class="h1">Mock · #508 multi-signal threshold</div>
+
+  <div class="card">
+    <div class="top">
+      <div><span class="big">247</span> <span class="unit">W</span></div>
+      <div class="band">± 4 W<br><span style="font-size:11px">231 &middot; 263 possible</span></div>
+    </div>
+    <div class="conf"><i></i></div>
+    <div class="conflabel">Strong &middot; 5 independent reads agree within 6 W</div>
+    <div style="font-size:13.5px;color:var(--dim);margin-top:8px">
+      Your <b style="color:var(--text)">threshold power</b> &mdash; the hardest you hold ~an hour &mdash; triangulated from
+      everything Platyplus can see, no test needed. This is what all your training scales from.
+    </div>
+
+    <div class="sub">What Platyplus fused &nbsp;·&nbsp; freshness &times; reliability weighted</div>
+
+    <div class="sig">
+      <div class="nm"><b>Critical Power</b><small>the asymptote of your power&ndash;duration curve</small></div>
+      <div class="val">248 W <span class="wt"><i class="on"></i><i class="on"></i><i class="on"></i></span></div>
+    </div>
+    <div class="sig">
+      <div class="nm"><b>Best 20-min</b><small>longest hard effort you've actually held</small></div>
+      <div class="val">246 W <span class="wt"><i class="on"></i><i class="on"></i><i class="on"></i></span></div>
+    </div>
+    <div class="sig">
+      <div class="nm"><b>HR at threshold</b><small>the power you make at your threshold HR (~163 bpm)</small></div>
+      <div class="val">245 W <span class="wt"><i class="on"></i><i class="on"></i><i></i></span></div>
+    </div>
+    <div class="sig">
+      <div class="nm"><b>Cardiac drift</b><small>highest power your HR stays flat at (&lt;5% drift) &mdash; above it, HR climbs</small></div>
+      <div class="val">248 W <span class="wt"><i class="on"></i><i class="on"></i><i></i></span></div>
+    </div>
+    <div class="sig">
+      <div class="nm"><b>Next-day recovery</b><small>highest power your HRV bounces back from &mdash; harder wrecks you</small></div>
+      <div class="val">250 W <span class="wt"><i class="on"></i><i class="on"></i><i></i></span></div>
+    </div>
+
+    <div style="margin-top:11px">
+      <span style="font-size:13px;color:var(--dim)">Trend</span>
+      <span class="chip" style="background:rgba(52,224,125,.14);color:var(--accent)">Efficiency +3% / 8 wks &mdash; engine improving</span>
+    </div>
+
+    <div class="fuse">
+      <b>Fused &rarr; 247 W.</b> Five independent signals land within 6 W of each other, so this is a
+      <b>dependable</b> read &mdash; not one lucky number from one test. The band tightens as more varied riding comes in.
+    </div>
+
+    <div class="flag">
+      <b>You train by 260 W</b> &mdash; that's ~13 W above your fused threshold. Every signal reads lower, so 260 looks
+      optimistic. One short hard effort (a 2&times;8, no climb needed) would confirm which is right &mdash; want the coach to slot it in?
+    </div>
+
+    <div class="foot">
+      <b>Science-based, fixed weighting</b> (Coggan CP, Friel HR&ndash;power &amp; decoupling, HRV-guided load).
+      Learns from normal training &mdash; no lab, no ramp. <b>Not user-adjustable</b> &mdash; the model decides, you just ride.
+    </div>
+  </div>
+
+  <div class="h1" style="margin-top:2px">How the weighting works (not shown to the user)</div>
+  <div class="card" style="font-size:13px;color:var(--dim)">
+    Each signal returns a threshold estimate + a reliability. Weight = base-reliability &times; freshness decay.
+    <br>&bull; test-backed (CP, 20-min) = high &nbsp;&bull; physiological (HR-power, drift, HRV) = medium
+    <br>&bull; a signal that disagrees &gt;10% is DOWN-weighted (likely bad data), never silently averaged in.
+    <br>Output = weighted mean + a band from the spread; confidence = how tightly they agree. All pure + unit-tested.
+  </div>
+</div>

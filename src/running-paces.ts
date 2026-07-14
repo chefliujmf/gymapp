@@ -32,6 +32,45 @@ function paceForPct(vdot: number, pct: number): number {
   return 60000 / velForVo2(vdot * pct)
 }
 
+/** #512 — VDOT from a RACE performance (Daniels): the runner's GOLD-STANDARD fitness read, straight from a real
+ *  all-out effort — not an HR extrapolation (overshoots) nor an easy-run pace-curve (under-reads). distM metres,
+ *  timeSec seconds. VDOT = the VO₂ cost of the race velocity, divided by the fraction of VO₂max held for that duration. */
+export function vdotFromRace(distM: number, timeSec: number): number {
+  if (!(distM > 0) || !(timeSec > 0)) return NaN
+  const v = distM / (timeSec / 60) // m/min
+  return vo2(v) / pctMax(timeSec / 60)
+}
+
+/** #512 — robust VDOT from the athlete's BEST times across distances. GPS glitches make an impossibly-fast short race
+ *  read a fantasy VDOT (JM's 1.5k → VDOT 86), so: reject anything past world-class (>82), then drop any lone value
+ *  more than 12% above the median before taking the best — so one bad point can't inflate the number. Null if none. */
+export function bestVdotFromRaces(races: { distM: number; timeSec: number }[]): number | null {
+  const vs = (races || []).map((r) => vdotFromRace(r.distM, r.timeSec)).filter((v) => Number.isFinite(v) && v >= 20 && v <= 82).sort((a, b) => a - b)
+  if (!vs.length) return null
+  const med = vs[Math.floor(vs.length / 2)]
+  const clean = vs.filter((v) => v <= med * 1.12)
+  return Math.round(Math.max(...(clean.length ? clean : vs)) * 10) / 10
+}
+
+/** #512 — Critical Speed as a pace (sec/km) from VDOT — the sustainable ceiling, just ABOVE threshold (~90% VO₂max vs
+ *  the 88% threshold), so threshold ≤ CS holds BY CONSTRUCTION (a threshold can never be faster than CS). This kills the
+ *  under-read-CS bug where the pace-curve fit CS slower than the athlete's real threshold. */
+export function csPaceFromVdot(vdot: number): number {
+  return Math.round(paceForPct(vdot, 0.90))
+}
+
+/** #512 — running TTE at THRESHOLD, from Daniels' pctMax curve: the duration at which sustainable %VO₂max falls to
+ *  threshold intensity (T_PCT). Threshold is BY DEFINITION your ~1-hour pace, so this is the AEROBIC ceiling (~67 min)
+ *  and — correctly — VDOT-INDEPENDENT (a fitter runner's threshold is FASTER, but the TIME they hold it is the same).
+ *  Used as the running-TTE model when threshold ≤ CS (the VDOT read), where the CS/D′ "above-critical" formula gives
+ *  no depletion. The PERSONAL number is still the observed longest hold; this is the inferred fallback (never a test).
+ *  Returns SECONDS. */
+export function tteAtThresholdSec(): number {
+  let lo = 1, hi = 240 // minutes
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (pctMax(m) > T_PCT) lo = m; else hi = m }
+  return Math.round(((lo + hi) / 2) * 60)
+}
+
 export interface PaceZones {
   easy: [number, number] // [fast, slow] sec/km
   marathon: number

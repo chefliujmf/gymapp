@@ -1,0 +1,66 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profile · strength + weakness rework</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--amber:#f5b53d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05070a;color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px}
+  .cap{font-size:12px;color:var(--text-dim);text-align:center;max-width:660px}
+  .cap b{color:var(--accent)}
+  .wrap{width:678px;max-width:100%}
+  /* profile card — matches the current .prof card */
+  .prof{background:linear-gradient(#1b1f28,#15181f);border:1px solid #272d38;border-radius:16px;padding:16px 18px}
+  .prof__type{font-size:17px;font-weight:750;display:flex;align-items:center;gap:9px;margin-bottom:7px}
+  .prof__badge{font-size:11px;font-weight:700;color:var(--accent);background:rgba(52,224,125,.14);padding:3px 9px;border-radius:20px}
+  .prof__say{font-size:13px;color:var(--text-dim);line-height:1.5;margin-bottom:13px}
+  /* NEW — strength / weakness callout (the rework) */
+  .sw{display:flex;flex-direction:column;gap:0;background:#12151b;border:1px solid #242a34;border-radius:12px;padding:4px 13px;margin-bottom:15px}
+  .swrow{display:flex;gap:11px;align-items:flex-start;padding:11px 0}
+  .swrow+.swrow{border-top:1px solid #21252e}
+  .swrow .ic{font-size:17px;line-height:1.3}
+  .swrow .lb{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;font-weight:800;margin-bottom:2px}
+  .swrow .lb.s{color:var(--accent)} .swrow .lb.w{color:var(--amber)}
+  .swrow .tx{font-size:13px;color:var(--text-dim);line-height:1.5}
+  .swrow .tx b{color:var(--text)}
+  /* metric reads — unchanged */
+  .prof__m{display:grid;grid-template-columns:96px 1fr;gap:14px;padding:13px 0;border-top:1px solid #21252e}
+  .prof__mk .k{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#7c8290;font-weight:700}
+  .prof__mk b{font-size:19px;font-weight:750}
+  .prof__m .r{font-size:12.5px;color:var(--text-dim);line-height:1.5}
+  .prof__m .r b{color:var(--text)}
+  /* coach focus — unchanged */
+  .prof__foc{margin-top:15px;background:#12151b;border:1px solid #242a34;border-radius:12px;padding:13px 15px}
+  .prof__foc h4{font-size:13.5px;font-weight:700;margin-bottom:9px}
+  .prof__foc ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+  .prof__foc li{font-size:12.5px;color:var(--text-dim);line-height:1.5;padding-left:15px;position:relative}
+  .prof__foc li:before{content:'•';position:absolute;left:2px;color:var(--accent)}
+</style></head>
+<body>
+  <div class="cap">Your <b>current</b> profile card — unchanged except the new <b>💪 Strength / 🎯 To improve</b> block (folds the old one-line summary into two explicit reads). Everything else stays.</div>
+  <div class="wrap">
+    <div class="prof">
+      <div class="prof__type">🏃 Punchy threshold <span class="prof__badge">building endurance</span></div>
+      <div class="prof__say">Good speed, short staying power — you can hit threshold but you can't live there yet.</div>
+
+      <!-- ▼▼▼ THE ONLY NEW BIT ▼▼▼ -->
+      <div class="sw">
+        <div class="swrow"><span class="ic">💪</span><div><div class="lb s">Your strength</div><div class="tx"><b>Speed at threshold.</b> You reach a strong pace and your kick (D′ 72 m) covers surges — you can hit hard efforts.</div></div></div>
+        <div class="swrow"><span class="ic">🎯</span><div><div class="lb w">To improve</div><div class="tx"><b>Staying power.</b> You can't hold threshold long yet — your TTE is short (24 min vs a normal 30–70). Turning speed into duration is your single biggest lever.</div></div></div>
+      </div>
+      <!-- ▲▲▲ THE ONLY NEW BIT ▲▲▲ -->
+
+      <div class="prof__m"><div class="prof__mk"><span class="k">Threshold</span><b>5:36/km</b></div><div class="r">Your ~1-hour ceiling — the anchor every training zone is built from. It lines up with your critical speed, a fair, honest threshold, and re-reads itself off every hard effort you do.</div></div>
+      <div class="prof__m"><div class="prof__mk"><span class="k">TTE</span><b>24:21</b></div><div class="r">How long you can <b>hold</b> threshold before output drops — the truest read of your endurance, normally 30–70 min. Yours is short: you can hit the power but not live there yet. Extensive threshold work (long tempo, 3×15–20 @ 90–95%) stretches it; more speed won't.</div></div>
+      <div class="prof__m"><div class="prof__mk"><span class="k">D′</span><b>72 m</b></div><div class="r">Your anaerobic "battery" above critical speed — what powers attacks, surges and the final kick. Yours is moderate: enough to cover surges, not a pure sprinter. Short near-max reps grow it.</div></div>
+
+      <div class="prof__foc"><h4>🎯 What your coach will work on</h4>
+        <ul>
+          <li>Extensive threshold runs — 3×15–20 min @ threshold → build the duration you can hold pace.</li>
+          <li>Keep the kick — weekly short fast reps (200–600 m) hold/grow D′.</li>
+          <li>Easy aerobic volume underneath — feeds a rising efficiency and future pace.</li>
+          <li>Mostly the efforts <b>are</b> the data — your models sharpen as you train; a benchmark test only if the fit goes stale.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body></html>

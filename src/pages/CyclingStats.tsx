@@ -25,7 +25,7 @@ export default function CyclingStats() {
       ) : (
         <>
           {/* #385 — same polished benchmark cards as Global, filtered to cycling (FTP · VO₂max · Max HR). */}
-          <BenchmarksCard only={['ftp', 'cp', 'wPrime', 'vo2max', 'tteRide', 'maxHr']} profile="cycling" />
+          <BenchmarksCard only={['ftp', 'cp', 'wPrime', 'tteRide']} profile="cycling" />{/* #512 — VO₂max + Max HR are whole-body, NOT per-sport → they live in the overall Stats benchmarks, not here */}
           {/* #510 — ALL metric GRAPHS (eFTP trend, EF trend, power-duration + season-compare curve) PARKED for the
               roadmap (JM 2026-07-13: "remove the metric graphs, it's for the roadmap"). The benchmark CARDS above stay;
               the chart components stay in the codebase and return with the intervals-parity rebuild. */}

@@ -1,0 +1,111 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FTP card — clean</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--amber:#f5b53d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05070a;color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:22px;display:flex;gap:26px;flex-wrap:wrap;justify-content:center}
+  .phone{width:390px;background:var(--bg);border-radius:26px;padding:0;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5);border:1px solid #1b1f28}
+  .sheet{background:linear-gradient(#161a21,#0f1216);padding:20px 20px 24px}
+  .cap{text-align:center;font-size:12px;color:var(--text-dim);margin:6px 0 12px;letter-spacing:.02em}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .top h2{font-size:20px;font-weight:700}
+  .x{color:var(--text-dim);font-size:20px}
+  /* confidence */
+  .conf{display:flex;align-items:center;gap:9px;margin-bottom:20px}
+  .bar{flex:1;height:7px;border-radius:4px;background:#232833;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#f5b53d,#34e07d)}
+  .clabel{font-size:12.5px;font-weight:600;color:var(--accent)}
+  /* the one number */
+  .hero{text-align:center;padding:6px 0 4px}
+  .num{font-size:52px;font-weight:750;letter-spacing:-.02em;line-height:1}
+  .num span{font-size:22px;color:var(--text-dim);font-weight:600;margin-left:3px}
+  .src{font-size:13px;color:var(--text-dim);margin-top:7px}
+  /* picker */
+  .seg{display:flex;background:#191d25;border:1px solid #262c37;border-radius:11px;padding:3px;margin:18px auto 0;width:210px}
+  .seg button{flex:1;border:0;background:transparent;color:var(--text-dim);font-size:13px;font-weight:600;padding:8px 0;border-radius:8px;font-family:inherit}
+  .seg button.on{background:#2b6b46;color:#fff}
+  .seg .mv{font-size:11px;opacity:.85;display:block;margin-top:1px;font-weight:500}
+  /* paragraph */
+  .para{font-size:14px;line-height:1.55;color:var(--text);margin:20px 2px 0}
+  .para b{color:#fff}
+  /* disclosure */
+  .disc{margin:20px 0 0;border-top:1px solid #20242e;padding-top:15px}
+  .disc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:13.5px;font-weight:600;color:var(--text-dim)}
+  .disc>summary::-webkit-details-marker{display:none}
+  .disc>summary .chev{transition:transform .2s;color:var(--text-dim)}
+  .disc[open]>summary .chev{transform:rotate(90deg)}
+  .rows{margin-top:14px;display:flex;flex-direction:column;gap:0}
+  .r{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid #191d25}
+  .r:first-child{border-top:0}
+  .r .n{font-size:13.5px;font-weight:600}
+  .r .f{font-size:11.5px;color:var(--text-dim);margin-top:2px;max-width:210px}
+  .r .v{font-size:15px;font-weight:700;white-space:nowrap}
+  .inuse .n:after{content:'IN USE';font-size:9px;font-weight:700;background:#2b6b46;color:#bff6d6;padding:2px 5px;border-radius:4px;margin-left:7px;vertical-align:middle;letter-spacing:.04em}
+  .r.floor .v{color:var(--accent)}
+  .sharp{margin-top:15px;font-size:12.5px;color:var(--text-dim);background:#14181f;border-radius:10px;padding:11px 13px}
+  .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin:2px 2px 0}
+</style></head>
+<body>
+
+<!-- ============ DEFAULT (collapsed) ============ -->
+<div>
+<div class="cap">DEFAULT — one number, tap to dig</div>
+<div class="phone"><div class="sheet">
+  <div class="top"><h2>FTP</h2><div class="x">✕</div></div>
+  <div class="conf"><div class="bar"><i style="width:74%"></i></div><div class="clabel">Solid</div></div>
+
+  <div class="hero">
+    <div class="num">260<span>W</span></div>
+    <div class="src">the power you train by</div>
+  </div>
+  <div class="seg"><button class="on">Auto</button><button>Manual<span class="mv">260 W</span></button></div>
+
+  <p class="para">You train by <b>260 W</b> and your workouts follow from it — that's real validation. Recent riding has been easy, so the computed reads sit a touch lower (eFTP <b>253 W</b>) — that's under-reading, not proof 260 is too high.</p>
+
+  <details class="disc">
+    <summary><span>How we got this — 6 cross-checks</span><span class="chev">›</span></summary>
+    <div class="rows">
+      <div class="r inuse"><div><div class="n">You train by</div><div class="f">the value you ride to</div></div><div class="v">260 W</div></div>
+      <div class="r"><div><div class="n">intervals eFTP</div><div class="f">from your power, no formal test</div></div><div class="v">253 W</div></div>
+      <div class="r floor"><div><div class="n">Aerobic-efficiency floor</div><div class="f">you hold ~197 W at an easy, steady HR → FTP is at least this</div></div><div class="v">≥ 263 W</div></div>
+      <div class="r"><div><div class="n">Critical Power</div><div class="f">your power-duration ceiling (sits above FTP)</div></div><div class="v">268 W</div></div>
+      <div class="r"><div><div class="n">Best 20-min ×0.95</div><div class="f">your best recent 20-min</div></div><div class="v">234 W</div></div>
+      <div class="r"><div><div class="n">HR vs power</div><div class="f">rough — from easy rides, under-reads</div></div><div class="v">220 W</div></div>
+    </div>
+    <div class="sharp">💪 A hard 20–40 min effort (flat road or trainer, no surges) would pin a precise number and lift the low reads.</div>
+  </details>
+</div></div>
+</div>
+
+<!-- ============ EXPANDED ============ -->
+<div>
+<div class="cap">EXPANDED — the science, on demand</div>
+<div class="phone"><div class="sheet">
+  <div class="top"><h2>FTP</h2><div class="x">✕</div></div>
+  <div class="conf"><div class="bar"><i style="width:74%"></i></div><div class="clabel">Solid</div></div>
+
+  <div class="hero">
+    <div class="num">260<span>W</span></div>
+    <div class="src">the power you train by</div>
+  </div>
+  <div class="seg"><button class="on">Auto</button><button>Manual<span class="mv">260 W</span></button></div>
+
+  <p class="para">You train by <b>260 W</b> and your workouts follow from it — that's real validation. Recent riding has been easy, so the computed reads sit a touch lower (eFTP <b>253 W</b>) — that's under-reading, not proof 260 is too high.</p>
+
+  <details class="disc" open>
+    <summary><span>How we got this — 6 cross-checks</span><span class="chev">›</span></summary>
+    <div class="rows">
+      <div class="r inuse"><div><div class="n">You train by</div><div class="f">the value you ride to</div></div><div class="v">260 W</div></div>
+      <div class="r"><div><div class="n">intervals eFTP</div><div class="f">from your power, no formal test</div></div><div class="v">253 W</div></div>
+      <div class="r floor"><div><div class="n">Aerobic-efficiency floor</div><div class="f">you hold ~197 W at an easy, steady HR → FTP is at least this</div></div><div class="v">≥ 263 W</div></div>
+      <div class="r"><div><div class="n">Critical Power</div><div class="f">your power-duration ceiling (sits above FTP)</div></div><div class="v">268 W</div></div>
+      <div class="r"><div><div class="n">Best 20-min ×0.95</div><div class="f">your best recent 20-min</div></div><div class="v">234 W</div></div>
+      <div class="r"><div><div class="n">HR vs power</div><div class="f">rough — from easy rides, under-reads</div></div><div class="v">220 W</div></div>
+    </div>
+    <div class="sharp">💪 A hard 20–40 min effort (flat road or trainer, no surges) would pin a precise number and lift the low reads.</div>
+  </details>
+</div></div>
+</div>
+
+</body></html>

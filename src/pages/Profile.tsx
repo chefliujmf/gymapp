@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getSetting, setSetting } from '../db'
-import NotificationsSettings from '../NotificationsSettings'
 import { authApi, type User } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import Availability from '../Availability'
@@ -280,15 +279,13 @@ export default function Profile() {
       {/* #337b — Profile is PREFERENCES. Your benchmarks (VO₂max, FTP, threshold pace, zones, predictions)
           live in ONE place — Stats — with the Manual/Auto/Computed picker. No duplicate UX here. */}
       <div className="section-title" id="ob-numbers">Your data</div>
-      <Link to="/stats" className="btn btn--ghost" style={{ marginBottom: 8 }}>📊 Benchmarks, VO₂max, zones & trends — open Stats ›</Link>
       {/* #235 — turn the readiness self-learning on/off */}
       <label className="toggle-row">
         <span className="toggle-row__t"><b>Learn from my check-ins</b><span className="meta">Auto-adapt your Sleep/Freshness/Energy scores toward how you actually rate them over time.</span></span>
         <input type="checkbox" className="toggle-row__cb" checked={user?.learnReadiness !== false} onChange={(e) => authApi.saveProfile({ learnReadiness: e.target.checked }).then(() => refresh()).catch(() => {})} />
       </label>
 
-      {/* #457 — phone push notifications (per-type) */}
-      <NotificationsSettings />
+      {/* #511 — Notifications moved to Settings → Notifications (JM 2026-07-14). */}
 
     </div>
   )

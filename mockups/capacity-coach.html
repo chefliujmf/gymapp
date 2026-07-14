@@ -1,0 +1,131 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Capacity + coach intent</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--amber:#f5b53d;--blue:#5ec8ff;--violet:#9b8cff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05070a;color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:20px;display:flex;justify-content:center}
+  .phone{width:412px}
+  .subhead{display:flex;align-items:center;gap:10px;margin:2px 2px 14px}
+  .subhead .bk{color:var(--text-dim);font-size:22px}
+  .subhead h1{font-size:22px;font-weight:700}
+  .subhead p{font-size:12.5px;color:var(--text-dim)}
+  .card{background:linear-gradient(#21252f,#191c24);border:1px solid #262c37;border-radius:16px;padding:16px;margin-bottom:12px}
+  .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#7c8290;font-weight:700}
+  /* hero */
+  .hero{display:flex;align-items:flex-start;justify-content:space-between}
+  .hero .big{font-size:46px;font-weight:750;letter-spacing:-.02em;line-height:1.02;margin-top:2px}
+  .hero .big span{font-size:20px;color:var(--text-dim);font-weight:600;margin-left:2px}
+  .hero .sub{font-size:12.5px;color:var(--text-dim);margin-top:4px}
+  .pill{font-size:11px;font-weight:700;padding:4px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:5px}
+  .pill.solid{background:rgba(52,224,125,.14);color:var(--accent)}
+  .train{margin-top:11px;padding-top:11px;border-top:1px solid #262c37;font-size:12.5px;color:var(--text-dim)}
+  .train b{color:var(--text)}
+  /* rider profile */
+  .rt{display:flex;align-items:center;gap:9px;margin:2px 0 13px}
+  .rt .emoji{font-size:26px}
+  .rt .nm{font-size:18px;font-weight:750}
+  .rt .nm small{display:block;font-size:11.5px;color:var(--text-dim);font-weight:500;letter-spacing:0;text-transform:none}
+  .bars{display:flex;flex-direction:column;gap:9px}
+  .brow{display:grid;grid-template-columns:96px 1fr auto;align-items:center;gap:10px}
+  .brow .bn{font-size:12.5px;color:var(--text-dim)}
+  .track{height:9px;border-radius:5px;background:#12151b;overflow:hidden}
+  .track i{display:block;height:100%;border-radius:5px}
+  .brow .bv{font-size:11.5px;color:var(--text-dim);font-weight:600}
+  /* strengths */
+  .sblock{display:flex;gap:11px;padding:11px 0}
+  .sblock+.sblock{border-top:1px solid #21252e}
+  .sblock .ic{font-size:19px;line-height:1.2}
+  .sblock .st{font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:3px}
+  .sblock .sx{font-size:13px;color:var(--text-dim);line-height:1.5}
+  .sblock .sx b{color:var(--text)}
+  .st.win{color:var(--accent)} .st.opp{color:var(--amber)}
+  /* coach building */
+  .coach h3{font-size:14px;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:7px}
+  .cstep{padding:12px 0;border-top:1px solid #21252e}
+  .cstep:first-of-type{border-top:0;padding-top:10px}
+  .cstep .tag{font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 7px;border-radius:5px;margin-right:8px}
+  .tag.now{background:rgba(52,224,125,.16);color:var(--accent)} .tag.next{background:rgba(94,200,255,.14);color:var(--blue)}
+  .cstep .ct{font-size:14px;font-weight:650;margin-bottom:4px}
+  .cstep .cw{font-size:12.5px;color:var(--text-dim);line-height:1.5}
+  .cstep .cw b{color:var(--text)}
+  .fb{margin-top:12px;background:#12151b;border:1px solid #242a34;border-radius:12px;padding:12px}
+  .fb .fq{font-size:12.5px;color:var(--text);margin-bottom:9px;font-weight:600}
+  .fb .frow{display:flex;gap:7px}
+  .fb button{flex:1;background:#1b1f27;border:1px solid #2b323d;color:var(--text);border-radius:9px;padding:8px 4px;font-size:12px;font-family:inherit;font-weight:600}
+  .fb button.on{background:rgba(52,224,125,.16);border-color:var(--accent);color:var(--accent)}
+  /* details list */
+  .drow{display:flex;align-items:center;justify-content:space-between;padding:12px 2px;border-top:1px solid #21252e}
+  .drow:first-of-type{border-top:0}
+  .drow .dn{font-size:13.5px}
+  .drow .dn small{color:var(--text-dim);font-size:11.5px;margin-left:6px}
+  .drow .dv{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700}
+  .drow .dv .chev{color:#565d6b;font-weight:400}
+  .note{font-size:11px;color:#6b7280;text-align:center;margin:2px 0 16px}
+</style></head>
+<body>
+<div class="phone">
+
+  <div class="subhead"><span class="bk">‹</span><div><h1>Cycling</h1><p>your capacity · what your coach is building</p></div></div>
+
+  <!-- HERO: one number -->
+  <div class="card">
+    <div class="hero">
+      <div>
+        <div class="lbl">Threshold</div>
+        <div class="big">253<span> W</span></div>
+        <div class="sub">the hardest power you can hold ~an hour</div>
+      </div>
+      <span class="pill solid">● Solid</span>
+    </div>
+    <div class="train">You train at <b>260 W</b> — a touch generous, but well within range. Your eFTP (253) and Critical Power (248) agree, so this is trustworthy.</div>
+  </div>
+
+  <!-- RIDER PROFILE -->
+  <div class="card">
+    <div class="lbl" style="margin-bottom:10px">Your rider type</div>
+    <div class="rt"><span class="emoji">🚂</span><div class="nm">Diesel<small>big aerobic engine · modest top-end kick</small></div></div>
+    <div class="bars">
+      <div class="brow"><span class="bn">Aerobic engine</span><div class="track"><i style="width:82%;background:linear-gradient(90deg,#2b8f5a,#34e07d)"></i></div><span class="bv">strong</span></div>
+      <div class="brow"><span class="bn">Anaerobic kick</span><div class="track"><i style="width:34%;background:linear-gradient(90deg,#8a6d2a,#f5b53d)"></i></div><span class="bv">lean · 225 J/kg</span></div>
+    </div>
+  </div>
+
+  <!-- STRENGTHS & OPPORTUNITY -->
+  <div class="card">
+    <div class="lbl" style="margin-bottom:4px">What you're made of</div>
+    <div class="sblock"><span class="ic">💪</span><div><div class="st win">Your strength</div><div class="sx"><b>Endurance & repeatable threshold.</b> You hold power a long time and recover between hard efforts — fatigue resistance is your weapon. Long climbs, tempo, time-trial efforts suit you.</div></div></div>
+    <div class="sblock"><span class="ic">🎯</span><div><div class="st opp">Biggest opportunity</div><div class="sx"><b>Your aerobic ceiling (VO₂max ~53).</b> That's the roof your threshold climbs toward — lift it and everything underneath rises. Your top-end punch (W′) is your leanest area, so short, sharp efforts are where there's most to gain.</div></div></div>
+  </div>
+
+  <!-- WHAT THE COACH IS BUILDING -->
+  <div class="card coach">
+    <h3>🧭 What I'm building for you</h3>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:4px">so you know the aim — and can tell me if it's landing right</p>
+    <div class="cstep">
+      <div class="ct"><span class="tag now">NOW</span>Raise your threshold</div>
+      <div class="cw"><b>3×15 min sweet-spot, nudging +5 W each week.</b> This plays straight to your diesel strength — for you it's the fastest, most durable FTP gain, and it's repeatable without wrecking you.</div>
+    </div>
+    <div class="cstep">
+      <div class="ct"><span class="tag next">ADDING</span>Lift the ceiling</div>
+      <div class="cw"><b>One VO₂max session a week — 5×3 min hard.</b> Your threshold can only climb as high as your ceiling lets it. This raises the roof, and quietly builds the top-end kick you're leanest on.</div>
+    </div>
+    <div class="fb">
+      <div class="fq">Your last sweet-spot 3×15 — how did it land?</div>
+      <div class="frow"><button>😮‍💨 Too hard</button><button class="on">👌 Right</button><button>😴 Too easy</button></div>
+    </div>
+  </div>
+
+  <!-- THE OTHER METRICS, as insights -->
+  <div class="card">
+    <div class="lbl" style="margin-bottom:4px">The details</div>
+    <div class="drow"><span class="dn">Critical Power<small>your engine size</small></span><span class="dv">248 W <span class="chev">›</span></span></div>
+    <div class="drow"><span class="dn">W′ · your kick<small>anaerobic battery</small></span><span class="dv">17 kJ <span class="chev">›</span></span></div>
+    <div class="drow"><span class="dn">VO₂max<small>aerobic ceiling</small></span><span class="dv">53 <span class="chev">›</span></span></div>
+    <div class="drow"><span class="dn">Time to exhaustion<small>at threshold</small></span><span class="dv">~24 min <span class="chev">›</span></span></div>
+    <div class="drow"><span class="dn">Max HR<small>observed 184 · set 185</small></span><span class="dv">185 <span class="chev">›</span></span></div>
+  </div>
+  <div class="note">Tap any detail for the full read. These feed the coach — you don't have to think about them.</div>
+
+</div>
+</body></html>

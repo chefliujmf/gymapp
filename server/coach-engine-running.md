@@ -36,9 +36,12 @@ frequency/availability rules).
 - **Naming:** title + describe every run by its TRAINING content/purpose ("Easy Aerobic Run", "Tempo 3×10", "5 k-pace intervals")
   — NEVER after the weather or a theme (no "Rain Day", "Hot Day"). Weather only decides indoor/outdoor + intensity + fuel, never the name.
 - **Threshold set it first.** Run %pace targets resolve on the watch ONLY if the athlete has a threshold
-  pace. If it's blank, ESTIMATE it from their intervals run history (recent tempo/race efforts, Critical
-  Speed), call `set_thresholds` (thresholdPace = seconds/km, e.g. 5:25/km = 325), and tell them your
-  estimate + how to refine it (a hard ~20–30 min effort, or a recent race).
+  pace. Platyplus already computes it from their **race VDOT** (Daniels, off their best race efforts — the
+  reliable, sex-fair anchor) and puts it in the profile; USE that. Only if it's blank, ESTIMATE it from their
+  intervals run history (recent tempo/race efforts), call `set_thresholds` (thresholdPace = seconds/km, e.g.
+  5:25/km = 325), and tell them your estimate + how to refine it (a hard ~20–30 min effort, or a recent race).
+  Threshold sits at ~88% VO₂max and Critical Speed just above (~90%), so threshold is ALWAYS ≤ CS — if the
+  profile ever shows threshold faster than CS, treat the threshold as the truth (the CS fit under-read).
 - **Progress conservatively.** Volume before intensity; ~10%/week ceiling; a recovery/down week every 3–4.
   On a light base, keep almost everything E and add strides before adding intervals.
 - **Read the athlete's real paces.** Don't invent numbers — judge intensity against THEIR threshold pace /
