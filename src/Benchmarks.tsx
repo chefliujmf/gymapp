@@ -234,9 +234,16 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const tteRideObs = powerCurve ? tteFromPower(powerCurve.secs, powerCurve.watts, chosenFtp ?? eftpVal) : null
   const tteRideEst = powerCurve ? tteModelPower(chosenFtp ?? eftpVal, powerCurve.cp, powerCurve.wPrime) : null
   const tteRidePick = pickTte(tteRideObs, tteRideEst), tteRide = tteRidePick.sec, tteRideEstimated = tteRidePick.estimated
-  const tteRunObs = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, chosenPace ?? paceComputed) : null
-  const tteRunEst = paceCurve ? tteModelPace(chosenPace ?? paceComputed, paceCurve.cs, paceCurve.dPrime) : null
-  const tteRunPick = pickTte(tteRunObs, tteRunEst), tteRun = tteRunPick.sec, tteRunEstimated = tteRunPick.estimated
+  const thPace = chosenPace ?? paceComputed
+  const tteRunObs = paceCurve ? tteFromPace(paceCurve.dist, paceCurve.secs, thPace) : null
+  const tteRunEst = paceCurve ? tteModelPace(thPace, paceCurve.cs, paceCurve.dPrime) : null
+  // #508 (JM: "5:46 TTE = threshold too high OR TTE inaccurate — check my races"). His threshold (4:57) MATCHES his real
+  // 5k (VDOT 42 → 4:55), so it's NOT too fast. The problem is CS: the model reads it SLOWER than his threshold — but CS
+  // is the CEILING (threshold ≤ CS), so CS is UNDER-READ, and the short modeled TTE (threshold appears far above CS) is a
+  // FANTASY. When threshold reads faster than CS, the CS fit is under-constrained → we DON'T show the bogus short TTE.
+  const csUnderReadRun = csPace != null && thPace != null && thPace < csPace - 6
+  const tteRunPick = pickTte(tteRunObs, tteRunEst)
+  const tteRun = csUnderReadRun ? null : tteRunPick.sec, tteRunEstimated = tteRunPick.estimated
   // #508 (JM: "how will the insight AND coach focus update when I change a value?") — the profile must read the IN-USE
   // value per metric (a Manual override wins in Manual mode, exactly like chosenFtp), so editing TTE/CP/W′/CS/D′ flows
   // into the reads AND the coach focus (athleteProfile derives BOTH from these inputs). Manual → the saved value; else computed.
@@ -363,10 +370,10 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       sharpen: 'extensive threshold work — 3×15–20 min @ 90–95% FTP — extends your TTE (longer durations, not more power).',
     },
     {
-      key: 'tteRun', label: 'TTE', computed: tteRun, computedSrc: tteRunEstimated ? 'estimated from your Critical-Speed model' : 'longest you held threshold pace', pending: tteRun == null ? (paceCurve ? 'after a sustained threshold run (15–40 min)' : 'after a few runs — read from your best runs') : undefined, manual: (ss.running as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('running', { tte: v }),
-      chip: tteRunEstimated ? 'CS model' : 'Curve',
+      key: 'tteRun', label: 'TTE', computed: tteRun, computedSrc: tteRunEstimated ? 'estimated from your Critical-Speed model' : 'longest you held threshold pace', pending: tteRun == null ? (csUnderReadRun ? 'your Critical-Speed model reads SLOWER than your race pace — since CS is the ceiling, it\'s under-read, so TTE can\'t be pinned yet. One hard sustained 20–40 min run fits it true.' : paceCurve ? 'after a sustained threshold run (15–40 min)' : 'after a few runs — read from your best runs') : undefined, manual: (ss.running as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('running', { tte: v }),
+      chip: csUnderReadRun ? 'CS under-read' : tteRunEstimated ? 'CS model' : 'Curve',
       conf: tteConfidence({ tte: tteRun, estimated: tteRunEstimated }),
-      narr: <>How long you can hold your <b>threshold pace</b> before fatigue — normally <b>30–70 min</b>. Read off your best runs once you've held it that long, else estimated from your pace-duration model. A short one usually means your threshold pace is set too fast — or extend it with sustained threshold runs (3×15–20 min @ threshold).</>,
+      narr: <>How long you can hold your <b>threshold pace</b> before fatigue — <b>~30–70 min by definition</b> (threshold IS your ~1-hour pace). {csUnderReadRun ? <>Right now your <b>Critical-Speed model reads slower than your race pace</b> — but CS is the ceiling, so it's <b>under-read</b> (your CS fit needs more hard efforts across distances). That's why a precise TTE can't be pinned yet — NOT that your threshold is too fast. One hard sustained 20–40 min run settles it.</> : <>Read from your best runs once you've held it that long, else from your pace-duration model. Extend it with sustained threshold runs (3×15–20 min @ threshold).</>}</>,
       sci: [{ name: 'From your best runs', formula: 'longest time ≤ threshold', value: tteRunObs != null ? fmtTte(tteRunObs) : '—', inUse: !tteRunEstimated && tteRun != null }, { name: 'Modeled', formula: 'from your pace-duration fit', value: tteRunEst != null ? fmtTte(tteRunEst) : '—', inUse: tteRunEstimated }],
       sharpen: 'sustained threshold runs (15–40 min, ~5 k–10 k effort) extend your TTE — or ease your threshold pace toward your critical speed.',
     },
