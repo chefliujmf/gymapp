@@ -175,8 +175,15 @@ export async function fetchPaceSeasons(): Promise<PaceSeason[] | null> {
       const c = list[i] || {}
       const dist: number[] = c?.distance || [], val: number[] = c?.values || []
       const pts: { s: number; p: number; d: number }[] = []
-      for (let j = 0; j < dist.length; j++) if (dist[j] > 0 && val[j] > 0) pts.push({ s: Math.round(val[j]), p: Math.round((val[j] / dist[j]) * 1000), d: dist[j] })
+      // #508 — only DISTANCES ≥ 400 m: a best TIME over 400 m+ can't be faked by one GPS spike, so it's glitch-free;
+      // sub-400 m "pace" is GPS noise (JM had a raw 0:04/km) that wrecks the curve. (This is why intervals starts at 400 m.)
+      for (let j = 0; j < dist.length; j++) if (dist[j] >= 400 && val[j] > 0) pts.push({ s: Math.round(val[j]), p: (val[j] / dist[j]) * 1000, d: dist[j] })
       pts.sort((a, b) => a.s - b.s)
+      // #508 — MONOTONIC HULL: a mean-max curve must be non-decreasing in pace (a longer effort can NEVER be faster
+      // than a shorter one). Any dip is a data glitch → clamp it up to the running max. (Researched: WKO5/TrainingPeaks
+      // smooth the raw mean-max to this monotonic hull; removes the fake super-fast segments JM saw.)
+      let mx = 0
+      for (const pt of pts) { if (pt.p < mx) pt.p = mx; else mx = pt.p; pt.p = Math.round(pt.p) }
       const secs: number[] = [], pace: number[] = [], dm: number[] = []
       for (const pt of pts) {
         if (secs.length && pt.s === secs[secs.length - 1]) { if (pt.p < pace[pace.length - 1]) { pace[pace.length - 1] = pt.p; dm[dm.length - 1] = pt.d } }

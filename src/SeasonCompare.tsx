@@ -82,7 +82,7 @@ export function SeasonCompareView({ sport, seasons, weight, threshold, ftp }: { 
         </div>
         {sport === 'cycling'
           ? <PowerCurveChart secs={(thisS as PowerSeason).secs} watts={(thisS as PowerSeason).watts} overlay={comparing ? { secs: (cmp as PowerSeason).secs, watts: (cmp as PowerSeason).watts, color: '#5ec8ff' } : null} height={190} />
-          : <PaceCurveChart {...paceCurvePts(thisS as PaceSeason)} overlay={comparing ? { ...paceCurvePts(cmp as PaceSeason), color: '#5ec8ff' } : null} height={190} />}
+          : <PaceCurveChart {...paceModelPts((thisS as PaceSeason).cs, (thisS as PaceSeason).dPrime)} overlay={comparing ? { ...paceModelPts((cmp as PaceSeason).cs, (cmp as PaceSeason).dPrime), color: '#5ec8ff' } : null} height={190} />}
         {canCompare && (
         <div className="sc-pick">
           <span className="meta">Show:</span>
@@ -132,12 +132,18 @@ export function SeasonCompareView({ sport, seasons, weight, threshold, ftp }: { 
   )
 }
 
-// #508 — the pace CURVE from the CLEAN, sanity-filtered best-distance times (400 m … 10 k), NOT the raw time-based
-// mean-max, which is riddled with GPS glitches (JM had a raw "pace" of 0:04/km → negative axis + a fake super-fast
-// all-time line). Same data the best-efforts table uses, and the same distance basis intervals plots.
-function paceCurvePts(s: PaceSeason): { secs: number[]; pace: number[] } {
-  const secs: number[] = [], pace: number[] = []
-  PACE_DISTANCES.forEach((pd, i) => { const t = s.best[i]; if (t != null && t > 0 && pd.m > 0) { secs.push(t); pace.push(Math.round((t / pd.m) * 1000)) } })
+// #508 — RUNNING pace curve = the smooth CS/D′ MODEL, not the raw mean-max. Raw pace has GPS glitches (JM: a 0:05/km
+// point) that a monotonic hull can't remove when they sit at the fast end. The 2-param model pace(t)=1000/(CS+D′/t)
+// is glitch-proof by construction AND — unlike cycling's identical CP — running CS genuinely differs per season
+// (this 3.17 vs last 2.98 m/s), so the season lines separate cleanly. Sampled across 2 min–1 h; PaceCurveChart adds the
+// round pace axis. (Cycling stays the RAW overlay: power has no GPS glitch and CP is stable, so raw shows the sprints.)
+function paceModelPts(cs?: number | null, dPrime?: number | null): { secs: number[]; pace: number[] } {
+  if (!cs || cs <= 0) return { secs: [], pace: [] }
+  // #508 — CAP D′ at a sane 300 m: a fit to glitchy data returns absurd D′ (JM's all-time = 740 m) that blows the short
+  // end to impossible speeds. And FLOOR the pace at 2:30/km (150 s) — a hard physiological ceiling no one beats for
+  // minutes — so the curve can never draw a fantasy pace no matter what the fit says.
+  const dP = Math.min(300, Math.max(0, dPrime || 0)), secs: number[] = [], pace: number[] = []
+  for (const t of [120, 180, 240, 300, 420, 600, 900, 1200, 1800, 2400, 3000, 3600]) { secs.push(t); pace.push(Math.max(150, Math.round(1000 / (cs + dP / t)))) }
   return { secs, pace }
 }
 const rnd0 = (v?: number | null) => (v == null ? null : Math.round(v)) // #464 — whole watts (eFTP/CP), matching the benchmark card
