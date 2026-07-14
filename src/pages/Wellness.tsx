@@ -39,6 +39,11 @@ function movingAvg(data: (number | null)[], w = 7): (number | null)[] {
 // (#395) WTrend removed — the bespoke axis-less polyline is replaced by the shared TrendChart in MetricCard
 // (hover + tooltip + the one-chart standard). `movingAvg`/`seriesStats` above are still used.
 
+// #513 — format an ISO day (YYYY-MM-DD) as a short axis label ("Jul 14"). The chart components own the formatting;
+// `view.dates` stays RAW ISO. (Bug fix: `view` used to pre-format the labels, then MetricCard re-parsed them as ISO
+// → `new Date("Jul 14T00:00")` = Invalid Date on every axis tick + tooltip. Keep the two in one place, here.)
+const fmtDayLabel = (iso: string): string => new Date(iso + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
 // #395 — Wellness metric card now uses the SHARED TrendChart (hover scrubber + tooltip showing the date +
 // value, axes) — same standard as Load & Form — with the daily as a faint underlay, the 7-day average bold,
 // and the coach-voice insight for THIS metric under the chart (consistent with the Fitness charts).
@@ -47,11 +52,15 @@ function MetricCard({ title, data, dates, color, unit = '', insight }: { title: 
   const now = vals.length ? vals[vals.length - 1] : null
   const avg = vals.length ? round1(vals.reduce((a, b) => a + b, 0) / vals.length) : null
   const mav = useMemo(() => movingAvg(data), [data])
-  const labels = useMemo(() => dates.map((d) => new Date(d + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })), [dates])
+  const labels = useMemo(() => dates.map(fmtDayLabel), [dates]) // #513 — raw ISO in, "Jul 14" out (no more Invalid Date)
+  // #513 (JM: "the 6.1h — what is it? be explicit") — the big number is the LATEST reading; label it so it can't be
+  // confused with the average. Also surface WHEN it was (the last day that actually has a value).
+  const lastIdx = (() => { for (let i = data.length - 1; i >= 0; i--) if (data[i] != null) return i; return -1 })()
+  const nowDate = lastIdx >= 0 && dates[lastIdx] ? fmtDayLabel(dates[lastIdx]) : null
   return (
     <div className="card wcard">
-      <div className="wcard__h"><h3>{title}</h3><span className="wcard__now">{now ?? '—'}<small>{unit}</small></span></div>
-      {vals.length ? <div className="wcard__sub">avg {avg}{unit} · min {Math.min(...vals)} · max {Math.max(...vals)}</div> : null}
+      <div className="wcard__h"><h3>{title}</h3><span className="wcard__now"><small className="meta" style={{ fontWeight: 600, marginRight: 5 }}>latest{nowDate ? ` · ${nowDate}` : ''}</small>{now ?? '—'}<small>{unit}</small></span></div>
+      {vals.length ? <div className="wcard__sub">avg {avg}{unit} · min {Math.min(...vals)}{unit} · max {Math.max(...vals)}{unit} · {vals.length} day{vals.length === 1 ? '' : 's'}</div> : null}
       {vals.length >= 2
         ? <TrendChart height={130} axes labels={labels} unit={unit} series={[{ label: 'daily', color, data, faint: true }, { label: '7-day avg', color, data: mav }]} />
         : <p className="meta" style={{ margin: '8px 2px' }}>Not enough data in this range.</p>}
@@ -75,6 +84,7 @@ const CB_OVERALL_COLOR = '#9b8cff'
 
 function CheckinBreakdown({ series, dates }: { series: Record<'sleep' | 'energy' | 'form', (number | null)[]>; dates: string[] }) {
   const [focus, setFocus] = useState<Focus>(null)
+  const labels = useMemo(() => dates.map(fmtDayLabel), [dates]) // #513 — raw ISO in, "Jul 14" out (no more Invalid Date)
   // 7-day-avg lines (drawn); overall = mean of the three present values per day, then 7-day-avg.
   const avgLines = useMemo(() => ({
     sleep: movingAvg(series.sleep), energy: movingAvg(series.energy), form: movingAvg(series.form),
@@ -124,7 +134,7 @@ function CheckinBreakdown({ series, dates }: { series: Record<'sleep' | 'energy'
         <span className="wcard__now" style={{ color: headColor }}>{headNow ?? '—'}</span>
       </div>
       <div className="wcard__sub">Overall avg {overallStat.avg} · min {overallStat.min} · max {overallStat.max}{!focus ? ' — tap a metric to focus' : ''}</div>
-      <TrendChart height={150} axes labels={dates} minSpan={2} series={cbSeries} />
+      <TrendChart height={150} axes labels={labels} minSpan={2} series={cbSeries} />
       {cbInsight && <p className="fit-insight">{cbInsight}</p>}
       <div className="cb__leg">
         {CB_METRICS.map((m) => {
@@ -183,8 +193,8 @@ export default function Wellness() {
       return parts.length ? round1(parts.reduce((a, b) => a + b, 0) / parts.length) : null
     })
     const hasCheckins = checkin.some((v) => v != null)
-    const labels = days.map((d) => new Date(d + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))
-    return { dates: labels, sleep: col('sleepHours'), hrv: col('hrv'), rhr: col('restingHR'), weight: col('weight'), checkin, checkinSeries, hasCheckins }
+    // #513 — return RAW ISO days; each chart component formats them for its axis (fixes the double-format Invalid Date).
+    return { dates: days, sleep: col('sleepHours'), hrv: col('hrv'), rhr: col('restingHR'), weight: col('weight'), checkin, checkinSeries, hasCheckins }
   }, [rows, checkins, from, to])
 
   const anyWellness = (rows || []).some((r) => r.sleepHours != null || r.hrv != null || r.restingHR != null || r.weight != null)
