@@ -172,7 +172,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const PREG_SHARPEN = 'While pregnant, this is a baseline — not a target. Train by feel (talk-test); your coach adapts every session for you.'
   const paceManual = ss.running?.thresholdPace ?? user?.runThresholdPace ?? null
   const weight = pbWeight ?? pull?.weight ?? null
-  const isVdotRun = runEst?.source === 'race VDOT' // #512 — threshold is grounded in real race bests (Daniels VDOT): sex-fair + reliable → trust it directly, skip the HR-cost workaround
+  const isVdotRun = !!runEst?.source?.startsWith('race VDOT') // #512 — threshold grounded in real race bests (Daniels VDOT): sex-fair + reliable → trust it directly, skip the HR-cost workaround. startsWith (not ===) so a decorated label can't silently disable the whole VDOT path.
   const vdot = runEst?.vdot ?? user?.runVdot ?? null // #512 — prefer the freshly-computed race VDOT
   // #403 — CP/W′ (cycling) + CS/D′ (running) from the power/pace-duration model fit. CS shown as a pace (sec/km).
   const cp = powerCurve?.cp ?? null // #508 — the INDEPENDENT power-duration fit. NEVER derive it from FTP (that's circular); it measures the SAME threshold FTP does, so they should sit CLOSE (not 10–15 W apart — that "rule" produces nonsense vs real training).

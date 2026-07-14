@@ -464,7 +464,10 @@ app.get('/auth/intervals/run-estimate', auth, async (req, res) => {
   if (est.thresholdPace > 0) { req.user.runPaceEst = Math.round(est.thresholdPace); save(store) } // #236 stash computed pace for the coach
   // #512 — a race-VDOT read is reliable (from actual race times), so never call it "low" — floor it to medium.
   if (est.source === 'race VDOT' && confidence === 'low') confidence = 'medium'
-  res.json({ available: true, ...est, confidence, runs: runs.length, source: est.source === 'race VDOT' ? 'race VDOT (your best times)' : 'critical speed (your recent runs)' })
+  // #512 — return the RAW source ('race VDOT' | 'critical speed') so the client can branch on it exactly. (Was
+  // decorated to 'race VDOT (your best times)', which broke the client's `source === 'race VDOT'` match → the whole
+  // VDOT path never activated in the UI. `...est` already carries the bare source; don't override it with a label.)
+  res.json({ available: true, ...est, confidence, runs: runs.length })
 })
 
 // #337 — cycling power benchmarks for a PROPER VO₂max: best 5-min power (≈ maximal aerobic power, MAP)
