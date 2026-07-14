@@ -14,13 +14,18 @@ UX-BACKLOG.md and REGRESSION.md were folded into it.)
 **ALSO read JM's LIVE in-app TRIAGE (#438/#440).** JM (and any user, via the top-bar report button) triages
 the backlog inside the app (Admin → Backlog): per item # a **status** (review/todo/build/totest/pass/fail/
 done/discarded), **priority**, **type** (bug/feature/idea/chore), **comments**, plus **app-added items** and
-**user bug/idea reports**. This all lives in the **SHARED GLOBAL store** — `store.backlog = {triage, added}`,
-persisted in `app_meta.backlog` (NOT per-user). The item LIST is generated from this file
-(`scripts/build-backlog.mjs` → `src/data/generated/backlog.json`, rebuilt each deploy). **Each session, read
-the overlay** (`GET /auth/admin/backlog`, or `select doc->'backlog' from app_meta where id=1`) and let it
-STEER the queue: **his status OVERRIDES my .md status** (esp. Done = his ✅ sign-off; `review` = a fresh user
-report to triage), **his priority OVERRIDES top-to-bottom order**, skip discarded, and FOLD his comments +
-app-added items into the numbered entry here (so the .md stays authoritative). See memory `platyplus-admin-backlog`.
+**user bug/idea reports**. ⚠️ **The overlay lives in ONE SHARED FILE — `/srv/backlog/backlog.json` — bind-mounted
+into BOTH the prod AND QA containers from the host `/home/jmf/backlog-shared`. It is ONE backlog for ALL environments
+(JM directive: prod + QA are NEVER separate backlogs).** `{triage, added}`. NOT `app_meta` (that Postgres field is a
+DEAD legacy store the app IGNORES — reading/writing it silently does NOTHING; JM lost a whole session to this). The item
+LIST is generated from `FEEDBACK-LOG.md` (`scripts/build-catalog`… → `scripts/build-backlog.mjs` →
+`src/data/generated/backlog.json`, rebuilt each deploy). **Each session, read the overlay via the API `GET
+/auth/admin/backlog`** (which reads the shared file), or on the box `cat /srv/backlog/backlog.json`. **WRITE it only via
+`PUT /auth/admin/backlog/:n`** (or edit `/srv/backlog/backlog.json` on the box), then **VERIFY the write landed by
+reading it back** — NEVER `app_meta`. Let it STEER the queue: **his status OVERRIDES my .md status** (esp. Done = his ✅
+sign-off; `review` = a fresh user report; `fail` = re-work top priority), **his priority OVERRIDES top-to-bottom order**,
+skip discarded, and FOLD his comments + app-added items into the numbered entry here (so the .md stays authoritative).
+See memory `platyplus-admin-backlog` + skill `verify-before-ready`.
 
 ## ▶ TESTING & VERIFICATION — HARD RULE (JM directive 2026-06-26)
 JM lost trust because I shipped "built" code that didn't work. The fix is non-negotiable:
