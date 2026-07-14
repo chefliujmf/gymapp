@@ -29,6 +29,15 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIs
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve } from './sport-settings.js'
+// #508 — DEEP-merge intervals sport-settings into ours PER GROUP. intervals only knows ftp/maxHr/lthr/thresholdPace;
+// our LOCAL benchmarks (cp/wPrime/tte/cs/dPrime) live in the same per-sport object. A shallow `{...ours, ...mapped}`
+// makes mapped.cycling REPLACE the whole cycling object → wipes cp/W′/TTE on every session-load/pull (JM: "manual
+// value does not save" — it saved, then the next sync deleted it). Overlay intervals' fields, keep everything else.
+function mergeIcuSportSettings(existing, mapped) {
+  const out = { ...(existing || {}) }
+  for (const g of Object.keys(mapped || {})) out[g] = { ...(out[g] || {}), ...(mapped[g] || {}) }
+  return out
+}
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage)
@@ -321,7 +330,7 @@ async function computeAndStashAnchors(user) {
       if (hrs.length) observed = hrs[0]
       if (!observed) { const am = acts.map((a) => Number(a.athlete_max_hr) || 0).find((h) => h >= 120 && h <= 230); if (am) observed = am }
     }
-    if (!observed) { const ageYr = user.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null; if (ageYr != null && ageYr > 8 && ageYr < 100) observed = Math.round(208 - 0.7 * ageYr) }
+    if (!observed) { const ageYr = user.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null; if (ageYr != null && ageYr > 8 && ageYr < 100) observed = Math.round(user.sex === 'female' ? 206 - 0.88 * ageYr : 208 - 0.7 * ageYr) } // #508 sex-specific (Gulati/Tanaka)
     if (observed) { user.maxHR = observed; changed = true }
   }
   // Running threshold pace from the pace curve (Critical Speed) — the coach's run anchor.
@@ -345,7 +354,7 @@ app.put('/auth/icu', auth, async (req, res) => {
       // per-sport thresholds) from the athlete's intervals sport-settings ON CONNECT, so the coach has real numbers
       // immediately without the user opening Stats. Fill-if-empty; the Stats cards refine them from the curves later.
       const mapped = fromIcuSportSettings(me.sportSettings || [])
-      req.user.sportSettings = { ...(req.user.sportSettings || {}), ...mapped }
+      req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped)
       if (mapped.cycling?.ftp != null && req.user.ftp == null) req.user.ftp = mapped.cycling.ftp
       if (mapped.cycling?.maxHr != null && req.user.maxHR == null) req.user.maxHR = mapped.cycling.maxHr
       // …and if settings still left an anchor blank (unconfigured account), COMPUTE it from their history so the
@@ -387,7 +396,10 @@ app.put('/auth/profile', auth, (req, res) => {
   // #236 — per-stat MANUAL vs COMPUTED preference. { vo2max:'manual'|'computed', ftp:…, thresholdPace:…, maxHr:… }
   if (req.body.statPrefs && typeof req.body.statPrefs === 'object') {
     req.user.statPrefs = req.user.statPrefs || {}
-    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed' || v === 'auto') && /^(vo2max|ftp|thresholdPace|maxHr|sleepNeed)$/.test(k)) req.user.statPrefs[k] = v
+    // #508 — the whitelist was missing the model benchmarks (tteRide/tteRun/cp/wPrime/cs/dPrime), so switching one of
+    // them to Manual silently dropped the MODE server-side → the card stayed on Auto/computed and the manual value the
+    // user typed was never used (JM: "TTE manual won't save"). The VALUE saved (sportSettings); the PREF did not.
+    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed' || v === 'auto') && /^(vo2max|ftp|thresholdPace|maxHr|sleepNeed|tteRide|tteRun|cp|wPrime|cs|dPrime)$/.test(k)) req.user.statPrefs[k] = v
   }
   // #457 — per-type phone-push preferences (clamped to booleans)
   if (req.body.pushPrefs && typeof req.body.pushPrefs === 'object') {
@@ -411,7 +423,7 @@ app.get('/auth/intervals/athlete', auth, async (req, res) => {
   if (!a) return res.status(502).json({ connected: true, error: 'could not read intervals athlete' })
   const mapped = fromIcuSportSettings(a.sportSettings || [])
   // refresh the local mirror from intervals (canonical), keeping Platyplus-only fields
-  req.user.sportSettings = { ...(req.user.sportSettings || {}), ...mapped }
+  req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped)
   if (mapped.cycling?.ftp != null) req.user.ftp = mapped.cycling.ftp
   if (mapped.cycling?.maxHr != null) req.user.maxHR = mapped.cycling.maxHr
   const weight = a.icu_weight != null ? a.icu_weight : (a.weight != null ? a.weight : null)
@@ -482,6 +494,12 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
     .map((a) => ({ paceSecKm: Math.round(a.moving_time / (a.distance / 1000)), hr: Math.round(a.average_heartrate) }))
     .filter((p) => p.paceSecKm > 120 && p.paceSecKm < 900)
     .slice(0, 80)
+  // #508 — per-ride signals for the multi-signal threshold ENGINE: normalized power + Pw:Hr DECOUPLING (aerobic drift %)
+  // + efficiency factor, on real steady rides (≥30 min). decouplingCheck() uses these to CONFIRM or FLAG a candidate FTP.
+  const rideSignals = (Array.isArray(runs) ? runs : [])
+    .filter((a) => /ride|virtualride|cycl/i.test(a.type || '') && (a.icu_weighted_avg_watts || a.icu_average_watts) > 0 && a.average_heartrate > 60 && (a.moving_time || 0) >= 1800)
+    .map((a) => ({ np: Math.round(a.icu_weighted_avg_watts || a.icu_average_watts), hr: Math.round(a.average_heartrate), decoupling: Math.round((Number(a.decoupling) || 0) * 10) / 10, durationMin: Math.round((a.moving_time || 0) / 60), ef: a.icu_efficiency_factor ? Math.round(a.icu_efficiency_factor * 100) / 100 : null, vi: a.icu_variability_index ? Math.round(a.icu_variability_index * 100) / 100 : null })) // #508 vi = variability index — decoupling is only valid on a STEADY effort (VI≈1.0), not intervals
+    .slice(0, 60)
   // #337c — Max HR is COMPUTABLE (JM): NOT an age formula, but a real observed ceiling. Two honest
   // sources — (a) the highest per-activity max HR she's actually hit over 180d, and (b) intervals'
   // athlete_max_hr (her zone ceiling). Max HR is a CEILING, so take the higher of the two. Source line
@@ -496,10 +514,10 @@ app.get('/auth/intervals/power-benchmarks', auth, async (req, res) => {
   // #501 (JM) — age-based fallback (Tanaka 208−0.7·age) so a brand-new athlete with no HR history still gets a
   // real starting max HR, never a blank. Only used when there's nothing observed AND no intervals ceiling.
   const ageYr = req.user.info?.dob ? Math.floor((Date.now() - new Date(req.user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
-  const ageMaxHr = ageYr != null && ageYr > 8 && ageYr < 100 ? Math.round(208 - 0.7 * ageYr) : null
+  const ageMaxHr = ageYr != null && ageYr > 8 && ageYr < 100 ? Math.round(req.user.sex === 'female' ? 206 - 0.88 * ageYr : 208 - 0.7 * ageYr) : null // #508 sex-specific (Gulati/Tanaka)
   const computedMaxHr = (Math.max(observedMaxHr || 0, icuMaxHr || 0) || null) ?? ageMaxHr ?? null
   const maxHrFrom = computedMaxHr == null ? '' : (observedMaxHr && observedMaxHr >= (icuMaxHr || 0) ? 'observed' : icuMaxHr ? 'intervals' : 'age')
-  res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent, observedMaxHr, maxHrSamples, icuMaxHr, computedMaxHr, maxHrFrom, hrPower, hrPace }) // #497 hrPower/hrPace = (watts|pace, HR) points for the HR-power FTP + HR-pace threshold methods
+  res.json({ available: !!map5, map5min: map5, ftp20, weight, runsRecent, observedMaxHr, maxHrSamples, icuMaxHr, computedMaxHr, maxHrFrom, hrPower, hrPace, rideSignals }) // #497 hrPower/hrPace · #508 rideSignals = per-ride NP/decoupling/EF for the threshold engine
 })
 
 // #216 — running endurance base for the marathon-realism range: longest single run +
@@ -2971,6 +2989,13 @@ function roundOutMsg(today) {
   if (EAT_MIND_OFF) return `Daily RECOVERY pass (${today}) — Eat & Mind are OFF right now, so add ONLY recovery around the plan (the workouts are already set; don't change them). After the hardest / longest days, put a RECOVERY session where it genuinely helps THIS athlete (schedule_recovery — mobility / sauna / easy walk, given STRUCTURED: insight = why today + steps = the routine with doses + a sleep note, NOT one text blob — it opens as its own activity view). Don't drop one onto every day. Do NOT schedule meals, supplements, or mind/meditation sessions (those sections are deactivated — the server rejects them). Be concise.`
   return `Daily ROUND-OUT pass (${today}) — add FUEL, MIND and RECOVERY around the plan (the workouts are already set; don't change them). On TODAY and each clearly demanding day (hard / long / quality), schedule a fitting meal or two (schedule_meal — a real recipe fitting their diet + daily fuel targets, more carbs around hard work, lighter on rest days, one-line why); add a MIND session (schedule_mind) where it earns its place (a wind-down after a hard/high-stress day, longer on a rest day); put RECOVERY (schedule_recovery — mobility / sauna / easy walk) after the hardest days, given STRUCTURED (insight = why + steps = the routine with doses + sleep note, NOT one text blob — it opens as its own activity view). ONLY where it genuinely adds value for THIS athlete on THIS day — don't drop one onto every slot, and don't churn what they've got. Be concise.`
 }
+// #508 (JM: "coach must review the metrics OFTEN in a SEPARATE prompt + fold what to sharpen into the plan — ideally
+// not all-out tests, just enough — CRITICAL") — a FOCUSED daily pass: review each benchmark's freshness and, for the
+// stalest one, fold ONE low-cost refining effort into the rolling horizon. Single-topic (own pass), never demands a
+// dreaded max test. Mirrors the # KEEP THE ANCHORS SHARP system-prompt block but runs it as an active daily job.
+function sharpenMsg(today) {
+  return `Daily METRICS-SHARPEN pass (${today}) — keep the athlete's benchmarks HONEST, without demanding tests. Their threshold power / pace, CP·W′ (or CS·D′), VO₂max, TTE and max-HR are in your profile; each is only as good as the last quality effort behind it, and EVERYTHING you prescribe scales from them. Review freshness: get_recent_activities and, for EACH anchor, ask "is there a recent effort that would set it?" — a tempo/threshold effort for the threshold; a hard ~5-min effort for VO₂max/MAP; short near-max reps for W′/D′; an all-out finish for max-HR. For any anchor with NO recent effort behind it (e.g. weeks of only easy rides → the threshold is really a guess), fold ONE targeted, LOW-COST refining effort into the rolling ${DAILY_HORIZON}-day plan (list_schedule → create_ride/run/workout) — NEVER an all-out max test, never a dreaded 20-min: cycling → one 8–15 min hard sustained effort up a climb/segment when fresh (intervals reads eFTP straight from it), or a structured 2×8 only if they'd like a cleaner number; running → a hard 20 min or a 5 k / parkrun; gym → a heavy 3–5 rep top set. Just ENOUGH to re-read the anchor. Rules: at most ONE such effort per pass — pick the STALEST, most important anchor; place it on a day they're FRESH, within their weekly training-day + recovery limits, and never stacked against another hard day; if every anchor already has a recent effort behind it, change nothing. This pass is SILENT (background upkeep — no push; the athlete gets only their one check-in ping). When you DO add one, its title/description explains WHY in plain words ("one harder 15-minute stretch so I can dial in the hardest pace you can hold"), never "to update your FTP". Be concise.`
+}
 async function runDailyAdapt(user, pass) {
   try {
     const today = await athleteToday(user)
@@ -2987,6 +3012,7 @@ async function runDailyAdapt(user, pass) {
     user.dailyAdapt = user.dailyAdapt || {}
     if (user.dailyAdapt.extras !== today) {
       user.dailyAdapt.extras = today; save(store)
+      await runCoachTask(user, sharpenMsg(today)) // #508 — review benchmarks + fold ONE refining effort into the plan (before round-out, so recovery accounts for it)
       await runCoachTask(user, reviewMsg(today))
       await runCoachTask(user, roundOutMsg(today))
     }

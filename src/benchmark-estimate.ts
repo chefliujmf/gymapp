@@ -21,6 +21,7 @@ export interface Src {
   value: number | null      // native unit; null = source unavailable
   ageDays?: number | null   // how old the backing effort is (undefined/null = unknown age)
   kind: SourceKind
+  weight?: number           // #508 — explicit base reliability override (0-1), from the research: lean on CP, down-weight the known under-reads (95%-rule + HR-power off an uncertain max HR). Falls back to the kind-based base.
 }
 // #506 — 'low'/'high' = a source that IS available but reads meaningfully below/above the number in use (so the
 // card can say "reads lower" honestly instead of rubber-stamping everything "agrees"). 'off' = genuinely missing.
@@ -39,7 +40,7 @@ const clampPct = (n: number): number => Math.min(100, Math.max(8, Math.round(n))
 
 // how much a source counts, from its kind and freshness (fresh window is metric-specific)
 export function sourceWeight(s: Src, freshDays: number): number {
-  const base = s.kind === 'test' ? 1 : s.kind === 'observed' ? 0.95 : s.kind === 'derived' ? 0.82 : s.kind === 'model' ? 0.75 : 0.6 // manual
+  const base = s.weight != null ? s.weight : s.kind === 'test' ? 1 : s.kind === 'observed' ? 0.95 : s.kind === 'derived' ? 0.82 : s.kind === 'model' ? 0.75 : 0.6 // manual
   const fresh = s.ageDays == null ? 0.7 : s.ageDays <= freshDays ? 1 : s.ageDays <= freshDays * 2 ? 0.5 : 0.28
   return base * fresh
 }
@@ -168,12 +169,15 @@ export function ftpEstimate(inp: FtpInputs): Estimate {
   const FRESH = 21, tol = 0.05
   const eftpFresh = inp.eftp != null && inp.eftpAgeDays != null && inp.eftpAgeDays <= FRESH
   const hrp = ftpFromHrPower(inp.hrPower || [], inp.maxHr) // #497 — submaximal HR-power FTP (great when there's no test)
+  // #508 — weights from the platform research: CP is the most mechanistically valid (≈ FTP) → lean on it; the 95%
+  // rule UNDER-reads aerobic riders and HR-power under-reads off an uncertain max HR → both down-weighted so they
+  // can't drag the estimate down; eFTP is a solid cross-check.
   const srcRows: Src[] = [
     { name: 'you train by', value: inp.manual ?? null, ageDays: null, kind: 'manual' },
-    { name: 'intervals eFTP', value: inp.eftp, ageDays: inp.eftpAgeDays ?? null, kind: 'observed' },
-    { name: 'from CP', value: inp.cp != null ? Math.round(inp.cp) : null, ageDays: 0, kind: 'model' },
-    { name: 'best 20-min ×0.95', value: inp.best20 != null ? Math.round(inp.best20 * 0.95) : null, ageDays: null, kind: 'test' },
-    { name: 'HR vs power', value: hrp ? hrp.best : null, ageDays: null, kind: 'model' }, // #497 — from the HR cost of steady rides
+    { name: 'intervals eFTP', value: inp.eftp, ageDays: inp.eftpAgeDays ?? null, kind: 'observed', weight: 0.9 },
+    { name: 'from CP', value: inp.cp != null ? Math.round(inp.cp) : null, ageDays: 0, kind: 'model', weight: 1 },
+    { name: 'best 20-min ×0.95', value: inp.best20 != null ? Math.round(inp.best20 * 0.95) : null, ageDays: null, kind: 'test', weight: 0.5 },
+    { name: 'HR vs power', value: hrp ? hrp.best : null, ageDays: null, kind: 'model', weight: 0.3 }, // #497 — from the HR cost of steady rides; #508 low weight (under-reads off an uncertain max HR)
   ]
   // The value you TRAIN BY anchors it — you know your FTP better than a stale eFTP or a CP fit from easy rides.
   // Computed sources only MOVE the number when a genuinely FRESH hard effort (a recently-refreshed eFTP) disagrees.
@@ -181,16 +185,25 @@ export function ftpEstimate(inp: FtpInputs): Estimate {
   if (inp.manual != null && inp.manual > 0) {
     const m = inp.manual
     let best = m, conf: EstConfidence, why: string
-    if (eftpFresh && Math.abs((inp.eftp as number) - m) / m > tol) {
+    // #508 (JM: "if 260 were too high I couldn't follow the workouts") — ASYMMETRIC: a fresh effort reading ABOVE your
+    // set FTP can nudge you up (you're stronger than you thought); a read BELOW is almost always an UNDER-READ off
+    // submaximal riding, NOT proof you're weaker — so it must NOT drag a training-validated FTP down.
+    const eftpHi = eftpFresh && ((inp.eftp as number) - m) / m > tol
+    const eftpLo = eftpFresh && (m - (inp.eftp as number)) / m > tol
+    if (eftpHi) {
       best = Math.round((m + (inp.eftp as number)) / 2)
-      conf = { pct: 66, cls: 'good', label: 'Worth a re-test' }
-      why = `A recent hard effort put your eFTP at ${inp.eftp} W but you train by ${m} — it's somewhere around ${best} W. A fresh 20–40 min test settles it.`
+      conf = { pct: 66, cls: 'good', label: 'You may be stronger — worth a test' }
+      why = `A recent effort put your eFTP at ${inp.eftp} W — ABOVE the ${m} you train by. You may be stronger than you set; a fresh 20–40 min test confirms it.`
+    } else if (eftpLo) {
+      best = m // keep the trained FTP; a low submaximal read doesn't lower it
+      conf = { pct: 62, cls: 'need', label: 'Your FTP — computed reads run low on easy rides' }
+      why = `You train by ${m} W and your workouts follow from it — that's real validation. Your recent riding has been easy, so the computed reads sit lower (eFTP ${inp.eftp} W) — that's under-reading, not proof ${m} is too high. A hard 20–40 min effort would pin a precise number.`
     } else if (eftpFresh) {
       conf = { pct: 88, cls: 'strong', label: 'Confirmed by a recent effort' }
       why = `A recent hard ride backs your ${m} W FTP — confirmed.`
     } else {
-      conf = { pct: 50, cls: 'need', label: 'Unconfirmed — needs a hard effort' }
-      why = `Using your set FTP of ${m} W. Your recent rides have been too easy to confirm it${inp.cp != null ? ` (your CP curve currently reads ${Math.round(inp.cp)} W)` : ''} — a hard 20–40 min effort would prove it.`
+      conf = { pct: 55, cls: 'need', label: 'Your FTP — a hard effort would confirm it' }
+      why = `Using the ${m} W you train by${inp.cp != null ? ` (your CP curve reads ${Math.round(inp.cp)} W)` : ''}. Recent rides have been easy, so nothing's confirmed it lately — a hard 20–40 min effort would.`
     }
     // #506 — tag each computed source by whether it ACTUALLY agrees with the value you train by (within tol), else
     // say which way it reads. The old code blind-tagged everything 'agrees', so 220 W read "agrees" next to a 260 W
@@ -281,7 +294,10 @@ export function tteEstimate(inp: TteInputs): Estimate {
 }
 
 // #501 — age-based max HR (Tanaka 2001, `208 − 0.7·age`) — more accurate than the old `220−age`. A rough FALLBACK.
-export const maxHrFromAge = (age: number | null | undefined): number | null => (typeof age === 'number' && age > 8 && age < 100 ? Math.round(208 - 0.7 * age) : null)
+// #508 — sex-specific age max-HR (JM's research doc): Gulati (2010) for females (male-centric formulas over-read
+// female max HR), Tanaka (2001) for males/general (208−0.7·age; flatter + tighter than the old 220−age).
+export const maxHrFromAge = (age: number | null | undefined, sex?: string | null): number | null =>
+  (typeof age === 'number' && age > 8 && age < 100 ? Math.round(sex === 'female' ? 206 - 0.88 * age : 208 - 0.7 * age) : null)
 // Max HR — observed peak per sport beats an intervals ceiling; it ages slowly.
 export interface MaxHrInputs { observed?: number | null; observedAgeDays?: number | null; ceiling?: number | null; sport?: string; age?: number | null }
 export function maxHrEstimate(inp: MaxHrInputs): Estimate {

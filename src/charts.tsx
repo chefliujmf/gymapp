@@ -69,6 +69,70 @@ function smoothPath(pts: [number, number][]): string {
   return d
 }
 
+// #508 — the ENGINE's centrepiece: the mean-max power/pace-duration curve on a log-time axis, with the CP/CS
+// asymptote (the sustainable floor) + the W′/D′ reserve shaded above it + labelled anchor points. Generic over
+// sport: pass `values` as the "higher is better" quantity (watts, or SPEED m/s for running) + `fmt` for display.
+function valueAtSec(pts: [number, number][], sec: number): number | null {
+  for (const [s, v] of pts) if (s >= sec) return v
+  return pts.length ? pts[pts.length - 1][1] : null
+}
+export function DurationCurve({ secs, values, asymptote, reserve, compare, unit = '', fmt = (v) => String(Math.round(v)), reserveLabel, anchors = [], height = 168 }: {
+  secs: number[]; values: number[]; asymptote?: number | null; reserve?: number | null
+  compare?: { asymptote?: number | null; reserve?: number | null; secs?: number[]; values?: number[] } | null // #508 overlay a 2nd season
+  unit?: string; fmt?: (v: number) => string; reserveLabel?: string; anchors?: { sec: number; label: string }[]; height?: number
+}) {
+  const clipId = useId()
+  const W = 344, padL = 48, padR = 12, padT = 14, padB = 22
+  const plotW = W - padL - padR, plotH = height - padT - padB
+  const sMin = 180, sMax = 3600, L = Math.log10(sMin), R = Math.log10(sMax)
+  const lx = (s: number) => padL + (Math.log10(Math.max(sMin, Math.min(sMax, s))) - L) / (R - L) * plotW
+  // #508 — a season's curve = the FITTED model value(t)=asymptote+reserve/t (CP+W′/t · CS+D′/t): a smooth descent to the
+  // CP/CS floor, NO jagged mean-max cliff (JM: "wtf are those graphs / too thick") — or a sampled real mean-max when the
+  // model params are absent. `compare` overlays a 2nd season (JM's merged curve: this=green + compared=blue + a toggle).
+  const build = (a?: number | null, r?: number | null, ss?: number[], vv?: number[]): [number, number][] => {
+    if (a != null && a > 0 && r != null && r > 0) return Array.from({ length: 48 }, (_, i) => { const t = Math.pow(10, L + ((R - L) * i) / 47); return [t, a + r / t] as [number, number] })
+    const raw = (ss || []).map((s, i) => [s, (vv || [])[i]] as [number, number]).filter(([, v]) => v > 0).sort((x, y) => x[0] - y[0])
+    const atSec = (t: number): number | null => { for (const [s, v] of raw) if (s >= t) return v; return null }
+    return [180, 240, 300, 420, 600, 780, 1020, 1200, 1500, 1800, 2400, 3000, 3600].map((t) => { const v = atSec(t); return v != null ? ([t, v] as [number, number]) : null }).filter((p): p is [number, number] => p != null)
+  }
+  const haveModel = asymptote != null && asymptote > 0 && reserve != null && reserve > 0
+  const modelV = (t: number) => (asymptote as number) + (reserve as number) / t
+  const pts = build(asymptote, reserve, secs, values)
+  const cmp = compare ? build(compare.asymptote, compare.reserve, compare.secs, compare.values) : []
+  if (pts.length < 3) return <div className="meta" style={{ padding: '10px 4px' }}>Your curve appears here once intervals has efforts across a few durations.</div>
+  const allV = [...pts, ...cmp].map((p) => p[1])
+  const asyms = [asymptote, compare?.asymptote].filter((a): a is number => a != null && a > 0)
+  const vMax = Math.max(...allV) * 1.03, vMin = Math.min(...allV, ...asyms) * 0.97
+  const ly = (v: number) => padT + (1 - (v - vMin) / (vMax - vMin)) * plotH
+  const xy = pts.map((p) => [lx(p[0]), ly(p[1])] as [number, number])
+  const cmpXy = cmp.map((p) => [lx(p[0]), ly(p[1])] as [number, number])
+  const cpY = asymptote != null ? ly(asymptote) : null
+  const ticks: [number, string][] = [[180, '3m'], [300, '5m'], [1200, '20m'], [3600, '60m']]
+  // #508 — Y-AXIS: 4 labelled gridlines through fmt (watts, or pace as m:ss). JM: "NO Y AXIS".
+  const yTicks = Array.from({ length: 4 }, (_, i) => vMin + ((vMax - vMin) * (i + 0.5)) / 4)
+  return (
+    <svg viewBox={`0 0 ${W} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="duration curve">
+      {yTicks.map((v, i) => (
+        <g key={`y${i}`}>
+          <line x1={padL} y1={ly(v)} x2={W - padR} y2={ly(v)} stroke="#242a33" strokeWidth={1} />
+          <text x={padL - 6} y={ly(v) + 3} fill="#9298a6" fontSize={9.5} textAnchor="end">{fmt(v)}</text>
+        </g>
+      ))}
+      <line x1={padL} y1={padT - 4} x2={padL} y2={height - padB} stroke="#333a45" />
+      <line x1={padL} y1={height - padB} x2={W - padR} y2={height - padB} stroke="#333a45" />
+      {cpY != null && <defs><clipPath id={clipId}><rect x={padL} y={padT - 4} width={plotW} height={Math.max(0, cpY - (padT - 4))} /></clipPath></defs>}
+      {cpY != null && <path d={`M${xy[0][0]},${xy[0][1]} ${xy.map((p) => `L${p[0]},${p[1]}`).join(' ')} L${xy[xy.length - 1][0]},${cpY} L${xy[0][0]},${cpY} Z`} fill="rgba(155,140,255,.12)" clipPath={`url(#${clipId})`} />}
+      {cpY != null && <line x1={padL} y1={cpY} x2={W - padR} y2={cpY} stroke="#9b8cff" strokeWidth={1.3} strokeDasharray="5 4" />}
+      {cpY != null && <text x={W - padR} y={cpY - 4} fill="#9b8cff" fontSize={10} textAnchor="end" fontWeight={700}>{fmt(asymptote as number)}{unit}</text>}
+      {cmpXy.length > 2 && <path d={smoothPath(cmpXy)} fill="none" stroke="#5ec8ff" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />}
+      <path d={smoothPath(xy)} fill="none" stroke="#34e07d" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      {anchors.map((a, i) => { const v = haveModel ? modelV(a.sec) : valueAtSec(pts, a.sec); if (v == null) return null; return <circle key={i} cx={lx(a.sec)} cy={ly(v)} r={3} fill="#34e07d" /> })}
+      {reserveLabel && cpY != null && <text x={lx(480)} y={Math.max(padT + 11, cpY - 12)} fill="#9b8cff" fontSize={10} fontWeight={700} textAnchor="middle">{reserveLabel}</text>}
+      {ticks.map(([s, l], i) => <text key={`x${i}`} x={lx(s)} y={height - 6} fill="#9298a6" fontSize={10} textAnchor="middle">{l}</text>)}
+    </svg>
+  )
+}
+
 const VW = 320
 /** Round-minute x-axis marks (0m · 10m · … · h:mm) for a time-based chart of `totalSec`. #286/#280 */
 export function minuteTicks(totalSec: number): { frac: number; label: string }[] {
@@ -341,20 +405,28 @@ export function PowerCurveChart({ secs, watts, color = 'var(--accent, #34e07d)',
  * short bursts fast at the left, easing to the right. `pace` in sec/km. */
 export function PaceCurveChart({ secs, pace, color = 'var(--accent, #34e07d)', height = 200, overlay }: { secs: number[]; pace: number[]; color?: string; height?: number; overlay?: { secs: number[]; pace: number[]; color?: string } | null }) {
   const [hi, setHi] = useState<number | null>(null)
-  const pts0 = secs.map((s, i) => [s, pace[i]] as [number, number]).filter(([s, p]) => s > 0 && s <= MAX_DUR && p != null && p > 0)
+  // #508 — start at 1 min: sub-minute "pace" is sprint noise that blows the Y-range out (JM: "too broad") and isn't
+  // meaningful running pace (intervals starts at 400 m for the same reason). Also require a sane pace (>90 s/km).
+  const PMINS = 60
+  const okP = ([s, p]: [number, number]) => s >= PMINS && s <= MAX_DUR && p != null && p > 90
+  const pts0 = secs.map((s, i) => [s, pace[i]] as [number, number]).filter(okP)
   if (pts0.length < 2) return <div className="chart-empty">No pace curve yet</div>
-  const ov0 = overlay ? overlay.secs.map((s, i) => [s, overlay.pace[i]] as [number, number]).filter(([s, p]) => s > 0 && s <= MAX_DUR && p != null && p > 0) : [] // #407 overlay
+  const ov0 = overlay ? overlay.secs.map((s, i) => [s, overlay.pace[i]] as [number, number]).filter(okP) : [] // #407 overlay
   const allPts = ov0.length ? pts0.concat(ov0) : pts0
   const sMin = Math.min(...allPts.map((p) => p[0])), sMax = Math.max(...allPts.map((p) => p[0]))
   const pMin = Math.min(...allPts.map((p) => p[1])), pMax = Math.max(...allPts.map((p) => p[1])) // sec/km: min = fastest
   const H = height, padT = 8, padB = 6, pad = 6
-  const span = Math.max(pMax - pMin, 20) // avoid a collapsed axis on a steady run
-  const lo = pMin - span * 0.08, range2 = span * 1.16
   const fmtP = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
+  // #508 — ROUND pace ticks (JM: "weird numbers"); tickLo is clamped to ≥ one step so the top tick can NEVER go negative
+  // ("-1:-28" bug). Faster (smaller sec/km) sits at the TOP.
+  const pStep = (pMax - pMin) > 180 ? 60 : (pMax - pMin) > 75 ? 30 : 15
+  const tickLo = Math.max(pStep, Math.floor((pMin - pStep * 0.35) / pStep) * pStep)
+  const tickHi = Math.ceil((pMax + pStep * 0.35) / pStep) * pStep
+  const lo = tickLo, range2 = Math.max(tickHi - tickLo, pStep)
   const lx = (s: number) => pad + ((Math.log(s) - Math.log(sMin)) / (Math.log(sMax) - Math.log(sMin) || 1)) * (VW - 2 * pad)
   const y = (p: number) => padT + ((p - lo) / (range2 || 1)) * (H - padT - padB) // faster (smaller sec/km) → TOP
   const ticks = DUR_TICKS.filter(([s]) => s >= sMin && s <= sMax)
-  const yLabels = [0, 0.25, 0.5, 0.75, 1].map((f) => lo + f * range2)
+  const yLabels: number[] = []; for (let p = tickLo; p <= tickHi + 0.5; p += pStep) yLabels.push(p)
   const d = 'M' + pts0.map((p) => `${lx(p[0])},${y(p[1])}`).join(' L')
   const onMove = (ev: React.PointerEvent) => {
     const rect = ev.currentTarget.getBoundingClientRect(); const xPx = ((ev.clientX - rect.left) / rect.width) * VW

@@ -22,7 +22,7 @@ git fetch -q origin
 # its commit(s) on dev-not-main, oldest→newest (match #N as a whole token: '#N ', '#N:', '#N)')
 SHAS=()
 while read -r sha subj; do
-  case " $subj " in *"#$N "*|*"#$N:"*|*"#$N)"*|*"#$N,"*) SHAS+=("$sha");; esac
+  case " $subj " in *"#$N "*|*"#$N:"*|*"#$N)"*|*"#$N,"*|*"#$N/"*) SHAS+=("$sha");; esac # '/' handles a "#145/#139" combined tag
 done < <(git log origin/main..origin/dev --reverse --format='%H %s')
 
 if [ "${#SHAS[@]}" -eq 0 ]; then

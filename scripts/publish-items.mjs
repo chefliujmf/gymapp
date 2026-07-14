@@ -20,7 +20,12 @@ catch (e) { console.log('publish-items: no built list to publish — skip:', e.m
 let cur = []
 try { const j = JSON.parse(readFileSync(DEST, 'utf8')); cur = Array.isArray(j) ? j : (j.items || []) } catch { cur = [] }
 
-if (list.length && (maxN(list) > maxN(cur) || list.length > cur.length)) {
+// Republish whenever I'm AT LEAST as new (>= max #) AND the CONTENT differs. The old gate only fired on a HIGHER
+// max # / more items, so STATUS-ONLY changes (🔨→🧪 flips, edits, done-marks) never reached the shared list — JM's
+// To-test bucket went stale (#485 bug, JM 2026-07-11). The `>= maxN` guard still stops a strictly-OLDER prod build
+// from clobbering a newer QA list; identical content is a no-op.
+const differs = JSON.stringify(list) !== JSON.stringify(cur)
+if (list.length && maxN(list) >= maxN(cur) && differs) {
   const tmp = DEST + '.tmp'; writeFileSync(tmp, JSON.stringify(list)); renameSync(tmp, DEST)
   console.log(`publish-items: published ${list.length} items (max #${maxN(list)}) → ${DEST}`)
 } else {

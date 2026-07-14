@@ -48,3 +48,18 @@ Memory: `platyplus-activity-view`.
 DONE: Activity **TimelineProfile** (#54/#286 — dense axes + round-minute time x + insight per track). Remaining: Mind weekly bars, Running pace trend, per-sport mini charts. Tracked in FEEDBACK-LOG.
 
 Pairs with `options-first` (mock charts before building) and memory `platyplus-chart-standard`.
+
+## Duration / season curve (#508, 2026-07-13)
+`DurationCurve` (`src/charts.tsx`) is the power/pace-duration curve. Render the **FITTED model** `value(t)=asymptote+
+reserve/t` (CP+W′/t · CS+D′/t) — a SMOOTH glide to the CP/CS floor — NOT the raw mean-max (jagged + cliffs where long
+efforts run out; JM: "wtf are those graphs / too thick / NO Y AXIS"). Non-negotiable: **Y-axis labels** (watts, or pace as
+m:ss via `fmt`), 1.8px line, faint gridlines, asymptote dashed + labelled. Running values are passed as SPEED (1000/pace) so
+faster reads higher; `fmt` converts back to pace. ONE curve per page: `SeasonCompare` IS the curve (fitted `DurationCurve` +
+a `compare` prop for a 2nd season's line + a This/vs-Last/vs-All-time toggle); the standalone Pace/PowerCurveCard were
+removed (JM: "why 2 curves"). ALWAYS screenshot the mock (`mockups/curve-*.html`) and eyeball it BEFORE pushing — this
+curve shipped broken multiple times.
+
+**CORRECTION:** the season-compare curve is the REAL mean-max overlay (`PowerCurveChart`/`PaceCurveChart`) — full 1s-1h
+range + `niceTicks` round Y-axis — NOT the fitted `DurationCurve`. Fitted lines fit identical CP/W′ across seasons and
+overlap (invisible compare); the season delta is in the sprints the model window hides. `DurationCurve` = single-season
+capacity only. Render with REAL athlete data before pushing.

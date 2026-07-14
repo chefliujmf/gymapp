@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, fmtTte } from './tte'
+import { tteFromPower, tteFromPace, tteModelPower, tteModelPace, pickTte, fmtTte } from './tte'
 
 // #401 — TTE = longest duration you can hold threshold, read off the mean-max curve.
 describe('tteFromPower (cycling — longest time ≥ eFTP)', () => {
@@ -61,4 +61,20 @@ describe('fmtTte', () => {
   it('m:ss under an hour', () => expect(fmtTte(600)).toBe('10:00'))
   it('h:mm:ss over an hour', () => expect(fmtTte(3720)).toBe('1:02:00'))
   it('rounds seconds', () => expect(fmtTte(65.6)).toBe('1:06'))
+})
+
+describe('pickTte — infer, never beg for a test (#508)', () => {
+  it('shows the MODEL when observed is shorter (a short hold under-states TTE — JM: 24 min inferred, not 12 min observed)', () => {
+    expect(pickTte(720, 1425)).toEqual({ sec: 1425, estimated: true })
+  })
+  it('lets a genuinely LONGER observed hold win over the model', () => {
+    expect(pickTte(2400, 1425)).toEqual({ sec: 2400, estimated: false })
+  })
+  it('uses the model when there is no observed hold at all (no test asked)', () => {
+    expect(pickTte(null, 1500)).toEqual({ sec: 1500, estimated: true })
+  })
+  it('falls back to observed only when the model cannot be computed', () => {
+    expect(pickTte(900, null)).toEqual({ sec: 900, estimated: false })
+  })
+  it('nulls when neither exists', () => expect(pickTte(null, null)).toEqual({ sec: null, estimated: false }))
 })

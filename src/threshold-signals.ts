@@ -1,0 +1,71 @@
+// #508 — the multi-signal threshold ENGINE's physiological signals. These don't invent a threshold from easy
+// riding (physics won't allow it) — they CONFIRM or FLAG a candidate threshold from how the body responded, so the
+// fused estimate (benchmark-estimate.honestEstimate) carries real confidence instead of a lone power-curve number.
+// All pure + unit-tested (threshold-signals.test.ts). Signals sourced from intervals: per-ride `decoupling`
+// (Pw:Hr aerobic drift %) + `icu_efficiency_factor`; per-night `hrv`.
+
+export interface RideSignal { np: number; hr: number; decoupling: number; durationMin: number; ef?: number | null; vi?: number | null }
+
+// ── Cardiac drift / Pw:Hr decoupling ─────────────────────────────────────────
+// Friel: aerobic decoupling < ~5% over a steady effort = aerobically sustainable AT that intensity. So if the athlete
+// has ridden NEAR a candidate FTP and drift stayed low, that FTP is CONFIRMED sustainable; if near-FTP rides drift
+// high (HR climbing at that power), the FTP is set too high. Endurance-only riding (well below FTP) can't confirm it.
+export type DecouplingVerdict = 'confirms' | 'too-high' | 'thin'
+export interface DecouplingCheck { verdict: DecouplingVerdict; nearN: number; avgDrift: number | null; note: string }
+export function decouplingCheck(rides: RideSignal[], ftp: number | null | undefined): DecouplingCheck {
+  if (!ftp || ftp <= 0) return { verdict: 'thin', nearN: 0, avgDrift: null, note: 'set an FTP to check it against your rides' }
+  // "near threshold" = a STEADY effort (variability index ≤ 1.06 — NOT intervals/surges, which spike drift regardless),
+  // ≥30 min, with normalized power within 88–102% of the candidate FTP. Decoupling off a surgey ride is meaningless.
+  const near = (rides || []).filter((r) => r && r.np > 0 && r.durationMin >= 30 && r.np >= ftp * 0.88 && r.np <= ftp * 1.02 && r.vi != null && r.vi <= 1.06)
+  if (near.length < 2) return { verdict: 'thin', nearN: near.length, avgDrift: null, note: `to confirm ${ftp} W: ride at ~${ftp} W and HOLD it for 20+ min (flat road or trainer, no surges). None logged near it yet.` }
+  const avgDrift = Math.round((near.reduce((s, r) => s + r.decoupling, 0) / near.length) * 10) / 10
+  if (avgDrift <= 5) return { verdict: 'confirms', nearN: near.length, avgDrift, note: `you held ~${ftp} W and your heart rate stayed flat (${avgDrift}% drift) — it's sustainable` }
+  return { verdict: 'too-high', nearN: near.length, avgDrift, note: `at ~${ftp} W your heart rate crept up ${avgDrift}% — that's above what you can hold, so ${ftp} W looks high` }
+}
+
+// ── Aerobic-efficiency FLOOR (JM's Z2 argument) ──────────────────────────────
+// Holding a power at a clearly sub-threshold, STEADY heart rate means that power is only a FRACTION of FTP (the HR
+// zone caps how hard it can be) — so FTP is AT LEAST power / (that fraction's upper bound). This CONFIRMS a higher
+// FTP from easy riding and REFUTES a too-low estimate: 170 W held at a steady Z2 HR ⇒ FTP ≥ ~227, so a 220 read is
+// wrong (if FTP were 220, 170 W would be Z3, not Z2). A conservative lower bound — never over-claims.
+export interface AerobicFloor { floor: number; atW: number; note: string }
+export function aerobicFloor(rides: RideSignal[], maxHr: number | null | undefined): AerobicFloor | null {
+  if (!maxHr || maxHr < 120) return null
+  const cands = (rides || []).filter((r) => r && r.np > 0 && r.hr >= maxHr * 0.6 && r.hr <= maxHr * 0.88 && r.durationMin >= 30 && (r.vi == null || r.vi <= 1.06))
+  if (!cands.length) return null
+  // upper bound on how much of FTP the power can be, given its HR zone (% of max HR) → a CONSERVATIVE floor
+  const fracUpper = (hr: number) => { const p = hr / maxHr; return p <= 0.78 ? 0.75 : p <= 0.88 ? 0.9 : 0.98 } // Z2 ≤75% FTP · Z3 ≤90% · near-threshold ≤98%
+  let floor = 0, atW = 0
+  for (const r of cands) { const f = r.np / fracUpper(r.hr); if (f > floor) { floor = f; atW = r.np } }
+  return { floor: Math.round(floor), atW: Math.round(atW), note: `you hold ${Math.round(atW)} W at an easy, steady heart rate — so your FTP is at least ~${Math.round(floor)} W` }
+}
+
+// ── Next-day recovery (HRV response) ─────────────────────────────────────────
+// A session AT/below threshold is recoverable — HRV rebounds by the next morning; a session ABOVE it suppresses HRV.
+// Given a hard ride's intensity-factor (NP/FTP) and the HRV change the next morning vs the athlete's baseline, tell
+// whether that intensity was recoverable. Used to flag an FTP that's set so high that "threshold" rides wreck HRV.
+export type RecoveryVerdict = 'recovered' | 'suppressed' | 'thin'
+export interface RecoveryCheck { verdict: RecoveryVerdict; note: string }
+export function recoveryCheck(intensityFactor: number | null | undefined, nextDayHrvPctVsBaseline: number | null | undefined): RecoveryCheck {
+  if (intensityFactor == null || nextDayHrvPctVsBaseline == null) return { verdict: 'thin', note: 'needs a hard ride + next-morning HRV to read recovery' }
+  // only informative for genuinely hard rides (IF ≥ 0.85); a big HRV drop (> ~8% below baseline) = not recovered
+  if (intensityFactor < 0.85) return { verdict: 'thin', note: 'that ride was too easy to test recovery at threshold' }
+  if (nextDayHrvPctVsBaseline <= -8) return { verdict: 'suppressed', note: `your HRV dropped ${Math.abs(Math.round(nextDayHrvPctVsBaseline))}% after a hard effort — that intensity is above what you currently absorb` }
+  return { verdict: 'recovered', note: 'your HRV bounced back after a hard effort — that intensity is sustainable' }
+}
+
+// ── Efficiency factor trend ──────────────────────────────────────────────────
+// EF (NP ÷ avg HR) rising over time at similar intensity = the aerobic engine improving; falling = fatigue/decline.
+// Context for the threshold estimate (a rising EF supports nudging the number up), not a threshold value itself.
+export interface EfTrend { pctChange: number | null; direction: 'up' | 'flat' | 'down' | 'thin'; note: string }
+export function efTrend(efValuesOldToNew: (number | null | undefined)[]): EfTrend {
+  const v = (efValuesOldToNew || []).filter((x): x is number => typeof x === 'number' && x > 0)
+  if (v.length < 4) return { pctChange: null, direction: 'thin', note: 'log a few more rides to read your efficiency trend' }
+  const half = Math.floor(v.length / 2)
+  const early = v.slice(0, half).reduce((s, x) => s + x, 0) / half
+  const late = v.slice(half).reduce((s, x) => s + x, 0) / (v.length - half)
+  const pctChange = Math.round(((late - early) / early) * 1000) / 10
+  const direction = pctChange >= 2 ? 'up' : pctChange <= -2 ? 'down' : 'flat'
+  const note = direction === 'up' ? `efficiency +${pctChange}% — your aerobic engine is improving` : direction === 'down' ? `efficiency ${pctChange}% — watch for fatigue` : 'efficiency steady'
+  return { pctChange, direction, note }
+}

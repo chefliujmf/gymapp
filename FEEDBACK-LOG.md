@@ -22,12 +22,77 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
-493. ⬜ **Plan default-view preference (Settings).** Split from #488: let the user pick which Plan view opens by default
-    (Day / Week / Month / Schedule) in Settings; Calendar reads it on mount (today it hardcodes 'month'). **Route:** UI.
-492. 🔨 **Rename "Backlog" → "Road map" (= future to assess / consider / approve).** JM 2026-07-11. Done in nav +
+496. 🧪 **PWA freshness — pick up a new build faster.** JM 2026-07-11 kept seeing "old" prod. INVESTIGATED: the SW
+    mechanism was actually SOUND — `sw.js` + `index.html` are served `no-cache` (verified on prod, no proxy cache), and
+    main.tsx already skipWaiting+clientsClaim+reloads on controllerchange. The real staleness was **prod LAGGING dev**
+    (fixes lived on dev until the #163 promote ~3h ago) plus the triage/publish bugs (#485/#495) — NOT the browser cache.
+    Remaining gap closed: the open app only re-checked on focus/online/every-30-min, so it could sit on the old bundle.
+    Added an **update check on in-app navigation** (App.tsx → `__pwaCheck`, throttled 20 s) so a fresh deploy applies
+    within a tap or two. 🧪 **Test (QA):** with the app open, after a new deploy lands, navigate Plan↔Stats a couple
+    times → it should quietly reload to the new build (no hard-refresh). **Route:** PWA/infra.
+500. ⬜ **Coach must NOT use acronyms/jargon in explanations (JM 2026-07-12).** "not all users know what TTE or other
+    terms mean." The coach's notifications + chat explanations should use plain language — spell out or avoid TTE, CTL,
+    ATL, VI, W′, IF, NP, etc. (or gloss them in one plain phrase). **Route:** coach voice (coach-engine + notify guidance).
+499. ⬜ **Coach notification must clearly explain WHAT he changed (JM 2026-07-12).** When the coach adapts the plan, the
+    `notify` message should describe the change well ("moved Thursday's ride to Friday and cut it to 45 min because…"),
+    not a vague "plan updated." **Route:** coach voice / daily-adapt notify.
+498. ⬜ **ONE coach trigger after check-in, not two (JM 2026-07-12).** This morning: one coach action right after
+    check-in (intended), then a SECOND "mystery" one ~30 min later saying "plan updated." JM: we want **exactly one**
+    coach trigger after check-in, plus coach action **only when the user asks for a specific change** — no surprise
+    second re-plan. ROOT (to confirm): the check-in coach decision (server.js ~598) AND the daily-adapt scheduler
+    (`runDailyAdapt`, multi-pass) likely BOTH fire post-check-in; consolidate to one, and don't let later passes
+    (horizon-fill / review / round-out) each send their own notify. **Route:** coach triggers / daily-adapt.
+509. 🗺️ **EF (Efficiency Factor) as a first-class learned benchmark (JM 2026-07-13).** EF = normalized power ÷ avg HR (cycling) / speed ÷ HR (running); rising EF at the same HR = improving aerobic engine. Today it's only a small trend on the Cycling page (`efTrend`). Make it its own benchmark card with honest confidence + a learned trend (like FTP/VO₂max), and FEED it into the multi-signal threshold (#508). Aerobic-decoupling (Pw:Hr) is the sibling metric. **Route:** stats/benchmarks.
+508. 🔨 **Platyplus's OWN multi-signal threshold/eFTP — fuse ALL the metrics, don't defer to intervals' eFTP (JM 2026-07-13, the core of #497).** JM: "I want our own eFTP based on more metrics… combine HR while doing intervals, the drift, and the HRV response the next day." Today `ftpEstimate` blends power-curve eFTP + CP + best-20-min + HR-power (#497). MISSING signals JM wants fused: **cardiac drift / Pw:Hr decoupling** (HR climbing at steady power ⇒ above threshold), **next-day HRV/recovery response** (did the session wreck you ⇒ it was over threshold), **EF trend** (#509). Build a Platyplus threshold model that weights these into one honest number + band, so a clean read emerges from NORMAL training without a formal test. ✅ SHIPPED so far: HR-power method live; FTP card copy reframed to "Platyplus's own blend" (not "intervals computes it"). ⬜ TO BUILD: decoupling signal (per-ride Pw:Hr from intervals) + next-day-HRV-response correlation + fusion weighting + confidence. Mock the model first. **Route:** stats/benchmarks + back-end.
+507. 🧪 **Max HR "Observed peak" showed BLANK though the data has a peak (JM 2026-07-13, prod/QA).** JM's i28814 has 135 activities with `max_heartrate`, peak **184** — but the card's Observed-peak row read the HEADLINE value gated on `maxHrFrom==='observed'`, so when the 185 zone ceiling won it showed "—". FIXED: client now stashes `observedMaxHr` + `icuMaxHr` separately; each science row shows its OWN real value (184 peak · 185 ceiling); label 180d→"12 months"; age-fallback source line. **To test:** open Max HR → Observed peak shows 184, Zone ceiling 185 (in use). **Route:** stats/benchmarks.
+506. 🧪 **Benchmark "science" panels over-claimed — JM stress-tested them on prod (2026-07-13).** (1) **FTP**: all 5 methods (260/240/248/234/220 — a 40 W spread) were blind-tagged "agrees with the blend" + "IN USE" (JM: "all diff numbers but agrees?!"). Now tagged by REAL agreement vs the value in use ("reads lower/higher than your value"); only the primary is in use. (2) **TTE** used the RAW manual FTP, so switching the picker to Auto didn't move it — now follows `chosenFtp`/`chosenPace` (Auto 250→13min, 245→20min). (3) **VO₂max** showed a bike number + the crude HR-ratio for a RUNNER — now sport-aware (`vo2ScienceRows`), HR-ratio is a last-resort only. DIAGNOSED vs JM's real data (best-20min 246 W, peak HR 184): TTE 12:00 is CORRECT — his FTP 260 is ~15 W high (true ~246), which is why TTE looked short. +11 unit tests (59 green). **To test:** FTP methods now say "reads lower", TTE follows the FTP picker, VO₂max shows only your sport's method. **Route:** stats/benchmarks.
+505. 🗺️ **Nutrition / calorie + macro fuel targets — parked for future (JM 2026-07-13: "keep it for roadmap and future work").** REMOVED the Profile "Daily fuel targets" card (calories/macros/Lose-Maintain-Gain/"lean cut" + the stale "coach uses these to pick meals" line): too complicated, Eat is deactivated so the coach can't use it to plan training, and surfacing a weight-loss DEFICIT is wrong — especially during pregnancy (Xenia saw a −18% "lean cut" on prod). KEPT the height + birth-date inputs (feed age-based stats) AND the science engine (`src/nutrition.ts` — Mifflin-St Jeor, unit-tested) for the future build. REVISIT as a proper goal-aware, PREGNANCY-SAFE fuelling feature (never an aggressive default cut; tie it to training load, and only if the coach can actually act on it) if/when Eat is reactivated. **Route:** eat/nutrition.
+510. 🗺️ **ALL metric GRAPHS on the Stats pages — parked for the roadmap (JM 2026-07-13: "remove the metric graphs, it's for the roadmap").** After a long iteration the season-compare curve wasn't up to standard (cycling seasons fit IDENTICAL CP/W′ → overlapping lines; running pace GPS-glitch-riddled — raw 0:04/km, all-time CS fit returns an absurd D′=740 m; TRAILING windows make this≈last-season). JM then said remove them ALL. REMOVED from CyclingStats + RunningStats: the **power/pace duration + season-compare curve** (`<SeasonCompare>` + best-efforts table + date filter), the **eFTP trend**, the **EF trend**, and the **pace trend** charts. KEPT the benchmark CARDS (FTP/CP/W′/TTE/VO₂max/threshold/CS/D′/MaxHR), race predictions + training-zone tables. Chart components (`SeasonCompare`, `PowerCurveChart`/`PaceCurveChart`/`DurationCurve`, `TrendChart`) stay in the codebase. **REVISIT** with true intervals-parity: calendar-year seasons (#415), gradient-adjusted pace, robust outlier rejection / monotonic-hull, CS/CP model overlay. Research + cap logic saved in memory `platyplus-chart-standard`. **Route:** stats.
+504. ⬜ **Per-set RPE capture to sharpen gym e1RM (split from #497, 2026-07-12).** The RPE-adjusted e1RM (`e1rmRpe`, RTS/RIR) + honest confidence (`e1rmConfidence`) are built + doc'd (`docs/e1rm.md`), but per-set RPE isn't logged yet — `SetEntry` (`db.ts`) is weight/reps/done; RPE lives at the session level. Add an optional per-set RPE tap in the gym logger → feed `e1rmRpe` so a set left short of failure reads a truer 1RM. Mock the tap first. **Route:** gym.
+503. ⬜ **Coach review shown TWICE on an activity (top AND bottom) after review — redundant (JM 2026-07-12, prod).** After the coach reviews a completed activity, its verdict/note renders at BOTH the top and the bottom of the activity detail. Keep it at the TOP only. **Route:** UI (ActivityDetail).
+502. ⬜ **Post-workout: 2 notifications instead of 1 (JM 2026-07-12, prod).** Finishing a workout fires TWO coach notifications (and shows 2 in the bell), not one — same double-trigger pattern as the check-in (#498). Likely the feedback endpoint + a second path both notify. FIND the duplicate trigger; ONE post-workout notification. **Route:** coach triggers.
+501. 🧪 **ESTIMATE FROM THE FULL AVAILABLE HISTORY, not narrow recent windows (JM 2026-07-12 — "estimate with the data you have").** Benchmarks read "empty / Learning / needs 4 runs" when the user actually HAS years in intervals/Garmin. Root: narrow recency GATES block valid full-history models. Symptoms (Xenia): Max HR "Observed peak" empty (scans only 180d, server.js ~384); VO2max "Running VDOT needs ≥4 runs" (gates on runs in the last **42d**, ~353 — but the pace-curve is built from ALL history); Sleep "Learning 11/21 nights" (Garmin may have synced far more than 21 nights — check the wellness window). FIX: widen the data/confidence windows to the full available history, TRUST the intervals full-history models (pace-curve/power-curve/zone ceiling) instead of requiring recent activity, and add sensible FALLBACKS (age-based max HR = Tanaka 208−0.7·age when nothing observed). Same principle applies to the #497 HR-power points. **Route:** stats/benchmarks + back-end data. 🔧 SHIPPED (QA): Max HR peak scans a full YEAR + Tanaka age fallback; VDOT unblocked (present a valid full-history estimate at honest low confidence instead of “needs 4 runs”); run-threshold gate widened 42d→180d. Sleep-window widen = small follow-up. **To test:** open Stats for a user with real intervals history (e.g. Xenia) — Max HR "Observed peak" and Running VDOT should now populate from history (no "needs 4 runs"), and a freshly-connected account gets FTP + max HR set for the coach WITHOUT opening Stats.
+497. 🧪 **Confidence-scored, auto-updating benchmark ANCHORS across ALL sports (JM 2026-07-12, expands #5007).** The
+    anchors everything scales from — cycling FTP·CP·W′·TTE, running threshold-pace·CS·D′·VDOT, gym e1RM per lift — must
+    be ACCURATE, auto-update from NORMAL training, and carry an HONEST confidence band; when the band is too wide, the
+    coach + MCP PRESCRIBE a targeted refining effort (not necessarily an all-out test). Estimators:
+    • **Cycling** = submaximal **HR-power** model (infer FTP from the HR cost of easy/varied rides — e.g. 200 W @ 110 bpm,
+      max 185 ⇒ FTP ~320-340, not 200) + EF + Pw:Hr decoupling + the FTP·CP·W′·TTE consistency check.
+    • **Running** = **HR-pace / GAP** model + Daniels VDOT + CS·D′ (pace is noisier than power — terrain/GPS/wind — so
+      lean on grade-adjusted pace + a wider band).
+    • **Gym** = **e1RM** from working sets (weight × reps × RPE/RIR; Epley/Brzycki) — "as far as we can go" (no HR-power
+      analog; needs some near-failure sets to be accurate). A heavy low-rep set tightens it, no true 1RM grind.
+    Report number + band + "what's driving it + how to sharpen"; band NARROWS automatically as varied data accumulates.
+    Grounded in `docs/beyond-ftp-metrics.md` + `docs/tte.md` + `src/running-paces.ts` (Daniels) [+ add a gym e1RM ref doc].
+    Build order: MOCK the per-sport benchmark card → estimator engines (pure + tested vs the docs) → coach/MCP
+    test-prescription → plumbing/UI. Everything checked against the source formulas so nothing drifts. **Route:** stats/benchmarks + coach/MCP.
+    🔧 SHIPPED so far (QA, 2026-07-12): **Cycling HR-power** (`ftpFromHrPower`, fed real ride data on the card); **Running HR-pace**
+    (`thresholdPaceFromHrPace` — infers threshold pace from the HR cost of steady runs; shows as its own method + fallback when the
+    Critical-Speed model is thin); **Gym e1RM** (`e1rmRpe` RPE/RIR + `e1rmConfidence`, `docs/e1rm.md`); **new-user analysis on connect**
+    (`computeAndStashAnchors` computes FTP/maxHR/run-pace from history so the coach has anchors without opening Stats). All pure +
+    unit-tested (44 green). Coach now **prescribes ONE targeted refining effort when a benchmark is unconfirmed** (buildSystemPrompt
+    `# KEEP THE ANCHORS SHARP` — a hard 15–20 min ride / hard 20 min or 5k run / heavy 3–5 rep set, NEVER an all-out test, plain-language
+    why). **To test:** Stats cards show a number + method for FTP / threshold pace (incl. a runner with HR but no hard efforts) / e1RM;
+    connect an account and the coach has anchors without opening Stats; ask the coach to plan after weeks of easy riding → it works in one
+    quality effort to confirm your threshold (not a max test). ⬜ Small follow-up split to #504 (per-set RPE capture, sharpens gym e1RM).
+495. ⬜ **QA ≠ PROD for backlog TRIAGE + user reports (extends #485).** JM 2026-07-11: can't see #1002/#1003/#1006 in the
+    QA Road map. #485 synced the generated item LIST, but the triage overlay + user-added reports (`app_meta.backlog` =
+    {triage, added}) are PER-ENV Postgres — QA has 11 added, prod has 8, DIVERGED. Reports filed on one env are invisible
+    on the other (and #1007: can't even file on QA). FIX: share the whole overlay (triage+added) across QA+prod like the
+    item list, newest-wins. **Route:** infra/architecture.
+494. 🧪 **New "Road map" STATUS = future work to review later (JM 2026-07-12 picked: Backlog tab + Road map status).**
+    A PARKING bucket distinct from To-do — items to assess/consider/approve LATER, kept OUT of the active "Open" count.
+    BUILT: `BacklogStatus` +'roadmap' (api.ts + server `BACKLOG_STATUSES`); AdminBacklog S_LABEL/S_DOT (violet #b98cff)/
+    S_RANK/STATUS_ENV/STATUS_OPTS/counts (excluded from Open)/status chip by "To do"; `build-backlog statusOf` (🗺️→
+    roadmap); Admin tab reverted "Road map" → **"Backlog"**. **Route:** admin/backlog. 🧪 Test (QA): Admin → the tab reads
+    "Backlog"; a new "Road map" chip sits next to "To do"; set an item to Road map → it leaves Open + shows a violet dot.
+493. ✅ **Plan default-view preference (Settings).** ALREADY BUILT + works (JM confirmed 2026-07-11). Settings → "Calendar
+    starts on" (Day / Week / Month / Schedule) persists `calView`; Calendar reads it on mount (localStorage + setSetting,
+    `?view=` overrides). On prod. **Route:** UI.
+492. 🧪 **Rename "Backlog" → "Road map" (= future to assess / consider / approve).** JM 2026-07-11. Done in nav +
     Admin header (commit 67af627). Same commit also removed the **Mind card from Stats** (JM: "mind is still under stats
     too, remove"). **Route:** UI. 🧪 the tab/label reads "Road map" everywhere; no "Mind" card left on /stats.
-491. 🔨 **Deactivate Eat + Mind app-wide (keep Recovery); day dot = ACTIVITIES only.** JM 2026-07-11: "to simplify the
+491. 🧪 **Deactivate Eat + Mind app-wide (keep Recovery); day dot = ACTIVITIES only.** JM 2026-07-11: "to simplify the
     app for now, deactivate Mind and Eat; Recovery can stay; a green day-dot is only for activities (run/ride/yoga/
     pilates), not food/meditation/recovery." UI DONE — nav tabs removed, routes kept (commits 96ee927/d0c842b/67af627).
     ⚠️ **NOT propagated to the COACH: the daily-adapt ROUND-OUT pass (server.js ~2824) + MCP `schedule_meal`/`schedule_mind`
@@ -44,7 +109,7 @@ test guide → the **🧪 Test guide** section below.
     (Today/Train/Eat/Mind → Plan/Stats). Yoga/Pilates STAY (logged activities). Re-test the Profile sports chips on QA.
 490. ⬜ **Recovery library is too small — build a MUCH larger one (LOW priority).** JM 2026-07-11: "for recovery we'll
     need a much larger library, it's not near enough." More sauna/cold/massage/mobility/breath/sleep routines. **Route:** content.
-489. 🔨 **Add sheet = ride / run / gym / recovery / note ONLY (drop mind, meal, supplement).** JM 2026-07-11: "when we
+489. 🧪 **Add sheet = ride / run / gym / recovery / note ONLY (drop mind, meal, supplement).** JM 2026-07-11: "when we
     click add be sure to not have mind or meal or supplement — it's ride, run, gym, recovery, note." (Eat+Mind are
     deactivated.) `AddSheet` in Today (+ Plan). **Route:** UI.
 488. ✅ **Merge Today INTO Plan — Plan's Day view IS the full Today screen; Week/Month/Schedule each carry the day's own check-in; default-view pref.** JM 2026-07-11 approved ("I like 488") → promoted to prod. Ask: "Today and Plan should
@@ -52,8 +117,8 @@ test guide → the **🧪 Test guide** section below.
     features (keep the label Day). In Preferences a user picks the default view." DONE: Today tab removed; its content
     (check-in · verdict · plan · recovery) is Plan's Day view; Week + Schedule show each day's check-in STRIP, Month a
     verdict DOT — past = "didn't check in" / today = "check in today" / future = nothing. Mocked (options-first, JM
-    picked C, refined to per-day). ⚠️ the default-view Settings pref is split to #493 (not built yet). **Route:** UX.
-487. 🔨 **Remove the Train tab — add a workout via the Add button.** JM 2026-07-11: "remove Train tab; if a user wants
+    picked C, refined to per-day). Default-view Settings pref = #493 (also already built — "Calendar starts on"). **Route:** UX.
+487. 🧪 **Remove the Train tab — add a workout via the Add button.** JM 2026-07-11: "remove Train tab; if a user wants
     to add a workout they have the Add button." Drop the nav tab (keep the /train route). **Route:** UI.
 486. ⬜ **Coach task must survive switching screens (leaving the chat → "network error" on return).** JM 2026-07-11:
     "once we give a task to the coach, we should be able to switch screen without the coach interrupting; when we come
@@ -2427,10 +2492,14 @@ test guide → the **🧪 Test guide** section below.
     Today page jumps to /plan (calendar Day view) + opens the Add sheet there, instead of opening the Add
     sheet IN PLACE on Today. JM wants to add without leaving Today. (Today.tsx swapOn → navigate; #56/#57 made
     it jump — JM dislikes that.) JM screenshot 2026-06-26.
-145. 🧪 **REOPENED #139 — desktop CAN still start a ride; the BUTTON isn't gated.** I gated the PLAYER (and
-    RunPlayer) but the "▶ Ride now" button on the ride-detail pages (CoachPlanDetail + PlanDetail) is still
-    actionable on desktop. JM has said 2-3× you CANNOT ride from desktop. FIX: gate the BUTTON itself
-    (canPlayHere = isMobile || sensor-bridge) so it shows "Open on your phone" on a sensor-less desktop. JM 2026-06-26.
+145. 🧪 **REOPENED AGAIN #139 (JM 2026-07-11, prod screenshot) — "Ride now" still shows on desktop.** Root cause this
+    time: the button IS gated (`canPlayHere` on CoachPlanDetail + PlanDetail), but `isMobileDevice()` returned TRUE on
+    JM's Mac because of the `innerWidth < 820` clause — a NARROW DESKTOP WINDOW was treated as mobile. FIX: dropped that
+    clause (real phones/tablets report `pointer:coarse`; a Mac desktop has a fine pointer + 0 touch points), gated the one
+    remaining ungated launcher (CycleDetail), and pointed RidePlayer/RunPlayer at the shared `isMobileDevice()` (killed
+    their inline `<820` copies). Gym "Start workout" stays open (gym works on desktop). Test flipped: narrow desktop ≠
+    mobile. 🧪 **JM test (prod, after promote):** open a coach ride/template on desktop (even a narrow window) → NO "Ride
+    now", shows "Open on your phone"; on your phone it still shows. Was 🧪 REOPENED #139 (JM 2026-06-26).
 144. 🧪 **In-app Promote button → GitHub 403 — FIXED IN CODE.** The button POSTed a workflow_dispatch,
     which needs `actions: write`; the PAT has Contents+PRs only → 403. Rather than ask JM to widen the PAT,
     rewrote `/auth/promote-prod` to open/reuse a dev→main PR + enable auto-merge directly (Contents+PRs —

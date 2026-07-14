@@ -4,6 +4,10 @@ import { ftpEstimate, thresholdPaceEstimate, modelEstimate, tteEstimate, maxHrEs
 // #501 — age-based max HR is a FALLBACK: it fills a data-less athlete but must NOT drag a real observed peak down.
 describe('maxHrFromAge + fallback', () => {
   it('Tanaka: 208 − 0.7·age', () => { expect(maxHrFromAge(40)).toBe(180); expect(maxHrFromAge(30)).toBe(187) })
+  it('#508 Gulati for females: 206 − 0.88·age (lower than the male formula)', () => {
+    expect(maxHrFromAge(40, 'female')).toBe(171) // 206 − 35.2
+    expect(maxHrFromAge(40, 'female')!).toBeLessThan(maxHrFromAge(40, 'male')!)
+  })
   it('rejects nonsense ages', () => { expect(maxHrFromAge(null)).toBeNull(); expect(maxHrFromAge(4)).toBeNull(); expect(maxHrFromAge(120)).toBeNull() })
   it('no observed + no ceiling → uses the age estimate', () => {
     const e = maxHrEstimate({ observed: null, ceiling: null, age: 40 })
@@ -122,6 +126,13 @@ describe('ftpEstimate', () => {
     expect(e.best).toBeGreaterThan(245)
     expect(e.best).toBeLessThan(266)
     expect(e.conf.cls).not.toBe('strong')
+  })
+  // #508 (JM: "if 260 were too high I couldn't follow the workouts") — a FRESH but LOW eFTP is an under-read off easy
+  // riding; it must NOT drag a training-validated FTP down (the old code blended 260→250).
+  it('a fresh LOW eFTP does NOT lower a trained FTP — stays at your value, not blended down', () => {
+    const e = ftpEstimate({ eftp: 240, eftpAgeDays: 5, cp: 248, best20: 246, manual: 260 })
+    expect(e.best).toBe(260) // NOT 250
+    expect(e.why).toMatch(/under-read|validation|too high/i)
   })
   // #506 — JM: "all diff numbers but agrees with the blend?" A computed source far from the value you train by must
   // be tagged low/high (reads lower/higher), NOT blanket 'agrees', and only your manual value is 'primary' (in use).

@@ -4,11 +4,11 @@ import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 import { vdotFromThresholdPace, paceZones, racePredictions, marathonRealism, fmtPace, fmtTime, type RunVolume } from '../running-paces'
 import { runningVo2max } from '../vo2max-submax'
-import { fetchWellness, fetchEfTrend, type EfTrend } from '../intervals'
+import { fetchWellness } from '../intervals'
 import { authApi } from '../auth/api'
-import { TrendChart } from '../charts'
 import { BenchmarksCard } from '../Benchmarks'
-import SeasonCompare from '../SeasonCompare'
+// #510 — ALL metric GRAPHS (pace/EF trends + pace-duration/season curve) are PARKED for the roadmap (JM 2026-07-13);
+// SeasonCompare + PaceCurveChart stay in the codebase, just not rendered on the Running stats page for now.
 // #398 — the Threshold benchmark card (edit + confidence + science) is the ONE place for threshold pace; the
 // old duplicate inline ThresholdCell was removed (JM: "threshold there 2 times").
 
@@ -29,15 +29,11 @@ export default function RunningStats() {
   const { user } = useAuth()
   const [runVol, setRunVol] = useState<{ available: boolean; longestKm?: number; weeklyKm?: number } | null>(null)
   const [hrRest, setHrRest] = useState<number | null>(null) // #234 HR-ratio input
-  const [paceTrend, setPaceTrend] = useState<(number | null)[] | null>(null) // #230 per-week avg pace
-  const [ef, setEf] = useState<EfTrend | null>(null) // #403 efficiency-factor trend
   const isRunner = hasModule(user?.sports || [], 'running')
 
   useEffect(() => {
     if (!user?.hasIcuKey || !isRunner) return
     authApi.runVolume().then(setRunVol).catch(() => {})
-    authApi.runPaceTrend().then((r) => setPaceTrend(r.available && r.paces ? r.paces : [])).catch(() => {})
-    fetchEfTrend('Run', 90).then(setEf).catch(() => {}) // #403
     const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
     fetchWellness(from, to).then((rows) => { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].restingHR != null) { setHrRest(rows[i].restingHR); break } }).catch(() => {})
   }, [user?.hasIcuKey, isRunner])
@@ -71,8 +67,8 @@ export default function RunningStats() {
           <BenchmarksCard only={['thresholdPace', 'cs', 'dPrime', 'vo2max', 'tteRun', 'maxHr']} profile="running" />
           {vo2 && hrRatioMismatch &&<p className="meta" style={{ margin: '10px 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
 
-          {/* #407/#420 — the 2-season overlay IS the pace curve now (removed the old single-range curve to avoid two). */}
-          <SeasonCompare sport="running" threshold={pace} />
+          {/* #508 — the pace-duration / season-compare curve is PARKED for the roadmap (JM 2026-07-13: "not good
+              enough yet"). SeasonCompare + PaceCurveChart are kept in the codebase for when it returns. */}
 
           {/* #398 — race predictions sit right under the pace curve (both are "what you can do"); the training
               zones ("how to train") follow, colour-coded as a cool→warm effort spectrum. */}
@@ -102,31 +98,9 @@ export default function RunningStats() {
             </>
           )}
 
-          {paceTrend && paceTrend.some((p) => p != null) && (() => {
-            const v = paceTrend.filter((x): x is number => x != null)
-            const first = v[0], lastV = v[v.length - 1], diff = first - lastV // + = faster (pace dropped)
-            const insight = Math.abs(diff) < 3 ? '➡️ Pace is steady over the last 8 weeks.' : diff > 0 ? `📈 ${Math.round(diff)}s/km faster than 8 weeks ago — getting quicker.` : `📉 ${Math.round(-diff)}s/km slower than 8 weeks ago.`
-            return (
-              <>
-                <div className="stat-sub">Pace trend <span className="meta">· avg min/km per week</span></div>
-                <div className="card chart-card" style={{ padding: '12px 14px' }}>
-                  <TrendChart series={[{ label: 'pace', data: paceTrend, color: '#ffb13d', area: true }]} height={110} axes fmt={fmtPace} labels={['7w', '6w', '5w', '4w', '3w', '2w', '1w', 'now']} />
-                  <p className="fit-insight">{insight}</p>
-                </div>
-              </>
-            )
-          })()}
-
-          {/* #403 — Efficiency Factor: aerobic engine (pace ÷ HR), rising = fitter even when pace is flat. */}
-          {ef && ef.points.length >= 2 && (
-            <>
-              <div className="stat-sub">Efficiency Factor <em>· aerobic engine · pace ÷ HR</em></div>
-              <div className="card chart-card" style={{ padding: '12px 14px' }}>
-                <TrendChart series={[{ label: 'EF', color: '#34e07d', data: ef.points.map((p) => p.ef), area: true }]} height={110} axes labels={ef.points.map((p) => new Date(p.date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))} />
-                <p className="fit-insight">{ef.trend === 'up' ? `📈 EF is climbing (${ef.deltaPct != null && ef.deltaPct > 0 ? '+' : ''}${ef.deltaPct}%) — your aerobic engine is improving, even if pace is flat.` : ef.trend === 'down' ? `📉 EF is slipping (${ef.deltaPct}%) — check sleep, stress or fuelling.` : '➡️ EF is steady — a stable aerobic base.'}</p>
-              </div>
-            </>
-          )}
+          {/* #510 — ALL metric GRAPHS (pace trend, EF trend, pace-duration + season-compare curve) PARKED for the
+              roadmap (JM 2026-07-13: "remove the metric graphs, it's for the roadmap"). The benchmark cards + race
+              predictions + training zones above stay; chart components stay in the codebase for the rebuild. */}
         </>
       )}
     </div>
