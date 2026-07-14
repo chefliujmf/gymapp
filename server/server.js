@@ -28,7 +28,7 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
-import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec } from './sport-settings.js'
+import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch } from './sport-settings.js'
 // #508 — DEEP-merge intervals sport-settings into ours PER GROUP. intervals only knows ftp/maxHr/lthr/thresholdPace;
 // our LOCAL benchmarks (cp/wPrime/tte/cs/dPrime) live in the same per-sport object. A shallow `{...ours, ...mapped}`
 // makes mapped.cycling REPLACE the whole cycling object → wipes cp/W′/TTE on every session-load/pull (JM: "manual
@@ -409,6 +409,14 @@ app.put('/auth/profile', auth, (req, res) => {
       reminders: req.body.pushPrefs.reminders === true,
     }
   }
+  // #268/#1003/#459 (JM: "changed height in Platyplus, couldn't see it on intervals") — WRITE-BACK the profile basics
+  // (height/DOB/sex) to the intervals athlete record so the sync is two-way, not just intervals→Platyplus. PROD-ONLY:
+  // QA is READ-ONLY toward intervals (QA + prod share athlete i28814 — a QA write would corrupt the real account, #381).
+  // Fire-and-forget (never fail the profile save if intervals is down); only maps fields the user actually changed.
+  if (!IS_STAGING && req.user.icuKey && req.user.icuAthlete) {
+    const w = athleteBasicsPatch(Object.keys(req.body || {}), { heightCm: req.user.info?.heightCm, dob: req.user.info?.dob, sex: req.user.sex })
+    if (Object.keys(w).length) icuFetch(req.user, `/athlete/${req.user.icuAthlete}`, { method: 'PUT', body: JSON.stringify(w) }).catch((e) => console.error('[icu-profile-write] ' + (e.message || e)))
+  }
   save(store); res.json(pub(req.user))
 })
 
@@ -763,7 +771,7 @@ app.post('/auth/location', auth, async (req, res) => {
   u.info = u.info || {}; u.info.lat = g.lat; u.info.lon = g.lon; u.info.locationName = city
   audit(u, { actor: 'you', action: 'Set location', target: city, detail: 'weather + local time · synced to intervals', kind: 'other' }) // #232
   save(store)
-  if (u.icuKey) icuFetch(u, `/athlete/${u.icuAthlete}`, { method: 'PUT', body: JSON.stringify({ city }) }).catch((e) => console.error('[icu-city-write] ' + (e.message || e))) // #268 write-back
+  if (!IS_STAGING && u.icuKey) icuFetch(u, `/athlete/${u.icuAthlete}`, { method: 'PUT', body: JSON.stringify({ city }) }).catch((e) => console.error('[icu-city-write] ' + (e.message || e))) // #268 write-back (PROD-only — QA is read-only toward the shared athlete)
   res.json({ name: city, lat: g.lat, lon: g.lon, source: 'saved' })
 })
 app.get('/auth/checkins', auth, (req, res) => res.json(checkinsInRange(req.user, req.query.from, req.query.to)))

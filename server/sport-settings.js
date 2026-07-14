@@ -77,6 +77,21 @@ export function icuPatchForGroup(sportSettings, group, patch) {
 /** Which Platyplus sport name (Profile chips) maps to which intervals group. */
 export const SPORT_TO_GROUP = { cycling: 'cycling', running: 'running', swimming: 'swimming' }
 
+/**
+ * #268/#1003/#459 — map Platyplus profile-BASICS edits to an intervals athlete PUT body (WRITE-BACK, verified: a partial
+ * `PUT /athlete/{id}` merges + returns 200). `changed` = the keys the user just set (req.body); values come from the
+ * merged profile. Units: height cm → METRES; sex male/female → M/F; dob (YYYY-MM-DD) passthrough. Only maps a field the
+ * user actually changed AND that's valid — so a blank/invalid value never clobbers what intervals already has.
+ */
+export function athleteBasicsPatch(changed, { heightCm, dob, sex } = {}) {
+  const has = (k) => Array.isArray(changed) && changed.includes(k)
+  const w = {}
+  if (has('heightCm') && heightCm > 0) w.height = Math.round(heightCm) / 100
+  if (has('dob') && /^\d{4}-\d{2}-\d{2}/.test(dob || '')) w.icu_date_of_birth = String(dob).slice(0, 10)
+  if (has('sex') && (sex === 'male' || sex === 'female')) w.sex = sex === 'female' ? 'F' : 'M'
+  return w
+}
+
 // #512 — Daniels VDOT from RACE times: the reliable running anchor. MIRRORS src/running-paces.ts — KEEP IN SYNC.
 const _vo2 = (v) => -4.6 + 0.182258 * v + 0.000104 * v * v
 const _pctMax = (t) => 0.8 + 0.1894393 * Math.exp(-0.012778 * t) + 0.2989558 * Math.exp(-0.1932605 * t)
