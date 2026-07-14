@@ -6,7 +6,6 @@ import { useAuth } from '../auth/AuthContext'
 import { TrendChart, InfoDot } from '../charts'
 import { hasModule } from '../modules'
 import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
-import { last } from './Fitness'
 
 // #420 — one plain-language takeaway for the eFTP trend (matches the EF-chart insight style).
 function eftpInsight(a: (number | null)[]): string {
@@ -18,10 +17,8 @@ function eftpInsight(a: (number | null)[]): string {
       : `➡️ eFTP is holding steady around ${Math.round(lastV)} W.`
 }
 import { BenchmarksCard } from '../Benchmarks'
-import SeasonCompare from '../SeasonCompare'
-
-// #508 — the power-duration curve now lives INSIDE SeasonCompare (one merged curve: fitted CP/W′ model + a season
-// toggle), so the standalone PowerCurveCard was removed to avoid two curves (JM: "why 2 power curves").
+// #508 — the power/pace-duration + season-compare CURVES are PARKED for the roadmap (JM 2026-07-13: "not good enough").
+// SeasonCompare + the chart components stay in the codebase, just not rendered on the Stats pages for now.
 
 // #225 — Cycling per-sport stats: power curve · eFTP · VO₂max · W/kg. Split out of /fitness (which
 // is now global Load & Form only).
@@ -86,9 +83,8 @@ export default function CyclingStats() {
                   <p className="fit-insight">{ef.trend === 'up' ? `📈 EF is climbing (${ef.deltaPct != null && ef.deltaPct > 0 ? '+' : ''}${ef.deltaPct}%) — your aerobic engine is improving, even if FTP is flat. Keep the base work.` : ef.trend === 'down' ? `📉 EF is slipping (${ef.deltaPct}%) — check sleep, stress or fuelling before adding load.` : '➡️ EF is steady — a stable aerobic base.'}</p>
                 </div>
               )}
-              {/* #407/#420 — the 2-season overlay IS the power curve now (removed the old single-range curve to avoid two). */}
-              <SeasonCompare sport="cycling" weight={last(s.weight)} ftp={user?.sportSettings?.cycling?.ftp ?? user?.ftp ?? null} />
-              <p className="meta" style={{ marginTop: 10 }}>Read live from intervals.icu.</p>
+              {/* #508 — the power-duration / season-compare curve is PARKED for the roadmap (JM 2026-07-13: "not good
+                  enough yet"). SeasonCompare + PowerCurveChart/DurationCurve are kept in the codebase for when it returns. */}
             </>
           )}
         </>

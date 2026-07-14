@@ -8,10 +8,8 @@ import { fetchWellness, fetchEfTrend, type EfTrend } from '../intervals'
 import { authApi } from '../auth/api'
 import { TrendChart } from '../charts'
 import { BenchmarksCard } from '../Benchmarks'
-import SeasonCompare from '../SeasonCompare'
-
-// #508 — the pace-duration curve now lives INSIDE SeasonCompare (one merged curve: fitted CS/D′ model + a season
-// toggle), so the standalone PaceCurveCard was removed to avoid two curves (JM: "why 2 pace curves").
+// #508 — the pace-duration + season-compare CURVES are PARKED for the roadmap (JM 2026-07-13: "not good enough").
+// SeasonCompare + PaceCurveChart stay in the codebase, just not rendered on the Stats pages for now.
 // #398 — the Threshold benchmark card (edit + confidence + science) is the ONE place for threshold pace; the
 // old duplicate inline ThresholdCell was removed (JM: "threshold there 2 times").
 
@@ -74,8 +72,8 @@ export default function RunningStats() {
           <BenchmarksCard only={['thresholdPace', 'cs', 'dPrime', 'vo2max', 'tteRun', 'maxHr']} profile="running" />
           {vo2 && hrRatioMismatch &&<p className="meta" style={{ margin: '10px 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
 
-          {/* #407/#420 — the 2-season overlay IS the pace curve now (removed the old single-range curve to avoid two). */}
-          <SeasonCompare sport="running" threshold={pace} />
+          {/* #508 — the pace-duration / season-compare curve is PARKED for the roadmap (JM 2026-07-13: "not good
+              enough yet"). SeasonCompare + PaceCurveChart are kept in the codebase for when it returns. */}
 
           {/* #398 — race predictions sit right under the pace curve (both are "what you can do"); the training
               zones ("how to train") follow, colour-coded as a cool→warm effort spectrum. */}
