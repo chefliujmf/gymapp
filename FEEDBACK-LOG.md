@@ -157,10 +157,20 @@ test guide → the **🧪 Test guide** section below.
 480. ⬜ **Post-workout insights PER GRAPH are poor.** JM 2026-07-10: "post workout insights per graph is poor and not
     great." The per-chart insight line (chart standard "insight line") needs to be genuinely useful, not filler.
     **Route:** feature/quality (this chat).
-479. ⬜ **Garmin workout showed a flat 171 W, not a RANGE.** JM 2026-07-10: "today on my garmin I did not have a range
-    but just 171 watts which is wrong." A planned workout pushed to Garmin (via intervals) rendered a single target, not
-    the watt RANGE — regression against #219 (true-shape, show the range). Trace `planToIcuEvent`/workout_doc targets.
-    **Route:** bug (worker).
+479. ⬜ **Target RANGES must be correct — show a range (not a flat value), and read smallest-first.** Two facets, combined
+    per JM 2026-07-14: **(a) Garmin/trainer target — RANGE outdoor, SPECIFIC value indoor (worker, OPEN):** JM 2026-07-10
+    "today on my garmin I did not have a range but just 171 watts which is wrong." ⚠️ **INDOOR vs OUTDOOR (JM 2026-07-14):
+    an INDOOR workout SHOULD be a specific value — a smart trainer holds that exact power in ERG mode, exactly how
+    TrainerRoad & JOIN work. OUTDOOR should be a RANGE (you self-regulate to a band).** So the flat 171 W is correct IF it
+    was indoor, and a bug only OUTDOOR. The worker must emit: **outdoor → a min–max RANGE (smallest first); indoor → the
+    specific ERG target.** Regression vs #219 (true-shape) applies to the OUTDOOR case. Trace `planToIcuEvent`/workout_doc
+    targets + the indoor/outdoor flag (`VirtualRide`/trainer vs `Ride`).
+    **(b) Range ORDER — smallest number FIRST (client, ✅ FIXED in chat 2026-07-14):** JM saw the Daniels zone table read
+    "6:53–6:13/km" (Easy) — reversed. `RunningStats.tsx` `zStr` now renders `min–max` (6:13–6:53) via Math.min/max, robust
+    to the `paceZones` tuple order (easy is stored [fast, slow]). Audited every other range render: workout/interval
+    targets are single values; marathon (potential→realistic) + segment time (start→end) already read ascending — no other
+    reversals. **The worker must apply BOTH rules to the Garmin/intervals push (a): a real min–max RANGE, smallest first.**
+    **Route:** bug (worker owns (a); (b) done client-side).
 478. ⬜ **Eat & Mind must stay SUGGESTIONS — never auto-imposed into the calendar.** JM 2026-07-10 (3 msgs +
     screenshots): "I prefer to keep suggestions for eat and mind; 8 and 9 imposed in my calendar is a no-no…
     this is suggestions I want to keep… not just dinner like this, this is wrong and never asked." The coach's
