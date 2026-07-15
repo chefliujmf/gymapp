@@ -6,7 +6,7 @@
 // A data migration carrying its data is normal (that's what migrations are for): the athlete's info still ends up
 // in their DB profile, not in the app's runtime logic. Pure + unit-tested (src/migrations.test.ts).
 
-import { mergedProfile } from './profile-backfill.js'
+import { mergedProfile, stripProfileMethod } from './profile-backfill.js'
 
 export const MIGRATIONS = [
   {
@@ -20,6 +20,19 @@ export const MIGRATIONS = [
         u.coachProfile = merged
         u.coachProfileAt = Date.now()
         n++
+      }
+      return n
+    },
+  },
+  {
+    id: '522_strip_profile_method',
+    describe: 'strip app-level/method content (coach-memory upkeep, public-text voice, infra) that polluted athlete profiles',
+    run(store) {
+      let n = 0
+      for (const u of store.users || []) {
+        const cur = u.coachProfile || ''
+        const cleaned = stripProfileMethod(cur)
+        if (cleaned !== cur) { u.coachProfile = cleaned; u.coachProfileAt = Date.now(); n++ }
       }
       return n
     },

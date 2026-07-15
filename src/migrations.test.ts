@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { mergedProfile, BACKFILL_MARKER } from '../server/profile-backfill.js'
+import { mergedProfile, BACKFILL_MARKER, stripProfileMethod } from '../server/profile-backfill.js'
 // @ts-expect-error — plain JS server module, no types
 import { runMigrations, pendingMigrations, MIGRATIONS } from '../server/migrations.js'
 
@@ -27,6 +27,50 @@ describe('mergedProfile — the pure back-fill', () => {
   })
   it('matches the email case-insensitively', () => {
     expect(mergedProfile('JMFiset@Gmail.com ', '')).toContain('Goal:')
+  })
+})
+
+describe('stripProfileMethod — remove app/method pollution, keep athlete facts', () => {
+  const POLLUTED = [
+    '# Athlete Profile',
+    '## Training context',
+    '- primary goal: best all-round cyclist',
+    '- current working FTP: owned by ftp_estimate.md. Working value is 260 W.',
+    '- coaching memory preference: wants a durable trace of coach feedback; maintain this in `coach_feedback_memory.md`',
+    '- public ride title/description preference: Strava-facing text should be meaningful, human. Avoid abstract titles.',
+    '- chat trigger: `COACHCHECK` means perform a full coach check-in.',
+    '- left calf tendency: left calf can feel tight.',
+    '',
+    '## Current project assumptions',
+    '- Intervals.icu is the primary source of truth.',
+    '- Wahoo ROAM is the execution device.',
+    '',
+    '## Goal & travel rhythm',
+    'Goal: raise FTP toward ~300 W.',
+  ].join('\n')
+  const cleaned = stripProfileMethod(POLLUTED)
+
+  it('drops the pure-method bullets', () => {
+    expect(cleaned).not.toMatch(/coach_feedback_memory/)
+    expect(cleaned).not.toMatch(/Strava-facing/)
+    expect(cleaned).not.toMatch(/COACHCHECK/)
+  })
+  it('drops the whole "Current project assumptions" infra section', () => {
+    expect(cleaned).not.toMatch(/Current project assumptions/)
+    expect(cleaned).not.toMatch(/Wahoo ROAM/)
+  })
+  it('KEEPS genuine athlete facts', () => {
+    expect(cleaned).toMatch(/primary goal/)
+    expect(cleaned).toMatch(/260 W/)          // FTP status kept (that bullet isn't pure-method)
+    expect(cleaned).toMatch(/left calf/)
+    expect(cleaned).toMatch(/Goal & travel rhythm/) // the section AFTER the infra one survives
+  })
+  it('is idempotent (re-run strips nothing more)', () => {
+    expect(stripProfileMethod(cleaned)).toBe(cleaned)
+  })
+  it('leaves a clean/empty profile untouched', () => {
+    expect(stripProfileMethod('- just my goal\n- my equipment')).toBe('- just my goal\n- my equipment')
+    expect(stripProfileMethod('')).toBe('')
   })
 })
 

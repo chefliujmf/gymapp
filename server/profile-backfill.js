@@ -25,3 +25,26 @@ export function mergedProfile(email, currentProfile = '') {
   const trimmed = cur.trim()
   return (trimmed ? trimmed + '\n\n' + add : add).trim()
 }
+
+// #522 — strip APP-LEVEL / coaching-METHOD content that polluted per-athlete profiles (leftover from the old
+// standalone cyclingcoach athlete_profile.md). These behaviours live in the SHARED engine and apply to EVERY
+// athlete, so they must not sit in one person's profile (redundant + drift). Removes: the whole "Current project
+// assumptions" infra section (Intervals/Wahoo/Google-Calendar workflow), and bullets that are pure method — the
+// coach-memory upkeep, the public activity-text voice, and the COACHCHECK command. Genuine athlete facts (goal,
+// FTP status, equipment, injuries, gym/travel prefs, psychology) are kept. Pure + idempotent (re-run strips
+// nothing more) + unit-tested (src/migrations.test.ts).
+const METHOD_BULLET = /coach_feedback_memory|Strava[- ]facing|public\s+(ride|activity)\b[^\n]{0,40}\bpreference|chat trigger|\bCOACHCHECK\b/i
+export function stripProfileMethod(md) {
+  const src = String(md || '')
+  if (!src.trim()) return src
+  const lines = src.replace(/\r/g, '').split('\n')
+  const out = []
+  let skipSection = false
+  for (const ln of lines) {
+    if (/^#{1,3}\s*Current project assumptions/i.test(ln)) { skipSection = true; continue } // drop the infra section
+    if (skipSection) { if (/^#{1,3}\s/.test(ln)) skipSection = false; else continue }        // …until the next heading
+    if (/^\s*[-*]\s/.test(ln) && METHOD_BULLET.test(ln)) continue                            // drop pure-method bullets
+    out.push(ln)
+  }
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
