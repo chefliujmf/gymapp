@@ -20,6 +20,7 @@
 //
 // Usage: node scripts/sync-coach-engine.mjs [path-to-cyclingcoach]
 import { readFileSync, writeFileSync } from 'node:fs'
+import { assertNoAthleteNames } from './engine-name-gate.mjs' // #519/#520 — shared no-hardcoded-athlete gate
 import { join, dirname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -97,22 +98,9 @@ writeFileSync(out('coach-engine.md'), HEADER('generic method (all athletes)', 'S
 writeFileSync(out('coach-engine-cycling.md'), HEADER('cycling/endurance method (gated)', 'Injected ONLY for cyclists/endurance athletes. Do NOT apply bike-volume / FTP / outdoor-ride rules to non-endurance athletes.') + bundle(CYCLING))
 writeFileSync(out('coach-engine-female.md'), HEADER('female-athlete module (gated)', 'Injected ONLY for female athletes.') + bundle(FEMALE))
 
-// #519 — NO-HARDCODED-ATHLETE gate (mirrors the media-independence gate). The SHARED coaching engine is read by
-// EVERY athlete, so it must never carry a specific person's identity — their NAME. Athlete-specifics (goal,
-// availability, travel rhythm) live in the per-user PROFILE. If a known athlete name appears in a generated
-// engine, FAIL the build so this can never regress. Extend PERSONAL_NAMES as real users join — it's a privacy/
-// leak backstop, not coaching data.
-const PERSONAL_NAMES = [/\bJean[-\s]?Manuel\b/i, /\bFiset\b/i, /\bJMF\b/, /\bXenia\b/i]
-const leaks = []
-for (const name of ['coach-engine.md', 'coach-engine-cycling.md', 'coach-engine-female.md']) {
-  const txt = readFileSync(out(name), 'utf8')
-  for (const rx of PERSONAL_NAMES) { const m = txt.match(rx); if (m) leaks.push(`${name}: "${m[0]}"`) }
-}
-if (leaks.length) {
-  console.error('\n✗ coach-engine gate FAILED — a specific athlete name leaked into the SHARED engine:\n  ' +
-    leaks.join('\n  ') + '\n  Athlete specifics belong in the per-user PROFILE, not the shared engine. Remove the name from the source.\n')
-  process.exit(1)
-}
+// #519/#520 — NO-HARDCODED-ATHLETE gate: fail if any athlete name leaked into a generated engine. Shared with
+// the standalone build check (scripts/engine-name-gate.mjs) so CI catches a DIRECT edit too, not just a re-sync.
+assertNoAthleteNames(join(here, '..', 'server'))
 console.log('coach-engine gate: OK (no hardcoded athlete names in the shared engine)')
 
 console.log(`coach-engine.md         ${words(out('coach-engine.md'))} words (${SHARED.length} files, generic)`)
