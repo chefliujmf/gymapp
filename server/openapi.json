@@ -519,6 +519,34 @@
         }
       }
     },
+    "/auth/plan/{id}": {
+      "get": {
+        "summary": "Fetch ONE of the signed-in user's plans by id (session auth) — powers the intervals 'Open in Platyplus' cold deep link (#528). 404 when the plan isn't in this account.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The plan"
+          },
+          "404": {
+            "description": "Not in this account"
+          }
+        }
+      }
+    },
     "/auth/plans": {
       "get": {
         "summary": "List the signed-in user's workout plans (session auth)",

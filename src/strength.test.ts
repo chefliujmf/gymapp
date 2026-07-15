@@ -144,3 +144,20 @@ describe('strengthDigest (actionable feed)', () => {
     expect(SETS_LOW).toBe(10)
   })
 })
+
+// #527/#251 — reliable session duration (wall-clock fragile → planned/intervals fallback).
+import { reliableSessionMinutes } from './strength'
+describe('reliableSessionMinutes (#527 gym duration)', () => {
+  it('trusts a plausible wall-clock', () => {
+    expect(reliableSessionMinutes({ wallMin: 62, setsCompleted: 20, plannedMin: 71 })).toBe(62)
+  })
+  it('JM case — 20 sets in "11 min" is impossible → uses the planned estimate (intervals-consistent)', () => {
+    expect(reliableSessionMinutes({ wallMin: 11, setsCompleted: 20, plannedMin: 71 })).toBe(71)
+  })
+  it('broken timer with no plan → floors to sets×0.75', () => {
+    expect(reliableSessionMinutes({ wallMin: 3, setsCompleted: 20 })).toBe(15)
+  })
+  it('never below 1', () => {
+    expect(reliableSessionMinutes({ wallMin: 0, setsCompleted: 0 })).toBe(1)
+  })
+})

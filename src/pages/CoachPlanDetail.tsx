@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { getCoachPlan, gymSessionFromPlan, setGymSession, resolveDemo, estimateGymMinutes, findGymLogForPlan } from '../plan'
+import { getCoachPlan, fetchCoachPlan, gymSessionFromPlan, setGymSession, resolveDemo, estimateGymMinutes, findGymLogForPlan, type CoachPlan } from '../plan'
 import { calApi, type CalItem } from '../calendar'
 import { MiniProfile } from '../ui'
 import { workoutSummary, structureRows, plannedLoad } from '../workout-summary'
@@ -27,7 +27,16 @@ export default function CoachPlanDetail() {
   const logs = useLiveQuery(() => db.logs.toArray())
   const e1rmMap = bestE1rmByExercise(logs || [])
   const e1rmFor = (name: string) => e1rmMap.get(name) || [...e1rmMap.entries()].find(([k]) => k.toLowerCase() === name.toLowerCase())?.[1]
-  const p = id ? getCoachPlan(id) : undefined
+  // #528 — try the local cache first; if it misses (a COLD deep link from intervals), fetch by id from the
+  // server. `wrongAccount` = the id isn't in THIS account (404 → the link was opened in another user's session).
+  const [p, setP] = useState<CoachPlan | undefined>(() => (id ? getCoachPlan(id) : undefined))
+  const [wrongAccount, setWrongAccount] = useState(false)
+  useEffect(() => {
+    if (p || !id) return
+    let cancelled = false
+    fetchCoachPlan(id).then((res) => { if (cancelled) return; if (res) setP(res); else if (res === null) setWrongAccount(true) })
+    return () => { cancelled = true }
+  }, [id, p])
   const [items, setItems] = useState<CalItem[]>([])
   const [open, setOpen] = useState<Set<number>>(new Set())
   const [sheet, setSheet] = useState<{ title: string; body: string } | null>(null)
@@ -62,7 +71,12 @@ export default function CoachPlanDetail() {
     else setCheckedDone(true)
   }, [p?.id, p?.date, p?.sport, logs, navigate])
 
-  if (!p) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button><h1>Plan not found</h1><p className="meta">Open it from Today so it can load.</p></div>
+  if (!p) {
+    const back = <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
+    // #528 — 404 from the server = this plan isn't in THIS account (a link opened in a different login, or removed).
+    if (wrongAccount) return <div className="page-head">{back}<h1>Can't open this workout</h1><p className="meta">It isn't in this account — the link may belong to a different Platyplus login, or the workout was removed. Sign in as its owner, or open it from your Plan.</p></div>
+    return <div className="page-head">{back}<h1>Loading…</h1><p className="meta">Fetching this workout.</p></div>
+  }
 
   // #155 — for a PAST plan, wait until we know if it's done (→ redirect to results) before rendering, so
   // the plan never flashes. Upcoming/today plans render immediately (they're not done yet).

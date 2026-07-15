@@ -1269,6 +1269,13 @@ app.post('/auth/token/rotate', auth, (req, res) => { req.user.apiToken = randomB
 
 // The app (session) reads its own plans for the Today merge-by-id.
 app.get('/auth/plans', auth, (req, res) => { healMirror(req.user).catch(() => {}); res.json(plansInRange(req.user, req.query.from, req.query.to)) }) // #5026 — sync-on-load: repair the intervals mirror when the athlete opens the plan view (fire-and-forget, cooldown-guarded)
+// #528 — fetch ONE plan by id (session auth) so an intervals "Open in Platyplus" deep link works COLD (no prior
+// Today load). Owner-scoped: only the authenticated user's own plan; a 404 means it isn't in THIS account
+// (e.g. the link was opened in a different user's session — the client shows a clearer message than "not found").
+app.get('/auth/plan/:id', auth, (req, res) => {
+  const p = (req.user.plans || []).find((x) => x.id === req.params.id)
+  return p ? res.json(p) : res.status(404).json({ error: 'not_found' })
+})
 // Calendar authoring (session): create/update/delete workout plans from the UI
 // — same path as the coach API, so it auto-pushes to intervals.
 app.post('/auth/plans', auth, async (req, res) => { const r = await upsertPlan(req.user, req.body, 'you'); res.status(r.status).json(r.body) })
