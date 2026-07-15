@@ -128,7 +128,7 @@ test guide → the **🧪 Test guide** section below.
     (Today/Train/Eat/Mind → Plan/Stats). Yoga/Pilates STAY (logged activities). Re-test the Profile sports chips on QA.
 490. ⬜ **Recovery library is too small — build a MUCH larger one (LOW priority).** JM 2026-07-11: "for recovery we'll
     need a much larger library, it's not near enough." More sauna/cold/massage/mobility/breath/sleep routines. **Route:** content.
-489. 🧪 **Add sheet = ride / run / gym / recovery / note ONLY (drop mind, meal, supplement).** JM 2026-07-11: "when we
+489. ✅ **Add sheet = ride / run / gym / recovery / note ONLY (drop mind, meal, supplement).** JM 2026-07-11: "when we
     click add be sure to not have mind or meal or supplement — it's ride, run, gym, recovery, note." (Eat+Mind are
     deactivated.) `AddSheet` in Today (+ Plan). **Route:** UI.
 488. ✅ **Merge Today INTO Plan — Plan's Day view IS the full Today screen; Week/Month/Schedule each carry the day's own check-in; default-view pref.** JM 2026-07-11 approved ("I like 488") → promoted to prod. Ask: "Today and Plan should
@@ -321,7 +321,7 @@ test guide → the **🧪 Test guide** section below.
     DATA extend past 1m (best-20min 154W is mentioned, so data exists) or does the line path/points stop? Make the line span
     the full x-range. ROOT: `CURVE_DURATIONS` jumped 60→300 (nothing 1m–5m) so the tail was 5 sparse points = flat floor →
     looked stopped. Fixed: densified to ~25 durations (`src/pages/ActivityDetail.tsx`). gymapp-only.
-356. 🔨 **Coach chat must SYNC across devices + ChatGPT-style threads (new chat, search, history).** JM 2026-07-05: asked
+356. ✅ **Coach chat must SYNC across devices + ChatGPT-style threads (new chat, search, history).** JM 2026-07-05: asked
     the coach on desktop, couldn't see it on his phone. Root: Platyplus stores only a single `chatSession` id (the claude
     session lives on the host); the actual MESSAGES aren't persisted in the DB — the client holds them in memory, lost on
     reload/device-switch. Reco: persist messages server-side per THREAD (DB), load on any device (sync), + thread list /
@@ -957,7 +957,7 @@ test guide → the **🧪 Test guide** section below.
     (`audit()` exists per-user + AuditLog.tsx) → make it an ADMIN cross-user view of actions done (coach/user/system). (2) = NEW: capture app
     success/error logs (console + thrown errors) into a queryable store surfaced under admin, with level (info/warn/error), ts, source/route,
     message, stack, user. Mock-first (options). gymapp (admin UI + a log-capture layer). ⬜ pending mock.
-430. 🔨 **Coach LEARNS per-user from every interaction + STRICT confidentiality/isolation between users.** JM 2026-07-08: "for every
+430. ✅ **Coach LEARNS per-user from every interaction + STRICT confidentiality/isolation between users.** JM 2026-07-08: "for every
     interaction between a user and the coach, update his skills/memory so the coach learns + tailors insights/feedback/plan to THAT user. This
     knowledge must NOT affect another user (if my wife does cardio-poussette/stroller, don't bring it up to me). A user's info + interactions
     with the coach are STRICTLY CONFIDENTIAL between them." STATUS: the infra already exists + is isolated — per-user `user.coachMemory`
@@ -2044,7 +2044,7 @@ test guide → the **🧪 Test guide** section below.
     intervals carries one (investigate icu fields); consider showing eFTP alongside set-FTP. NOTE: JM's **Léger-Boucher
     test ≈ 52** (a direct maximal running test) — that's the true value, far better than our 43.9 cycling proxy; he should
     set it manually (and it confirms the cycling W/kg estimate reads low for runners). gymapp-only.
-230. ⬜ **Chart standard — retrofit all axis-less graphs (codified in skill `platyplus-charts` + memory).** JM 2026-06-30:
+230. ✅ **Chart standard — retrofit all axis-less graphs (codified in skill `platyplus-charts` + memory).** JM 2026-06-30:
     "you keep creating graphs I cannot use — no X/Y axis, no insights. Make ALL graphs useful + consistent. Update skills,
     memory, agent." DONE: skill `platyplus-charts` + memory `platyplus-chart-standard` (every chart = X+Y axes + labels,
     crisp HTML-overlay text, an insight line, shared component, shared DateRangeFilter). RETROFIT (⬜): the activity
