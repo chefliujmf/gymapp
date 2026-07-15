@@ -99,11 +99,6 @@ a { color: inherit; text-decoration: none; }
 .thumb--gym { background: radial-gradient(120% 120% at 30% 20%, #4a4f9e 0%, #343a6e 55%, #1f2240 100%); }
 .thumb--target { background: radial-gradient(120% 120% at 30% 20%, #8a4a8f 0%, #5a3068 55%, #2f1c3c 100%); }
 .thumb--ride svg, .thumb--run svg, .thumb--gym svg, .thumb--target svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
-/* #JM — completed-activity "effort signature": a zone-colored IF donut (IntensityThumb) */
-.thumb--sig { background: radial-gradient(120% 120% at 30% 20%, #1c2230 0%, #141922 55%, #0e1116 100%); }
-.sig-ring { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
-.sig-ring__hole { width: 34px; height: 34px; border-radius: 50%; background: #14171d; display: flex; align-items: baseline; justify-content: center; font-size: 14px; font-weight: 800; color: var(--text, #eef1f4); letter-spacing: -.02em; }
-.sig-ring__pct { font-size: 8px; font-weight: 700; opacity: .65; margin-left: 1px; }
 .card-body { flex: 1; min-width: 0; }
 .card-body h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: var(--text); }
 .meta { color: var(--text-dim); font-size: 13px; display: flex; gap: 8px; flex-wrap: wrap; }
