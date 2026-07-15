@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { authApi, type CoachReview } from '../auth/api'
-import { db, getSetting } from '../db'
+import { db, getSetting, syncLogsFromServer } from '../db'
 import { localISO } from '../date'
 import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { matchExercise } from '../plan'
@@ -69,6 +69,8 @@ export default function Progress() {
   const [from, setFrom] = useState(localISO(new Date(Date.now() - 56 * 86400000))) // #252 date filter (default 8 wk)
   const [to, setTo] = useState(localISO())
   const [review, setReview] = useState<CoachReview | undefined>()
+  // Pull the latest logs from the server on open, so a session logged/synced elsewhere shows without a full reload.
+  useEffect(() => { syncLogsFromServer() }, [])
   // Only a STRENGTH/gym review belongs on this page — not the latest cycling/running one (JM #526).
   useEffect(() => { authApi.coachReviews().then((r) => setReview(r.find((x) => /gym|strength|lift|weight/i.test(x.sport || '')))).catch(() => {}) }, [])
   const goExercise = (name: string) => navigate(`/exercise/${encodeURIComponent(name)}`)
