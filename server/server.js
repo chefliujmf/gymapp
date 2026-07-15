@@ -30,6 +30,7 @@ import { readiness as computeReadiness, baselines as wellnessBaselines, forecast
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch } from './sport-settings.js'
 import { planCapViolation } from './plan-cap.js'
+import { localDate } from './tz.js'
 // #508 — DEEP-merge intervals sport-settings into ours PER GROUP. intervals only knows ftp/maxHr/lthr/thresholdPace;
 // our LOCAL benchmarks (cp/wPrime/tte/cs/dPrime) live in the same per-sport object. A shallow `{...ours, ...mapped}`
 // makes mapped.cycling REPLACE the whole cycling object → wipes cp/W′/TTE on every session-load/pull (JM: "manual
@@ -1941,7 +1942,10 @@ async function findIcuEventsForPlan(user, plan) {
     return (events || []).filter((e) => eventMatchesPlan(plan, e))
   } catch { return [] }
 }
-const icuToday = () => { try { return new Date().toLocaleDateString('en-CA') } catch { return new Date().toISOString().slice(0, 10) } }
+// #5026 — "today" MUST be the ATHLETE's local date (their `icuTimezone`), NOT the server's UTC date. Otherwise a
+// Western athlete in the evening (server already on the next UTC day) has their ACTUAL-today plan treated as "past"
+// and deleted from intervals (JM, America/Toronto, 20:29 Jul 14 → server UTC Jul 15 → his Jul 14 ride stripped).
+const icuToday = (user) => localDate(new Date(), user?.icuTimezone)
 const stripIcuInstance = (s) => String(s || '').replace(/:\d{4}-\d{2}-\d{2}$/, '')
 // Mirror a plan to intervals — self-healing, Platyplus is the MASTER (#150):
 //   • COLLAPSE duplicates: events carrying our external_id (incl. intervals' ":date" instance
