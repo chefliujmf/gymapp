@@ -51,6 +51,19 @@ export function weightForReps(oneRM: number, reps: number): number {
 /** Round a load to a usable increment (2.5 kg default). */
 export const roundLoad = (w: number, step = 2.5) => (w > 0 ? Math.round(w / step) * step : 0)
 
+// #527/#251 — the honest gym-session DURATION. GymPlayer's wall-clock (`Date.now()−startedAt`) is fragile: a
+// tab close / PWA reload / remount can reset the start, so a full session logs an impossibly-short time (JM:
+// 20 sets in "11 min"). When the wall-clock is implausible for the work actually done, fall back to the PLANNED
+// estimate — which is exactly what intervals.icu shows for the session (JM: "stay consistent with intervals").
+// A completed working set + its rest is ~≥0.75 min, so a session can't be shorter than sets×0.75. Pure + tested.
+export function reliableSessionMinutes(inp: { wallMin: number; setsCompleted?: number; plannedMin?: number }): number {
+  const wall = Math.max(0, Math.round(inp.wallMin || 0))
+  const sets = Math.max(0, inp.setsCompleted || 0)
+  const floor = Math.round(sets * 0.75)               // conservative minimum plausible time for the sets logged
+  if (wall >= floor) return Math.max(1, wall)          // wall-clock is believable → trust it
+  return Math.max(1, floor, Math.round(inp.plannedMin || 0)) // broken timer → planned estimate (= intervals) / floor
+}
+
 // #255 — per-lift coach insight from the dated e1RM history: are you progressing, at a PR, or stalled,
 // + a concrete next step. Pure + unit-tested. `fmt` renders a kg value in the user's display unit.
 export type LiftTone = 'pr' | 'up' | 'stall' | 'flat' | 'new'
@@ -98,4 +111,214 @@ export function lastSessionSets(logs: WorkoutLog[], name: string): { weight?: nu
     if (idx >= 0 && log.sets[idx]?.length) return log.sets[idx]
   }
   return null
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #448 — strength Stats/Progress analytics. All pure + unit-tested; the science
+// (Epley/Brzycki, RIR, Schoenfeld volume landmarks, progressive overload) is in
+// docs/strength-analytics.md. `muscleOf` resolves an exercise → its primary muscle
+// group; the client passes a catalog-backed resolver so these stay pure/testable.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type MuscleOf = (name: string, exId?: string) => string | undefined
+type DoneSet = { name: string; exId?: string; weight: number; reps: number; date: string; at: number }
+
+/** Every COMPLETED working set across the logs, flattened with its exercise + date. Warm-ups aren't marked in
+ *  the data, so `done` is our best "working set" signal (a limitation noted in the KB). */
+function* eachDoneSet(logs: WorkoutLog[]): Generator<DoneSet> {
+  for (const log of logs) {
+    if (!log.sets || !log.exNames) continue
+    const at = log.completedAt || Date.parse(log.date) || 0
+    for (const [idx, arr] of Object.entries(log.sets)) {
+      const name = log.exNames[Number(idx)]
+      const exId = log.exIds?.[Number(idx)]
+      if (!name || !Array.isArray(arr)) continue
+      for (const s of arr) if (s.done && s.weight && s.reps) yield { name, exId, weight: s.weight, reps: s.reps, date: log.date, at }
+    }
+  }
+}
+
+/** Whole (Mon-based) weeks spanned by a range in days — the denominator for "per week" rates. Floored to 1. */
+export const rangeWeeks = (days: number): number => Math.max(1, Math.round(days / 7))
+
+/** #251 fix — the top summary reflects the SELECTED range: sessions, total minutes on the bar, and consistency
+ *  (sessions/week) — honest effort, NOT vanity total-kg. `days` = the filter span so consistency is real. */
+export function rangeSummary(logs: WorkoutLog[], days: number): { sessions: number; totalMin: number; perWeek: number } {
+  const sessions = logs.length
+  // Guard legacy logs with a broken wall-clock (#527): floor each session vs the sets it recorded.
+  const totalMin = logs.reduce((s, l) => s + reliableSessionMinutes({ wallMin: l.duration || 0, setsCompleted: (l as { setsCompleted?: number }).setsCompleted }), 0)
+  const perWeek = Math.round((sessions / rangeWeeks(days)) * 10) / 10
+  return { sessions, totalMin, perWeek }
+}
+
+// Evidence-based weekly-set landmarks per muscle (Schoenfeld/Krieger dose-response; MEV/MAV/MRV). See KB.
+export const SETS_LOW = 10
+export const SETS_HIGH = 20
+export type VolStatus = 'low' | 'ok' | 'high'
+export interface MuscleVolume { muscle: string; total: number; perWeek: number; status: VolStatus }
+
+/** Distinct 7-day weeks in which the athlete actually TRAINED (≥1 logged session). The denominator for the
+ *  per-week metrics — averaging over empty calendar weeks in a wide filter would dilute the number into nonsense
+ *  (JM: "0.8 low" over an 8-week filter with 3 days of data). We report "per TRAINING week" instead. */
+export function activeWeeks(logs: WorkoutLog[]): number {
+  const wk = new Set<number>()
+  for (const l of logs) { const at = l.completedAt || Date.parse(l.date) || 0; if (at) wk.add(Math.floor(at / (7 * 864e5))) }
+  return Math.max(1, wk.size)
+}
+
+/** Completed working sets per PRIMARY muscle group, averaged over the weeks you TRAINED (not calendar weeks in
+ *  the filter) → the actionable volume metric. status: low (<10/wk, under-stimulating) · ok (10–20) · high (>20). */
+export function weeklySetsPerMuscle(logs: WorkoutLog[], muscleOf: MuscleOf, _days?: number): MuscleVolume[] {
+  const wk = activeWeeks(logs)
+  const tot = new Map<string, number>()
+  for (const s of eachDoneSet(logs)) {
+    const m = muscleOf(s.name, s.exId)
+    if (!m) continue
+    tot.set(m, (tot.get(m) || 0) + 1)
+  }
+  return [...tot.entries()]
+    .map(([muscle, total]) => {
+      const perWeek = Math.round((total / wk) * 10) / 10
+      const status: VolStatus = perWeek < SETS_LOW ? 'low' : perWeek > SETS_HIGH ? 'high' : 'ok'
+      return { muscle, total, perWeek, status }
+    })
+    .sort((a, b) => b.perWeek - a.perWeek)
+}
+
+export interface MainLift { name: string; exId?: string; muscle?: string; e1rm: number; confidencePct: number; tone: LiftTone; deltaPct: number; sessions: number }
+
+/** Dated best-e1RM series per exercise (one point per session), plus session count — the base for trends. */
+function seriesByExercise(logs: WorkoutLog[]): Map<string, { exId?: string; pts: { date: number; e1rm: number }[]; lastReps: number }> {
+  const m = new Map<string, { exId?: string; byDay: Map<string, { e1rm: number; reps: number }>; }>()
+  for (const s of eachDoneSet(logs)) {
+    let e = m.get(s.name)
+    if (!e) { e = { exId: s.exId, byDay: new Map() }; m.set(s.name, e) }
+    const est = e1rm(s.weight, s.reps)
+    const cur = e.byDay.get(s.date)
+    if (!cur || est > cur.e1rm) e.byDay.set(s.date, { e1rm: est, reps: s.reps })
+  }
+  const out = new Map<string, { exId?: string; pts: { date: number; e1rm: number }[]; lastReps: number }>()
+  for (const [name, e] of m) {
+    const pts = [...e.byDay.entries()].map(([d, v]) => ({ date: Date.parse(d), e1rm: v.e1rm, reps: v.reps })).sort((a, b) => a.date - b.date)
+    out.set(name, { exId: e.exId, pts: pts.map(({ date, e1rm }) => ({ date, e1rm })), lastReps: pts.length ? pts[pts.length - 1].reps : 8 })
+  }
+  return out
+}
+
+/** The user's most-trained lifts (by number of sessions) — bounded so the card grid stays 4–6 no matter how
+ *  many exercises are in the library. Each carries its working e1RM, honest confidence, tone and total drift. */
+export function mainLifts(logs: WorkoutLog[], muscleOf: MuscleOf | undefined, n = 4): MainLift[] {
+  const series = seriesByExercise(logs)
+  const ranked = [...series.entries()].sort((a, b) => b[1].pts.length - a[1].pts.length)
+  const out: MainLift[] = []
+  for (const [name, s] of ranked) {
+    if (out.length >= n || !s.pts.length) break
+    const last = s.pts[s.pts.length - 1].e1rm
+    const first = s.pts[0].e1rm
+    const ins = exerciseInsight(s.pts)
+    const ageDays = Math.round((Date.now() - s.pts[s.pts.length - 1].date) / 864e5)
+    out.push({
+      name, exId: s.exId, muscle: muscleOf?.(name, s.exId),
+      e1rm: last, deltaPct: first > 0 ? Math.round(((last - first) / first) * 100) : 0,
+      confidencePct: e1rmConfidence({ reps: s.lastReps, ageDays }).pct,
+      tone: ins ? ins.tone : 'new', sessions: s.pts.length,
+    })
+  }
+  return out
+}
+
+export interface ExerciseHistory {
+  name: string; sessions: number; e1rm: number; deltaPct: number; tone: LiftTone; insight: string; confidencePct: number
+  pts: { date: number; e1rm: number }[]
+  repBests: { reps: number; weight: number; e1rm: number; date: number }[]
+  weeklyVolume: { week: number; volume: number }[]
+  next: { weightKg: number; reps: number; note: string } | null
+}
+
+/** Everything the per-exercise page needs (#227): dated e1RM trend, best set per rep bucket, weekly volume,
+ *  the coach insight, and the next progressive-overload target. */
+export function exerciseHistory(logs: WorkoutLog[], name: string, fmt: (kg: number) => string = (v) => `${Math.round(v)} kg`): ExerciseHistory | null {
+  const sets = [...eachDoneSet(logs)].filter((s) => s.name === name)
+  if (!sets.length) return null
+  const byDay = new Map<string, number>()
+  const volByWeek = new Map<number, number>()
+  const repBucket = new Map<number, { reps: number; weight: number; e1rm: number; date: number }>()
+  for (const s of sets) {
+    const est = e1rm(s.weight, s.reps)
+    byDay.set(s.date, Math.max(byDay.get(s.date) || 0, est))
+    const wk = Math.floor(s.at / (7 * 864e5))
+    volByWeek.set(wk, (volByWeek.get(wk) || 0) + s.weight * s.reps)
+    const bucket = s.reps <= 1 ? 1 : s.reps <= 3 ? 3 : s.reps <= 5 ? 5 : s.reps <= 8 ? 8 : s.reps <= 12 ? 12 : 15
+    const cur = repBucket.get(bucket)
+    if (!cur || est > cur.e1rm) repBucket.set(bucket, { reps: bucket, weight: s.weight, e1rm: est, date: s.at })
+  }
+  const pts = [...byDay.entries()].map(([d, e]) => ({ date: Date.parse(d), e1rm: e })).sort((a, b) => a.date - b.date)
+  const ins = exerciseInsight(pts, fmt)
+  const last = pts[pts.length - 1].e1rm
+  const first = pts[0].e1rm
+  const recent = sets.reduce((m, s) => (s.at > m.at ? s : m), sets[0]) // confidence from the freshest set (reps + age)
+  return {
+    name, sessions: pts.length, e1rm: last,
+    deltaPct: first > 0 ? Math.round(((last - first) / first) * 100) : 0,
+    tone: ins ? ins.tone : 'new', insight: ins ? ins.text : '',
+    confidencePct: e1rmConfidence({ reps: recent.reps, ageDays: Math.round((Date.now() - recent.at) / 864e5) }).pct,
+    pts,
+    repBests: [...repBucket.values()].sort((a, b) => a.reps - b.reps),
+    weeklyVolume: [...volByWeek.entries()].map(([week, volume]) => ({ week, volume })).sort((a, b) => a.week - b.week),
+    next: nextTarget(sets),
+  }
+}
+
+/** Next progressive-overload target (double progression): once you own the top of a rep range, add the smallest
+ *  load increment; otherwise chase a rep. Conservative + repeatable. From the heaviest recent working set. */
+export function nextTarget(sets: { weight: number; reps: number; at: number }[], topReps = 8, step = 2.5): { weightKg: number; reps: number; note: string } | null {
+  if (!sets.length) return null
+  const recent = [...sets].sort((a, b) => b.at - a.at)
+  const heaviest = recent.reduce((m, s) => (s.weight > m.weight ? s : m), recent[0])
+  if (heaviest.reps >= topReps) {
+    const w = roundLoad(heaviest.weight + step, step)
+    return { weightKg: w, reps: Math.max(3, topReps - 3), note: `You own ${heaviest.weight}×${heaviest.reps} — add load: ${w} kg for ${Math.max(3, topReps - 3)}–${topReps}.` }
+  }
+  return { weightKg: heaviest.weight, reps: heaviest.reps + 1, note: `Chase a rep: ${heaviest.weight} kg for ${heaviest.reps + 1} (then keep adding reps to ${topReps} before you add weight).` }
+}
+
+export interface DigestItem { kind: 'stall' | 'low-volume' | 'missing' | 'pr' | 'mover'; title: string; detail: string; name?: string; muscle?: string }
+export interface StrengthDigest { needsAttention: DigestItem[]; wins: DigestItem[] }
+
+// Canonical major groups, for the "you've trained everything else but not X" imbalance flag. The client can
+// override with the real catalog facet vocabulary.
+export const MAJOR_MUSCLES = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core']
+
+/** The actionable feed: what NEEDS attention (stalls, under-volume muscles, a neglected major group) and the
+ *  WINS (PRs, biggest movers). Surfaces the handful worth acting on out of a library of hundreds. */
+export function strengthDigest(logs: WorkoutLog[], muscleOf: MuscleOf | undefined, days: number, majors = MAJOR_MUSCLES, fmt: (kg: number) => string = (v) => `${Math.round(v)} kg`): StrengthDigest {
+  const needsAttention: DigestItem[] = []
+  const wins: DigestItem[] = []
+  const series = seriesByExercise(logs)
+
+  // Per-lift stalls + movers (only lifts with enough history to judge)
+  const movers: { name: string; deltaPct: number }[] = []
+  for (const [name, s] of series) {
+    if (s.pts.length < 2) continue
+    const ins = exerciseInsight(s.pts, fmt)
+    if (!ins) continue
+    const last = s.pts[s.pts.length - 1].e1rm
+    const first = s.pts[0].e1rm
+    const deltaPct = first > 0 ? Math.round(((last - first) / first) * 100) : 0
+    if (ins.tone === 'stall') needsAttention.push({ kind: 'stall', name, title: `${name} stalled`, detail: ins.text })
+    if (ins.tone === 'pr' && deltaPct >= 2) wins.push({ kind: 'pr', name, title: `${name} ${deltaPct > 0 ? '+' + deltaPct + '%' : 'at your peak'}`, detail: `Working max ${fmt(last)}. ${ins.text.replace(/^📈\s*/, '')}` })
+    if (deltaPct >= 3) movers.push({ name, deltaPct })
+  }
+
+  // Volume: under-trained + neglected major groups
+  const vols = weeklySetsPerMuscle(logs, muscleOf || (() => undefined), days)
+  const seen = new Set(vols.map((v) => v.muscle))
+  for (const v of vols) if (v.status === 'low') needsAttention.push({ kind: 'low-volume', muscle: v.muscle, title: `${v.muscle} volume low`, detail: `${v.perWeek} sets/wk — under the ${SETS_LOW}–${SETS_HIGH} growth range. Add a set or a session.` })
+  if (muscleOf && vols.length >= 2) for (const m of majors) if (!seen.has(m)) needsAttention.push({ kind: 'missing', muscle: m, title: `No ${m.toLowerCase()} work`, detail: `Nothing logged for ${m.toLowerCase()} in this range — a gap vs the rest of your training.` })
+
+  // Best movers as wins (dedup vs PRs already listed)
+  const named = new Set(wins.map((w) => w.name))
+  for (const mv of movers.sort((a, b) => b.deltaPct - a.deltaPct).slice(0, 3)) if (!named.has(mv.name)) wins.push({ kind: 'mover', name: mv.name, title: `${mv.name} +${mv.deltaPct}%`, detail: 'Steady progress this block.' })
+
+  return { needsAttention, wins }
 }

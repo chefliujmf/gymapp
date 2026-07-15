@@ -117,6 +117,19 @@ export function setCoachPlans(plans: CoachPlan[]) { try { sessionStorage.setItem
 export function getCoachPlan(id: string): CoachPlan | undefined {
   try { return (JSON.parse(sessionStorage.getItem('coachPlans') || '[]') as CoachPlan[]).find((p) => p.id === id) } catch { return undefined }
 }
+// #528 — fetch ONE plan by id from the server so a COLD intervals deep link (/coach/:id, no prior Today load)
+// resolves. Returns null when it isn't in THIS account (404 → likely opened in a different user's session).
+// On success it also caches into coachPlans so subsequent local reads hit.
+export async function fetchCoachPlan(id: string): Promise<CoachPlan | null | undefined> {
+  try {
+    const res = await fetch(`/auth/plan/${encodeURIComponent(id)}`, { credentials: 'same-origin' })
+    if (res.status === 404) return null
+    if (!res.ok) return undefined
+    const p = (await res.json()) as CoachPlan
+    try { const cur = JSON.parse(sessionStorage.getItem('coachPlans') || '[]') as CoachPlan[]; if (!cur.some((x) => x.id === p.id)) setCoachPlans([...cur, p]) } catch { /* quota */ }
+    return p
+  } catch { return undefined }
+}
 /** #293 — the coach plan a completed activity fulfilled (match day, then sport) → link back to it. */
 export function findCoachPlan(date: string, sport: string): CoachPlan | undefined {
   try {

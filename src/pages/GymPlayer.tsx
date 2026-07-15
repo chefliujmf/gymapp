@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { db, getSetting, setSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
-import { e1rm, weightForReps, roundLoad, bestE1rmByExercise } from '../strength'
+import { e1rm, weightForReps, roundLoad, bestE1rmByExercise, reliableSessionMinutes } from '../strength'
 import { getGymSession, matchExercise } from '../plan'
 import { authApi, type CoachReview } from '../auth/api'
 import GymSummary from '../GymSummary'
@@ -237,21 +237,24 @@ export default function GymPlayer() {
   const [finalMin, setFinalMin] = useState(0)
   async function finish() {
     if (!w) { setDone(true); return }
-    const actualMin = Math.max(1, Math.round((Date.now() - startedAt) / 60000))   // REAL elapsed, not the estimate
-    setFinalMin(actualMin); setDone(true)
-    sessionStorage.removeItem('gpv2:' + w.workoutId)
+    const wallMin = Math.max(1, Math.round((Date.now() - startedAt) / 60000))   // wall-clock elapsed (fragile)
     const flat = Object.values(log).flat()
     const setsCompleted = flat.filter((s) => s?.done).length
     const volume = flat.reduce((v, s) => v + (s?.done ? (s.weight || 0) * (s.reps || 0) : 0), 0)
-    const tss = gymTSS(actualMin, w.intensity)
+    // #527/#251 — a tab close / reload can reset `startedAt`, logging an impossibly-short time (20 sets in "11 min").
+    // Fall back to the PLANNED duration (== what intervals shows) when the wall-clock is implausible for the work done.
+    const duration = reliableSessionMinutes({ wallMin, setsCompleted, plannedMin: w.duration })
+    setFinalMin(duration); setDone(true)
+    sessionStorage.removeItem('gpv2:' + w.workoutId)
+    const tss = gymTSS(duration, w.intensity)
     // names in executed order (index-aligned with `log`) so history is readable.
     const exNames = order.map((e) => e.name)
     const exIds = order.map((e) => e.exId)
-    await logWorkout({ workoutId: w.workoutId, title: w.title, discipline: w.discipline, duration: actualMin, date: localISO(), sets: log, setsCompleted, volume, tss, exNames, exIds })
+    await logWorkout({ workoutId: w.workoutId, title: w.title, discipline: w.discipline, duration, date: localISO(), sets: log, setsCompleted, volume, tss, exNames, exIds })
     // Match-first (#123): if a device (Coros) recorded this gym session in intervals, link it
     // — don't duplicate. No stream here, so when nothing matches it just stays in Platyplus
     // (the coach reads the rich set/rep log from Platyplus anyway).
-    authApi.completeActivity({ sport: 'gym', title: w.title, date: localISO(), startIso: new Date(startedAt).toISOString(), durationSec: actualMin * 60, samples: [] }).catch(() => { /* best-effort */ })
+    authApi.completeActivity({ sport: 'gym', title: w.title, date: localISO(), startIso: new Date(startedAt).toISOString(), durationSec: duration * 60, samples: [] }).catch(() => { /* best-effort */ })
   }
 
   if (!w || !cur) return <div className="page-head"><h1>No workout loaded</h1><button className="btn" onClick={() => navigate(-1)}>Back</button></div>
