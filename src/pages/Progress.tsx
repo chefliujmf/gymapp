@@ -69,7 +69,8 @@ export default function Progress() {
   const [from, setFrom] = useState(localISO(new Date(Date.now() - 56 * 86400000))) // #252 date filter (default 8 wk)
   const [to, setTo] = useState(localISO())
   const [review, setReview] = useState<CoachReview | undefined>()
-  useEffect(() => { authApi.coachReviews().then((r) => setReview(r[0])).catch(() => {}) }, [])
+  // Only a STRENGTH/gym review belongs on this page — not the latest cycling/running one (JM #526).
+  useEffect(() => { authApi.coachReviews().then((r) => setReview(r.find((x) => /gym|strength|lift|weight/i.test(x.sport || '')))).catch(() => {}) }, [])
   const goExercise = (name: string) => navigate(`/exercise/${encodeURIComponent(name)}`)
 
   const data = useMemo(() => {
@@ -145,6 +146,14 @@ export default function Progress() {
           <div style={{ flex: 1 }}><div style={statV}>{hm}</div><div style={statK}>on the bar</div></div>
           <div style={{ flex: 1 }}><div style={statV}>{summary.perWeek}<small style={{ fontSize: 12, color: 'var(--text-dim)' }}>/wk</small></div><div style={statK}>consistency</div></div>
         </div>
+
+        {/* Empty-state: no SET-level data yet (e.g. intervals-imported gym = duration/load only, no weight×reps) */}
+        {lifts.length === 0 && (
+          <div className="card" style={{ padding: 14, marginTop: 11 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>📊 Your strength analytics build as you log sets</div>
+            <p className="meta" style={{ lineHeight: 1.5 }}>Log a gym session <b>in the app</b> with <b>weight × reps</b> per exercise (an intervals-imported gym only carries duration &amp; load — no set detail). Then this page unlocks: working <b>1-RM per lift</b> with confidence, weekly <b>sets per muscle</b> vs the 10–20 growth target, <b>stall alerts &amp; PRs</b>, and a tap-through <b>progress page</b> for every exercise.</p>
+          </div>
+        )}
 
         {/* Option Ⓐ — compact action cluster: the few things worth acting on (needs-attention first, then a win) */}
         {(digest.needsAttention.length > 0 || digest.wins.length > 0) && (
