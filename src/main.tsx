@@ -64,7 +64,6 @@ import CycleDetail from './pages/CycleDetail'
 import RidePlayer from './pages/RidePlayer'
 import RunPlayer from './pages/RunPlayer'
 import Profile from './pages/Profile'
-import AthleteProfile from './pages/AthleteProfile'
 import Settings from './pages/Settings'
 import Fitness from './pages/Fitness'
 import Wellness from './pages/Wellness'
@@ -131,7 +130,7 @@ const router = createBrowserRouter([
       { path: 'ride-player', element: <RidePlayer /> },
       { path: 'run-player', element: <RunPlayer /> },
       { path: 'profile', element: <Profile /> },
-      { path: 'profile/athlete', element: <AthleteProfile /> },
+      // #522 — profile/athlete (coachProfile editor) removed: the coach's working MD is internal, not user-editable
       { path: 'settings', element: <Settings /> },
       { path: 'fitness', element: <Fitness /> },
       { path: 'wellness', element: <Wellness /> },
