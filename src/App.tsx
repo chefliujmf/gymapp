@@ -101,7 +101,9 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   // Hide chrome on detail/player pages for an immersive view.
-  const isDetail = /\/(workouts|exercises|programs|recipes|trainers|mind|cycle|plan)\/[^/]+$/.test(pathname) || pathname === '/ride-player' || pathname === '/run-player' || pathname === '/build' || pathname === '/ride-builder' || pathname === '/run-builder' || pathname === '/admin' || pathname === '/chat' || /\/play$/.test(pathname)
+  // Immersive (no top bar / tab bar): players + builders + chat only. Admin is a normal destination — it keeps
+  // the header + footer (#526, JM: chrome missing on Admin). Its own ‹ back button stays.
+  const isDetail = /\/(workouts|exercises|programs|recipes|trainers|mind|cycle|plan)\/[^/]+$/.test(pathname) || pathname === '/ride-player' || pathname === '/run-player' || pathname === '/build' || pathname === '/ride-builder' || pathname === '/run-builder' || pathname === '/chat' || /\/play$/.test(pathname)
 
   return (
     <div className="app-shell">
