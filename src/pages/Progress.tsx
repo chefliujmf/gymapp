@@ -146,25 +146,17 @@ export default function Progress() {
           <div style={{ flex: 1 }}><div style={statV}>{summary.perWeek}<small style={{ fontSize: 12, color: 'var(--text-dim)' }}>/wk</small></div><div style={statK}>consistency</div></div>
         </div>
 
-        {/* Needs attention — the actionable feed (stalls, low volume, gaps) */}
-        {digest.needsAttention.length > 0 && <>
-          <div className="section-title">⚠️ Needs attention <span className="meta">· {digest.needsAttention.length}</span></div>
+        {/* Option Ⓐ — compact action cluster: the few things worth acting on (needs-attention first, then a win) */}
+        {(digest.needsAttention.length > 0 || digest.wins.length > 0) && (
           <div className="card" style={{ padding: '12px 12px 4px' }}>
-            {digest.needsAttention.slice(0, 4).map((d, i) => (
-              <ActCard key={i} tone="warn" icon={d.kind === 'stall' ? '📉' : d.kind === 'missing' ? '🕳️' : '⚖️'} title={d.title} detail={d.detail} onClick={d.name ? () => goExercise(d.name!) : undefined} />
+            {digest.needsAttention.slice(0, 3).map((d, i) => (
+              <ActCard key={'n' + i} tone="warn" icon={d.kind === 'stall' ? '📉' : d.kind === 'missing' ? '🕳️' : '⚖️'} title={d.title} detail={d.detail} onClick={d.name ? () => goExercise(d.name!) : undefined} />
+            ))}
+            {digest.wins.slice(0, digest.needsAttention.length >= 3 ? 1 : 2).map((d, i) => (
+              <ActCard key={'w' + i} tone="good" icon={d.kind === 'pr' ? '🔥' : '📈'} title={d.title} detail={d.detail} onClick={d.name ? () => goExercise(d.name!) : undefined} />
             ))}
           </div>
-        </>}
-
-        {/* Wins */}
-        {digest.wins.length > 0 && <>
-          <div className="section-title">🏆 Wins <span className="meta">· this block</span></div>
-          <div className="card" style={{ padding: '12px 12px 4px' }}>
-            {digest.wins.slice(0, 3).map((d, i) => (
-              <ActCard key={i} tone="good" icon={d.kind === 'pr' ? '🔥' : '📈'} title={d.title} detail={d.detail} onClick={d.name ? () => goExercise(d.name!) : undefined} />
-            ))}
-          </div>
-        </>}
+        )}
 
         {/* Weekly sets per muscle — the actionable volume metric (Schoenfeld 10–20) */}
         {vols.length > 0 && <>
@@ -248,6 +240,13 @@ export default function Progress() {
             {review.next && <div className="gp2-hl">➡️ <span><b>Next:</b> {review.next}</span></div>}
           </div>
         </>}
+        {/* Ⓐ bottom insight — synthesized when the coach hasn't written a review yet */}
+        {!(review && (review.takeaways?.length || review.verdict || review.execution?.length || review.next)) && (digest.wins[0] || digest.needsAttention[0]) && (
+          <div className="card" style={{ padding: 12, marginTop: 11, background: '#12180f', border: '1px solid #26421f', fontSize: 13, lineHeight: 1.5 }}>
+            💡 {digest.wins[0] && <><b style={{ color: 'var(--accent)' }}>{digest.wins[0].title}</b> — {digest.wins[0].detail} </>}
+            {digest.needsAttention[0] && <><b style={{ color: 'var(--warn,#ffb13d)' }}>{digest.needsAttention[0].title}</b>: {digest.needsAttention[0].detail}</>}
+          </div>
+        )}
       </>}
     </div>
   )

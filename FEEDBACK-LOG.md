@@ -1119,10 +1119,11 @@ test guide → the **🧪 Test guide** section below.
     JM verbatim: "will need to rework a lot of progress for strength training + stats to make it as advanced as running and cycling." SCOPE + MOCK
     first (options-first) — per-exercise progress + tappable exercises + filter-driven volume/time/tonnage + strength graphs. Big effort. (Separate:
     **#148** empty "Search gym…" list in the Add sheet — a discrete picker bug, ties #412.)
-    **🔨 BUILT (2026-07-15, mock `mockups/strength-stats-v2.html`, JM picked the Mix + "use science/books").** Grounded in the
+    **🔨 BUILT (2026-07-15, mock `mockups/strength-stats-v2.html`, JM picked Ⓐ main-lift-led + Ⓔ exercise page + "use science/books").** Grounded in the
     literature (Epley/Brzycki 1RM, RIR/RTS, Schoenfeld volume dose-response 10–20 sets/muscle/wk, MEV/MAV/MRV, progressive
     overload) — KB `docs/strength-analytics.md`. Pure engine `src/strength.ts` (`rangeSummary`, `weeklySetsPerMuscle`,
-    `mainLifts`, `strengthDigest`, `exerciseHistory`, `nextTarget`) + 9 tests. Strength page (`Progress.tsx`) reworked to the Mix:
+    `mainLifts`, `strengthDigest`, `exerciseHistory`, `nextTarget`) + 9 tests. Strength page (`Progress.tsx`) reworked to Option Ⓐ
+    (main-lift-led: summary → compact action cluster → sets/muscle → main-lift cards → weekly volume → all-exercises → bottom insight):
     **#251** the summary now follows the date filter (sessions · time on the bar · consistency/wk — dropped vanity total-kg per JM);
     **Needs attention / Wins** actionable feed (stalls, low-volume muscles, gaps, PRs, movers); **weekly sets per muscle vs the
     10–20 target** (low/ok/high); bounded **Main lift cards** (working-1RM + honest confidence dots) that scale (only your 4
