@@ -85,7 +85,7 @@ server.tool('get_checkins',
   wrap((a) => { const to = new Date().toISOString().slice(0, 10); const from = new Date(Date.now() - (a.days || 14) * 86400000).toISOString().slice(0, 10); return api('GET', `/api/checkins?from=${from}&to=${to}`) }))
 
 server.tool('set_athlete_profile',
-  "Save/replace the athlete's coaching profile (markdown: goals, sport(s), weekly hours, FTP/maxes, equipment, constraints, injuries, preferences). Use this to PERSIST what you learn when onboarding a new athlete or when they tell you something durable — this is the profile you read every session. Write the FULL updated profile, not a fragment.",
+  "Save/replace THIS athlete's profile (markdown: their goal, sport(s), weekly hours, FTP/maxes, equipment, constraints, injuries, life context, coaching preferences). PERSIST what you learn when onboarding or when they tell you something durable — you read this every session. Write the FULL updated profile, not a fragment. ATHLETE-SPECIFIC ONLY (#522): never write app-level or coaching-METHOD content here — the public activity-text voice, coach-memory upkeep, training-zone tables, plan-format rules, command triggers (e.g. COACHCHECK), or tool/infra notes all live in your shared method and ALREADY apply to EVERY athlete; duplicating them here just bloats and drifts your context. Keep it strictly to who THIS person is.",
   { profile: z.string().describe('the full athlete profile as markdown') },
   wrap((a) => api('PUT', '/api/profile/athlete', { profile: a.profile })))
 
