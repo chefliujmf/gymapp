@@ -527,7 +527,7 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
   const dayMeals = dayItems.filter((it) => it.type === 'meal')
   const dayMindItems = dayItems.filter((it) => it.type === 'mind')
   const daySupps = dayItems.filter((it) => it.type === 'supplement')
-  const dayRecovery = dayItems.filter((it) => it.type === 'recovery')
+  const dayRecovery: typeof dayItems = [] // #JM 2026-07-15 — recovery ITEMS parked (roadmap); recovery now lives as the workout's recovery text, not a calendar block
   const dayNotes = dayItems.filter((it) => it.type === 'note')
   // #455 — completed intervals activities on this day NOT matched to any plan/event (an UNPLANNED workout,
   // e.g. Xenia's strength session done without a prior plan). They already mark a week-strip dot, but the
