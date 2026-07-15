@@ -51,6 +51,19 @@ export function weightForReps(oneRM: number, reps: number): number {
 /** Round a load to a usable increment (2.5 kg default). */
 export const roundLoad = (w: number, step = 2.5) => (w > 0 ? Math.round(w / step) * step : 0)
 
+// #527/#251 — the honest gym-session DURATION. GymPlayer's wall-clock (`Date.now()−startedAt`) is fragile: a
+// tab close / PWA reload / remount can reset the start, so a full session logs an impossibly-short time (JM:
+// 20 sets in "11 min"). When the wall-clock is implausible for the work actually done, fall back to the PLANNED
+// estimate — which is exactly what intervals.icu shows for the session (JM: "stay consistent with intervals").
+// A completed working set + its rest is ~≥0.75 min, so a session can't be shorter than sets×0.75. Pure + tested.
+export function reliableSessionMinutes(inp: { wallMin: number; setsCompleted?: number; plannedMin?: number }): number {
+  const wall = Math.max(0, Math.round(inp.wallMin || 0))
+  const sets = Math.max(0, inp.setsCompleted || 0)
+  const floor = Math.round(sets * 0.75)               // conservative minimum plausible time for the sets logged
+  if (wall >= floor) return Math.max(1, wall)          // wall-clock is believable → trust it
+  return Math.max(1, floor, Math.round(inp.plannedMin || 0)) // broken timer → planned estimate (= intervals) / floor
+}
+
 // #255 — per-lift coach insight from the dated e1RM history: are you progressing, at a PR, or stalled,
 // + a concrete next step. Pure + unit-tested. `fmt` renders a kg value in the user's display unit.
 export type LiftTone = 'pr' | 'up' | 'stall' | 'flat' | 'new'
@@ -132,7 +145,8 @@ export const rangeWeeks = (days: number): number => Math.max(1, Math.round(days 
  *  (sessions/week) — honest effort, NOT vanity total-kg. `days` = the filter span so consistency is real. */
 export function rangeSummary(logs: WorkoutLog[], days: number): { sessions: number; totalMin: number; perWeek: number } {
   const sessions = logs.length
-  const totalMin = logs.reduce((s, l) => s + (l.duration || 0), 0)
+  // Guard legacy logs with a broken wall-clock (#527): floor each session vs the sets it recorded.
+  const totalMin = logs.reduce((s, l) => s + reliableSessionMinutes({ wallMin: l.duration || 0, setsCompleted: (l as { setsCompleted?: number }).setsCompleted }), 0)
   const perWeek = Math.round((sessions / rangeWeeks(days)) * 10) / 10
   return { sessions, totalMin, perWeek }
 }
