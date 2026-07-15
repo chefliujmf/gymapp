@@ -146,7 +146,11 @@ export default function Profile() {
   const navigate = useNavigate()
   const { user, refresh } = useAuth()
   const gaps = dataGaps(user)
-  const coachName = useLiveQuery(() => getSetting('coachName'))
+  // #1002 (JM: "my coach name under profile was removed") — the field read ONLY the device-local cache, so a cleared/
+  // other/synced-late browser showed BLANK though the server still holds it (JM's is "Tadej"). Fall back to the SERVER
+  // value (`user.coachName`, the source of truth) whenever the local cache is empty — the name can never look "removed".
+  const localCoachName = useLiveQuery(() => getSetting('coachName'))
+  const coachName = localCoachName ?? user?.coachName ?? ''
   const [coachSaved, setCoachSaved] = useState(false)
   const [sportSaved, setSportSaved] = useState(false)
   const [dietSaved, setDietSaved] = useState(false)
