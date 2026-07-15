@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting, listTemplates, listRideTemplates, type WorkoutTemplate, type RideTemplate } from '../db'
-import { WeekStrip, MiniProfile, DoneStats } from '../ui'
+import { WeekStrip, MiniProfile, DoneStats, IntensityThumb } from '../ui'
 import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
 import { incompleteFeedback } from '../feedbackGaps' // #387 — surface the "to review" count on Today
 import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, setCoachPlans, type CoachPlan } from '../plan'
@@ -305,7 +305,9 @@ function CoachPlanCard({ p, showDate, fmtDay, onSwap, onRemove, done, act }: { p
         <div className="card-row">
           {segs.length
             ? <div className="thumb"><MiniProfile segs={segs} /></div>
-            : <div className={'thumb thumb--' + (p.sport === 'ride' ? 'ride' : p.sport === 'run' ? 'run' : 'gym')}>{planIcon(p.sport)}</div>}
+            : act
+              ? <IntensityThumb a={act} />
+              : <div className={'thumb thumb--' + (p.sport === 'ride' ? 'ride' : p.sport === 'run' ? 'run' : 'gym')}>{planIcon(p.sport)}</div>}
           <div className="card-body">
             <span className="eyebrow">{p.sport === 'ride' ? 'Ride' : p.sport === 'run' ? 'Run' : 'Gym'} · in-app{showDate ? ` · ${fmtDay(p.date)}` : ''}</span>
             <h3 style={isDone ? { opacity: 0.6 } : undefined}>{p.title}</h3>
@@ -348,7 +350,9 @@ function PlanCard({ e, showDate, onSwap, onRemove, done, act }: { e: IcuEvent; s
         <div className="card-row">
           {rideSegs.length
             ? <div className="thumb"><MiniProfile segs={rideSegs} /></div>
-            : <div className={'thumb thumb--' + (atp ? 'target' : e.category === 'TARGET' ? 'target' : sportOf(e) === 'gym' ? 'gym' : sportOf(e) === 'cycling' ? 'ride' : 'run')}>{atp ? <Flag strokeWidth={1.75} /> : sportIcon(e)}</div>}
+            : act && !atp && e.category !== 'TARGET'
+              ? <IntensityThumb a={act} />
+              : <div className={'thumb thumb--' + (atp ? 'target' : e.category === 'TARGET' ? 'target' : sportOf(e) === 'gym' ? 'gym' : sportOf(e) === 'cycling' ? 'ride' : 'run')}>{atp ? <Flag strokeWidth={1.75} /> : sportIcon(e)}</div>}
           <div className="card-body">
             <span className="eyebrow">{atp ? 'Training block' : e.category === 'TARGET' ? 'Target' : sportOf(e) === 'gym' ? 'Gym' : sportOf(e) === 'cycling' ? 'Ride' : e.type}{showDate ? ` · ${fmtDay(e.start_date_local.slice(0, 10))}` : ''}</span>
             <h3 style={isDone ? { opacity: 0.6 } : undefined}>{e.name}</h3>
@@ -368,13 +372,12 @@ function PlanCard({ e, showDate, onSwap, onRemove, done, act }: { e: IcuEvent; s
 // athlete actually trained never reads "Nothing scheduled". Read-only (no swap/remove — it already happened).
 function ActivityCard({ a }: { a: IcuActivity }) {
   const sport = sportOfActivity(a) // 'run' | 'ride' | 'gym'
-  const icon = sport === 'ride' ? <Bike strokeWidth={1.75} /> : sport === 'gym' ? <Dumbbell strokeWidth={1.75} /> : <Footprints strokeWidth={1.75} />
   const label = sport === 'ride' ? 'Ride' : sport === 'gym' ? 'Gym' : 'Run'
   return (
     <div className="today-entry">
       <Link to={`/activity/${a.id}`} className="card card--done">
         <div className="card-row">
-          <div className={'thumb thumb--' + sport}>{icon}</div>
+          <IntensityThumb a={a} />
           <div className="card-body">
             <span className="eyebrow">{label} · completed</span>
             <h3 style={{ opacity: 0.6 }}>{a.name || label}</h3>

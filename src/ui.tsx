@@ -3,7 +3,7 @@ import { useState } from 'react'
 import type { ReactNode, MouseEvent as ReactMouseEvent } from 'react'
 import { Dumbbell, Flame, Activity, Flower2, StretchHorizontal, Swords, Brain, Moon, Wind, Target, Bike, Footprints, Coffee, Sandwich, UtensilsCrossed, Apple, Home, Mountain, Check } from 'lucide-react'
 import type { Discipline, Workout, Program, Recipe, Trainer, MindSession, MindKind, EnduranceWorkout } from './types'
-import { isIndoorActivity, type IcuActivity } from './intervals'
+import { isIndoorActivity, sportOfActivity, type IcuActivity } from './intervals'
 import { localISO } from './date'
 import { zoneColor, zoneName } from './zones'
 export { zoneColor, zoneName } // one source of truth (#72) — re-export for other modules
@@ -330,6 +330,28 @@ export function MiniProfile({ segs }: { segs: { duration: number; powerStart: nu
       {segs.map((s, i) => (
         <div key={i} style={{ flexGrow: s.duration / total, flexBasis: 0, height: `${Math.max(14, (p(s) / maxP) * 100)}%`, background: zoneColor(p(s)), borderRadius: '2px 2px 0 0', opacity: 0.9 }} />
       ))}
+    </div>
+  )
+}
+
+// #JM 2026-07-14 — cheap "effort signature" thumbnail for a COMPLETED activity that has no planned
+// power profile (unplanned rides/runs). A zone-colored donut gauge from the activity's Intensity Factor
+// (IF) — no stream fetch, so it scales to a long History. Falls back to the sport icon when there's no
+// IF (e.g. a gym session). Chosen over the real-stream PowerBlocks (JM 2026-07-14, mockup B).
+export function IntensityThumb({ a }: { a: IcuActivity }) {
+  const sport = sportOfActivity(a)
+  const icon = sport === 'ride' ? <Bike strokeWidth={1.75} /> : sport === 'gym' ? <Dumbbell strokeWidth={1.75} /> : <Footprints strokeWidth={1.75} />
+  const ifPct = a.icu_intensity != null && a.icu_intensity > 0 ? Math.round(a.icu_intensity * 100) : null
+  if (ifPct == null) return <div className={'thumb thumb--' + sport}>{icon}</div> // gym / no-power fallback
+  // zone color by IF: recovery → endurance → tempo → threshold → VO2
+  const col = ifPct < 56 ? '#5aa0d6' : ifPct < 76 ? '#34e07d' : ifPct < 91 ? '#e0c34e' : ifPct <= 105 ? '#e8933f' : '#e0574e'
+  // map IF 38–120% onto a readable 33–360° sweep so an easy ride isn't a sliver
+  const deg = Math.round(Math.max(0.09, Math.min(1, (ifPct - 38) / (120 - 38))) * 360)
+  return (
+    <div className="thumb thumb--sig" title={`Intensity ${ifPct}%`}>
+      <div className="sig-ring" style={{ background: `conic-gradient(${col} ${deg}deg, rgba(255,255,255,.13) ${deg}deg)` }}>
+        <div className="sig-ring__hole">{ifPct}<span className="sig-ring__pct">%</span></div>
+      </div>
     </div>
   )
 }

@@ -1,0 +1,75 @@
+<meta charset="utf-8">
+<title>Completed-activity thumbnails</title>
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  body{background:#07090c;color:var(--text);padding:18px 12px 40px}
+  h1{font-size:15px;margin:0 0 4px 2px} .sub{font-size:12px;color:var(--text-dim);margin:0 0 16px 2px;max-width:760px;line-height:1.5}
+  .grid{display:flex;gap:16px;flex-wrap:wrap}
+  .col{width:360px}
+  .cap{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:8px 12px;border-radius:9px;margin-bottom:9px}
+  .cap.cur{color:#e5905a;background:#1a130d} .cap.a{color:var(--accent);background:#0f1a12} .cap.b{color:#8fb0ff;background:#0e1522}
+  .card{background:linear-gradient(#21252f,#191c24);border:1px solid #2a2f3a;border-radius:15px;padding:12px;margin-bottom:11px}
+  .row{display:flex;align-items:center;gap:12px}
+  .thumb{width:60px;height:60px;border-radius:12px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .thumb.ride{background:linear-gradient(#20344a,#16283a);color:#7db6 f2}
+  .thumb.plain{background:#182234} .thumb.plain svg{width:30px;height:30px;stroke:#6f9fd6;fill:none;stroke-width:1.8}
+  /* A — real PowerBlocks (bars from the actual stream) */
+  .bars{width:100%;height:100%;display:flex;align-items:flex-end;gap:2px;padding:8px 7px;background:#0f1620}
+  .bars i{flex:1;border-radius:1px 1px 0 0}
+  /* B — cheap intensity signature (single gauge from IF, no fetch) */
+  .sig{width:100%;height:100%;background:#0f1620;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+  .sig .ring{width:34px;height:34px;border-radius:50%;border:3px solid #253247;border-top-color:#f2b24b;border-right-color:#f2b24b;transform:rotate(35deg)}
+  .sig small{font-size:8.5px;color:var(--text-dim);letter-spacing:.03em}
+  .body{flex:1;min-width:0}
+  .eyebrow{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-dim)}
+  .body h3{font-size:15px;font-weight:800;margin:1px 0 5px;opacity:.85}
+  .stats{display:flex;flex-wrap:wrap;gap:5px}
+  .st{font-size:11px;color:var(--text-dim);background:#12151b;border:1px solid #242a34;border-radius:7px;padding:2px 7px}
+  .st b{color:var(--text);font-weight:700}
+  .badge{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;color:var(--accent);background:#0f1a12;border:1px solid #23402c;border-radius:7px;padding:2px 8px}
+  .note{font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5}
+</style>
+<h1>Completed-activity thumbnail — plain icon → power shape</h1>
+<p class="sub">The completed "Endurance Spin" card (day view + History) shows a flat sport icon/emoji. These cards carry only aggregate stats (NP, IF, TSS) — the real power shape needs the activity's stream. Two ways to bring the shape back:</p>
+<div class="grid">
+
+  <!-- CURRENT -->
+  <div class="col">
+    <div class="cap cur">● Current — flat icon, no shape</div>
+    <div class="card"><div class="row">
+      <div class="thumb plain"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 17.5h-4l-3-6 4 0 3 6zM8 6.5h3l3 5"/></svg></div>
+      <div class="body"><span class="eyebrow">Ride · completed</span><h3>Endurance Spin</h3>
+        <div class="stats"><span class="st"><b>69</b> min</span><span class="st"><b>34.3</b> km</span><span class="st"><b>157</b> W</span><span class="st"><b>47</b> TSS</span></div></div>
+    </div></div>
+  </div>
+
+  <!-- A -->
+  <div class="col">
+    <div class="cap a">● A — real power shape (PowerBlocks from the stream) — Recommended</div>
+    <div class="card"><div class="row">
+      <div class="thumb"><div class="bars">
+        <i style="height:38%;background:#3f6d4a"></i><i style="height:52%;background:#4f8a4a"></i><i style="height:46%;background:#4f8a4a"></i><i style="height:70%;background:#c9b24a"></i><i style="height:58%;background:#5a9a4a"></i><i style="height:44%;background:#4f8a4a"></i><i style="height:82%;background:#d1863f"></i><i style="height:50%;background:#5a9a4a"></i><i style="height:40%;background:#3f6d4a"></i>
+      </div></div>
+      <div class="body"><span class="eyebrow">Ride · completed</span><h3>Endurance Spin</h3>
+        <div class="stats"><span class="st"><b>69</b> min</span><span class="st"><b>34.3</b> km</span><span class="st"><b>157</b> W</span><span class="st"><b>47</b> TSS</span></div></div>
+    </div>
+    <span class="badge">✓ same shape as the detail header + the planned card</span>
+    <div class="note">Lazy-fetch the stream only for on-screen cards + cache it (the detail page already warms it). Runs get a pace/HR sparkline instead of watts.</div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="col">
+    <div class="cap b">● B — cheap intensity signature (no fetch)</div>
+    <div class="card"><div class="row">
+      <div class="thumb"><div class="sig"><div class="ring"></div><small>IF 63%</small></div></div>
+      <div class="body"><span class="eyebrow">Ride · completed</span><h3>Endurance Spin</h3>
+        <div class="stats"><span class="st"><b>69</b> min</span><span class="st"><b>34.3</b> km</span><span class="st"><b>157</b> W</span><span class="st"><b>47</b> TSS</span></div></div>
+    </div>
+    <span class="badge" style="color:#8fb0ff;background:#0e1522;border-color:#22314d">✓ instant · scales to a long History</span>
+    <div class="note">A gauge from the stats we already have (IF fill + zone color). No stream fetch — but it's a synthetic signature, not the literal shape.</div>
+    </div>
+  </div>
+
+</div>

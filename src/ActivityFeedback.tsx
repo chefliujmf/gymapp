@@ -6,7 +6,7 @@ import { FEEL, RPE, FIELDS } from './pages/PostWorkout'
 // #273/#285 — post-workout feedback capture for ANY completed session (device activity or gym),
 // keyed by an id. Feedback-first when unsubmitted; collapses to a one-line summary after. Saving
 // persists + triggers a coach review (server). Reuses the shared feel/RPE/fields model (#143).
-export default function ActivityFeedback({ id, sport, date, heading = 'How did it go?', icuExisting, icuNote, onSaved }: { id: string; sport: string; date: string; heading?: string; icuExisting?: { feel?: string; rpe?: number; fields: Record<string, string> } | null; icuNote?: string; onSaved?: () => void }) {
+export default function ActivityFeedback({ id, sport, date, heading = 'How did it go?', icuExisting, icuNote, onSaved, reviewShownAbove = false }: { id: string; sport: string; date: string; heading?: string; icuExisting?: { feel?: string; rpe?: number; fields: Record<string, string> } | null; icuNote?: string; onSaved?: () => void; reviewShownAbove?: boolean }) {
   const [feel, setFeel] = useState<string | undefined>()
   const [rpe, setRpe] = useState<number | undefined>()
   const [fields, setFields] = useState<Record<string, string>>({})
@@ -46,14 +46,13 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
   // #364 — the review / "reviewing…" block shown under the collapsed feedback, so you always know
   // the coach saw it + WHERE the takeaways will appear.
   const score10 = review && review.score != null ? (review.score > 10 ? Math.round(review.score / 10) : review.score) : null
-  const reviewBlock = review ? (
+  const reviewBlock = review ? (reviewShownAbove ? null : ( // #503/#JM — when CoachVerdict shows the review ABOVE, don't duplicate it here; the "See all takeaways" link is gone (JM 2026-07-15)
     <div className="pw-fbrev">
       <div className="pw-fbrev__h">💬 Your coach reviewed this{score10 != null ? <span className="pw-fbrev__score">{score10}/10</span> : null}</div>
       {review.verdict && <p className="pw-fbrev__v">{review.verdict}</p>}
       {review.takeaways && review.takeaways.length > 0 && <ul className="pw-fbrev__l">{review.takeaways.slice(0, 3).map((t, i) => <li key={i}>{t}</li>)}</ul>}
-      <Link to="/progress" className="pw-fbrev__link">See all coach takeaways on Progress →</Link>
     </div>
-  ) : reviewing ? (
+  )) : reviewing ? (
     <div className="pw-fbrev pw-fbrev--pending"><div className="pw-fbrev__h">🔎 Your coach is reviewing this session…</div><p className="pw-fbrev__v">Takeaways will appear <b>right here</b>, on <Link to="/progress" className="pw-fbrev__link">Progress</Link>, and as a 🔔 notification — usually within a minute or two.</p></div>
   ) : saved ? (
     <div className="pw-fbrev pw-fbrev--pending"><p className="pw-fbrev__v">Your coach's takeaways will show <b>here</b> + on <Link to="/progress" className="pw-fbrev__link">Progress</Link> + as a 🔔 notification.</p></div>
