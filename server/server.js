@@ -28,6 +28,7 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { generatePlanSkeleton } from './plan-skeleton.js' // #516c — deterministic 14-day plan skeleton (periodization/load/spacing in code)
+import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch } from './sport-settings.js'
 import { planCapViolation } from './plan-cap.js'
@@ -2298,6 +2299,7 @@ function sweepDeactivatedItems() {
   }
   if (n) { save(store); console.log(`[boot] swept ${n} parked meal/mind/supplement/recovery item(s) (Eat/Mind off)`) }
 }
+// #519 — one-time athlete-profile migration lives in server/migrations.js, run via runMigrations() in start().
 
 // ---- exercise catalog (read-only) — lets the coach API resolve real exIds.
 // Loaded once from CATALOG_DIR (the synced generated catalog); empty if absent.
@@ -3171,6 +3173,7 @@ async function start() {
   }
   await seedAndDefaults()
   sweepDeactivatedItems() // #517/#518 — purge any leftover parked meal/mind/supplement/recovery items
+  runMigrations(store, { persist: save, log: (m) => console.log(m) }) // #519 — apply pending run-once data migrations
   // boot self-check — a missing sessionSecret would 500 every login (silently before).
   if (!store.sessionSecret) console.error('[boot] CRITICAL: the session key is missing — every sign-in will fail until this is fixed.')
   console.log(`[boot] Ready on the ${USE_PG ? 'Postgres' : 'file'} store with ${store.users.length} user account(s). Session key ${store.sessionSecret ? 'loaded' : 'MISSING'}.`)

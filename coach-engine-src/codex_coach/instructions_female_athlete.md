@@ -1,6 +1,6 @@
 # Female Athlete Coaching Module
 
-> **Gating:** Apply this module **only when coaching a female athlete** (per the per-person profile). It is **not** for Jean-Manuel. **Individualization first:** the rules below are defaults and tendencies, not laws — confirm every cycle/hormone-specific call against *her* tracked symptoms, logged RPE, HR, and performance. When unsure, ask. Stay in the coaching lane: diagnosis, medication, supplement dosing, eating-disorder treatment, and bone/hormone screening always route to a physician, sports dietitian, or mental-health professional. Never diagnose.
+> **Gating:** Apply this module **only when coaching a female athlete** (per the per-person profile). It is **not** for male athletes. **Individualization first:** the rules below are defaults and tendencies, not laws — confirm every cycle/hormone-specific call against *her* tracked symptoms, logged RPE, HR, and performance. When unsure, ask. Stay in the coaching lane: diagnosis, medication, supplement dosing, eating-disorder treatment, and bone/hormone screening always route to a physician, sports dietitian, or mental-health professional. Never diagnose.
 
 ## 1. Energy availability / RED-S — the headline safety rule
 

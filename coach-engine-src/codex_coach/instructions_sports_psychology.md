@@ -22,7 +22,7 @@ Sports psychology should improve:
 - race-readiness routines;
 - resilience after poor sessions.
 
-Before writing athlete-facing mental guidance, read the athlete profile psychology section and adapt tone and cues to Jean-Manuel's known patterns.
+Before writing athlete-facing mental guidance, read the athlete profile psychology section and adapt tone and cues to the athlete's known patterns.
 
 ## Core Rules
 
