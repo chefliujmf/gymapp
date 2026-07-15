@@ -1,0 +1,167 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--warn:#ffb13d;--blue:#7fd1ff;--red:#ff6b6b}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+body{background:#07090c;color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:14px;display:flex;flex-wrap:wrap;gap:16px;justify-content:center}
+.phone{width:392px;background:var(--bg);border-radius:22px;padding:16px 14px 26px;border:1px solid #23272f}
+.cap{font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--accent);text-transform:uppercase;margin:0 0 8px;text-align:center}
+.cap.c{color:var(--blue)} .cap.d{color:var(--warn)}
+h1{font-size:27px;font-weight:800;letter-spacing:-.6px;margin:2px 0 1px}
+.sub{color:var(--dim);font-size:13px;margin-bottom:12px}
+.filt{display:flex;gap:6px;margin:0 0 13px;flex-wrap:wrap}
+.filt .p{font-size:12px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+.filt .p.on{background:var(--accent);color:#062012;border-color:var(--accent);font-weight:700}
+.card{background:linear-gradient(var(--card1),var(--card2));border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:11px}
+.st{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);margin:16px 2px 9px;display:flex;justify-content:space-between}
+.st .mut{color:#5b6270;font-weight:600;text-transform:none;letter-spacing:0}
+.row3{display:flex;gap:10px}.row3>*{flex:1}
+.big{font-size:23px;font-weight:800;letter-spacing:-.5px}.big small{font-size:12px;font-weight:600;color:var(--dim)}
+.lbl{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.up{color:var(--accent);font-size:12px;font-weight:700}.dn{color:var(--red);font-size:12px;font-weight:700}
+.act{display:flex;align-items:flex-start;gap:9px;padding:11px;border-radius:12px;margin-bottom:8px;font-size:13px;line-height:1.45}
+.act.warn{background:#241d10;border:1px solid #5a4620}.act.warn b{color:var(--warn)}
+.act.good{background:#12180f;border:1px solid #26421f}.act.good b{color:var(--accent)}
+.act .ic{font-size:16px;line-height:1.2}
+.act .go{margin-left:auto;color:var(--dim);font-size:16px;align-self:center}
+.msc{display:flex;align-items:center;gap:9px;margin:9px 0;font-size:12px}
+.msc .n{width:56px;color:var(--text)}
+.msc .track{flex:1;height:15px;border-radius:5px;background:#12151c;position:relative;overflow:hidden}
+.msc .zone{position:absolute;top:0;bottom:0;background:rgba(52,224,125,.13);border-left:1px dashed #34e07d55;border-right:1px dashed #34e07d55}
+.msc .f{position:absolute;top:0;bottom:0;left:0;border-radius:5px}
+.msc .f.ok{background:linear-gradient(90deg,#1f8f52,#34e07d)}.msc .f.lo{background:linear-gradient(90deg,#7a5a1a,#ffb13d)}.msc .f.hi{background:linear-gradient(90deg,#2a6f8f,#7fd1ff)}
+.msc .v{width:74px;text-align:right;color:var(--dim);font-size:11px}
+.msc .v b{color:var(--text)}
+.search{width:100%;padding:10px 12px;border-radius:11px;background:#12151c;border:1px solid var(--line);color:var(--dim);font-size:13px;margin-bottom:9px}
+.sort{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.sort .s{font-size:11px;padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+.sort .s.on{background:#123420;border-color:#245b3a;color:var(--accent);font-weight:700}
+.grp{font-size:11px;font-weight:700;color:var(--dim);margin:10px 2px 2px;display:flex;justify-content:space-between}
+.lift{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid #21252f}
+.lift:last-child{border:0}
+.lift .nm{flex:1;min-width:0}.lift .nm b{font-size:13.5px}.lift .nm .m{font-size:11px;color:var(--dim)}
+.spark{width:52px;height:22px;flex:none}
+.tag{font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:5px}
+.tag.pr{background:#123420;color:var(--accent);border:1px solid #245b3a}
+.tag.stall{background:#2a1d10;color:var(--warn);border:1px solid #5a4620}
+.showall{text-align:center;color:var(--blue);font-size:12px;font-weight:600;padding:9px;border-top:1px solid #21252f;margin-top:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.bm{display:flex;flex-direction:column;gap:2px;padding:11px;border:1px solid var(--line);border-radius:13px;background:#12151c;position:relative}
+.bm .t{font-size:12px;color:var(--dim);font-weight:600}
+.bm .v{font-size:20px;font-weight:800;letter-spacing:-.4px}.bm .v small{font-size:11px;color:var(--dim);font-weight:600}
+.bm .stallb{position:absolute;top:9px;right:9px;font-size:9px;font-weight:700;color:var(--warn)}
+.conf{display:flex;gap:2px;margin-top:3px}.dot{width:6px;height:6px;border-radius:50%;background:#2f3742}.dot.on{background:var(--accent)}
+.back{font-size:20px;color:var(--dim);margin-bottom:6px}
+.chart{height:120px;border:1px solid var(--line);border-radius:12px;background:#0d1014;position:relative;margin:6px 0 4px;overflow:hidden}
+.chart .yl{position:absolute;left:5px;top:4px;font-size:9px;color:#6b7280}.chart .xl{position:absolute;right:6px;bottom:3px;font-size:9px;color:#6b7280}
+.chart .goal{position:absolute;left:0;right:0;border-top:1px dashed #ffb13d77}.chart .gl{position:absolute;right:6px;font-size:9px;color:var(--warn)}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl td,.tbl th{padding:6px 4px;border-bottom:1px solid #21252f;text-align:right}
+.tbl th{color:var(--dim);font-weight:600;font-size:10.5px;text-transform:uppercase}
+.tbl td:first-child,.tbl th:first-child{text-align:left}
+.next{background:#12180f;border:1px solid #26421f;border-radius:12px;padding:11px;font-size:13px;line-height:1.45}.next b{color:var(--accent)}
+</style></head><body>
+
+<!-- ============ OPTION A' : ACTIONABLE + SCALABLE ============ -->
+<div class="phone">
+  <div class="cap">Ⓐ ACTIONABLE + MAIN-LIFT led (scales)</div>
+  <h1>Strength</h1><div class="sub">What to push, what's stalling, what's balanced</div>
+  <div class="filt"><span class="p">4w</span><span class="p on">8w</span><span class="p">6mo</span><span class="p">1y</span></div>
+
+  <div class="card"><div class="row3">
+    <div><div class="big">12</div><div class="lbl">sessions</div></div>
+    <div><div class="big">9<small>h</small>20</div><div class="lbl">on the bar</div></div>
+    <div><div class="big">1.5<small>/wk</small></div><div class="lbl">consistency</div></div>
+  </div></div>
+
+  <div class="act warn"><span class="ic">⚠️</span><div><b>Overhead press</b> stalled 6 weeks — deload 10% or swap variation.</div><span class="go">›</span></div>
+  <div class="act warn"><span class="ic">📉</span><div><b>Back</b> only 8 sets/wk — under the 10–20 growth range. Add a pull day.</div><span class="go">›</span></div>
+  <div class="act good"><span class="ic">🏆</span><div><b>Bench +6%</b> and a new rep-PR (75×10) this block.</div><span class="go">›</span></div>
+
+  <div class="st">Weekly sets per muscle <span class="mut">target 10–20</span></div>
+  <div class="card">
+    <div class="msc"><span class="n">Chest</span><span class="track"><span class="zone" style="left:33%;right:0%"></span><span class="f ok" style="width:53%"></span></span><span class="v"><b>16</b> ok</span></div>
+    <div class="msc"><span class="n">Back</span><span class="track"><span class="zone" style="left:33%;right:0%"></span><span class="f lo" style="width:27%"></span></span><span class="v"><b>8</b> low</span></div>
+    <div class="msc"><span class="n">Shoulders</span><span class="track"><span class="zone" style="left:33%;right:0%"></span><span class="f ok" style="width:40%"></span></span><span class="v"><b>12</b> ok</span></div>
+    <div class="msc"><span class="n">Legs</span><span class="track"><span class="zone" style="left:33%;right:0%"></span><span class="f lo" style="width:23%"></span></span><span class="v"><b>7</b> low</span></div>
+    <div class="msc"><span class="n">Arms</span><span class="track"><span class="zone" style="left:33%;right:0%"></span><span class="f hi" style="width:73%"></span></span><span class="v"><b>22</b> high</span></div>
+  </div>
+
+  <div class="st">Main lifts <span class="mut">your 4 most-trained</span></div>
+  <div class="grid2">
+    <div class="bm"><div class="t">Bench</div><div class="v">100<small> kg</small></div><div class="up">▲ 6% · 8w</div><div class="conf"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span></div></div>
+    <div class="bm"><div class="t">Squat</div><div class="v">140<small> kg</small></div><div class="up">▲ 4% · 8w</div><div class="conf"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span><span class="dot"></span></div></div>
+    <div class="bm"><div class="stallb">stalled</div><div class="t">Overhead</div><div class="v">60<small> kg</small></div><div class="dn">▼ 1% · 8w</div><div class="conf"><span class="dot on"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div></div>
+    <div class="bm"><div class="t">Deadlift</div><div class="v">180<small> kg</small></div><div class="up">▲ 3% · 8w</div><div class="conf"><span class="dot on"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div></div>
+  </div>
+
+  <div class="st">All exercises <span class="mut">143 logged</span></div>
+  <div class="card" style="padding:12px">
+    <input class="search" value="🔍  Search 143 exercises…" readonly>
+    <div class="sort"><span class="s on">Needs attention</span><span class="s">PRs</span><span class="s">Recent</span><span class="s">A–Z</span></div>
+    <div class="grp"><span>⚠️ Stalled / low (3)</span></div>
+    <div class="lift"><div class="nm"><b>Overhead Press</b><span class="tag stall">stalled</span><div class="m">e1RM 60 kg · flat 6 wks</div></div><svg class="spark" viewBox="0 0 52 22"><polyline points="2,8 14,7 26,8 38,8 50,9" fill="none" stroke="#ffb13d" stroke-width="2"/></svg></div>
+    <div class="lift"><div class="nm"><b>Barbell Row</b><span class="tag stall">stalled</span><div class="m">e1RM 82 kg · flat 4 wks</div></div><svg class="spark" viewBox="0 0 52 22"><polyline points="2,10 14,9 26,10 38,9 50,10" fill="none" stroke="#ffb13d" stroke-width="2"/></svg></div>
+    <div class="showall">Show all 143 →</div>
+  </div>
+</div>
+
+<!-- ============ OPTION C : INSIGHT-LED (surfaces the few worth acting on) ============ -->
+<div class="phone">
+  <div class="cap c">Ⓒ INSIGHT-LED — only what needs action (scales best)</div>
+  <h1>Strength</h1><div class="sub">12 sessions · 9h20 · 1.5/wk this block</div>
+  <div class="filt"><span class="p">4w</span><span class="p on">8w</span><span class="p">6mo</span><span class="p">1y</span></div>
+
+  <div class="st">⚠️ Needs attention <span class="mut">3</span></div>
+  <div class="card" style="padding:12px 12px 4px">
+    <div class="act warn" style="margin-bottom:9px"><span class="ic">📉</span><div><b>Overhead press</b> stalled 6 wks. <span style="color:var(--dim)">Deload 10% → 54 kg, or swap to DB press.</span></div><span class="go">›</span></div>
+    <div class="act warn" style="margin-bottom:9px"><span class="ic">⚖️</span><div><b>Back</b> 8 sets/wk &amp; <b>Legs</b> 7 — both under 10. <span style="color:var(--dim)">Push/pull imbalance vs Arms 22.</span></div><span class="go">›</span></div>
+    <div class="act warn" style="margin-bottom:9px"><span class="ic">🕳️</span><div><b>No hamstring work</b> logged in 8 wks.</div><span class="go">›</span></div>
+  </div>
+
+  <div class="st">🏆 Wins <span class="mut">this block</span></div>
+  <div class="card" style="padding:12px 12px 4px">
+    <div class="act good" style="margin-bottom:9px"><span class="ic">🔥</span><div><b>Bench +6%</b> → est 100 kg, best-supported. Rep-PR 75×10.</div><span class="go">›</span></div>
+    <div class="act good" style="margin-bottom:9px"><span class="ic">📈</span><div><b>Squat</b> +4% and <b>Deadlift</b> +3% — steady progress.</div><span class="go">›</span></div>
+  </div>
+
+  <div class="st">Weekly sets per muscle <span class="mut">target 10–20</span></div>
+  <div class="card">
+    <div class="msc"><span class="n">Chest</span><span class="track"><span class="zone" style="left:33%;right:0%"></span><span class="f ok" style="width:53%"></span></span><span class="v"><b>16</b> ok</span></div>
+    <div class="msc"><span class="n">Back</span><span class="track"><span class="zone" style="left:33%;right:0%"></span><span class="f lo" style="width:27%"></span></span><span class="v"><b>8</b> low</span></div>
+    <div class="msc"><span class="n">Legs</span><span class="track"><span class="zone" style="left:33%;right:0%"></span><span class="f lo" style="width:23%"></span></span><span class="v"><b>7</b> low</span></div>
+    <div class="msc"><span class="n">Arms</span><span class="track"><span class="zone" style="left:33%;right:0%"></span><span class="f hi" style="width:73%"></span></span><span class="v"><b>22</b> high</span></div>
+  </div>
+
+  <div class="st">Browse all <span class="mut">143 exercises</span></div>
+  <div class="card" style="padding:12px">
+    <input class="search" value="🔍  Search or filter by muscle…" readonly>
+    <div class="sort"><span class="s on">All</span><span class="s">Chest 24</span><span class="s">Back 19</span><span class="s">Legs 31</span><span class="s">…</span></div>
+    <div class="showall" style="border:0;margin:0">tap a muscle or search → grouped list → exercise page</div>
+  </div>
+</div>
+
+<!-- ============ EXERCISE PAGE (shared, actionable) ============ -->
+<div class="phone">
+  <div class="cap d">Ⓔ EXERCISE PAGE — actionable (#227)</div>
+  <div class="back">‹ Back</div>
+  <h1>Bench Press</h1><div class="sub">Barbell · Chest · 8 sessions in range</div>
+  <div class="next" style="margin-bottom:11px">🎯 <b>Next target: 102.5 kg</b> — you've hit 100 for 3 clean reps twice. Or push 75×10 → 77.5.</div>
+  <div class="card"><div class="row3">
+    <div><div class="lbl">Est. 1-RM</div><div class="big">100<small> kg</small></div><div class="up">▲ 6% · 8w</div></div>
+    <div><div class="lbl">Best rep-PR</div><div class="big">75<small>×10</small></div><div class="up">this wk</div></div>
+    <div><div class="lbl">Confidence</div><div class="conf" style="margin-top:6px"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span></div><div class="sub" style="margin:5px 0 0;font-size:11px">tested</div></div>
+  </div></div>
+  <div class="st">Estimated 1-RM trend <span class="mut">vs next target</span></div>
+  <div class="chart"><span class="yl">kg</span><span class="xl">8 weeks</span>
+    <div class="goal" style="top:14%"></div><span class="gl" style="top:4px">102.5 target</span>
+    <svg viewBox="0 0 300 120" width="100%" height="100%" preserveAspectRatio="none"><polyline points="6,86 46,80 90,82 130,60 174,52 214,40 258,30 294,24" fill="none" stroke="#34e07d" stroke-width="2.5"/><circle cx="294" cy="24" r="3.5" fill="#7fffb0"/></svg></div>
+  <div class="st">Best set by rep range</div>
+  <div class="card"><table class="tbl"><tr><th>Reps</th><th>Best</th><th>Est 1-RM</th><th>When</th></tr>
+    <tr><td>1</td><td>97 kg</td><td>97</td><td>2w ago</td></tr>
+    <tr><td>3</td><td>90 kg</td><td>98</td><td>1w ago</td></tr>
+    <tr><td>5</td><td>85 kg</td><td>96</td><td>3w ago</td></tr>
+    <tr><td>8–10</td><td>75 kg</td><td>94</td><td>this wk</td></tr></table></div>
+  <div class="next">🏆 Your 3- and 5-rep estimates agree at ~97 kg — a well-calibrated, trustworthy max.</div>
+</div>
+
+</body></html>

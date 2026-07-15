@@ -1111,7 +1111,7 @@ test guide → the **🧪 Test guide** section below.
     it's confusing." The review/todo/build/totest/pass/fail/done/discarded set + the "Open = not done/discarded (still includes pass/fail)" semantics
     are too much. Propose a simpler flow (e.g. Review → To do → Building → To test → Done, with a fail looping back to Building + a comment; drop
     separate pass/fail) — MOCK 2 options first (options-first). #438 backlog page. Low-risk polish; after #431.
-448. ⬜ **STRENGTH Progress + Stats rework — make it as advanced as running/cycling.** JM 2026-07-08, batch-tested the backlog on QA
+448. 🧪 **STRENGTH Progress + Stats rework — make it as advanced as running/cycling.** JM 2026-07-08, batch-tested the backlog on QA
     (35 pass, 4 fail). 3 of the 4 failures are the SAME theme (gym/strength analytics are underbuilt) — umbrella here, reopening the individual
     items: **#227** (Jun-19 gym shows GENERIC exercises; can't tap an exercise to see its progress/stats) · **#251** (session shows "1 session ·
     11 min" — WRONG, the real session was longer; "Volume this week" is disconnected from the top filter — it should be a count + total time +
@@ -1119,6 +1119,19 @@ test guide → the **🧪 Test guide** section below.
     JM verbatim: "will need to rework a lot of progress for strength training + stats to make it as advanced as running and cycling." SCOPE + MOCK
     first (options-first) — per-exercise progress + tappable exercises + filter-driven volume/time/tonnage + strength graphs. Big effort. (Separate:
     **#148** empty "Search gym…" list in the Add sheet — a discrete picker bug, ties #412.)
+    **🔨 BUILT (2026-07-15, mock `mockups/strength-stats-v2.html`, JM picked the Mix + "use science/books").** Grounded in the
+    literature (Epley/Brzycki 1RM, RIR/RTS, Schoenfeld volume dose-response 10–20 sets/muscle/wk, MEV/MAV/MRV, progressive
+    overload) — KB `docs/strength-analytics.md`. Pure engine `src/strength.ts` (`rangeSummary`, `weeklySetsPerMuscle`,
+    `mainLifts`, `strengthDigest`, `exerciseHistory`, `nextTarget`) + 9 tests. Strength page (`Progress.tsx`) reworked to the Mix:
+    **#251** the summary now follows the date filter (sessions · time on the bar · consistency/wk — dropped vanity total-kg per JM);
+    **Needs attention / Wins** actionable feed (stalls, low-volume muscles, gaps, PRs, movers); **weekly sets per muscle vs the
+    10–20 target** (low/ok/high); bounded **Main lift cards** (working-1RM + honest confidence dots) that scale (only your 4
+    most-trained); **All exercises** searchable/faceted (Needs-attention default) so it scales to hundreds. **#227** a real
+    per-exercise **page** (`src/pages/ExerciseProgress.tsx`, route `/exercise/:name`): est-1RM trend, best-set-by-rep-range table,
+    volume trend, next progressive-overload target — reached by tapping a main-lift/list row AND a History session's exercise. **#252**
+    all of it lives under the working date filter. **Test (QA):** open Stats → Strength; the summary changes with the date filter (no more
+    "1 session · 11 min"); Needs-attention shows stalled/low-volume items; sets-per-muscle flags low/ok/high vs 10–20; tap a main lift
+    or a History exercise → its progress page with trend + rep-range + next target. **Route:** UI (strength stats) + engine + coach KB.
 449. 🧪 **Backlog: show dev→qa→prod PROGRESSION per item + full status CYCLE.** JM 2026-07-08: "not all items show where (prod/qa/dev)…
     ideally always dev to qa to prod" + "if you work an item that failed, change it to building? we need a full cycle flow." BUILT: (a) every
     built item shows a **DEV·QA·PROD track** (`EnvTrack`) derived from the lifecycle — building=dev · to-test/tested=qa · done=prod (a text

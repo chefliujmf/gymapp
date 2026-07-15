@@ -133,7 +133,8 @@ function SessionCard({ log, imp }: { log: WorkoutLog; imp: boolean }) {
           const best = Math.max(0, ...e.arr.map((s) => (s.weight && s.reps ? e1rm(s.weight, s.reps) : 0)))
           return (
             <div key={e.idx} className="log-ex">
-              <div className="log-ex__name">{e.name}</div>
+              {/* #227 — tap an exercise to see its own progress/stats */}
+              <Link to={`/exercise/${encodeURIComponent(e.name)}`} className="log-ex__name" style={{ color: 'var(--text)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }} onClick={(ev) => ev.stopPropagation()}>{e.name}<span style={{ color: 'var(--accent)', fontSize: 12, fontWeight: 600, flex: 'none' }}>progress ›</span></Link>
               {e.arr.map((s, si) => (
                 <div key={si} className="log-set">
                   <span className="log-set__n">Set {si + 1}</span>

@@ -1,0 +1,156 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--warn:#ffb13d;--blue:#7fd1ff}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+body{background:#07090c;color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:14px;display:flex;flex-wrap:wrap;gap:16px;justify-content:center}
+.phone{width:390px;background:var(--bg);border-radius:22px;padding:16px 14px 26px;border:1px solid #23272f}
+.cap{font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--accent);text-transform:uppercase;margin:0 0 8px;text-align:center}
+.cap.b{color:var(--warn)} .cap.n{color:var(--dim)} .cap.d{color:var(--blue)}
+h1{font-size:27px;font-weight:800;letter-spacing:-.6px;margin:2px 0 1px}
+.sub{color:var(--dim);font-size:13px;margin-bottom:12px}
+.filt{display:flex;gap:6px;margin:0 0 13px;flex-wrap:wrap}
+.filt .p{font-size:12px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+.filt .p.on{background:var(--accent);color:#062012;border-color:var(--accent);font-weight:700}
+.card{background:linear-gradient(var(--card1),var(--card2));border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:11px}
+.st{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);margin:16px 2px 9px}
+.row2{display:flex;gap:11px}.row2>*{flex:1}
+.big{font-size:26px;font-weight:800;letter-spacing:-.5px}.big small{font-size:13px;font-weight:600;color:var(--dim)}
+.lbl{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.up{color:var(--accent);font-size:12px;font-weight:700}.dn{color:#ff6b6b;font-size:12px;font-weight:700}
+.pills{display:flex;gap:7px;flex-wrap:wrap;margin:11px 0 2px}
+.pill{font-size:11.5px;padding:5px 10px;border-radius:999px;background:#12151c;border:1px solid var(--line);color:var(--text)}
+.pill.bad{border-color:#5a3030;background:#241618;color:#ff9d9d}
+.bars{display:flex;align-items:flex-end;gap:6px;height:76px;margin:4px 0 2px}
+.bars .b{flex:1;background:linear-gradient(#34e07d,#1f8f52);border-radius:4px 4px 0 0;position:relative}
+.bars .b.pk{background:linear-gradient(#7fffb0,#34e07d)}
+.axc{display:flex;justify-content:space-between;font-size:9.5px;color:#6b7280;margin-top:3px}
+.lift{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid #21252f}
+.lift:last-child{border:0}
+.lift .nm{flex:1;min-width:0}.lift .nm b{font-size:14px}.lift .nm .m{font-size:11px;color:var(--dim)}
+.spark{width:64px;height:26px;flex:none}
+.chip2{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;background:#123420;color:var(--accent);border:1px solid #245b3a}
+.bm{display:flex;flex-direction:column;gap:3px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#12151c}
+.bm .t{font-size:12px;color:var(--dim);font-weight:600}
+.bm .v{font-size:22px;font-weight:800;letter-spacing:-.4px}.bm .v small{font-size:12px;color:var(--dim);font-weight:600}
+.conf{display:flex;gap:2px;margin-top:2px}.dot{width:7px;height:7px;border-radius:50%;background:#2f3742}.dot.on{background:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.mbar{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12px}
+.mbar .n{width:64px;color:var(--dim)}.mbar .t{flex:1;height:9px;border-radius:5px;background:#161a22;overflow:hidden}
+.mbar .f{height:100%;background:linear-gradient(90deg,#34e07d,#7fd1ff)}
+.co{background:#12180f;border:1px solid #26421f;border-radius:13px;padding:12px;font-size:13px;line-height:1.5}
+.co b{color:var(--accent)}
+.chart{height:130px;border:1px solid var(--line);border-radius:12px;background:#0d1014;position:relative;margin:6px 0 4px;overflow:hidden}
+.chart .yl{position:absolute;left:5px;top:4px;font-size:9px;color:#6b7280}
+.chart .xl{position:absolute;right:6px;bottom:3px;font-size:9px;color:#6b7280}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl td,.tbl th{padding:7px 4px;border-bottom:1px solid #21252f;text-align:right}
+.tbl th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase}
+.tbl td:first-child,.tbl th:first-child{text-align:left}
+.back{font-size:20px;color:var(--dim);margin-bottom:6px}
+.tapnote{font-size:10.5px;color:var(--blue);margin:2px 2px 0}
+.new{outline:2px solid var(--accent);outline-offset:2px;border-radius:14px}
+</style></head><body>
+
+<!-- ============ NOW ============ -->
+<div class="phone">
+  <div class="cap n">① NOW — current Strength Progress</div>
+  <h1>Strength</h1><div class="sub">Volume · PRs · est-1RM trends</div>
+  <div class="filt"><span class="p">4w</span><span class="p on">8w</span><span class="p">6mo</span><span class="p">1y</span></div>
+  <div class="card"><div class="row2">
+    <div><div class="lbl">Volume · this week</div><div class="big">12,400<small> kg</small></div><div class="up">▲ 8% WoW</div></div>
+    <div><div class="lbl">Day streak</div><div class="big">3</div><div class="sub" style="margin:0">days</div></div>
+  </div>
+  <div class="pills"><span class="pill">🏆 5 PRs</span><span class="pill">🔥 Bench +6%</span><span class="pill bad">🎯 1 session · 11 min</span><span class="pill">4 this wk</span></div></div>
+  <div class="card"><div class="lbl">Weekly volume</div>
+    <div class="bars"><div class="b" style="height:40%"></div><div class="b" style="height:55%"></div><div class="b" style="height:48%"></div><div class="b pk" style="height:82%"></div><div class="b" style="height:60%"></div><div class="b" style="height:70%"></div><div class="b" style="height:44%"></div><div class="b" style="height:66%"></div></div>
+    <div class="axc"><span>8w ago</span><span>now</span></div></div>
+  <div class="st">Strength trends</div>
+  <div class="card">
+    <div class="lift"><div class="nm"><b>Bench Press</b> <span class="chip2">PR</span><div class="m">peak e1RM 92 kg · 8 sessions</div></div><svg class="spark" viewBox="0 0 64 26"><polyline points="2,20 14,17 26,18 38,12 50,9 62,5" fill="none" stroke="#34e07d" stroke-width="2"/></svg></div>
+    <div class="lift"><div class="nm"><b>Squat</b><div class="m">peak e1RM 138 kg · 7 sessions</div></div><svg class="spark" viewBox="0 0 64 26"><polyline points="2,15 14,14 26,16 38,13 50,12 62,11" fill="none" stroke="#34e07d" stroke-width="2"/></svg></div>
+    <div class="lift"><div class="nm"><b>Deadlift</b><div class="m">peak e1RM 176 kg · 5 sessions</div></div><svg class="spark" viewBox="0 0 64 26"><polyline points="2,12 14,13 26,11 38,10 50,10 62,9" fill="none" stroke="#34e07d" stroke-width="2"/></svg></div>
+    <div class="tapnote">tap a lift → small modal with an e1RM line</div>
+  </div>
+  <div class="st">Muscle balance</div>
+  <div class="card">
+    <div class="mbar"><span class="n">Chest</span><span class="t"><span class="f" style="width:72%"></span></span></div>
+    <div class="mbar"><span class="n">Back</span><span class="t"><span class="f" style="width:58%"></span></span></div>
+    <div class="mbar"><span class="n">Legs</span><span class="t"><span class="f" style="width:40%"></span></span></div>
+  </div>
+</div>
+
+<!-- ============ OPTION A ============ -->
+<div class="phone">
+  <div class="cap">② OPTION A — match cycling/running (recommended)</div>
+  <h1>Strength</h1><div class="sub">Working maxes · volume · per-lift progress</div>
+  <div class="filt"><span class="p">4w</span><span class="p on">8w</span><span class="p">6mo</span><span class="p">1y</span></div>
+
+  <div class="card new"><div class="lbl">In this range <span style="color:var(--accent)">(follows the filter — #251 fix)</span></div>
+    <div class="row2" style="margin-top:6px">
+      <div><div class="big">12</div><div class="lbl">sessions</div></div>
+      <div><div class="big">9<small>h</small> 20<small>m</small></div><div class="lbl">total time</div></div>
+      <div><div class="big">84.2<small>k</small></div><div class="lbl">kg volume</div></div>
+    </div></div>
+
+  <div class="st">Key lifts — working 1-RM <span style="text-transform:none;color:var(--dim);font-weight:400">(est. + confidence, like FTP)</span></div>
+  <div class="grid2">
+    <div class="bm"><div class="t">Squat</div><div class="v">140<small> kg</small></div><div class="up">▲ 4% · 8w</div><div class="conf"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span><span class="dot"></span></div></div>
+    <div class="bm"><div class="t">Bench</div><div class="v">100<small> kg</small></div><div class="up">▲ 6% · 8w</div><div class="conf"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span></div></div>
+    <div class="bm"><div class="t">Deadlift</div><div class="v">180<small> kg</small></div><div class="up">▲ 3% · 8w</div><div class="conf"><span class="dot on"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div></div>
+    <div class="bm"><div class="t">Overhead</div><div class="v">60<small> kg</small></div><div class="dn">▼ 1% · 8w</div><div class="conf"><span class="dot on"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div></div>
+  </div>
+  <div class="tapnote" style="margin-top:8px">tap any lift → full Exercise page (see ③)</div>
+
+  <div class="st">Weekly volume</div>
+  <div class="card"><div class="bars"><div class="b" style="height:40%"></div><div class="b" style="height:55%"></div><div class="b" style="height:48%"></div><div class="b pk" style="height:82%"></div><div class="b" style="height:60%"></div><div class="b" style="height:70%"></div><div class="b" style="height:44%"></div><div class="b" style="height:66%"></div></div><div class="axc"><span>8w ago</span><span>now</span></div></div>
+
+  <div class="co">💡 <b>Bench</b> is your fastest riser (+6% in 8w) and best-supported. <b>Overhead press</b> stalled — add a volume block. Legs are undertrained vs push.</div>
+</div>
+
+<!-- ============ OPTION A — EXERCISE DETAIL ============ -->
+<div class="phone">
+  <div class="cap d">③ OPTION A — per-exercise PAGE (#227)</div>
+  <div class="back">‹ Back</div>
+  <h1>Bench Press</h1><div class="sub">Barbell · Chest · 8 sessions in range</div>
+  <div class="card"><div class="row2">
+    <div><div class="lbl">Est. 1-RM</div><div class="big">100<small> kg</small></div><div class="up">▲ 6% · 8w</div></div>
+    <div><div class="lbl">Confidence</div><div class="conf" style="margin-top:8px"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span></div><div class="sub" style="margin:6px 0 0">tested-backed</div></div>
+  </div></div>
+  <div class="st">Estimated 1-RM trend</div>
+  <div class="chart"><span class="yl">kg</span><span class="xl">8 weeks</span>
+    <svg viewBox="0 0 300 120" width="100%" height="100%" preserveAspectRatio="none"><polyline points="6,86 46,80 90,82 130,60 174,52 214,40 258,30 294,22" fill="none" stroke="#34e07d" stroke-width="2.5"/><circle cx="294" cy="22" r="3.5" fill="#7fffb0"/></svg></div>
+  <div class="st">Best set by rep range</div>
+  <div class="card"><table class="tbl"><tr><th>Reps</th><th>Best weight</th><th>Est 1-RM</th><th>When</th></tr>
+    <tr><td>1</td><td>97 kg</td><td>97</td><td>2w ago</td></tr>
+    <tr><td>3</td><td>90 kg</td><td>98</td><td>1w ago</td></tr>
+    <tr><td>5</td><td>85 kg</td><td>96</td><td>3w ago</td></tr>
+    <tr><td>8–10</td><td>75 kg</td><td>94</td><td>this wk</td></tr></table></div>
+  <div class="st">Volume trend (this lift)</div>
+  <div class="card"><div class="bars"><div class="b" style="height:50%"></div><div class="b" style="height:44%"></div><div class="b" style="height:62%"></div><div class="b pk" style="height:88%"></div><div class="b" style="height:70%"></div><div class="b" style="height:66%"></div></div><div class="axc"><span>8w</span><span>now</span></div></div>
+  <div class="co">🏆 New rep-PR this week (75×10). Your 3-rep and 5-rep estimates agree at ~97 kg — solid, well-calibrated max.</div>
+</div>
+
+<!-- ============ OPTION B ============ -->
+<div class="phone">
+  <div class="cap b">④ OPTION B — fix + deepen the current page (lighter)</div>
+  <h1>Strength</h1><div class="sub">Volume · PRs · est-1RM trends</div>
+  <div class="filt"><span class="p">4w</span><span class="p on">8w</span><span class="p">6mo</span><span class="p">1y</span></div>
+  <div class="card new"><div class="lbl">In this range <span style="color:var(--accent)">(#251 fix)</span></div>
+    <div class="row2" style="margin-top:6px">
+      <div><div class="big">12</div><div class="lbl">sessions</div></div>
+      <div><div class="big">9<small>h</small>20</div><div class="lbl">time</div></div>
+      <div><div class="big">84<small>k</small></div><div class="lbl">kg</div></div>
+    </div>
+    <div class="pills"><span class="pill">🏆 5 PRs</span><span class="pill">🔥 Bench +6%</span></div></div>
+  <div class="card"><div class="lbl">Weekly volume</div><div class="bars"><div class="b" style="height:40%"></div><div class="b" style="height:55%"></div><div class="b" style="height:48%"></div><div class="b pk" style="height:82%"></div><div class="b" style="height:60%"></div><div class="b" style="height:70%"></div><div class="b" style="height:44%"></div><div class="b" style="height:66%"></div></div><div class="axc"><span>8w ago</span><span>now</span></div></div>
+  <div class="st">Strength trends <span style="text-transform:none;color:var(--dim);font-weight:400">— richer tap-through</span></div>
+  <div class="card">
+    <div class="lift"><div class="nm"><b>Bench Press</b> <span class="chip2">PR</span><div class="m">e1RM 100 kg ▲6% · 8 sessions</div></div><svg class="spark" viewBox="0 0 64 26"><polyline points="2,20 14,17 26,18 38,12 50,9 62,5" fill="none" stroke="#34e07d" stroke-width="2"/></svg></div>
+    <div class="lift"><div class="nm"><b>Squat</b><div class="m">e1RM 140 kg ▲4% · 7 sessions</div></div><svg class="spark" viewBox="0 0 64 26"><polyline points="2,15 14,14 26,16 38,13 50,12 62,11" fill="none" stroke="#34e07d" stroke-width="2"/></svg></div>
+    <div class="tapnote">tap → bigger modal: e1RM trend + rep-range table + volume + PRs (no separate page/benchmark cards)</div>
+  </div>
+  <div class="st">Muscle balance</div>
+  <div class="card"><div class="mbar"><span class="n">Chest</span><span class="t"><span class="f" style="width:72%"></span></span></div><div class="mbar"><span class="n">Back</span><span class="t"><span class="f" style="width:58%"></span></span></div><div class="mbar"><span class="n">Legs</span><span class="t"><span class="f" style="width:40%"></span></span></div></div>
+</div>
+
+</body></html>
