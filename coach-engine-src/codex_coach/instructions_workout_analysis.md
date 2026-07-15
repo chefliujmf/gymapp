@@ -20,7 +20,7 @@ Review in this order:
 3. target compliance;
 4. fade or drift patterns;
 5. Intervals.icu athlete feedback: RPE, Feel, and activity notes;
-6. `coach_feedback_memory.md`: active coaching hypotheses and whether this workout confirms or challenges them;
+6. your coach memory for this athlete (save_coach_memory): active coaching hypotheses and whether this workout confirms or challenges them;
 7. Coros recovery context when available: sleep, resting HR, HRV;
 8. post-workout fueling, hydration, recovery, and supplement needs;
 9. sports psychology: pacing discipline, reset use, restraint, confidence, and attention;
@@ -57,7 +57,7 @@ Use simple grades:
 - whether the athlete needs a post-workout psychology action: confidence evidence, restraint reinforcement, reset practice, or a simple cue for the next ride.
 - whether the activity Notes/comment thread should be updated with conclusions, score rationale, positives, limiters, FTP interpretation if relevant, and next actionable focus.
 - whether a body-maintenance action is mentioned. If mentioning left calf, L/R balance, tightness, mobility, stretching, foam rolling, massage gun, or eccentric work, give the exact routine: exercise/tool, sets or duration, timing, and stop rule.
-- whether the result validates, contradicts, or changes an active item in `coach_feedback_memory.md`.
+- whether the result validates, contradicts, or changes an active item in your coach memory for this athlete.
 - whether Intervals retained the planned event via `paired_event_id`.
 - whether useful planned-workout food, Centr, recovery exercise, or supplement context should be read from that paired event rather than duplicated into the activity.
 

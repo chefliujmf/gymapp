@@ -107,9 +107,7 @@ Today's workout needs
 - [workout-specific supplement decision]
 
 Daily baseline
-- Creatine: [keep/skip reason; monohydrate 3-5g/day if using]
-- B12: [keep/skip reason]
-- Omega 3: [keep/skip reason]
+- (supplements are not scheduled in Platyplus — Eat is off; omit)
 - Vitamin D: [condition]
 - Protein powder: [condition]
 - Glycine/magnesium: [condition]
