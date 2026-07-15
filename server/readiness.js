@@ -71,13 +71,12 @@ export function baselines(history = []) {
 export function freshness({ atl, ctl, form, tsbBaseline } = {}) {
   const acwr = atl != null && ctl != null && ctl > 0 ? atl / ctl : null
   const tsb = form != null ? form : (ctl != null && atl != null ? ctl - atl : null)
-  // Recalibrated 2026-06-29 (JM: the research table was too conservative — it scored the normal
-  // PRODUCTIVE-training zone as the middle). Anchored to TrainingPeaks Form zones + the ACWR injury
-  // "sweet spot" 0.8–1.3 (low risk = good): a BALANCED state (Form ~0 / ACWR ~1) reads ~4 ("fresh
-  // enough"); 5 is reserved for tapered/fresh (Form ≥ +12); it only drops to 2–1 as real fatigue
-  // accumulates (Form < −10, ACWR > 1.3).
-  const a = acwr == null ? null : lerpMap(acwr, [[0.8, 5], [1.0, 4.3], [1.25, 3.5], [1.5, 2.5], [1.8, 1.5], [2.2, 1]])
-  const t = tsb == null ? null : lerpMap(tsb, [[-35, 1], [-22, 2], [-10, 3], [0, 4], [12, 5]])
+  // Recalibrated 2026-07-15 (JM: "Freshness is rarely 5 — a good training day should read 5, not just a taper").
+  // 5 now means OPTIMALLY FRESH *for training* — a well-managed day handling the load (Form ~0 to slightly negative,
+  // ACWR in the 0.8–1.2 injury sweet spot) reads 5, NOT reserved for a peak/taper. It only steps down as REAL fatigue
+  // accumulates (Form < −10 / ACWR > 1.3) and hits 1 in a deep block. So a recovered, on-plan day is achievable at 5.
+  const a = acwr == null ? null : lerpMap(acwr, [[1.2, 5], [1.3, 4], [1.4, 3], [1.55, 2], [1.9, 1]])
+  const t = tsb == null ? null : lerpMap(tsb, [[-32, 1], [-28, 2], [-18, 3], [-10, 4], [-5, 5], [5, 5]])
   const parts = [a, t].filter((x) => x != null)
   if (!parts.length) return null
   let score = parts.reduce((s, x) => s + x, 0) / parts.length
