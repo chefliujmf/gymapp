@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { recipes, allRecipesById } from '../data/catalog'
+import PageHead from '../PageHead'
 import { calApi, type CalItem } from '../calendar'
 import { localISO } from '../date'
 import { useAuth } from '../auth/AuthContext'
@@ -152,10 +153,7 @@ export default function Eat() {
 
   return (
     <div>
-      <div className="page-head">
-        <h1>Eat</h1>
-        <p>Meal packs, recipes & a shopping list from your plan</p>
-      </div>
+      <PageHead title="Eat" sub="Meal packs, recipes & a shopping list from your plan" />
 
       <div className="seg">
         <button className={'seg__btn' + (tab === 'packs' ? ' seg__btn--active' : '')} onClick={() => setTab('packs')}>Packs</button>

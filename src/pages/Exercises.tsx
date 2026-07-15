@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { exercises, exerciseCategories, exerciseEquipment, exerciseMuscles } from '../data/catalog'
+import PageHead from '../PageHead'
 import { useAuth } from '../auth/AuthContext'
 
 const CAP = 120
@@ -30,10 +31,7 @@ export default function Exercises() {
 
   return (
     <div>
-      <div className="page-head">
-        <h1>Train</h1>
-        <p>{exercises.length} exercises in your library</p>
-      </div>
+      <PageHead title="Train" sub={`${exercises.length} exercises in your library`} />
 
       <div className="seg">
         <Link to="/workouts" className="seg__btn">Workouts</Link>
