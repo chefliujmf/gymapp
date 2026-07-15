@@ -52,11 +52,11 @@ Current athlete setting:
   2026-06-15). Read the number from there; do not restate it here.
 - this is the operational prescription target, not a confirmed maximal FTP declaration.
 
-> **A confirmatory validation remains high-value.** 260 W is athlete-confirmed, but the coach's
-> power-curve model read ~250 (extrapolated — no maximal long effort on record) and `icu_eftp` reads
-> 240 (submaximal bias). A genuine 20–40 min effort, or a **DFA α1 ramp on the Polar H10**, would
-> confirm 260 (or open the door toward 270) without a maximal test the athlete dislikes. Place it
-> when he is fresh. Until then, keep the honesty layer: the 300 W path rests on an unconfirmed number.
+> **A confirmatory validation remains high-value.** When the working FTP is athlete-set or extrapolated
+> from the power-curve model rather than confirmed by a recent maximal-ish effort (and `icu_eftp` often
+> reads low from submaximal bias), treat it as an honest estimate: a genuine 20–40 min effort — or a DFA
+> α1 ramp if they have a compatible HR strap — can confirm or move it without a maximal test the athlete
+> dislikes. Place it when they're fresh; until then, keep the honesty layer that the number is unconfirmed.
 
 Rules:
 - configured FTP in Intervals.icu is context, not proof;
@@ -121,12 +121,12 @@ FTP is a baseline setting and must be checked on a schedule, not only when the a
 
 Use three layers:
 - after every key threshold, sweet-spot, over-under, VO2, or unusually strong sustained ride: make a micro-decision of `raise`, `hold`, `lower`, or `insufficient evidence`;
-- weekly during planning or COACHCHECK: report the current working FTP, confidence, whether it changed or stayed the same, and the next evidence needed;
+- weekly during planning: report the current working FTP, confidence, whether it changed or stayed the same, and the next evidence needed;
 - every 4-6 weeks during build phases, or after a recovery week, schedule a deliberate validation session if recent workouts have not already provided enough evidence.
 
 Do not run maximal FTP tests too frequently. A formal hard test should usually be separated by at least 4-6 weeks unless the current FTP is clearly wrong and the athlete is fresh enough to test safely.
 
-Preferred validation options for Jean-Manuel:
+Preferred validation options:
 - primary: controlled threshold/sweet-spot progression such as `2x20`, `3x15`, or over-under work with RPE and fade criteria;
 - secondary: hard sustained field effort of about 35-50 minutes when well rested and motivated;
 - occasional: ramp test or classic test only when it answers a practical calibration question better than normal training evidence.
@@ -136,9 +136,9 @@ The weekly output must include one plain sentence:
 - `Working FTP moves from X W to Y W because ...`
 - `FTP evidence is insufficient; keep X W until ...`
 
-## Athlete-specific bias
+## Testing bias
 
-For Jean-Manuel:
+For an athlete who dislikes formal tests (respect their profile preference):
 - avoid classic FTP tests unless explicitly requested;
 - infer threshold from normal training, long rides, and targeted validation sessions;
 - be skeptical of numbers that exceed recent 40-60 minute evidence by too much;

@@ -8,24 +8,13 @@ Do not confuse the workout goal with the workout format.
 
 If weather breaks the outdoor format, preserve the training intent with the best available substitute.
 
-## Athlete-specific weather rule
+## Weather preference
 
-For Jean-Manuel:
-- do not assume he will ride outside in rain;
-- in summer, prefer moving the ride, gym fallback, mobility, or rest before the trainer;
-- indoor bike is a last resort in summer, even when available. Use it only when the athlete explicitly accepts it and it is the best way to preserve the week without creating the wrong fatigue.
+Apply the athlete's stated preference (from their profile). A common one: don't assume they'll ride outside in the rain; in summer prefer moving the ride, a gym fallback, mobility, or rest before the indoor trainer, and treat the indoor bike as a last resort in summer — use it only when they accept it and it's the best way to preserve the week without the wrong fatigue.
 
-## Location rule
+## Location
 
-Default weather location is Montreal unless calendar or activity context says otherwise.
-
-Use the athlete's alternating Skov/cottage-month rule as the fallback location assumption when the calendar is not yet populated: from June 2026 onward, cottage months are June, August, October, and December 2026; then January, March, May, July, September, and November 2027. Infer future years by flipping that year pattern unless calendar evidence or the athlete corrects it. In those months, assume weekend outdoor ride planning may need Austin, Quebec weather and cottage travel constraints unless a calendar entry or activity context clearly places the athlete in Montreal.
-
-When Google Calendar includes a Skov/cottage marker such as `Skov`, `Skov JMF&Xen`, or similar, treat the athlete as being at the cottage for that period and check weather for Skov/cottage in Austin, Quebec. Use Austin, QC weather for outdoor ride feasibility, wind/rain interpretation, and gym/rest fallback decisions unless the planned ride is clearly in Montreal.
-
-If the athlete is returning from Skov/cottage to Montreal on Sunday, treat Sunday as a constrained travel day: check Austin weather for any cottage ride window, check Montreal/weather only if the ride is explicitly after returning home, and prefer a Sunday break or short/calm ride when logistics are tight.
-
-If the athlete is at Skov/cottage without bike or gym access, weather-blocked rides should usually be deleted or converted to a non-workout note, not rescheduled as debt. Manual land work such as cutting trees, hauling, clearing, digging, or sustained yard work counts as real physical load for recovery decisions, but it is not bike-specific FTP work.
+Default weather location is the athlete's city (from their profile) unless calendar or activity context clearly places them elsewhere (travel, a second home). When they're away, check the weather for wherever they actually are for outdoor-ride feasibility, wind/rain interpretation, and the gym/rest fallback. If they're somewhere without bike or gym access, a weather-blocked ride is usually deleted or turned into a non-workout note rather than rescheduled as training debt; count manual physical work (yard/land work, hauling, digging, sustained clearing) as real recovery load, but not as bike-specific training.
 
 ## Priority order
 

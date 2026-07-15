@@ -8,8 +8,8 @@
 
 ## Power zones
 
-Model: 7-zone power, anchored to the **working FTP** (currently **260 W**, see
-`athlete_profile.md`). Percentages are of FTP. Watt column shown at 260 W — recompute it
+Model: 7-zone power, anchored to the athlete's **working FTP** (from their profile / benchmarks).
+Percentages are of FTP; compute any watt column against the athlete's current FTP and recompute it
 whenever the working FTP changes.
 
 | Zone | Name | % FTP | Watts @260 | RPE /10 | Purpose | Typical cadence |
@@ -55,6 +55,6 @@ easy-time rule always wins when the two conflict.
 
 ## Heart-rate and RPE fallback
 
-Power is primary. When power is unavailable or untrustworthy (e.g. some outdoor/cottage
+Power is primary. When power is unavailable or untrustworthy (e.g. some outdoor
 rides), prescribe by RPE using the table above, and treat HR as confirmation, not target.
 HR lags power and drifts with heat/fatigue, so never chase a HR number during intervals.
