@@ -15,7 +15,7 @@ export default function PushNudge() {
     if (!pushSupported() || localStorage.getItem(KEY) || permission() === 'denied') return
     ;(async () => {
       try {
-        // #5026 (JM: "turn-on-notifications banner comes back though it was approved before") — a service-worker update
+        // #515 (JM: "turn-on-notifications banner comes back though it was approved before") — a service-worker update
         // (every deploy) or expiry DROPS this device's push subscription, so `isSubscribedHere()` goes false again even
         // though the athlete already granted permission. `nudgeAction` decides: already-granted → RE-subscribe SILENTLY
         // (no nag, also restores server-side delivery); only a genuinely-never-asked ('default') browser gets the banner.
