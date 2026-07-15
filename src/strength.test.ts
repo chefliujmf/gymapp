@@ -75,14 +75,13 @@ describe('rangeSummary (#251 — follows the filter, not vanity kg)', () => {
   })
 })
 
-describe('weeklySetsPerMuscle (Schoenfeld 10–20 landmark)', () => {
-  it('flags low / ok / high vs the target band', () => {
-    const chest30 = [log(0, [{ name: 'Bench', sets: Array(30).fill([80, 8]) as [number, number][] }])]
-    expect(weeklySetsPerMuscle(chest30, muscleOf, 14).find((v) => v.muscle === 'Chest')).toMatchObject({ perWeek: 15, status: 'ok' })
-    const chest10 = [log(0, [{ name: 'Bench', sets: Array(10).fill([80, 8]) as [number, number][] }])]
-    expect(weeklySetsPerMuscle(chest10, muscleOf, 14).find((v) => v.muscle === 'Chest')!.status).toBe('low')
-    const chest25 = [log(0, [{ name: 'Bench', sets: Array(25).fill([80, 8]) as [number, number][] }])]
-    expect(weeklySetsPerMuscle(chest25, muscleOf, 7).find((v) => v.muscle === 'Chest')!.status).toBe('high')
+describe('weeklySetsPerMuscle (Schoenfeld 10–20 landmark, per TRAINING week)', () => {
+  const chestOver = (perLog: number) => [log(0, [{ name: 'Bench', sets: Array(perLog).fill([80, 8]) as [number, number][] }]), log(14, [{ name: 'Bench', sets: Array(perLog).fill([80, 8]) as [number, number][] }])] // 2 distinct weeks
+  it('averages over the weeks TRAINED, not calendar weeks in the filter', () => {
+    // 15 sets/week across 2 training weeks = 15/wk ok — regardless of a wide 8-week filter
+    expect(weeklySetsPerMuscle(chestOver(15), muscleOf, 56).find((v) => v.muscle === 'Chest')).toMatchObject({ perWeek: 15, status: 'ok' })
+    expect(weeklySetsPerMuscle(chestOver(4), muscleOf, 56).find((v) => v.muscle === 'Chest')!.status).toBe('low')   // 4/wk
+    expect(weeklySetsPerMuscle(chestOver(25), muscleOf, 56).find((v) => v.muscle === 'Chest')!.status).toBe('high') // 25/wk
   })
   it('ignores exercises with no muscle mapping', () => {
     const logs = [log(0, [{ name: 'Mystery', sets: [[50, 5]] }])]

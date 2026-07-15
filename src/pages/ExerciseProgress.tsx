@@ -84,12 +84,22 @@ export default function ExerciseProgress() {
         {h.weeklyVolume.length > 1 && <>
           <div className="section-title">Volume trend <span className="meta" style={{ fontWeight: 400 }}>· this lift</span></div>
           <div className="card" style={{ padding: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 88 }}>
-              {(() => { const mx = Math.max(1, ...h.weeklyVolume.map((w) => w.volume)); return h.weeklyVolume.map((w) => (
-                <div key={w.week} style={{ flex: 1, background: 'var(--accent-grad)', borderRadius: '5px 5px 0 0', height: `${Math.max(3, (w.volume / mx) * 100)}%` }} title={`${conv(w.volume).toLocaleString()} ${unit}`} />
-              )) })()}
-            </div>
-            <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Weekly tonnage (weight × reps) for this lift.</p>
+            {(() => {
+              const mx = Math.max(1, ...h.weeklyVolume.map((w) => w.volume))
+              const kfmt = (v: number) => { const c = conv(v); return c >= 1000 ? Math.round(c / 100) / 10 + 'k' : String(Math.round(c)) }
+              return <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: 88, width: 30, textAlign: 'right' }}>
+                  {[mx, mx / 2, 0].map((t, i) => <span key={i} className="meta" style={{ fontSize: 9, lineHeight: 1 }}>{kfmt(t)}</span>)}
+                </div>
+                <div style={{ flex: 1, position: 'relative', height: 88 }}>
+                  {[0, 50, 100].map((p) => <div key={p} style={{ position: 'absolute', left: 0, right: 0, top: `${p}%`, borderTop: '1px solid rgba(255,255,255,.06)' }} />)}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: '100%' }}>
+                    {h.weeklyVolume.map((w) => <div key={w.week} style={{ flex: 1, background: 'var(--accent-grad)', borderRadius: '4px 4px 0 0', height: `${Math.max(3, (w.volume / mx) * 100)}%` }} title={`${conv(w.volume).toLocaleString()} ${unit}`} />)}
+                  </div>
+                </div>
+              </div>
+            })()}
+            <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Weekly tonnage ({unit}, weight × reps) for this lift · peak {conv(Math.max(1, ...h.weeklyVolume.map((w) => w.volume))).toLocaleString()} {unit}.</p>
           </div>
         </>}
       </>}

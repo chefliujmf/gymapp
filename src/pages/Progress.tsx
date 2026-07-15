@@ -122,6 +122,7 @@ export default function Progress() {
   if (!logs) return null
   const { unit, conv, summary, vols, mains, digest, lifts, weeks, count } = data
   const maxWeek = Math.max(1, ...weeks.map((b) => b.v))
+  const kfmt = (v: number) => { const c = conv(v); return c >= 1000 ? Math.round(c / 100) / 10 + 'k' : String(Math.round(c)) } // Y-axis tick label (kg → 1.2k)
   const volScale = Math.max(SETS_HIGH + 4, ...vols.map((v) => v.perWeek))
   const hm = totalMinFmt(summary.totalMin)
 
@@ -149,6 +150,22 @@ export default function Progress() {
           <div style={{ flex: 1 }}><div style={statV}>{summary.perWeek}<small style={{ fontSize: 12, color: 'var(--text-dim)' }}>/wk</small></div><div style={statK}>consistency</div></div>
         </div>
 
+        {/* Coach insight — ALWAYS at the top (JM #526): the real review if the coach wrote one, else a synthesized line. */}
+        {review && (review.takeaways?.length || review.verdict || review.execution?.length || review.next) ? <>
+          <div className="section-title">Coach takeaways<span className="meta"> · {new Date(review.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span></div>
+          <div className="card" style={{ padding: '12px 14px' }}>
+            {review.score != null && <div className="gp2-hl">⭐ <span><b>Score {review.score}/10.</b> {review.verdict}</span></div>}
+            {review.score == null && review.verdict && <div className="gp2-hl">🧑‍🏫 <span>{review.verdict}</span></div>}
+            {(review.takeaways || review.execution || []).map((t, i) => <div key={i} className="gp2-hl">• <span>{t}</span></div>)}
+            {review.next && <div className="gp2-hl">➡️ <span><b>Next:</b> {review.next}</span></div>}
+          </div>
+        </> : (digest.wins[0] || digest.needsAttention[0]) ? (
+          <div className="card" style={{ padding: 12, background: '#12180f', border: '1px solid #26421f', fontSize: 13, lineHeight: 1.5 }}>
+            💡 {digest.wins[0] && <><b style={{ color: 'var(--accent)' }}>{digest.wins[0].title}</b> — {digest.wins[0].detail} </>}
+            {digest.needsAttention[0] && <><b style={{ color: 'var(--warn,#ffb13d)' }}>{digest.needsAttention[0].title}</b>: {digest.needsAttention[0].detail}</>}
+          </div>
+        ) : null}
+
         {/* Empty-state: no SET-level data yet (e.g. intervals-imported gym = duration/load only, no weight×reps) */}
         {lifts.length === 0 && (
           <div className="card" style={{ padding: 14, marginTop: 11 }}>
@@ -171,7 +188,7 @@ export default function Progress() {
 
         {/* Weekly sets per muscle — the actionable volume metric (Schoenfeld 10–20) */}
         {vols.length > 0 && <>
-          <div className="section-title">Weekly sets per muscle <span className="meta" style={{ fontWeight: 400 }}>· target {SETS_LOW}–{SETS_HIGH}</span></div>
+          <div className="section-title">Sets per training week <span className="meta" style={{ fontWeight: 400 }}>· per muscle · target {SETS_LOW}–{SETS_HIGH}</span></div>
           <div className="card" style={{ padding: 14 }}>
             {vols.map((v) => (
               <div key={v.muscle} style={{ display: 'flex', alignItems: 'center', gap: 9, margin: '8px 0', fontSize: 12 }}>
@@ -183,7 +200,7 @@ export default function Progress() {
                 <span className="meta" style={{ width: 66, textAlign: 'right' }}><b style={{ color: 'var(--text)' }}>{v.perWeek}</b> {STATUS_LABEL[v.status]}</span>
               </div>
             ))}
-            <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Completed working sets/week per primary muscle. Shaded band = the {SETS_LOW}–{SETS_HIGH} growth range (Schoenfeld).</p>
+            <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Averaged over the weeks you trained in this range (not diluted by empty weeks). Shaded band = the {SETS_LOW}–{SETS_HIGH} growth range (Schoenfeld).</p>
           </div>
         </>}
 
@@ -203,17 +220,29 @@ export default function Progress() {
           </div>
         </>}
 
-        {/* Weekly volume trend */}
-        <div className="section-title">Weekly volume <span className="meta" style={{ fontWeight: 400 }}>· {weeks.length} wk</span></div>
+        {/* Weekly volume trend — X + Y axes + insight (chart standard) */}
+        <div className="section-title">Weekly volume <span className="meta" style={{ fontWeight: 400 }}>· in this range</span></div>
         <div className="card" style={{ padding: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 96 }}>
-            {weeks.map((b) => (
-              <div key={b.w} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, height: '100%', justifyContent: 'flex-end' }} title={`${conv(b.v).toLocaleString()} ${unit}`}>
-                <div style={{ width: '100%', height: `${Math.max(2, (b.v / maxWeek) * 100)}%`, background: b.v ? 'var(--accent-grad)' : 'var(--bg-soft)', borderRadius: '5px 5px 0 0', minHeight: 2 }} />
-                <span className="meta" style={{ fontSize: 10 }}>{new Date(b.w + 'T00:00').toLocaleDateString(undefined, { day: 'numeric' })}</span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {/* Y axis (kg) */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: 100, width: 32, textAlign: 'right' }}>
+              {[maxWeek, maxWeek / 2, 0].map((t, i) => <span key={i} className="meta" style={{ fontSize: 9, lineHeight: 1 }}>{kfmt(t)}</span>)}
+            </div>
+            {/* plot + gridlines */}
+            <div style={{ flex: 1, position: 'relative', height: 100 }}>
+              {[0, 50, 100].map((p) => <div key={p} style={{ position: 'absolute', left: 0, right: 0, top: `${p}%`, borderTop: '1px solid rgba(255,255,255,.06)' }} />)}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: '100%' }}>
+                {weeks.map((b) => (
+                  <div key={b.w} style={{ flex: 1, height: `${Math.max(0, (b.v / maxWeek) * 100)}%`, minHeight: b.v ? 3 : 0, background: b.v ? 'var(--accent-grad)' : 'transparent', borderRadius: '4px 4px 0 0' }} title={`${conv(b.v).toLocaleString()} ${unit}`} />
+                ))}
               </div>
-            ))}
+            </div>
           </div>
+          {/* X axis (week start day) */}
+          <div style={{ display: 'flex', gap: 6, marginLeft: 38, marginTop: 4 }}>
+            {weeks.map((b) => <span key={b.w} className="meta" style={{ flex: 1, textAlign: 'center', fontSize: 9 }}>{new Date(b.w + 'T00:00').toLocaleDateString(undefined, { day: 'numeric' })}</span>)}
+          </div>
+          <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Volume ({unit} lifted) per week · peak {conv(maxWeek).toLocaleString()} {unit}.</p>
         </div>
 
         {/* All exercises — searchable / faceted, scales to hundreds (tap → per-exercise page) */}
@@ -241,23 +270,6 @@ export default function Progress() {
           </div>
         </>}
 
-        {/* coach takeaways — REAL cyclingcoach review if present */}
-        {review && (review.takeaways?.length || review.verdict || review.execution?.length || review.next) && <>
-          <div className="section-title">Coach takeaways<span className="meta"> · {new Date(review.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span></div>
-          <div className="card" style={{ padding: '12px 14px' }}>
-            {review.score != null && <div className="gp2-hl">⭐ <span><b>Score {review.score}/10.</b> {review.verdict}</span></div>}
-            {review.score == null && review.verdict && <div className="gp2-hl">🧑‍🏫 <span>{review.verdict}</span></div>}
-            {(review.takeaways || review.execution || []).map((t, i) => <div key={i} className="gp2-hl">• <span>{t}</span></div>)}
-            {review.next && <div className="gp2-hl">➡️ <span><b>Next:</b> {review.next}</span></div>}
-          </div>
-        </>}
-        {/* Ⓐ bottom insight — synthesized when the coach hasn't written a review yet */}
-        {!(review && (review.takeaways?.length || review.verdict || review.execution?.length || review.next)) && (digest.wins[0] || digest.needsAttention[0]) && (
-          <div className="card" style={{ padding: 12, marginTop: 11, background: '#12180f', border: '1px solid #26421f', fontSize: 13, lineHeight: 1.5 }}>
-            💡 {digest.wins[0] && <><b style={{ color: 'var(--accent)' }}>{digest.wins[0].title}</b> — {digest.wins[0].detail} </>}
-            {digest.needsAttention[0] && <><b style={{ color: 'var(--warn,#ffb13d)' }}>{digest.needsAttention[0].title}</b>: {digest.needsAttention[0].detail}</>}
-          </div>
-        )}
       </>}
     </div>
   )

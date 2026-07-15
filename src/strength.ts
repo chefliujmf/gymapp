@@ -157,10 +157,19 @@ export const SETS_HIGH = 20
 export type VolStatus = 'low' | 'ok' | 'high'
 export interface MuscleVolume { muscle: string; total: number; perWeek: number; status: VolStatus }
 
-/** Completed working sets per PRIMARY muscle group, averaged over the range → the actionable volume metric.
- *  status: low (<10/wk, under-stimulating) · ok (10–20) · high (>20, junk-volume risk). */
-export function weeklySetsPerMuscle(logs: WorkoutLog[], muscleOf: MuscleOf, days: number): MuscleVolume[] {
-  const wk = rangeWeeks(days)
+/** Distinct 7-day weeks in which the athlete actually TRAINED (≥1 logged session). The denominator for the
+ *  per-week metrics — averaging over empty calendar weeks in a wide filter would dilute the number into nonsense
+ *  (JM: "0.8 low" over an 8-week filter with 3 days of data). We report "per TRAINING week" instead. */
+export function activeWeeks(logs: WorkoutLog[]): number {
+  const wk = new Set<number>()
+  for (const l of logs) { const at = l.completedAt || Date.parse(l.date) || 0; if (at) wk.add(Math.floor(at / (7 * 864e5))) }
+  return Math.max(1, wk.size)
+}
+
+/** Completed working sets per PRIMARY muscle group, averaged over the weeks you TRAINED (not calendar weeks in
+ *  the filter) → the actionable volume metric. status: low (<10/wk, under-stimulating) · ok (10–20) · high (>20). */
+export function weeklySetsPerMuscle(logs: WorkoutLog[], muscleOf: MuscleOf, _days?: number): MuscleVolume[] {
+  const wk = activeWeeks(logs)
   const tot = new Map<string, number>()
   for (const s of eachDoneSet(logs)) {
     const m = muscleOf(s.name, s.exId)
