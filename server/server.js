@@ -30,6 +30,7 @@ import { readiness as computeReadiness, baselines as wellnessBaselines, forecast
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch } from './sport-settings.js'
 import { planCapViolation } from './plan-cap.js'
+import { localDate } from './tz.js'
 // #508 — DEEP-merge intervals sport-settings into ours PER GROUP. intervals only knows ftp/maxHr/lthr/thresholdPace;
 // our LOCAL benchmarks (cp/wPrime/tte/cs/dPrime) live in the same per-sport object. A shallow `{...ours, ...mapped}`
 // makes mapped.cycling REPLACE the whole cycling object → wipes cp/W′/TTE on every session-load/pull (JM: "manual
@@ -1941,7 +1942,10 @@ async function findIcuEventsForPlan(user, plan) {
     return (events || []).filter((e) => eventMatchesPlan(plan, e))
   } catch { return [] }
 }
-const icuToday = () => { try { return new Date().toLocaleDateString('en-CA') } catch { return new Date().toISOString().slice(0, 10) } }
+// #5026 — "today" MUST be the ATHLETE's local date (their `icuTimezone`), NOT the server's UTC date. Otherwise a
+// Western athlete in the evening (server already on the next UTC day) has their ACTUAL-today plan treated as "past"
+// and deleted from intervals (JM, America/Toronto, 20:29 Jul 14 → server UTC Jul 15 → his Jul 14 ride stripped).
+const icuToday = (user) => localDate(new Date(), user?.icuTimezone)
 const stripIcuInstance = (s) => String(s || '').replace(/:\d{4}-\d{2}-\d{2}$/, '')
 // Mirror a plan to intervals — self-healing, Platyplus is the MASTER (#150):
 //   • COLLAPSE duplicates: events carrying our external_id (incl. intervals' ":date" instance
@@ -3042,13 +3046,34 @@ function dailyReminderPush(user, today, hour) {
   user.dailyReminded = today; save(store)
   sendWebPush(user, { subkind: 'reminder', title: '⏰ Ready to train?', body: 'Check in and see what your coach has planned for you today.', link: '/' }).catch(() => {})
 }
+// #5026 (JM) — once the athlete's LOCAL day passes, a planned session that's now in the PAST is cleared from BOTH
+// Platyplus + intervals (JM's directive: "delete from both") so the two never disagree, and the athlete is NOTIFIED
+// with the DETAILS of what was removed. Runs ONCE/day (prod). A COMPLETED activity is a separate logged record and is
+// untouched — this only clears the un-acted PLANNED prescription. `today` is the athlete's local date (their timezone).
+async function clearPastPlans(user, today) {
+  if (user.pastCleared === today) return // once/day
+  user.pastCleared = today
+  // Only the RECENTLY-past (a 7-day catch-up window), NOT all history — so the first run can't mass-delete + alarm; the
+  // day-boundary case (yesterday's plan lingering) is what matters, and ongoing this clears each newly-past day.
+  const cutoff = addDays(today, -7)
+  const past = (user.plans || []).filter((p) => p.date && p.date < today && p.date >= cutoff && (p.origin || 'platyplus') === 'platyplus')
+  if (!past.length) { save(store); return }
+  for (const p of past) { try { await pushPlanToIcu(user, p) } catch { /* best effort — the past-branch deletes the intervals event */ } }
+  const removed = new Set(past.map((p) => p.id))
+  user.plans = (user.plans || []).filter((p) => !removed.has(p.id)) // drop from Platyplus too
+  save(store)
+  const names = past.map((p) => `${p.title}${p.date ? ` · ${p.date}` : ''}`)
+  const list = names.slice(0, 4).join(', ') + (names.length > 4 ? `, +${names.length - 4} more` : '')
+  pushNotification(user, { subkind: 'planChanges', title: `Tidied up ${past.length} past session${past.length > 1 ? 's' : ''}`, body: `Removed from your calendar + intervals so they stay in sync: ${list}. Past plans clear once the day passes — your completed activities are untouched.` })
+}
 async function dailyAdaptTick() {
   for (const user of store.users || []) {
     const tz = user.icuTimezone || COACH_TZ
     const today = localTodayInTz(tz), hour = localHourInTz(tz)
     // #463 — daily reminder runs for ANY opted-in subscribed user (independent of the coach auto-adapt below).
     try { dailyReminderPush(user, today, hour) } catch (e) { console.error('[reminder] ' + (e.message || e)) }
-    if (IS_STAGING) continue // #381 — coach auto-adapt is PROD-only (shared athlete); the reminder above is fine on both
+    if (IS_STAGING) continue // #381 — coach auto-adapt + past-plan cleanup are PROD-only (shared athlete); the reminder above is fine on both
+    try { await clearPastPlans(user, today) } catch (e) { console.error('[clear-past] ' + (e.message || e)) } // #5026 — delete-from-both + notify
     if (!user.icuKey || !user.coachProfile || !String(user.coachProfile).trim()) continue
     user.dailyAdapt = user.dailyAdapt || {}
     try {

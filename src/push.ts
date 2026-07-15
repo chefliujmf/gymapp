@@ -23,6 +23,17 @@ export const iosNeedsInstall = () => isIOS() && !isStandalone()
 export const permission = (): NotificationPermission =>
   'Notification' in window ? Notification.permission : 'denied'
 
+// #515 — what the one-time opt-in nudge should DO given the current browser state, as a PURE decision (unit-tested):
+//  · 'skip'        — already subscribed on this device, or the user blocked notifications → do nothing.
+//  · 'resubscribe' — permission was ALREADY granted but this device's push subscription was dropped (a service-worker
+//                    update on every deploy, or expiry, drops it). RE-subscribe SILENTLY — never nag someone who already
+//                    said yes (this is JM's bug: the banner kept coming back after he approved).
+//  · 'nudge'       — permission is still 'default' (genuinely never asked) → show the opt-in banner.
+export function nudgeAction(perm: NotificationPermission, subscribedHere: boolean): 'skip' | 'resubscribe' | 'nudge' {
+  if (subscribedHere || perm === 'denied') return 'skip'
+  return perm === 'granted' ? 'resubscribe' : 'nudge'
+}
+
 function urlBase64ToUint8Array(base64: string): Uint8Array {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4)
   const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/')
