@@ -44,15 +44,7 @@ server.tool('search_exercises',
   { query: z.string().describe('name fragment, e.g. "goblet squat"'), equipment: z.string().optional().describe('comma-separated owned equipment to limit to, e.g. "Dumbbell,Bodyweight,Bands"'), limit: z.number().int().min(1).max(100).optional() },
   wrap((a) => api('GET', `/api/exercises?q=${encodeURIComponent(a.query)}&equipment=${encodeURIComponent(a.equipment || '')}&limit=${a.limit || 20}`)))
 
-server.tool('search_recipes',
-  "[DEACTIVATED right now — Eat & Mind are OFF; do NOT use for planning, the server rejects meal items.] Search the Platyplus recipe library to PICK a real meal for fueling; returns ids + macros (kcal, protein) + each recipe's `diet`. Results are ALREADY filtered to the athlete's dietary preference (vegetarian → veg+vegan only, vegan → vegan only), so every result is safe to suggest — never recommend a meal outside what's returned. Use the id as recipeId in schedule_meal. Filter by category and/or a name/tag query. (Pick however many meals/snacks the day warrants — variable, not fixed.)",
-  { query: z.string().optional().describe('name or tag fragment'), category: z.string().optional().describe('breakfast | lunch | dinner | snack'), limit: z.number().int().min(1).max(100).optional() },
-  wrap((a) => api('GET', `/api/recipes?q=${encodeURIComponent(a.query || '')}&category=${encodeURIComponent(a.category || '')}&limit=${a.limit || 20}`)))
-
-server.tool('search_sessions',
-  '[DEACTIVATED right now — Eat & Mind are OFF; do NOT use for planning, the server rejects mind items.] Search the Platyplus mind/movement library (meditation, yoga, pilates, breathing) to PICK a real session/class; returns ids + duration. Use the id as refId in schedule_mind. Filter by kind and/or a query. For a yoga/pilates day you SELECT a class here (you do not author poses).',
-  { query: z.string().optional(), kind: z.string().optional().describe('meditation | yoga | pilates | breathing'), limit: z.number().int().min(1).max(100).optional() },
-  wrap((a) => api('GET', `/api/sessions?q=${encodeURIComponent(a.query || '')}&kind=${encodeURIComponent(a.kind || '')}&limit=${a.limit || 20}`)))
+// #517 — search_recipes / search_sessions REMOVED: Eat & Mind are OFF (roadmap). The coach plans training only.
 
 server.tool('list_schedule',
   'List everything planned for an account between two dates: workouts/rides/runs (plans) and meals/mind/notes (items).',
@@ -201,31 +193,10 @@ server.tool('create_run',
 server.tool('remove_workout', 'Delete a scheduled workout/ride/run by id (also removes its intervals.icu mirror).',
   { id: z.string() }, wrap((a) => api('DELETE', `/api/plan/${encodeURIComponent(a.id)}`)))
 
-// --- nutrition / mind / notes --------------------------------------------
-server.tool('schedule_meal',
-  '[DEACTIVATED right now — Eat & Mind are OFF (app simplified); the server rejects this, do NOT call it. Plan training + recovery only.] Put a meal on a day. PICK a real recipe via search_recipes and pass its id as recipeId so it links. `why` = your one-line reason for THIS pick (shown as "Coach\'s pick" on the recipe page). Schedule as many meals/snacks as the day needs.',
-  { date: DATE, title: z.string(), recipeId: z.string().optional().describe('Platyplus recipe id from search_recipes'), mealType: z.string().optional().describe('breakfast | lunch | dinner | snack'), kcal: z.number().optional(), why: z.string().optional().describe('why this pick for this athlete/day'), id: z.string().optional() },
-  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'meal', title: a.title, refId: a.recipeId, mealType: a.mealType, kcal: a.kcal, why: a.why })))
-
-server.tool('schedule_mind',
-  '[DEACTIVATED right now — Eat & Mind are OFF (app simplified); the server rejects this, do NOT call it. Plan training + recovery only.] Put a mind/movement session (meditation, yoga, pilates, breathing) on a day. PICK a real session via search_sessions and pass its id as refId. `why` = your reason for THIS pick (shown as "Coach\'s pick" on the session page).',
-  { date: DATE, title: z.string(), minutes: z.number().optional(), refId: z.string().optional().describe('Platyplus session id from search_sessions'), why: z.string().optional().describe('why this pick'), id: z.string().optional() },
-  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'mind', title: a.title, minutes: a.minutes, refId: a.refId, why: a.why })))
-
-server.tool('schedule_recovery',
-  '[DEACTIVATED right now (JM 2026-07-15) — recovery ITEMS are parked for the roadmap; the server REJECTS this, do NOT call it. Instead put recovery guidance as the `recovery` TEXT on the planned workout itself (create_ride/run/workout `recovery` field) — e.g. "After this: 10 min easy spin + foam-roll quads/calves, aim ~9h sleep." No separate recovery block on the calendar.]',
-  { date: DATE, title: z.string().describe('e.g. "Recovery + Mobility"'), kind: z.enum(['sauna', 'cold', 'massage', 'mobility', 'foam', 'walk']).optional(), minutes: z.number().optional(),
-    insight: z.string().optional().describe('why THIS recovery today — the readiness reasoning, 1-2 sentences'),
-    steps: z.array(z.object({ name: z.string(), dose: z.string().optional(), cue: z.string().optional() })).optional().describe('the routine as discrete moves, each with a dose (amount/time) + optional cue'),
-    sleep: z.string().optional().describe("the day's sleep note, e.g. 'aim for ~9h'"),
-    why: z.string().optional().describe('DEPRECATED free-text — prefer insight+steps+sleep'), id: z.string().optional() },
-  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'recovery', title: a.title, kind: a.kind, minutes: a.minutes, insight: a.insight, steps: a.steps, sleep: a.sleep, why: a.why })))
-
-server.tool('schedule_supplement',
-  "Put a SUPPLEMENT on a day (e.g. \"Creatine 5g\", \"Vitamin D\"). Shows as a pill under 🍽️ Fuel → Supplements. Include the dose in the title. `why` = your reason.",
-  { date: DATE, title: z.string().describe('name + dose, e.g. "Creatine 5g"'), why: z.string().optional(), id: z.string().optional() },
-  wrap((a) => api('POST', '/api/items', { id: a.id, date: a.date, type: 'supplement', title: a.title, why: a.why })))
-
+// --- notes ---------------------------------------------------------------
+// #517/#518 — schedule_meal / schedule_mind / schedule_recovery / schedule_supplement REMOVED: Eat & Mind are OFF
+// and recovery ITEMS are parked (roadmap). Recovery guidance rides as the `recovery` TEXT on the planned workout
+// (create_ride/run/workout), never a separate calendar item. The coach plans TRAINING (+ notes) only.
 server.tool('add_note',
   'Add a free-text note to a day (reminders, coaching cues).',
   { date: DATE, title: z.string().optional(), notes: z.string() },
