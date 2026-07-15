@@ -80,6 +80,7 @@ import AuditLog from './pages/AuditLog'
 import { TrainHub, StatsHub, MoreHub } from './pages/hubs'
 import Chat from './pages/Chat'
 import Progress from './pages/Progress'
+import ExerciseProgress from './pages/ExerciseProgress'
 import PlanDetail from './pages/PlanDetail'
 import CoachPlanDetail from './pages/CoachPlanDetail'
 import PostWorkout from './pages/PostWorkout'
@@ -143,6 +144,7 @@ const router = createBrowserRouter([
       { path: 'activity/:id', element: <ActivityDetail /> },
       { path: 'activity-log', element: <AuditLog /> },
       { path: 'progress', element: <Progress /> },
+      { path: 'exercise/:name', element: <ExerciseProgress /> },
     ],
   },
 ])
