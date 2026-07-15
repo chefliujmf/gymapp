@@ -5,7 +5,7 @@ import { db, getSetting } from '../db'
 import { allExercisesById } from '../data/catalog'
 import { matchExercise } from '../plan'
 import { TrendChart } from '../charts'
-import { exerciseHistory } from '../strength'
+import { exerciseHistory, weightForReps, roundLoad } from '../strength'
 
 const LB = 2.2046226
 const REP_LABEL: Record<number, string> = { 1: '1', 3: '2–3', 5: '4–5', 8: '6–8', 12: '9–12', 15: '13+' }
@@ -49,6 +49,18 @@ export default function ExerciseProgress() {
           <div style={{ flex: 1 }}><div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.4px' }}>Confidence</div>
             <div style={{ display: 'inline-flex', gap: 3, marginTop: 8 }}>{[0, 1, 2, 3].map((i) => <i key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: i < Math.max(1, Math.min(4, Math.round(h.confidencePct / 25))) ? 'var(--accent)' : '#2f3742' }} />)}</div>
             <div className="meta" style={{ fontSize: 11, marginTop: 5 }}>{h.confidencePct >= 68 ? 'dependable' : 'rough guide'}</div></div>
+        </div>
+
+        {/* What 1-RM means — predicted weight at each rep count (Epley/Brzycki inverse). Explains the number. */}
+        <div className="card" style={{ padding: '11px 14px' }}>
+          <div className="meta" style={{ fontSize: 11, marginBottom: 7 }}><b style={{ color: 'var(--text)' }}>1-RM</b> = the most you could lift for ONE rep. From it, the weight you'd expect for:</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {[1, 4, 6, 8, 10, 12, 15].map((r) => (
+              <span key={r} style={{ fontSize: 12.5, padding: '5px 9px', borderRadius: 9, background: '#12151c', border: '1px solid var(--line,#2a2f3a)' }}>
+                <b>{conv(roundLoad(weightForReps(h.e1rm, r)))}</b><span className="meta"> {unit} × {r}{r === 1 ? ' (max)' : ''}</span>
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* est-1RM trend */}

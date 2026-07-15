@@ -146,7 +146,7 @@ export default function Progress() {
         {/* #251 — summary follows the filter: sessions · time · consistency */}
         <div className="card" style={{ display: 'flex', gap: 10, padding: 15 }}>
           <div style={{ flex: 1 }}><div style={statV}>{summary.sessions}</div><div style={statK}>sessions</div></div>
-          <div style={{ flex: 1 }}><div style={statV}>{hm}</div><div style={statK}>on the bar</div></div>
+          <div style={{ flex: 1 }}><div style={statV}>{hm}</div><div style={statK}>time</div></div>
           <div style={{ flex: 1 }}><div style={statV}>{summary.perWeek}<small style={{ fontSize: 12, color: 'var(--text-dim)' }}>/wk</small></div><div style={statK}>consistency</div></div>
         </div>
 
