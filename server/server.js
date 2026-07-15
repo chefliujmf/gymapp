@@ -2241,7 +2241,7 @@ function itemsInRange(user, from, to) {
 function validateItem(b) {
   if (!b || typeof b !== 'object') return 'body must be a JSON object'
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return 'date (YYYY-MM-DD) is required'
-  if (!['meal', 'mind', 'note', 'recovery', 'supplement'].includes(b.type)) return "type must be 'meal' | 'mind' | 'note' | 'recovery' | 'supplement'"
+  if (!['meal', 'mind', 'note', 'supplement'].includes(b.type)) return "type must be 'meal' | 'mind' | 'note' | 'supplement'" // #JM 2026-07-15 — 'recovery' items removed (parked → roadmap); recovery lives as the workout's recovery TEXT now
   return null
 }
 function upsertItem(user, b) {
@@ -3028,9 +3028,11 @@ async function runDailyAdapt(user, pass) {
     user.dailyAdapt = user.dailyAdapt || {}
     if (user.dailyAdapt.extras !== today) {
       user.dailyAdapt.extras = today; save(store)
-      await runCoachTask(user, sharpenMsg(today)) // #508 — review benchmarks + fold ONE refining effort into the plan (before round-out, so recovery accounts for it)
+      await runCoachTask(user, sharpenMsg(today)) // #508 — review benchmarks + fold ONE refining effort into the plan
       await runCoachTask(user, reviewMsg(today))
-      await runCoachTask(user, roundOutMsg(today))
+      // #JM 2026-07-15 — round-out (recovery/fuel/mind) pass REMOVED: Eat & Mind are off and recovery ITEMS are parked;
+      // recovery guidance now rides on the workout's own `recovery` text (set during the workout adapt above), so there's
+      // nothing for a separate pass to do. (roundOutMsg kept in case it returns for the roadmap.)
     }
   } catch (e) { console.error(`[daily-adapt ${pass}] ${user.username || ''} ${e.message || e}`) }
 }
@@ -3053,6 +3055,17 @@ async function dailyAdaptTick() {
     // #463 — daily reminder runs for ANY opted-in subscribed user (independent of the coach auto-adapt below).
     try { dailyReminderPush(user, today, hour) } catch (e) { console.error('[reminder] ' + (e.message || e)) }
     if (IS_STAGING) continue // #381 — coach auto-adapt is PROD-only (shared athlete); the reminder above is fine on both
+    // #5026 (JM: "it has to be a PERFECT MIRROR") — SELF-HEAL: re-push any current/future Platyplus plan that never
+    // reached intervals (no icuEventId). A push can fail transiently, or (pre-tz-fix) was wrongly skipped as "past" at
+    // the UTC day-boundary; without a retry the mirror stays broken (JM's Jul 14 ride). Only the FAILED ones (missing
+    // id) are re-pushed, so it's a light convergence pass, not a full resync every tick.
+    if (user.icuKey && user.icuAthlete) {
+      for (const p of (user.plans || [])) {
+        if (p.date && p.date >= today && (p.origin || 'platyplus') === 'platyplus' && !p.icuEventId) {
+          try { await pushPlanToIcu(user, p) } catch (e) { console.error('[mirror-heal] ' + (e.message || e)) }
+        }
+      }
+    }
     if (!user.icuKey || !user.coachProfile || !String(user.coachProfile).trim()) continue
     user.dailyAdapt = user.dailyAdapt || {}
     try {
