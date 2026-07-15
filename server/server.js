@@ -69,6 +69,7 @@ const IS_STAGING = process.env.STAGING === '1' || /-qa\.|staging/i.test(`${RP_ID
 // must NOT put meals / mind / supplements on the calendar (they'd be orphan items with no section to show them).
 // Training + Recovery + notes stay. Reversible: flip to false to bring Eat/Mind back (and restore the nav tabs).
 const EAT_MIND_OFF = true
+const DEACTIVATED_ITEM_TYPES = ['meal', 'mind', 'supplement', 'recovery'] // #517/#518 — Eat/Mind + recovery items parked (roadmap): coach can't create them, calendar won't surface them
 const COOKIE = 'gymapp_sess'
 const ICU = 'https://intervals.icu'
 
@@ -1317,7 +1318,7 @@ app.post('/auth/plans/handle-missed', auth, async (req, res) => {
   if (missed.length && user.coachProfile && user.coachProfile.trim()) {
     const list = missed.map((p) => `"${p.title}" (${p.sport}, planned ${p.date}, id ${p.id})`).join('; ')
     const ids = missed.map((p) => p.id).join(', ')
-    const msg = `The athlete MISSED ${missed.length} planned session${missed.length > 1 ? 's' : ''} (now past, not completed): ${list}. Reassess the REST OF THIS WEEK (list_schedule): if a missed session still matters for the plan, MOVE it to a free upcoming day that fits their availability + the one-session-per-day rule; if the week's stimulus is already covered or there's no room, DROP it. EITHER WAY, remove each missed workout from the calendar now with remove_workout (ids: ${ids}) so it doesn't linger. Keep easy days easy; never stack two hard days. Then call notify with a SHORT, warm message telling the athlete EXACTLY what you did and why — e.g. "You missed Wednesday's tempo — I moved it to Saturday and kept Thu/Fri easy so your week still lands." Don't nag or ask questions — just fix it and tell them.`
+    const msg = `The athlete MISSED ${missed.length} planned session${missed.length > 1 ? 's' : ''} (now past, not completed): ${list}. Reassess the REST OF THIS WEEK (list_schedule): if a missed session still matters for the plan, MOVE it to a free upcoming day that fits their availability + the one-session-per-day rule; if the week's stimulus is already covered or there's no room, DROP it. EITHER WAY, remove each missed workout from the calendar now with remove_workout (ids: ${ids}) so it doesn't linger. Keep easy days easy; never stack two hard days. Do this SILENTLY — do NOT call notify / push (#498, JM 2026-07-15): the athlete gets their ONE coach notification at check-in, so this background cleanup must never send a surprise second morning push. Just fix the calendar and stop. Don't nag or ask questions.`
     runCoachTask(user, msg).catch((e) => console.error('[missed-handler] ' + (e.message || e)))
   }
   res.json({ missed: missed.length, paired })
@@ -2256,6 +2257,7 @@ async function reconcileFromIcu(user, from, to) {
 // ---- calendar items (meal/mind/note) — shared by the UI (/auth) and API (/api).
 function itemsInRange(user, from, to) {
   let items = user.items || []
+  if (EAT_MIND_OFF) items = items.filter((x) => !DEACTIVATED_ITEM_TYPES.includes(x.type)) // #517/#518 — never surface parked meal/mind/supplement/recovery items
   if (from) items = items.filter((x) => x.date >= from)
   if (to) items = items.filter((x) => x.date <= to)
   return items.sort((a, b) => (a.date < b.date ? -1 : 1))
@@ -2282,6 +2284,19 @@ function upsertItem(user, b) {
 }
 function deleteItemById(user, id) {
   user.items = (user.items || []).filter((x) => x.id !== id); save(store)
+}
+// #517/#518 — idempotent boot purge of parked item types while Eat/Mind + recovery are OFF, so no orphan
+// meal / recovery blocks linger in anyone's calendar. A no-op once clean; skipped entirely if Eat is re-enabled.
+function sweepDeactivatedItems() {
+  if (!EAT_MIND_OFF) return
+  let n = 0
+  for (const u of store.users || []) {
+    const before = (u.items || []).length
+    if (!before) continue
+    u.items = u.items.filter((x) => !DEACTIVATED_ITEM_TYPES.includes(x.type))
+    n += before - u.items.length
+  }
+  if (n) { save(store); console.log(`[boot] swept ${n} parked meal/mind/supplement/recovery item(s) (Eat/Mind off)`) }
 }
 
 // ---- exercise catalog (read-only) — lets the coach API resolve real exIds.
@@ -3044,7 +3059,7 @@ Your job THIS pass — APPLY the computed plan above, then REFINE it to how they
 2) Make the calendar MATCH the computed plan: list_schedule, then create the missing sessions, move/adjust ones that differ, and remove stragglers — so the rolling ${DAILY_HORIZON} days equal the plan above. Author every ride/run as STRUCTURED steps (warmup / work / cooldown with targets) so it syncs as a followable workout, and give each a plain-language title + description (no jargon).
 3) REFINE with your judgement — the part code can't do: if they're under-recovered, ease TODAY + the next day or two (drop a quality day to endurance, trim volume, or insert rest); if they're fresh and it's a build, keep the stimulus. Honor their goals, availability windows, equipment, and the female-athlete / cycle / pregnancy guidance. You have the FINAL say — OVERRIDE any day that doesn't fit this athlete.
 The periodization, per-day load, rest/long/hard spacing, weekly-day cap and Form target are ALREADY correct in the computed plan — do NOT re-derive them; spend your effort on the readiness refinement + good structured workouts. Never double-book a day / exceed their max sessions per day / exceed their HARD weekly training-days cap.
-This pass is ONLY the WORKOUT plan (no activity reviews / meals / mind — those are separate passes right after). It is SILENT (#498): make the changes but do NOT notify / push — they already got their one check-in ping today; never send a second. If genuinely uncertain, make the sensible conservative choice rather than asking — never push a question. Decide and act. Be concise.`
+This pass is ONLY the WORKOUT plan (no activity reviews / meals / mind / separate recovery items — Eat/Mind + standalone recovery blocks are OFF/parked). Recovery guidance rides as TEXT on the workout (its recovery/notes field), NEVER a separate calendar item. It is SILENT (#498): make the changes but do NOT notify / push — they already got their one check-in ping today; never send a second. If genuinely uncertain, make the sensible conservative choice rather than asking — never push a question. Decide and act. Be concise.`
 }
 // #439 — FOCUSED horizon-fill (no reviews / fuel / mind distraction) so the coach actually populates the back
 // half of the ~2-week window. Used to re-drive it when one adapt pass left the horizon short.
@@ -3155,6 +3170,7 @@ async function start() {
     store = loadJsonStore() // local dev / CI: the JSON file store (no Postgres around)
   }
   await seedAndDefaults()
+  sweepDeactivatedItems() // #517/#518 — purge any leftover parked meal/mind/supplement/recovery items
   // boot self-check — a missing sessionSecret would 500 every login (silently before).
   if (!store.sessionSecret) console.error('[boot] CRITICAL: the session key is missing — every sign-in will fail until this is fixed.')
   console.log(`[boot] Ready on the ${USE_PG ? 'Postgres' : 'file'} store with ${store.users.length} user account(s). Session key ${store.sessionSecret ? 'loaded' : 'MISSING'}.`)
