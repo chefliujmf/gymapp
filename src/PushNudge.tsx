@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getPushConfig, isSubscribedHere, enablePush, pushSupported, iosNeedsInstall, permission } from './push'
+import { getPushConfig, isSubscribedHere, enablePush, pushSupported, iosNeedsInstall, permission, nudgeAction } from './push'
 
 // #457 — one-time opt-in nudge on Today: turn on phone notifications for plan changes. Dismiss = never nag
 // again (localStorage). Hidden if unsupported, already subscribed here, push not configured, or blocked.
@@ -15,9 +15,16 @@ export default function PushNudge() {
     if (!pushSupported() || localStorage.getItem(KEY) || permission() === 'denied') return
     ;(async () => {
       try {
-        if (await isSubscribedHere()) return
+        // #5026 (JM: "turn-on-notifications banner comes back though it was approved before") — a service-worker update
+        // (every deploy) or expiry DROPS this device's push subscription, so `isSubscribedHere()` goes false again even
+        // though the athlete already granted permission. `nudgeAction` decides: already-granted → RE-subscribe SILENTLY
+        // (no nag, also restores server-side delivery); only a genuinely-never-asked ('default') browser gets the banner.
+        const subHere = await isSubscribedHere()
         const c = await getPushConfig()
-        if (!c.supported) return
+        if (!c.supported || !c.publicKey) return
+        const action = nudgeAction(permission(), subHere)
+        if (action === 'skip') return
+        if (action === 'resubscribe') { try { await enablePush(c.publicKey) } catch { /* transient — retry next load */ } return }
         setPubKey(c.publicKey)
         setShow(true)
       } catch { /* ignore */ }
