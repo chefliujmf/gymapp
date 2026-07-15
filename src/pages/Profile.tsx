@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getSetting, setSetting } from '../db'
 import { authApi, type User } from '../auth/api'
 import { useAuth } from '../auth/AuthContext'
 import Availability from '../Availability'
 import EquipmentPicker from '../EquipmentPicker'
-import GoalsPicker from '../GoalsPicker'
+import CoachKnowledge from '../CoachKnowledge'
 import OnboardReturnBar from '../OnboardReturnBar'
 import { fetchAthleteSex } from '../intervals'
 import { dataGaps } from '../dataGaps'
@@ -236,9 +236,12 @@ export default function Profile() {
         onBlur={(e) => { authApi.saveProfile({ coachName: e.target.value.trim() }).then(() => { setCoachSaved(true); setTimeout(() => setCoachSaved(false), 2500) }).catch(() => {}) }}
       />
       <p className="meta" style={{ margin: '6px 2px 4px' }}>What your coach goes by in chat — saved when you tap away.</p>
-      <Link to="/profile/athlete" className="btn btn--ghost" style={{ marginTop: 8 }}>🏷️ Athlete profile — what your coach knows about you ›</Link>
 
-      <div className="section-title" id="ob-sport">Sports you do {sportSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
+      {/* #521 — grouped coach-facing card: goal selections + coach-notes narrative (coachProfile) + learning toggle */}
+      <CoachKnowledge />
+
+      <div className="section-title">⚙️ Setup &amp; about you</div>
+      <div className="section-title" id="ob-sport" style={{ marginTop: 6 }}>Sports you do {sportSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <div className="chips">
         {SPORTS.map(([v, label]) => (
           <button key={v} className={'chip' + (does(v) ? ' chip--active' : '')} onClick={() => toggleSport(v)}>{label}</button>
@@ -265,9 +268,6 @@ export default function Profile() {
       {/* #341/#268 — location for weather-aware coaching + local time (bi-directionally synced w/ intervals) */}
       <LocationField />
 
-      {/* #323 — rich goals/identity capture (what makes coaching personal) */}
-      <GoalsPicker />
-
       <Availability />{/* #ob-avail anchor is on Availability's own section-title */}
 
       {/* #320 — equipment is a coaching input (like sports/diet), so it lives here on Profile, not Settings. */}
@@ -282,15 +282,8 @@ export default function Profile() {
       {/* #265 — height + birth date capture (calorie/fuel targets removed 2026-07-13 → roadmap #505) */}
       <FuelFields user={user!} refresh={refresh} />
 
-      {/* #337b — Profile is PREFERENCES. Your benchmarks (VO₂max, FTP, threshold pace, zones, predictions)
-          live in ONE place — Stats — with the Manual/Auto/Computed picker. No duplicate UX here. */}
-      <div className="section-title" id="ob-numbers">Your data</div>
-      {/* #235 — turn the readiness self-learning on/off */}
-      <label className="toggle-row">
-        <span className="toggle-row__t"><b>Learn from my check-ins</b><span className="meta">Auto-adapt your Sleep/Freshness/Energy scores toward how you actually rate them over time.</span></span>
-        <input type="checkbox" className="toggle-row__cb" checked={user?.learnReadiness !== false} onChange={(e) => authApi.saveProfile({ learnReadiness: e.target.checked }).then(() => refresh()).catch(() => {})} />
-      </label>
-
+      {/* #521 — goals + coach-notes + learn-from-check-ins moved UP into the CoachKnowledge card.
+          Benchmarks (VO₂max, FTP, threshold pace, zones) still live in ONE place — Stats (#337b). */}
       {/* #511 — Notifications moved to Settings → Notifications (JM 2026-07-14). */}
 
     </div>

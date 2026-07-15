@@ -1,0 +1,152 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--line:#2a2f3a}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{background:#07090c;color:var(--text);padding:22px;display:flex;gap:18px;align-items:flex-start}
+  .col{width:360px;flex:0 0 360px}
+  .lbl{font-size:13px;font-weight:700;letter-spacing:.3px;color:var(--dim);text-transform:uppercase;margin:0 4px 10px}
+  .lbl b{color:var(--accent)}
+  .phone{background:var(--bg);border:1px solid #1b1f27;border-radius:22px;padding:16px 14px;min-height:640px}
+  .h{font-size:20px;font-weight:800;margin-bottom:2px}
+  .sub{font-size:12.5px;color:var(--dim);margin-bottom:16px}
+  .card{background:linear-gradient(#21252f,#191c24);border:1px solid var(--line);border-radius:15px;padding:14px;margin-bottom:12px}
+  .sect{font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--dim);margin:0 0 9px}
+  .knows{border:1px solid #2f3b34;background:linear-gradient(#1c2620,#161c19)}
+  .grp{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--accent);margin:2px 0 8px;display:flex;align-items:center;gap:6px}
+  .grp .m{color:var(--dim);font-weight:600;letter-spacing:0;text-transform:none;font-size:10.5px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+  .chip{font-size:12.5px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);color:var(--dim);background:#151922}
+  .chip.on{border-color:var(--accent);color:#0f1216;background:var(--accent);font-weight:700}
+  .ta{background:#12151c;border:1px solid var(--line);border-radius:11px;padding:10px 11px;font-size:12.5px;line-height:1.5;color:var(--text)}
+  .ta .ph{color:var(--dim)}
+  .talabel{font-size:11.5px;color:var(--dim);margin:0 2px 6px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0}
+  .row .t{font-size:13px}
+  .row .d{font-size:11px;color:var(--dim);margin-top:2px}
+  .sw{width:40px;height:23px;border-radius:999px;background:var(--accent);position:relative;flex:0 0 auto}
+  .sw::after{content:"";position:absolute;top:2px;right:2px;width:19px;height:19px;border-radius:50%;background:#0f1216}
+  .link{color:var(--accent);font-size:12.5px;font-weight:600;margin-top:4px;display:inline-block}
+  .divider{height:1px;background:var(--line);margin:13px -14px 12px}
+  .expand{display:flex;align-items:center;justify-content:space-between;background:#12151c;border:1px solid var(--line);border-radius:11px;padding:11px;font-size:12.5px;color:var(--text)}
+  .expand .c{color:var(--dim);font-size:11px;margin-top:3px}
+  .setup{opacity:.5}
+  .setup .card{padding:11px 14px}
+  .mini{font-size:12.5px;color:var(--dim)}
+  .learned{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+  .lchip{font-size:11px;color:var(--dim);background:#151922;border:1px solid var(--line);border-radius:8px;padding:4px 8px}
+  .lchip b{color:var(--text)}
+</style></head>
+<body>
+
+<!-- ============ NOW ============ -->
+<div class="col">
+  <div class="lbl">NOW — <b>scattered</b></div>
+  <div class="phone">
+    <div class="h">Profile</div><div class="sub">You &amp; your coaching</div>
+
+    <div class="card">
+      <div class="sect">Your coach</div>
+      <div class="mini" style="color:var(--text);font-size:13px">Coach name: <b style="color:var(--accent)">Coach</b></div>
+      <div class="link">🏷️ Athlete profile — what your coach knows about you ›</div>
+    </div>
+
+    <div class="card">
+      <div class="sect">Your goals</div>
+      <div class="chips"><span class="chip on">💪 Get fitter</span><span class="chip on">🚴 Endurance</span><span class="chip">🏁 Race/event</span><span class="chip">🧬 Health</span></div>
+      <div class="ta"><span class="ph">In your words: what does success look like, and anything you DON'T want?…</span></div>
+    </div>
+
+    <div class="card" style="margin-top:26px">
+      <div class="sect">Your data</div>
+      <div class="row" style="padding-top:2px"><div><div class="t">Learn from my check-ins</div><div class="d">auto-calibrate Sleep/Freshness/Energy</div></div><div class="sw"></div></div>
+    </div>
+    <div class="mini" style="text-align:center;margin-top:14px;color:#5b616e;font-size:11px">↑ goals, coach-profile &amp; learning<br>are in 3 separate spots</div>
+  </div>
+</div>
+
+<!-- ============ OPTION A ============ -->
+<div class="col">
+  <div class="lbl">OPTION A — <b>one card, text inline</b></div>
+  <div class="phone">
+    <div class="h">Profile</div><div class="sub">You &amp; your coaching</div>
+
+    <div class="card knows">
+      <div class="h" style="font-size:16px;margin-bottom:14px">🧠 What your coach knows about you</div>
+
+      <div class="grp">✍️ You told it</div>
+      <div class="chips"><span class="chip on">💪 Get fitter</span><span class="chip on">🚴 Endurance</span><span class="chip">🏁 Race/event</span><span class="chip">🧬 Health</span></div>
+      <div class="talabel">In your words — what your coach reads every session</div>
+      <div class="ta">Goal: raise FTP toward ~300 W over time (aspirational, not a deadline). Center on repeatable threshold + aerobic durability.<br><br>Cottage rhythm: alternating months at the cottage — don't assume bike/gym access on those weekends…</div>
+
+      <div class="divider"></div>
+
+      <div class="grp">📈 It's learning <span class="m">from your training</span></div>
+      <div class="row" style="padding-top:0"><div><div class="t">Learn from my check-ins</div><div class="d">tunes Sleep · Freshness · Energy to how you actually feel</div></div><div class="sw"></div></div>
+      <a class="link">See your full stats (FTP, VO₂, thresholds) ›</a>
+    </div>
+
+    <div class="setup">
+      <div class="sect" style="margin:16px 4px 8px">Setup &amp; about you</div>
+      <div class="card"><span class="mini">Sports · Sex · Availability · Equipment · Diet · Location · Height &amp; birth date</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ OPTION B ============ -->
+<div class="col">
+  <div class="lbl">OPTION B — <b>one card, text tuck-away</b></div>
+  <div class="phone">
+    <div class="h">Profile</div><div class="sub">You &amp; your coaching</div>
+
+    <div class="card knows">
+      <div class="h" style="font-size:16px;margin-bottom:14px">🧠 What your coach knows about you</div>
+
+      <div class="grp">✍️ You told it</div>
+      <div class="chips"><span class="chip on">💪 Get fitter</span><span class="chip on">🚴 Endurance</span><span class="chip">🏁 Race/event</span><span class="chip">🧬 Health</span></div>
+      <div class="expand"><div>Your coach notes<div class="c">Goal: raise FTP toward ~300 W · cottage rhythm…</div></div><div style="color:var(--dim)">Edit ›</div></div>
+
+      <div class="divider"></div>
+
+      <div class="grp">📈 It's learning <span class="m">from your training</span></div>
+      <div class="row" style="padding-top:0"><div><div class="t">Learn from my check-ins</div><div class="d">tunes Sleep · Freshness · Energy to how you actually feel</div></div><div class="sw"></div></div>
+      <a class="link">See your full stats (FTP, VO₂, thresholds) ›</a>
+    </div>
+
+    <div class="setup">
+      <div class="sect" style="margin:16px 4px 8px">Setup &amp; about you</div>
+      <div class="card"><span class="mini">Sports · Sex · Availability · Equipment · Diet · Location · Height &amp; birth date</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ OPTION C ============ -->
+<div class="col">
+  <div class="lbl">OPTION C — <b>two cards under one heading</b></div>
+  <div class="phone">
+    <div class="h">Profile</div><div class="sub">You &amp; your coaching</div>
+
+    <div class="sect" style="margin:0 4px 10px;color:var(--accent)">🧠 What your coach knows about you</div>
+
+    <div class="card">
+      <div class="grp">✍️ You told it</div>
+      <div class="chips"><span class="chip on">💪 Get fitter</span><span class="chip on">🚴 Endurance</span><span class="chip">🏁 Race/event</span><span class="chip">🧬 Health</span></div>
+      <div class="talabel">In your words — what your coach reads every session</div>
+      <div class="ta">Goal: raise FTP toward ~300 W over time. Center on repeatable threshold + aerobic durability.<br><br>Cottage rhythm: alternating months at the cottage…</div>
+    </div>
+
+    <div class="card">
+      <div class="grp">📈 It's learning <span class="m">from your training</span></div>
+      <div class="learned"><span class="lchip">FTP <b>246 W</b></span><span class="lchip">VO₂ <b>51</b></span><span class="lchip">Threshold <b>5:28</b></span></div>
+      <div class="row"><div><div class="t">Learn from my check-ins</div><div class="d">tunes Sleep · Freshness · Energy</div></div><div class="sw"></div></div>
+      <a class="link">See your full stats ›</a>
+    </div>
+
+    <div class="setup">
+      <div class="sect" style="margin:16px 4px 8px">Setup &amp; about you</div>
+      <div class="card"><span class="mini">Sports · Sex · Availability · Equipment · Diet · Location · Height &amp; birth date</span></div>
+    </div>
+  </div>
+</div>
+
+</body></html>
