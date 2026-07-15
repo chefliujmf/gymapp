@@ -1265,7 +1265,7 @@ app.get('/auth/token', auth, (req, res) => res.json({ token: req.user.apiToken }
 app.post('/auth/token/rotate', auth, (req, res) => { req.user.apiToken = randomBytes(24).toString('base64url'); save(store); res.json({ token: req.user.apiToken }) })
 
 // The app (session) reads its own plans for the Today merge-by-id.
-app.get('/auth/plans', auth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
+app.get('/auth/plans', auth, (req, res) => { healMirror(req.user).catch(() => {}); res.json(plansInRange(req.user, req.query.from, req.query.to)) }) // #5026 — sync-on-load: repair the intervals mirror when the athlete opens the plan view (fire-and-forget, cooldown-guarded)
 // Calendar authoring (session): create/update/delete workout plans from the UI
 // — same path as the coach API, so it auto-pushes to intervals.
 app.post('/auth/plans', auth, async (req, res) => { const r = await upsertPlan(req.user, req.body, 'you'); res.status(r.status).json(r.body) })
@@ -1945,7 +1945,7 @@ async function findIcuEventsForPlan(user, plan) {
 // #5026 — "today" MUST be the ATHLETE's local date (their `icuTimezone`), NOT the server's UTC date. Otherwise a
 // Western athlete in the evening (server already on the next UTC day) has their ACTUAL-today plan treated as "past"
 // and deleted from intervals (JM, America/Toronto, 20:29 Jul 14 → server UTC Jul 15 → his Jul 14 ride stripped).
-const icuToday = (user) => localDate(new Date(), user?.icuTimezone)
+const icuToday = (user) => localDate(new Date(), user?.icuTimezone || COACH_TZ)
 const stripIcuInstance = (s) => String(s || '').replace(/:\d{4}-\d{2}-\d{2}$/, '')
 // Mirror a plan to intervals — self-healing, Platyplus is the MASTER (#150):
 //   • COLLAPSE duplicates: events carrying our external_id (incl. intervals' ":date" instance
@@ -2013,6 +2013,22 @@ async function pushPlanToIcu(user, plan) {
 async function deleteIcuEvent(user, plan) {
   if (!user.icuKey || !user.icuAthlete || !plan?.icuEventId) return // #456 — no athlete → never DELETE on the seed calendar
   try { await icuFetch(user, `/athlete/${user.icuAthlete}/events/${plan.icuEventId}`, { method: 'DELETE' }) } catch { /* best effort */ }
+}
+// #5026 (JM: "it has to be a PERFECT MIRROR") — READ-REPAIR: re-push any current/future Platyplus plan that never
+// reached intervals (no icuEventId). The write-through push (upsertPlan) is the primary path; this heals the ones that
+// failed transiently or (pre-tz-fix) were wrongly skipped as "past" at the UTC day-boundary. Idempotent + convergent
+// (keyed by external_id, no dupes). Triggered ON APP LOAD (`/auth/plans`) so it's responsive — the athlete opens the app
+// and the mirror repairs within that request — plus the daily tick as a slow backstop. Prod-only + a per-user cooldown
+// so a rapid-fire client can't spam intervals. Only the un-synced few are pushed (usually zero → instant no-op).
+async function healMirror(user) {
+  if (IS_STAGING || !user.icuKey || !user.icuAthlete) return
+  const now = Date.now()
+  if (user._mirrorHealAt && now - user._mirrorHealAt < 60_000) return // cooldown: at most once/min per user
+  const today = icuToday(user)
+  const broken = (user.plans || []).filter((p) => p.date && p.date >= today && (p.origin || 'platyplus') === 'platyplus' && !p.icuEventId)
+  if (!broken.length) return
+  user._mirrorHealAt = now
+  for (const p of broken) { try { await pushPlanToIcu(user, p) } catch (e) { console.error('[mirror-heal] ' + (e.message || e)) } }
 }
 // #297 — guarantee a TEMPO on strength lifts (default 3-1-1-0) so the chip always shows, even when
 // the coach LLM omits it. Only reps-mode (loaded) lifts; timed/mobility holds keep no tempo.
@@ -3055,17 +3071,7 @@ async function dailyAdaptTick() {
     // #463 — daily reminder runs for ANY opted-in subscribed user (independent of the coach auto-adapt below).
     try { dailyReminderPush(user, today, hour) } catch (e) { console.error('[reminder] ' + (e.message || e)) }
     if (IS_STAGING) continue // #381 — coach auto-adapt is PROD-only (shared athlete); the reminder above is fine on both
-    // #5026 (JM: "it has to be a PERFECT MIRROR") — SELF-HEAL: re-push any current/future Platyplus plan that never
-    // reached intervals (no icuEventId). A push can fail transiently, or (pre-tz-fix) was wrongly skipped as "past" at
-    // the UTC day-boundary; without a retry the mirror stays broken (JM's Jul 14 ride). Only the FAILED ones (missing
-    // id) are re-pushed, so it's a light convergence pass, not a full resync every tick.
-    if (user.icuKey && user.icuAthlete) {
-      for (const p of (user.plans || [])) {
-        if (p.date && p.date >= today && (p.origin || 'platyplus') === 'platyplus' && !p.icuEventId) {
-          try { await pushPlanToIcu(user, p) } catch (e) { console.error('[mirror-heal] ' + (e.message || e)) }
-        }
-      }
-    }
+    await healMirror(user) // #5026 — backstop read-repair (the primary trigger is sync-on-load, below)
     if (!user.icuKey || !user.coachProfile || !String(user.coachProfile).trim()) continue
     user.dailyAdapt = user.dailyAdapt || {}
     try {
