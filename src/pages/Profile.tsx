@@ -261,6 +261,15 @@ export default function Profile() {
         ? <p className="meta" style={{ margin: '6px 2px 4px', color: 'var(--accent)' }}>💚 Coaching adjusted for female physiology — cycle-aware fuelling, recovery & load.</p>
         : <p className="meta" style={{ margin: '6px 2px 4px' }}>Tunes fuelling & recovery.{connected ? ' Prefilled from intervals.' : ''}</p>}
 
+      {/* #524 — height + birth date + diet live WITH "About you" (who you are), not scattered lower. */}
+      <FuelFields user={user!} refresh={refresh} />
+
+      <div className="section-title">Diet {dietSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
+      <div className="chips">
+        {DIETS.map(([v, label]) => <button key={v} className={'chip' + (diet === v ? ' chip--active' : '')} onClick={() => setDiet(v)}>{label}</button>)}
+      </div>
+      <p className="meta" style={{ margin: '6px 2px 4px' }}>Your coach picks ONLY meals that match — vegetarian shows veg + vegan; vegan shows vegan only.</p>
+
       {/* #329 — optional cycle tracking → the coach adapts load/recovery by phase (uses intervals' phase
           first; this is the fallback + for those not syncing it). Only shown for female athletes. */}
       {user?.sex === 'female' && <CycleFields user={user} refresh={refresh} />}
@@ -272,15 +281,6 @@ export default function Profile() {
 
       {/* #320 — equipment is a coaching input (like sports/diet), so it lives here on Profile, not Settings. */}
       <EquipmentPicker />
-
-      <div className="section-title">Diet {dietSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
-      <div className="chips">
-        {DIETS.map(([v, label]) => <button key={v} className={'chip' + (diet === v ? ' chip--active' : '')} onClick={() => setDiet(v)}>{label}</button>)}
-      </div>
-      <p className="meta" style={{ margin: '6px 2px 4px' }}>Your coach picks ONLY meals that match — vegetarian shows veg + vegan; vegan shows vegan only.</p>
-
-      {/* #265 — height + birth date capture (calorie/fuel targets removed 2026-07-13 → roadmap #505) */}
-      <FuelFields user={user!} refresh={refresh} />
 
       {/* #521 — goals + coach-notes + learn-from-check-ins moved UP into the CoachKnowledge card.
           Benchmarks (VO₂max, FTP, threshold pace, zones) still live in ONE place — Stats (#337b). */}

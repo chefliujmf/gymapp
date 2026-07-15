@@ -4,6 +4,7 @@ import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 import { BenchmarksCard } from '../Benchmarks'
+import PageHead from '../PageHead'
 
 type Item = { label: string; sub: string; to: string; icon: ReactNode; mine?: boolean }
 
@@ -30,7 +31,7 @@ export function TrainHub() {
   ].sort((a, b) => Number(b.mine) - Number(a.mine))
   return (
     <div>
-      <div className="page-head"><h1>Train</h1><p>Your disciplines</p></div>
+      <PageHead title="Train" sub="Your disciplines" />
       <div className="stack">
         <HubLink it={{ label: 'Log activity', sub: 'Add a session — manual, or import a .fit/.gpx/.tcx', to: '/log-activity', icon: <PlusCircle strokeWidth={1.75} /> }} />
         {disc.map((it) => <HubLink key={it.label} it={it} />)}
@@ -72,7 +73,7 @@ export function StatsHub() {
   const { global, perSport } = statsGroups(sports)
   return (
     <div>
-      <div className="page-head"><h1>Stats</h1><p>{sports.length ? `For your sports: ${sports.join(', ')}` : 'Your trends & progress'}</p></div>
+      <PageHead title="Stats" sub={sports.length ? `For your sports: ${sports.join(', ')}` : 'Your trends & progress'} />
       <div className="section-title">Global</div>
       <BenchmarksCard />{/* #228: global benchmarks lead Stats, editable here too */}
       <div className="stack">{global.map((s) => <HubLink key={s.key} it={toItem(s)} />)}</div>
@@ -94,7 +95,7 @@ export function MoreHub() {
   ]
   return (
     <div>
-      <div className="page-head"><h1>More</h1><p>Eat & mind. Your account is under the avatar, top-right.</p></div>
+      <PageHead title="More" sub="Eat & mind. Your account is under the avatar, top-right." />
       <div className="stack">{items.map((it) => <HubLink key={it.label} it={it} />)}</div>
     </div>
   )
