@@ -1,8 +1,9 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { fetchEvents, deleteEvent, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
+import { fetchEvents, deleteEvent, sportOf, flattenIcuSteps, fetchActivities, fetchActivityStreams, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
 // #5013 — a completed intervals activity with no matching plan/event is an UNPLANNED workout.
 import { MiniProfile, DoneStats } from '../ui'
+import { PowerBlocks } from '../charts'
 import { fetchGymPlans, syncIcuPlans, setCoachPlans, type CoachPlan } from '../plan'
 import { calApi, type CalItem } from '../calendar'
 import { recipes } from '../data/catalog'
@@ -68,6 +69,29 @@ export default function Calendar() {
   const [moving, setMoving] = useState<{ e: Entry; from: string } | null>(null)
   const [undo, setUndo] = useState<{ e: Entry; from: string; to: string } | null>(null)
   const todayISO = localISO()
+  // Completed rides that render WITHOUT a planned power profile (orphans / unstructured) would fall to a
+  // generic icon. Fetch their real watts stream so the card shows PowerBlocks — same as the detail page + the
+  // planned MiniProfile look (JM: "show the thumbnail like the planned one, it has power data"). Ride-only
+  // (needs watts); guarded once per activity; bounded to the loaded window's rides lacking a plan profile.
+  const [rideStreams, setRideStreams] = useState<Record<string, (number | null)[]>>({})
+  const streamReq = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    const hasPlanProfile = (d: string) =>
+      plans.some((p) => p.date === d && p.sport === 'ride' && (p.segments?.length || 0) > 0) ||
+      events.some((ev) => ev.start_date_local.slice(0, 10) === d && sportOf(ev) === 'cycling' && flattenIcuSteps(ev.workout_doc?.steps).length > 0)
+    activities
+      .filter((a) => sportOfActivity(a) === 'ride' && !streamReq.current.has(String(a.id)) && !hasPlanProfile((a.start_date_local || '').slice(0, 10)))
+      .forEach((a) => {
+        streamReq.current.add(String(a.id))
+        fetchActivityStreams(a.id, ['watts']).then((st) => setRideStreams((s) => ({ ...s, [String(a.id)]: st.watts || [] }))).catch(() => {})
+      })
+  }, [activities, plans, events])
+  // A PowerBlocks chip for a completed ride whose watts stream we have (≥9 real samples), else null → icon.
+  const powerBlocks = (a?: IcuActivity) => {
+    if (!a || sportOfActivity(a) !== 'ride') return null
+    const w = rideStreams[String(a.id)]
+    return w && w.filter((v) => v != null).length >= 9 ? <PowerBlocks watts={w} ftp={ftp} /> : null
+  }
 
   const changeView = (v: View) => { setView(v); setSetting('calView', v); try { localStorage.setItem('calView', v) } catch { /* ignore */ } }
 
@@ -171,10 +195,11 @@ export default function Calendar() {
     // #5013 — a completed UNPLANNED activity: read-only (it already happened), taps to its result.
     if (e.k === 'activity') {
       const sport = sportOfActivity(e.act)
+      const pb = powerBlocks(e.act) // completed ride → real power profile, not a generic icon
       return (
         <div className="card cal-entry">
           <button className="cal-entry__main" onClick={() => navigate(`/activity/${e.act.id}`)}>
-            <span className={'cal-chip cal-chip--grad cal-chip--' + sport}>{iconFor(sport)}</span>
+            <span className={'cal-chip cal-chip--grad cal-chip--' + (pb ? 'chart' : sport)}>{pb || iconFor(sport)}</span>
             <span className="card-body"><h3>{titleOf(e)}</h3><DoneStats a={e.act} /></span>
           </button>
         </div>
@@ -193,10 +218,12 @@ export default function Calendar() {
     const act = (mod === 'ride' || mod === 'run' || mod === 'gym') && e.k !== 'item'
       ? activities.find((x) => x.start_date_local.slice(0, 10) === day && sportOfActivity(x) === mod)
       : undefined
+    // A completed ride with no planned profile (segs empty) → show its executed PowerBlocks, not an icon.
+    const pb = !segs.length ? powerBlocks(act) : null
     return (
       <div className="card cal-entry">
         <button className="cal-entry__main" onClick={() => openEntry(e)}>
-          <span className={'cal-chip cal-chip--grad cal-chip--' + (segs.length ? 'chart' : mod)}>{atp ? <Flag size={15} /> : photo ? <img src={photo} alt="" /> : segs.length ? <MiniProfile segs={segs} /> : iconFor(kind)}</span>
+          <span className={'cal-chip cal-chip--grad cal-chip--' + (segs.length || pb ? 'chart' : mod)}>{atp ? <Flag size={15} /> : photo ? <img src={photo} alt="" /> : segs.length ? <MiniProfile segs={segs} /> : pb || iconFor(kind)}</span>
           <span className="card-body"><h3>{titleOf(e)}</h3>{act ? <DoneStats a={act} /> : e.k === 'item' && e.item.type === 'note' && e.item.notes ? <div className="meta" style={{ whiteSpace: 'normal' }}>{e.item.notes}</div> : <div className="meta">{atp ? 'Training block · plan' : subOf(e)}</div>}</span>
         </button>
         <EntryMenu
