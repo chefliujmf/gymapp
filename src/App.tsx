@@ -55,21 +55,16 @@ function UpdateBanner() {
     return () => { alive = false; clearInterval(iv); document.removeEventListener('visibilitychange', onVis) }
   }, [])
   const hardUpdate = () => {
-    // Unregister the SW + clear caches, then reload to the freshly-deployed bundle. #update-hang: NEVER await the
-    // SW cleanup before reloading — a WEDGED service worker can make getRegistrations()/unregister() hang forever,
-    // and then the reload never fires (the "Update now does nothing" bug). So cap the cleanup with a timeout and
-    // reload regardless, with a cache-bust query so a proxy/browser can't hand back the OLD index.html shell.
-    const cleanup = (async () => {
-      try {
-        const rs = (await navigator.serviceWorker?.getRegistrations?.()) || []
-        await Promise.all(rs.map((r) => r.unregister()))
-        const ks = (await window.caches?.keys?.()) || []
-        await Promise.all(ks.map((k) => caches.delete(k)))
-      } catch { /* best effort */ }
-    })()
-    Promise.race([cleanup, new Promise((res) => setTimeout(res, 1200))]).finally(() => {
+    // #update-hang v2 — the thing that ACTUALLY forces a fresh build is emptying the SW's precache (caches),
+    // because Workbox serves the precached index.html for every navigation regardless of a ?query. So: clear
+    // caches (fast), fire the SW unregister as NON-BLOCKING (a wedged SW can hang unregister forever — never
+    // await it or the reload never fires), then ALWAYS reload to a cache-busted URL. Capped at 800ms so it's
+    // instant even if caches.delete stalls.
+    navigator.serviceWorker?.getRegistrations?.().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {}) // non-blocking
+    const clear = (async () => { try { const ks = (await window.caches?.keys?.()) || []; await Promise.all(ks.map((k) => caches.delete(k))) } catch { /* ignore */ } })()
+    Promise.race([clear, new Promise((res) => setTimeout(res, 800))]).finally(() => {
       const u = new URL(window.location.href)
-      u.searchParams.set('_v', String(Date.now())) // bust any cached shell so the new bundle actually loads
+      u.searchParams.set('_v', String(Date.now())) // bust any HTTP/proxy cache of the shell
       window.location.replace(u.toString())
     })
   }
@@ -120,7 +115,7 @@ export default function App() {
       <UpdateBanner />
       {!isDetail && (
         <header className="app-bar">
-          <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=5" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />platy<span style={{ color: 'var(--accent)' }}>plus</span> <span style={{ color: 'var(--text-dim, #9298a6)', fontWeight: 900 }}>➕</span></Link>
+          <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=6" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />platy<span style={{ color: 'var(--accent)' }}>plus</span></Link>
           {/* Top-right is the status cluster only: notifications + account (Coach moved to the FAB). */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <RefreshButton /><PromoteButton /><ReportButton /><ReleaseBell /><AccountMenu />

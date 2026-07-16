@@ -42,3 +42,9 @@ pgdata/
 *.fit
 *.gpx
 *.tcx
+
+# raw source books (copyrighted, distilled into docs/*-coaching.md — never commit)
+books/
+*.epub
+*.azw3
+*.mobi
