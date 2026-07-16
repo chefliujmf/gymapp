@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { authApi, type CoachReview } from './auth/api'
 import { FEEL, RPE, FIELDS } from './pages/PostWorkout'
@@ -19,21 +19,23 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
   const [reviewing, setReviewing] = useState(false) // #364 "coach is reviewing…" right after you submit
   // Match the coach review for this session (by date + sport; gym reviews may omit sport).
   const matchReview = (rs: CoachReview[]) => rs.find((r) => r.date === date && (r.sport === sport || (!r.sport && sport === 'gym'))) || null
+  const foundRef = useRef(false) // once feedback is found under any key, don't reload (a later dep change won't clobber edits)
   useEffect(() => {
-    // Robust load: the canonical id first, then any LEGACY keys the same session may have been saved under
-    // (activity id vs gym-date-workoutId, entered from different views) — so feedback never "vanishes". Save
-    // always writes the canonical `id`, so an edit consolidates it. (#feedback-key-audit)
-    (async () => {
+    // Robust load: the canonical id first, then any LEGACY keys the same session may have been saved under (activity
+    // id vs gym-date-workoutId, entered from different views) — so feedback never "vanishes". Re-runs when the
+    // candidate keys change (e.g. the device activity id arrives async), until found. Save always writes the
+    // canonical `id`, so an edit consolidates it. (#feedback-key-audit)
+    if (!foundRef.current) (async () => {
       const keys = [id, ...altIds.filter((k) => k && k !== id)]
       let f: Awaited<ReturnType<typeof authApi.getActivityFeedback>> = null
       for (const k of keys) { f = await authApi.getActivityFeedback(k).catch(() => null); if (f) break }
-      if (f) { setFeel(f.feel); setRpe(f.rpe); setFields(f.fields || {}); setNote(f.note || ''); setSaved(true) }
-      else if (icuExisting || icuNote) { setFeel(icuExisting?.feel); setRpe(icuExisting?.rpe); setFields(icuExisting?.fields || {}); if (icuNote) setNote(icuNote); setSaved(true); setFromIcu(true) } // already logged in intervals — show it, don't ask again
+      if (f) { foundRef.current = true; setFeel(f.feel); setRpe(f.rpe); setFields(f.fields || {}); setNote(f.note || ''); setSaved(true) }
+      else if (icuExisting || icuNote) { foundRef.current = true; setFeel(icuExisting?.feel); setRpe(icuExisting?.rpe); setFields(icuExisting?.fields || {}); if (icuNote) setNote(icuNote); setSaved(true); setFromIcu(true) } // already logged in intervals — show it, don't ask again
       setLoaded(true)
     })()
     authApi.coachReviews().then((rs) => setReview(matchReview(rs))).catch(() => {}) // #364 show an existing review if there is one
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, icuExisting, icuNote])
+  }, [id, altIds.join('|'), icuExisting, icuNote])
   const sportFields = FIELDS[sport] || FIELDS.gym
   // #364 — after saving, tell the athlete the coach IS reviewing + poll so the takeaways appear here
   // (no reload) the moment they land — the coach review runs async server-side (~1–3 min).
