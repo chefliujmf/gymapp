@@ -200,6 +200,9 @@ export default function Profile() {
   }
 
   const does = (s: string) => (user?.sports || []).includes(s)
+  // #534 — the (optional, single) MAIN sport. Tap the current ★ again to clear it (empty string → no main).
+  const mainSport = (user?.info as { mainSport?: string } | undefined)?.mainSport
+  const setMain = (v: string) => { authApi.saveProfile({ mainSport: mainSport === v ? '' : v }).then(() => refresh()).catch(() => {}) }
 
   return (
     <div>
@@ -243,11 +246,21 @@ export default function Profile() {
       <div className="section-title">⚙️ Setup &amp; about you</div>
       <div className="section-title" id="ob-sport" style={{ marginTop: 6 }}>Sports you do {sportSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
       <div className="chips">
-        {SPORTS.map(([v, label]) => (
-          <button key={v} className={'chip' + (does(v) ? ' chip--active' : '')} onClick={() => toggleSport(v)}>{label}</button>
-        ))}
+        {SPORTS.map(([v, label]) => {
+          const on = does(v)
+          const multi = (user?.sports || []).length >= 2
+          const isMain = mainSport === v
+          return (
+            // #534 (A5) — a right-side ★ marks the MAIN sport (optional, exactly one). Tap the label to
+            // select the sport; tap ☆ to set it main; tap the current ★ again to clear (back to no main).
+            <span key={v} className={'chip' + (on ? ' chip--active' : '')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>
+              <span onClick={() => toggleSport(v)}>{label}</span>
+              {on && multi && <span role="button" aria-label={isMain ? 'Main sport — tap to clear' : `Set ${label} as main sport`} title={isMain ? 'Main sport — tap to clear' : 'Set as main sport'} onClick={(e) => { e.stopPropagation(); setMain(v) }} style={{ fontSize: 15, lineHeight: 1, cursor: 'pointer', color: isMain ? '#ffd24a' : 'rgba(6,32,18,.5)' }}>{isMain ? '★' : '☆'}</span>}
+            </span>
+          )
+        })}
       </div>
-      <p className="meta" style={{ margin: '6px 2px 4px' }}>Pick all that apply — tunes your nav & coach. Cycling/Running unlock the endurance method & Fitness page.</p>
+      <p className="meta" style={{ margin: '6px 2px 4px' }}>Pick all that apply — tunes your nav & coach.{(user?.sports || []).length >= 2 ? <> Tap <b style={{ color: '#ffd24a' }}>★</b> to set your <b>main sport</b> (optional) — your coach prioritizes it and dials the others to support it.</> : ' Cycling/Running unlock the endurance method & Fitness page.'}</p>
 
       {/* #308 — biological sex is a VISIBLE, settable step (was silent from intervals). Gates the coach's
           female-athlete module (cycle-aware fuelling, recovery, RED-S). Prefilled from intervals when linked. */}

@@ -389,6 +389,10 @@ app.put('/auth/profile', auth, (req, res) => {
   if (typeof req.body.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
   if (Array.isArray(req.body.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)
   else if (typeof req.body.sport === 'string') req.user.sports = req.body.sport ? [req.body.sport.toLowerCase().trim().slice(0, 20)] : []
+  // #534 — MAIN sport (drives the coach's gym focus: main endurance sport → gym is support). Must be one the athlete does.
+  if ('mainSport' in req.body) { const ms = String(req.body.mainSport || '').toLowerCase().trim(); req.user.info.mainSport = ms && (req.user.sports || []).includes(ms) ? ms : undefined }
+  // keep the stored main sport valid after a sports change (dropped sport can't stay primary)
+  if (req.user.info.mainSport && !(req.user.sports || []).includes(req.user.info.mainSport)) req.user.info.mainSport = undefined
   if (typeof req.body.sex === 'string') req.user.sex = req.body.sex.trim().toLowerCase().slice(0, 10)
   // #207 Phase 2: athlete stats — personalize readiness (sleepNeed) + tell the coach how hard a
   // session is FOR this athlete (FTP/maxHR/VO2max). Clamp to sane ranges; 0/blank clears.
