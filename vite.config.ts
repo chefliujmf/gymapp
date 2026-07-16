@@ -20,9 +20,11 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: '/',
         icons: [
-          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          // ?v=6 versions the icon URLs so an INSTALLED Android PWA detects the manifest change and updates the
+          // icon (WebAPK update, ~daily). Bump the version whenever the icon art changes. (Mac/iOS need reinstall.)
+          { src: 'pwa-192.png?v=6', sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-512.png?v=6', sizes: '512x512', type: 'image/png' },
+          { src: 'pwa-512.png?v=6', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
