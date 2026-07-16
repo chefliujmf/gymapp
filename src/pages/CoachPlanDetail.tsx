@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { getCoachPlan, fetchCoachPlan, gymSessionFromPlan, setGymSession, resolveDemo, estimateGymMinutes, findGymLogForPlan, type CoachPlan } from '../plan'
 import { calApi, type CalItem } from '../calendar'
 import { MiniProfile } from '../ui'
@@ -22,6 +22,8 @@ import { linkify } from '../linkify'
 export default function CoachPlanDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [sp] = useSearchParams()
+  const forcePlanned = sp.get('planned') === '1' // opened from a completed activity's chip-bar → show it AS PLANNED, don't redirect back
   const ble = useBle()
   const { user } = useAuth()
   const logs = useLiveQuery(() => db.logs.toArray())
@@ -52,6 +54,7 @@ export default function CoachPlanDetail() {
   const [checkedDone, setCheckedDone] = useState(false)
   useEffect(() => {
     if (!p || p.sport === 'gym') return // gym completion = a local log (handled below)
+    if (forcePlanned) { setCheckedDone(true); return } // as-planned view requested — never redirect to the result
     let cancelled = false
     fetchActivities(p.date, p.date).then((a) => {
       if (cancelled) return
@@ -60,7 +63,7 @@ export default function CoachPlanDetail() {
       else setCheckedDone(true)
     }).catch(() => { if (!cancelled) setCheckedDone(true) })
     return () => { cancelled = true }
-  }, [p?.id, p?.date, p?.sport, navigate])
+  }, [p?.id, p?.date, p?.sport, navigate, forcePlanned])
   // gym: completed if a log matches this plan → open its summary. #326 — match by plan-id OR title+day.
   // Else (no in-app log) a DEVICE (Coros/Garmin) may have recorded it in intervals (HR + time) — that still
   // means DONE (JM: "it is a completed activity after all"), so show a completed banner instead of "Start workout".
@@ -107,7 +110,7 @@ export default function CoachPlanDetail() {
       <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {isEndurance && (p.segments?.length ?? 0) > 0 && <div className="act-thumb"><MiniProfile segs={p.segments!} /></div>}
         <div style={{ minWidth: 0 }}>
-          <span className="eyebrow">{p.sport === 'gym' ? 'Gym' : p.sport === 'run' ? 'Run' : 'Ride'} · {dateLabel}{mins ? ` · ${mins} min` : p.sport === 'gym' && (p.exercises?.length ?? 0) > 0 ? ` · ${p.exercises!.length} exercises · ~${gymMins} min` : ''}</span>
+          <span className="eyebrow">{p.sport === 'gym' ? 'Gym' : p.sport === 'run' ? 'Run' : 'Ride'} · {dateLabel}{mins ? ` · ${mins} min` : p.sport === 'gym' && (p.exercises?.length ?? 0) > 0 ? ` · ${p.exercises!.length} exercises · ~${gymMins} min` : ''}{forcePlanned ? ' · As planned' : ''}</span>
           <h1 style={{ margin: 0 }}>{p.title}</h1>
         </div>
       </div>

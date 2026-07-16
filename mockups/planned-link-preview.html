@@ -1,0 +1,143 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--blue:#7fd1ff}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  body{background:#07090c;color:var(--text);padding:16px;display:flex;flex-wrap:wrap;gap:18px;justify-content:center;align-items:flex-start}
+  .phone{width:412px;background:var(--bg);border-radius:24px;padding:18px 16px;border:1px solid #23262e}
+  .cap{width:412px;text-align:center;font-size:12px;color:var(--dim);margin-top:-8px}
+  .head{display:flex;gap:12px;align-items:center}
+  .back{width:50px;height:50px;border-radius:50%;background:#191c24;border:1px solid #2b2f39;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--dim);flex:none}
+  .thumb{width:74px;height:74px;border-radius:14px;background:#14171d;border:1px solid #2b2f39;display:flex;align-items:center;justify-content:center;font-size:30px;flex:none}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--dim)}
+  h1{font-size:27px;line-height:1.05;margin-top:3px}
+  .coach{margin-top:14px;border:1px solid rgba(52,224,125,.4);background:linear-gradient(165deg,rgba(30,58,42,.55),rgba(20,32,26,.5));border-radius:15px;padding:14px}
+  .coach .ch{display:flex;justify-content:space-between;align-items:center}
+  .coach .ch b{font-size:16px}
+  .score{font-size:12px;font-weight:700;color:var(--accent);border:1px solid rgba(52,224,125,.4);border-radius:20px;padding:3px 11px}
+  .coach p{font-size:13.5px;line-height:1.5;margin-top:9px;color:#dfe3ea}
+  .coach li{font-size:13px;line-height:1.45;margin-top:8px;list-style:none;color:#cfd4dc}
+  .fb{margin-top:12px;border:1px solid #2b2f39;background:linear-gradient(160deg,var(--card1),var(--card2));border-radius:15px;padding:13px}
+  .fb .ch{display:flex;justify-content:space-between}.fb .ch b{font-size:15px}
+  .edit{font-size:13px;color:var(--dim)}
+  .feel{font-size:15px;font-weight:700;margin-top:6px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+  .chip{font-size:12.5px;color:var(--dim);background:#14171d;border:1px solid #2b2f39;border-radius:16px;padding:5px 12px}
+  .fbnote{font-size:13px;font-style:italic;color:var(--dim);margin-top:9px}
+  .links{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+  .lk{font-size:12.5px;font-weight:700;padding:7px 11px;border-radius:9px;background:#14171d;border:1px solid #2b2f39;color:var(--accent)}
+  .lk--x{color:var(--accent)}
+  .desc{font-size:13.5px;line-height:1.5;color:#cfd4dc;margin-top:13px}
+  .hero{display:flex;flex-wrap:wrap;gap:10px;margin-top:13px}
+  .ht{flex:1 1 46%;background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid #2b2f39;border-radius:14px;padding:16px;text-align:center}
+  .ht b{display:block;font-size:26px}.ht span{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+  /* THE NEW PIECE */
+  .pw{margin-top:11px;display:flex;gap:12px;align-items:center;border:1px solid #2b2f39;background:linear-gradient(160deg,var(--card1),var(--card2));border-radius:14px;padding:11px 13px;text-decoration:none;color:var(--text)}
+  .pw--plan{border-color:rgba(52,224,125,.3)}
+  .pw .prof{display:flex;align-items:flex-end;gap:2px;width:62px;height:40px;flex:none}
+  .pw .prof i{flex:1;border-radius:2px 2px 0 0;background:linear-gradient(180deg,#34e07d,#1f8f52)}
+  .pw h4{font-size:14.5px;margin-bottom:2px}
+  .pw .sub{font-size:12px;color:var(--dim)}
+  .pw .tag{font-size:10px;font-weight:800;letter-spacing:.05em;color:var(--accent);text-transform:uppercase}
+  .pw .chev{margin-left:auto;color:var(--accent);font-weight:800;font-size:18px}
+  .pw--off{border-color:#33383f;opacity:.9}
+  .pw--off .ic{width:62px;height:40px;flex:none;display:flex;align-items:center;justify-content:center;font-size:22px;background:#14171d;border-radius:9px}
+  .pw--off h4{color:var(--dim)}
+</style>
+
+<!-- ============ POPULATED: a real planned workout ============ -->
+<div class="phone">
+  <div class="head">
+    <div class="back">‹</div>
+    <div class="thumb">🚴</div>
+  </div>
+  <div style="margin-top:8px">
+    <div class="eyebrow">Ride · Outdoor · Tue, Jul 14</div>
+    <h1>Easy St-Lambert Spin</h1>
+  </div>
+
+  <div class="coach">
+    <div class="ch"><b>💬 Your coach</b><span class="score">Score 9/10</span></div>
+    <p>Textbook easy aerobic ride — 86 min at a genuinely easy heart rate (137), felt Strong, no cost. Exactly the maintenance work we want right now.</p>
+    <li>• Easy actually stayed easy: HR ~137 (~70% max), RPE 1 — proof the talk-test pacing works when you ease in.</li>
+    <li>• "Sleepy after" is normal — refuel and rest a bit after.</li>
+    <li>📈 <b>Next:</b> Nothing to change — you're on track.</li>
+  </div>
+
+  <div class="fb">
+    <div class="ch"><b>✅ Your feedback</b><span class="edit">Edit</span></div>
+    <div class="feel">😎 Strong · RPE 1</div>
+    <div class="chips"><span class="chip">not needed</span><span class="chip">normal</span><span class="chip">normal</span><span class="chip">calm</span><span class="chip">none</span><span class="chip">none</span></div>
+    <div class="fbnote">"Felt pretty great but sleepy after"</div>
+  </div>
+
+  <div class="links">
+    <span class="lk">📋 Planned workout →</span>
+    <span class="lk lk--x">intervals ↗</span>
+    <span class="lk lk--x">Strava ↗</span>
+    <span class="lk" style="color:var(--dim)">from Garmin Forerunner 255</span>
+  </div>
+
+  <!-- NEW: link preview of the planned workout, right under the links -->
+  <a class="pw pw--plan">
+    <div class="prof"><i style="height:30%"></i><i style="height:58%"></i><i style="height:62%"></i><i style="height:60%"></i><i style="height:64%"></i><i style="height:60%"></i><i style="height:58%"></i><i style="height:34%"></i></div>
+    <div style="min-width:0">
+      <div class="tag">📋 Planned</div>
+      <h4>Easy Aerobic Base</h4>
+      <div class="sub">Z2 endurance · ~65% FTP · 1h20 · ~60 TSS</div>
+    </div>
+    <div class="chev">›</div>
+  </a>
+
+  <div class="desc">Relaxed aerobic spin around St-Lambert, kept it easy and conversational the whole way. Quiet base miles, felt smooth start to finish.</div>
+
+  <div class="hero">
+    <div class="ht"><b>64%</b><span>Intensity</span></div>
+    <div class="ht"><b>59</b><span>Load (TSS)</span></div>
+    <div class="ht"><b>137 bpm</b><span>Avg HR</span></div>
+    <div class="ht"><b>1:26</b><span>Time</span></div>
+  </div>
+</div>
+<div class="cap"><b>Populated</b> — the “Planned workout” link now previews the plan (profile · title · key set) inline. Tap → full plan. Everything else unchanged.</div>
+
+<!-- ============ OFF-PLAN: honest empty state ============ -->
+<div class="phone">
+  <div class="head">
+    <div class="back">‹</div>
+    <div class="thumb">🚴</div>
+  </div>
+  <div style="margin-top:8px">
+    <div class="eyebrow">Ride · Outdoor · Tue, Jul 14</div>
+    <h1>Easy St-Lambert Spin</h1>
+  </div>
+
+  <div class="coach">
+    <div class="ch"><b>💬 Your coach</b><span class="score">Score 9/10</span></div>
+    <p>Textbook easy aerobic ride — 86 min at a genuinely easy heart rate (137), felt Strong, no cost. Exactly the maintenance work we want right now.</p>
+    <li>📈 <b>Next:</b> Nothing to change — you're on track.</li>
+  </div>
+
+  <div class="links">
+    <span class="lk lk--x">intervals ↗</span>
+    <span class="lk lk--x">Strava ↗</span>
+    <span class="lk" style="color:var(--dim)">from Garmin Forerunner 255</span>
+  </div>
+
+  <!-- NEW: off-plan state — replaces the (false) planned link -->
+  <div class="pw pw--off">
+    <div class="ic">🚵</div>
+    <div style="min-width:0">
+      <h4>Off-plan ride</h4>
+      <div class="sub">No workout was planned for this day — nice bonus miles.</div>
+    </div>
+  </div>
+
+  <div class="desc">Relaxed aerobic spin around St-Lambert, kept it easy and conversational the whole way. Quiet base miles, felt smooth start to finish.</div>
+
+  <div class="hero">
+    <div class="ht"><b>64%</b><span>Intensity</span></div>
+    <div class="ht"><b>59</b><span>Load (TSS)</span></div>
+    <div class="ht"><b>137 bpm</b><span>Avg HR</span></div>
+    <div class="ht"><b>1:26</b><span>Time</span></div>
+  </div>
+</div>
+<div class="cap"><b>Off-plan</b> — no plan that day (this real ride). The false “Planned workout” link is gone; an honest “Off-plan ride” note takes its place.</div>
