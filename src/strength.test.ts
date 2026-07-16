@@ -131,11 +131,11 @@ describe('intensityZone (%1-RM → NSCA zone)', () => {
   })
 })
 
-describe('strengthDigest is goal-aware (#534)', () => {
+describe('strengthDigest — NO app volume judgment (#534: the coach judges volume, not the app)', () => {
   const chest = (perLog: number) => [log(0, [{ name: 'Bench', sets: Array(perLog).fill([80, 8]) as [number, number][] }]), log(14, [{ name: 'Bench', sets: Array(perLog).fill([80, 8]) as [number, number][] }])]
-  it('a cyclist (support) is NOT nagged for low gym volume, but a hypertrophy athlete is', () => {
-    expect(strengthDigest(chest(4), muscleOf, 'support').needsAttention.some((x) => x.kind === 'low-volume')).toBe(false)
-    expect(strengthDigest(chest(4), muscleOf, 'muscle').needsAttention.some((x) => x.kind === 'low-volume')).toBe(true)
+  it('never emits low-volume / missing items — regardless of how little volume', () => {
+    const d = strengthDigest(chest(1))
+    expect(d.needsAttention.some((x) => x.kind === 'low-volume' || x.kind === 'missing')).toBe(false)
   })
   it('GYM_FOCUS bands are ordered support < muscle', () => {
     expect(GYM_FOCUS.support.low).toBeLessThan(GYM_FOCUS.muscle.low)
@@ -189,9 +189,8 @@ describe('strengthDigest (actionable feed)', () => {
     const stall = benchW.map((pair, i) => log(28 - i * 7, [{ name: 'Bench', sets: [pair] }]))
     const squatW = [[120, 5], [130, 5], [140, 5]] as [number, number][]
     const pr = squatW.map((pair, i) => log(14 - i * 7, [{ name: 'Squat', sets: [pair] }]))
-    const d = strengthDigest([...stall, ...pr], muscleOf, 'muscle')
+    const d = strengthDigest([...stall, ...pr])
     expect(d.needsAttention.some((x) => x.kind === 'stall' && x.name === 'Bench')).toBe(true)
-    expect(d.needsAttention.some((x) => x.kind === 'low-volume')).toBe(true) // only a few sets/wk
     expect(d.wins.some((x) => x.name === 'Squat')).toBe(true)
     expect(SETS_LOW).toBe(10)
   })

@@ -356,14 +356,15 @@ export interface StrengthDigest { needsAttention: DigestItem[]; wins: DigestItem
 // override with the real catalog facet vocabulary.
 export const MAJOR_MUSCLES = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core']
 
-/** The actionable feed: what NEEDS attention (stalls, under-volume muscles, a neglected major group) and the
- *  WINS (PRs, biggest movers). Surfaces the handful worth acting on out of a library of hundreds. */
-export function strengthDigest(logs: WorkoutLog[], muscleOf: MuscleOf | undefined, focus: GymFocus = 'muscle', band: SetBand = GYM_FOCUS[focus], majors = MAJOR_MUSCLES, fmt: (kg: number) => string = (v) => `${Math.round(v)} kg`): StrengthDigest {
+/** The actionable feed of OBJECTIVE facts: what stalled (needsAttention) and the WINS (PRs, biggest movers).
+ *  #534 — volume adequacy ("is this enough?") is NOT judged here: that's the COACH's job (goal + sport + season),
+ *  surfaced in its insight, not a blind app low/ok/high (JM: "we'll do it differently, shown by the coach"). */
+export function strengthDigest(logs: WorkoutLog[], fmt: (kg: number) => string = (v) => `${Math.round(v)} kg`): StrengthDigest {
   const needsAttention: DigestItem[] = []
   const wins: DigestItem[] = []
   const series = seriesByExercise(logs)
 
-  // Per-lift stalls + movers (only lifts with enough history to judge)
+  // Per-lift stalls + movers (only lifts with enough history to judge) — these are measured facts, not opinions.
   const movers: { name: string; deltaPct: number }[] = []
   for (const [name, s] of series) {
     if (s.pts.length < 2) continue
@@ -375,17 +376,6 @@ export function strengthDigest(logs: WorkoutLog[], muscleOf: MuscleOf | undefine
     if (ins.tone === 'stall') needsAttention.push({ kind: 'stall', name, title: `${name} stalled`, detail: ins.text })
     if (ins.tone === 'pr' && deltaPct >= 2) wins.push({ kind: 'pr', name, title: `${name} ${deltaPct > 0 ? '+' + deltaPct + '%' : 'at your peak'}`, detail: `Working max ${fmt(last)}. ${ins.text.replace(/^📈\s*/, '')}` })
     if (deltaPct >= 3) movers.push({ name, deltaPct })
-  }
-
-  // Volume nags are GOAL-AWARE (#534): only when the focus is to GROW (muscle/strength) is low volume a problem.
-  // For support/health, low gym volume is the plan — never nag a cyclist for "only" a maintenance dose.
-  const nagVolume = focus === 'muscle' // only a PURE muscle-building focus pushes low-volume into "needs attention";
-  // other focuses (support/support_build/strength/health) just show the bars + band, no nag (JM: the "low" nag is annoying).
-  const vols = weeklySetsPerMuscle(logs, muscleOf || (() => undefined), band)
-  const seen = new Set(vols.map((v) => v.muscle))
-  if (nagVolume) {
-    for (const v of vols) if (v.status === 'low') needsAttention.push({ kind: 'low-volume', muscle: v.muscle, title: `${v.muscle} volume low`, detail: `${v.perWeek} sets/wk — under your ${band.low}–${band.high} sets/muscle target. Add a set or a session.` })
-    if (muscleOf && vols.length >= 2) for (const m of majors) if (!seen.has(m)) needsAttention.push({ kind: 'missing', muscle: m, title: `No ${m.toLowerCase()} work`, detail: `Nothing logged for ${m.toLowerCase()} in this range — a gap vs the rest of your training.` })
   }
 
   // Best movers as wins (dedup vs PRs already listed)

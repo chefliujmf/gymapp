@@ -2,13 +2,12 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { authApi, type CoachReview } from '../auth/api'
-import { useAuth } from '../auth/AuthContext'
 import { db, getSetting, syncLogsFromServer } from '../db'
 import { localISO } from '../date'
 import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { matchExercise } from '../plan'
 import { e1rm } from '../strength'
-import { rangeSummary, weeklySetsPerMuscle, mainLifts, strengthDigest, inferGymFocus, weeklySetTargetFor, GYM_FOCUS, type MuscleOf, type VolStatus, type MainLift } from '../strength'
+import { rangeSummary, weeklySetsPerMuscle, mainLifts, strengthDigest, type MuscleOf, type MainLift } from '../strength'
 import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
 
 const LB = 2.2046226
@@ -43,8 +42,6 @@ function ConfDots({ pct }: { pct: number }) {
   const on = Math.max(1, Math.min(4, Math.round(pct / 25)))
   return <span style={{ display: 'inline-flex', gap: 3 }}>{[0, 1, 2, 3].map((i) => <i key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i < on ? 'var(--accent)' : '#2f3742' }} />)}</span>
 }
-const STATUS_COLOR: Record<VolStatus, string> = { ok: 'linear-gradient(90deg,#1f8f52,#34e07d)', low: 'linear-gradient(90deg,#7a5a1a,#ffb13d)', high: 'linear-gradient(90deg,#2a6f8f,#7fd1ff)' }
-const STATUS_LABEL: Record<VolStatus, string> = { ok: 'ok', low: 'low', high: 'high' }
 
 const statV: CSSProperties = { fontSize: 22, fontWeight: 800, letterSpacing: '-.5px' }
 const statK: CSSProperties = { fontSize: 10.5, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.4px', marginTop: 2 }
@@ -63,14 +60,8 @@ function ActCard({ icon, title, detail, tone, onClick }: { icon: string; title: 
 
 export default function Progress() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const logs = useLiveQuery(() => db.logs.orderBy('completedAt').toArray())
   const imp = (useLiveQuery(() => getSetting('units')) as string | undefined) === 'imperial'
-  // #534 — the whole page is GOAL-AWARE: infer the gym focus from the athlete's main sport + objective.
-  const info = user?.info as { mainSport?: string; goals?: { notes?: string }; gymTarget?: { setsLow?: number; setsHigh?: number; note?: string } } | undefined
-  const focus = inferGymFocus({ mainSport: info?.mainSport, sports: user?.sports, goal: info?.goals?.notes })
-  const focusSpec = GYM_FOCUS[focus]
-  const coachTgt = info?.gymTarget && info.gymTarget.setsLow ? info.gymTarget : undefined
   const [q, setQ] = useState('')
   const [facet, setFacet] = useState('Needs attention')
   const [from, setFrom] = useState(localISO(new Date(Date.now() - 56 * 86400000))) // #252 date filter (default 8 wk)
@@ -91,11 +82,9 @@ export default function Progress() {
     const fmt = (kg: number) => `${conv(kg)} ${unit}`
     // #251 — summary follows the filter (sessions · time · consistency), not vanity "this week" volume.
     const summary = rangeSummary(L, days)
-    // #534 — the TARGET band: the COACH's when set, else a frequency-scaled default (so 1×/week isn't "always low").
-    const band = coachTgt ? { low: coachTgt.setsLow!, high: coachTgt.setsHigh || coachTgt.setsLow! } : weeklySetTargetFor(focus, summary.perWeek)
-    const vols = weeklySetsPerMuscle(L, muscleOf, band)
+    const vols = weeklySetsPerMuscle(L, muscleOf) // #534 — NEUTRAL data; the coach judges volume, not the app
     const mains = mainLifts(L, muscleOf, 4)
-    const digest = strengthDigest(L, muscleOf, focus, band, GROUPS, fmt)
+    const digest = strengthDigest(L, fmt)
     // Per-exercise dated e1RM series for the searchable "all exercises" list (tap → per-exercise page).
     type Pt = { date: number; e1rm: number }
     const exMap = new Map<string, { name: string; group?: string; pts: Pt[] }>()
@@ -125,12 +114,12 @@ export default function Progress() {
     const weeks: { w: string; v: number }[] = []
     for (let m = monday(since); m.getTime() < until; m.setDate(m.getDate() + 7)) { const w = localISO(m); weeks.push({ w, v: wkVol.get(w) || 0 }) }
     if (!weeks.length) weeks.push({ w: weekKey(Date.now()), v: 0 })
-    return { unit, conv, summary, vols, mains, digest, lifts, weeks, band, count: L.length }
-  }, [logs, imp, from, to, focus, coachTgt])
+    return { unit, conv, summary, vols, mains, digest, lifts, weeks, count: L.length }
+  }, [logs, imp, from, to])
 
   if (!logs) return null
-  const { unit, conv, summary, vols, mains, digest, lifts, band, count } = data
-  const volScale = Math.max(band.high + 4, ...vols.map((v) => v.perWeek))
+  const { unit, conv, summary, vols, mains, digest, lifts, count } = data
+  const volScale = Math.max(6, ...vols.map((v) => v.perWeek))
   const hm = totalMinFmt(summary.totalMin)
 
   // "all exercises" list: filter by search + facet
@@ -194,21 +183,20 @@ export default function Progress() {
           </div>
         )}
 
-        {/* Weekly sets per muscle — the actionable volume metric (Schoenfeld 10–20) */}
+        {/* Sets per muscle — NEUTRAL data (#534). The COACH judges whether the volume is right, in its insight. */}
         {vols.length > 0 && <>
-          <div className="section-title">Sets per muscle <span className="meta" style={{ fontWeight: 400 }}>· per training week · target {band.low}–{band.high}</span></div>
+          <div className="section-title">Sets per muscle <span className="meta" style={{ fontWeight: 400 }}>· per training week</span></div>
           <div className="card" style={{ padding: 14 }}>
             {vols.map((v) => (
               <div key={v.muscle} style={{ display: 'flex', alignItems: 'center', gap: 9, margin: '8px 0', fontSize: 12 }}>
                 <span style={{ width: 62 }}>{v.muscle}</span>
-                <span style={{ flex: 1, height: 15, borderRadius: 5, background: '#12151c', position: 'relative', overflow: 'hidden' }}>
-                  <i style={{ position: 'absolute', top: 0, bottom: 0, left: `${(band.low / volScale) * 100}%`, right: `${Math.max(0, 100 - (band.high / volScale) * 100)}%`, background: 'rgba(52,224,125,.13)', borderLeft: '1px dashed #34e07d55', borderRight: '1px dashed #34e07d55' }} />
-                  <i style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: `${(v.perWeek / volScale) * 100}%`, borderRadius: 5, background: STATUS_COLOR[v.status] }} />
+                <span style={{ flex: 1, height: 12, borderRadius: 5, background: '#12151c', position: 'relative', overflow: 'hidden' }}>
+                  <i style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: `${Math.min(100, (v.perWeek / volScale) * 100)}%`, borderRadius: 5, background: 'var(--accent-grad)' }} />
                 </span>
-                <span className="meta" style={{ width: 66, textAlign: 'right' }}><b style={{ color: 'var(--text)' }}>{v.perWeek}</b> {STATUS_LABEL[v.status]}</span>
+                <span style={{ width: 34, textAlign: 'right', fontWeight: 700 }}>{v.perWeek}</span>
               </div>
             ))}
-            <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Your working <b style={{ color: 'var(--text)' }}>sets per muscle, per week</b> vs the shaded <b style={{ color: 'var(--text)' }}>{band.low}–{band.high}</b> target (under = <span style={{ color: 'var(--warn,#ffb13d)' }}>low</span>, inside = <span style={{ color: 'var(--accent)' }}>ok</span>, over = <span style={{ color: 'var(--blue,#7fd1ff)' }}>high</span>). {coachTgt ? <>Target set by your coach{coachTgt.note ? `: ${coachTgt.note}` : ''}.</> : <>Default for <b style={{ color: 'var(--text)' }}>{focusSpec.label.toLowerCase()}</b>, scaled to your ~{summary.perWeek}/wk gym frequency — your coach can set one that fits your plan.</>}</p>
+            <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Your working sets per muscle each week. Your coach reads this to judge the right volume for your sport, goal &amp; season — see its insight.</p>
           </div>
         </>}
 
