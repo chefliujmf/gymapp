@@ -106,6 +106,24 @@ describe('freshness (ACWR + TSB)', () => {
     expect(freshness({ ctl: 60, atl: 100, form: -45 }).score).toBeLessThanOrEqual(1.5)
   })
   it('null when no load data', () => { expect(freshness({})).toBeNull() })
+  // #536 — ACWR is spurious at LOW chronic load (Impellizzeri 2020; Lolli 2019). A big ratio on a tiny base
+  // must NOT over-alarm; lean on absolute Form. Pregnancy (ACOG 804, HR-load unreliable) softens it further.
+  it('low-CTL: a high ACWR on a small base does NOT read as wrecked (leans on Form)', () => {
+    const lowBase = freshness({ ctl: 13, atl: 24, form: -11 }) // ACWR ~1.85 but CTL only 13
+    const highBase = freshness({ ctl: 45, atl: 83, form: -11 }) // same Form/ACWR, real chronic base
+    expect(lowBase.score).toBeGreaterThan(highBase.score) // the low-base ratio is trusted less
+    expect(lowBase.score).toBeGreaterThanOrEqual(2.5) // not the false "fatigued/wrecked" a naive ratio gives
+  })
+  it('pregnant + low CTL (Xenia): a maintenance day is not falsely "fatigued"', () => {
+    const preg = freshness({ ctl: 12.9, atl: 23.7, form: -10.8, pregnant: true })
+    const notPreg = freshness({ ctl: 12.9, atl: 23.7, form: -10.8 })
+    expect(preg.score).toBeGreaterThanOrEqual(notPreg.score) // pregnancy de-weights the (HR-unreliable) ratio more
+    expect(preg.score).toBeGreaterThanOrEqual(3)
+  })
+  it('a WELL-BASED athlete (high CTL) is unaffected — full ACWR weight, still reads fresh', () => {
+    expect(freshness({ ctl: 30, atl: 29, form: 1 }).score).toBeGreaterThanOrEqual(4.7) // JM today — unchanged
+    expect(freshness({ ctl: 30, atl: 29, form: 1, pregnant: false }).score).toBe(freshness({ ctl: 30, atl: 29, form: 1 }).score)
+  })
 
   // #207 personalization: blend the absolute anchor with the athlete's OWN TSB range.
   it('a day that is UNUSUALLY loaded for you reads lower than the absolute anchor', () => {

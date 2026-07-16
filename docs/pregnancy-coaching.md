@@ -12,6 +12,14 @@ It is **coaching for health and function, never performance** — the app defers
   never computes/stashes a `cyclePhase`, and `buildSystemPrompt` emits the `# PREGNANCY` block *instead of*
   the `# CYCLE PHASE` block. (Without this, the coach was told "follicular → push intensity/PRs" while her
   profile said "pregnant → maintain" — a direct contradiction. That was the #427 bug.)
+- **Freshness de-weights the load ratio when pregnant (#536).** `/auth/readiness` passes `pregnant` into
+  `freshness()`, which multiplies the ACWR (acute:chronic) trust by **0.4**. Rationale: in pregnancy HR is an
+  unreliable intensity/load proxy (resting HR rises ~10–20 bpm → HR-derived ATL/ACWR is inflated; gauge by
+  **RPE / talk test**, ACOG Committee Opinion 804) AND the goal is **maintain, not overload**, so a load ratio
+  must not drive a "Fatigued" readiness on a normal maintenance day. This stacks on the general low-chronic-load
+  correction (ACWR is spurious at low CTL — Impellizzeri 2020; a pregnant runner in maintenance typically has a
+  low CTL, so both apply). Real case: Xenia (CTL ~13, ACWR ~1.8 on a light day) read "Fatigued 2" → now ~3. The
+  absolute-Form (TSB) signal and the subjective check-in still carry the read. See `docs/readiness-scores.md`.
 - **Knowledge** lives in `coach-engine-female.md` §6 (trimester-by-trimester); the runtime block gives the
   current week/trimester + the core guardrails and STOP signs.
 

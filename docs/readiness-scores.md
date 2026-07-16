@@ -180,6 +180,12 @@ TSB (Form) = CTL − ATL                                           # +ve = fresh
 
 Interpolate continuously (ACWR 1.15 → between 3 and 4). If absolute TSB is highly negative, apply a **downward override** capping freshness (prevent over-prescription during a big volume block).
 
+**#536 — low-chronic-load correction (trust ACWR in proportion to CTL).** The ACWR is mathematically **noisy / spurious at low chronic load** — a large ratio produced by a tiny absolute base is *not* the same fatigue/injury signal as the same ratio on a real base. Evidence: Impellizzeri et al. (2020) *"Acute:Chronic Workload Ratio: Conceptual Issues and Fundamental Pitfalls"* (the ratio **magnifies the acute-load effect** without adding predictive value); Lolli et al. (2019, mathematical coupling → spurious correlation, inflated odds ratios); Wang et al. (2020) *"…Time to Dismiss ACWR"* (the chronic denominator contributes little). So `freshness()` weights the ACWR component by **`acwrTrust = clamp((CTL−8)/22, 0, 1)`** and leans on absolute Form (TSB) when the base is low — a well-based athlete (CTL ≥ 30) is unchanged (full weight). Fixed a pregnant, low-CTL runner (Xenia, CTL ~13) falsely reading "Fatigued 2" on a normal maintenance day.
+
+**Pregnancy — de-weight the ratio further.** In pregnancy, HR-derived load is **unreliable** (resting HR rises ~10–20 bpm; intensity is gauged by RPE / the talk test, not HR — ACOG Committee Opinion 804) and the goal is **maintain, not overload**, so a load ratio should not drive a "fatigued" reading. When `info.pregnant`, `acwrTrust` is multiplied by **0.4**. See `docs/pregnancy-coaching.md`.
+
+**Display (#536):** the Today check-in ⓘ shows the RAW numbers with a **sign + a plain word** ("Form +1 (fresh), load ratio 0.97 (balanced)") so a healthy Form can't be misread against the "1 = wrecked" legend; a non-overridden row also **re-derives live** through the day instead of freezing at the morning check-in snapshot.
+
 ## The Energy Score: Synthesizing Autonomic + Behavioral Data
 
 Energy reflects the systemic ANS state (vs Freshness = muscle mechanics). An athlete can be Freshness 5 (3 rest days) yet Energy 1 (virus / severe stress). It's the ultimate daily readiness / allostatic-load capacity.

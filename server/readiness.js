@@ -68,7 +68,7 @@ export function baselines(history = []) {
 // --- the three scores -----------------------------------------------------
 
 // FRESHNESS (1–5) — training-load freshness from ACWR (ATL/CTL) + TSB/Form (CTL−ATL). Objective.
-export function freshness({ atl, ctl, form, tsbBaseline } = {}) {
+export function freshness({ atl, ctl, form, tsbBaseline, pregnant = false } = {}) {
   const acwr = atl != null && ctl != null && ctl > 0 ? atl / ctl : null
   const tsb = form != null ? form : (ctl != null && atl != null ? ctl - atl : null)
   // Recalibrated 2026-07-15 (JM: "Freshness is rarely 5 — a good training day should read 5, not just a taper").
@@ -77,9 +77,20 @@ export function freshness({ atl, ctl, form, tsbBaseline } = {}) {
   // accumulates (Form < −10 / ACWR > 1.3) and hits 1 in a deep block. So a recovered, on-plan day is achievable at 5.
   const a = acwr == null ? null : lerpMap(acwr, [[1.2, 5], [1.3, 4], [1.4, 3], [1.55, 2], [1.9, 1]])
   const t = tsb == null ? null : lerpMap(tsb, [[-32, 1], [-28, 2], [-18, 3], [-10, 4], [-5, 5], [5, 5]])
-  const parts = [a, t].filter((x) => x != null)
-  if (!parts.length) return null
-  let score = parts.reduce((s, x) => s + x, 0) / parts.length
+  // #536 — TRUST the ACWR component in proportion to chronic load. ACWR is mathematically noisy/spurious at LOW
+  // chronic load — a big ratio on a tiny absolute base isn't real fatigue (Impellizzeri 2020 "Conceptual Issues &
+  // Fundamental Pitfalls"; Lolli 2019 mathematical coupling; Wang 2020 "chronic load adds little"). So at low CTL
+  // we lean on absolute Form (TSB); a well-based athlete (CTL≥30) still gets full ACWR weight → unchanged.
+  // PREGNANCY: HR-derived load is unreliable (ACOG 804 — pregnancy raises HR ~10–20 bpm, gauge by RPE/talk test,
+  // not HR) AND the goal is MAINTAIN not overload → trust the ratio even less. Never over-alarms a maintenance day.
+  let acwrTrust = ctl == null ? 1 : clamp((ctl - 8) / 22, 0, 1)
+  if (pregnant) acwrTrust *= 0.4
+  const parts = []
+  if (t != null) parts.push({ v: t, w: 1 })
+  if (a != null) parts.push({ v: a, w: t != null ? acwrTrust : 1 }) // ACWR-only (no Form) → it's all we have, full weight
+  const wsum = parts.reduce((s, p) => s + p.w, 0)
+  if (wsum <= 0) return null
+  let score = parts.reduce((s, p) => s + p.v * p.w, 0) / wsum
   // #207 PERSONALIZATION: the zone score above is the absolute anchor (keeps "positive Form = fresh"
   // + the less-conservative neutral). On top, learn from the athlete's OWN load range — z-score today's
   // TSB vs their rolling baseline and nudge ±1: a day that's unusually LOADED *for you* reads lower, an
@@ -309,19 +320,19 @@ export function periodizedLoads(from, to, blocks, { restDows = [1], weekendBoost
 
 /** Expected freshness (1–5) at a future date: project Form over the planned loads, then map.
  *  `plannedLoads` = TSS per day from the day AFTER `current` up to and including the target. */
-export function forecastFreshness({ ctl, atl, tsbBaseline } = {}, plannedLoads = []) {
+export function forecastFreshness({ ctl, atl, tsbBaseline, pregnant = false } = {}, plannedLoads = []) {
   const p = projectForm({ ctl, atl }, plannedLoads)
-  const fr = freshness({ atl: p.atl, ctl: p.ctl, form: p.form, tsbBaseline })
+  const fr = freshness({ atl: p.atl, ctl: p.ctl, form: p.form, tsbBaseline, pregnant })
   return { ...p, freshness: fr ? fr.score : null, acwr: fr ? fr.acwr : null }
 }
 
 // --- top-level ------------------------------------------------------------
 // history: wellness rows BEFORE today (for baselines). today: today's wellness row.
 // opts: { sleepNeed, subjective, checkins } (subjective = user's tap; checkins = for calibration).
-export function readiness(history = [], today = {}, { sleepNeed = 8, subjective, checkins = [], cyclePhase = null } = {}) {
+export function readiness(history = [], today = {}, { sleepNeed = 8, subjective, checkins = [], cyclePhase = null, pregnant = false } = {}) {
   const base = baselines(history)
   const sl = sleep({ sleepScore: today.sleepScore, sleepHours: today.sleepHours, sleepNeed })
-  const fr = freshness({ atl: today.fatigue != null ? today.fatigue : today.atl, ctl: today.fitness != null ? today.fitness : today.ctl, form: today.form, tsbBaseline: base.tsbBaseline })
+  const fr = freshness({ atl: today.fatigue != null ? today.fatigue : today.atl, ctl: today.fitness != null ? today.fitness : today.ctl, form: today.form, tsbBaseline: base.tsbBaseline, pregnant })
   // #329 — don't penalise Energy for the luteal phase's hormonal RHR↑/HRV↓ (correct today's reading).
   const cycAdj = cyclePhase ? cycleReadinessAdjust(cyclePhase) : null
   const en = energy({ hrv: today.hrv, rhr: today.restingHR, sleep: sl && sl.score, subjective, hrvBaseline: base.hrvBaseline, rhrBaseline: base.rhrBaseline, cycleAdjust: cycAdj })
