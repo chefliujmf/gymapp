@@ -94,6 +94,22 @@ export function gymSessionFromPlan(p: CoachPlan): AdHocSession {
  *  title on the same day — which is exactly how Today marks the card "✓ Completed"
  *  (title+date). Match BOTH so a completed card always opens its result, never the player.
  *  Pure + generic (no db import) so it's unit-testable and shared by the detail + summary. */
+// #feedback-key-audit — resolve a gym session's feedback keys ROBUSTLY. A session has several ids that appear at
+// different points in its life (a coach plan id at planning, a device activity id once a watch syncs, its date
+// always) — feedback entered under ANY of them must be found. Priority for the CANONICAL (what we save to): the
+// PLAN id (unique + stable + present at every view of a planned session), else the device ACTIVITY id, else the
+// date (last resort; assumes ≤1 gym/day). `altIds` = every other candidate, LOADED as fallbacks so nothing ever
+// "vanishes"; a save then consolidates onto the canonical. Pure + unit-tested.
+export function gymFeedbackKeys(opts: { date: string; planId?: string; activityId?: string | number; workoutId?: string }): { id: string; altIds: string[] } {
+  const cands = [
+    opts.planId,
+    opts.activityId != null ? String(opts.activityId) : undefined,
+    opts.date ? `gym-${opts.date}` : undefined,
+    opts.date && opts.workoutId ? `gym-${opts.date}-${opts.workoutId}` : undefined, // legacy
+  ].filter((k): k is string => !!k)
+  const uniq = [...new Set(cands)]
+  return { id: uniq[0] || `gym-${opts.date}`, altIds: uniq.slice(1) }
+}
 export function findGymLogForPlan<T extends { workoutId: string; title?: string; date: string; completedAt?: number }>(
   plan: { id: string; title: string; date: string },
   logs: readonly T[],

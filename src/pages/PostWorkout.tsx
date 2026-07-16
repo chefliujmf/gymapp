@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getCoachPlan, findGymLogForPlan } from '../plan'
+import { getCoachPlan, findGymLogForPlan, gymFeedbackKeys } from '../plan'
 import { authApi, type CoachReview } from '../auth/api'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
 import { DoneStats } from '../ui'
@@ -30,7 +30,8 @@ export default function PostWorkout() {
   const [gymLog, setGymLog] = useState<WorkoutLog | null>(null)
   const [bestE1rm, setBestE1rm] = useState<Map<string, { e1rm: number; date: string }>>(new Map())
   const [review, setReview] = useState<CoachReview | null>(null)
-  useEffect(() => { if (p && p.sport !== 'gym') fetchActivities(p.date, p.date).then((a) => setAct(a.find((x) => sportOfActivity(x) === p.sport))).catch(() => {}) }, [p?.date, p?.sport])
+  // fetch the day's device activity for EVERY sport incl. gym — a watch-recorded gym gives us HR + time (#NNN).
+  useEffect(() => { if (p) fetchActivities(p.date, p.date).then((a) => setAct(a.find((x) => sportOfActivity(x) === p.sport))).catch(() => {}) }, [p?.date, p?.sport])
   useEffect(() => {
     if (!p || p.sport !== 'gym') return
     // #326 — resolve the completed log the SAME way the card/detail do (plan-id OR title+day), so the
@@ -51,7 +52,10 @@ export default function PostWorkout() {
       <div>
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
         <div className="page-head"><span className="eyebrow">Gym · ✓ Completed{gymLog.duration ? ` · ${gymLog.duration} min` : ''}</span><h1>{p.title}</h1></div>
-        <GymSummary minutes={gymLog.duration || 0} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={`gym-${gymLog.date}-${gymLog.workoutId}`} feedbackDate={gymLog.date} />
+        {(() => {
+          const fk = gymFeedbackKeys({ date: gymLog.date, planId: p.id, activityId: act?.id, workoutId: gymLog.workoutId })
+          return <GymSummary minutes={gymLog.duration || 0} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={gymLog.date} planId={p.id} activityId={act?.id != null ? String(act.id) : undefined} avgHr={(act as { icu_average_hr?: number; average_heartrate?: number } | undefined)?.icu_average_hr || (act as { average_heartrate?: number } | undefined)?.average_heartrate} />
+        })()}
       </div>
     )
   }

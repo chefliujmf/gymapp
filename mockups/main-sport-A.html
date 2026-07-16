@@ -1,0 +1,92 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--line:#2a2f3a;--warn:#ffb13d;--gold:#ffd24a}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+body{background:#07090c;color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:18px;display:flex;flex-wrap:wrap;gap:16px;justify-content:center}
+.card{width:380px;background:var(--bg);border-radius:20px;padding:18px 16px;border:1px solid #23272f}
+.cap{font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--accent);text-transform:uppercase;margin:0 0 4px}
+.sub{font-size:11.5px;color:var(--dim);margin:0 0 13px;line-height:1.4}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{font-size:14px;padding:9px 14px;border-radius:999px;border:1px solid var(--line);color:var(--dim);background:#12151c;display:inline-flex;align-items:center;gap:7px;position:relative}
+.chip.on{background:var(--accent);color:#062012;border-color:var(--accent);font-weight:700}
+.chip.off{color:var(--dim)}
+.starL{color:var(--gold);font-size:14px}
+.starL.empty{color:#0a2417;opacity:.55}
+.badge{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;background:#062012;color:#0f1216;padding:2px 7px;border-radius:999px;background:rgba(6,32,18,.35);color:#053a20}
+.crown{position:absolute;top:-9px;right:-6px;font-size:15px;filter:drop-shadow(0 1px 2px #000)}
+.ring{box-shadow:0 0 0 2px var(--gold);}
+.cornerstar{position:absolute;top:-8px;right:-7px;font-size:14px;color:var(--gold);background:#0f1216;border-radius:999px;width:19px;height:19px;display:flex;align-items:center;justify-content:center;border:1px solid var(--gold)}
+.starR{margin-left:2px;font-size:15px}
+.starR.on{color:var(--gold)}.starR.off{color:#0a2417;opacity:.6}
+.cap2{font-size:12px;color:var(--dim);margin-top:10px}
+.cap2 b{color:var(--gold)}
+</style></head><body>
+
+<div class="card">
+  <div class="cap">A1 · ★ left of the label</div>
+  <div class="sub">Filled ★ = main. Tap the faint ☆ on another sport to promote it.</div>
+  <div class="chips">
+    <span class="chip on"><span class="starL">★</span> 🚴 Cycling</span>
+    <span class="chip on"><span class="starL empty">☆</span> 🏋️ Gym</span>
+    <span class="chip off">🏃 Running</span>
+    <span class="chip off">🧘 Mind</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="cap">A2 · "main" text badge</div>
+  <div class="sub">The primary carries a small <b>main</b> tag; tap a plain selected chip to move it.</div>
+  <div class="chips">
+    <span class="chip on">🚴 Cycling <span class="badge">main</span></span>
+    <span class="chip on">🏋️ Gym</span>
+    <span class="chip off">🏃 Running</span>
+    <span class="chip off">🧘 Mind</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="cap">A3 · crown on the corner</div>
+  <div class="sub">A 👑 badge marks the main sport — playful, unmistakable.</div>
+  <div class="chips">
+    <span class="chip on"><span class="crown">👑</span> 🚴 Cycling</span>
+    <span class="chip on">🏋️ Gym</span>
+    <span class="chip off">🏃 Running</span>
+    <span class="chip off">🧘 Mind</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="cap">A4 · gold ring + caption</div>
+  <div class="sub">The main chip gets a gold ring; a caption names it below.</div>
+  <div class="chips">
+    <span class="chip on ring">🚴 Cycling</span>
+    <span class="chip on">🏋️ Gym</span>
+    <span class="chip off">🏃 Running</span>
+    <span class="chip off">🧘 Mind</span>
+  </div>
+  <div class="cap2">★ Main sport: <b>Cycling</b> — tap another to change</div>
+</div>
+
+<div class="card">
+  <div class="cap">A5 · star on the RIGHT (separate tap-target)</div>
+  <div class="sub">Star sits after the label — a clear, separate tap from selecting the sport.</div>
+  <div class="chips">
+    <span class="chip on">🚴 Cycling <span class="starR on">★</span></span>
+    <span class="chip on">🏋️ Gym <span class="starR off">☆</span></span>
+    <span class="chip off">🏃 Running</span>
+    <span class="chip off">🧘 Mind</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="cap">A6 · corner star badge</div>
+  <div class="sub">A small ★ chip pinned to the corner of the main sport.</div>
+  <div class="chips">
+    <span class="chip on"><span class="cornerstar">★</span> 🚴 Cycling</span>
+    <span class="chip on">🏋️ Gym</span>
+    <span class="chip off">🏃 Running</span>
+    <span class="chip off">🧘 Mind</span>
+  </div>
+</div>
+
+</body></html>

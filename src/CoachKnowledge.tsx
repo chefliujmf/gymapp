@@ -22,17 +22,17 @@ export default function CoachKnowledge() {
     .then(() => { setSaved(true); setTimeout(() => setSaved(false), 1500); refresh().catch(() => {}) }).catch(() => {})
 
   return (
-    <div className="card" style={{ border: '1px solid #2f3b34', background: 'linear-gradient(#1c2620,#161c19)' }}>
+    <div className="card" style={{ padding: 16 }}>
       <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 14 }}>🧠 What your coach knows about you</div>
 
       {/* ── Your goal, in your own words (or just tell the coach in chat) ── */}
       <div style={GRP}>🎯 Your goal {saved && <span className="meta" style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>· Saved ✓</span>}</div>
       <p className="meta" style={{ margin: '0 2px 8px' }}>What are you training for? Write it in your own words — or just tell your coach in chat and it'll ask what it needs.</p>
-      <textarea className="search" style={{ minHeight: 84, resize: 'vertical' }} value={notes}
+      <textarea className="search" style={{ minHeight: 68, resize: 'vertical', width: '100%' }} value={notes}
         placeholder={'e.g. “stay consistent and raise my endurance — I don\'t want to bulk up.”'}
         onChange={(e) => setNotes(e.target.value)} onBlur={(e) => save(e.target.value.trim())} />
 
-      <div style={{ height: 1, background: '#2a2f3a', margin: '14px -14px 12px' }} />
+      <div style={{ height: 1, background: '#2a2f3a', margin: '16px -16px 14px' }} />
 
       {/* ── It's learning ── */}
       <div style={GRP}>📈 It's learning <span className="meta" style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>from your training</span></div>

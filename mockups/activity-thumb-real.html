@@ -1,0 +1,34 @@
+<meta charset="utf-8">
+<title>IntensityThumb — real render</title>
+<style>
+  body{background:#07090c;color:#eef1f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:20px}
+  h1{font-size:14px;margin:0 0 14px}
+  .grid{display:flex;gap:14px;flex-wrap:wrap}
+  .cell{text-align:center}
+  .lab{font-size:11px;color:#9298a6;margin-top:8px}
+  /* EXACT CSS from src/styles.css */
+  .thumb { width: 72px; height: 72px; flex: none; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+  .thumb--sig { background: radial-gradient(120% 120% at 30% 20%, #1c2230 0%, #141922 55%, #0e1116 100%); }
+  .sig-ring { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
+  .sig-ring__hole { width: 34px; height: 34px; border-radius: 50%; background: #14171d; display: flex; align-items: baseline; justify-content: center; font-size: 14px; font-weight: 800; color: #eef1f4; letter-spacing: -.02em; }
+  .sig-ring__pct { font-size: 8px; font-weight: 700; opacity: .65; margin-left: 1px; }
+  /* a full card row for context */
+  .card{background:linear-gradient(#21252f,#191c24);border:1px solid #2a2f3a;border-radius:15px;padding:12px;margin-top:20px;width:360px}
+  .row{display:flex;align-items:center;gap:12px}
+  .body .eyebrow{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#9298a6}
+  .body h3{font-size:15px;font-weight:800;margin:1px 0 5px;opacity:.85}
+  .stats{display:flex;gap:5px}.st{font-size:11px;color:#9298a6;background:#12151b;border:1px solid #242a34;border-radius:7px;padding:2px 7px}.st b{color:#eef1f4}
+</style>
+<h1>IntensityThumb — real component CSS, by Intensity Factor (zone-colored donut)</h1>
+<div class="grid">
+  <div class="cell"><div class="thumb thumb--sig"><div class="sig-ring" style="background:conic-gradient(#5aa0d6 44deg,rgba(255,255,255,.13) 44deg)"><div class="sig-ring__hole">48<span class="sig-ring__pct">%</span></div></div></div><div class="lab">Recovery</div></div>
+  <div class="cell"><div class="thumb thumb--sig"><div class="sig-ring" style="background:conic-gradient(#34e07d 110deg,rgba(255,255,255,.13) 110deg)"><div class="sig-ring__hole">63<span class="sig-ring__pct">%</span></div></div></div><div class="lab">Endurance</div></div>
+  <div class="cell"><div class="thumb thumb--sig"><div class="sig-ring" style="background:conic-gradient(#e0c34e 176deg,rgba(255,255,255,.13) 176deg)"><div class="sig-ring__hole">78<span class="sig-ring__pct">%</span></div></div></div><div class="lab">Tempo / SS</div></div>
+  <div class="cell"><div class="thumb thumb--sig"><div class="sig-ring" style="background:conic-gradient(#e8933f 250deg,rgba(255,255,255,.13) 250deg)"><div class="sig-ring__hole">95<span class="sig-ring__pct">%</span></div></div></div><div class="lab">Threshold</div></div>
+  <div class="cell"><div class="thumb thumb--sig"><div class="sig-ring" style="background:conic-gradient(#e0574e 325deg,rgba(255,255,255,.13) 325deg)"><div class="sig-ring__hole">112<span class="sig-ring__pct">%</span></div></div></div><div class="lab">VO₂ / hard</div></div>
+  <div class="cell"><div class="thumb thumb--gym" style="background:radial-gradient(120% 120% at 30% 20%,#4a4f9e,#343a6e 55%,#1f2240)"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="1.75"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></div><div class="lab">Gym (no IF → icon)</div></div>
+</div>
+<div class="card"><div class="row">
+  <div class="thumb thumb--sig"><div class="sig-ring" style="background:conic-gradient(#34e07d 110deg,rgba(255,255,255,.13) 110deg)"><div class="sig-ring__hole">63<span class="sig-ring__pct">%</span></div></div></div>
+  <div class="body"><span class="eyebrow">Ride · completed</span><h3>Endurance Spin</h3><div class="stats"><span class="st"><b>69</b> min</span><span class="st"><b>34.3</b> km</span><span class="st"><b>157</b> W</span><span class="st"><b>47</b> TSS</span></div></div>
+</div></div>

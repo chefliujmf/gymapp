@@ -1,0 +1,73 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--warn:#ffb13d;--blue:#7fd1ff;--gold:#ffd24a}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+body{background:#07090c;color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;display:flex;gap:18px;justify-content:center;flex-wrap:wrap}
+.phone{width:404px;background:var(--bg);border-radius:22px;padding:16px 14px 26px;border:1px solid #23272f}
+.cap{font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--accent);text-transform:uppercase;margin:0 0 10px;text-align:center}
+.back{width:34px;height:34px;border-radius:50%;background:#1a1e27;border:1px solid var(--line);color:var(--dim);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.thumb{width:52px;height:52px;border-radius:12px;flex:none;background:#12151c;border:1px solid var(--line);display:flex;align-items:flex-end;gap:2px;padding:6px}
+.thumb i{flex:1;background:linear-gradient(#34e07d,#1f8f52);border-radius:2px 2px 0 0}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--dim)}
+h1{font-size:22px;font-weight:800;letter-spacing:-.4px;margin:2px 0 0}
+.card{background:linear-gradient(var(--card1),var(--card2));border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:11px}
+.coach{border:1px solid #2f3b34;background:linear-gradient(#1b241f,#151b18)}
+.verline{display:flex;gap:9px;font-size:13.5px;line-height:1.5;margin-bottom:7px}
+.verline b{color:var(--accent)}
+.subhd{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);margin:12px 2px 7px}
+.fbrow{display:flex;gap:7px;flex-wrap:wrap;margin:2px 0 4px}
+.fb{font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:#12151c;color:var(--text)}
+.fb.on{border-color:var(--accent);color:var(--accent);background:#123420;font-weight:700}
+.links{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;padding-top:9px;border-top:1px solid #2a352d}
+.links a{font-size:12.5px;font-weight:600;color:var(--blue);text-decoration:none}
+.hero{display:flex;gap:8px;margin-bottom:9px}
+.hero .ht{flex:1;background:#12151c;border:1px solid var(--line);border-radius:12px;padding:11px 8px;text-align:center}
+.hero .ht b{display:block;font-size:19px;font-weight:800;letter-spacing:-.4px}
+.hero .ht span{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.3px}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}
+.chip{font-size:12px;padding:5px 10px;border-radius:999px;background:#12151c;border:1px solid var(--line)}
+.chip b{color:var(--text)}
+.ins{background:#12180f;border:1px solid #26421f;border-radius:12px;padding:11px 12px;font-size:13px;line-height:1.5;display:flex;gap:8px}
+.st{font-size:13px;font-weight:800;margin:16px 2px 9px}.st .m{color:var(--dim);font-weight:400;font-size:12px}
+.exc{background:#12151c;border:1px solid var(--line);border-radius:13px;padding:12px;margin-bottom:8px}
+.exc .top{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700}
+.exc .top .r{color:var(--dim);font-size:11px;font-weight:600}
+.prb{font-size:9.5px;font-weight:800;color:var(--gold);border:1px solid #5a4d1a;background:#241f10;border-radius:999px;padding:1px 6px;margin-left:6px}
+.sets{font-size:12px;color:var(--dim);margin:5px 0 6px}
+.bar{height:6px;border-radius:4px;background:#0d1014;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,#1f8f52,#34e07d)}
+</style></head><body>
+
+<div class="phone">
+  <div class="cap">Completed gym — matches ride/run (coach + your feedback = ONE block, top)</div>
+  <div class="back">‹</div>
+  <div class="head">
+    <div class="thumb"><i style="height:60%"></i><i style="height:85%"></i><i style="height:50%"></i><i style="height:72%"></i></div>
+    <div style="min-width:0"><div class="eyebrow">Gym · Fri, Jun 19 · 1h 11m</div><h1>Rainy Day Full-Body Strength</h1></div>
+  </div>
+
+  <div class="card coach">
+    <div class="verline">⭐ <span><b>Score 7/10.</b> Solid re-entry dose — full-body, controlled, right effort. Legs stayed fresh for the weekend ride.</span></div>
+    <div class="verline">• <span>HR averaged 118 bpm — a real strength stimulus without cutting into recovery.</span></div>
+    <div class="verline">➡️ <span><b>Next:</b> nudge the press up a little — you owned every rep.</span></div>
+    <div class="subhd">Your feedback</div>
+    <div class="fbrow"><span class="fb">😀 Great</span><span class="fb on">🙂 Good</span><span class="fb">😐 Okay</span><span class="fb">😣 Hard</span></div>
+    <div class="fbrow"><span class="fb on">RPE 6</span><span class="fb" style="flex:1;text-align:left;color:var(--dim)">＋ add a note for your coach…</span></div>
+    <div class="links"><a>📋 Planned workout →</a><a>📈 View activity (HR) →</a></div>
+  </div>
+
+  <div class="hero">
+    <div class="ht"><b>9,440<span style="font-size:11px;color:var(--dim)">kg</span></b><span>Volume</span></div>
+    <div class="ht"><b>20</b><span>Sets</span></div>
+    <div class="ht"><b>168</b><span>Reps</span></div>
+    <div class="ht"><b>1h11</b><span>Time</span></div>
+  </div>
+  <div class="chips"><span class="chip"><b>Chest</b></span><span class="chip"><b>Back</b></span><span class="chip"><b>Shoulders</b></span><span class="chip"><b>Legs</b></span><span class="chip"><b>118</b> bpm avg</span><span class="chip"><b>1</b> PR 🏅</span></div>
+  <div class="ins">💡 <span>20 sets · 9,440 kg moved · 1 PR 🏅. Good full-body re-entry — recover well, protein tonight.</span></div>
+
+  <div class="st">By exercise <span class="m">· tap for progress</span></div>
+  <div class="exc"><div class="top"><span>Dumbbell Bench Press <span class="prb">PR 🏅</span></span><span class="r">est 1RM 100 kg ›</span></div><div class="sets">30×8 · 30×8 · 30×7 · 27×10 — 2,610 kg</div><div class="bar"><i style="width:82%"></i></div></div>
+  <div class="exc"><div class="top"><span>Lat Pulldown</span><span class="r">est 1RM 82 kg ›</span></div><div class="sets">60×10 · 60×10 · 55×10 — 1,750 kg</div><div class="bar"><i style="width:60%"></i></div></div>
+  <div class="exc"><div class="top"><span>Seated Shoulder Press</span><span class="r">est 1RM 60 kg ›</span></div><div class="sets">40×8 · 40×8 — 640 kg</div><div class="bar"><i style="width:26%"></i></div></div>
+</div>
+</body></html>

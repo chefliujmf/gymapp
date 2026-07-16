@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--warn:#ffb13d}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+body{background:#07090c;color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;display:flex;flex-wrap:wrap;gap:18px;justify-content:center}
+.phone{width:400px;background:var(--bg);border-radius:22px;padding:18px 16px 26px;border:1px solid #23272f}
+.cap{font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--accent);text-transform:uppercase;margin:0 0 12px;text-align:center}
+.cap.b{color:var(--warn)}
+.st{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);margin:2px 2px 9px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-size:14px;padding:9px 14px;border-radius:999px;border:1px solid var(--line);color:var(--dim);background:#12151c;display:inline-flex;align-items:center;gap:7px}
+.chip.on{background:var(--accent);color:#062012;border-color:var(--accent);font-weight:700}
+.chip .star{font-size:13px}
+.chip.primary{box-shadow:0 0 0 2px var(--warn);position:relative}
+.chip.primary .star{color:var(--warn)}
+.meta{color:var(--dim);font-size:12px;line-height:1.5}
+.mini{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.mini .p{font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--dim);background:#12151c;display:inline-flex;align-items:center;gap:6px}
+.mini .p.on{border-color:var(--warn);color:var(--warn);background:#241d10;font-weight:700}
+.divider{height:1px;background:var(--line);margin:16px 0}
+.note{background:#12180f;border:1px solid #26421f;border-radius:11px;padding:10px 12px;font-size:12px;line-height:1.5;margin-top:12px}
+.note b{color:var(--accent)}
+</style></head><body>
+
+<!-- ========= OPTION A: star on the selected chips ========= -->
+<div class="phone">
+  <div class="cap">Ⓐ ★ on the chips</div>
+  <div class="st">Sports</div>
+  <div class="chips">
+    <span class="chip on primary"><span class="star">★</span> 🚴 Cycling</span>
+    <span class="chip on"><span class="star">☆</span> 🏋️ Gym</span>
+    <span class="chip">🏃 Running</span>
+    <span class="chip">🧘 Mind</span>
+  </div>
+  <p class="meta" style="margin-top:9px">Pick all that apply. Tap <b style="color:var(--warn)">☆</b> on one to mark your <b style="color:var(--text)">main sport</b> — your coach prioritizes it (e.g. gym becomes *support* for a cyclist).</p>
+  <div class="note">💡 <b>Cycling</b> is your main sport → the coach treats <b>gym as support</b> (maintenance dose, kept clear of key rides), not a hypertrophy program.</div>
+</div>
+
+<!-- ========= OPTION B: a dedicated "main sport" row ========= -->
+<div class="phone">
+  <div class="cap b">Ⓑ dedicated "Main sport" row</div>
+  <div class="st">Sports</div>
+  <div class="chips">
+    <span class="chip on">🚴 Cycling</span>
+    <span class="chip on">🏋️ Gym</span>
+    <span class="chip">🏃 Running</span>
+    <span class="chip">🧘 Mind</span>
+  </div>
+  <p class="meta" style="margin-top:9px">Pick all that apply — tunes your nav &amp; coach.</p>
+  <div class="divider"></div>
+  <div class="st">Main sport <span style="text-transform:none;font-weight:400;color:#5b6270">· which comes first?</span></div>
+  <div class="mini">
+    <span class="p on">★ 🚴 Cycling</span>
+    <span class="p">🏋️ Gym</span>
+  </div>
+  <p class="meta" style="margin-top:9px">Only shows when you train 2+ sports. Your coach prioritizes it and dials the others to <b style="color:var(--text)">support</b> it.</p>
+  <div class="note">💡 Main = <b>Cycling</b> → <b>gym is support</b> (maintenance dose, scheduled around your rides).</div>
+</div>
+
+</body></html>

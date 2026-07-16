@@ -389,6 +389,10 @@ app.put('/auth/profile', auth, (req, res) => {
   if (typeof req.body.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
   if (Array.isArray(req.body.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)
   else if (typeof req.body.sport === 'string') req.user.sports = req.body.sport ? [req.body.sport.toLowerCase().trim().slice(0, 20)] : []
+  // #534 — MAIN sport (drives the coach's gym focus: main endurance sport → gym is support). Must be one the athlete does.
+  if ('mainSport' in req.body) { const ms = String(req.body.mainSport || '').toLowerCase().trim(); req.user.info.mainSport = ms && (req.user.sports || []).includes(ms) ? ms : undefined }
+  // keep the stored main sport valid after a sports change (dropped sport can't stay primary)
+  if (req.user.info.mainSport && !(req.user.sports || []).includes(req.user.info.mainSport)) req.user.info.mainSport = undefined
   if (typeof req.body.sex === 'string') req.user.sex = req.body.sex.trim().toLowerCase().slice(0, 10)
   // #207 Phase 2: athlete stats — personalize readiness (sleepNeed) + tell the coach how hard a
   // session is FOR this athlete (FTP/maxHR/VO2max). Clamp to sane ranges; 0/blank clears.
@@ -1432,12 +1436,21 @@ const COACH_ENGINE_FEMALE = loadEngine('coach-engine-female.md')   // gated by s
 const SPORT_ENGINES = [
   { key: 'cycling', file: 'coach-engine-cycling.md', sports: ['cycling', 'triathlon'], rx: /\b(cycl|bike|biking|\bride\b|\brides\b|ftp|w\/kg|wattage|triathlon|gran fondo)\b/i },
   { key: 'running', file: 'coach-engine-running.md', sports: ['running', 'triathlon'], rx: /\b(run|running|jog|marathon|\b5k\b|\b10k\b|half|ultra|vdot|daniels|threshold pace)\b/i },
+  // #534 — strength engine (peer to cycling/running): 1-RM + %1RM zones, GOAL-DEPENDENT volume, concurrent-training.
+  { key: 'strength', file: 'coach-engine-strength.md', sports: ['strength', 'gym'], rx: /\b(gym|strength|lift|lifting|weights?|squat|bench|deadlift|hypertroph|1[\s-]?rm|dumbbell|barbell)\b/i },
 ].map((e) => ({ ...e, text: loadEngine(e.file) }))
 
 function buildSystemPrompt(user) {
   const name = user.coachName || 'Coach'
   const prof = user.coachProfile || ''
   let p = coachIdentity(name)
+  // #533 — PLAIN LANGUAGE (vulgarisation, JM 2026-07-16): the athlete is NOT a coach or a lab tech. Never drop a
+  // technical term without a quick plain gloss the FIRST time you use it — tempo ("the count for each phase of a
+  // rep, e.g. ~3 s lowering"), RIR/RPE ("reps left in the tank" / "effort out of 10"), 1-RM ("the most you could
+  // lift once"), FTP ("the power you can hold ~1 h"), VO2max, VDOT, threshold, hypertrophy ("muscle growth"),
+  // concurrent training, etc. If explaining a term takes more than a clause, just say the plain thing instead.
+  // Prefer everyday words over gym/lab jargon EVERYWHERE the athlete reads you — chat, workout reviews, plan notes.
+  p += '\n\n# PLAIN LANGUAGE — the athlete is not a coach. Use everyday words; never use a technical term (tempo, RIR, RPE, 1-RM, FTP, VO2max, VDOT, threshold, hypertrophy, concurrent training, …) without a quick plain-language gloss the FIRST time, or just say the plain thing. This applies to chat, workout reviews, and any plan text they read.'
   // #448 — AUTHORITATIVE "today", in the ATHLETE'S local timezone. Without this the coach inferred the
   // date from its own runtime clock (UTC → a day ahead in the evening), so it treated the athlete's real
   // "today" (e.g. Wednesday) as tomorrow — mislabelling days ("today AND Wednesday") and removing/moving
@@ -1474,6 +1487,13 @@ function buildSystemPrompt(user) {
     const cc = fresh ? cycleContext({ phase: user.cyclePhase }) : null
     if (cc) tail += `\n\n# CYCLE PHASE — currently **${cc.phase}** (as of ${user.cyclePhaseAt}). ${cc.guidance} When you plan or adjust this week, apply a load bias of ~×${cc.loadModifier} for this phase (push intensity in the follicular/ovulatory green window; ease top-end + add recovery/Z2 + carbs/sleep in late-luteal/PMS if symptomatic). Don't over-medicalise it — many train through; adapt to how SHE reports feeling. Their late-luteal RHR/HRV naturally shift, so don't read that as poor recovery.`
     else if (!user.cyclePhase) tail += `\n\n# CYCLE PHASE — unknown. If it would help tailor load/recovery and she's open to it, ASK for her last period start date + typical cycle length (or connect it in intervals), then factor the phase into planning. Never assume; ask once, respect a "no".`
+  }
+  // #534 — GYM FOCUS: the coach adapts strength to the athlete's MAIN sport + objective (concurrent training).
+  const doesGymNow = sports.some((s) => ['strength', 'gym'].includes(s)) || /\b(gym|strength|lift|weights?)\b/i.test(prof)
+  if (doesGymNow) {
+    const ms = user.info && user.info.mainSport
+    const obj = ((user.info && user.info.goals && user.info.goals.notes) || '').trim()
+    tail += `\n\n# GYM FOCUS — main sport: ${ms || 'none set'}. Sports: ${sports.join(', ') || '—'}. Objective: ${obj ? `"${obj.slice(0, 240)}"` : 'not stated — ask what they want from the gym'}. Derive the gym focus per coach-engine-strength.md: an ENDURANCE main sport with NO muscle intent → pure SUPPORT (maintenance dose, minimal effective volume, kept clear of key rides/runs — never treat low gym volume as a deficit); an ENDURANCE main sport who ALSO wants muscle → SUPPORT+BUILD, i.e. **concurrent hypertrophy** (you CAN build lean muscle while the sport stays #1 — give a real but MODERATE dose ~6–12 hard sets/muscle/wk, dosed and scheduled around key sessions; don't wreck the sport, don't shame them for cycling-first); a MUSCLE goal with gym as the main event → full hypertrophy (10–20 sets/muscle/wk); a strength/1-RM goal → strength (heavy, >85% 1RM, low volume). Match volume, %1RM intensity, and scheduling to that focus AND the current phase — in a big endurance block, dial the gym down.`
   }
   // #207 Phase 2: the athlete's own benchmarks — so the coach judges intensity FOR THEM.
   const stats = []
@@ -2659,6 +2679,17 @@ app.put('/api/profile', apiAuth, (req, res) => {
   if (Array.isArray(req.body?.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)
   if (typeof req.body?.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
   save(store); res.json({ ok: true, sports: req.user.sports || [], coachName: req.user.coachName || '' })
+})
+// #534 — the COACH sets the athlete's weekly sets/muscle TARGET (JM: "why don't the coach define the target and we
+// use that?"). It drives the Stats "sets per muscle" band + status. setsLow=0 (or omitted) clears it → app falls
+// back to the frequency-scaled default. Base it on their sport/goal/phase AND their realistic gym frequency.
+app.put('/api/gym-target', apiAuth, (req, res) => {
+  req.user.info = req.user.info || {}
+  const n = (v) => { const x = Math.round(Number(v)); return Number.isFinite(x) ? Math.min(30, Math.max(0, x)) : 0 }
+  const low = n(req.body?.setsLow), high = Math.max(low, n(req.body?.setsHigh) || low)
+  if (!low) req.user.info.gymTarget = undefined
+  else req.user.info.gymTarget = { setsLow: low, setsHigh: high, note: String(req.body?.note || '').slice(0, 160) || undefined, at: Date.now() }
+  save(store); res.json({ ok: true, gymTarget: req.user.info.gymTarget || null })
 })
 // #313 — coach SAVES the athlete's threshold stats (FTP / threshold pace / max-HR / LTHR) it estimated
 // from their intervals history, so they PERSIST and anchor run %pace / ride %ftp on the device.

@@ -3,11 +3,12 @@ import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { fetchActivity, fetchActivities, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
 import { incompleteFeedback } from '../feedbackGaps'
 import { TrendChart, PowerCurveChart, PaceCurveChart, PowerBlocks, minuteTicks } from '../charts'
+import { Bike, Dumbbell, Footprints } from 'lucide-react'
 import { fmtPace } from '../running-paces'
 import { paceOf, bestPaceCurve, paceZoneSecs, PZONES, PZONE_PCT } from '../run-analysis'
 import { useAuth } from '../auth/AuthContext'
 import { zoneColor } from '../ui'
-import { findCoachPlan } from '../plan'
+import { findCoachPlan, gymFeedbackKeys } from '../plan'
 import { getSetting } from '../db'
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
@@ -304,7 +305,6 @@ export default function ActivityDetail() {
       a.avg_lr_balance ? ['L/R balance', `${Math.round(100 - a.avg_lr_balance)} · ${Math.round(a.avg_lr_balance)}`] : null,
     ]).filter(Boolean) as [string, string][]
   const device = a.device_name || a.source
-  const hasVerdict = !!review || !!note
   // #286 hero + chips: 4 headline stats big, the rest as compact chips (JM pick B)
   const HERO = isRun ? ['Distance', 'Avg pace', 'Load (TSS)', 'Avg HR'] : ['Load (TSS)', 'Norm power', 'Intensity', 'Avg HR']
   const hero: [string, string][] = stats.filter(([l]) => HERO.includes(l)).slice(0, 4)
@@ -316,16 +316,33 @@ export default function ActivityDetail() {
     <div>
       <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
-        {!isRun && (streams.watts?.filter((v) => v != null).length || 0) >= 9 && <div className="act-thumb"><PowerBlocks watts={streams.watts} ftp={ftp} /></div>}
+        {/* EVERY activity gets a thumbnail (JM audit): rides with power → PowerBlocks; else a sport-icon thumb
+            (runs, gym, power-less rides) so the header is never blank — matches the calendar/day cards. */}
+        {!isRun && (streams.watts?.filter((v) => v != null).length || 0) >= 9
+          ? <div className="act-thumb"><PowerBlocks watts={streams.watts} ftp={ftp} /></div>
+          : <div className={'act-thumb thumb--' + sportOfActivity(a)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{sportOfActivity(a) === 'ride' ? <Bike strokeWidth={1.75} /> : sportOfActivity(a) === 'gym' ? <Dumbbell strokeWidth={1.75} /> : <Footprints strokeWidth={1.75} />}</div>}
         <div style={{ minWidth: 0 }}>
           <span className="eyebrow">{sportOfActivity(a) === 'ride' ? 'Ride' : sportOfActivity(a) === 'run' ? 'Run' : 'Workout'} · {isIndoorActivity(a) ? 'Indoor' : 'Outdoor'}{a.start_date_local ? ` · ${new Date(a.start_date_local).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}</span>
           <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Activity'}</h1>
         </div>
       </div>
 
-      {!hasVerdict && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} onSaved={afterSave} />}
-
+      {/* #503/#JM 2026-07-15 — MERGED TOP: coach verdict → your feedback → source links, ONE place (was: coach duplicated
+          top+bottom, feedback + links buried at the bottom). reviewShownAbove drops the duplicate review + "See all" link. */}
       <CoachVerdict review={review} note={note} />
+      {(() => {
+        const dISO = (a.start_date_local || '').slice(0, 10)
+        // gym feedback uses the shared resolver (plan id / activity id / date) so it's the SAME entry as the gym
+        // summary + done screen; ride/run keep the activity id. (#feedback-key-audit)
+        const fk = sportOfActivity(a) === 'gym' ? gymFeedbackKeys({ date: dISO, planId: plan?.id, activityId: a.id }) : { id: String(a.id), altIds: [] as string[] }
+        return <ActivityFeedback id={fk.id} altIds={fk.altIds} sport={sportOfActivity(a)} date={dISO} icuExisting={readIcuFeedback(a)} icuNote={icuComment} onSaved={afterSave} reviewShownAbove />
+      })()}
+      <div className="links" style={{ margin: '6px 2px 12px' }}>
+        {plan && <Link className="done-link done-link--map" to={`/coach/${plan.id}`}>📋 Planned workout →</Link>}
+        {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}
+        {a.strava_id && <a className="done-link" href={`https://www.strava.com/activities/${a.strava_id}`} target="_blank" rel="noreferrer">Strava ↗</a>}
+        {device && <span className="done-link" style={{ opacity: 0.7 }}>from {device}</span>}
+      </div>
       {a.description && a.description.trim() && (
         <p className="meta" style={{ margin: '2px 2px 10px', whiteSpace: 'normal' }}>{a.description.replace(/\s*(#{1,3})\s*/g, ' ').replace(/\*\*/g, '').trim()}</p>
       )}
@@ -345,15 +362,6 @@ export default function ActivityDetail() {
       {activeTab === 'timeline' && (isRun ? <RunTimeline streams={streams} a={a} /> : <RideTimeline streams={streams} a={a} />)}
       {activeTab === 'power' && (isRun ? <RunPace streams={streams} thrPace={thrPace} /> : <RidePower streams={streams} ftp={ftp} />)}
       {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
-
-      {hasVerdict && <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} onSaved={afterSave} />}
-
-      <div className="links" style={{ marginTop: 12 }}>
-        {plan && <Link className="done-link done-link--map" to={`/coach/${plan.id}`}>📋 Planned workout →</Link>}
-        {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}
-        {a.strava_id && <a className="done-link" href={`https://www.strava.com/activities/${a.strava_id}`} target="_blank" rel="noreferrer">Strava ↗</a>}
-        {device && <span className="done-link" style={{ opacity: 0.7 }}>from {device}</span>}
-      </div>
     </div>
   )
 }

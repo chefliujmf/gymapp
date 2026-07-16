@@ -104,6 +104,12 @@ server.tool('set_sports',
   { sports: z.array(z.string()).describe('e.g. ["cycling","strength"]') },
   wrap((a) => api('PUT', '/api/profile', { sports: a.sports })))
 
+// #534 — YOU define the athlete's weekly sets/muscle TARGET; the Stats "sets per muscle" band + low/ok/high use it.
+server.tool('set_gym_target',
+  'Set THIS athlete\'s weekly working-sets-per-muscle target — the band the Strength stats page judges their volume against (low/ok/high). Base it on their GOAL + main sport + phase AND their realistic gym FREQUENCY: someone who lifts 1×/week cannot hit a 3–4×/week volume, so give an ACHIEVABLE band (e.g. ~2–4 sets/muscle at 1×/week, ~6–12 at 3×/week). Endurance-first athletes keep it modest (support/maintenance or concurrent-hypertrophy ~6–12); pure muscle-building trainees run 10–20. Re-set it when their goal, sport priority, or schedule changes. setsLow=0 clears it (app falls back to a frequency-scaled default). Explain the number to them in plain words.',
+  { setsLow: z.number().describe('bottom of the weekly sets/muscle target (0 to clear)'), setsHigh: z.number().describe('top of the target'), note: z.string().optional().describe('one short plain-language line shown to the athlete, e.g. "1 gym day/week supporting your bike — full-body, ~3 sets each is on-plan"') },
+  wrap((a) => api('PUT', '/api/gym-target', { setsLow: a.setsLow, setsHigh: a.setsHigh, note: a.note })))
+
 // #313 — SAVE the athlete's threshold stats. CRUCIAL for runs/rides: without a threshold pace / FTP
 // set, %pace / %ftp workout targets have nothing to resolve against on their watch. If a value is
 // missing, ESTIMATE it from get_recent_activities / get_wellness (recent hard efforts, eFTP, best

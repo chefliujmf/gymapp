@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting, listTemplates, listRideTemplates, type WorkoutTemplate, type RideTemplate } from '../db'
 import { WeekStrip, MiniProfile, DoneStats } from '../ui'
-import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
+import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, fetchActivityStreams, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
+import { PowerBlocks } from '../charts'
 import { incompleteFeedback } from '../feedbackGaps' // #387 — surface the "to review" count on Today
 import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, setCoachPlans, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
@@ -370,11 +371,16 @@ function ActivityCard({ a }: { a: IcuActivity }) {
   const sport = sportOfActivity(a) // 'run' | 'ride' | 'gym'
   const icon = sport === 'ride' ? <Bike strokeWidth={1.75} /> : sport === 'gym' ? <Dumbbell strokeWidth={1.75} /> : <Footprints strokeWidth={1.75} />
   const label = sport === 'ride' ? 'Ride' : sport === 'gym' ? 'Gym' : 'Run'
+  // A completed (unplanned) ride shows its real power profile, like the detail page + planned MiniProfile,
+  // instead of a generic icon (JM: keep the thumbnail consistent — it has power data).
+  const [watts, setWatts] = useState<(number | null)[] | null>(null)
+  useEffect(() => { if (sport === 'ride') fetchActivityStreams(a.id, ['watts']).then((st) => setWatts(st.watts || [])).catch(() => {}) }, [a.id, sport])
+  const hasPower = (watts?.filter((v) => v != null).length || 0) >= 9
   return (
     <div className="today-entry">
       <Link to={`/activity/${a.id}`} className="card card--done">
         <div className="card-row">
-          <div className={'thumb thumb--' + sport}>{icon}</div>
+          {hasPower ? <div className="thumb"><PowerBlocks watts={watts!} /></div> : <div className={'thumb thumb--' + sport}>{icon}</div>}
           <div className="card-body">
             <span className="eyebrow">{label} · completed</span>
             <h3 style={{ opacity: 0.6 }}>{a.name || label}</h3>
