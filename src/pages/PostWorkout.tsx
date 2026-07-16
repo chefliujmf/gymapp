@@ -48,13 +48,18 @@ export default function PostWorkout() {
     const exLogs = (gymLog.exNames && gymLog.exNames.length
       ? gymLog.exNames.map((name, i) => ({ name, exId: gymLog.exIds?.[i], sets: gymLog.sets?.[i] || [] }))
       : Object.keys(gymLog.sets || {}).map((k) => ({ name: `Exercise ${Number(k) + 1}`, sets: gymLog.sets![Number(k)] || [] })))
+    // Duration: a DEVICE activity's real moving_time is authoritative (the log's stored duration can be stale — e.g.
+    // it was imported from an activity that was later deleted/replaced). Prefer the live device time, fall back to the
+    // log. So a device-recorded gym always shows its real length, never a stale value. (#gym-duration-mirror)
+    const devMin = Math.round((((act as { moving_time?: number; elapsed_time?: number } | undefined)?.moving_time || (act as { elapsed_time?: number } | undefined)?.elapsed_time || 0)) / 60)
+    const durMin = devMin || gymLog.duration || 0
     return (
       <div>
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
-        <div className="page-head"><span className="eyebrow">Gym · ✓ Completed{gymLog.duration ? ` · ${gymLog.duration} min` : ''}</span><h1>{p.title}</h1></div>
+        <div className="page-head"><span className="eyebrow">Gym · ✓ Completed{durMin ? ` · ${durMin} min` : ''}</span><h1>{p.title}</h1></div>
         {(() => {
           const fk = gymFeedbackKeys({ date: gymLog.date, planId: p.id, activityId: act?.id, workoutId: gymLog.workoutId })
-          return <GymSummary minutes={gymLog.duration || 0} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={gymLog.date} planId={p.id} activityId={act?.id != null ? String(act.id) : undefined} avgHr={(act as { icu_average_hr?: number; average_heartrate?: number } | undefined)?.icu_average_hr || (act as { average_heartrate?: number } | undefined)?.average_heartrate} />
+          return <GymSummary minutes={durMin} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={gymLog.date} planId={p.id} activityId={act?.id != null ? String(act.id) : undefined} avgHr={(act as { icu_average_hr?: number; average_heartrate?: number } | undefined)?.icu_average_hr || (act as { average_heartrate?: number } | undefined)?.average_heartrate} />
         })()}
       </div>
     )

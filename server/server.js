@@ -1307,31 +1307,42 @@ async function pairActivityToPlan(user, activityId, eventId) {
 //     plan (missedHandledAt). Local today via the athlete's intervals tz (#347). Window: last 6 days.
 app.post('/auth/plans/handle-missed', auth, async (req, res) => {
   const user = req.user, today = await athleteToday(user)
-  const past = (user.plans || []).filter((p) => p.date && p.date < today && p.date >= addDays(today, -6))
-  if (!past.length) return res.json({ missed: 0, paired: 0 })
+  // Lingering-A (JM 2026-07-16): widened to 60 days so OLD uncompleted plans (past the coach-reshape window) get
+  // silently garbage-collected — the calendar mirrors what actually happened, no month-old ghosts linger.
+  const past = (user.plans || []).filter((p) => p.date && p.date < today && p.date >= addDays(today, -60))
+  if (!past.length) return res.json({ missed: 0, paired: 0, gc: 0 })
   // completion signals: local logs (by id + day/sport) + the intervals ACTIVITY object per slot (for pairing)
   const logDoneIds = new Set((user.logs || []).map((l) => l.workoutId).filter(Boolean))
   const logSlots = new Set((user.logs || []).map((l) => slotKey(l.date, l.discipline === 'running' ? 'run' : l.discipline === 'cycling' ? 'ride' : 'gym')))
   const actBySlot = {}
   if (user.icuKey) {
-    const acts = await icuGet(user, `/athlete/${user.icuAthlete}/activities?oldest=${addDays(today, -6)}&newest=${today}`).catch(() => null)
+    const acts = await icuGet(user, `/athlete/${user.icuAthlete}/activities?oldest=${addDays(today, -60)}&newest=${today}`).catch(() => null)
     for (const a of (Array.isArray(acts) ? acts : [])) { const k = slotKey((a.start_date_local || '').slice(0, 10), eventSport(a.type)); if (!actBySlot[k]) actBySlot[k] = a }
   }
+  // Completion with ±1-day tolerance (a session done a day early/late still counts) — so the GC NEVER deletes a
+  // plan the athlete actually did on an adjacent day. Uses activities + local logs.
+  const isDone = (p) => [-1, 0, 1].some((o) => { const d = addDays(p.date, o), k = slotKey(d, p.sport); return !!actBySlot[k] || logSlots.has(k) }) || logDoneIds.has(p.id) || logDoneIds.has(`plan-${p.id}`)
   let paired = 0
-  const missed = []
+  const missed = [], orphanOld = []
   for (const p of past) {
     const act = actBySlot[slotKey(p.date, p.sport)]
     // #346 — DONE: pair the completed activity to our planned event (idempotent — only if not already paired)
     if (act && p.icuEventId && act.id && act.paired_event_id == null) {
       if (await pairActivityToPlan(user, act.id, p.icuEventId)) { paired++; act.paired_event_id = p.icuEventId }
     }
-    // #156 — MISSED handling, once per plan: NO completion at all → the coach reshapes/removes.
+    const done = isDone(p)
+    // #156 — MISSED handling, once per plan: a RECENT no-show → the coach reshapes the week + removes it.
     if (!p.missedHandledAt) {
-      const done = !!act || logDoneIds.has(p.id) || logDoneIds.has(`plan-${p.id}`) || logSlots.has(slotKey(p.date, p.sport))
       p.missedHandledAt = Date.now()
-      if (!done && p.date >= addDays(today, -3)) missed.push(p) // recent + truly missed
+      if (!done && p.date >= addDays(today, -3)) missed.push(p) // recent + truly missed → coach reshapes
     }
+    // Lingering-A: an OLDER uncompleted plan is a stale orphan → GC it. Re-checked every run (NOT gated on
+    // missedHandledAt) so already-handled stragglers still get cleaned; ±1-day tolerance protects real sessions.
+    if (!done && p.date < addDays(today, -3)) orphanOld.push(p)
   }
+  // Silent GC of old orphans — deletePlanById also removes the intervals planned event, so intervals mirrors too.
+  let gc = 0
+  for (const p of orphanOld) { try { await deletePlanById(user, p.id, 'gc-orphan'); gc++ } catch (e) { console.error('[missed-gc] ' + (e.message || e)) } }
   // #535 — remember what was removed for being missed, so the NEXT check-in notification can acknowledge it
   // honestly (what/impact/credit-a-replacement) instead of silently deleting. Keep ~5 days, max 8.
   if (missed.length) {
@@ -1348,7 +1359,7 @@ app.post('/auth/plans/handle-missed', auth, async (req, res) => {
     const msg = `The athlete MISSED ${missed.length} planned session${missed.length > 1 ? 's' : ''} (now past, not completed): ${list}. Reassess the REST OF THIS WEEK (list_schedule): if a missed session still matters for the plan, MOVE it to a free upcoming day that fits their availability + the one-session-per-day rule; if the week's stimulus is already covered or there's no room, DROP it. EITHER WAY, remove each missed workout from the calendar now with remove_workout (ids: ${ids}) so it doesn't linger. Keep easy days easy; never stack two hard days. Do this SILENTLY — do NOT call notify / push (#498, JM 2026-07-15): the athlete gets their ONE coach notification at check-in, so this background cleanup must never send a surprise second morning push. Just fix the calendar and stop. Don't nag or ask questions.`
     runCoachTask(user, msg).catch((e) => console.error('[missed-handler] ' + (e.message || e)))
   }
-  res.json({ missed: missed.length, paired })
+  res.json({ missed: missed.length, paired, gc })
 })
 
 // PUSH every Platyplus-origin plan in a window OUT to intervals (dedup-aware) — the manual
