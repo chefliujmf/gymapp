@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 /** Gates the whole app: splash while checking, Login when signed out. */
 export function Gate({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="auth-splash"><div className="auth-logo"><img src="/favicon.svg?v=4" alt="" style={{ width: 40, height: 40, borderRadius: 10, verticalAlign: '-9px', marginRight: 9 }} />Platyplus</div></div>
+  if (loading) return <div className="auth-splash"><div className="auth-logo"><img src="/favicon.svg?v=5" alt="" style={{ width: 40, height: 40, borderRadius: 10, verticalAlign: '-9px', marginRight: 9 }} />platy<span style={{ color: 'var(--accent)' }}>plus</span> <span style={{ color: 'var(--text-dim, #9298a6)', fontWeight: 900 }}>➕</span></div></div>
   if (!user) return <Login />
   return <>{children}</>
 }
