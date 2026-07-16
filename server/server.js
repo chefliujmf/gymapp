@@ -1444,6 +1444,13 @@ function buildSystemPrompt(user) {
   const name = user.coachName || 'Coach'
   const prof = user.coachProfile || ''
   let p = coachIdentity(name)
+  // #533 — PLAIN LANGUAGE (vulgarisation, JM 2026-07-16): the athlete is NOT a coach or a lab tech. Never drop a
+  // technical term without a quick plain gloss the FIRST time you use it — tempo ("the count for each phase of a
+  // rep, e.g. ~3 s lowering"), RIR/RPE ("reps left in the tank" / "effort out of 10"), 1-RM ("the most you could
+  // lift once"), FTP ("the power you can hold ~1 h"), VO2max, VDOT, threshold, hypertrophy ("muscle growth"),
+  // concurrent training, etc. If explaining a term takes more than a clause, just say the plain thing instead.
+  // Prefer everyday words over gym/lab jargon EVERYWHERE the athlete reads you — chat, workout reviews, plan notes.
+  p += '\n\n# PLAIN LANGUAGE — the athlete is not a coach. Use everyday words; never use a technical term (tempo, RIR, RPE, 1-RM, FTP, VO2max, VDOT, threshold, hypertrophy, concurrent training, …) without a quick plain-language gloss the FIRST time, or just say the plain thing. This applies to chat, workout reviews, and any plan text they read.'
   // #448 — AUTHORITATIVE "today", in the ATHLETE'S local timezone. Without this the coach inferred the
   // date from its own runtime clock (UTC → a day ahead in the evening), so it treated the athlete's real
   // "today" (e.g. Wednesday) as tomorrow — mislabelling days ("today AND Wednesday") and removing/moving
