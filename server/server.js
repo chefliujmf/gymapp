@@ -743,7 +743,13 @@ app.post('/auth/checkin', auth, (req, res) => {
     if (!IS_STAGING && req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && !ci.coachDecided) {
       ci.coachDecided = true; save(store)
       const poor = ci.energy <= 2 || ci.sleep <= 2 || ci.soreness >= 4
-      const msg = `Morning check-in is in for today (${today}) — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore)${poor ? ' — this reads run-down' : ''}. This is the ONE coach notification the athlete gets after checking in — keep it to TODAY; the rest of their plan is kept up to date separately and SILENTLY (no push), so don't re-plan the whole week here. Overnight HRV/sleep from their watch often hasn't synced to intervals this early, so decide from (a) this subjective check-in and (b) their freshness / form — read get_wellness. Look at TODAY's planned session(s) with list_schedule and make a STICK-OR-ADJUST call: if they're ready, keep the plan; if run-down, EASE today — cut intensity/volume, swap to recovery, or move it — with the tools. Then send EXACTLY ONE notify that explains in PLAIN language what you did and why, e.g. "I moved your Thursday ride to Friday and shortened it to 45 min because your legs are sore" or "Sticking with today's easy spin — you're recovered." Write it so a non-athlete understands: NO abbreviations or jargon (never "TTE", "CTL", "ATL", "IF", "NP", "VI", "Form", "eFTP" — say "how fresh you are", "your threshold power", etc.). One notify only. Don't ask questions — decide and act.`
+      // #535 — a session the coach removed for being MISSED is otherwise invisible. Surface it inside this ONE
+      // notification (never a second push): acknowledge it honestly + warmly, credit any replacement, and only
+      // if load is genuinely dipping, gently + persuasively motivate — never guilt-trip.
+      const removals = (req.user.recentRemovals || []).filter((r) => r && r.date >= addDays(today, -2))
+      const removedStr = removals.map((r) => `"${r.title}" (${r.sport}, was planned ${r.date})`).join('; ')
+      const missBlock = removedStr ? ` RECENTLY MISSED — acknowledge it inside this SAME single notification (do NOT send a second one): the athlete did not complete ${removals.length > 1 ? 'these planned sessions' : 'this planned session'} — ${removedStr} — so ${removals.length > 1 ? 'they were' : 'it was'} removed from the calendar. Handle it with CARE, in this order: (1) call get_recent_activities first — if they actually trained something else instead (an off-plan ride/run/gym), CREDIT it warmly and reassure them their training is on track; don't call it "missed". (2) If they genuinely did nothing AND their fitness/freshness is trending below where their goal needs it (read get_wellness), name it — but be VERY respectful, compassionate and diplomatic: life happens, never guilt-trip, scold, or shame. Acknowledge it kindly, then gently PERSUADE and MOTIVATE by pointing to the ONE specific upcoming session that gets them back on track and why it matters to their goal. (3) If their load is still fine despite the skip, just note the removal lightly and reassure. Weave this into the plain-language notification, warmly.` : ''
+      const msg = `Morning check-in is in for today (${today}) — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore)${poor ? ' — this reads run-down' : ''}. This is the ONE coach notification the athlete gets after checking in — keep it to TODAY; the rest of their plan is kept up to date separately and SILENTLY (no push), so don't re-plan the whole week here. Overnight HRV/sleep from their watch often hasn't synced to intervals this early, so decide from (a) this subjective check-in and (b) their freshness / form — read get_wellness. Look at TODAY's planned session(s) with list_schedule and make a STICK-OR-ADJUST call: if they're ready, keep the plan; if run-down, EASE today — cut intensity/volume, swap to recovery, or move it — with the tools. Then send EXACTLY ONE notify that explains in PLAIN language what you did and why, e.g. "I moved your Thursday ride to Friday and shortened it to 45 min because your legs are sore" or "Sticking with today's easy spin — you're recovered."${missBlock} Write it so a non-athlete understands: NO abbreviations or jargon (never "TTE", "CTL", "ATL", "IF", "NP", "VI", "Form", "eFTP" — say "how fresh you are", "your threshold power", etc.). One notify only. Don't ask questions — decide and act.`
       runCoachTask(req.user, msg).catch((e) => console.error('[checkin-decide] ' + (e.message || e)))
     }
   } catch (e) { console.error('[checkin-decide] trigger ' + e.message) }
@@ -1325,6 +1331,15 @@ app.post('/auth/plans/handle-missed', auth, async (req, res) => {
       p.missedHandledAt = Date.now()
       if (!done && p.date >= addDays(today, -3)) missed.push(p) // recent + truly missed
     }
+  }
+  // #535 — remember what was removed for being missed, so the NEXT check-in notification can acknowledge it
+  // honestly (what/impact/credit-a-replacement) instead of silently deleting. Keep ~5 days, max 8.
+  if (missed.length) {
+    const now = Date.now()
+    user.recentRemovals = [
+      ...missed.map((p) => ({ title: p.title, sport: p.sport, date: p.date, at: now })),
+      ...(user.recentRemovals || []),
+    ].filter((r) => r && r.at > now - 5 * 864e5).slice(0, 8)
   }
   save(store)
   if (missed.length && user.coachProfile && user.coachProfile.trim()) {

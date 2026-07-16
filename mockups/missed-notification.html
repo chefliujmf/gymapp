@@ -1,0 +1,86 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--purple:#c07cf0;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--warn:#ffb13d}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  body{background:#07090c;color:var(--text);padding:18px;display:flex;flex-wrap:wrap;gap:18px;justify-content:center;align-items:flex-start}
+  .col{width:420px}
+  .lbl{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}
+  .lbl.b{color:var(--dim)}.lbl.a{color:var(--accent)}
+  .panel{background:var(--bg);border:1px solid #23262e;border-radius:18px;padding:16px}
+  .ph{font-size:19px;font-weight:800;margin-bottom:10px}
+  .note{border-top:1px solid #23262e;padding-top:13px}
+  .tag{display:inline-block;font-size:12.5px;font-weight:800;color:var(--purple);background:rgba(192,124,240,.12);border-radius:16px;padding:3px 11px;margin-bottom:8px}
+  .nt{font-size:17px;font-weight:800;line-height:1.2}
+  .sub{font-size:13.5px;color:var(--dim);line-height:1.45;margin-top:7px}
+  .time{font-size:12.5px;color:#6b7280;margin-top:5px}
+  ul{margin:12px 0 0;padding-left:4px;list-style:none}
+  li{font-size:14px;line-height:1.4;margin-top:10px;padding-left:18px;position:relative;color:#e7eaef}
+  li:before{content:"•";position:absolute;left:2px;color:var(--dim)}
+  li.new{color:#dff7e8}
+  li.new:before{content:"•";color:var(--accent)}
+  li.warn:before{color:var(--warn)}
+  .cap{font-size:12px;color:var(--dim);margin-top:9px;line-height:1.4}
+  b.hi{color:var(--accent)}
+  b.hw{color:var(--warn)}
+</style>
+
+<!-- BEFORE -->
+<div class="col">
+  <div class="lbl b">Before — today’s notification (real)</div>
+  <div class="panel">
+    <div class="ph">Notifications</div>
+    <div class="note">
+      <span class="tag">🧑‍🏫 Coach update</span>
+      <div class="nt">Sticking with today's gym session — you're fresh</div>
+      <div class="sub">Energy 5/5, good sleep, and your overnight numbers say you're well recovered. No reason to ease off.</div>
+      <div class="time">Thu, Jul 16 · 11:56 AM</div>
+      <ul>
+        <li>Keeping today's Upper-Body & Trunk Strength as planned — it's a legs-off day so your legs stay fresh for Saturday's long ride</li>
+        <li>Go a touch firm but leave 2-3 reps in the tank on each lift; slow 3-second lower</li>
+        <li>Grab 25-35g protein within an hour after</li>
+      </ul>
+    </div>
+  </div>
+  <div class="cap">Yesterday's ride was missed → the coach silently deleted it. The notification never mentions it, its impact, or your load. Forward-only.</div>
+</div>
+
+<!-- AFTER -->
+<div class="col">
+  <div class="lbl a">After — same single notification, honest about the miss</div>
+  <div class="panel">
+    <div class="ph">Notifications</div>
+    <div class="note">
+      <span class="tag">🧑‍🏫 Coach update</span>
+      <div class="nt">Sticking with today's gym — and I cleaned up yesterday</div>
+      <div class="sub">Energy 5/5, good sleep, well recovered. No reason to ease off.</div>
+      <div class="time">Thu, Jul 16 · 11:56 AM</div>
+      <ul>
+        <li class="new"><b class="hi">Yesterday's easy ride didn't happen — I removed it</b> so it's not lingering on your calendar. No catch-up needed: you'd already ridden 3 solid days this week, so your training load is right where we want it.</li>
+        <li>Keeping today's Upper-Body & Trunk Strength — legs-off day protects Saturday's long ride</li>
+        <li>Go a touch firm, leave 2-3 reps in the tank; slow 3-second lower</li>
+        <li>Grab 25-35g protein within an hour after</li>
+      </ul>
+    </div>
+  </div>
+  <div class="cap"><b class="hi">Adds one honest line</b>: what was removed + the impact — or, when you’ve done a replacement, credit for it. Still ONE notification (respects the one-push rule).</div>
+</div>
+
+<!-- AFTER — low-load variant -->
+<div class="col">
+  <div class="lbl a">After — variant: when misses are piling up (load dipping)</div>
+  <div class="panel">
+    <div class="ph">Notifications</div>
+    <div class="note">
+      <span class="tag">🧑‍🏫 Coach update</span>
+      <div class="nt">Removed yesterday's ride — but let's not let the week slip</div>
+      <div class="sub">You're fresh today (energy 5/5, recovered), so we have room to make it count.</div>
+      <div class="time">Thu, Jul 16 · 11:56 AM</div>
+      <ul>
+        <li class="warn"><b class="hw">Yesterday's ride was your 2nd skip this week — I dropped it</b>, but that leaves your training load dipping below your FTP-build target. Not a crisis, just worth naming.</li>
+        <li class="new">So today's gym stays, and I'd really like Saturday's long ride to land — that's the session that keeps the build on track.</li>
+        <li>Go firm today, leave 2-3 reps in the tank; protein within the hour</li>
+      </ul>
+    </div>
+  </div>
+  <div class="cap"><b class="hw">Straight, not naggy</b>: names the low-load trend + points to the session that fixes it. The coach picks the right tone from your real Form/CTL + recent activity.</div>
+</div>
