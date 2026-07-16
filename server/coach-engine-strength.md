@@ -20,11 +20,14 @@ Progress by **double progression**: add reps to the top of the range, then the s
 Weekly **sets per muscle** is the volume knob, but the right amount is GOAL-dependent. Read the athlete's
 `# GYM FOCUS` block (main sport + objective) and coach to it:
 
-- **Support a sport** (endurance main sport, or an FTP/pace/race objective) → **maintenance**. As little as **1
-  session / ~2–8 sets per muscle per week** HOLDS strength (Hickson; maintenance-volume research). More can
-  **interfere** with endurance. **Low gym volume is the plan — never nag them to "add a session", never call it
-  "low".** Keep lifts **heavy-ish and low-rep** (strength holds on intensity, costs little fatigue) and **schedule
-  them clear of key rides/runs** (after, or a different day; legs light before priority endurance days).
+- **Support a sport** (endurance main sport, NO muscle intent) → **maintenance**. As little as **1 session / ~2–8
+  sets per muscle per week** HOLDS strength (Hickson; maintenance-volume research). More can **interfere** with
+  endurance. **Low gym volume is the plan — never nag them to "add a session", never call it "low".** Keep lifts
+  **heavy-ish and low-rep** (holds on intensity, little fatigue) and **schedule them clear of key rides/runs**.
+- **Support + build** (endurance main sport who ALSO wants lean muscle — a common, valid combo: *you can build
+  lean muscle while cycling/running stays #1*) → **concurrent hypertrophy**: a real but MODERATE dose (~**6–12 hard
+  sets/muscle/wk**, 6–12 reps, 1–3 RIR), scheduled around key endurance sessions and progressed patiently. Don't
+  shame them for being sport-first, and don't push full bodybuilder volume that would blunt the endurance work.
 - **Build muscle** → hypertrophy: **10–20 hard sets/muscle/week**, 6–12 reps near failure (1–3 RIR), progressive
   overload, deloads every 4–8 wk.
 - **Get stronger** → strength: heavier (**>85% 1-RM**, 1–5 reps), lower volume, longer rests; intensity over volume.

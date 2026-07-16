@@ -93,18 +93,19 @@ describe('weeklySetsPerMuscle (Schoenfeld 10–20 landmark, per TRAINING week)',
   })
 })
 
-describe('inferGymFocus (main sport + objective → focus, #534)', () => {
-  it('an explicit muscle objective wins', () => {
-    expect(inferGymFocus({ mainSport: 'cycling', goal: 'I want to build muscle' })).toBe('muscle')
+describe('inferGymFocus (main sport is the strongest signal, #534)', () => {
+  it('cyclist who ALSO wants muscle → support_build (concurrent hypertrophy, not pure maintenance) — JM: "you can build lean muscle in cycling"', () => {
+    expect(inferGymFocus({ mainSport: 'cycling', goal: 'Build lean muscle, lose fat' })).toBe('support_build')
+    expect(inferGymFocus({ mainSport: 'cycling', goal: 'I want 300 FTP' })).toBe('support') // no muscle intent → pure support
   })
-  it('a cyclist chasing FTP → support (never hypertrophy)', () => {
-    expect(inferGymFocus({ mainSport: 'cycling', goal: 'I want 300 FTP' })).toBe('support')
-    expect(inferGymFocus({ sports: ['cycling'], goal: '' })).toBe('support')
+  it('NO main sport → the objective decides: a muscle goal → muscle', () => {
+    expect(inferGymFocus({ goal: 'I want to build lean muscle' })).toBe('muscle')
   })
-  it('a strength objective (no endurance) → strength', () => {
+  it('a strength main sport + strength goal → strength', () => {
     expect(inferGymFocus({ mainSport: 'strength', goal: 'a 200kg deadlift' })).toBe('strength')
   })
-  it('no sport/goal → health', () => {
+  it('no main + first sport endurance → support; nothing → health', () => {
+    expect(inferGymFocus({ sports: ['cycling'], goal: '' })).toBe('support')
     expect(inferGymFocus({})).toBe('health')
   })
 })

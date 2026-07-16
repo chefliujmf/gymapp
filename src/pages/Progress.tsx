@@ -162,8 +162,9 @@ export default function Progress() {
           <div className="card" style={{ padding: '12px 14px' }}>
             {review.score != null && <div className="gp2-hl">⭐ <span><b>Score {review.score}/10.</b> {review.verdict}</span></div>}
             {review.score == null && review.verdict && <div className="gp2-hl">🧑‍🏫 <span>{review.verdict}</span></div>}
-            {(review.takeaways || review.execution || []).map((t, i) => <div key={i} className="gp2-hl">• <span>{t}</span></div>)}
-            {review.next && <div className="gp2-hl">➡️ <span><b>Next:</b> {review.next}</span></div>}
+            {/* #533 — drop jargon (e.g. "tempo 3-1-1-0") the athlete won't know, from any takeaway bullet. */}
+            {(review.takeaways || review.execution || []).filter((t) => !/\btempo\b\s*\(?\s*\d[-\s]?\d/i.test(t)).map((t, i) => <div key={i} className="gp2-hl">• <span>{t}</span></div>)}
+            {/* #533 — no "Next" prescription here: it's volatile and already in the calendar/plan. */}
           </div>
         </> : (digest.wins[0] || digest.needsAttention[0]) ? (
           <div className="card" style={{ padding: 12, background: '#12180f', border: '1px solid #26421f', fontSize: 13, lineHeight: 1.5 }}>

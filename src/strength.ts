@@ -159,25 +159,37 @@ export interface MuscleVolume { muscle: string; total: number; perWeek: number; 
 
 // #534 — the GYM ENGINE is sport+goal-adaptive. Volume targets are GOAL-DEPENDENT (docs/strength-coaching.md §2):
 // a flat 10–20 band is a hypertrophy prescription and wrongly flags an endurance athlete as "low" forever.
-export type GymFocus = 'muscle' | 'strength' | 'support' | 'health'
+export type GymFocus = 'muscle' | 'strength' | 'support_build' | 'support' | 'health'
 export interface FocusSpec { low: number; high: number; label: string; note: string }
 export const GYM_FOCUS: Record<GymFocus, FocusSpec> = {
   muscle: { low: 10, high: 20, label: 'Build muscle', note: '10–20 hard sets/muscle a week drives growth (Schoenfeld).' },
   strength: { low: 6, high: 12, label: 'Get stronger', note: 'Heavier (>85% 1-RM), fewer reps — intensity over volume (NSCA).' },
+  // #534 — endurance-first athlete who ALSO wants muscle (JM: "you can build lean muscle in cycling"). A real
+  // hypertrophy dose, but lower/dosed so it doesn't wreck the sport — concurrent hypertrophy.
+  support_build: { low: 6, high: 12, label: 'Lean muscle + sport', note: 'Build lean muscle while your sport stays #1 — a real hypertrophy dose, dosed and scheduled around key sessions (concurrent training).' },
   support: { low: 2, high: 8, label: 'Support my sport', note: 'Maintenance dose — a little holds strength; keep it clear of key sessions (concurrent training).' },
   health: { low: 2, high: 12, label: 'Health', note: 'Hit all major muscles ~2×/week (ACSM).' },
 }
 
-/** Infer the athlete's GYM focus from their MAIN sport + objective text (JM 2026-07-16). An explicit muscle/strength
- *  objective wins; else an endurance main-sport (or endurance goal) → support; a strength sport → muscle; else health. */
+/** Infer the athlete's GYM focus from their MAIN sport + objective (JM 2026-07-16). The explicit MAIN sport is the
+ *  STRONGEST signal (an endurance main sport → gym is support, even if they'd also like some muscle — that nuance is
+ *  the coach's job). With no main sport set, the objective decides, then the first sport; default health. */
 export function inferGymFocus(input: { mainSport?: string; sports?: string[]; goal?: string }): GymFocus {
   const goal = String(input.goal || '').toLowerCase()
-  const enduranceGoal = /\bftp\b|watt|\bpace\b|marathon|\brace\b|\bride\b|\brun\b|\bbike\b|cycl|endurance|triathlon|\bvo2\b/.test(goal)
-  if (/hypertroph|build muscle|gain muscle|bigger|\bmass\b|tone up|\bbulk\b|muscle up/.test(goal)) return 'muscle'
-  if (/strong|1\s?-?rm|one[- ]rep|deadlift|squat|bench|powerlift/.test(goal) && !enduranceGoal) return 'strength'
-  const main = String(input.mainSport || (input.sports && input.sports[0]) || '').toLowerCase()
-  if (/cycl|ride|bike|\brun\b|jog|swim|tri|endurance|row/.test(main) || enduranceGoal) return 'support'
-  if (/strength|gym|lift|weight|bodybuild|power/.test(main)) return 'muscle'
+  const isEndurance = (s: string) => /cycl|ride|bike|\brun\b|jog|swim|tri|endurance|row/.test(s)
+  const goalMuscle = /muscle|hypertroph|bigger|\bmass\b|tone up|\bbulk\b|physique|\blean\b/.test(goal)
+  const goalStrength = /\bstrong|1\s?-?rm|one[- ]rep|deadlift|squat|bench|powerlift/.test(goal)
+  const goalEndurance = /\bftp\b|watt|\bpace\b|marathon|\brace\b|\bride\b|\brun\b|\bbike\b|cycl|endurance|triathlon|\bvo2\b/.test(goal)
+  const main = String(input.mainSport || '').toLowerCase()
+  if (main) { // an explicit main sport wins — but an endurance athlete who WANTS muscle gets the hybrid
+    if (isEndurance(main)) return goalMuscle ? 'support_build' : 'support'
+    if (/strength|gym|lift|weight|bodybuild|power/.test(main)) return goalStrength && !goalMuscle ? 'strength' : 'muscle'
+  }
+  if (goalMuscle) return 'muscle'
+  if (goalStrength && !goalEndurance) return 'strength'
+  const first = String((input.sports && input.sports[0]) || '').toLowerCase()
+  if (goalEndurance || isEndurance(first)) return 'support'
+  if (/strength|gym|lift|weight|bodybuild|power/.test(first)) return 'muscle'
   return 'health'
 }
 
@@ -351,7 +363,7 @@ export function strengthDigest(logs: WorkoutLog[], muscleOf: MuscleOf | undefine
   // Volume nags are GOAL-AWARE (#534): only when the focus is to GROW (muscle/strength) is low volume a problem.
   // For support/health, low gym volume is the plan — never nag a cyclist for "only" a maintenance dose.
   const spec = GYM_FOCUS[focus]
-  const nagVolume = focus === 'muscle' || focus === 'strength'
+  const nagVolume = focus === 'muscle' || focus === 'strength' || focus === 'support_build' // build goals care about volume
   const vols = weeklySetsPerMuscle(logs, muscleOf || (() => undefined), focus)
   const seen = new Set(vols.map((v) => v.muscle))
   if (nagVolume) {
