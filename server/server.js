@@ -2965,7 +2965,12 @@ app.put('/api/activity/:id/public-text', apiAuth, async (req, res) => {
   if (!req.user.icuKey) return res.status(400).json({ error: 'no intervals connection' })
   const payload = {}
   if (typeof req.body.name === 'string' && req.body.name.trim()) payload.name = req.body.name.trim().slice(0, 200)
-  if (typeof req.body.description === 'string') payload.description = req.body.description.slice(0, 4000)
+  if (typeof req.body.description === 'string') {
+    // Always sign the public description with the brand tagline (JM 2026-07-16), idempotently.
+    let d = req.body.description.slice(0, 3960).trimEnd()
+    if (d && !/powered by platyplus/i.test(d)) d = `${d}\n\nPowered by Platyplus`
+    payload.description = d
+  }
   if (!Object.keys(payload).length) return res.status(400).json({ error: 'name or description required' })
   try {
     const r = await icuFetch(req.user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
