@@ -853,7 +853,7 @@ app.get('/auth/readiness', auth, async (req, res) => {
   // #207 Phase 2b: pass PAST check-ins (before this date) so the model calibrates to the athlete's
   // own overrides — but never the day being viewed. #235: skip entirely if learning is turned OFF.
   const calCheckins = req.user.learnReadiness === false ? [] : (req.user.checkins || []).filter((c) => c && c.date < date)
-  res.json({ connected: true, date, sleepNeed, today, cyclePhase, ...computeReadiness(history, today, { sleepNeed, checkins: calCheckins, cyclePhase }) })
+  res.json({ connected: true, date, sleepNeed, today, cyclePhase, ...computeReadiness(history, today, { sleepNeed, checkins: calCheckins, cyclePhase, pregnant: !!req.user.info?.pregnant }) })
 })
 
 // #223 — FORECAST a FUTURE day's freshness from planned load (only Freshness is knowable ahead;
@@ -891,7 +891,7 @@ app.get('/auth/readiness-forecast', auth, async (req, res) => {
   }
   const loads = []
   for (let dd = addDays(today, 1); dd < date; dd = addDays(dd, 1)) loads.push(byDay[dd] || 0)
-  const f = forecastFreshness({ ctl: latest.ctl, atl: latest.atl, tsbBaseline }, loads)
+  const f = forecastFreshness({ ctl: latest.ctl, atl: latest.atl, tsbBaseline, pregnant: !!req.user.info?.pregnant }, loads)
   res.json({ connected: true, future: true, available: true, date, daysOut: loads.length, ...f, totalPlannedLoad: Math.round(loads.reduce((a, b) => a + b, 0)), plannedDays: Object.keys(byDay).length })
 })
 
