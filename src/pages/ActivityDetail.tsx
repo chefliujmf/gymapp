@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { fetchActivity, fetchActivities, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
 import { incompleteFeedback } from '../feedbackGaps'
 import { TrendChart, PowerCurveChart, PaceCurveChart, PowerBlocks, minuteTicks } from '../charts'
+import { Bike, Dumbbell, Footprints } from 'lucide-react'
 import { fmtPace } from '../running-paces'
 import { paceOf, bestPaceCurve, paceZoneSecs, PZONES, PZONE_PCT } from '../run-analysis'
 import { useAuth } from '../auth/AuthContext'
@@ -315,7 +316,11 @@ export default function ActivityDetail() {
     <div>
       <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
-        {!isRun && (streams.watts?.filter((v) => v != null).length || 0) >= 9 && <div className="act-thumb"><PowerBlocks watts={streams.watts} ftp={ftp} /></div>}
+        {/* EVERY activity gets a thumbnail (JM audit): rides with power → PowerBlocks; else a sport-icon thumb
+            (runs, gym, power-less rides) so the header is never blank — matches the calendar/day cards. */}
+        {!isRun && (streams.watts?.filter((v) => v != null).length || 0) >= 9
+          ? <div className="act-thumb"><PowerBlocks watts={streams.watts} ftp={ftp} /></div>
+          : <div className={'act-thumb thumb--' + sportOfActivity(a)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{sportOfActivity(a) === 'ride' ? <Bike strokeWidth={1.75} /> : sportOfActivity(a) === 'gym' ? <Dumbbell strokeWidth={1.75} /> : <Footprints strokeWidth={1.75} />}</div>}
         <div style={{ minWidth: 0 }}>
           <span className="eyebrow">{sportOfActivity(a) === 'ride' ? 'Ride' : sportOfActivity(a) === 'run' ? 'Run' : 'Workout'} · {isIndoorActivity(a) ? 'Indoor' : 'Outdoor'}{a.start_date_local ? ` · ${new Date(a.start_date_local).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}</span>
           <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Activity'}</h1>
