@@ -215,11 +215,28 @@ export function activeWeeks(logs: WorkoutLog[]): number {
   return Math.max(1, wk.size)
 }
 
-/** Completed working sets per PRIMARY muscle group, averaged over the weeks you TRAINED, with status vs the band
- *  for the athlete's GYM FOCUS (support/health tolerate far less volume than hypertrophy). #534. */
-export function weeklySetsPerMuscle(logs: WorkoutLog[], muscleOf: MuscleOf, focus: GymFocus = 'muscle'): MuscleVolume[] {
+export interface SetBand { low: number; high: number }
+/** Resolve the weekly-sets target: a COACH-set band wins (JM: "why don't the coach define the target and we use
+ *  that?"); else the default band for the athlete's focus. */
+export const bandFor = (target: GymFocus | SetBand): SetBand => (typeof target === 'string' ? GYM_FOCUS[target] : target)
+
+/** A REALISTIC weekly-sets target: the goal's ideal band CAPPED by what the athlete's gym FREQUENCY can deliver
+ *  (~2–4 hard sets/muscle per weekly gym session). So someone who lifts 1×/week isn't measured against a 3–4×/week
+ *  volume and told they're "always low" (JM: "if I have 1 gym per week it will always be low... it's stupid"). The
+ *  coach can still override this with a specific band. Pure + tested. #534. */
+export function weeklySetTargetFor(focus: GymFocus, sessionsPerWeek: number): SetBand {
+  const ideal = GYM_FOCUS[focus]
+  const spw = Math.max(0.5, sessionsPerWeek || 0)
+  const high = Math.max(2, Math.min(ideal.high, Math.round(spw * 4)))
+  const low = Math.max(1, Math.min(ideal.low, Math.round(spw * 2)))
+  return { low: Math.min(low, high), high }
+}
+
+/** Completed working sets per PRIMARY muscle group, averaged over the weeks you TRAINED, with status vs the target
+ *  band — the COACH's band when set, else the default for the athlete's GYM FOCUS. #534. */
+export function weeklySetsPerMuscle(logs: WorkoutLog[], muscleOf: MuscleOf, target: GymFocus | SetBand = 'muscle'): MuscleVolume[] {
   const wk = activeWeeks(logs)
-  const { low, high } = GYM_FOCUS[focus]
+  const { low, high } = bandFor(target)
   const tot = new Map<string, number>()
   for (const s of eachDoneSet(logs)) {
     const m = muscleOf(s.name, s.exId)
@@ -341,7 +358,7 @@ export const MAJOR_MUSCLES = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Cor
 
 /** The actionable feed: what NEEDS attention (stalls, under-volume muscles, a neglected major group) and the
  *  WINS (PRs, biggest movers). Surfaces the handful worth acting on out of a library of hundreds. */
-export function strengthDigest(logs: WorkoutLog[], muscleOf: MuscleOf | undefined, focus: GymFocus = 'muscle', majors = MAJOR_MUSCLES, fmt: (kg: number) => string = (v) => `${Math.round(v)} kg`): StrengthDigest {
+export function strengthDigest(logs: WorkoutLog[], muscleOf: MuscleOf | undefined, focus: GymFocus = 'muscle', band: SetBand = GYM_FOCUS[focus], majors = MAJOR_MUSCLES, fmt: (kg: number) => string = (v) => `${Math.round(v)} kg`): StrengthDigest {
   const needsAttention: DigestItem[] = []
   const wins: DigestItem[] = []
   const series = seriesByExercise(logs)
@@ -362,13 +379,12 @@ export function strengthDigest(logs: WorkoutLog[], muscleOf: MuscleOf | undefine
 
   // Volume nags are GOAL-AWARE (#534): only when the focus is to GROW (muscle/strength) is low volume a problem.
   // For support/health, low gym volume is the plan — never nag a cyclist for "only" a maintenance dose.
-  const spec = GYM_FOCUS[focus]
   const nagVolume = focus === 'muscle' // only a PURE muscle-building focus pushes low-volume into "needs attention";
   // other focuses (support/support_build/strength/health) just show the bars + band, no nag (JM: the "low" nag is annoying).
-  const vols = weeklySetsPerMuscle(logs, muscleOf || (() => undefined), focus)
+  const vols = weeklySetsPerMuscle(logs, muscleOf || (() => undefined), band)
   const seen = new Set(vols.map((v) => v.muscle))
   if (nagVolume) {
-    for (const v of vols) if (v.status === 'low') needsAttention.push({ kind: 'low-volume', muscle: v.muscle, title: `${v.muscle} volume low`, detail: `${v.perWeek} sets/wk — under the ${spec.low}–${spec.high} range for ${spec.label.toLowerCase()}. Add a set or a session.` })
+    for (const v of vols) if (v.status === 'low') needsAttention.push({ kind: 'low-volume', muscle: v.muscle, title: `${v.muscle} volume low`, detail: `${v.perWeek} sets/wk — under your ${band.low}–${band.high} sets/muscle target. Add a set or a session.` })
     if (muscleOf && vols.length >= 2) for (const m of majors) if (!seen.has(m)) needsAttention.push({ kind: 'missing', muscle: m, title: `No ${m.toLowerCase()} work`, detail: `Nothing logged for ${m.toLowerCase()} in this range — a gap vs the rest of your training.` })
   }
 

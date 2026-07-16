@@ -50,7 +50,19 @@ describe('e1rmConfidence', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // #448 — strength Stats analytics (rangeSummary, sets/muscle, main lifts, digest,
 // exercise history, next target). Science: docs/strength-analytics.md.
-import { rangeSummary, weeklySetsPerMuscle, mainLifts, exerciseHistory, nextTarget, strengthDigest, SETS_LOW, inferGymFocus, intensityZone, GYM_FOCUS } from './strength'
+import { rangeSummary, weeklySetsPerMuscle, mainLifts, exerciseHistory, nextTarget, strengthDigest, SETS_LOW, inferGymFocus, intensityZone, GYM_FOCUS, weeklySetTargetFor } from './strength'
+
+describe('weeklySetTargetFor (frequency-scaled target, #534 — "1 gym/week is not always low")', () => {
+  it('a 1×/week trainer gets a small ACHIEVABLE target, not the 3–4×/week ideal', () => {
+    const t = weeklySetTargetFor('muscle', 1)
+    expect(t.high).toBeLessThanOrEqual(4)
+    expect(t.low).toBeGreaterThanOrEqual(1)
+    expect(t.low).toBeLessThanOrEqual(t.high)
+  })
+  it('3+ gym sessions/week unlock the goal ideal', () => {
+    expect(weeklySetTargetFor('support_build', 3)).toEqual({ low: 6, high: 12 })
+  })
+})
 import type { WorkoutLog } from './db'
 
 const DAY = 864e5

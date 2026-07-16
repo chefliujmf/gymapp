@@ -2680,6 +2680,17 @@ app.put('/api/profile', apiAuth, (req, res) => {
   if (typeof req.body?.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
   save(store); res.json({ ok: true, sports: req.user.sports || [], coachName: req.user.coachName || '' })
 })
+// #534 — the COACH sets the athlete's weekly sets/muscle TARGET (JM: "why don't the coach define the target and we
+// use that?"). It drives the Stats "sets per muscle" band + status. setsLow=0 (or omitted) clears it → app falls
+// back to the frequency-scaled default. Base it on their sport/goal/phase AND their realistic gym frequency.
+app.put('/api/gym-target', apiAuth, (req, res) => {
+  req.user.info = req.user.info || {}
+  const n = (v) => { const x = Math.round(Number(v)); return Number.isFinite(x) ? Math.min(30, Math.max(0, x)) : 0 }
+  const low = n(req.body?.setsLow), high = Math.max(low, n(req.body?.setsHigh) || low)
+  if (!low) req.user.info.gymTarget = undefined
+  else req.user.info.gymTarget = { setsLow: low, setsHigh: high, note: String(req.body?.note || '').slice(0, 160) || undefined, at: Date.now() }
+  save(store); res.json({ ok: true, gymTarget: req.user.info.gymTarget || null })
+})
 // #313 — coach SAVES the athlete's threshold stats (FTP / threshold pace / max-HR / LTHR) it estimated
 // from their intervals history, so they PERSIST and anchor run %pace / ride %ftp on the device.
 app.put('/api/sport-stat', apiAuth, async (req, res) => {

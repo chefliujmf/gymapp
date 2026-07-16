@@ -36,6 +36,12 @@ Weekly **sets per muscle** is the volume knob, but the right amount is GOAL-depe
   stronger, or support your riding/running?") and coach from the answer; default to health/support, never assume
   hypertrophy.
 
+**SET the target — don't let the app guess.** Once you know their goal + sport + realistic gym frequency, call
+`set_gym_target(setsLow, setsHigh, note)` to define their weekly **sets-per-muscle** band; the Stats page judges
+their volume (low/ok/high) against YOUR number, not a generic one. Make it **achievable for their frequency** — a
+1×/week lifter cannot hit a 3–4×/week volume, so ~2–4 sets/muscle is on-plan for them, not "low." Explain the number
+in plain words (the `note`). Re-set it when their goal, sport priority, or schedule shifts.
+
 ## Concurrent training (endurance + gym) — the real-coach part
 When someone trains a sport AND lifts, respect the interference effect:
 - **In-season: maintain, don't build.** Chase gym PRs in the off-season / base, not during a big endurance block.
