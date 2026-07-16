@@ -58,7 +58,7 @@ export default function Login() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div className="auth-logo"><img src="/favicon.svg?v=5" alt="" style={{ width: 38, height: 38, borderRadius: 9, verticalAlign: '-8px', marginRight: 9 }} />platy<span style={{ color: 'var(--accent)' }}>plus</span> <span style={{ color: 'var(--text-dim, #9298a6)', fontWeight: 900 }}>➕</span></div>
+        <div className="auth-logo"><img src="/favicon.svg?v=6" alt="" style={{ width: 38, height: 38, borderRadius: 9, verticalAlign: '-8px', marginRight: 9 }} />platy<span style={{ color: 'var(--accent)' }}>plus</span></div>
 
         {mode === 'login' && (
           <form onSubmit={doPassword} className="auth-form">

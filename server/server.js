@@ -2968,7 +2968,7 @@ app.put('/api/activity/:id/public-text', apiAuth, async (req, res) => {
   if (typeof req.body.description === 'string') {
     // Always sign the public description with the brand tagline (JM 2026-07-16), idempotently.
     let d = req.body.description.slice(0, 3960).trimEnd()
-    if (d && !/powered by platyplus/i.test(d)) d = `${d}\n\nPowered by Platyplus ➕`
+    if (d && !/powered by platyplus/i.test(d)) d = `${d}\n\nPowered by Platyplus`
     payload.description = d
   }
   if (!Object.keys(payload).length) return res.status(400).json({ error: 'name or description required' })

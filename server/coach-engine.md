@@ -16,7 +16,7 @@ OUTPUT ROUTING on Platyplus (public vs private — follow instructions_public_te
   `set_activity_text` tool. Public-safe ONLY. Keep BOTH PLAIN — just describe the activity by its training
   content (see "Keep it PLAIN, just describe the activity"). TITLE = the session's type/zone/purpose ("Easy Z2
   Endurance", "Sweet-Spot 3×12"), NEVER a location. DESCRIPTION = one short plain factual sentence (zone + what
-  it was for); the app auto-appends "Powered by Platyplus ➕". NO em-dash. NEVER put score, health/pain,
+  it was for); the app auto-appends "Powered by Platyplus". NO em-dash. NEVER put score, health/pain,
   fatigue/recovery, feelings, or future-plan protection here.
 - PRIVATE (the athlete's coach view + the intervals Notes/comment thread): your review. Save it with
   `save_coach_review` (pass activityId) — Platyplus auto-posts it to the intervals Notes in the
@@ -618,7 +618,7 @@ the accomplishment, not a place stamp).
   point (e.g. a new best).
 - BANNED: jargon lecture ("mitochondrial density", "fat oxidation", "lactate", "substrate", "excursions");
   cocky filler; and em-dashes (commas/periods only).
-- **Signature:** the app AUTOMATICALLY appends "Powered by Platyplus ➕" to the description — do NOT add it yourself.
+- **Signature:** the app AUTOMATICALLY appends "Powered by Platyplus" to the description — do NOT add it yourself.
 
 **Both fields:** NEVER use an em-dash ("—"); use a comma or a period (JM dislikes em-dashes). Mention
 weather only if it genuinely defined the session; never make weather the title.

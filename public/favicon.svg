@@ -1,23 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#0d0d0f"/>
+  <!-- FULL square (no rounded corners → no transparent/white corners in the browser tab; the app UI rounds it via CSS) -->
+  <rect width="64" height="64" fill="#0d0d0f"/>
   <!-- head -->
-  <ellipse cx="32" cy="29" rx="16.5" ry="14.5" fill="#34e07d"/>
+  <ellipse cx="32" cy="29" rx="17.5" ry="15.5" fill="#34e07d"/>
   <!-- game-face brows -->
-  <g stroke="#0d0d0f" stroke-width="2.6" stroke-linecap="round">
-    <path d="M22.5 28 L29 29.5"/>
-    <path d="M41.5 28 L35 29.5"/>
+  <g stroke="#0d0d0f" stroke-width="2.7" stroke-linecap="round">
+    <path d="M21.5 28 L28.5 29.5"/>
+    <path d="M42.5 28 L35.5 29.5"/>
   </g>
   <!-- beady eyes -->
-  <circle cx="27" cy="31.5" r="2.2" fill="#0d0d0f"/>
-  <circle cx="37" cy="31.5" r="2.2" fill="#0d0d0f"/>
+  <circle cx="26.5" cy="31.5" r="2.3" fill="#0d0d0f"/>
+  <circle cx="37.5" cy="31.5" r="2.3" fill="#0d0d0f"/>
   <!-- the signature flat duck bill -->
-  <ellipse cx="32" cy="45" rx="15" ry="7" fill="#175c3a"/>
-  <ellipse cx="32" cy="43.5" rx="15" ry="5.8" fill="#249457"/>
-  <circle cx="28" cy="42" r="1.2" fill="#0d0d0f"/>
-  <circle cx="36" cy="42" r="1.2" fill="#0d0d0f"/>
-  <!-- the "plus" of Platyplus, top-right corner (JM 2026-07-16, red band removed) -->
-  <g fill="#34e07d">
-    <rect x="52" y="8" width="3.2" height="11" rx="1.5"/>
-    <rect x="48.4" y="11.4" width="11" height="3.2" rx="1.5"/>
-  </g>
+  <ellipse cx="32" cy="46" rx="16" ry="7.5" fill="#175c3a"/>
+  <ellipse cx="32" cy="44.5" rx="16" ry="6.2" fill="#249457"/>
+  <circle cx="27.5" cy="43" r="1.3" fill="#0d0d0f"/>
+  <circle cx="36.5" cy="43" r="1.3" fill="#0d0d0f"/>
 </svg>
