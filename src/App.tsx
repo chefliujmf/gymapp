@@ -120,7 +120,7 @@ export default function App() {
       <UpdateBanner />
       {!isDetail && (
         <header className="app-bar">
-          <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=4" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />Platyplus</Link>
+          <Link to="/" className="app-bar__brand" style={{ textDecoration: 'none', color: 'inherit' }}><img src="/favicon.svg?v=5" alt="" style={{ width: 22, height: 22, borderRadius: 6, verticalAlign: '-5px', marginRight: 7 }} />platy<span style={{ color: 'var(--accent)' }}>plus</span> <span style={{ color: 'var(--text-dim, #9298a6)', fontWeight: 900 }}>➕</span></Link>
           {/* Top-right is the status cluster only: notifications + account (Coach moved to the FAB). */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <RefreshButton /><PromoteButton /><ReportButton /><ReleaseBell /><AccountMenu />
