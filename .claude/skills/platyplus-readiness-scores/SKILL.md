@@ -21,6 +21,15 @@ operational summary. Always **label auto values, let the manual check-in tap ove
 - **Freshness (objective, buildable NOW)** — from intervals CTL/ATL/Form:
   `ACWR = ATL/CTL`, `TSB = CTL−ATL`. Map: ACWR `<0.8`&TSB`>+10`→5 · `0.8–1.0`/`0–+10`→4 · `1.0–1.3`/`−15–0`→3
   · `1.3–1.5`/`−30–−15`→2 · `>1.5`/`<−30`→1. Interpolate; if TSB very negative, downward-override (big volume block).
+  **#536 — trust ACWR ∝ chronic load.** ACWR is spurious at LOW CTL (a big ratio on a tiny base isn't real fatigue —
+  Impellizzeri 2020 "Conceptual Issues & Pitfalls"; Lolli 2019 coupling; Wang 2020). `freshness()` weights the ACWR
+  component by `acwrTrust = clamp((CTL−8)/22, 0, 1)` (CTL ≥ 30 = full/unchanged) and leans on absolute Form when the
+  base is low. **Pregnancy** (`pregnant` param, threaded from `info.pregnant` via `readiness()`/`forecastFreshness()` +
+  `/auth/readiness`): `acwrTrust ×= 0.4` — HR-derived load is unreliable in pregnancy (ACOG 804, RPE/talk-test not HR)
+  + goal is maintain. Fixed Xenia (pregnant, CTL ~13) falsely reading "Fatigued 2" on a light day → 3.
+  **Display:** the check-in ⓘ shows RAW numbers SIGNED + plain-worded ("Form +1 (fresh), load ratio 0.97 (balanced)")
+  so a healthy Form isn't misread against "1 = wrecked"; a non-overridden row re-derives LIVE through the day (not the
+  frozen morning snapshot). Coach: the `# PREGNANCY` block tells it Freshness already de-weights the HR ratio → trust it + RPE.
 - **Energy** — `0.35·HRV + 0.35·Sleep + 0.15·RHR + 0.15·Subjective` → 0–100 → piecewise 1–5.
   HRV = z-score of **lnRMSSD** vs personal baseline (full if ≥normal, scales down below −1σ); RHR = z-score
   (lower=better, >+1σ penalized hard); Sleep = the 0–100 sleep score; Subjective = the daily check-in.
