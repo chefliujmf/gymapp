@@ -1436,6 +1436,8 @@ const COACH_ENGINE_FEMALE = loadEngine('coach-engine-female.md')   // gated by s
 const SPORT_ENGINES = [
   { key: 'cycling', file: 'coach-engine-cycling.md', sports: ['cycling', 'triathlon'], rx: /\b(cycl|bike|biking|\bride\b|\brides\b|ftp|w\/kg|wattage|triathlon|gran fondo)\b/i },
   { key: 'running', file: 'coach-engine-running.md', sports: ['running', 'triathlon'], rx: /\b(run|running|jog|marathon|\b5k\b|\b10k\b|half|ultra|vdot|daniels|threshold pace)\b/i },
+  // #534 — strength engine (peer to cycling/running): 1-RM + %1RM zones, GOAL-DEPENDENT volume, concurrent-training.
+  { key: 'strength', file: 'coach-engine-strength.md', sports: ['strength', 'gym'], rx: /\b(gym|strength|lift|lifting|weights?|squat|bench|deadlift|hypertroph|1[\s-]?rm|dumbbell|barbell)\b/i },
 ].map((e) => ({ ...e, text: loadEngine(e.file) }))
 
 function buildSystemPrompt(user) {
@@ -1478,6 +1480,13 @@ function buildSystemPrompt(user) {
     const cc = fresh ? cycleContext({ phase: user.cyclePhase }) : null
     if (cc) tail += `\n\n# CYCLE PHASE — currently **${cc.phase}** (as of ${user.cyclePhaseAt}). ${cc.guidance} When you plan or adjust this week, apply a load bias of ~×${cc.loadModifier} for this phase (push intensity in the follicular/ovulatory green window; ease top-end + add recovery/Z2 + carbs/sleep in late-luteal/PMS if symptomatic). Don't over-medicalise it — many train through; adapt to how SHE reports feeling. Their late-luteal RHR/HRV naturally shift, so don't read that as poor recovery.`
     else if (!user.cyclePhase) tail += `\n\n# CYCLE PHASE — unknown. If it would help tailor load/recovery and she's open to it, ASK for her last period start date + typical cycle length (or connect it in intervals), then factor the phase into planning. Never assume; ask once, respect a "no".`
+  }
+  // #534 — GYM FOCUS: the coach adapts strength to the athlete's MAIN sport + objective (concurrent training).
+  const doesGymNow = sports.some((s) => ['strength', 'gym'].includes(s)) || /\b(gym|strength|lift|weights?)\b/i.test(prof)
+  if (doesGymNow) {
+    const ms = user.info && user.info.mainSport
+    const obj = ((user.info && user.info.goals && user.info.goals.notes) || '').trim()
+    tail += `\n\n# GYM FOCUS — main sport: ${ms || 'none set'}. Sports: ${sports.join(', ') || '—'}. Objective: ${obj ? `"${obj.slice(0, 240)}"` : 'not stated — ask what they want from the gym'}. Derive the gym focus per coach-engine-strength.md: an ENDURANCE main sport, or an FTP/pace/race objective → gym is SUPPORT (maintenance dose, minimal effective volume, kept clear of key rides/runs — never chase hypertrophy volume, never treat low gym volume as a deficit); "build muscle" → hypertrophy (10–20 hard sets/muscle/wk); a strength/1-RM goal → strength (heavy, >85% 1RM, low volume). Match volume, %1RM intensity, and scheduling to that focus AND the athlete's current phase — in a big endurance block, gym MAINTAINS, it does not build.`
   }
   // #207 Phase 2: the athlete's own benchmarks — so the coach judges intensity FOR THEM.
   const stats = []
