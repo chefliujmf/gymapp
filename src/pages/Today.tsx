@@ -97,14 +97,38 @@ export function CheckInCard({ day, onChange, compact = false }: { day: string; o
       why.energy = rdy.energy.provisional
         ? `first estimate from today's HRV, sleep ${rdy.sleep?.score ?? '—'}/5 & resting HR — I'm still learning your personal baseline (~${rdy.energy.needDays ?? 14} more nights to personalise)`
         : `${hrvTxt}, sleep ${rdy.sleep?.score ?? '—'}/5, ${rhrTxt}${rdy.energy.guard ? ' (HRV high but RHR raised → eased)' : ''}` }
-    if (rdy.freshness) { calc.soreness = 6 - Math.round(rdy.freshness.score); const pz = rdy.freshness.personalZ; const vsYou = pz == null ? '' : `, ${pz < -0.5 ? 'more loaded than your usual' : pz > 0.5 ? 'fresher than your usual' : 'about your usual'}`; why.soreness = `training load — Form ${rdy.freshness.tsb ?? '—'}, acute-vs-chronic ${rdy.freshness.acwr ?? '—'}${vsYou}` }
+    if (rdy.freshness) {
+      calc.soreness = 6 - Math.round(rdy.freshness.score)
+      const pz = rdy.freshness.personalZ
+      const vsYou = pz == null ? '' : `, ${pz < -0.5 ? 'more loaded than your usual' : pz > 0.5 ? 'fresher than your usual' : 'about your usual'}`
+      // #536 — show the RAW training-load numbers with SIGN + a plain word, so a healthy Form (+1) can't be
+      // misread as a "1 = wrecked" rating. Form is CTL−ATL (fitness minus fatigue): + = fresh, − = carrying load.
+      const tsb = rdy.freshness.tsb, acwr = rdy.freshness.acwr
+      const formTxt = tsb == null ? 'Form —' : `Form ${tsb > 0 ? '+' : ''}${tsb} (${tsb >= -5 ? 'fresh' : tsb >= -15 ? 'building load' : 'carrying fatigue'})`
+      const acwrTxt = acwr == null ? '' : `, load ratio ${acwr} (${acwr < 0.8 ? 'well rested' : acwr <= 1.3 ? 'balanced' : 'ramping hard'})`
+      why.soreness = `training load — ${formTxt}${acwrTxt}${vsYou}`
+    }
   }
   // Auto-fill any UNANSWERED row from the data-derived value; tapping a face overrides.
+  // #536 — ALSO live-refresh a row that's still sitting at its AUTO value (not manually overridden): as the
+  // day's wellness settles (e.g. Form rising from a stale morning snapshot), the chip follows the current
+  // number instead of freezing at check-in time. A manually-tapped face is left untouched.
   useEffect(() => {
     if (!loaded || !rdy?.connected) return
     const fill: Partial<Checkin> = {}
-    for (const k of ['energy', 'sleep', 'soreness'] as const) if (ci?.[k] == null && calc[k] != null) fill[k] = calc[k]
-    if (Object.keys(fill).length) set(fill)
+    const auto: { energy?: number; sleep?: number; freshness?: number } = { ...(ci?.auto || {}) }
+    for (const k of ['energy', 'sleep', 'soreness'] as const) {
+      if (calc[k] == null) continue
+      const dispKey = k === 'soreness' ? 'freshness' : k // ci.auto stores DISPLAY terms
+      const prevAutoStored = ci?.auto == null ? null : (k === 'soreness' ? (ci.auto.freshness != null ? 6 - ci.auto.freshness : null) : ci.auto[dispKey as 'energy' | 'sleep'])
+      const cur = ci?.[k]
+      const isAutoValue = cur == null || (prevAutoStored != null && cur === prevAutoStored) // unanswered OR untouched auto
+      if (isAutoValue) {
+        if (cur !== calc[k]) fill[k] = calc[k]!
+        auto[dispKey as 'energy' | 'sleep' | 'freshness'] = k === 'soreness' ? 6 - calc.soreness! : calc[k]!
+      }
+    }
+    if (Object.keys(fill).length) set({ ...fill, auto })
   }, [loaded, rdy]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!loaded) return null
   // Emoji faces, 1–5, ALWAYS visible (JM: must not be hidden or it gets skipped).
