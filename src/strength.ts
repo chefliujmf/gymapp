@@ -157,6 +157,43 @@ export const SETS_HIGH = 20
 export type VolStatus = 'low' | 'ok' | 'high'
 export interface MuscleVolume { muscle: string; total: number; perWeek: number; status: VolStatus }
 
+// #534 — the GYM ENGINE is sport+goal-adaptive. Volume targets are GOAL-DEPENDENT (docs/strength-coaching.md §2):
+// a flat 10–20 band is a hypertrophy prescription and wrongly flags an endurance athlete as "low" forever.
+export type GymFocus = 'muscle' | 'strength' | 'support' | 'health'
+export interface FocusSpec { low: number; high: number; label: string; note: string }
+export const GYM_FOCUS: Record<GymFocus, FocusSpec> = {
+  muscle: { low: 10, high: 20, label: 'Build muscle', note: '10–20 hard sets/muscle a week drives growth (Schoenfeld).' },
+  strength: { low: 6, high: 12, label: 'Get stronger', note: 'Heavier (>85% 1-RM), fewer reps — intensity over volume (NSCA).' },
+  support: { low: 2, high: 8, label: 'Support my sport', note: 'Maintenance dose — a little holds strength; keep it clear of key sessions (concurrent training).' },
+  health: { low: 2, high: 12, label: 'Health', note: 'Hit all major muscles ~2×/week (ACSM).' },
+}
+
+/** Infer the athlete's GYM focus from their MAIN sport + objective text (JM 2026-07-16). An explicit muscle/strength
+ *  objective wins; else an endurance main-sport (or endurance goal) → support; a strength sport → muscle; else health. */
+export function inferGymFocus(input: { mainSport?: string; sports?: string[]; goal?: string }): GymFocus {
+  const goal = String(input.goal || '').toLowerCase()
+  const enduranceGoal = /\bftp\b|watt|\bpace\b|marathon|\brace\b|\bride\b|\brun\b|\bbike\b|cycl|endurance|triathlon|\bvo2\b/.test(goal)
+  if (/hypertroph|build muscle|gain muscle|bigger|\bmass\b|tone up|\bbulk\b|muscle up/.test(goal)) return 'muscle'
+  if (/strong|1\s?-?rm|one[- ]rep|deadlift|squat|bench|powerlift/.test(goal) && !enduranceGoal) return 'strength'
+  const main = String(input.mainSport || (input.sports && input.sports[0]) || '').toLowerCase()
+  if (/cycl|ride|bike|\brun\b|jog|swim|tri|endurance|row/.test(main) || enduranceGoal) return 'support'
+  if (/strength|gym|lift|weight|bodybuild|power/.test(main)) return 'muscle'
+  return 'health'
+}
+
+// %1-RM intensity zones — the strength analog of power/pace zones (NSCA rep-max continuum, docs/strength-coaching.md §1).
+export const INTENSITY_ZONES = [
+  { key: 'strength', label: 'Strength', min: 85, max: 200, reps: '1–5', color: '#ff6b6b' },
+  { key: 'hypertrophy', label: 'Hypertrophy', min: 67, max: 85, reps: '6–12', color: '#34e07d' },
+  { key: 'endurance', label: 'Endurance', min: 0, max: 67, reps: '12+', color: '#7fd1ff' },
+] as const
+/** Which intensity zone a working set falls in, from its load vs the lift's 1-RM. */
+export function intensityZone(weight: number, e1rmVal: number): (typeof INTENSITY_ZONES)[number] | null {
+  if (!weight || !e1rmVal) return null
+  const pct = (weight / e1rmVal) * 100
+  return INTENSITY_ZONES.find((z) => pct >= z.min && pct < z.max) || INTENSITY_ZONES[0]
+}
+
 /** Distinct 7-day weeks in which the athlete actually TRAINED (≥1 logged session). The denominator for the
  *  per-week metrics — averaging over empty calendar weeks in a wide filter would dilute the number into nonsense
  *  (JM: "0.8 low" over an 8-week filter with 3 days of data). We report "per TRAINING week" instead. */
@@ -166,10 +203,11 @@ export function activeWeeks(logs: WorkoutLog[]): number {
   return Math.max(1, wk.size)
 }
 
-/** Completed working sets per PRIMARY muscle group, averaged over the weeks you TRAINED (not calendar weeks in
- *  the filter) → the actionable volume metric. status: low (<10/wk, under-stimulating) · ok (10–20) · high (>20). */
-export function weeklySetsPerMuscle(logs: WorkoutLog[], muscleOf: MuscleOf, _days?: number): MuscleVolume[] {
+/** Completed working sets per PRIMARY muscle group, averaged over the weeks you TRAINED, with status vs the band
+ *  for the athlete's GYM FOCUS (support/health tolerate far less volume than hypertrophy). #534. */
+export function weeklySetsPerMuscle(logs: WorkoutLog[], muscleOf: MuscleOf, focus: GymFocus = 'muscle'): MuscleVolume[] {
   const wk = activeWeeks(logs)
+  const { low, high } = GYM_FOCUS[focus]
   const tot = new Map<string, number>()
   for (const s of eachDoneSet(logs)) {
     const m = muscleOf(s.name, s.exId)
@@ -179,7 +217,7 @@ export function weeklySetsPerMuscle(logs: WorkoutLog[], muscleOf: MuscleOf, _day
   return [...tot.entries()]
     .map(([muscle, total]) => {
       const perWeek = Math.round((total / wk) * 10) / 10
-      const status: VolStatus = perWeek < SETS_LOW ? 'low' : perWeek > SETS_HIGH ? 'high' : 'ok'
+      const status: VolStatus = perWeek < low ? 'low' : perWeek > high ? 'high' : 'ok'
       return { muscle, total, perWeek, status }
     })
     .sort((a, b) => b.perWeek - a.perWeek)
@@ -291,7 +329,7 @@ export const MAJOR_MUSCLES = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Cor
 
 /** The actionable feed: what NEEDS attention (stalls, under-volume muscles, a neglected major group) and the
  *  WINS (PRs, biggest movers). Surfaces the handful worth acting on out of a library of hundreds. */
-export function strengthDigest(logs: WorkoutLog[], muscleOf: MuscleOf | undefined, days: number, majors = MAJOR_MUSCLES, fmt: (kg: number) => string = (v) => `${Math.round(v)} kg`): StrengthDigest {
+export function strengthDigest(logs: WorkoutLog[], muscleOf: MuscleOf | undefined, focus: GymFocus = 'muscle', majors = MAJOR_MUSCLES, fmt: (kg: number) => string = (v) => `${Math.round(v)} kg`): StrengthDigest {
   const needsAttention: DigestItem[] = []
   const wins: DigestItem[] = []
   const series = seriesByExercise(logs)
@@ -310,11 +348,16 @@ export function strengthDigest(logs: WorkoutLog[], muscleOf: MuscleOf | undefine
     if (deltaPct >= 3) movers.push({ name, deltaPct })
   }
 
-  // Volume: under-trained + neglected major groups
-  const vols = weeklySetsPerMuscle(logs, muscleOf || (() => undefined), days)
+  // Volume nags are GOAL-AWARE (#534): only when the focus is to GROW (muscle/strength) is low volume a problem.
+  // For support/health, low gym volume is the plan — never nag a cyclist for "only" a maintenance dose.
+  const spec = GYM_FOCUS[focus]
+  const nagVolume = focus === 'muscle' || focus === 'strength'
+  const vols = weeklySetsPerMuscle(logs, muscleOf || (() => undefined), focus)
   const seen = new Set(vols.map((v) => v.muscle))
-  for (const v of vols) if (v.status === 'low') needsAttention.push({ kind: 'low-volume', muscle: v.muscle, title: `${v.muscle} volume low`, detail: `${v.perWeek} sets/wk — under the ${SETS_LOW}–${SETS_HIGH} growth range. Add a set or a session.` })
-  if (muscleOf && vols.length >= 2) for (const m of majors) if (!seen.has(m)) needsAttention.push({ kind: 'missing', muscle: m, title: `No ${m.toLowerCase()} work`, detail: `Nothing logged for ${m.toLowerCase()} in this range — a gap vs the rest of your training.` })
+  if (nagVolume) {
+    for (const v of vols) if (v.status === 'low') needsAttention.push({ kind: 'low-volume', muscle: v.muscle, title: `${v.muscle} volume low`, detail: `${v.perWeek} sets/wk — under the ${spec.low}–${spec.high} range for ${spec.label.toLowerCase()}. Add a set or a session.` })
+    if (muscleOf && vols.length >= 2) for (const m of majors) if (!seen.has(m)) needsAttention.push({ kind: 'missing', muscle: m, title: `No ${m.toLowerCase()} work`, detail: `Nothing logged for ${m.toLowerCase()} in this range — a gap vs the rest of your training.` })
+  }
 
   // Best movers as wins (dedup vs PRs already listed)
   const named = new Set(wins.map((w) => w.name))

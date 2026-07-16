@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { authApi, type CoachReview } from '../auth/api'
+import { useAuth } from '../auth/AuthContext'
 import { db, getSetting, syncLogsFromServer } from '../db'
 import { localISO } from '../date'
 import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { matchExercise } from '../plan'
 import { e1rm } from '../strength'
-import { rangeSummary, weeklySetsPerMuscle, mainLifts, strengthDigest, SETS_LOW, SETS_HIGH, type MuscleOf, type VolStatus, type MainLift } from '../strength'
+import { rangeSummary, weeklySetsPerMuscle, mainLifts, strengthDigest, inferGymFocus, GYM_FOCUS, type MuscleOf, type VolStatus, type MainLift } from '../strength'
 import { DateRangeFilter, TRAINING_PRESETS } from '../DateRange'
 
 const LB = 2.2046226
@@ -62,8 +63,13 @@ function ActCard({ icon, title, detail, tone, onClick }: { icon: string; title: 
 
 export default function Progress() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const logs = useLiveQuery(() => db.logs.orderBy('completedAt').toArray())
   const imp = (useLiveQuery(() => getSetting('units')) as string | undefined) === 'imperial'
+  // #534 — the whole page is GOAL-AWARE: infer the gym focus from the athlete's main sport + objective.
+  const info = user?.info as { mainSport?: string; goals?: { notes?: string } } | undefined
+  const focus = inferGymFocus({ mainSport: info?.mainSport, sports: user?.sports, goal: info?.goals?.notes })
+  const focusSpec = GYM_FOCUS[focus]
   const [q, setQ] = useState('')
   const [facet, setFacet] = useState('Needs attention')
   const [from, setFrom] = useState(localISO(new Date(Date.now() - 56 * 86400000))) // #252 date filter (default 8 wk)
@@ -84,9 +90,9 @@ export default function Progress() {
     const fmt = (kg: number) => `${conv(kg)} ${unit}`
     // #251 — summary follows the filter (sessions · time · consistency), not vanity "this week" volume.
     const summary = rangeSummary(L, days)
-    const vols = weeklySetsPerMuscle(L, muscleOf, days)
+    const vols = weeklySetsPerMuscle(L, muscleOf, focus)
     const mains = mainLifts(L, muscleOf, 4)
-    const digest = strengthDigest(L, muscleOf, days, GROUPS, fmt)
+    const digest = strengthDigest(L, muscleOf, focus, GROUPS, fmt)
     // Per-exercise dated e1RM series for the searchable "all exercises" list (tap → per-exercise page).
     type Pt = { date: number; e1rm: number }
     const exMap = new Map<string, { name: string; group?: string; pts: Pt[] }>()
@@ -117,13 +123,13 @@ export default function Progress() {
     for (let m = monday(since); m.getTime() < until; m.setDate(m.getDate() + 7)) { const w = localISO(m); weeks.push({ w, v: wkVol.get(w) || 0 }) }
     if (!weeks.length) weeks.push({ w: weekKey(Date.now()), v: 0 })
     return { unit, conv, summary, vols, mains, digest, lifts, weeks, count: L.length }
-  }, [logs, imp, from, to])
+  }, [logs, imp, from, to, focus])
 
   if (!logs) return null
   const { unit, conv, summary, vols, mains, digest, lifts, weeks, count } = data
   const maxWeek = Math.max(1, ...weeks.map((b) => b.v))
   const kfmt = (v: number) => { const c = conv(v); return c >= 1000 ? Math.round(c / 100) / 10 + 'k' : String(Math.round(c)) } // Y-axis tick label (kg → 1.2k)
-  const volScale = Math.max(SETS_HIGH + 4, ...vols.map((v) => v.perWeek))
+  const volScale = Math.max(focusSpec.high + 4, ...vols.map((v) => v.perWeek))
   const hm = totalMinFmt(summary.totalMin)
 
   // "all exercises" list: filter by search + facet
@@ -188,19 +194,19 @@ export default function Progress() {
 
         {/* Weekly sets per muscle — the actionable volume metric (Schoenfeld 10–20) */}
         {vols.length > 0 && <>
-          <div className="section-title">Sets per training week <span className="meta" style={{ fontWeight: 400 }}>· per muscle · target {SETS_LOW}–{SETS_HIGH}</span></div>
+          <div className="section-title">Sets per training week <span className="meta" style={{ fontWeight: 400 }}>· {focusSpec.label.toLowerCase()} · target {focusSpec.low}–{focusSpec.high}</span></div>
           <div className="card" style={{ padding: 14 }}>
             {vols.map((v) => (
               <div key={v.muscle} style={{ display: 'flex', alignItems: 'center', gap: 9, margin: '8px 0', fontSize: 12 }}>
                 <span style={{ width: 62 }}>{v.muscle}</span>
                 <span style={{ flex: 1, height: 15, borderRadius: 5, background: '#12151c', position: 'relative', overflow: 'hidden' }}>
-                  <i style={{ position: 'absolute', top: 0, bottom: 0, left: `${(SETS_LOW / volScale) * 100}%`, right: `${Math.max(0, 100 - (SETS_HIGH / volScale) * 100)}%`, background: 'rgba(52,224,125,.13)', borderLeft: '1px dashed #34e07d55', borderRight: '1px dashed #34e07d55' }} />
+                  <i style={{ position: 'absolute', top: 0, bottom: 0, left: `${(focusSpec.low / volScale) * 100}%`, right: `${Math.max(0, 100 - (focusSpec.high / volScale) * 100)}%`, background: 'rgba(52,224,125,.13)', borderLeft: '1px dashed #34e07d55', borderRight: '1px dashed #34e07d55' }} />
                   <i style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: `${(v.perWeek / volScale) * 100}%`, borderRadius: 5, background: STATUS_COLOR[v.status] }} />
                 </span>
                 <span className="meta" style={{ width: 66, textAlign: 'right' }}><b style={{ color: 'var(--text)' }}>{v.perWeek}</b> {STATUS_LABEL[v.status]}</span>
               </div>
             ))}
-            <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Averaged over the weeks you trained in this range (not diluted by empty weeks). Shaded band = the {SETS_LOW}–{SETS_HIGH} growth range (Schoenfeld).</p>
+            <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Per week you trained, vs the {focusSpec.low}–{focusSpec.high} band for <b style={{ color: 'var(--text)' }}>{focusSpec.label.toLowerCase()}</b>. {focusSpec.note}</p>
           </div>
         </>}
 
