@@ -43,6 +43,7 @@ export interface User {
   runThresholdPace?: number | null // sec/km
   statPrefs?: Partial<Record<'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed', 'manual' | 'computed' | 'auto'>> // #236 manual vs computed; #277 auto; #337 sleepNeed
   learnReadiness?: boolean // #235 — auto-calibrate readiness from check-in overrides (default true)
+  feedbackSkips?: string[] // #review-skip — activity ids the athlete skipped reviewing; excluded from the "to review" list
   statsSyncedAt?: number // last successful push to intervals
   onboardedAt?: number // #257 set when the coach finishes onboarding (profile + first week)
   cyclePhase?: string | null // #422 — current menstrual phase auto-derived from intervals wellness (last readiness read)
@@ -181,6 +182,7 @@ export const authApi = {
   // #273 feedback on a completed device activity (no plan)
   getActivityFeedback: (id: string) => req<{ feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; at?: number } | null>(`/activity/${encodeURIComponent(id)}/feedback`),
   activityFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; sport?: string; date?: string }) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
+  feedbackSkip: (id: string) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback-skip`, { method: 'POST' }),
   promoteProd: () => req<{ ok: boolean }>('/promote-prod', { method: 'POST' }),
   // Fan a Platyplus-recorded workout out to intervals (match-first, server-side, #122/#123).
   completeActivity: (a: { sport: string; title: string; date: string; startIso: string; durationSec: number; samples: { t: number; power?: number; cadence?: number; hr?: number }[] }) =>

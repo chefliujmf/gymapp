@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
 import { incompleteFeedback } from '../feedbackGaps'
+import { authApi } from '../auth/api'
+import { useAuth } from '../auth/AuthContext'
 
 // #442b/#387/#340 — the DEDICATED "to review" page (JM: headline on Today, NOT buried in History; tap → the
 // activity; back → where you were). A knock-out list, oldest first, each row deep-links to the activity's
@@ -22,13 +24,19 @@ const statLine = (a: IcuActivity) => {
 
 export default function ReviewPage() {
   const nav = useNavigate()
+  const { user } = useAuth()
   const [acts, setActs] = useState<IcuActivity[]>([])
   const [loaded, setLoaded] = useState(false)
+  // #review-skip — sessions the athlete skips (server-persisted via user.feedbackSkips) + this session's local
+  // skips, so a tapped row drops immediately without a refetch.
+  const [skipped, setSkipped] = useState<Set<string>>(new Set())
+  useEffect(() => { setSkipped(new Set((user?.feedbackSkips || []).map(String))) }, [user?.feedbackSkips])
   useEffect(() => {
     const now = new Date(), from = new Date(now); from.setDate(from.getDate() - 45)
     fetchActivities(iso(from), iso(now)).then(setActs).catch(() => {}).finally(() => setLoaded(true))
   }, [])
-  const gaps = incompleteFeedback(acts)
+  const gaps = useMemo(() => incompleteFeedback(acts, skipped), [acts, skipped])
+  const skip = (id: string) => { setSkipped((s) => new Set(s).add(id)); authApi.feedbackSkip(id).catch(() => {}) }
 
   return (
     <div>
@@ -43,16 +51,21 @@ export default function ReviewPage() {
         {gaps.map(({ act, status }) => {
           const stats = statLine(act)
           return (
-            <Link key={String(act.id)} to={`/activity/${act.id}`} state={{ from: '/review' }} className="fbrow">
-              <div className="fbrow__th">{SPORT_EMOJI[sportOfActivity(act)] || '⏱️'}</div>
-              <div className="fbrow__b">
-                <div className="fbrow__t">{act.name || nameFor(sportOfActivity(act))} · {dayLabel(act.start_date_local)}</div>
-                {stats && <div className="meta" style={{ fontSize: 12, margin: '1px 0 3px' }}>{stats}</div>}
-                <div className="fbrow__m">{status.missing.map((m) => <span key={m} className="fbmiss">{m}</span>)}</div>
-                <div className="fbprog"><i style={{ width: `${Math.max(6, status.pct)}%` }} /></div>
+            <div key={String(act.id)} className="fbrow">
+              <Link to={`/activity/${act.id}`} state={{ from: '/review' }} className="fbrow__lk">
+                <div className="fbrow__th">{SPORT_EMOJI[sportOfActivity(act)] || '⏱️'}</div>
+                <div className="fbrow__b">
+                  <div className="fbrow__t">{act.name || nameFor(sportOfActivity(act))} · {dayLabel(act.start_date_local)}</div>
+                  {stats && <div className="meta" style={{ fontSize: 12, margin: '1px 0 3px' }}>{stats}</div>}
+                  <div className="fbrow__m">{status.missing.map((m) => <span key={m} className="fbmiss">{m}</span>)}</div>
+                  <div className="fbprog"><i style={{ width: `${Math.max(6, status.pct)}%` }} /></div>
+                </div>
+              </Link>
+              <div className="fbrow__acts">
+                <Link to={`/activity/${act.id}`} state={{ from: '/review' }} className="fbrow__cta">Add →</Link>
+                <button className="fbrow__skip" onClick={() => skip(String(act.id))} aria-label="Skip this one">Skip</button>
               </div>
-              <span className="fbrow__cta">Add →</span>
-            </Link>
+            </div>
           )
         })}
       </div>

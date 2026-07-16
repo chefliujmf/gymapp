@@ -6,6 +6,7 @@ import { WeekStrip, MiniProfile, DoneStats } from '../ui'
 import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, fetchActivityStreams, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
 import { PowerBlocks } from '../charts'
 import { incompleteFeedback } from '../feedbackGaps' // #387 — surface the "to review" count on Today
+import { useAuth } from '../auth/AuthContext' // #review-skip — exclude skipped sessions from the count
 import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, setCoachPlans, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
 import { calApi, type CalItem } from '../calendar'
@@ -442,7 +443,8 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
 // #387/#442b — a compact "sessions to review" HEADLINE on Today (only when there ARE gaps); taps through to
 // the DEDICATED /review page (NOT History — JM's directive). Keeps Today clean while making feedback stick.
 function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
-  const n = incompleteFeedback(acts).length
+  const { user } = useAuth() // #review-skip — the skipped-sessions count must not include what the athlete dismissed
+  const n = incompleteFeedback(acts, new Set((user?.feedbackSkips || []).map(String))).length
   if (!n) return null
   return (
     <Link to="/review" className="fbban" style={{ textDecoration: 'none', color: 'var(--text)', margin: '10px 0 12px' }}>

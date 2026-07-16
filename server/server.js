@@ -128,7 +128,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, cyclePhase: u.cyclePhase || null, cyclePhaseAt: u.cyclePhaseAt || null, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, feedbackSkips: u.feedbackSkips || [], statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, cyclePhase: u.cyclePhase || null, cyclePhaseAt: u.cyclePhaseAt || null, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').trim().toLowerCase(); return l ? store.users.find((u) => (u.username || '').toLowerCase() === l || (u.email || '').toLowerCase() === l) : undefined }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -1013,6 +1013,14 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
 // #273 — post-workout feedback for a COMPLETED intervals ACTIVITY (device rides/runs that have no
 // Platyplus plan). Stored per-user keyed by activity id; triggers an async coach review (activityId).
 app.get('/auth/activity/:id/feedback', auth, (req, res) => res.json((req.user.activityFeedback || {})[String(req.params.id)] || null))
+// Skip a session's feedback — the athlete doesn't want to log it. Drops it from the "to review" list so it
+// stops nagging (a per-user set of activity ids; `incompleteFeedback` filters these out). #review-skip
+app.post('/auth/activity/:id/feedback-skip', auth, (req, res) => {
+  const id = String(req.params.id)
+  req.user.feedbackSkips = Array.from(new Set([...(req.user.feedbackSkips || []), id])).slice(-500)
+  save(store)
+  res.json({ ok: true })
+})
 // #273 — intervals feel scale + custom ACTIVITY_FIELD options (label → 1-based index intervals stores).
 // Keep in sync with src/icu-fields.ts.
 const ICU_FEEL_LABELS = ['Strong', 'Good', 'Normal', 'Poor', 'Weak']

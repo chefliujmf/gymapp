@@ -40,4 +40,13 @@ describe('incompleteFeedback', () => {
     const r = incompleteFeedback(acts)
     expect(r.map((x) => x.act.id)).toEqual([3, 2]) // oldest first, complete one excluded
   })
+  it('#review-skip — excludes activities the athlete skipped', () => {
+    const acts = [
+      { id: 2, feel: 3, start_date_local: '2026-07-02' }, // missing RPE
+      { id: 3, start_date_local: '2026-07-01' }, // missing both
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ] as any
+    expect(incompleteFeedback(acts, new Set(['3'])).map((x) => x.act.id)).toEqual([2]) // 3 skipped → gone
+    expect(incompleteFeedback(acts, new Set(['2', '3'])).length).toBe(0) // both skipped → nothing to review
+  })
 })
