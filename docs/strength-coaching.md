@@ -48,6 +48,20 @@ endurance-first athlete:
 - Refs: Hickson 1980 (interference); Wilson 2012 meta-analysis; Coffey & Hawley 2017 (molecular basis); Rønnestad
   & Mujika 2014 (strength *benefits* endurance performance when dosed right).
 
+### 3a. Cross-training DOSING — how many sessions, by main sport + season (define in advance)
+The secondary discipline is built in the PRIMARY's off-season and maintained in-season. Frequencies to seed the
+coach's `set_gym_target` (and its cardio advice):
+
+| Main sport | Secondary | Off-season / base | In-season / peak | Evidence |
+|---|---|---|---|---|
+| **Cycling / running** | Gym | **2–3×/wk** (build the strength that improves economy; heavy block Nov–Jan) | **1×/wk** (maintains — no measurable detraining; dropping it entirely loses ~30–40% of gains in 8–12 wk) | TrainingPeaks; Source Endurance; Rønnestad & Mujika 2014; Blagrove 2018 (runners) |
+| **Gym** (muscle/strength) | Cardio | **2–3×/wk** low-impact Z2, kept short; ≤~3–4 h/wk total (more interferes) | more on a **cut**, minimal on a **bulk**; ACSM floor ≈150 min/wk | Wilson 2012; Barbell Medicine; ACSM |
+
+- **Modality for lifters who need cardio: cycling < running for interference** — running's eccentric impact damages
+  the legs and competes for recovery; cycling is mostly concentric. Prefer bike / incline walk / row / elliptical.
+- **Order:** strength BEFORE cardio in a shared session. Season = build the secondary in the primary's off-season.
+- Season/phase is the ATHLETE's training calendar (the coach knows it), roughly month + hemisphere for a default.
+
 ## 4. Progression & periodization
 - **Progressive overload** via **double progression** (add reps to the top of the range, then the smallest load) —
   `nextTarget` in `strength.ts`. Rippetoe *Starting Strength*; Helms *Pyramid*.
