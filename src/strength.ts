@@ -363,7 +363,8 @@ export function strengthDigest(logs: WorkoutLog[], muscleOf: MuscleOf | undefine
   // Volume nags are GOAL-AWARE (#534): only when the focus is to GROW (muscle/strength) is low volume a problem.
   // For support/health, low gym volume is the plan — never nag a cyclist for "only" a maintenance dose.
   const spec = GYM_FOCUS[focus]
-  const nagVolume = focus === 'muscle' || focus === 'strength' || focus === 'support_build' // build goals care about volume
+  const nagVolume = focus === 'muscle' // only a PURE muscle-building focus pushes low-volume into "needs attention";
+  // other focuses (support/support_build/strength/health) just show the bars + band, no nag (JM: the "low" nag is annoying).
   const vols = weeklySetsPerMuscle(logs, muscleOf || (() => undefined), focus)
   const seen = new Set(vols.map((v) => v.muscle))
   if (nagVolume) {

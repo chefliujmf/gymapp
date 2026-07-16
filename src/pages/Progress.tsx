@@ -126,9 +126,7 @@ export default function Progress() {
   }, [logs, imp, from, to, focus])
 
   if (!logs) return null
-  const { unit, conv, summary, vols, mains, digest, lifts, weeks, count } = data
-  const maxWeek = Math.max(1, ...weeks.map((b) => b.v))
-  const kfmt = (v: number) => { const c = conv(v); return c >= 1000 ? Math.round(c / 100) / 10 + 'k' : String(Math.round(c)) } // Y-axis tick label (kg → 1.2k)
+  const { unit, conv, summary, vols, mains, digest, lifts, count } = data
   const volScale = Math.max(focusSpec.high + 4, ...vols.map((v) => v.perWeek))
   const hm = totalMinFmt(summary.totalMin)
 
@@ -207,50 +205,31 @@ export default function Progress() {
                 <span className="meta" style={{ width: 66, textAlign: 'right' }}><b style={{ color: 'var(--text)' }}>{v.perWeek}</b> {STATUS_LABEL[v.status]}</span>
               </div>
             ))}
-            <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Per week you trained, vs the {focusSpec.low}–{focusSpec.high} band for <b style={{ color: 'var(--text)' }}>{focusSpec.label.toLowerCase()}</b>. {focusSpec.note}</p>
+            <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Working sets/week you trained, vs the shaded <b style={{ color: 'var(--text)' }}>{focusSpec.low}–{focusSpec.high}</b> target for <b style={{ color: 'var(--text)' }}>{focusSpec.label.toLowerCase()}</b>: under it = <span style={{ color: 'var(--warn,#ffb13d)' }}>low</span>, inside = <span style={{ color: 'var(--accent)' }}>ok</span>, over = <span style={{ color: 'var(--blue,#7fd1ff)' }}>high</span>. {focusSpec.note}</p>
           </div>
         </>}
 
         {/* Main lifts — your most-trained, working 1-RM + confidence (bounded, scales) */}
         {mains.length > 0 && <>
-          <div className="section-title">Main lifts <span className="meta" style={{ fontWeight: 400 }}>· your {mains.length} most-trained</span></div>
+          <div className="section-title">Main lifts <span className="meta" style={{ fontWeight: 400 }}>· est. 1-rep max (the most you could lift once)</span></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
-            {mains.map((m: MainLift) => (
-              <button key={m.name} onClick={() => goExercise(m.name)} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left', padding: 11, borderRadius: 13, background: '#12151c', border: '1px solid var(--line,#2a2f3a)', color: 'var(--text)', cursor: 'pointer' }}>
+            {mains.map((m: MainLift) => {
+              const flat = Math.abs(m.deltaPct) < 1
+              return (
+              <button key={m.name} onClick={() => goExercise(m.name)} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 1, textAlign: 'left', padding: 11, borderRadius: 13, background: '#12151c', border: '1px solid var(--line,#2a2f3a)', color: 'var(--text)', cursor: 'pointer' }}>
                 {m.tone === 'stall' && <span style={{ position: 'absolute', top: 9, right: 9, fontSize: 9, fontWeight: 700, color: 'var(--warn,#ffb13d)' }}>stalled</span>}
                 <div className="meta" style={{ fontSize: 12, fontWeight: 600 }}>{m.name}</div>
-                <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-.4px' }}>{conv(m.e1rm)}<small style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600 }}> {unit}</small></div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: m.deltaPct >= 0 ? 'var(--accent)' : '#ff6b6b' }}>{m.deltaPct >= 0 ? '▲' : '▼'} {Math.abs(m.deltaPct)}% · {m.sessions}s</div>
-                <div style={{ marginTop: 3 }}><ConfDots pct={m.confidencePct} /></div>
+                <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-.4px' }}>{conv(m.e1rm)}<small style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600 }}> {unit} est. max</small></div>
+                {/* change since the first logged session, then how many sessions it's based on */}
+                <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2, color: flat ? 'var(--text-dim)' : m.deltaPct > 0 ? 'var(--accent)' : '#ff6b6b' }}>
+                  {flat ? 'steady' : `${m.deltaPct > 0 ? '▲' : '▼'} ${Math.abs(m.deltaPct)}%`}
+                  <span className="meta" style={{ fontWeight: 400 }}> · {m.sessions} session{m.sessions === 1 ? '' : 's'}</span>
+                </div>
+                <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 6 }}><ConfDots pct={m.confidencePct} /><span className="meta" style={{ fontSize: 10 }}>how sure</span></div>
               </button>
-            ))}
+            )})}
           </div>
         </>}
-
-        {/* Weekly volume trend — X + Y axes + insight (chart standard) */}
-        <div className="section-title">Weekly volume <span className="meta" style={{ fontWeight: 400 }}>· in this range</span></div>
-        <div className="card" style={{ padding: 14 }}>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {/* Y axis (kg) */}
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: 100, width: 32, textAlign: 'right' }}>
-              {[maxWeek, maxWeek / 2, 0].map((t, i) => <span key={i} className="meta" style={{ fontSize: 9, lineHeight: 1 }}>{kfmt(t)}</span>)}
-            </div>
-            {/* plot + gridlines */}
-            <div style={{ flex: 1, position: 'relative', height: 100 }}>
-              {[0, 50, 100].map((p) => <div key={p} style={{ position: 'absolute', left: 0, right: 0, top: `${p}%`, borderTop: '1px solid rgba(255,255,255,.06)' }} />)}
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: '100%' }}>
-                {weeks.map((b) => (
-                  <div key={b.w} style={{ flex: 1, height: `${Math.max(0, (b.v / maxWeek) * 100)}%`, minHeight: b.v ? 3 : 0, background: b.v ? 'var(--accent-grad)' : 'transparent', borderRadius: '4px 4px 0 0' }} title={`${conv(b.v).toLocaleString()} ${unit}`} />
-                ))}
-              </div>
-            </div>
-          </div>
-          {/* X axis (week start day) */}
-          <div style={{ display: 'flex', gap: 6, marginLeft: 38, marginTop: 4 }}>
-            {weeks.map((b) => <span key={b.w} className="meta" style={{ flex: 1, textAlign: 'center', fontSize: 9 }}>{new Date(b.w + 'T00:00').toLocaleDateString(undefined, { day: 'numeric' })}</span>)}
-          </div>
-          <p className="meta" style={{ marginTop: 8, fontSize: 11 }}>Volume ({unit} lifted) per week · peak {conv(maxWeek).toLocaleString()} {unit}.</p>
-        </div>
 
         {/* All exercises — searchable / faceted, scales to hundreds (tap → per-exercise page) */}
         {lifts.length > 0 && <>
