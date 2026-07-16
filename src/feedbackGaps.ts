@@ -31,10 +31,11 @@ export function feedbackStatus(a: IcuActivity | null | undefined): FeedbackStatu
   return { needsFeedback: !feel || !rpe, missing, done, total, pct: Math.round((done / total) * 100) }
 }
 
-/** Completed activities whose CORE feedback is missing — oldest first, so nothing goes stale. */
-export function incompleteFeedback(acts: IcuActivity[]): { act: IcuActivity; status: FeedbackStatus }[] {
+/** Completed activities whose CORE feedback is missing — oldest first, so nothing goes stale.
+ *  `skip` = activity ids the athlete chose to skip reviewing (#review-skip) — excluded from the list. */
+export function incompleteFeedback(acts: IcuActivity[], skip?: Set<string>): { act: IcuActivity; status: FeedbackStatus }[] {
   return acts
     .map((act) => ({ act, status: feedbackStatus(act) }))
-    .filter((x) => x.status.needsFeedback)
+    .filter((x) => x.status.needsFeedback && !(skip && skip.has(String((x.act as unknown as { id?: unknown }).id))))
     .sort((a, b) => String((a.act as unknown as { start_date_local?: string }).start_date_local || '').localeCompare(String((b.act as unknown as { start_date_local?: string }).start_date_local || '')))
 }
