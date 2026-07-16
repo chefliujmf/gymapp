@@ -6,7 +6,7 @@ import { FEEL, RPE, FIELDS } from './pages/PostWorkout'
 // #273/#285 — post-workout feedback capture for ANY completed session (device activity or gym),
 // keyed by an id. Feedback-first when unsubmitted; collapses to a one-line summary after. Saving
 // persists + triggers a coach review (server). Reuses the shared feel/RPE/fields model (#143).
-export default function ActivityFeedback({ id, sport, date, heading = 'How did it go?', icuExisting, icuNote, onSaved, reviewShownAbove = false }: { id: string; sport: string; date: string; heading?: string; icuExisting?: { feel?: string; rpe?: number; fields: Record<string, string> } | null; icuNote?: string; onSaved?: () => void; reviewShownAbove?: boolean }) {
+export default function ActivityFeedback({ id, sport, date, heading = 'How did it go?', icuExisting, icuNote, onSaved, reviewShownAbove = false, altIds = [] }: { id: string; sport: string; date: string; heading?: string; icuExisting?: { feel?: string; rpe?: number; fields: Record<string, string> } | null; icuNote?: string; onSaved?: () => void; reviewShownAbove?: boolean; altIds?: string[] }) {
   const [feel, setFeel] = useState<string | undefined>()
   const [rpe, setRpe] = useState<number | undefined>()
   const [fields, setFields] = useState<Record<string, string>>({})
@@ -20,10 +20,17 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
   // Match the coach review for this session (by date + sport; gym reviews may omit sport).
   const matchReview = (rs: CoachReview[]) => rs.find((r) => r.date === date && (r.sport === sport || (!r.sport && sport === 'gym'))) || null
   useEffect(() => {
-    authApi.getActivityFeedback(id).then((f) => {
+    // Robust load: the canonical id first, then any LEGACY keys the same session may have been saved under
+    // (activity id vs gym-date-workoutId, entered from different views) — so feedback never "vanishes". Save
+    // always writes the canonical `id`, so an edit consolidates it. (#feedback-key-audit)
+    (async () => {
+      const keys = [id, ...altIds.filter((k) => k && k !== id)]
+      let f: Awaited<ReturnType<typeof authApi.getActivityFeedback>> = null
+      for (const k of keys) { f = await authApi.getActivityFeedback(k).catch(() => null); if (f) break }
       if (f) { setFeel(f.feel); setRpe(f.rpe); setFields(f.fields || {}); setNote(f.note || ''); setSaved(true) }
       else if (icuExisting || icuNote) { setFeel(icuExisting?.feel); setRpe(icuExisting?.rpe); setFields(icuExisting?.fields || {}); if (icuNote) setNote(icuNote); setSaved(true); setFromIcu(true) } // already logged in intervals — show it, don't ask again
-    }).catch(() => {}).finally(() => setLoaded(true))
+      setLoaded(true)
+    })()
     authApi.coachReviews().then((rs) => setReview(matchReview(rs))).catch(() => {}) // #364 show an existing review if there is one
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, icuExisting, icuNote])

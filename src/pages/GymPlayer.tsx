@@ -5,7 +5,7 @@ import { allWorkoutsById, allExercisesById } from '../data/catalog'
 import { useBeeper, useNow, useWakeLock } from '../hooks'
 import { db, getSetting, setSetting, getTemplate, lastLogForWorkout, logWorkout, type SetEntry } from '../db'
 import { e1rm, weightForReps, roundLoad, bestE1rmByExercise, reliableSessionMinutes } from '../strength'
-import { getGymSession, matchExercise } from '../plan'
+import { getGymSession, matchExercise, gymFeedbackKeys } from '../plan'
 import { authApi, type CoachReview } from '../auth/api'
 import GymSummary from '../GymSummary'
 import { localISO } from '../date'
@@ -318,7 +318,7 @@ export default function GymPlayer() {
             <h1 style={{ margin: '6px 0 2px' }}>Workout complete</h1>
             <p style={{ color: 'var(--text-dim,#888)', margin: 0 }}>{w.title}</p>
           </div>
-          <GymSummary minutes={finalMin} exercises={exLogs} review={review} bestE1rm={e1rmMap} feedbackId={`gym-${localISO()}-${w.workoutId}`} feedbackDate={localISO()} />
+          {(() => { const fk = gymFeedbackKeys({ date: localISO(), workoutId: w.workoutId }); return <GymSummary minutes={finalMin} exercises={exLogs} review={review} bestE1rm={e1rmMap} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={localISO()} /> })()}
           <button className="btn" style={{ marginTop: 18 }} onClick={() => navigate('/progress')}>View progress</button>
           <button className="btn btn--ghost" onClick={() => navigate('/exercises')}>Done</button>
         </div>

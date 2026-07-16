@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getCoachPlan, findGymLogForPlan } from '../plan'
+import { getCoachPlan, findGymLogForPlan, gymFeedbackKeys } from '../plan'
 import { authApi, type CoachReview } from '../auth/api'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
 import { DoneStats } from '../ui'
@@ -52,9 +52,10 @@ export default function PostWorkout() {
       <div>
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
         <div className="page-head"><span className="eyebrow">Gym · ✓ Completed{gymLog.duration ? ` · ${gymLog.duration} min` : ''}</span><h1>{p.title}</h1></div>
-        {/* #NNN — key feedback by the DEVICE ACTIVITY id when one exists, so feedback entered on the activity view
-            and on this gym summary is the SAME entry (was split: activity-id vs gym-date-workoutId → "my feedback vanished"). */}
-        <GymSummary minutes={gymLog.duration || 0} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={act?.id != null ? String(act.id) : `gym-${gymLog.date}-${gymLog.workoutId}`} feedbackDate={gymLog.date} planId={p.id} activityId={act?.id != null ? String(act.id) : undefined} avgHr={(act as { icu_average_hr?: number; average_heartrate?: number } | undefined)?.icu_average_hr || (act as { average_heartrate?: number } | undefined)?.average_heartrate} />
+        {(() => {
+          const fk = gymFeedbackKeys({ date: gymLog.date, planId: p.id, activityId: act?.id, workoutId: gymLog.workoutId })
+          return <GymSummary minutes={gymLog.duration || 0} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={gymLog.date} planId={p.id} activityId={act?.id != null ? String(act.id) : undefined} avgHr={(act as { icu_average_hr?: number; average_heartrate?: number } | undefined)?.icu_average_hr || (act as { average_heartrate?: number } | undefined)?.average_heartrate} />
+        })()}
       </div>
     )
   }

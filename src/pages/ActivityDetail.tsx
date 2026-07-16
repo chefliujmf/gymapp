@@ -7,7 +7,7 @@ import { fmtPace } from '../running-paces'
 import { paceOf, bestPaceCurve, paceZoneSecs, PZONES, PZONE_PCT } from '../run-analysis'
 import { useAuth } from '../auth/AuthContext'
 import { zoneColor } from '../ui'
-import { findCoachPlan } from '../plan'
+import { findCoachPlan, gymFeedbackKeys } from '../plan'
 import { getSetting } from '../db'
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
@@ -325,7 +325,13 @@ export default function ActivityDetail() {
       {/* #503/#JM 2026-07-15 — MERGED TOP: coach verdict → your feedback → source links, ONE place (was: coach duplicated
           top+bottom, feedback + links buried at the bottom). reviewShownAbove drops the duplicate review + "See all" link. */}
       <CoachVerdict review={review} note={note} />
-      <ActivityFeedback id={String(a.id)} sport={sportOfActivity(a)} date={(a.start_date_local || '').slice(0, 10)} icuExisting={readIcuFeedback(a)} icuNote={icuComment} onSaved={afterSave} reviewShownAbove />
+      {(() => {
+        const dISO = (a.start_date_local || '').slice(0, 10)
+        // gym feedback uses the shared resolver (plan id / activity id / date) so it's the SAME entry as the gym
+        // summary + done screen; ride/run keep the activity id. (#feedback-key-audit)
+        const fk = sportOfActivity(a) === 'gym' ? gymFeedbackKeys({ date: dISO, planId: plan?.id, activityId: a.id }) : { id: String(a.id), altIds: [] as string[] }
+        return <ActivityFeedback id={fk.id} altIds={fk.altIds} sport={sportOfActivity(a)} date={dISO} icuExisting={readIcuFeedback(a)} icuNote={icuComment} onSaved={afterSave} reviewShownAbove />
+      })()}
       <div className="links" style={{ margin: '6px 2px 12px' }}>
         {plan && <Link className="done-link done-link--map" to={`/coach/${plan.id}`}>📋 Planned workout →</Link>}
         {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}
