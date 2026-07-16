@@ -597,29 +597,27 @@ These rules govern every title and description you write for a workout, ride, ru
 **Assume it is PUBLIC.** Platyplus mirrors workouts to intervals.icu and can sync activities to
 Strava, where the title + description are visible to other people. Write both fields accordingly.
 
-## TITLE stays human, DESCRIPTION goes scientific (JM 2026-07-08)
-Two DIFFERENT voices, do not mix them up. JM: "titles are fine, just the description."
+## Keep it PLAIN, just describe the activity (JM 2026-07-16 — supersedes the old "creative title + personality description")
+JM: the fun/creative titles and the personality-flow descriptions read LAME. Both fields are now SIMPLE and
+factual — just describe the activity by its TRAINING CONTENT, nothing more.
 
-**TITLE = human and creative** — a normal athlete's Strava title. Keep it engaging and fun: the route,
-the session type, a segment/KOM/Local Legend result, the character of the ride. Titles like "Another
-Local Legend, Relaxed Miles", "KOM on the Backroads", "Backroad Hill Efforts", "Backroad Segment Hunt"
-are GOOD, leave that voice alone. Do NOT turn the title into a data string like "Z2 Aerobic Base, 71
-min". (Still public-safe: no home/health/fatigue facts; no em-dash.)
+**TITLE = the session's type / zone / purpose.** e.g. "Easy Z2 Endurance", "Sweet-Spot 3×12", "Threshold
+4×10", "Easy Aerobic Spin", "Full-Body Strength". No creative naming, no character/vibe, no brag.
 
-**DESCRIPTION = write it like the ATHLETE would** (JM 2026-07-08: "write it like I'm writing it", "ease up
-on the science", "find a balance"). One or two natural sentences with a little personality — the balance
-between a dry data line, a physiology lecture, and a Strava brag. Sound like a real person who knows their
-training, not a robot or a scientist.
-- e.g. "Relaxed Z2 spin on the backroads, kept it easy the whole way. Quiet base miles, banking fitness for
-  the harder stuff later." or "Solid threshold session, three by ten comfortably hard with easy spinning
-  between. The kind that lifts your ceiling."
-- Say the effort/zone (Z2, threshold) + the POINT (base, engine, sharpening) in everyday words, with flow.
+**DESCRIPTION = ONE short, plain, everyday sentence** naming the zone/type and what it was FOR. e.g. "Easy
+Zone 2 endurance, aerobic base." or "Sweet spot intervals for threshold durability." Natural but factual,
+not a lecture, not a brag, not flowery.
+
+**NEVER name a LOCATION in either field** (JM 2026-07-16: "keep saying St-Lambert, it's stupid") — no city,
+neighborhood, route, or "the backroads". The athlete trains the same area constantly, so a place name is
+just repetitive noise. A real Strava achievement (KOM, Local Legend) is fine ONLY when actually earned (it's
+the accomplishment, not a place stamp).
 - **Do NOT restate the raw numbers already shown on the activity** (average power, duration, IF, TSS) — Strava
-  displays them right there, so repeating "71 min at 153 W" is redundant and boring. Describe the FEEL + the
-  WHY instead. A number is fine only when it's the point (e.g. a new best), not as a data dump.
-- Still BANNED: jargon lecture ("mitochondrial density", "fat oxidation", "lactate", "substrate",
-  "excursions"); cocky filler ("snagged a Local Legend", "proof you don't have to go hard", "classic
-  relaxing spin"); and em-dashes (commas/periods only).
+  displays them right there, so repeating "71 min at 153 W" is redundant. A number is fine only when it's the
+  point (e.g. a new best).
+- BANNED: jargon lecture ("mitochondrial density", "fat oxidation", "lactate", "substrate", "excursions");
+  cocky filler; and em-dashes (commas/periods only).
+- **Signature:** the app AUTOMATICALLY appends "Powered by Platyplus" to the description — do NOT add it yourself.
 
 **Both fields:** NEVER use an em-dash ("—"); use a comma or a period (JM dislikes em-dashes). Mention
 weather only if it genuinely defined the session; never make weather the title.
