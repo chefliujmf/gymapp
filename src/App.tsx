@@ -54,14 +54,24 @@ function UpdateBanner() {
     document.addEventListener('visibilitychange', onVis)
     return () => { alive = false; clearInterval(iv); document.removeEventListener('visibilitychange', onVis) }
   }, [])
-  const hardUpdate = async () => {
-    try {
-      const rs = (await navigator.serviceWorker?.getRegistrations?.()) || []
-      await Promise.all(rs.map((r) => r.unregister()))
-      const ks = (await window.caches?.keys?.()) || []
-      await Promise.all(ks.map((k) => caches.delete(k)))
-    } catch { /* best effort — reload anyway */ }
-    window.location.reload()
+  const hardUpdate = () => {
+    // Unregister the SW + clear caches, then reload to the freshly-deployed bundle. #update-hang: NEVER await the
+    // SW cleanup before reloading — a WEDGED service worker can make getRegistrations()/unregister() hang forever,
+    // and then the reload never fires (the "Update now does nothing" bug). So cap the cleanup with a timeout and
+    // reload regardless, with a cache-bust query so a proxy/browser can't hand back the OLD index.html shell.
+    const cleanup = (async () => {
+      try {
+        const rs = (await navigator.serviceWorker?.getRegistrations?.()) || []
+        await Promise.all(rs.map((r) => r.unregister()))
+        const ks = (await window.caches?.keys?.()) || []
+        await Promise.all(ks.map((k) => caches.delete(k)))
+      } catch { /* best effort */ }
+    })()
+    Promise.race([cleanup, new Promise((res) => setTimeout(res, 1200))]).finally(() => {
+      const u = new URL(window.location.href)
+      u.searchParams.set('_v', String(Date.now())) // bust any cached shell so the new bundle actually loads
+      window.location.replace(u.toString())
+    })
   }
   if (!stale) return null
   return (
