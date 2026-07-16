@@ -1,0 +1,139 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--warn:#ffb13d;--blue:#7fd1ff}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  body{background:#07090c;color:var(--text);padding:16px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .phone{width:400px;background:var(--bg);border-radius:26px;padding:16px;border:1px solid #23262e}
+  .toggle{display:flex;gap:6px;margin-bottom:4px}
+  .toggle button{flex:1;padding:8px;border-radius:9px;border:1px solid #2b2f39;background:#14171d;color:var(--dim);font-size:12px;font-weight:700;cursor:pointer}
+  .toggle button.on{background:var(--accent);color:#06210f;border-color:var(--accent)}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+  h1{font-size:21px;margin:3px 0 2px}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid #2b2f39;border-radius:16px;padding:14px;margin-top:12px}
+  .hero{display:flex;gap:6px;margin-top:12px}
+  .ht{flex:1;background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid #2b2f39;border-radius:13px;padding:10px 4px;text-align:center}
+  .ht b{display:block;font-size:18px}.ht span{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+  .links{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+  .lk{font-size:12px;font-weight:700;padding:7px 11px;border-radius:9px;background:#14171d;border:1px solid #2b2f39;color:var(--text)}
+  .lk--map{background:rgba(52,224,125,.12);border-color:rgba(52,224,125,.35);color:var(--accent)}
+  .sect{font-size:12px;font-weight:800;letter-spacing:.03em;color:var(--dim);text-transform:uppercase;margin:4px 0 8px;display:flex;justify-content:space-between;align-items:center}
+  .prof{display:flex;align-items:flex-end;gap:2px;height:52px}
+  .prof i{flex:1;border-radius:2px 2px 0 0;display:block}
+  .prof--plan i{background:linear-gradient(180deg,#34e07d,#1f8f52)}
+  .prof--act i{background:linear-gradient(180deg,#7fd1ff,#2a6f8f)}
+  .row{display:flex;gap:10px}
+  .col{flex:1}
+  .col .cap{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+  .cap--plan{color:var(--accent)}.cap--act{color:var(--blue)}
+  .cmp{margin-top:10px;border-top:1px solid #262a33;padding-top:9px}
+  .cmp table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .cmp td{padding:4px 0}.cmp td:nth-child(2),.cmp td:nth-child(3){text-align:right;font-variant-numeric:tabular-nums}
+  .cmp td:nth-child(2){color:var(--accent)}.cmp td:nth-child(3){color:var(--blue)}
+  .cmp .lbl{color:var(--dim)}
+  .obj{font-size:13px;line-height:1.5;color:#cfd4dc;margin-top:9px}
+  .steps{margin-top:9px;display:flex;flex-direction:column;gap:6px}
+  .step{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 9px;background:#14171d;border-radius:8px;border-left:3px solid #2b2f39}
+  .step.hard{border-left-color:var(--accent)}
+  .step b{font-variant-numeric:tabular-nums;color:var(--dim);font-weight:600}
+  .chev{color:var(--accent);font-weight:800}
+  .adh{font-size:12px;background:rgba(52,224,125,.1);border:1px solid rgba(52,224,125,.3);color:#bff2d4;border-radius:9px;padding:8px 10px;margin-top:10px}
+  .note{font-size:11px;color:var(--dim);margin-top:8px;text-align:center}
+  h4{font-size:14px;margin-bottom:2px}
+</style>
+
+<div class="toggle phone" style="padding:8px;gap:6px">
+  <button id="bA" class="on" onclick="show('A')">A · Planned vs Done</button>
+  <button id="bB" onclick="show('B')">B · Prescription card</button>
+  <button id="bC" onclick="show('C')">C · Link preview</button>
+</div>
+
+<div class="phone">
+  <div class="eyebrow">‹ &nbsp; Ride · Outdoor · Sun Jul 5</div>
+  <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+    <div class="prof prof--act" style="width:64px;height:40px;flex:none;background:#14171d;border-radius:9px;padding:5px;gap:1px">
+      <i style="height:35%"></i><i style="height:85%"></i><i style="height:45%"></i><i style="height:88%"></i><i style="height:45%"></i><i style="height:92%"></i><i style="height:60%"></i><i style="height:30%"></i>
+    </div>
+    <div><h1 style="font-size:19px">South Shore Threshold Blocks + Endurance</h1></div>
+  </div>
+
+  <div class="hero">
+    <div class="ht"><b>1:48</b><span>Time</span></div>
+    <div class="ht"><b>194</b><span>NP watts</span></div>
+    <div class="ht"><b>100</b><span>TSS</span></div>
+    <div class="ht"><b>149</b><span>avg bpm</span></div>
+  </div>
+
+  <!-- ===== OPTION A — Planned vs Done comparison ===== -->
+  <div id="A">
+    <div class="card">
+      <div class="sect">📋 Planned vs done <span class="chev">open plan ›</span></div>
+      <div class="row">
+        <div class="col">
+          <div class="cap cap--plan">PLANNED</div>
+          <div class="prof prof--plan">
+            <i style="height:35%"></i><i style="height:92%"></i><i style="height:48%"></i><i style="height:94%"></i><i style="height:48%"></i><i style="height:100%"></i><i style="height:66%"></i><i style="height:30%"></i>
+          </div>
+        </div>
+        <div class="col">
+          <div class="cap cap--act">YOU DID</div>
+          <div class="prof prof--act">
+            <i style="height:35%"></i><i style="height:85%"></i><i style="height:45%"></i><i style="height:88%"></i><i style="height:45%"></i><i style="height:90%"></i><i style="height:60%"></i><i style="height:30%"></i>
+          </div>
+        </div>
+      </div>
+      <div class="cmp">
+        <table>
+          <tr><td class="lbl">Duration</td><td>1:50</td><td>1:48</td></tr>
+          <tr><td class="lbl">Load (TSS)</td><td>~105</td><td>100</td></tr>
+          <tr><td class="lbl">Key set</td><td>3×12′ @ 90–100%</td><td>3×12′ done ✓</td></tr>
+        </table>
+      </div>
+      <div class="adh">✓ Nailed it — all 3 threshold reps completed, load within 5% of plan. Rep 3 held ~256 W (target 260).</div>
+    </div>
+    <div class="note">Tap the card → full planned workout. Off-plan rides show “No workout was planned for this day”.</div>
+  </div>
+
+  <!-- ===== OPTION B — Prescription card ===== -->
+  <div id="B" style="display:none">
+    <div class="card">
+      <div class="sect">📋 What your coach planned <span class="chev">›</span></div>
+      <div class="prof prof--plan" style="height:40px">
+        <i style="height:35%"></i><i style="height:92%"></i><i style="height:48%"></i><i style="height:94%"></i><i style="height:48%"></i><i style="height:100%"></i><i style="height:66%"></i><i style="height:30%"></i>
+      </div>
+      <div class="obj">🎯 Use fresh legs for an FTP-validation block wrapped in aerobic endurance — captures Friday’s missed quality without over-reaching.</div>
+      <div class="steps">
+        <div class="step"><span>Warm-up</span><b>15′ · 50→70%</b></div>
+        <div class="step hard"><span>Threshold ×3</span><b>12′ @ 90–100% · 5′ easy</b></div>
+        <div class="step"><span>Endurance</span><b>40′ · 63–70%</b></div>
+        <div class="step"><span>Cool-down</span><b>10′</b></div>
+      </div>
+    </div>
+    <div class="note">The prescription, inline + expandable. Compare against the executed profile up top.</div>
+  </div>
+
+  <!-- ===== OPTION C — Link preview ===== -->
+  <div id="C" style="display:none">
+    <div class="links">
+      <a class="lk lk--map">📋 Planned workout →</a>
+      <a class="lk">intervals ↗</a>
+      <a class="lk">Strava ↗</a>
+    </div>
+    <div class="card" style="display:flex;gap:11px;align-items:center;padding:11px">
+      <div class="prof prof--plan" style="width:60px;height:38px;flex:none;gap:1px">
+        <i style="height:35%"></i><i style="height:92%"></i><i style="height:48%"></i><i style="height:94%"></i><i style="height:48%"></i><i style="height:100%"></i><i style="height:66%"></i><i style="height:30%"></i>
+      </div>
+      <div style="min-width:0">
+        <h4>Sunday Threshold Validation + Endurance</h4>
+        <div style="font-size:11.5px;color:var(--dim)">Planned · 3×12′ threshold · ~1h50 · ~105 TSS</div>
+      </div>
+      <div class="chev" style="margin-left:auto">›</div>
+    </div>
+    <div class="note">Lightest: today’s link, but it previews the plan (title · profile · key set) before you tap.</div>
+  </div>
+</div>
+
+<script>
+  function show(o){
+    for(const x of ['A','B','C']){document.getElementById(x).style.display = x===o?'block':'none';document.getElementById('b'+x).classList.toggle('on',x===o)}
+  }
+</script>

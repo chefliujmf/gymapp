@@ -7,7 +7,8 @@ import { Bike, Dumbbell, Footprints } from 'lucide-react'
 import { fmtPace } from '../running-paces'
 import { paceOf, bestPaceCurve, paceZoneSecs, PZONES, PZONE_PCT } from '../run-analysis'
 import { useAuth } from '../auth/AuthContext'
-import { zoneColor } from '../ui'
+import { zoneColor, MiniProfile } from '../ui'
+import { plannedLoad } from '../workout-summary'
 import { findCoachPlan, gymFeedbackKeys } from '../plan'
 import { getSetting } from '../db'
 import { authApi, type CoachReview } from '../auth/api'
@@ -338,7 +339,7 @@ export default function ActivityDetail() {
         return <ActivityFeedback id={fk.id} altIds={fk.altIds} sport={sportOfActivity(a)} date={dISO} icuExisting={readIcuFeedback(a)} icuNote={icuComment} onSaved={afterSave} reviewShownAbove />
       })()}
       <div className="links" style={{ margin: '6px 2px 12px' }}>
-        {plan && <Link className="done-link done-link--map" to={`/coach/${plan.id}`}>📋 Planned workout →</Link>}
+        {plan && sportOfActivity(a) === 'gym' && <Link className="done-link done-link--map" to={`/coach/${plan.id}`}>📋 Planned workout →</Link>}
         {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}
         {a.strava_id && <a className="done-link" href={`https://www.strava.com/activities/${a.strava_id}`} target="_blank" rel="noreferrer">Strava ↗</a>}
         {device && <span className="done-link" style={{ opacity: 0.7 }}>from {device}</span>}
@@ -349,6 +350,28 @@ export default function ActivityDetail() {
 
       <div className="act-hero">{hero.map(([l, v]) => <div key={l} className="ht"><b>{v}</b><span>{l}</span></div>)}</div>
       {chips.length > 0 && <div className="act-chips">{chips.map(([l, v]) => <span key={l} className="act-chip"><b>{v}</b><span>{l}</span></span>)}</div>}
+
+      {/* Planned-workout link preview (ride/run) — a slim chip-bar under the stats: profile + title + key set,
+          tapping opens the plan AS PLANNED (?planned=1). Only for a REAL same-day+SPORT plan (no date-only
+          false-match); off-plan rides show nothing. Gym keeps its own 'Planned workout' link. (JM #planned-preview) */}
+      {(() => {
+        const pm = plan && plan.sport === sportOfActivity(a) && sportOfActivity(a) !== 'gym' && plan.segments?.length ? plan : null
+        if (!pm) return null
+        const secs = pm.segments!.reduce((s, x) => s + (x.duration || 0), 0)
+        const mins = Math.round(secs / 60)
+        const timeStr = mins >= 60 ? `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, '0')}` : `${mins} min`
+        const load = plannedLoad(pm.segments!, ftp)
+        const intens = load ? (load.if < 0.75 ? (isRun ? 'Easy' : 'Z2 endurance') : load.if < 0.88 ? 'Tempo / SS' : 'Threshold+') : ''
+        const sub = [intens, timeStr, load ? `~${load.tss} TSS` : null, 'planned'].filter(Boolean).join(' · ')
+        return (
+          <Link to={`/coach/${pm.id}?planned=1`} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', marginTop: 11, textDecoration: 'none', color: 'var(--text)' }}>
+            <span style={{ fontSize: 15, flex: 'none' }}>📋</span>
+            <div style={{ width: 46, height: 28, flex: 'none' }}><MiniProfile segs={pm.segments!} /></div>
+            <div style={{ minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b>{pm.title}</b> <span className="meta" style={{ fontSize: 11.5 }}>· {sub}</span></div>
+            <span style={{ marginLeft: 'auto', color: 'var(--accent)', fontWeight: 800, fontSize: 17, flex: 'none' }}>›</span>
+          </Link>
+        )
+      })()}
 
       {tabs.length > 0 && (
         <div className="act-tabs">
