@@ -11,7 +11,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
 import { fmtPace, paceFromPowerPct } from '../running-paces'
 import { InfoDot, TrendChart, PlannedPowerBars, minuteTicks } from '../charts'
-import { fetchActivities, sportOfActivity } from '../intervals'
+import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
 import { linkify } from '../linkify'
 
@@ -61,14 +61,21 @@ export default function CoachPlanDetail() {
     }).catch(() => { if (!cancelled) setCheckedDone(true) })
     return () => { cancelled = true }
   }, [p?.id, p?.date, p?.sport, navigate])
-  // gym: completed if a log matches this plan → open its summary. #326 — match by plan-id OR
-  // by same title+day (a session logged from a template/catalog/ad-hoc), the SAME condition Today
-  // uses to badge the card "✓ Completed" — so a done card never lands back on the "Start" screen.
+  // gym: completed if a log matches this plan → open its summary. #326 — match by plan-id OR title+day.
+  // Else (no in-app log) a DEVICE (Coros/Garmin) may have recorded it in intervals (HR + time) — that still
+  // means DONE (JM: "it is a completed activity after all"), so show a completed banner instead of "Start workout".
+  const [doneActivity, setDoneActivity] = useState<IcuActivity | null>(null)
   useEffect(() => {
     if (!p || p.sport !== 'gym' || logs === undefined) return
     const done = findGymLogForPlan(p, logs || [])
-    if (done) navigate(`/feedback/${p.id}`, { replace: true })
-    else setCheckedDone(true)
+    if (done) { navigate(`/feedback/${p.id}`, { replace: true }); return }
+    let cancelled = false
+    fetchActivities(p.date, p.date).then((a) => {
+      if (cancelled) return
+      setDoneActivity(a.find((x) => sportOfActivity(x) === 'gym') || null)
+      setCheckedDone(true)
+    }).catch(() => { if (!cancelled) setCheckedDone(true) })
+    return () => { cancelled = true }
   }, [p?.id, p?.date, p?.sport, logs, navigate])
 
   if (!p) {
@@ -183,7 +190,18 @@ export default function CoachPlanDetail() {
       })()}
       {p.sport === 'gym' && (p.exercises?.length ?? 0) > 0 && (
         <>
-          <button className="btn" onClick={startGym}>▶ Start workout</button>
+          {doneActivity ? (() => {
+            const mt = (doneActivity as { moving_time?: number }).moving_time
+            const hr = Math.round((doneActivity as { icu_average_hr?: number; average_heartrate?: number }).icu_average_hr || (doneActivity as { average_heartrate?: number }).average_heartrate || 0)
+            return <>
+              <div className="card" style={{ padding: 12, marginBottom: 10, background: '#12180f', border: '1px solid #26421f' }}>
+                <div style={{ fontWeight: 700, color: 'var(--accent)' }}>✓ Completed · {dateLabel}</div>
+                <div className="meta" style={{ marginTop: 3 }}>Recorded on your device{mt ? ` · ${Math.round(mt / 60)} min` : ''}{hr ? ` · ${hr} bpm avg HR` : ''}. Weights weren't logged in the app.</div>
+                <Link to={`/activity/${doneActivity.id}`} style={{ color: 'var(--accent)', fontWeight: 600, display: 'inline-block', marginTop: 6, fontSize: 13 }}>View activity ›</Link>
+              </div>
+              <button className="btn btn--ghost" onClick={startGym}>✍️ Add the weights you lifted</button>
+            </>
+          })() : <button className="btn" onClick={startGym}>▶ Start workout</button>}
           {p.tip && <div className="tipbanner">💡 <span><b>Session tip:</b> {p.tip}</span></div>}
           {/* #332 — warm-up/cool-down are INDIVIDUAL moves (each a demo), grouped under their own header. */}
           {(() => {
