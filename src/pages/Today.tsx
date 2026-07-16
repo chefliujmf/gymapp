@@ -111,25 +111,14 @@ export function CheckInCard({ day, onChange, compact = false }: { day: string; o
     }
   }
   // Auto-fill any UNANSWERED row from the data-derived value; tapping a face overrides.
-  // #536 — ALSO live-refresh a row that's still sitting at its AUTO value (not manually overridden): as the
-  // day's wellness settles (e.g. Form rising from a stale morning snapshot), the chip follows the current
-  // number instead of freezing at check-in time. A manually-tapped face is left untouched.
+  // NOTE (#536 revert): do NOT live-mutate an ALREADY-answered row here. That re-wrote the stored value on an
+  // async race with a stale `ci` closure, desyncing value vs ci.auto → a row the athlete never touched showed
+  // "edited" (violated the #207 rule: compare stored value vs stored auto, never the live recompute).
   useEffect(() => {
     if (!loaded || !rdy?.connected) return
     const fill: Partial<Checkin> = {}
-    const auto: { energy?: number; sleep?: number; freshness?: number } = { ...(ci?.auto || {}) }
-    for (const k of ['energy', 'sleep', 'soreness'] as const) {
-      if (calc[k] == null) continue
-      const dispKey = k === 'soreness' ? 'freshness' : k // ci.auto stores DISPLAY terms
-      const prevAutoStored = ci?.auto == null ? null : (k === 'soreness' ? (ci.auto.freshness != null ? 6 - ci.auto.freshness : null) : ci.auto[dispKey as 'energy' | 'sleep'])
-      const cur = ci?.[k]
-      const isAutoValue = cur == null || (prevAutoStored != null && cur === prevAutoStored) // unanswered OR untouched auto
-      if (isAutoValue) {
-        if (cur !== calc[k]) fill[k] = calc[k]!
-        auto[dispKey as 'energy' | 'sleep' | 'freshness'] = k === 'soreness' ? 6 - calc.soreness! : calc[k]!
-      }
-    }
-    if (Object.keys(fill).length) set({ ...fill, auto })
+    for (const k of ['energy', 'sleep', 'soreness'] as const) if (ci?.[k] == null && calc[k] != null) fill[k] = calc[k]
+    if (Object.keys(fill).length) set(fill)
   }, [loaded, rdy]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!loaded) return null
   // Emoji faces, 1–5, ALWAYS visible (JM: must not be hidden or it gets skipped).
