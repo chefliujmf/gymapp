@@ -48,7 +48,8 @@ export interface User {
   onboardedAt?: number // #257 set when the coach finishes onboarding (profile + first week)
   cyclePhase?: string | null // #422 — current menstrual phase auto-derived from intervals wellness (last readiness read)
   cyclePhaseAt?: string | null // #422 — the date that phase is as-of (YYYY-MM-DD)
-  staging?: boolean // #560 — this env is QA/staging (shared intervals athlete → benchmark edits are a LOCAL sandbox, not synced to intervals)
+  staging?: boolean // #560 — this env is QA/staging
+  syncsIntervals?: boolean // #570 — do this user's benchmark edits reach intervals? (prod, or QA on its OWN athlete). false = local sandbox (QA on the shared prod athlete)
 }
 
 export interface SportStat { ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; tte?: number | null; cp?: number | null; wPrime?: number | null; cs?: number | null; dPrime?: number | null; swolf?: number | null }

@@ -37,18 +37,18 @@ import { localDate } from './tz.js'
 // our LOCAL benchmarks (cp/wPrime/tte/cs/dPrime) live in the same per-sport object. A shallow `{...ours, ...mapped}`
 // makes mapped.cycling REPLACE the whole cycling object → wipes cp/W′/TTE on every session-load/pull (JM: "manual
 // value does not save" — it saved, then the next sync deleted it). Overlay intervals' fields, keep everything else.
-function mergeIcuSportSettings(existing, mapped) {
+function mergeIcuSportSettings(existing, mapped, oursWins = false) {
   const out = { ...(existing || {}) }
   for (const g of Object.keys(mapped || {})) {
-    // #560 BIDIRECTIONAL sync — intervals is the SYSTEM OF RECORD. On PROD, intervals-wins per group: a change in
-    // intervals pulls in, and a Platyplus edit was already PUSHED to intervals on save (applySportStat), so they
-    // match — true two-way. Only the intervals-native fields (ftp/maxHr/lthr/thresholdPace) are overlaid; our local
-    // model benchmarks (cp/wPrime/tte/cs/dPrime/swolf) are KEPT (mapped never carries them). On QA/STAGING we share
-    // the real athlete i28814 and MUST NOT write to it, so QA is a LOCAL SANDBOX — ours-wins there so a test edit
-    // isn't clobbered by the shared athlete's values. Same rule for all 3 sports (consistency).
-    out[g] = IS_STAGING
-      ? { ...(mapped[g] || {}), ...(out[g] || {}) } // staging: ours-wins (local sandbox — can't push)
-      : { ...(out[g] || {}), ...(mapped[g] || {}) } // prod: intervals-wins (two-way, kept in sync by push-on-save)
+    // #560/#570 BIDIRECTIONAL sync — intervals is the SYSTEM OF RECORD. When this user's edits reach intervals
+    // (prod, or QA on its OWN athlete i644563), intervals-wins per group: a change in intervals pulls in, and a
+    // Platyplus edit was already PUSHED to intervals on save, so they match — true two-way. Only intervals-native
+    // fields (ftp/maxHr/lthr/thresholdPace) are overlaid; our local model benchmarks (cp/wPrime/tte/cs/dPrime/swolf)
+    // are KEPT. `oursWins` = the LOCAL-SANDBOX case (QA still on the shared prod athlete, can't write) — keep the
+    // user's test edit so it isn't clobbered. Same rule for all 3 sports.
+    out[g] = oursWins
+      ? { ...(mapped[g] || {}), ...(out[g] || {}) } // sandbox: ours-wins
+      : { ...(out[g] || {}), ...(mapped[g] || {}) } // bidirectional: intervals-wins
   }
   return out
 }
@@ -76,6 +76,11 @@ if (PUSH_ENABLED) { try { webpush.setVapidDetails(process.env.VAPID_SUBJECT || `
 // intervals — it never MIRRORS plans out (pushPlanToIcu) and never runs the auto-scheduler. Only prod
 // writes. QA still reconciles IN (read) so it shows the calendar. Detected from the QA RP_ID/ORIGIN.
 const IS_STAGING = process.env.STAGING === '1' || /-qa\.|staging/i.test(`${RP_ID} ${ORIGIN}`)
+// #570-follow — the ONLY reason QA is read-only toward intervals is that it USED to share prod's real athlete i28814.
+// A user pointed at a DIFFERENT athlete (e.g. the QA test athlete i644563) is safe to write — it never touches prod.
+// So "can this user's writes reach intervals?" = has key+athlete AND is not the shared-prod athlete on staging.
+const SHARED_PROD_ATHLETE = 'i28814'
+const syncsIntervals = (u) => !!(u && u.icuKey && u.icuAthlete) && !(IS_STAGING && u.icuAthlete === SHARED_PROD_ATHLETE)
 // #491 — Eat + Mind are DEACTIVATED app-wide (JM 2026-07-11, "simplify for now"): nav tabs are gone, so the coach
 // must NOT put meals / mind / supplements on the calendar (they'd be orphan items with no section to show them).
 // Training + Recovery + notes stay. Reversible: flip to false to bring Eat/Mind back (and restore the nav tabs).
@@ -138,7 +143,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, feedbackSkips: u.feedbackSkips || [], statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, cyclePhase: u.cyclePhase || null, cyclePhaseAt: u.cyclePhaseAt || null, staging: IS_STAGING, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, feedbackSkips: u.feedbackSkips || [], statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, cyclePhase: u.cyclePhase || null, cyclePhaseAt: u.cyclePhaseAt || null, staging: IS_STAGING, syncsIntervals: syncsIntervals(u), passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').trim().toLowerCase(); return l ? store.users.find((u) => (u.username || '').toLowerCase() === l || (u.email || '').toLowerCase() === l) : undefined }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -369,7 +374,7 @@ app.put('/auth/icu', auth, async (req, res) => {
       // per-sport thresholds) from the athlete's intervals sport-settings ON CONNECT, so the coach has real numbers
       // immediately without the user opening Stats. Fill-if-empty; the Stats cards refine them from the curves later.
       const mapped = fromIcuSportSettings(me.sportSettings || [])
-      req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped)
+      req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped, !syncsIntervals(req.user))
       if (mapped.cycling?.ftp != null && req.user.ftp == null) req.user.ftp = mapped.cycling.ftp
       if (mapped.cycling?.maxHr != null && req.user.maxHR == null) req.user.maxHR = mapped.cycling.maxHr
       // …and if settings still left an anchor blank (unconfigured account), COMPUTE it from their history so the
@@ -450,7 +455,7 @@ app.get('/auth/intervals/athlete', auth, async (req, res) => {
   if (!a) return res.status(502).json({ connected: true, error: 'could not read intervals athlete' })
   const mapped = fromIcuSportSettings(a.sportSettings || [])
   // refresh the local mirror from intervals (canonical), keeping Platyplus-only fields
-  req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped)
+  req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped, !syncsIntervals(req.user))
   if (mapped.cycling?.ftp != null) req.user.ftp = mapped.cycling.ftp
   if (mapped.cycling?.maxHr != null) req.user.maxHR = mapped.cycling.maxHr
   const weight = a.icu_weight != null ? a.icu_weight : (a.weight != null ? a.weight : null)
@@ -624,9 +629,9 @@ async function applySportStat(user, body = {}) {
   }
 
   let synced = false, pushError = null
-  // #swim-tri BUGFIX — QA (staging) shares the real athlete i28814; writing sport-settings there corrupts the prod
-  // account AND makes the next pull clobber the user's just-saved value. PROD-only, like every other intervals write.
-  if (user.icuKey && !IS_STAGING) {
+  // #570 — push to intervals when this user's writes are safe: prod, OR QA on its OWN athlete (i644563). Never when
+  // QA still points at the shared prod athlete i28814 (that write would corrupt prod + clobber the local value).
+  if (syncsIntervals(user)) {
     const ath = user.icuAthlete
     try {
       const list = await icuGet(user, `/athlete/${ath}/sport-settings`)

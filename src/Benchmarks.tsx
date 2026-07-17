@@ -162,12 +162,12 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // DB (user.sportSettings), NOT to intervals — so the intervals pull never carries them and they read back empty
   // ("won't save"). Merge: user (DB, has the local fields) as base, the fresh intervals pull overlaid for
   // ftp/maxHr/thresholdPace. Now every manual value round-trips after save+refresh.
-  // #560 BIDIRECTIONAL sync — mirror the server rule (consistent for all 3 sports): on PROD intervals is the source of
-  // record so the fresh pull wins (a Platyplus edit was pushed to intervals on save, so they match); on QA/STAGING we
-  // share the real athlete and can't write it, so it's a LOCAL SANDBOX — ours wins so a test edit isn't clobbered.
-  const mss = (g: 'cycling' | 'running' | 'swimming'): SportStat => user?.staging
-    ? ({ ...(pull?.sportSettings?.[g] || {}), ...(user?.sportSettings?.[g] || {}) }) // staging: ours-wins
-    : ({ ...(user?.sportSettings?.[g] || {}), ...(pull?.sportSettings?.[g] || {}) }) // prod: intervals-wins
+  // #560/#570 BIDIRECTIONAL sync — mirror the server rule (all 3 sports): when this user's edits reach intervals
+  // (prod, or QA on its OWN athlete) intervals is the source of record so the fresh pull wins (a Platyplus edit was
+  // pushed to intervals, so they match); a LOCAL SANDBOX (QA on the shared prod athlete) can't write, so ours wins.
+  const mss = (g: 'cycling' | 'running' | 'swimming'): SportStat => user?.syncsIntervals === false
+    ? ({ ...(pull?.sportSettings?.[g] || {}), ...(user?.sportSettings?.[g] || {}) }) // sandbox: ours-wins
+    : ({ ...(user?.sportSettings?.[g] || {}), ...(pull?.sportSettings?.[g] || {}) }) // bidirectional: intervals-wins
   const ss = { cycling: mss('cycling'), running: mss('running'), swimming: mss('swimming') }
   const ftpManual = ss.cycling?.ftp ?? user?.ftp ?? null
   const maxHr = ss.cycling?.maxHr ?? user?.maxHR ?? null
