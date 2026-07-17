@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { fetchActivity, fetchActivities, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
+import { fetchActivity, fetchActivities, fetchActivityStreams, fetchActivityThread, readIcuFeedback, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
 import { incompleteFeedback } from '../feedbackGaps'
 import { TrendChart, PowerCurveChart, PaceCurveChart, PowerBlocks, minuteTicks } from '../charts'
 import { Bike, Dumbbell, Footprints, Waves } from 'lucide-react'
@@ -15,7 +15,6 @@ import { getSetting } from '../db'
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
 import CoachVerdict from '../CoachVerdict'
-import FlybyMap from '../FlybyMap'
 
 // #54 Power tab: mean-max power curve + time-in-zone, computed from the watts stream.
 // #355 — densely sampled so the mean-max line reads as ONE continuous curve all the way to 1h.
@@ -237,7 +236,7 @@ export default function ActivityDetail() {
   const [a, setA] = useState<IcuActivity | null>(null)
   const [streams, setStreams] = useState<ActivityStreams>({})
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'map' | 'timeline' | 'power'>('map')
+  const [tab, setTab] = useState<'timeline' | 'power'>('timeline')
   const [ftp, setFtp] = useState(260)
   const [review, setReview] = useState<CoachReview | null>(null)
   const [note, setNote] = useState<CoachNote | null>(null)
@@ -261,7 +260,6 @@ export default function ActivityDetail() {
   if (loading) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button><h1>Loading…</h1></div>
   if (!a) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button><h1>Activity not found</h1><p className="meta">It may not be on intervals, or you're not connected.</p></div>
 
-  const track = cleanLatLng(streams.latlng)
   const isRun = sportOfActivity(a) === 'run' // #333 — a run shows PACE, never watts
   const isSwim = sportOfActivity(a) === 'swim' // #swim-tri — a swim shows pace /100 + SWOLF, never watts
   const thrPace = user?.sportSettings?.running?.thresholdPace ?? user?.runThresholdPace ?? null // sec/km
@@ -272,8 +270,9 @@ export default function ActivityDetail() {
     : TL_ROWS.some((r) => ((streams[r.key] as unknown[] | undefined)?.length || 0) > 1)
   // the 3rd (analysis) tab: PACE for runs, POWER for rides
   const hasAnalysis = isRun ? (streams.velocity_smooth?.filter((v) => v != null && Number(v) > 0.4).length || 0) >= 5 : (streams.watts?.filter((v) => v != null).length || 0) >= 5
-  const tabs = ([track.length > 1 && 'map', hasTimeline && 'timeline', hasAnalysis && 'power'].filter(Boolean)) as ('map' | 'timeline' | 'power')[]
-  const activeTab: 'map' | 'timeline' | 'power' = tabs.includes(tab) ? tab : (tabs[0] || 'map')
+  // #566 — map/flyby tab removed (JM). Tabs = timeline + analysis only.
+  const tabs = ([hasTimeline && 'timeline', hasAnalysis && 'power'].filter(Boolean)) as ('timeline' | 'power')[]
+  const activeTab: 'timeline' | 'power' = tabs.includes(tab) ? tab : (tabs[0] || 'timeline')
   const avgPace = isRun && a.moving_time && a.distance ? a.moving_time / (a.distance / 1000) : null // sec/km
   const avgPace100 = isSwim && a.moving_time && a.distance ? a.moving_time / (a.distance / 100) : null // sec/100 m
   const swolf = (a as unknown as { average_swolf?: number }).average_swolf
@@ -393,13 +392,11 @@ export default function ActivityDetail() {
 
       {tabs.length > 0 && (
         <div className="act-tabs">
-          {tabs.includes('map') && <button className={activeTab === 'map' ? 'on' : ''} onClick={() => setTab('map')}>Map</button>}
           {tabs.includes('timeline') && <button className={activeTab === 'timeline' ? 'on' : ''} onClick={() => setTab('timeline')}>Timeline</button>}
           {tabs.includes('power') && <button className={activeTab === 'power' ? 'on' : ''} onClick={() => setTab('power')}>{isRun ? 'Pace' : 'Power'}</button>}
         </div>
       )}
 
-      {activeTab === 'map' && <div className="card" style={{ padding: 6 }}><FlybyMap track={track} /></div>}
       {activeTab === 'timeline' && (isRun ? <RunTimeline streams={streams} a={a} /> : <RideTimeline streams={streams} a={a} />)}
       {activeTab === 'power' && (isRun ? <RunPace streams={streams} thrPace={thrPace} /> : <RidePower streams={streams} ftp={ftp} />)}
       {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}

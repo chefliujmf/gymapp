@@ -3104,3 +3104,38 @@ updated`, **NOT a second copy**. If `errors > 0`, tell me the count — that's w
 > **Discipline (now permanent):** every fix lands with a test here + in `src/*.test.ts`; `🔨 built ≠ done`;
 > only JM marks ✅ after the manual step passes. See `CLAUDE.md` → Testing, skill `platyplus-testing`,
 > memory `platyplus-testing-workflow`.
+
+## 2026-07-17 — JM feedback batch (swim/tri + benchmarks + activity view)
+### #560 — BIDIRECTIONAL benchmark sync (intervals ↔ Platyplus), all 3 sports 🔨
+Ask: "change a value in intervals → syncs to Platyplus, change in Platyplus → syncs to intervals. CRITICAL. running,
+swimming, cycling. If you change the value after computed, it needs to be in intervals!! Platyplus = extension of
+intervals (analytics), Platyplus = planning/execution." → intervals is the SYSTEM OF RECORD. PROD: push-on-edit +
+intervals-wins pull = true two-way. QA shares athlete i28814 (can't write) → QA is a LOCAL SANDBOX (staging=ours-wins).
+Consistent rule for all 3 sports. ⚠️ true bidirectional is PROD-only unless we give QA its own intervals athlete.
+### #561 — "Curve" chip is unclear + inconsistent ⬜
+"what does curve mean in running and cycling? lol" — the method chips (Curve / eFTP / VDOT / Race VDOT / CP model) are
+jargon and inconsistent across sports. Make them plain + consistent.
+### #562 — Make cycling/running pending copy as EXPLICIT as swimming ⬜
+"swimming seems to be more explicit now than the 2 others" — bring cycling/running "add efforts to firm up" up to the
+swim cards' explicit "needs a few hard efforts across distances" clarity. Consistency.
+### #563 — Coach must KNOW + adapt when a benchmark changes (manual or from intervals) ⬜
+"when manual change from intervals, how coach will know and adapt notifications?" — a benchmark change should trigger
+coach awareness → re-plan / a notification acknowledging the new value.
+### #564 — Add / delete a planned workout attached to a COMPLETED activity (synced to intervals) ⬜
+"add, delete planned workout to a complete one in Platyplus (be sure works with intervals.icu)."
+### #565 — BUG: "missing feedback" flags activities that HAVE feedback + were coach-reviewed ⬜
+"Missing feedback (old ones, not showing activity details). Some flagged as missing but feedback is there and coach
+reviewed." Fix the missing-feedback detection + old activities not showing details.
+### #566 — Remove the map & flyby link ⬜
+"remove map & flyby link" (activity detail Map/Flyby tab).
+### #567 — Show BOTH avg power + NP on the card AND the detail ⬜
+"cycling card shows avg power 160, open activity NP shows 164, but we don't see both on both levels." Show avg + NP
+consistently on card + detail.
+### #568 — BUG: warm-up power HIGHER than the endurance block ⬜
+"warm-up higher than the endurance block??? Workout of July 17 in prod." Planned power-by-zone maps warm-up > endurance.
+### #569 — Planned-workout view opened FROM a completed activity: hide "Done?" + the phone banner ⬜
+"When an activity is done you see the attached planned workout; clicking it we should NOT see (Done?) nor 'Open
+Platyplus on your phone to run'." (forcePlanned mode in CoachPlanDetail.)
+### #570 — Thin TRIATHLON orchestration layer (leverages the 3 engines) ⬜ APPROVED
+"yes to a thin orchestration layer that leverages the three, do that." Limiter analysis (CSS/FTP/threshold vs race
+demands) + combined multi-sport load view + race pacing. NOT a 4th benchmark engine — synthesis on top of the 3.

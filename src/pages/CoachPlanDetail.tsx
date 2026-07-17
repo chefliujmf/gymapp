@@ -185,7 +185,9 @@ export default function CoachPlanDetail() {
               </div>
             </>
           )}
-          {canPlayHere(!!ble.bridge)
+          {/* #569 — when opened FROM a completed activity (forcePlanned), this is a read-only "what was planned" view:
+              no "do it now" play button, no phone-to-run banner (the session is already done). */}
+          {forcePlanned ? null : canPlayHere(!!ble.bridge)
             ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ {p.sport === 'run' ? 'Run' : 'Ride'} now</button>
             : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to {p.sport === 'run' ? 'run' : 'ride'} — that's where your HR strap{p.sport === 'run' ? '' : ' & trainer'} connect{p.sport === 'run' ? 's' : ''} (Bluetooth works on mobile).</div>}
         </>
@@ -298,7 +300,8 @@ export default function CoachPlanDetail() {
       {p.success && <div className="plansec"><span className="plansec__k">✓ Success</span><p className="plansec__v">{p.success}</p></div>}
       {p.cues && p.cues.length > 0 && <div className="plansec"><span className="plansec__k">💬 Cues</span><p className="plansec__v">{p.cues.join(' · ')}</p></div>}
 
-      <Link to={`/feedback/${p.id}`} className="btn btn--ghost" style={{ marginTop: 18, display: 'block', textAlign: 'center' }}>✓ Done? Log how it went →</Link>
+      {/* #569 — hide the "Done?" CTA in the read-only as-planned view (the activity is already completed). */}
+      {!forcePlanned && <Link to={`/feedback/${p.id}`} className="btn btn--ghost" style={{ marginTop: 18, display: 'block', textAlign: 'center' }}>✓ Done? Log how it went →</Link>}
 
       {sheet && (
         <div className="sheet-back" onClick={() => setSheet(null)}>

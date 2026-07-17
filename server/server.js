@@ -40,13 +40,15 @@ import { localDate } from './tz.js'
 function mergeIcuSportSettings(existing, mapped) {
   const out = { ...(existing || {}) }
   for (const g of Object.keys(mapped || {})) {
-    // #swim-tri BUGFIX — SWIMMING is OURS-wins (fill-if-empty): CSS is our authoritative swim benchmark, and on QA the
-    // swim pull comes from the SHARED athlete i28814, so intervals' swim threshold must NEVER overwrite a saved CSS
-    // (this merge runs on EVERY session-load + pull — that's why "CSS won't change"). cycling/running keep intervals-
-    // wins (FTP/threshold are two-way synced, intervals authoritative). intervals swim fields only FILL a blank.
-    out[g] = g === 'swimming'
-      ? { ...(mapped[g] || {}), ...(out[g] || {}) } // ours wins — never clobber a user-set CSS/D′/etc.
-      : { ...(out[g] || {}), ...(mapped[g] || {}) } // intervals wins
+    // #560 BIDIRECTIONAL sync — intervals is the SYSTEM OF RECORD. On PROD, intervals-wins per group: a change in
+    // intervals pulls in, and a Platyplus edit was already PUSHED to intervals on save (applySportStat), so they
+    // match — true two-way. Only the intervals-native fields (ftp/maxHr/lthr/thresholdPace) are overlaid; our local
+    // model benchmarks (cp/wPrime/tte/cs/dPrime/swolf) are KEPT (mapped never carries them). On QA/STAGING we share
+    // the real athlete i28814 and MUST NOT write to it, so QA is a LOCAL SANDBOX — ours-wins there so a test edit
+    // isn't clobbered by the shared athlete's values. Same rule for all 3 sports (consistency).
+    out[g] = IS_STAGING
+      ? { ...(mapped[g] || {}), ...(out[g] || {}) } // staging: ours-wins (local sandbox — can't push)
+      : { ...(out[g] || {}), ...(mapped[g] || {}) } // prod: intervals-wins (two-way, kept in sync by push-on-save)
   }
   return out
 }
@@ -136,7 +138,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, feedbackSkips: u.feedbackSkips || [], statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, cyclePhase: u.cyclePhase || null, cyclePhaseAt: u.cyclePhaseAt || null, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, feedbackSkips: u.feedbackSkips || [], statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, cyclePhase: u.cyclePhase || null, cyclePhaseAt: u.cyclePhaseAt || null, staging: IS_STAGING, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').trim().toLowerCase(); return l ? store.users.find((u) => (u.username || '').toLowerCase() === l || (u.email || '').toLowerCase() === l) : undefined }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id

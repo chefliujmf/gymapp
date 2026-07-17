@@ -162,12 +162,13 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // DB (user.sportSettings), NOT to intervals — so the intervals pull never carries them and they read back empty
   // ("won't save"). Merge: user (DB, has the local fields) as base, the fresh intervals pull overlaid for
   // ftp/maxHr/thresholdPace. Now every manual value round-trips after save+refresh.
-  const mss = (g: 'cycling' | 'running' | 'swimming'): SportStat => ({ ...(user?.sportSettings?.[g] || {}), ...(pull?.sportSettings?.[g] || {}) })
-  // #swim-tri BUGFIX — swim benchmarks are OURS (CSS/D′/TTE/SWOLF); intervals' thin swim threshold must NOT clobber a
-  // value the user set here, so for swimming LOCAL wins (pull only fills fields the user hasn't set). cycling/running
-  // keep intervals-wins (two-way synced, intervals is the source of truth for FTP/threshold pace).
-  const mssLocalWins = (g: 'swimming'): SportStat => ({ ...(pull?.sportSettings?.[g] || {}), ...(user?.sportSettings?.[g] || {}) })
-  const ss = { cycling: mss('cycling'), running: mss('running'), swimming: mssLocalWins('swimming') }
+  // #560 BIDIRECTIONAL sync — mirror the server rule (consistent for all 3 sports): on PROD intervals is the source of
+  // record so the fresh pull wins (a Platyplus edit was pushed to intervals on save, so they match); on QA/STAGING we
+  // share the real athlete and can't write it, so it's a LOCAL SANDBOX — ours wins so a test edit isn't clobbered.
+  const mss = (g: 'cycling' | 'running' | 'swimming'): SportStat => user?.staging
+    ? ({ ...(pull?.sportSettings?.[g] || {}), ...(user?.sportSettings?.[g] || {}) }) // staging: ours-wins
+    : ({ ...(user?.sportSettings?.[g] || {}), ...(pull?.sportSettings?.[g] || {}) }) // prod: intervals-wins
+  const ss = { cycling: mss('cycling'), running: mss('running'), swimming: mss('swimming') }
   const ftpManual = ss.cycling?.ftp ?? user?.ftp ?? null
   const maxHr = ss.cycling?.maxHr ?? user?.maxHR ?? null
   const ageMaxHr = maxHrFromAge(user?.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null, user?.sex) // #507/#508 — sex-specific age max HR (Gulati/Tanaka)
@@ -414,14 +415,14 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     // CSS = the threshold/critical-speed anchor (in swimming they are the SAME metric, so ONE card, not two).
     {
       key: 'css', label: 'CSS', unit: '/100', computed: cssComputed, computedSrc: 'your critical speed from your swim pace-curve', pending: cssComputed == null ? (swims ? `after a swim at a DIFFERENT distance — you have ${swims} swim${swims === 1 ? '' : 's'} on record; the model needs a SHORT hard effort and a LONGER one to fit your critical speed (or set it from a 400 + 200 test)` : 'after your first couple of swims — log a short hard swim and a longer one and intervals fits your critical speed (or set it now from a 400 + 200 test)') : undefined, manual: cssManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('swimming', { thresholdPace: v }),
-      chip: cssComputed != null ? 'Curve' : 'Swim threshold',
+      chip: cssComputed != null ? 'Best-efforts' : 'Swim threshold',
       conf: modelFitConfidence({ value: cssComputed, r2: swimCurve?.r2 }),
       narr: <>Your <b>Critical Swim Speed</b> — the pace per 100 m you can hold for ~an hour, the swim analogue of FTP (and, in swimming, the same thing as your critical speed / threshold). Every swim zone anchors to it. <b>Typical CSS:</b> a new/recreational swimmer ~2:15–2:45 /100 m, a fit age-grouper ~1:30–1:50, a strong club swimmer ~1:15–1:25, elite ~1:00–1:10. It's modelled from your <b>swim pace-curve</b> once you have hard efforts at a couple of distances, and sharpens with every swim; you can also set it from a <b>400 + 200 test</b> (CSS = 200 ÷ the time difference) or a <b>3-minute all-out swim</b> (your last-30 s pace ≈ CSS).</>,
       sci: [{ name: 'Swim pace-curve', formula: 'critical speed from your best efforts across distances', value: cssComputed != null ? `${fmtPace(cssComputed)}/100` : '—', inUse: cssComputed != null && cssManual == null }, { name: '400 + 200 test', formula: 'CSS = 200 m ÷ (t400 − t200)', value: cssManual != null ? `${fmtPace(cssManual)}/100` : '—', inUse: cssManual != null }],
     },
     {
       key: 'dPrimeSwim', label: 'D′', unit: 'm', computed: dPrimeSwimComputed, computedSrc: 'your finishing reserve from the swim pace-curve', pending: dPrimeSwimComputed == null ? (swims ? `after a SHORT hard swim (25–100 m) plus a longer one — the 2-point model needs efforts at different distances (${swims} swim${swims === 1 ? '' : 's'} so far)` : 'after a short and a longer hard swim — modelled from the gap between your sprint and your endurance pace') : undefined, manual: dPrimeSwimManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(5, 120), save: (v) => saveSport('swimming', { dPrime: v }),
-      chip: dPrimeSwimComputed != null ? 'Curve' : 'Finishing reserve',
+      chip: dPrimeSwimComputed != null ? 'Best-efforts' : 'Finishing reserve',
       conf: modelFitConfidence({ value: dPrimeSwimComputed, r2: swimCurve?.r2 }),
       narr: <>Your <b>finishing reserve</b> — the extra distance you can hold ABOVE your CSS pace before you fade, the swim twin of a runner's D′. It's what powers a <b>fast finish or a surge to pass</b>, not an all-out sprint. Big D′ = a strong closing kick; small D′ = a pure diesel who holds pace but has little to spare. Modelled from a short and a long hard swim, it pairs with CSS: CSS is your engine size, D′ your top-end.</>,
       sci: [{ name: 'Swim CS/D′ model', formula: 'anaerobic distance reserve above critical speed (2-param fit)', value: dPrimeSwimComputed != null ? `${dPrimeSwimComputed} m` : '—', inUse: dPrimeSwimComputed != null && dPrimeSwimManual == null }],
@@ -443,7 +444,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     // #401 — TTE (time to exhaustion at threshold), a LEARNED benchmark per sport, read off the mean-max curve.
     {
       key: 'tteRide', label: 'TTE', computed: tteRide, computedSrc: tteRideEstimated ? 'estimated from your power model (W′/CP)' : 'longest you held your FTP', pending: tteRide == null ? (powerCurve ? 'after a sustained near-FTP effort (10–40 min)' : 'after your next ride — read from your best efforts') : undefined, manual: (ss.cycling as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('cycling', { tte: v }),
-      chip: tteRideEstimated ? 'CP model' : 'Curve',
+      chip: tteRideEstimated ? 'CP model' : 'Best-efforts',
       conf: tteConfidence({ tte: tteRide, estimated: tteRideEstimated }),
       narr: <>How long you can hold your <b>FTP</b> before fatigue — normally <b>30–70 min</b>. Read off your best efforts once you've held it that long, else estimated from your power-duration model. A short TTE is a <b>training target</b>: extend it with sustained threshold work (3×15–20 min @ 90–95%), not more watts. Far below 30 min? Your FTP may be set higher than your true threshold — check it against your CP.</>,
       sci: [{ name: 'From your best efforts', formula: 'longest time ≥ your FTP', value: tteRideObs != null ? fmtTte(tteRideObs) : '—', inUse: !tteRideEstimated && tteRide != null }, { name: 'Modeled', formula: 'from your power-duration fit', value: tteRideEst != null ? fmtTte(tteRideEst) : '—', inUse: tteRideEstimated }],
@@ -451,7 +452,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     },
     {
       key: 'tteRun', label: 'TTE', computed: tteRun, computedSrc: tteRunEstimated ? (isVdotRun ? 'estimated at threshold (your ~1-hour pace)' : 'estimated from your Critical-Speed model') : 'longest you held threshold pace', pending: tteRun == null ? (csUnderReadRun ? 'your Critical-Speed model reads SLOWER than your race pace — since CS is the ceiling, it\'s under-read, so TTE can\'t be pinned yet. One hard sustained 20–40 min run fits it true.' : paceCurve ? 'after a sustained threshold run (15–40 min)' : 'after a few runs — read from your best runs') : undefined, manual: (ss.running as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('running', { tte: v }),
-      chip: csUnderReadRun ? 'CS under-read' : tteRunEstimated ? (isVdotRun ? 'Aerobic ceiling' : 'CS model') : 'Curve',
+      chip: csUnderReadRun ? 'CS under-read' : tteRunEstimated ? (isVdotRun ? 'Aerobic ceiling' : 'CS model') : 'Best-efforts',
       conf: tteConfidence({ tte: tteRun, estimated: tteRunEstimated }),
       narr: <>How long you can hold your <b>threshold pace</b> before fatigue — <b>~30–70 min by definition</b> (threshold IS your ~1-hour pace). {csUnderReadRun ? <>Right now your <b>Critical-Speed model reads slower than your race pace</b> — but CS is the ceiling, so it's <b>under-read</b> (your CS fit needs more hard efforts across distances). That's why a precise TTE can't be pinned yet — NOT that your threshold is too fast. One hard sustained 20–40 min run settles it.</> : isVdotRun ? <>Read from the <b>longest you've actually held threshold pace</b> (your real durability). Until you've done a sustained effort we show the aerobic ceiling (~1 h). Extend it with tempo runs (3×15–20 min @ threshold).</> : <>Read from your best runs once you've held it that long, else from your pace-duration model. Extend it with sustained threshold runs (3×15–20 min @ threshold).</>}</>,
       sci: [{ name: 'From your best runs', formula: 'longest time ≤ threshold', value: tteRunObs != null ? fmtTte(tteRunObs) : '—', inUse: !tteRunEstimated && tteRun != null }, { name: isVdotRun ? 'Aerobic ceiling' : 'Modeled', formula: isVdotRun ? 'Daniels pctMax @ threshold (~1 h)' : 'from your pace-duration fit', value: tteRunEst != null ? fmtTte(tteRunEst) : '—', inUse: tteRunEstimated }],
@@ -461,21 +462,21 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     // test); manual override persists via the sport-stat whitelist. Per-sport pages only.
     {
       key: 'cp', label: 'Critical Power', unit: 'W', computed: cp, computedSrc: 'independent read from your best efforts', pending: cp == null ? 'after a few hard efforts across durations — the model needs points to fit' : undefined, manual: (ss.cycling as { cp?: number })?.cp ?? null, fmt: String, parse: numParse(60, 500), save: (v) => saveSport('cycling', { cp: v }),
-      chip: 'Curve', conf: modelFitConfidence({ value: cp, r2: powerCurve?.r2 }),
+      chip: 'Best-efforts', conf: modelFitConfidence({ value: cp, r2: powerCurve?.r2 }),
       narr: <>Your <b>Critical Power</b> — the top of your aerobic engine, modelled independently from your best efforts. It measures the same threshold your FTP does, so they sit close{cpAgrees && eftpVal != null ? <> — yours ({cp} W) lines up with your eFTP ({eftpVal} W)</> : null}. Its real value is paired with <b>W′ ({wPrimeKj != null ? wPrimeKj : '—'} kJ)</b>: CP is your engine size, W′ your anaerobic kick — together {riderType ? <>they read as <b>{riderType}</b></> : <>they profile your rider type</>}.</>,
       sci: [{ name: 'Power-duration model', formula: '2-param CP/W′ fit · independent of FTP', value: cp != null ? `${cp} W` : '—', inUse: cp != null }],
       sharpen: 'hard efforts of varied length (1–20 min) sharpen the CP/W′ fit.',
     },
     {
       key: 'wPrime', label: 'W′', unit: 'kJ', computed: wPrimeKj, computedSrc: 'anaerobic work capacity above CP', pending: wPrimeKj == null ? 'after some short max efforts — the model needs sprint points' : undefined, manual: (ss.cycling as { wPrime?: number })?.wPrime ?? null, fmt: String, parse: numParse(2, 60), save: (v) => saveSport('cycling', { wPrime: v }),
-      chip: 'Curve', conf: modelFitConfidence({ value: wPrimeKj, r2: powerCurve?.r2 }),
+      chip: 'Best-efforts', conf: modelFitConfidence({ value: wPrimeKj, r2: powerCurve?.r2 }),
       narr: <>Your <b>W′</b> ("W-prime") — the finite work you can do ABOVE Critical Power before you're cooked: your anaerobic "battery" for attacks, surges and sprints. A big W′ = puncheur; a small one = diesel. Short hard repeats grow it.</>,
       sci: [{ name: 'Power-duration model', formula: 'work above CP (kJ)', value: wPrimeKj != null ? `${wPrimeKj} kJ` : '—', inUse: wPrimeKj != null }],
       sharpen: 'short near-max repeats (30 s–3 min) build W′.',
     },
     {
       key: 'cs', label: 'Critical Speed', unit: '/km', computed: csPace, computedSrc: isVdotRun ? 'from your race VDOT — just above threshold' : 'your sustainable running ceiling', pending: csPace == null ? 'after a few hard runs across distances — the model needs points' : undefined, manual: (ss.running as { cs?: number })?.cs ?? null, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('running', { cs: v }),
-      chip: isVdotRun ? 'VDOT' : 'Curve', conf: modelFitConfidence({ value: csPace, r2: isVdotRun ? (runEst?.r2 ?? 0.9) : paceCurve?.r2 }),
+      chip: isVdotRun ? 'VDOT' : 'Best-efforts', conf: modelFitConfidence({ value: csPace, r2: isVdotRun ? (runEst?.r2 ?? 0.9) : paceCurve?.r2 }),
       narr: isVdotRun
         ? <>Your <b>Critical Speed</b> — the fastest pace you can hold near-indefinitely. Derived from the same <b>race VDOT</b> as your threshold (~90% VO₂max vs threshold's 88%), so it sits <b>just faster than threshold</b> by construction — never the under-read fantasy the pace-curve fit used to produce off easy runs.</>
         : <>Your <b>Critical Speed</b> — the running analogue of Critical Power: the fastest pace you can hold near-indefinitely, modelled independently from your best runs.{csUnderReads ? <><br /><br />Right now it fits <b>slow</b> — every recent run is easy, so the curve has no fast points and under-reads (it even lands slower than your easy-run pace). A couple of hard efforts across distances (1 k–5 k) let it read true; until then your threshold pace is the better guide.</> : null}</>,
@@ -484,7 +485,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     },
     {
       key: 'dPrime', label: 'D′', unit: 'm', computed: dPrimeM, computedSrc: 'anaerobic distance reserve above CS', pending: dPrimeM == null ? 'after some short fast reps — the model needs sprint points' : undefined, manual: (ss.running as { dPrime?: number })?.dPrime ?? null, fmt: String, parse: numParse(50, 400), save: (v) => saveSport('running', { dPrime: v }),
-      chip: 'Curve', conf: modelFitConfidence({ value: dPrimeM, r2: paceCurve?.r2 }),
+      chip: 'Best-efforts', conf: modelFitConfidence({ value: dPrimeM, r2: paceCurve?.r2 }),
       narr: <>Your <b>D′</b> ("D-prime") — the finite distance you can cover ABOVE Critical Speed before fatigue: your anaerobic reserve for kicks and surges. Short fast reps grow it.</>,
       sci: [{ name: 'Pace-duration model', formula: 'distance above CS (m)', value: dPrimeM != null ? `${dPrimeM} m` : '—', inUse: dPrimeM != null }],
       sharpen: 'short fast reps (200–600 m) build D′.',
