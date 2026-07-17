@@ -3166,3 +3166,14 @@ demands) + combined multi-sport load view + race pacing. NOT a 4th benchmark eng
 The Coach API token box was already ADMIN-only in the UI, but the token endpoints (/auth/token, /auth/token/rotate)
 were auth-gated (any user). Now admin-only, so a non-admin can't fetch/rotate their token to call /api/* by hand. Their
 coach STILL works — apiAuth stays per-user and the coach reads the token server-side (invisible to the user).
+### #578 — W′ card: add typical values + clarify it's Platyplus-only (not on intervals) 🧪
+JM: "for W' should add typical values range for user to know what to enter manually? changed value still a ? in
+intervals." Added typical W′ ranges (~10–15 recreational / 15–25 trained / 25–35 puncheur) to the card + a note that
+W′ is a Platyplus metric with no intervals field (so the "?" on intervals is EXPECTED, not a sync failure). Same is true
+of CP/D′/TTE/SWOLF — only FTP/maxHr/LTHR/threshold-pace/CSS are intervals-native and sync.
+### #579 — SYNC BUGS to verify end-to-end (JM tested QA, several failed) ⬜ BLOCKED on tailnet (JM VPN)
+JM: maxHR Platyplus 180 vs intervals 185 (didn't sync); FTP 250→260 change failed; can't test VO2max. intervals i644563
+HAS ftp=260, max_hr=185, css=2:00, lthr=168. HYPOTHESES: (a) whole-body maxHR/VO2max are top-level user fields synced
+FILL-IF-EMPTY only (merge only touches sportSettings) → real gap; (b) FTP not pulling → connect may not have resolved
+icuAthlete=i644563 → syncsIntervals=false → all ours-wins. NEED the QA DB (blocked by JM's VPN) to confirm + a real
+round-trip test. DO NOT ship a sync fix untested (JM directive).
