@@ -1472,6 +1472,10 @@ const SPORT_ENGINES = [
   { key: 'running', file: 'coach-engine-running.md', sports: ['running', 'triathlon'], rx: /\b(run|running|jog|marathon|\b5k\b|\b10k\b|half|ultra|vdot|daniels|threshold pace)\b/i },
   // #534 — strength engine (peer to cycling/running): 1-RM + %1RM zones, GOAL-DEPENDENT volume, concurrent-training.
   { key: 'strength', file: 'coach-engine-strength.md', sports: ['strength', 'gym'], rx: /\b(gym|strength|lift|lifting|weights?|squat|bench|deadlift|hypertroph|1[\s-]?rm|dumbbell|barbell)\b/i },
+  // #swim-tri — swimming engine (peer to cycling/running): CSS benchmark + zones + technique/SWOLF + sTSS.
+  { key: 'swimming', file: 'coach-engine-swimming.md', sports: ['swimming', 'swim', 'triathlon'], rx: /\b(swim|swimming|css|critical swim|freestyle|backstroke|breaststroke|open[- ]?water|pool)\b/i },
+  // #swim-tri — triathlon PLANNING layer (not a benchmark): Friel periodization + weekly 3-sport balance + bricks.
+  { key: 'triathlon', file: 'coach-engine-triathlon.md', sports: ['triathlon'], rx: /\b(triathlon|triathlete|ironman|70\.3|\bbrick\b|olympic distance|sprint tri)\b/i },
 ].map((e) => ({ ...e, text: loadEngine(e.file) }))
 
 function buildSystemPrompt(user) {

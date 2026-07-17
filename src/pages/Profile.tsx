@@ -15,7 +15,7 @@ import { dataGaps } from '../dataGaps'
 // logged physical activities that count for the day dot). To restore Mind: re-add ['meditation', 'Meditation'].
 // #JM 2026-07-15 — Yoga + Pilates removed from the selectable sports for now (nothing can be added to the calendar for
 // them yet) → parked for the roadmap. Existing users who had them keep the data; they just can't newly pick them.
-const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['strength', 'Strength']]
+const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['swimming', 'Swimming'], ['triathlon', 'Triathlon'], ['strength', 'Strength']]
 const DIETS: [string, string][] = [['vegetarian', 'vegetarian'], ['vegan', 'vegan'], ['no preference', 'no preference']]
 
 

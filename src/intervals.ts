@@ -409,7 +409,7 @@ export async function fetchActivityThread(id: string | number): Promise<IcuThrea
   } catch { return { coach: null } }
 }
 export const cleanLatLng = (t?: [number, number][]) => (t || []).filter((p) => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
-export const sportOfActivity = (a: IcuActivity) => (/run/i.test(a.type) ? 'run' : /ride|cycl/i.test(a.type) ? 'ride' : 'gym')
+export const sportOfActivity = (a: IcuActivity) => (/swim/i.test(a.type) ? 'swim' : /run/i.test(a.type) ? 'run' : /ride|cycl/i.test(a.type) ? 'ride' : 'gym')
 /** Indoor = trainer/virtual; otherwise outdoor (only meaningful for ride/run). */
 export const isIndoorActivity = (a: IcuActivity) => a.trainer === true || /virtual/i.test(a.type || '')
 
