@@ -61,6 +61,16 @@ When someone trains a sport AND lifts, respect the interference effect:
   off) and dose the secondary discipline accordingly. Then `set_gym_target` with an achievable, season-right band.
 
 ## VARIETY — vary the fluff, keep the meat (JM #573: "warm-up is always the same, and it's always rowing")
+**Variety is PERSONAL, never random (JM):** tailor it to THIS athlete — what they DO (sport, this session's focus),
+their OBJECTIVE (hypertrophy tolerates/wants more exercise variation; a strength/1-RM goal keeps mains rock-stable),
+their CONDITIONS (owned EQUIPMENT — only rotate among moves they can actually do, pass `equipment=…` to search_exercises;
+injuries/niggles; time available; indoor/outdoor), WHO they are (level — a beginner needs fewer, well-drilled variations
+to learn form; an advanced lifter can handle a wider menu), and HOW they PERFORM (progress a variation that's moving,
+swap one that's stalling or that they dislike). **STRENGTHS & WEAKNESSES are the big lever:** bias the rotating
+accessories to bring UP the athlete's weak points — lagging muscle groups, a weak movement pattern, a left/right or
+push/pull imbalance, the limiter in their sport (e.g. a cyclist's weak posterior chain, a runner's weak glutes/calves) —
+while keeping their strengths ticking over. Read it from their profile, their sport, their logged lifts, and what they
+tell you. Pull the variety from their world, don't sprinkle it on.
 Repetition kills adherence (boredom) and leaves muscles/patterns undertrained. But randomising the KEY lifts wrecks
 progression — you can't add load to a lift you never repeat. So split the session in two:
 - **KEEP STABLE (progress these):** the 1–3 main compound lifts for the athlete's goal (squat / hinge / press / pull
