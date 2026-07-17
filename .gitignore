@@ -22,6 +22,9 @@ downloaded_pages/
 
 # generated catalog (derived from personal scraped content)
 src/data/generated/
+# ...but swim-workouts.json is AUTHORED content (scripts/build-swim-workouts.mjs), not scraped — commit it so
+# build:app (prod, which doesn't run build-catalog) and CI both have it. #swim-tri
+!src/data/generated/swim-workouts.json
 server/node_modules
 server/data
 *.env
