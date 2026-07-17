@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle, HeartPulse, Waves } from 'lucide-react'
+import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle, HeartPulse, Waves, Trophy } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 import { BenchmarksCard } from '../Benchmarks'
@@ -53,6 +53,9 @@ export function statsGroups(sports: string[]): { global: Spec[]; perSport: Spec[
   global.push({ key: 'wellness', label: 'Wellness', sub: 'Sleep · HRV · resting HR · weight trends', to: '/wellness' }) // #194a
   global.push({ key: 'history', label: 'History', sub: 'All your logged sessions (every sport)', to: '/logs' })
   const perSport: Spec[] = []
+  // #570 — a triathlete gets the Triathlon SYNTHESIS row first (limiter + balance over the 3 engines), then the
+  // per-sport pages. Gated on the RAW sport (not the swim/bike/run modules it expands to).
+  if (sports.includes('triathlon')) perSport.push({ key: 'triathlon', label: 'Triathlon', sub: 'Limiter · race readiness · combined load', to: '/triathlon' })
   if (has('cycling')) perSport.push({ key: 'cycling', label: 'Cycling', sub: 'Power curve · eFTP · VO₂max · W/kg', to: '/cycling-stats' }) // #225 per-sport page
   if (has('running')) perSport.push({ key: 'running', label: 'Running', sub: 'Threshold pace · zones · VDOT · race predictions', to: '/running-stats' }) // #225 per-sport page
   if (has('swimming')) perSport.push({ key: 'swimming', label: 'Swimming', sub: 'CSS · D′ · TTE · SWOLF · zones', to: '/swimming-stats' }) // #swim-tri per-sport page
@@ -63,7 +66,7 @@ export function statsGroups(sports: string[]): { global: Spec[]; perSport: Spec[
 const STAT_ICON: Record<string, ReactNode> = {
   form: <Activity strokeWidth={1.75} />, history: <History strokeWidth={1.75} />, wellness: <HeartPulse strokeWidth={1.75} />,
   cycling: <Bike strokeWidth={1.75} />, running: <Footprints strokeWidth={1.75} />, swimming: <Waves strokeWidth={1.75} />,
-  strength: <Dumbbell strokeWidth={1.75} />, mind: <Brain strokeWidth={1.75} />,
+  triathlon: <Trophy strokeWidth={1.75} />, strength: <Dumbbell strokeWidth={1.75} />, mind: <Brain strokeWidth={1.75} />,
 }
 const toItem = (s: Spec): Item => ({ label: s.label, sub: s.sub, to: s.to, icon: STAT_ICON[s.key] })
 
