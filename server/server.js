@@ -39,7 +39,15 @@ import { localDate } from './tz.js'
 // value does not save" — it saved, then the next sync deleted it). Overlay intervals' fields, keep everything else.
 function mergeIcuSportSettings(existing, mapped) {
   const out = { ...(existing || {}) }
-  for (const g of Object.keys(mapped || {})) out[g] = { ...(out[g] || {}), ...(mapped[g] || {}) }
+  for (const g of Object.keys(mapped || {})) {
+    // #swim-tri BUGFIX — SWIMMING is OURS-wins (fill-if-empty): CSS is our authoritative swim benchmark, and on QA the
+    // swim pull comes from the SHARED athlete i28814, so intervals' swim threshold must NEVER overwrite a saved CSS
+    // (this merge runs on EVERY session-load + pull — that's why "CSS won't change"). cycling/running keep intervals-
+    // wins (FTP/threshold are two-way synced, intervals authoritative). intervals swim fields only FILL a blank.
+    out[g] = g === 'swimming'
+      ? { ...(mapped[g] || {}), ...(out[g] || {}) } // ours wins — never clobber a user-set CSS/D′/etc.
+      : { ...(out[g] || {}), ...(mapped[g] || {}) } // intervals wins
+  }
   return out
 }
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
