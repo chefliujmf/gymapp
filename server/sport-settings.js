@@ -43,6 +43,7 @@ export function fromIcuSportSettings(sportSettings) {
     const e = sportSettings[idx]
     const stat = {}
     if (group === 'cycling' && e.ftp != null) stat.ftp = e.ftp
+    if (group === 'cycling' && e.w_prime != null) stat.wPrime = Math.round(e.w_prime / 100) / 10 // #578 W′: intervals stores JOULES → our kJ (1 decimal)
     if (e.max_hr != null) stat.maxHr = e.max_hr
     if (e.lthr != null) stat.lthr = e.lthr
     const pace = paceFromMps(group, e.threshold_pace)
@@ -68,6 +69,7 @@ export function icuPatchForGroup(sportSettings, group, patch) {
   if (e.id == null) return null
   const body = {}
   if (group === 'cycling' && 'ftp' in patch) body.ftp = patch.ftp
+  if (group === 'cycling' && 'wPrime' in patch && patch.wPrime != null) body.w_prime = Math.round(patch.wPrime * 1000) // #578 W′: our kJ → intervals JOULES
   if ('maxHr' in patch) body.max_hr = patch.maxHr
   if ('lthr' in patch) body.lthr = patch.lthr
   if ('thresholdPace' in patch) body.threshold_pace = mpsFromPace(group, patch.thresholdPace)

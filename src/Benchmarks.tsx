@@ -470,7 +470,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     {
       key: 'wPrime', label: 'W′', unit: 'kJ', computed: wPrimeKj, computedSrc: 'anaerobic work capacity above CP', pending: wPrimeKj == null ? 'after some short max efforts — the model needs sprint points' : undefined, manual: (ss.cycling as { wPrime?: number })?.wPrime ?? null, fmt: String, parse: numParse(2, 60), save: (v) => saveSport('cycling', { wPrime: v }),
       chip: 'Best-efforts', conf: modelFitConfidence({ value: wPrimeKj, r2: powerCurve?.r2 }),
-      narr: <>Your <b>W′</b> ("W-prime") — the finite work you can do ABOVE Critical Power before you're cooked: your anaerobic "battery" for attacks, surges and sprints. A big W′ = puncheur; a small one = diesel. <b>Typical W′:</b> ~10–15 kJ recreational, ~15–25 kJ trained, ~25–35 kJ a strong puncheur/sprinter. Short hard repeats grow it. (W′ is a <b>Platyplus</b> metric — intervals.icu has no W′ field, so it won't appear there.)</>,
+      narr: <>Your <b>W′</b> ("W-prime") — the finite work you can do ABOVE Critical Power before you're cooked: your anaerobic "battery" for attacks, surges and sprints. A big W′ = puncheur; a small one = diesel. <b>Typical W′:</b> ~10–15 kJ recreational, ~15–25 kJ trained, ~25–35 kJ a strong puncheur/sprinter. Short hard repeats grow it. (W′ two-way syncs with intervals.icu's <b>w_prime</b> field.)</>,
       sci: [{ name: 'Power-duration model', formula: 'work above CP (kJ)', value: wPrimeKj != null ? `${wPrimeKj} kJ` : '—', inUse: wPrimeKj != null }],
       sharpen: 'short near-max repeats (30 s–3 min) build W′.',
     },
