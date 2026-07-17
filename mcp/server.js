@@ -196,6 +196,47 @@ server.tool('create_run',
   { date: DATE, title: z.string(), ftp: z.number().optional(), segments: SEGMENTS, notes: z.string().optional(), ...COACHING, id: z.string().optional() },
   makeEndurance('run'))
 
+// #swim-tri — swim workouts are DISTANCE sets on a send-off (not power/pace time-segments), coached by CSS zone.
+const SWIM_ZONE_IF = { 1: 0.72, 2: 0.85, 3: 1.0, 4: 1.06, 5: 1.16 } // % of CSS speed → IF for sTSS
+const SWIM_ZONE_LABEL = { 1: 'Z1 easy', 2: 'Z2 aerobic', 3: 'CSS', 4: 'Z4 race-pace', 5: 'Z5 sprint' }
+const makeSwim = wrap((a) => {
+  const css = a.cssPace100 > 0 ? a.cssPace100 : 100 // s/100; default nominal if the athlete's CSS isn't known
+  let distM = 0, durS = 0, sTSS = 0
+  const lines = { warmup: [], drills: [], main: [], cooldown: [] }
+  for (const s of a.sets) {
+    const reps = s.reps || 1, z = s.zone || 2, IF = SWIM_ZONE_IF[z] || 0.85
+    const perRepS = (s.distanceM / 100) * (css / IF) // easier zones (lower IF) take longer per 100
+    distM += reps * s.distanceM
+    durS += reps * (perRepS + (s.restSec || 0))
+    sTSS += (reps * perRepS * IF * IF) / 36 // work time only
+    const sec = lines[s.section] ? s.section : 'main'
+    lines[sec].push(`${reps > 1 ? reps + '×' : ''}${s.distanceM}${s.zone ? ' @ ' + (SWIM_ZONE_LABEL[z] || '') : ''}${s.restSec ? ` (${s.restSec}s rest)` : ''}${s.note ? ' — ' + s.note : ''}`)
+  }
+  const notesStr = ['warmup', 'drills', 'main', 'cooldown'].filter((k) => lines[k].length).map((k) => `${k[0].toUpperCase() + k.slice(1)}: ${lines[k].join(', ')}`).join('\n')
+  return api('POST', '/api/plan', {
+    id: a.id || newId(), date: a.date, sport: 'swim', title: a.title,
+    notes: (a.notes ? a.notes + '\n' : '') + notesStr,
+    moving_time: Math.round(durS), distanceM: distM, icu_training_load: Math.round(sTSS),
+    ...coachingOf(a),
+  })
+})
+server.tool('create_swim',
+  'Schedule a SWIM workout (distance sets on a send-off, prescribed by CSS zone). Platyplus is master; mirrors to intervals.icu. Re-call with same id to update. ONE SESSION/DAY + respect the HARD weekly training-days cap — combine/move, do NOT add past the cap. Build it the swim way: warm-up → DRILLS (technique EVERY session — catch-up, fingertip-drag, sculling, kick-on-side) → MAIN set → cool-down. Coach by CSS zone (3 = CSS/threshold = the key zone; a productive week is mostly Z1-2 aerobic + 1-2 CSS sets + a little speed). The app computes total distance, duration, and sTSS load. Distances in metres (yard pool reads the same). Attach the coaching shell.',
+  {
+    date: DATE, title: z.string(),
+    sets: z.array(z.object({
+      reps: z.number().int().min(1).optional().describe('default 1'),
+      distanceM: z.number().int().positive().describe('metres (or yards) per rep, e.g. 100'),
+      zone: z.number().int().min(1).max(5).optional().describe('CSS zone: 1 easy/recovery · 2 aerobic · 3 CSS/threshold · 4 VO₂/race-pace · 5 sprint'),
+      restSec: z.number().int().optional().describe('rest between reps in seconds'),
+      section: z.enum(['warmup', 'drills', 'main', 'cooldown']).optional().describe("default 'main'"),
+      note: z.string().optional().describe('drill name or cue, e.g. "catch-up drill", "hold CSS", "pull + paddles", "sight every 6 strokes"'),
+    })).min(1).describe('ordered sets: warm-up, drills, main, cool-down'),
+    cssPace100: z.number().optional().describe("athlete's CSS in seconds per 100 (for pacing + load); omit if unknown"),
+    notes: z.string().optional(), ...COACHING, id: z.string().optional(),
+  },
+  makeSwim)
+
 server.tool('remove_workout', 'Delete a scheduled workout/ride/run by id (also removes its intervals.icu mirror).',
   { id: z.string() }, wrap((a) => api('DELETE', `/api/plan/${encodeURIComponent(a.id)}`)))
 

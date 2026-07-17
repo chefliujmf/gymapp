@@ -97,8 +97,9 @@ a { color: inherit; text-decoration: none; }
 .thumb--ride { background: radial-gradient(120% 120% at 30% 20%, #1f6f5c 0%, #134a4a 55%, #0e2f36 100%); }
 .thumb--run { background: radial-gradient(120% 120% at 30% 20%, #b9612a 0%, #7a3a23 55%, #3f2018 100%); }
 .thumb--gym { background: radial-gradient(120% 120% at 30% 20%, #4a4f9e 0%, #343a6e 55%, #1f2240 100%); }
+.thumb--swim { background: radial-gradient(120% 120% at 30% 20%, #1c7fb0 0%, #145a86 55%, #0e2f4a 100%); }
 .thumb--target { background: radial-gradient(120% 120% at 30% 20%, #8a4a8f 0%, #5a3068 55%, #2f1c3c 100%); }
-.thumb--ride svg, .thumb--run svg, .thumb--gym svg, .thumb--target svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
+.thumb--swim svg, .thumb--ride svg, .thumb--run svg, .thumb--gym svg, .thumb--target svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
 .card-body { flex: 1; min-width: 0; }
 .card-body h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: var(--text); }
 .meta { color: var(--text-dim); font-size: 13px; display: flex; gap: 8px; flex-wrap: wrap; }
@@ -1310,6 +1311,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .cal-chip--grad svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
 .cal-chip--ride { background: radial-gradient(120% 120% at 30% 20%, #1f6f5c 0%, #134a4a 55%, #0e2f36 100%); }
 .cal-chip--run { background: radial-gradient(120% 120% at 30% 20%, #b9612a 0%, #7a3a23 55%, #3f2018 100%); }
+.cal-chip--swim { background: radial-gradient(120% 120% at 30% 20%, #1c7fb0 0%, #145a86 55%, #0e2f4a 100%); }
 .cal-chip--gym { background: radial-gradient(120% 120% at 30% 20%, #4a4f9e 0%, #343a6e 55%, #1f2240 100%); }
 .cal-chip--meal { background: radial-gradient(120% 120% at 30% 20%, #b9466a 0%, #7a2e47 55%, #3f1827 100%); }
 .cal-chip--mind { background: radial-gradient(120% 120% at 30% 20%, #6a4aa0 0%, #463070 55%, #261c3c 100%); }

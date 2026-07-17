@@ -208,7 +208,7 @@ export default function Calendar() {
     const kind = kindOf(e)
     const atp = isAtp(e)
     const k = kind as string
-    const mod = atp ? 'note' : k === 'cycling' || k === 'ride' ? 'ride' : k === 'running' || k === 'run' ? 'run' : k === 'gym' ? 'gym' : k === 'meal' ? 'meal' : k === 'mind' ? 'mind' : 'note'
+    const mod = atp ? 'note' : k === 'cycling' || k === 'ride' ? 'ride' : k === 'running' || k === 'run' ? 'run' : k === 'swimming' || k === 'swim' ? 'swim' : k === 'gym' ? 'gym' : k === 'meal' ? 'meal' : k === 'mind' ? 'mind' : 'note'
     const photo = e.k === 'item' && e.item.type === 'meal' && e.item.refId ? recipes.find((r) => r.id === e.item.refId)?.thumbnail : undefined
     // Match Today: rides/runs show their power profile, not a generic icon.
     const segs = !atp && (mod === 'ride' || mod === 'run')
