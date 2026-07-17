@@ -1,24 +1,33 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { zoneColor, zoneName, segPower } from './zones'
+import { fmtPace, paceFromPowerPct } from './running-paces' // #574 — run planned chart reuses the pace math for zone bars
 
 export type Series = { label: string; color: string; data: (number | null)[]; area?: boolean; dash?: boolean; faint?: boolean }
 
-/** #286 — a completed activity's shape as zone-coloured bars, binned from the REAL power
- *  stream (not the planned segments, which can be degenerate/0 W). Used for the card + detail
- *  thumbnail so a done ride always reads correctly. Falls back to null if there's no power. */
-export function PowerBlocks({ watts, ftp = 260, bins = 9 }: { watts?: (number | null)[]; ftp?: number; bins?: number }) {
-  const w = (watts || []).map((v) => (v == null ? 0 : Number(v)))
+/** #286/#575 — a completed activity's shape as zone-coloured bars, binned from the REAL stream. Sport-agnostic:
+ *  `values` is the "higher = harder" quantity (watts for a ride, SPEED m/s for a run/swim) and `anchor` is the
+ *  threshold reference (FTP, or threshold/CSS SPEED) so the zone colour is right. Height = value ÷ peak. Used for
+ *  the card + detail thumbnail so a done ride/run/swim all read the SAME way (JM #575). Null if too little data. */
+export function ZoneBlocks({ values, anchor, bins = 9 }: { values?: (number | null)[]; anchor?: number; bins?: number }) {
+  const w = (values || []).map((v) => (v == null ? 0 : Number(v)))
   const real = w.filter((v) => v > 0)
   if (real.length < bins) return null
   const per = Math.floor(w.length / bins)
   const avgs: number[] = []
   for (let b = 0; b < bins; b++) { let s = 0, c = 0; for (let i = b * per; i < (b + 1) * per && i < w.length; i++) { s += w[i]; c++ } avgs.push(c ? s / c : 0) }
   const mx = Math.max(...avgs) || 1
+  // anchor = the "100%" threshold; without one (no FTP/threshold set) fall back to ~90th-percentile effort so the
+  // hardest blocks still read as a high zone rather than mis-colouring everything.
+  const anch = anchor && anchor > 0 ? anchor : (real.slice().sort((a, b) => a - b)[Math.floor(real.length * 0.9)] || Math.max(...real)) * 0.92
   return (
     <div className="pblocks">
-      {avgs.map((v, i) => <i key={i} style={{ height: `${Math.max(10, (v / mx) * 100)}%`, background: zoneColor((v / ftp) * 100) }} />)}
+      {avgs.map((v, i) => <i key={i} style={{ height: `${Math.max(10, (v / mx) * 100)}%`, background: zoneColor((v / anch) * 100) }} />)}
     </div>
   )
+}
+/** Power-stream convenience wrapper (a ride) — the original API. */
+export function PowerBlocks({ watts, ftp = 260, bins = 9 }: { watts?: (number | null)[]; ftp?: number; bins?: number }) {
+  return <ZoneBlocks values={watts} anchor={ftp} bins={bins} />
 }
 
 /** Horizontal offset (px) to keep an absolutely-positioned popover inside the viewport.
@@ -262,31 +271,40 @@ export function TrendChart({ series, labels, height = 150, pad = 10, unit = '', 
   )
 }
 
-/** #357 — a PLANNED ride as zone-coloured COLUMNS (intervals.icu style), NOT a single-colour ramped
- *  line. Each segment is a solid bar at its target watts, coloured by its %FTP zone (Z1 recovery →
- *  Z6). x = time (proportional to duration), y = watts. Tap a block for its target. "No ramp thing." */
-export function PlannedPowerBars({ segments, ftp = 260, height = 150 }: { segments: { duration: number; powerStart: number; powerEnd: number; label?: string }[]; ftp?: number; height?: number }) {
+/** #357/#574 — a PLANNED endurance session as zone-coloured COLUMNS (intervals.icu style), NOT a single-colour
+ *  ramped line. Each segment is a solid bar coloured by its zone (Z1 recovery → Z6). x = time. RIDE: y = watts,
+ *  bars grow from 0. RUN (`run` + `thrPace`): y = PACE, bars sit on a sensible pace window (never 0 = walking) and
+ *  read faster-is-taller — the SAME format as the ride so both sports match (JM #574). Tap a block for its target. */
+export function PlannedPowerBars({ segments, ftp = 260, height = 150, run = false, thrPace = null }: { segments: { duration: number; powerStart: number; powerEnd: number; label?: string }[]; ftp?: number; height?: number; run?: boolean; thrPace?: number | null }) {
   const [hi, setHi] = useState<number | null>(null)
   const segs = (segments || []).filter((s) => s && s.duration > 0)
   if (!segs.length) return <div className="chart-empty">No workout shape</div>
   const total = segs.reduce((a, s) => a + s.duration, 0)
-  // Colour + height by the segment's PEAK % (segPower) — the same zone the thumbnails/PowerBlocks use,
-  // so a segment reads the same everywhere (#72). Flat block per segment = "no ramp" (JM #357).
+  // Colour by the segment's PEAK % (segPower) — the same zone the thumbnails/PowerBlocks/structure use (#72). The
+  // HEIGHT value: ride = watts; run = pace-% intensity (via paceFromPowerPct, matching the run's pace math) so harder = taller.
   const pctOf = (s: { powerStart: number; powerEnd: number }) => segPower(s)
-  const wOf = (s: { powerStart: number; powerEnd: number }) => Math.round((pctOf(s) / 100) * ftp)
+  const valOf = (s: { powerStart: number; powerEnd: number }) => run ? paceFromPowerPct(pctOf(s)) : Math.round((pctOf(s) / 100) * ftp)
   const H = height, P = 1
-  const nice = niceTicks(0, Math.max(...segs.map(wOf), Math.round(ftp * 1.1)), Math.max(3, Math.min(9, Math.round(H / 22))))
-  const dMax = nice.max || 1
-  const y = (w: number) => P + (1 - w / dMax) * (H - 2 * P)
+  const vals = segs.map(valOf)
+  // Y WINDOW: ride grows from 0 (absolute watts). Run uses a pace window from a bit below the easiest effort (0 pace-%
+  // would be infinitely slow), so bars sit on that floor and the axis shows real min/km, not "26:00/km".
+  const lo = run ? Math.max(1, Math.min(...vals) * 0.9) : 0
+  const hiCap = run ? Math.max(...vals) * 1.06 : Math.max(...vals, Math.round(ftp * 1.1))
+  const nice = niceTicks(lo, hiCap, Math.max(3, Math.min(9, Math.round(H / 22))))
+  const dMax = nice.max || 1, dMin = run ? nice.min : 0
+  const span = dMax - dMin || 1
+  const fmtY = (v: number) => run ? (thrPace && v > 0 ? fmtPace(Math.round(thrPace * 100 / v)) : `${Math.round(v)}%`) : `${Math.round(v)} W`
+  const y = (v: number) => P + (1 - (v - dMin) / span) * (H - 2 * P)
+  const y0 = y(dMin) // baseline (bottom of the window)
   const xAt = (f: number) => P + f * (VW - 2 * P)
   const ticks = minuteTicks(total)
   const fmtD = (s: number) => (s >= 60 ? `${Math.round(s / 60)}m` : `${s}s`)
   let cum = 0
-  const bars = segs.map((s) => { const f0 = cum / total; cum += s.duration; return { f0, f1: cum / total, w: wOf(s), pct: Math.round(pctOf(s)), c: zoneColor(pctOf(s)), label: s.label, dur: s.duration } })
+  const bars = segs.map((s) => { const f0 = cum / total; cum += s.duration; return { f0, f1: cum / total, w: valOf(s), pct: Math.round(pctOf(s)), c: zoneColor(pctOf(s)), label: s.label, dur: s.duration } })
   const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - rect.left) / rect.width; const i = bars.findIndex((b) => fx >= b.f0 && fx <= b.f1); setHi(i >= 0 ? i : null) }
   return (
     <div className="chart2">
-      <div className="chart2__y">{nice.ticks.map((v, i) => <span key={i} style={{ top: `${((dMax - v) / dMax) * 100}%` }}>{Math.round(v)} W</span>)}</div>
+      <div className="chart2__y">{nice.ticks.map((v, i) => <span key={i} style={{ top: `${((dMax - v) / span) * 100}%` }}>{fmtY(v)}</span>)}</div>
       <div className="trend-wrap chart2__plot" onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHi(null)}>
         <svg viewBox={`0 0 ${VW} ${H}`} preserveAspectRatio="none" width="100%" height={height} className="trend">
           {nice.ticks.map((v, i) => <line key={'h' + i} x1={0} x2={VW} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeWidth="0.5" opacity="0.4" />)}
@@ -294,7 +312,7 @@ export function PlannedPowerBars({ segments, ftp = 260, height = 150 }: { segmen
             const x0 = xAt(b.f0), x1 = xAt(b.f1), yt = y(b.w), w = Math.max(0.4, x1 - x0)
             return (
               <g key={i}>
-                <rect x={x0} y={yt} width={w} height={Math.max(0, (H - P) - yt)} fill={b.c} fillOpacity={hi == null || hi === i ? 0.9 : 0.55} />
+                <rect x={x0} y={yt} width={w} height={Math.max(0, y0 - yt)} fill={b.c} fillOpacity={hi == null || hi === i ? 0.9 : 0.55} />
                 <rect x={x0} y={yt} width={w} height="2.2" fill={b.c} />
               </g>
             )
@@ -303,7 +321,7 @@ export function PlannedPowerBars({ segments, ftp = 260, height = 150 }: { segmen
         {hi != null && bars[hi] && (
           <div className="chart-tip" style={{ left: `${Math.max(13, Math.min(87, ((bars[hi].f0 + bars[hi].f1) / 2) * 100))}%` }}>
             <span className="chart-tip__d">{bars[hi].label || zoneName(bars[hi].pct)} · {fmtD(bars[hi].dur)}</span>
-            <span style={{ color: bars[hi].c }}>{bars[hi].w} W · {bars[hi].pct}%</span>
+            <span style={{ color: bars[hi].c }}>{run ? (thrPace ? `${fmtPace(Math.round(thrPace * 100 / bars[hi].w))}/km` : `${bars[hi].pct}%`) : `${bars[hi].w} W`} · {bars[hi].pct}%</span>
           </div>
         )}
       </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { fetchActivity, fetchActivities, fetchActivityStreams, fetchActivityThread, readIcuFeedback, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
 import { incompleteFeedback } from '../feedbackGaps'
-import { TrendChart, PowerCurveChart, PaceCurveChart, PowerBlocks, minuteTicks } from '../charts'
+import { TrendChart, PowerCurveChart, PaceCurveChart, PowerBlocks, ZoneBlocks, minuteTicks } from '../charts'
 import { Bike, Dumbbell, Footprints, Waves } from 'lucide-react'
 import { fmtPace100 } from '../swimming'
 import { fmtPace } from '../running-paces'
@@ -262,6 +262,11 @@ export default function ActivityDetail() {
 
   const isRun = sportOfActivity(a) === 'run' // #333 — a run shows PACE, never watts
   const isSwim = sportOfActivity(a) === 'swim' // #swim-tri — a swim shows pace /100 + SWOLF, never watts
+  // #575 — run/swim thumbnail = zone-blocks from the SPEED stream (same concept as a ride's PowerBlocks). Anchor =
+  // threshold SPEED (m/s): run 1000/thresholdPace, swim 100/CSS. Higher speed = harder = a taller, warmer block.
+  const cssPace100 = user?.sportSettings?.swimming?.thresholdPace ?? null
+  const speedAnchor = isSwim ? (cssPace100 ? 100 / cssPace100 : undefined) : (isRun && (user?.sportSettings?.running?.thresholdPace ?? user?.runThresholdPace) ? 1000 / (user?.sportSettings?.running?.thresholdPace ?? user!.runThresholdPace!) : undefined)
+  const velN = streams.velocity_smooth?.filter((v) => v != null && Number(v) > 0.3).length || 0
   const thrPace = user?.sportSettings?.running?.thresholdPace ?? user?.runThresholdPace ?? null // sec/km
   // #293 — link back to the coach plan this activity fulfilled (match day + sport).
   const plan = findCoachPlan((a.start_date_local || '').slice(0, 10), sportOfActivity(a))
@@ -338,6 +343,8 @@ export default function ActivityDetail() {
             (runs, gym, power-less rides) so the header is never blank — matches the calendar/day cards. */}
         {!isRun && !isSwim && (streams.watts?.filter((v) => v != null).length || 0) >= 9
           ? <div className="act-thumb"><PowerBlocks watts={streams.watts} ftp={ftp} /></div>
+          : (isRun || isSwim) && velN >= 9
+          ? <div className="act-thumb"><ZoneBlocks values={streams.velocity_smooth} anchor={speedAnchor} /></div>
           : <div className={'act-thumb thumb--' + sportOfActivity(a)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{sportOfActivity(a) === 'ride' ? <Bike strokeWidth={1.75} /> : sportOfActivity(a) === 'gym' ? <Dumbbell strokeWidth={1.75} /> : sportOfActivity(a) === 'swim' ? <Waves strokeWidth={1.75} /> : <Footprints strokeWidth={1.75} />}</div>}
         <div style={{ minWidth: 0 }}>
           <span className="eyebrow">{sportOfActivity(a) === 'ride' ? 'Ride' : sportOfActivity(a) === 'run' ? 'Run' : sportOfActivity(a) === 'swim' ? 'Swim' : 'Workout'} · {isIndoorActivity(a) ? 'Indoor' : 'Outdoor'}{a.start_date_local ? ` · ${new Date(a.start_date_local).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}</span>

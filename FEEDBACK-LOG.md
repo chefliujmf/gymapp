@@ -3144,7 +3144,20 @@ StatsHub tabbed; per-sport pages take an `embedded` prop; TriathlonStats embedde
 ### #572 — Profile: picking Triathlon auto-selects+locks swim/bike/run + stars it as main sport 🧪 (built)
 "when you choose triathlon, ensure all 3 sports selected + stay selected + auto-star as main sport." `toggleSport`:
 triathlon on → adds swim/bike/run + mainSport='triathlon'; dropping a leg drops the umbrella.
-### #573 — GYM variety: warm-up always the same + repeated exercises (rowing) — wife feedback ⬜ (for after)
+### #574 — Planned RUN chart must match the RIDE (zone-coloured columns, not a line) 🧪 (built)
+"in prod, planned-run graph format is not like cycling; make it the same." PlannedPowerBars now has a run mode
+(run+thrPace): zone columns on a sensible PACE window (min/km), same format as the ride. Line/TrendChart removed.
+### #575 — Post-workout THUMBNAIL for run (+swim) = zone-blocks like cycling 🔨 (ActivityDetail done; Calendar/Today next)
+"same for thumbnail post workout for running, same concept as cycling (swimming follows)." Generalized PowerBlocks →
+ZoneBlocks (values+anchor, sport-agnostic). ActivityDetail run/swim thumbnail = ZoneBlocks from the SPEED stream
+(anchor = threshold/CSS speed). TODO: Calendar + Today thumbnails for run/swim (fetch velocity) for full consistency.
+### #576 — Triathlon LIMITER card lacks bottom-left padding ⬜ (for after)
+The "YOUR LIMITER" callout text touches the edges (bottom-left). Fix the padding in TriathlonStats.
+### #573 — GYM variety: warm-up always same + repeated exercises (rowing) — wife feedback 🔨 (JM: build Option C)
+JM's wife: gym warm-up always identical + exercises repeat (rowing). JM chose **Option C**: coach variety rules (rotate
+warm-up + main-set exercises, don't repeat a pattern each session, keep the KEY strength lifts stable for progression) +
+a warm-up ROTATION library the app cycles through. Build both. → coach-engine-strength.md + create_workout guidance +
+recent-exercise awareness + a warm-up rotation set.
 JM's wife: the gym warm-up is always identical and some exercises repeat (rowing). Question: aim for variety? is the
 gym workout generator good enough? → investigate the generator's warm-up + exercise-selection variety (diagnosis + options).
 "yes to a thin orchestration layer that leverages the three, do that." Limiter analysis (CSS/FTP/threshold vs race
