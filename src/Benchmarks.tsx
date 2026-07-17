@@ -20,7 +20,7 @@ import { decouplingCheck, aerobicFloor, type RideSignal } from './threshold-sign
 // N methods" (computed live for VO₂max), and a "Sharpen it" callout. See mockups/benchmark-cards.html.
 type Pref = 'manual' | 'computed' | 'auto' // #277 auto = use computed once it's ready, manual until then
 // #385 — exported so per-sport Stats pages can pass `only` to show the same polished cards, filtered.
-export type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed' | 'tteRide' | 'tteRun' | 'cp' | 'wPrime' | 'cs' | 'dPrime' // #337 sleep · #401 TTE · #403 CP/W′/CS/D′
+export type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed' | 'tteRide' | 'tteRun' | 'cp' | 'wPrime' | 'cs' | 'dPrime' | 'css' // #337 sleep · #401 TTE · #403 CP/W′/CS/D′ · #swim-tri CSS
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n))
 const numParse = (lo: number, hi: number) => (s: string) => { const n = Number(s); return Number.isFinite(n) && n > 0 ? clamp(n, lo, hi) : null }
 // #401 — a manual TTE typed as m:ss / h:mm:ss (or bare minutes) → seconds.
@@ -158,8 +158,8 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // DB (user.sportSettings), NOT to intervals — so the intervals pull never carries them and they read back empty
   // ("won't save"). Merge: user (DB, has the local fields) as base, the fresh intervals pull overlaid for
   // ftp/maxHr/thresholdPace. Now every manual value round-trips after save+refresh.
-  const mss = (g: 'cycling' | 'running'): SportStat => ({ ...(user?.sportSettings?.[g] || {}), ...(pull?.sportSettings?.[g] || {}) })
-  const ss = { cycling: mss('cycling'), running: mss('running') }
+  const mss = (g: 'cycling' | 'running' | 'swimming'): SportStat => ({ ...(user?.sportSettings?.[g] || {}), ...(pull?.sportSettings?.[g] || {}) })
+  const ss = { cycling: mss('cycling'), running: mss('running'), swimming: mss('swimming') }
   const ftpManual = ss.cycling?.ftp ?? user?.ftp ?? null
   const maxHr = ss.cycling?.maxHr ?? user?.maxHR ?? null
   const ageMaxHr = maxHrFromAge(user?.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null, user?.sex) // #507/#508 — sex-specific age max HR (Gulati/Tanaka)
@@ -280,7 +280,8 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     ? { sport: 'cycling', threshold: chosenFtp, eftp: eftpVal, tte: chosenTteRide, cp: chosenCp, reserveKj: chosenWprime, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
     : { sport: 'running', threshold: chosenPace, eftp: paceEst, tte: chosenTteRun, cp: chosenCs, reserveKj: chosenDprime, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null
 
-  const saveSport = (group: 'cycling' | 'running', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
+  const saveSport = (group: 'cycling' | 'running' | 'swimming', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
+  const cssManual = (ss.swimming as { thresholdPace?: number })?.thresholdPace ?? null // #swim-tri — CSS = swim threshold pace, sec/100 m
   // #337 — "when will the computed estimate land?" straight from our theory gates, so nothing just says
   // "not available yet". Runs gate (pace): ≥4 runs + ≥25 km / 6 wks. Sleep: 21 nights. VO₂max cycling:
   // a hard ~5-min effort. maxHR: no safe estimate exists — it needs a real max.
@@ -387,6 +388,15 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       ],
       sharpen: isVdotRun ? 'a hard 5 k–10 k effort or a race gives VDOT a fresh, faster anchor → a tighter threshold.' : 'log a few more runs incl. a hard effort → the Critical-Speed fit tightens.',
     },
+    // #swim-tri — CSS (Critical Swim Speed), the swim analogue of FTP/threshold pace. Manual for now (no swim
+    // estimate engine yet): set from a 400+200 test or typed in; all swim zones anchor to it.
+    {
+      key: 'css', label: 'CSS', unit: '/100', computed: null, computedSrc: '', pending: cssManual == null ? 'set it from a 400 + 200 time-trial (or type it in): swim an all-out 400, rest fully, then an all-out 200 — CSS = 200 ÷ (t400 − t200)' : undefined, manual: cssManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('swimming', { thresholdPace: v }),
+      chip: 'Swim threshold',
+      conf: cssManual != null ? { pct: 72, cls: 'strong', label: 'you set it' } : { pct: 18, cls: 'need', label: 'set it to unlock zones' },
+      narr: <>Your <b>Critical Swim Speed</b> — the pace per 100 m you can hold for ~an hour, the swim analogue of FTP. Every swim zone anchors to it. Set it from a <b>400 + 200 time-trial</b> (CSS = 200 ÷ the time difference) or type it in; it sharpens each time you retest.</>,
+      sci: [{ name: '400 + 200 test', formula: 'CSS = 200 m ÷ (t400 − t200)', value: cssManual != null ? `${fmtPace(cssManual)}/100` : '—', inUse: cssManual != null }],
+    },
     // #401 — TTE (time to exhaustion at threshold), a LEARNED benchmark per sport, read off the mean-max curve.
     {
       key: 'tteRide', label: 'TTE', computed: tteRide, computedSrc: tteRideEstimated ? 'estimated from your power model (W′/CP)' : 'longest you held your FTP', pending: tteRide == null ? (powerCurve ? 'after a sustained near-FTP effort (10–40 min)' : 'after your next ride — read from your best efforts') : undefined, manual: (ss.cycling as { tte?: number })?.tte ?? null, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('cycling', { tte: v }),
@@ -466,7 +476,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // shows ONLY cross-sport benchmarks: VO₂max · Max HR · Sleep. Everything SPORT-SPECIFIC lives on its per-sport page
   // (via `only`), never in the global mix (JM directive: nothing activity-specific in global): FTP (cycling) +
   // threshold pace (running), and the advanced curve metrics TTE · CP · W′ · CS · D′.
-  const SPORT_ONLY: Key[] = ['ftp', 'thresholdPace', 'tteRide', 'tteRun', 'cp', 'wPrime', 'cs', 'dPrime']
+  const SPORT_ONLY: Key[] = ['ftp', 'thresholdPace', 'tteRide', 'tteRun', 'cp', 'wPrime', 'cs', 'dPrime', 'css']
   const shownRaw = only ? only.map((k) => defs.find((d) => d.key === k)).filter((d): d is StatDef => !!d) : defs.filter((d) => !SPORT_ONLY.includes(d.key))
   // #512 — pregnancy: strip hard-effort "sharpen" tips (keep maxHr/sleep — not training loads). Numbers stay; no nudges.
   const shown = pregnant ? shownRaw.map((d) => (d.key === 'maxHr' || d.key === 'sleepNeed' ? d : { ...d, sharpen: PREG_SHARPEN })) : shownRaw

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle, HeartPulse } from 'lucide-react'
+import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle, HeartPulse, Waves } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 import { BenchmarksCard } from '../Benchmarks'
@@ -62,7 +62,7 @@ export function statsGroups(sports: string[]): { global: Spec[]; perSport: Spec[
 }
 const STAT_ICON: Record<string, ReactNode> = {
   form: <Activity strokeWidth={1.75} />, history: <History strokeWidth={1.75} />, wellness: <HeartPulse strokeWidth={1.75} />,
-  cycling: <Bike strokeWidth={1.75} />, running: <Footprints strokeWidth={1.75} />,
+  cycling: <Bike strokeWidth={1.75} />, running: <Footprints strokeWidth={1.75} />, swimming: <Waves strokeWidth={1.75} />,
   strength: <Dumbbell strokeWidth={1.75} />, mind: <Brain strokeWidth={1.75} />,
 }
 const toItem = (s: Spec): Item => ({ label: s.label, sub: s.sub, to: s.to, icon: STAT_ICON[s.key] })

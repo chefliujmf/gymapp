@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { calApi, newId } from '../calendar'
 import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
-import { swimWorkouts, swimFocusLabel } from '../data/swim-workouts'
+import { swimWorkouts, swimFocusLabel, type SwimFocus } from '../data/swim-workouts'
 import { segmentsFromEndurance } from '../ride'
 import type { WorkoutTemplate, RideTemplate } from '../db'
 import { useAuth } from '../auth/AuthContext'
@@ -37,6 +37,8 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
   // Substitute is type-LOCKED to the replaced entry — pre-select its type and hide the picker.
   const [type, setType] = useState<SheetType>(() => lockType || '')
   const [q, setQ] = useState('')
+  const [swimFocus, setSwimFocus] = useState<SwimFocus | 'all'>('all') // #swim-tri library filter
+  const [swimSort, setSwimSort] = useState<'default' | 'dist-asc' | 'dist-desc' | 'dur-asc'>('default')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [count, setCount] = useState(0)
@@ -54,6 +56,14 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
   }
 
   const rideRun = (sport: 'ride' | 'run') => endurance.filter((w) => w.sport === (sport === 'ride' ? 'cycling' : 'running') && (!q || w.name.toLowerCase().includes(q.toLowerCase()))).slice(0, 40)
+  // #swim-tri — the swim library filtered by focus + sorted (JM: "see what we're adding, filter + sort easily").
+  const swimList = () => {
+    let list = swimWorkouts.filter((w) => (swimFocus === 'all' || w.focus === swimFocus) && (!q || w.name.toLowerCase().includes(q.toLowerCase()) || swimFocusLabel[w.focus].toLowerCase().includes(q.toLowerCase())))
+    if (swimSort === 'dist-asc') list = [...list].sort((a, b) => a.distanceM - b.distanceM)
+    else if (swimSort === 'dist-desc') list = [...list].sort((a, b) => b.distanceM - a.distanceM)
+    else if (swimSort === 'dur-asc') list = [...list].sort((a, b) => a.durationMin - b.durationMin)
+    return list
+  }
   const meals = recipes.filter((r) => !q || r.title.toLowerCase().includes(q.toLowerCase())).slice(0, 40)
   const minds = mindSessions.filter((m) => !q || m.title.toLowerCase().includes(q.toLowerCase())).slice(0, 40)
 
@@ -84,6 +94,20 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
         {type && type !== 'note' && type !== 'supplement' && (
           <>
             <input className="search" autoFocus placeholder={`Search ${type}…`} value={q} onChange={(e) => setQ(e.target.value)} />
+            {type === 'swim' && (
+              <>
+                <div className="chips" style={{ margin: '8px 0 2px' }}>
+                  {(['all', 'technique', 'endurance', 'threshold', 'speed', 'mixed', 'openwater', 'recovery'] as const).map((f) => (
+                    <button key={f} className={'chip' + (swimFocus === f ? ' chip--active' : '')} onClick={() => setSwimFocus(f)}>{f === 'all' ? 'All' : swimFocusLabel[f]}</button>
+                  ))}
+                </div>
+                <div className="chips" style={{ margin: '2px 0' }}>
+                  {([['default', '↕ Type'], ['dist-asc', 'Shortest'], ['dist-desc', 'Longest'], ['dur-asc', 'Quickest']] as const).map(([k, l]) => (
+                    <button key={k} className={'chip' + (swimSort === k ? ' chip--active' : '')} onClick={() => setSwimSort(k)}>{l}</button>
+                  ))}
+                </div>
+              </>
+            )}
             <div className="stack sheet-list">
               {type === 'gym' && templates.filter((t) => !q || t.name.toLowerCase().includes(q.toLowerCase())).map((t) => (
                 <button key={t.id} className="card" disabled={busy} onClick={() => add(() => calApi.savePlan({ id: newId(), date, sport: 'gym', title: t.name, rounds: t.rounds, exercises: t.exercises.map((x) => ({ name: x.name, exId: x.exId, mode: x.mode || 'reps', seconds: x.seconds, sets: x.sets, reps: x.reps, weight: x.weight, rest: x.rest })) }))}>
@@ -105,7 +129,7 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
                   <div className="card-row"><div className="thumb">{iconFor(type)}</div><div className="card-body"><h3>{w.name}</h3><div className="meta">{w.duration} min · {w.category}</div></div></div>
                 </button>
               ))}
-              {type === 'swim' && swimWorkouts.filter((w) => !q || w.name.toLowerCase().includes(q.toLowerCase()) || swimFocusLabel[w.focus].toLowerCase().includes(q.toLowerCase())).map((w) => (
+              {type === 'swim' && swimList().map((w) => (
                 <button key={w.id} className="card" disabled={busy} onClick={() => add(() => calApi.savePlan({ id: newId(), date, sport: 'swim', title: w.name, objective: w.summary, notes: w.structure.map((s) => `${s.part}: ${s.detail}`).join('\n') }))}>
                   <div className="card-row"><div className="thumb" style={{ color: '#38bdf8' }}>{iconFor('swim')}</div><div className="card-body"><h3>{w.name}</h3><div className="meta">{swimFocusLabel[w.focus]} · {w.distanceM} m · {w.durationMin} min · {w.level}</div></div></div>
                 </button>
