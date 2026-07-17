@@ -60,6 +60,31 @@ When someone trains a sport AND lifts, respect the interference effect:
 - **Season = the athlete's training calendar**, not just the month. Ask/infer where they are (base / build / peak /
   off) and dose the secondary discipline accordingly. Then `set_gym_target` with an achievable, season-right band.
 
+## VARIETY — vary the fluff, keep the meat (JM #573: "warm-up is always the same, and it's always rowing")
+Repetition kills adherence (boredom) and leaves muscles/patterns undertrained. But randomising the KEY lifts wrecks
+progression — you can't add load to a lift you never repeat. So split the session in two:
+- **KEEP STABLE (progress these):** the 1–3 main compound lifts for the athlete's goal (squat / hinge / press / pull
+  patterns, or their sport-support mains). Same lift most weeks so weight/reps climb and the app can track e1-RM. Only
+  swap a main every 4–8 wk (a training block) or if it aggravates something.
+- **ROTATE EVERY SESSION (variety here):** the WARM-UP and the ACCESSORIES. Never prescribe the identical warm-up two
+  sessions running, and don't default to the same accessory each time — rotate within the movement pattern:
+  - horizontal pull: barbell row → chest-supported/seal row → 1-arm DB row → seated cable row → inverted row (NOT
+    "rowing" every time)
+  - horizontal push: bench → DB press → incline → weighted push-up → machine press
+  - squat pattern accessory: goblet → split squat → leg press → hack → step-up
+  - hinge accessory: RDL → good-morning → back extension → single-leg RDL → hip thrust
+  - vertical push/pull, carries, core: rotate likewise.
+- **WARM-UP ROTATION (pick a DIFFERENT flow each session, ~5–8 min, 3–5 moves):** don't reuse last time's.
+  1. Mobility flow — cat-cow, world's-greatest-stretch, hip 90/90, thoracic openers, band pull-aparts.
+  2. Dynamic — leg swings (both planes), walking lunges, high knees, arm circles, inchworms.
+  3. Activation — glute bridge, bird-dog, dead-bug, banded monster-walk, scap push-ups.
+  4. Movement-specific ramp — the day's main lift at empty bar / light, rising over 2–3 sets.
+  5. Kettlebell/DB prep — halos, goblet-squat holds, KB deadlift, Turkish get-up half.
+  6. Jump-rope / row / bike 3–4 min + 2 mobility drills (use a MACHINE warm-up only occasionally, not every day).
+  Rotate 1→6 (or by feel + the day's focus). Tell the athlete WHY only if it helps; keep it short.
+- **AVOID REPEATS:** before building, recall the athlete's last 1–2 gym sessions (from the conversation / their plan)
+  and pick a different warm-up + different accessories. When unsure, default to variety.
+
 ## Voice — keep it real (folds in the review rules)
 - Match the athlete's objective. A cyclist who lifts once a week for support is **on-plan** — tell them so.
 - Reviews are reflective, not a data dump or a re-statement of the next plan (that's already in their calendar).

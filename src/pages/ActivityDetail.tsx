@@ -107,7 +107,7 @@ function RideTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity
   const totalSec = timeArr ? Number(timeArr[timeArr.length - 1]) || 0 : 0
   const xTicks = totalSec > 0 ? minuteTicks(totalSec) : undefined
   const timeLabels = timeArr ? timeArr.map((v) => (v == null ? '' : fmtElapsed(v as number))) : undefined
-  const stat = (key: string) => { const v = data[key].filter((x): x is number => x != null); if (!v.length) return ''; const avg = Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length); return ` · avg ${avg} · max ${Math.round(Math.max(...v))}` }
+  const stat = (key: string) => { const v = data[key].filter((x): x is number => x != null); if (!v.length) return ''; const avg = Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length); const mx = Math.round(Math.max(...v)); if (key === 'watts') { const np = a.icu_weighted_avg_watts ? Math.round(a.icu_weighted_avg_watts) : null; return `${np ? ` · NP ${np}` : ''} · avg ${avg} · max ${mx}` } return ` · avg ${avg} · max ${mx}` } // #567 — show NP + avg together (was avg only; NP was hidden in the insight)
   const avg = (key: string) => { const v = data[key].filter((x): x is number => x != null); return v.length ? Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length) : 0 }
   const insight = (key: string): string | null => {
     if (key === 'watts') { const vi = a.icu_variability_index; const np = a.icu_weighted_avg_watts ? Math.round(a.icu_weighted_avg_watts) : null; if (vi) return `NP ${np ?? avg('watts')} W · VI ${vi.toFixed(2)} — ${vi >= 1.2 ? 'stochastic — lots of surges and coasts' : vi >= 1.08 ? 'somewhat variable — surges and easing' : 'steady, even effort'}`; return `Avg ${avg('watts')} W over the ride` }
