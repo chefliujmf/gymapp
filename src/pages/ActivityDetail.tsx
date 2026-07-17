@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { fetchActivity, fetchActivities, fetchActivityStreams, fetchActivityThread, readIcuFeedback, cleanLatLng, sportOfActivity, isIndoorActivity, type IcuActivity, type ActivityStreams, type CoachNote } from '../intervals'
 import { incompleteFeedback } from '../feedbackGaps'
 import { TrendChart, PowerCurveChart, PaceCurveChart, PowerBlocks, minuteTicks } from '../charts'
-import { Bike, Dumbbell, Footprints } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Waves } from 'lucide-react'
+import { fmtPace100 } from '../swimming'
 import { fmtPace } from '../running-paces'
 import { paceOf, bestPaceCurve, paceZoneSecs, PZONES, PZONE_PCT } from '../run-analysis'
 import { useAuth } from '../auth/AuthContext'
@@ -262,6 +263,7 @@ export default function ActivityDetail() {
 
   const track = cleanLatLng(streams.latlng)
   const isRun = sportOfActivity(a) === 'run' // #333 — a run shows PACE, never watts
+  const isSwim = sportOfActivity(a) === 'swim' // #swim-tri — a swim shows pace /100 + SWOLF, never watts
   const thrPace = user?.sportSettings?.running?.thresholdPace ?? user?.runThresholdPace ?? null // sec/km
   // #293 — link back to the coach plan this activity fulfilled (match day + sport).
   const plan = findCoachPlan((a.start_date_local || '').slice(0, 10), sportOfActivity(a))
@@ -273,8 +275,24 @@ export default function ActivityDetail() {
   const tabs = ([track.length > 1 && 'map', hasTimeline && 'timeline', hasAnalysis && 'power'].filter(Boolean)) as ('map' | 'timeline' | 'power')[]
   const activeTab: 'map' | 'timeline' | 'power' = tabs.includes(tab) ? tab : (tabs[0] || 'map')
   const avgPace = isRun && a.moving_time && a.distance ? a.moving_time / (a.distance / 1000) : null // sec/km
-  // #273 — intervals-style metric grid (only what this activity actually has). RUN = pace-based; RIDE = power-based.
-  const stats: [string, string][] = (isRun
+  const avgPace100 = isSwim && a.moving_time && a.distance ? a.moving_time / (a.distance / 100) : null // sec/100 m
+  const swolf = (a as unknown as { average_swolf?: number }).average_swolf
+  const poolLen = (a as unknown as { pool_length?: number }).pool_length
+  // #273 — intervals-style metric grid (only what this activity actually has). SWIM = pace/100; RUN = pace/km; RIDE = power.
+  const stats: [string, string][] = (isSwim
+    ? [
+      a.moving_time ? ['Time', fmtTime(a.moving_time)] : null,
+      a.distance ? ['Distance', `${Math.round(a.distance)} m`] : null,
+      avgPace100 ? ['Avg pace', `${fmtPace100(avgPace100)}/100`] : null,
+      a.icu_training_load ? ['Load (TSS)', String(a.icu_training_load)] : null,
+      swolf ? ['SWOLF', String(Math.round(swolf))] : null,
+      poolLen ? ['Pool', `${Math.round(poolLen)} m`] : null,
+      a.average_heartrate ? ['Avg HR', `${Math.round(a.average_heartrate)} bpm`] : null,
+      a.max_heartrate ? ['Max HR', `${Math.round(a.max_heartrate)} bpm`] : null,
+      a.average_cadence ? ['Stroke rate', `${Math.round(a.average_cadence)} spm`] : null,
+      a.calories ? ['Calories', String(Math.round(a.calories))] : null,
+    ]
+    : isRun
     ? [
       a.moving_time ? ['Time', fmtTime(a.moving_time)] : null,
       a.distance ? ['Distance', `${(a.distance / 1000).toFixed(2)} km`] : null,
@@ -307,7 +325,7 @@ export default function ActivityDetail() {
     ]).filter(Boolean) as [string, string][]
   const device = a.device_name || a.source
   // #286 hero + chips: 4 headline stats big, the rest as compact chips (JM pick B)
-  const HERO = isRun ? ['Distance', 'Avg pace', 'Load (TSS)', 'Avg HR'] : ['Load (TSS)', 'Norm power', 'Intensity', 'Avg HR']
+  const HERO = isSwim ? ['Distance', 'Avg pace', 'Load (TSS)', 'SWOLF'] : isRun ? ['Distance', 'Avg pace', 'Load (TSS)', 'Avg HR'] : ['Load (TSS)', 'Norm power', 'Intensity', 'Avg HR']
   const hero: [string, string][] = stats.filter(([l]) => HERO.includes(l)).slice(0, 4)
   const heroSet = new Set(hero.map((h) => h[0]))
   for (const s of stats) { if (hero.length >= 4) break; if (!heroSet.has(s[0])) { hero.push(s); heroSet.add(s[0]) } }
@@ -319,11 +337,11 @@ export default function ActivityDetail() {
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
         {/* EVERY activity gets a thumbnail (JM audit): rides with power → PowerBlocks; else a sport-icon thumb
             (runs, gym, power-less rides) so the header is never blank — matches the calendar/day cards. */}
-        {!isRun && (streams.watts?.filter((v) => v != null).length || 0) >= 9
+        {!isRun && !isSwim && (streams.watts?.filter((v) => v != null).length || 0) >= 9
           ? <div className="act-thumb"><PowerBlocks watts={streams.watts} ftp={ftp} /></div>
-          : <div className={'act-thumb thumb--' + sportOfActivity(a)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{sportOfActivity(a) === 'ride' ? <Bike strokeWidth={1.75} /> : sportOfActivity(a) === 'gym' ? <Dumbbell strokeWidth={1.75} /> : <Footprints strokeWidth={1.75} />}</div>}
+          : <div className={'act-thumb thumb--' + sportOfActivity(a)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{sportOfActivity(a) === 'ride' ? <Bike strokeWidth={1.75} /> : sportOfActivity(a) === 'gym' ? <Dumbbell strokeWidth={1.75} /> : sportOfActivity(a) === 'swim' ? <Waves strokeWidth={1.75} /> : <Footprints strokeWidth={1.75} />}</div>}
         <div style={{ minWidth: 0 }}>
-          <span className="eyebrow">{sportOfActivity(a) === 'ride' ? 'Ride' : sportOfActivity(a) === 'run' ? 'Run' : 'Workout'} · {isIndoorActivity(a) ? 'Indoor' : 'Outdoor'}{a.start_date_local ? ` · ${new Date(a.start_date_local).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}</span>
+          <span className="eyebrow">{sportOfActivity(a) === 'ride' ? 'Ride' : sportOfActivity(a) === 'run' ? 'Run' : sportOfActivity(a) === 'swim' ? 'Swim' : 'Workout'} · {isIndoorActivity(a) ? 'Indoor' : 'Outdoor'}{a.start_date_local ? ` · ${new Date(a.start_date_local).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}</span>
           <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Activity'}</h1>
         </div>
       </div>
