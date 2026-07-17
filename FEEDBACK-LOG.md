@@ -3123,15 +3123,15 @@ swim cards' explicit "needs a few hard efforts across distances" clarity. Consis
 coach awareness → re-plan / a notification acknowledging the new value.
 ### #564 — Add / delete a planned workout attached to a COMPLETED activity (synced to intervals) ⬜
 "add, delete planned workout to a complete one in Platyplus (be sure works with intervals.icu)."
-### #565 — BUG: "missing feedback" flags activities that HAVE feedback + were coach-reviewed ⬜
+### #565 — BUG: "missing feedback" flags stale activities 🧪 (recency window; recent false-positives need a sample)
 "Missing feedback (old ones, not showing activity details). Some flagged as missing but feedback is there and coach
 reviewed." Fix the missing-feedback detection + old activities not showing details.
 ### #566 — Remove the map & flyby link 🧪
 "remove map & flyby link" (activity detail Map/Flyby tab).
-### #567 — Show BOTH avg power + NP on the card AND the detail ⬜
+### #567 — Show BOTH avg + NP together 🧪 (timeline header now "NP · avg · max")
 "cycling card shows avg power 160, open activity NP shows 164, but we don't see both on both levels." Show avg + NP
 consistently on card + detail.
-### #568 — BUG: warm-up power HIGHER than the endurance block ⬜
+### #568 — BUG: warm-up bar higher than endurance 🧪 (bar height = mean, colour = peak)
 "warm-up higher than the endurance block??? Workout of July 17 in prod." Planned power-by-zone maps warm-up > endurance.
 ### #569 — Planned view from a completed activity: hide "Done?" + phone banner 🧪
 "When an activity is done you see the attached planned workout; clicking it we should NOT see (Done?) nor 'Open
@@ -3153,7 +3153,7 @@ ZoneBlocks (values+anchor, sport-agnostic). ActivityDetail run/swim thumbnail = 
 (anchor = threshold/CSS speed). TODO: Calendar + Today thumbnails for run/swim (fetch velocity) for full consistency.
 ### #576 — Triathlon LIMITER card lacks bottom-left padding ⬜ (for after)
 The "YOUR LIMITER" callout text touches the edges (bottom-left). Fix the padding in TriathlonStats.
-### #573 — GYM variety: warm-up always same + repeated exercises (rowing) — wife feedback 🔨 (JM: build Option C)
+### #573 — GYM variety (Option C, personalized to the athlete + weaknesses) 🧪 (coach-engine; host-sync on prod)
 JM's wife: gym warm-up always identical + exercises repeat (rowing). JM chose **Option C**: coach variety rules (rotate
 warm-up + main-set exercises, don't repeat a pattern each session, keep the KEY strength lifts stable for progression) +
 a warm-up ROTATION library the app cycles through. Build both. → coach-engine-strength.md + create_workout guidance +
