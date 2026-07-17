@@ -1333,8 +1333,11 @@ app.get('/auth/my-reports', auth, (req, res) => {
 })
 
 // ---- coach API token (shown to its owner only) ---------------------------
-app.get('/auth/token', auth, (req, res) => res.json({ token: req.user.apiToken }))
-app.post('/auth/token/rotate', auth, (req, res) => { req.user.apiToken = randomBytes(24).toString('base64url'); save(store); res.json({ token: req.user.apiToken }) })
+// #577 (JM: "I don't want people to use the API, just me or an admin") — obtaining/rotating the Coach API token is
+// ADMIN-ONLY. Every user still HAS a token and their coach still uses it SERVER-SIDE to push plans (apiAuth stays
+// per-user, so the coach works for everyone) — non-admins just can't fetch it to call /api/* by hand. UI already hides it.
+app.get('/auth/token', auth, admin, (req, res) => res.json({ token: req.user.apiToken }))
+app.post('/auth/token/rotate', auth, admin, (req, res) => { req.user.apiToken = randomBytes(24).toString('base64url'); save(store); res.json({ token: req.user.apiToken }) })
 
 // The app (session) reads its own plans for the Today merge-by-id.
 app.get('/auth/plans', auth, (req, res) => { healMirror(req.user).catch(() => {}); res.json(plansInRange(req.user, req.query.from, req.query.to)) }) // #5026 — sync-on-load: repair the intervals mirror when the athlete opens the plan view (fire-and-forget, cooldown-guarded)

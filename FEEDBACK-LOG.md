@@ -3162,3 +3162,7 @@ JM's wife: the gym warm-up is always identical and some exercises repeat (rowing
 gym workout generator good enough? → investigate the generator's warm-up + exercise-selection variety (diagnosis + options).
 "yes to a thin orchestration layer that leverages the three, do that." Limiter analysis (CSS/FTP/threshold vs race
 demands) + combined multi-sport load view + race pacing. NOT a 4th benchmark engine — synthesis on top of the 3.
+### #577 — Restrict the Coach API to admins (JM: "I don't want people to use the API, just me or an admin") 🧪
+The Coach API token box was already ADMIN-only in the UI, but the token endpoints (/auth/token, /auth/token/rotate)
+were auth-gated (any user). Now admin-only, so a non-admin can't fetch/rotate their token to call /api/* by hand. Their
+coach STILL works — apiAuth stays per-user and the coach reads the token server-side (invisible to the user).
