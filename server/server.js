@@ -1549,6 +1549,8 @@ function buildSystemPrompt(user) {
   const tpComputed = wantsComputed('thresholdPace') && user.runPaceEst > 0
   const tp = tpComputed ? user.runPaceEst : user.sportSettings?.running?.thresholdPace // sec/km
   if (tp > 0) { const m = Math.floor(tp / 60), s = String(Math.round(tp % 60)).padStart(2, '0'); stats.push(`running threshold pace ${m}:${s}/km${tpComputed ? ' (estimated)' : user.runVdot ? ` (VDOT ${user.runVdot})` : ''}`) }
+  const css = user.sportSettings?.swimming?.thresholdPace // #swim-tri — CSS in sec/100 m
+  if (css > 0) { const m = Math.floor(css / 60), s = String(Math.round(css % 60)).padStart(2, '0'); stats.push(`swim CSS ${m}:${s}/100 m`) }
   const rhr = user.sportSettings?.running?.maxHr
   if (rhr && rhr !== user.maxHR) stats.push(`running max HR ${rhr} bpm`)
   if (user.sleepNeed) stats.push(`sleep need ~${user.sleepNeed} h`)
@@ -1558,7 +1560,7 @@ function buildSystemPrompt(user) {
   if (user.hrvBaseline?.mean) bl2.push(`HRV baseline ~${user.hrvBaseline.mean} ms${user.hrvBaseline.cv7 != null ? ` (7-day variability ${user.hrvBaseline.cv7}%)` : ''}`)
   if (user.rhrBaseline?.mean) bl2.push(`resting HR baseline ~${user.rhrBaseline.mean}±${user.rhrBaseline.sd} bpm`)
   if (bl2.length) p += `\n\n# THIS ATHLETE'S LEARNED BASELINES (their OWN ~60-day norm) — ${bl2.join(', ')}.\nInterpret today's HRV/resting-HR as a DEVIATION from these, never as textbook absolutes: a clear HRV drop or resting-HR rise vs baseline (beyond ~1 SD, especially multi-day) signals accumulating fatigue, poor sleep, or oncoming illness → ease off; within the normal band → train as planned. Rising 7-day HRV variability is itself a fatigue flag. Always cross-check with their check-in and Form before deciding.`
-  if (stats.length) p += `\n\n# THIS ATHLETE'S BENCHMARKS — ${stats.join(', ')}.\nJudge how hard a session is FOR THEM against these: prescribe ride intensities as % of THEIR FTP and RUN intensities as a pace off THEIR threshold pace (Daniels E/M/T/I/R), set HR zones off THEIR max HR, and gym loads by reps (the app fills the weight). Their sleep NEED is ~${user.sleepNeed || 8} h — score sleep against that, not a generic 8 h.`
+  if (stats.length) p += `\n\n# THIS ATHLETE'S BENCHMARKS — ${stats.join(', ')}.\nJudge how hard a session is FOR THEM against these: prescribe ride intensities as % of THEIR FTP, RUN intensities as a pace off THEIR threshold pace (Daniels E/M/T/I/R), SWIM sets as a pace off THEIR CSS (zone 3 = CSS pace — pass it to create_swim as cssPace100), set HR zones off THEIR max HR, and gym loads by reps (the app fills the weight). Their sleep NEED is ~${user.sleepNeed || 8} h — score sleep against that, not a generic 8 h.`
   // #497 — the anchors are only as good as the last quality effort behind them; when one is UNCONFIRMED, have the
   // coach proactively work in a single targeted refining effort (NOT an all-out test — JM's rule). Heuristic-based:
   // the coach already reads recent activities, so it can judge "no recent hard effort" without any confidence plumbing.

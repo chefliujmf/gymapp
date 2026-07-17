@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getSetting, setSetting } from '../db'
+import { authApi } from '../auth/api'
+import { useAuth } from '../auth/AuthContext'
 import { criticalSwimSpeed, swimZones, fmtPace100 } from '../swimming'
 
 // #swim-tri — the per-sport Swimming stats page (peer to CyclingStats/RunningStats). CSS is the swim benchmark
@@ -9,12 +10,12 @@ const mmss = (s: string) => { const m = s.trim().match(/^(\d+):(\d{1,2})$/); ret
 
 export default function SwimmingStats() {
   const nav = useNavigate()
-  const [css, setCss] = useState<number | null>(null) // CSS pace, s/100
+  const { user, refresh } = useAuth()
+  const css = user?.sportSettings?.swimming?.thresholdPace || null // CSS = swim threshold pace, s/100 (server-synced)
   const [t400, setT400] = useState('')
   const [t200, setT200] = useState('')
   const [manual, setManual] = useState('')
-  useEffect(() => { getSetting('swim_css_pace100').then((v) => setCss(v ? Number(v) : null)) }, [])
-  const save = async (pace: number) => { await setSetting('swim_css_pace100', String(Math.round(pace))); setCss(Math.round(pace)) }
+  const save = async (pace: number) => { await authApi.saveSportStat({ group: 'swimming', thresholdPace: Math.round(pace) }).catch(() => {}); await refresh() }
   const fromTest = () => { const a = mmss(t400), b = mmss(t200); if (!(a > 0) || !(b > 0)) return; const r = criticalSwimSpeed(a, b); if (r) save(r.cssPace100) }
   const fromManual = () => { const p = mmss(manual); if (p > 0) save(p) }
   const zones = css ? swimZones(css) : []
