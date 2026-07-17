@@ -280,10 +280,13 @@ export function PlannedPowerBars({ segments, ftp = 260, height = 150, run = fals
   const segs = (segments || []).filter((s) => s && s.duration > 0)
   if (!segs.length) return <div className="chart-empty">No workout shape</div>
   const total = segs.reduce((a, s) => a + s.duration, 0)
-  // Colour by the segment's PEAK % (segPower) — the same zone the thumbnails/PowerBlocks/structure use (#72). The
-  // HEIGHT value: ride = watts; run = pace-% intensity (via paceFromPowerPct, matching the run's pace math) so harder = taller.
-  const pctOf = (s: { powerStart: number; powerEnd: number }) => segPower(s)
-  const valOf = (s: { powerStart: number; powerEnd: number }) => run ? paceFromPowerPct(pctOf(s)) : Math.round((pctOf(s) / 100) * ftp)
+  // COLOUR + tooltip use the segment's PEAK % (segPower) — the target the coach set, same zone as the thumbnails (#72).
+  // But the bar HEIGHT uses the segment's MEAN % (#568) so a RAMP reads at its average, not its peak — otherwise a
+  // warm-up that ramps UP INTO the endurance floor draws TALLER than the flat endurance block that follows (JM's bug).
+  const pctOf = (s: { powerStart: number; powerEnd: number }) => segPower(s) // peak
+  const meanPct = (s: { powerStart: number; powerEnd: number }) => (Number(s.powerStart) + (s.powerEnd != null ? Number(s.powerEnd) : Number(s.powerStart))) / 2
+  const toVal = (pct: number) => run ? paceFromPowerPct(pct) : Math.round((pct / 100) * ftp)
+  const valOf = (s: { powerStart: number; powerEnd: number }) => toVal(meanPct(s)) // height = mean
   const H = height, P = 1
   const vals = segs.map(valOf)
   // Y WINDOW: ride grows from 0 (absolute watts). Run uses a pace window from a bit below the easiest effort (0 pace-%
@@ -300,7 +303,7 @@ export function PlannedPowerBars({ segments, ftp = 260, height = 150, run = fals
   const ticks = minuteTicks(total)
   const fmtD = (s: number) => (s >= 60 ? `${Math.round(s / 60)}m` : `${s}s`)
   let cum = 0
-  const bars = segs.map((s) => { const f0 = cum / total; cum += s.duration; return { f0, f1: cum / total, w: valOf(s), pct: Math.round(pctOf(s)), c: zoneColor(pctOf(s)), label: s.label, dur: s.duration } })
+  const bars = segs.map((s) => { const f0 = cum / total; cum += s.duration; return { f0, f1: cum / total, w: valOf(s), pw: toVal(pctOf(s)), pct: Math.round(pctOf(s)), c: zoneColor(pctOf(s)), label: s.label, dur: s.duration } })
   const onMove = (e: React.PointerEvent) => { const rect = e.currentTarget.getBoundingClientRect(); const fx = (e.clientX - rect.left) / rect.width; const i = bars.findIndex((b) => fx >= b.f0 && fx <= b.f1); setHi(i >= 0 ? i : null) }
   return (
     <div className="chart2">
@@ -321,7 +324,7 @@ export function PlannedPowerBars({ segments, ftp = 260, height = 150, run = fals
         {hi != null && bars[hi] && (
           <div className="chart-tip" style={{ left: `${Math.max(13, Math.min(87, ((bars[hi].f0 + bars[hi].f1) / 2) * 100))}%` }}>
             <span className="chart-tip__d">{bars[hi].label || zoneName(bars[hi].pct)} · {fmtD(bars[hi].dur)}</span>
-            <span style={{ color: bars[hi].c }}>{run ? (thrPace ? `${fmtPace(Math.round(thrPace * 100 / bars[hi].w))}/km` : `${bars[hi].pct}%`) : `${bars[hi].w} W`} · {bars[hi].pct}%</span>
+            <span style={{ color: bars[hi].c }}>{run ? (thrPace ? `${fmtPace(Math.round(thrPace * 100 / bars[hi].pw))}/km` : `${bars[hi].pct}%`) : `${bars[hi].pw} W`} · {bars[hi].pct}%</span>
           </div>
         )}
       </div>
