@@ -602,6 +602,8 @@ async function applySportStat(user, body = {}) {
   if (group === 'cycling' && 'wPrime' in body) patch.wPrime = numOr(body.wPrime, 2, 60) // #403 W′ (kJ)
   if (group === 'running' && 'cs' in body) patch.cs = numOr(body.cs, 120, 900)  // #403 critical speed (sec/km)
   if (group === 'running' && 'dPrime' in body) patch.dPrime = numOr(body.dPrime, 50, 400) // #403 D′ (m)
+  if (group === 'swimming' && 'dPrime' in body) patch.dPrime = numOr(body.dPrime, 5, 150) // #swim-tri D′ (m) — smaller reserve than running
+  if (group === 'swimming' && 'swolf' in body) patch.swolf = numOr(body.swolf, 20, 100)   // #swim-tri SWOLF (strokes + s per length; lower = better)
 
   user.sportSettings = user.sportSettings || {}
   user.sportSettings[group] = { ...(user.sportSettings[group] || {}), ...patch }

@@ -21,15 +21,16 @@ export default function SwimmingStats() {
     <div>
       <div className="sub-head">
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
-        <div className="sub-head-t"><h1>Swimming</h1><p>CSS · zones · pace/100 · SWOLF</p></div>
+        <div className="sub-head-t"><h1>Swimming</h1><p>CSS · D′ · TTE · SWOLF · zones</p></div>
       </div>
       {!isSwimmer ? (
         <p className="meta">Add Swimming in <Link to="/profile" style={{ color: 'var(--accent)' }}>Profile</Link> to see your swim stats.</p>
       ) : (
         <>
-          {/* The CSS benchmark card — same card component as FTP / threshold pace: shows the value + confidence and
-              taps open a sheet to set it (from a 400+200 test or typed in). The single source for CSS. */}
-          <BenchmarksCard only={['css']} />
+          {/* The swim benchmark cards — the SAME card component + grid as Cycling (FTP/CP/W′/TTE) and Running
+              (threshold/CS/D′/TTE): CSS (threshold anchor) · D′ (sprint reserve) · TTE (time at CSS) · SWOLF
+              (stroke efficiency). Each shows value + confidence and taps to set / switch manual↔computed. */}
+          <BenchmarksCard only={['css', 'dPrimeSwim', 'tteSwim', 'swolf']} />
 
           {zones.length > 0 && (
             <>

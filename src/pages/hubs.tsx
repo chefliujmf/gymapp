@@ -55,7 +55,7 @@ export function statsGroups(sports: string[]): { global: Spec[]; perSport: Spec[
   const perSport: Spec[] = []
   if (has('cycling')) perSport.push({ key: 'cycling', label: 'Cycling', sub: 'Power curve · eFTP · VO₂max · W/kg', to: '/cycling-stats' }) // #225 per-sport page
   if (has('running')) perSport.push({ key: 'running', label: 'Running', sub: 'Threshold pace · zones · VDOT · race predictions', to: '/running-stats' }) // #225 per-sport page
-  if (has('swimming')) perSport.push({ key: 'swimming', label: 'Swimming', sub: 'CSS · zones · pace/100 · SWOLF', to: '/swimming-stats' }) // #swim-tri per-sport page
+  if (has('swimming')) perSport.push({ key: 'swimming', label: 'Swimming', sub: 'CSS · D′ · TTE · SWOLF · zones', to: '/swimming-stats' }) // #swim-tri per-sport page
   if (has('strength')) perSport.push({ key: 'strength', label: 'Strength', sub: 'Volume · PRs · est-1RM trends', to: '/progress' })
   // Mind stats DEACTIVATED 2026-07-11 (JM: remove mind traces, incl. under Stats).
   return { global, perSport }

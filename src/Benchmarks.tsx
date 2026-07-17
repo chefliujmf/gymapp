@@ -20,7 +20,7 @@ import { decouplingCheck, aerobicFloor, type RideSignal } from './threshold-sign
 // N methods" (computed live for VO₂max), and a "Sharpen it" callout. See mockups/benchmark-cards.html.
 type Pref = 'manual' | 'computed' | 'auto' // #277 auto = use computed once it's ready, manual until then
 // #385 — exported so per-sport Stats pages can pass `only` to show the same polished cards, filtered.
-export type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed' | 'tteRide' | 'tteRun' | 'cp' | 'wPrime' | 'cs' | 'dPrime' | 'css' // #337 sleep · #401 TTE · #403 CP/W′/CS/D′ · #swim-tri CSS
+export type Key = 'vo2max' | 'ftp' | 'thresholdPace' | 'maxHr' | 'sleepNeed' | 'tteRide' | 'tteRun' | 'cp' | 'wPrime' | 'cs' | 'dPrime' | 'css' | 'dPrimeSwim' | 'tteSwim' | 'swolf' // #337 sleep · #401 TTE · #403 CP/W′/CS/D′ · #swim-tri CSS/D′/TTE/SWOLF
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n))
 const numParse = (lo: number, hi: number) => (s: string) => { const n = Number(s); return Number.isFinite(n) && n > 0 ? clamp(n, lo, hi) : null }
 // #401 — a manual TTE typed as m:ss / h:mm:ss (or bare minutes) → seconds.
@@ -281,7 +281,11 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     : { sport: 'running', threshold: chosenPace, eftp: paceEst, tte: chosenTteRun, cp: chosenCs, reserveKj: chosenDprime, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null
 
   const saveSport = (group: 'cycling' | 'running' | 'swimming', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
-  const cssManual = (ss.swimming as { thresholdPace?: number })?.thresholdPace ?? null // #swim-tri — CSS = swim threshold pace, sec/100 m
+  const sw = (ss.swimming || {}) as { thresholdPace?: number; dPrime?: number; tte?: number; swolf?: number } // #swim-tri swim benchmarks
+  const cssManual = sw.thresholdPace ?? null // CSS = swim threshold pace, sec/100 m
+  const dPrimeSwimManual = sw.dPrime ?? null // anaerobic distance reserve above CSS, metres
+  const tteSwimManual = sw.tte ?? null // time you can hold CSS, seconds
+  const swolfManual = sw.swolf ?? null // stroke efficiency (strokes + seconds per length; lower = better)
   // #337 — "when will the computed estimate land?" straight from our theory gates, so nothing just says
   // "not available yet". Runs gate (pace): ≥4 runs + ≥25 km / 6 wks. Sleep: 21 nights. VO₂max cycling:
   // a hard ~5-min effort. maxHR: no safe estimate exists — it needs a real max.
@@ -388,14 +392,36 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       ],
       sharpen: isVdotRun ? 'a hard 5 k–10 k effort or a race gives VDOT a fresh, faster anchor → a tighter threshold.' : 'log a few more runs incl. a hard effort → the Critical-Speed fit tightens.',
     },
-    // #swim-tri — CSS (Critical Swim Speed), the swim analogue of FTP/threshold pace. Manual for now (no swim
-    // estimate engine yet): set from a 400+200 test or typed in; all swim zones anchor to it.
+    // #swim-tri — swim benchmarks, the peers of running's threshold/CS/D′/TTE. Manual for now (no swim pace-curve
+    // engine yet): set from tests or typed in, and computed later once swim activities feed a mean-max curve.
+    // CSS = the threshold/critical-speed anchor (in swimming they are the SAME metric, so ONE card, not two).
     {
       key: 'css', label: 'CSS', unit: '/100', computed: null, computedSrc: '', pending: cssManual == null ? 'set it from a 400 + 200 time-trial (or type it in): swim an all-out 400, rest fully, then an all-out 200 — CSS = 200 ÷ (t400 − t200)' : undefined, manual: cssManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('swimming', { thresholdPace: v }),
       chip: 'Swim threshold',
-      conf: cssManual != null ? { pct: 72, cls: 'strong', label: 'you set it' } : { pct: 18, cls: 'need', label: 'set it to unlock zones' },
-      narr: <>Your <b>Critical Swim Speed</b> — the pace per 100 m you can hold for ~an hour, the swim analogue of FTP. Every swim zone anchors to it. Set it from a <b>400 + 200 time-trial</b> (CSS = 200 ÷ the time difference) or type it in; it sharpens each time you retest.</>,
+      conf: cssManual != null ? { pct: 72, cls: 'strong', label: 'you set it' } : { pct: 20, cls: 'learn', label: 'set it to unlock zones' },
+      narr: <>Your <b>Critical Swim Speed</b> — the pace per 100 m you can hold for ~an hour, the swim analogue of FTP (and, in swimming, the same thing as your critical speed / threshold). Every swim zone anchors to it. Set it from a <b>400 + 200 time-trial</b> (CSS = 200 ÷ the time difference) or type it in; it sharpens each time you retest.</>,
       sci: [{ name: '400 + 200 test', formula: 'CSS = 200 m ÷ (t400 − t200)', value: cssManual != null ? `${fmtPace(cssManual)}/100` : '—', inUse: cssManual != null }],
+    },
+    {
+      key: 'dPrimeSwim', label: 'D′', unit: 'm', computed: null, computedSrc: '', pending: dPrimeSwimManual == null ? 'from a short + long time-trial (e.g. 50 m + 400 m): D′ is the extra distance you can swim above CSS pace — modelled once you log a couple of hard swims across distances' : undefined, manual: dPrimeSwimManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(5, 120), save: (v) => saveSport('swimming', { dPrime: v }),
+      chip: 'Sprint reserve',
+      conf: dPrimeSwimManual != null ? { pct: 70, cls: 'strong', label: 'you set it' } : { pct: 18, cls: 'learn', label: 'from your best swims' },
+      narr: <>Your <b>anaerobic distance reserve</b> — how much extra distance you can cover ABOVE your CSS pace before you fade, the swim twin of a runner's D′. Big D′ = a strong sprint/kick finish; small D′ = a pure diesel. Modelled from a short and a long all-out swim (or set it), it pairs with CSS: CSS is your engine size, D′ your top-end.</>,
+      sci: [{ name: 'CS/D′ model', formula: 'from a short + long time-trial (2-param critical-speed fit)', value: dPrimeSwimManual != null ? `${Math.round(dPrimeSwimManual)} m` : '—', inUse: dPrimeSwimManual != null }],
+    },
+    {
+      key: 'tteSwim', label: 'TTE', computed: null, computedSrc: '', pending: tteSwimManual == null ? 'after a sustained swim at CSS (15–40 min continuous) — the longest you hold CSS pace' : undefined, manual: tteSwimManual, fmt: fmtTte, parse: parseTte, save: (v) => saveSport('swimming', { tte: v }),
+      chip: 'Time at CSS',
+      conf: tteSwimManual != null ? { pct: 70, cls: 'strong', label: 'you set it' } : { pct: 18, cls: 'learn', label: 'from a sustained swim' },
+      narr: <>How long you can hold your <b>CSS</b> before fatigue — normally <b>20–40 min</b> for a trained swimmer, the swim twin of a cyclist's/runner's TTE. A short TTE is a <b>training target</b>: extend it with sustained CSS sets (e.g. 3×400 or broken 400s at CSS), not just faster reps. Read from your longest CSS-pace swim, or set it.</>,
+      sci: [{ name: 'From your best swims', formula: 'longest continuous time at ~CSS pace', value: tteSwimManual != null ? fmtTte(tteSwimManual) : '—', inUse: tteSwimManual != null }],
+    },
+    {
+      key: 'swolf', label: 'SWOLF', computed: null, computedSrc: '', pending: swolfManual == null ? 'logged from your swims — count your strokes for a length and add the seconds it took; lower is more efficient (set your typical value)' : undefined, manual: swolfManual, fmt: (v: number) => String(Math.round(v)), parse: numParse(20, 100), save: (v) => saveSport('swimming', { swolf: v }),
+      chip: 'Stroke efficiency',
+      conf: swolfManual != null ? { pct: 68, cls: 'strong', label: 'you set it' } : { pct: 18, cls: 'learn', label: 'from your swims' },
+      narr: <>Your <b>SWOLF</b> — strokes + seconds for one length, the swim-specific efficiency score (no cycling/running equivalent). Lower is better: it drops when you glide further per stroke at the same speed. A typical 25 m freestyle SWOLF is ~35–45. Track it in technique sets (the Stroke-Count / SWOLF ladder) — dropping it means free speed for no extra effort.</>,
+      sci: [{ name: 'SWOLF', formula: 'strokes per length + seconds per length (at a set distance)', value: swolfManual != null ? String(Math.round(swolfManual)) : '—', inUse: swolfManual != null }],
     },
     // #401 — TTE (time to exhaustion at threshold), a LEARNED benchmark per sport, read off the mean-max curve.
     {
@@ -476,7 +502,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // shows ONLY cross-sport benchmarks: VO₂max · Max HR · Sleep. Everything SPORT-SPECIFIC lives on its per-sport page
   // (via `only`), never in the global mix (JM directive: nothing activity-specific in global): FTP (cycling) +
   // threshold pace (running), and the advanced curve metrics TTE · CP · W′ · CS · D′.
-  const SPORT_ONLY: Key[] = ['ftp', 'thresholdPace', 'tteRide', 'tteRun', 'cp', 'wPrime', 'cs', 'dPrime', 'css']
+  const SPORT_ONLY: Key[] = ['ftp', 'thresholdPace', 'tteRide', 'tteRun', 'cp', 'wPrime', 'cs', 'dPrime', 'css', 'dPrimeSwim', 'tteSwim', 'swolf']
   const shownRaw = only ? only.map((k) => defs.find((d) => d.key === k)).filter((d): d is StatDef => !!d) : defs.filter((d) => !SPORT_ONLY.includes(d.key))
   // #512 — pregnancy: strip hard-effort "sharpen" tips (keep maxHr/sleep — not training loads). Numbers stay; no nudges.
   const shown = pregnant ? shownRaw.map((d) => (d.key === 'maxHr' || d.key === 'sleepNeed' ? d : { ...d, sharpen: PREG_SHARPEN })) : shownRaw

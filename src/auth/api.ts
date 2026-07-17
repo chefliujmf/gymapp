@@ -50,7 +50,7 @@ export interface User {
   cyclePhaseAt?: string | null // #422 — the date that phase is as-of (YYYY-MM-DD)
 }
 
-export interface SportStat { ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null }
+export interface SportStat { ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; tte?: number | null; cp?: number | null; wPrime?: number | null; cs?: number | null; dPrime?: number | null; swolf?: number | null }
 export type SportGroup = 'cycling' | 'running' | 'swimming'
 export interface IcuAthletePull {
   connected: boolean
@@ -167,7 +167,7 @@ export const authApi = {
   readinessForecast: (date: string) => req<{ connected: boolean; future?: boolean; available?: boolean; date?: string; daysOut?: number; form?: number; freshness?: number | null; acwr?: number | null; totalPlannedLoad?: number; plannedDays?: number }>(`/readiness-forecast?date=${date}`),
   // #248 — per-day CTL/ATL/Form projection (forward line on Load & Form charts).
   readinessProjection: (days = 14) => req<{ connected: boolean; available?: boolean; dates?: string[]; loads?: number[]; plannedThrough?: string; ctl?: number[]; atl?: number[]; form?: number[] }>(`/readiness-projection?days=${days}`),
-  saveSportStat: (body: { group: SportGroup; ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; runVdot?: number | null }) =>
+  saveSportStat: (body: { group: SportGroup; ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; runVdot?: number | null; tte?: number | null; cp?: number | null; wPrime?: number | null; cs?: number | null; dPrime?: number | null; swolf?: number | null }) =>
     req<User & { synced?: boolean; pushError?: string | null }>('/sport-stat', { method: 'PUT', body }),
   getAthlete: () => req<{ profile: string; updatedAt: number }>('/profile/athlete'),
   saveAthlete: (profile: string) => req<{ profile: string; updatedAt: number }>('/profile/athlete', { method: 'PUT', body: { profile } }),
