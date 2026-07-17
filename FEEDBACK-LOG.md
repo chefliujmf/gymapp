@@ -3121,7 +3121,7 @@ swim cards' explicit "needs a few hard efforts across distances" clarity. Consis
 ### #563 — Coach must KNOW + adapt when a benchmark changes (manual or from intervals) ⬜
 "when manual change from intervals, how coach will know and adapt notifications?" — a benchmark change should trigger
 coach awareness → re-plan / a notification acknowledging the new value.
-### #564 — Add / delete a planned workout attached to a COMPLETED activity (synced to intervals) ⬜
+### #564 — Manually LINK/UNLINK a planned workout on a completed activity 🧪 (Option A + intervals pairing)
 "add, delete planned workout to a complete one in Platyplus (be sure works with intervals.icu)."
 ### #565 — BUG: "missing feedback" flags stale activities 🧪 (recency window; recent false-positives need a sample)
 "Missing feedback (old ones, not showing activity details). Some flagged as missing but feedback is there and coach
