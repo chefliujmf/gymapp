@@ -1196,6 +1196,15 @@
         "responses": { "200": { "description": "{ available, paces: (sec/km|null)[] oldest→newest, weeks }" } }
       }
     },
+    "/auth/activity-link": {
+      "put": {
+        "summary": "#564 — manually LINK/UNLINK a completed activity to a planned workout (overrides the day+sport auto-match). planId null = unlink. Mirrors the pairing to intervals.icu (paired_event_id) best-effort when the user's writes reach intervals.",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "required": ["activityId"], "properties": { "activityId": { "type": "string" }, "planId": { "type": "string", "nullable": true, "description": "the plan to link; null/absent = unlink" }, "icuEventId": { "type": "string", "nullable": true, "description": "the plan's intervals event id, to pair the activity on intervals" } } } } } },
+        "responses": { "200": { "description": "updated user (+ icuPaired: whether the intervals pairing landed)" } }
+      }
+    },
     "/auth/sport-stat": {
       "put": {
         "summary": "Set a per-sport stat and TWO-WAY sync it to intervals.icu (auto-push; modifies only that sport's sportSettings entry, custom fields untouched) (#210)",

@@ -143,7 +143,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, feedbackSkips: u.feedbackSkips || [], statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, cyclePhase: u.cyclePhase || null, cyclePhaseAt: u.cyclePhaseAt || null, staging: IS_STAGING, syncsIntervals: syncsIntervals(u), passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, feedbackSkips: u.feedbackSkips || [], statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, cyclePhase: u.cyclePhase || null, cyclePhaseAt: u.cyclePhaseAt || null, staging: IS_STAGING, syncsIntervals: syncsIntervals(u), activityLinks: u.activityLinks || {}, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').trim().toLowerCase(); return l ? store.users.find((u) => (u.username || '').toLowerCase() === l || (u.email || '').toLowerCase() === l) : undefined }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -360,6 +360,26 @@ async function computeAndStashAnchors(user) {
   }
   return changed
 }
+// #564 — manually LINK / UNLINK a completed activity to a planned workout (overrides the day+sport auto-match).
+// activityLinks[activityId] = planId (explicit link) | null (explicit UNLINK → suppress the auto-match). Mirrors the
+// pairing to intervals best-effort (only when this user's writes reach intervals): pair to the plan's event, or unpair.
+app.put('/auth/activity-link', auth, async (req, res) => {
+  const activityId = String(req.body.activityId || '').trim()
+  if (!activityId) return res.status(400).json({ error: 'activityId required' })
+  const planId = req.body.planId ? String(req.body.planId).trim() : null // null/absent = unlink
+  const icuEventId = req.body.icuEventId ? String(req.body.icuEventId).trim() : null
+  req.user.activityLinks = req.user.activityLinks || {}
+  req.user.activityLinks[activityId] = planId
+  save(store)
+  let icuPaired = null
+  if (syncsIntervals(req.user)) {
+    try {
+      if (planId && icuEventId) icuPaired = await pairActivityToPlan(req.user, activityId, icuEventId) // pair to the linked plan's event
+      else { await icuFetch(req.user, `/activity/${activityId}`, { method: 'PUT', body: JSON.stringify({ paired_event_id: null }) }).catch(() => {}); icuPaired = false } // unpair on unlink
+    } catch { /* best-effort — the Platyplus link is the source of truth */ }
+  }
+  res.json({ ...pub(req.user), icuPaired })
+})
 app.put('/auth/icu', auth, async (req, res) => {
   if (typeof req.body.icuKey === 'string') req.user.icuKey = req.body.icuKey.trim()
   if (typeof req.body.icuAthlete === 'string') req.user.icuAthlete = req.body.icuAthlete.trim()

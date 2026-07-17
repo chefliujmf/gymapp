@@ -10,7 +10,7 @@ import { paceOf, bestPaceCurve, paceZoneSecs, PZONES, PZONE_PCT } from '../run-a
 import { useAuth } from '../auth/AuthContext'
 import { zoneColor, MiniProfile } from '../ui'
 import { plannedLoad } from '../workout-summary'
-import { findCoachPlan, gymFeedbackKeys } from '../plan'
+import { findCoachPlan, getCoachPlan, gymFeedbackKeys, type CoachPlan } from '../plan'
 import { getSetting } from '../db'
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
@@ -232,7 +232,9 @@ export default function ActivityDetail() {
       navigate(remaining.length ? '/review' : '/')
     } catch { navigate('/review') }
   } : undefined
-  const { user } = useAuth()
+  const { user, refresh } = useAuth()
+  const [picking, setPicking] = useState(false) // #564 — plan picker sheet open
+  const [linkBusy, setLinkBusy] = useState(false)
   const [a, setA] = useState<IcuActivity | null>(null)
   const [streams, setStreams] = useState<ActivityStreams>({})
   const [loading, setLoading] = useState(true)
@@ -269,7 +271,25 @@ export default function ActivityDetail() {
   const velN = streams.velocity_smooth?.filter((v) => v != null && Number(v) > 0.3).length || 0
   const thrPace = user?.sportSettings?.running?.thresholdPace ?? user?.runThresholdPace ?? null // sec/km
   // #293 — link back to the coach plan this activity fulfilled (match day + sport).
-  const plan = findCoachPlan((a.start_date_local || '').slice(0, 10), sportOfActivity(a))
+  // #564 — a MANUAL link/unlink overrides the day+sport auto-match. activityLinks[id] = planId (linked) | null (unlinked).
+  const dISOplan = (a.start_date_local || '').slice(0, 10)
+  const linkedId = user?.activityLinks?.[String(a.id)] // string | null | undefined
+  const plan = linkedId === null ? undefined : linkedId ? getCoachPlan(linkedId) : findCoachPlan(dISOplan, sportOfActivity(a))
+  const isManualLink = !!linkedId // an explicit link the user chose (vs the auto-match)
+  // candidate plans for the picker: same sport, within ±4 days, from the loaded coach plans.
+  const nearbyPlans = (() => {
+    try {
+      const all = JSON.parse(sessionStorage.getItem('coachPlans') || '[]') as CoachPlan[]
+      const day = new Date(dISOplan + 'T00:00').getTime()
+      return all.filter((p) => p.sport === sportOfActivity(a) && Math.abs(new Date(p.date + 'T00:00').getTime() - day) <= 4 * 86400000)
+        .sort((x, y) => Math.abs(new Date(x.date + 'T00:00').getTime() - day) - Math.abs(new Date(y.date + 'T00:00').getTime() - day))
+    } catch { return [] as CoachPlan[] }
+  })()
+  const setLink = async (planId: string | null, icuEventId?: string | null) => {
+    if (linkBusy) return
+    setLinkBusy(true)
+    try { await authApi.linkActivity({ activityId: String(a.id), planId, icuEventId }); await refresh() } catch { /* keep UI */ } finally { setLinkBusy(false); setPicking(false) }
+  }
   const hasTimeline = isRun
     ? ((streams.velocity_smooth?.filter((v) => v != null).length || 0) > 1 || (streams.heartrate?.filter((v) => v != null).length || 0) > 1)
     : TL_ROWS.some((r) => ((streams[r.key] as unknown[] | undefined)?.length || 0) > 1)
@@ -376,26 +396,58 @@ export default function ActivityDetail() {
       {chips.length > 0 && <div className="act-chips">{chips.map(([l, v]) => <span key={l} className="act-chip"><b>{v}</b><span>{l}</span></span>)}</div>}
 
       {/* Planned-workout link preview (ride/run) — a slim chip-bar under the stats: profile + title + key set,
-          tapping opens the plan AS PLANNED (?planned=1). Only for a REAL same-day+SPORT plan (no date-only
-          false-match); off-plan rides show nothing. Gym keeps its own 'Planned workout' link. (JM #planned-preview) */}
-      {(() => {
-        const pm = plan && plan.sport === sportOfActivity(a) && sportOfActivity(a) !== 'gym' && plan.segments?.length ? plan : null
-        if (!pm) return null
-        const secs = pm.segments!.reduce((s, x) => s + (x.duration || 0), 0)
-        const mins = Math.round(secs / 60)
-        const timeStr = mins >= 60 ? `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, '0')}` : `${mins} min`
-        const load = plannedLoad(pm.segments!, ftp)
-        const intens = load ? (load.if < 0.75 ? (isRun ? 'Easy' : 'Z2 endurance') : load.if < 0.88 ? 'Tempo / SS' : 'Threshold+') : ''
-        const sub = [intens, timeStr, load ? `~${load.tss} TSS` : null, 'planned'].filter(Boolean).join(' · ')
+          tapping opens the plan AS PLANNED (?planned=1). #564 — MANUALLY link (＋) or unlink (✕): a manual link
+          overrides the day+sport auto-match and mirrors the pairing to intervals. Gym keeps its own link. */}
+      {sportOfActivity(a) !== 'gym' && (() => {
+        const pm = plan && plan.sport === sportOfActivity(a) && plan.segments?.length ? plan : null
+        if (pm) {
+          const secs = pm.segments!.reduce((s, x) => s + (x.duration || 0), 0)
+          const mins = Math.round(secs / 60)
+          const timeStr = mins >= 60 ? `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, '0')}` : `${mins} min`
+          const load = plannedLoad(pm.segments!, ftp)
+          const intens = load ? (load.if < 0.75 ? (isRun ? 'Easy' : 'Z2 endurance') : load.if < 0.88 ? 'Tempo / SS' : 'Threshold+') : ''
+          const sub = [intens, timeStr, load ? `~${load.tss} TSS` : null, isManualLink ? 'linked' : 'planned'].filter(Boolean).join(' · ')
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 11 }}>
+              <Link to={`/coach/${pm.id}?planned=1`} className="card" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', textDecoration: 'none', color: 'var(--text)' }}>
+                <span style={{ fontSize: 15, flex: 'none' }}>📋</span>
+                <div style={{ width: 46, height: 28, flex: 'none' }}><MiniProfile segs={pm.segments!} /></div>
+                <div style={{ minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b>{pm.title}</b> <span className="meta" style={{ fontSize: 11.5 }}>· {sub}</span></div>
+                <span style={{ marginLeft: 'auto', color: 'var(--accent)', fontWeight: 800, fontSize: 17, flex: 'none' }}>›</span>
+              </Link>
+              <button className="icon-btn" title="Unlink this planned workout" aria-label="Unlink planned workout" disabled={linkBusy} onClick={() => setLink(null)} style={{ flex: 'none' }}>✕</button>
+            </div>
+          )
+        }
+        // no plan attached (auto-match empty, or explicitly unlinked) → offer to link one
         return (
-          <Link to={`/coach/${pm.id}?planned=1`} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', marginTop: 11, textDecoration: 'none', color: 'var(--text)' }}>
-            <span style={{ fontSize: 15, flex: 'none' }}>📋</span>
-            <div style={{ width: 46, height: 28, flex: 'none' }}><MiniProfile segs={pm.segments!} /></div>
-            <div style={{ minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b>{pm.title}</b> <span className="meta" style={{ fontSize: 11.5 }}>· {sub}</span></div>
-            <span style={{ marginLeft: 'auto', color: 'var(--accent)', fontWeight: 800, fontSize: 17, flex: 'none' }}>›</span>
-          </Link>
+          <button disabled={linkBusy} onClick={() => setPicking(true)} style={{ width: '100%', marginTop: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderRadius: 12, border: '1.5px dashed #34405a', background: '#12161c', color: 'var(--accent)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>＋ Link a planned workout</button>
         )
       })()}
+
+      {/* #564 — the plan picker: nearby same-sport plans (±4 days), tap to link. */}
+      {picking && (
+        <div className="sheet-overlay" onClick={() => setPicking(false)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head"><strong>Link a planned {sportOfActivity(a) === 'run' ? 'run' : 'ride'}</strong><button className="btn" style={{ width: 'auto', padding: '6px 14px' }} onClick={() => setPicking(false)}>Cancel</button></div>
+            {nearbyPlans.length === 0 ? <p className="meta" style={{ padding: '4px 2px' }}>No planned {sportOfActivity(a) === 'run' ? 'runs' : 'rides'} within a few days of this activity.</p> : (
+              <div className="stack" style={{ gap: 8 }}>
+                {nearbyPlans.map((p) => {
+                  const dd = Math.round((new Date(p.date + 'T00:00').getTime() - new Date(dISOplan + 'T00:00').getTime()) / 86400000)
+                  const when = dd === 0 ? 'same day' : dd > 0 ? `+${dd}d` : `${dd}d`
+                  return (
+                    <button key={p.id} className="card" disabled={linkBusy} onClick={() => setLink(p.id, p.icuEventId)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', textAlign: 'left' }}>
+                      {p.segments?.length ? <div style={{ width: 40, height: 26, flex: 'none' }}><MiniProfile segs={p.segments} /></div> : <span style={{ fontSize: 16, flex: 'none' }}>📋</span>}
+                      <div style={{ minWidth: 0, flex: 1 }}><b style={{ fontSize: 13 }}>{p.title}</b><div className="meta" style={{ fontSize: 11.5 }}>{new Date(p.date + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div>
+                      <span className="meta" style={{ fontSize: 11, flex: 'none' }}>{when}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {tabs.length > 0 && (
         <div className="act-tabs">

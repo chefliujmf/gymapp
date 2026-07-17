@@ -50,6 +50,7 @@ export interface User {
   cyclePhaseAt?: string | null // #422 — the date that phase is as-of (YYYY-MM-DD)
   staging?: boolean // #560 — this env is QA/staging
   syncsIntervals?: boolean // #570 — do this user's benchmark edits reach intervals? (prod, or QA on its OWN athlete). false = local sandbox (QA on the shared prod athlete)
+  activityLinks?: Record<string, string | null> // #564 — manual activity→plan links: planId (linked) | null (explicitly unlinked, suppress the auto-match)
 }
 
 export interface SportStat { ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; tte?: number | null; cp?: number | null; wPrime?: number | null; cs?: number | null; dPrime?: number | null; swolf?: number | null }
@@ -171,6 +172,8 @@ export const authApi = {
   readinessProjection: (days = 14) => req<{ connected: boolean; available?: boolean; dates?: string[]; loads?: number[]; plannedThrough?: string; ctl?: number[]; atl?: number[]; form?: number[] }>(`/readiness-projection?days=${days}`),
   saveSportStat: (body: { group: SportGroup; ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; runVdot?: number | null; tte?: number | null; cp?: number | null; wPrime?: number | null; cs?: number | null; dPrime?: number | null; swolf?: number | null }) =>
     req<User & { synced?: boolean; pushError?: string | null }>('/sport-stat', { method: 'PUT', body }),
+  // #564 — link/unlink a completed activity to a planned workout. planId null = unlink. icuEventId (optional) mirrors the pairing to intervals.
+  linkActivity: (body: { activityId: string; planId: string | null; icuEventId?: string | null }) => req<User & { icuPaired?: boolean | null }>('/activity-link', { method: 'PUT', body }),
   getAthlete: () => req<{ profile: string; updatedAt: number }>('/profile/athlete'),
   saveAthlete: (profile: string) => req<{ profile: string; updatedAt: number }>('/profile/athlete', { method: 'PUT', body: { profile } }),
   checkin: (data: Checkin) => req<Checkin>('/checkin', { method: 'POST', body: data }),
