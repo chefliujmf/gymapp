@@ -1483,7 +1483,8 @@
             "enum": [
               "gym",
               "ride",
-              "run"
+              "run",
+              "swim"
             ]
           },
           "title": {

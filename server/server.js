@@ -1533,6 +1533,16 @@ function buildSystemPrompt(user) {
     const obj = ((user.info && user.info.goals && user.info.goals.notes) || '').trim()
     tail += `\n\n# GYM FOCUS — main sport: ${ms || 'none set'}. Sports: ${sports.join(', ') || '—'}. Objective: ${obj ? `"${obj.slice(0, 240)}"` : 'not stated — ask what they want from the gym'}. Derive the gym focus per coach-engine-strength.md: an ENDURANCE main sport with NO muscle intent → pure SUPPORT (maintenance dose, minimal effective volume, kept clear of key rides/runs — never treat low gym volume as a deficit); an ENDURANCE main sport who ALSO wants muscle → SUPPORT+BUILD, i.e. **concurrent hypertrophy** (you CAN build lean muscle while the sport stays #1 — give a real but MODERATE dose ~6–12 hard sets/muscle/wk, dosed and scheduled around key sessions; don't wreck the sport, don't shame them for cycling-first); a MUSCLE goal with gym as the main event → full hypertrophy (10–20 sets/muscle/wk); a strength/1-RM goal → strength (heavy, >85% 1RM, low volume). Match volume, %1RM intensity, and scheduling to that focus AND the current phase — in a big endurance block, dial the gym down.`
   }
+  // #swim-tri — TRIATHLON: multi-sport planning layer. Apply Friel periodization keyed to the athlete's stated A-race.
+  if (sports.includes('triathlon')) {
+    const tgoal = ((user.info && user.info.goals && user.info.goals.notes) || '').trim()
+    tail += `\n\n# TRIATHLON — this athlete races triathlon (swim + bike + run as ONE season). Plan per coach-engine-triathlon.md.
+- **A-RACE & PHASE:** ${tgoal ? `Their goal, in their words: "${tgoal.slice(0, 300)}". Read the race DATE + DISTANCE from it (sprint / Olympic / 70.3 / Ironman).` : 'They have NOT stated a race yet — ASK for their A-race date + distance so you can periodize; until then hold a general base.'} Count back from race day and set the Friel phase (Prep → Base → Build → Peak → Race → Transition). Tell them which phase they're in and why.
+- **WEEKLY BALANCE:** program all THREE sports each week, biased to the athlete's LIMITER (weakest/most-race-costly discipline) and the race's demands — not an even split. Swim technique is high-frequency + low-load; bike carries the most training load; run is the most injury-costly so cap hard-run frequency. Each session goes to ITS OWN zones (ride % FTP, run pace off threshold, swim pace off CSS).
+- **BRICKS:** schedule bike→run bricks in Build/Peak to train the transition (legs off the bike). Keep the run portion controlled early in the block.
+- **TOTAL LOAD:** the three sports SHARE one recovery budget — sum load across all of them against the weekly band + this athlete's day/week caps; don't let three "moderate" days stack into an overload. Strength is periodized support (Hagerman): heavier in base, maintenance in build/peak, cut in race week.
+Use create_swim / create_ride / create_run / create_workout, each to its own zones, balanced to total load and periodized to the A-race.`
+  }
   // #207 Phase 2: the athlete's own benchmarks — so the coach judges intensity FOR THEM.
   const stats = []
   // #236/#277: FTP resolves by statPrefs.ftp — computed/AUTO prefer eFTP when available, else the set FTP.
