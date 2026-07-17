@@ -614,7 +614,9 @@ async function applySportStat(user, body = {}) {
   }
 
   let synced = false, pushError = null
-  if (user.icuKey) {
+  // #swim-tri BUGFIX — QA (staging) shares the real athlete i28814; writing sport-settings there corrupts the prod
+  // account AND makes the next pull clobber the user's just-saved value. PROD-only, like every other intervals write.
+  if (user.icuKey && !IS_STAGING) {
     const ath = user.icuAthlete
     try {
       const list = await icuGet(user, `/athlete/${ath}/sport-settings`)

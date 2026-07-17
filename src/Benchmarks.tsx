@@ -163,7 +163,11 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   // ("won't save"). Merge: user (DB, has the local fields) as base, the fresh intervals pull overlaid for
   // ftp/maxHr/thresholdPace. Now every manual value round-trips after save+refresh.
   const mss = (g: 'cycling' | 'running' | 'swimming'): SportStat => ({ ...(user?.sportSettings?.[g] || {}), ...(pull?.sportSettings?.[g] || {}) })
-  const ss = { cycling: mss('cycling'), running: mss('running'), swimming: mss('swimming') }
+  // #swim-tri BUGFIX — swim benchmarks are OURS (CSS/D′/TTE/SWOLF); intervals' thin swim threshold must NOT clobber a
+  // value the user set here, so for swimming LOCAL wins (pull only fills fields the user hasn't set). cycling/running
+  // keep intervals-wins (two-way synced, intervals is the source of truth for FTP/threshold pace).
+  const mssLocalWins = (g: 'swimming'): SportStat => ({ ...(pull?.sportSettings?.[g] || {}), ...(user?.sportSettings?.[g] || {}) })
+  const ss = { cycling: mss('cycling'), running: mss('running'), swimming: mssLocalWins('swimming') }
   const ftpManual = ss.cycling?.ftp ?? user?.ftp ?? null
   const maxHr = ss.cycling?.maxHr ?? user?.maxHR ?? null
   const ageMaxHr = maxHrFromAge(user?.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null, user?.sex) // #507/#508 — sex-specific age max HR (Gulati/Tanaka)
@@ -412,7 +416,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
       key: 'css', label: 'CSS', unit: '/100', computed: cssComputed, computedSrc: 'your critical speed from your swim pace-curve', pending: cssComputed == null ? (swims ? `after a swim at a DIFFERENT distance — you have ${swims} swim${swims === 1 ? '' : 's'} on record; the model needs a SHORT hard effort and a LONGER one to fit your critical speed (or set it from a 400 + 200 test)` : 'after your first couple of swims — log a short hard swim and a longer one and intervals fits your critical speed (or set it now from a 400 + 200 test)') : undefined, manual: cssManual, fmt: fmtPace, parse: parsePace, save: (v) => saveSport('swimming', { thresholdPace: v }),
       chip: cssComputed != null ? 'Curve' : 'Swim threshold',
       conf: modelFitConfidence({ value: cssComputed, r2: swimCurve?.r2 }),
-      narr: <>Your <b>Critical Swim Speed</b> — the pace per 100 m you can hold for ~an hour, the swim analogue of FTP (and, in swimming, the same thing as your critical speed / threshold). Every swim zone anchors to it. It's modelled from your <b>swim pace-curve</b> once you have hard efforts at a couple of distances, and sharpens with every swim; you can also set it from a <b>400 + 200 test</b> (CSS = 200 ÷ the time difference).</>,
+      narr: <>Your <b>Critical Swim Speed</b> — the pace per 100 m you can hold for ~an hour, the swim analogue of FTP (and, in swimming, the same thing as your critical speed / threshold). Every swim zone anchors to it. <b>Typical CSS:</b> a new/recreational swimmer ~2:15–2:45 /100 m, a fit age-grouper ~1:30–1:50, a strong club swimmer ~1:15–1:25, elite ~1:00–1:10. It's modelled from your <b>swim pace-curve</b> once you have hard efforts at a couple of distances, and sharpens with every swim; you can also set it from a <b>400 + 200 test</b> (CSS = 200 ÷ the time difference) or a <b>3-minute all-out swim</b> (your last-30 s pace ≈ CSS).</>,
       sci: [{ name: 'Swim pace-curve', formula: 'critical speed from your best efforts across distances', value: cssComputed != null ? `${fmtPace(cssComputed)}/100` : '—', inUse: cssComputed != null && cssManual == null }, { name: '400 + 200 test', formula: 'CSS = 200 m ÷ (t400 − t200)', value: cssManual != null ? `${fmtPace(cssManual)}/100` : '—', inUse: cssManual != null }],
     },
     {
