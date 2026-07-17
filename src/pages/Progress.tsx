@@ -58,7 +58,7 @@ function ActCard({ icon, title, detail, tone, onClick }: { icon: string; title: 
   )
 }
 
-export default function Progress() {
+export default function Progress({ embedded }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const logs = useLiveQuery(() => db.logs.orderBy('completedAt').toArray())
   const imp = (useLiveQuery(() => getSetting('units')) as string | undefined) === 'imperial'
@@ -133,8 +133,8 @@ export default function Progress() {
 
   return (
     <div>
-      <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
-      <div className="page-head"><h1>Strength</h1><p>What to push, what's stalling, what's balanced</p></div>
+      {!embedded && <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>}
+      {!embedded && <div className="page-head"><h1>Strength</h1><p>What to push, what's stalling, what's balanced</p></div>}
 
       <DateRangeFilter presets={TRAINING_PRESETS} from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
 

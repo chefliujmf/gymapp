@@ -164,10 +164,23 @@ export default function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.sex, user?.hasIcuKey])
 
+  // #570 — Triathlon is an umbrella: picking it auto-selects swim+bike+run and stars it as the main sport; they stay
+  // selected while it's on (deselecting a discipline drops triathlon too — you can't be a triathlete without all 3).
   const toggleSport = (v: string) => {
     const cur = user?.sports || []
-    const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
-    authApi.saveProfile({ sports: next }).then(() => { refresh(); setSportSaved(true); setTimeout(() => setSportSaved(false), 1500) }).catch(() => {})
+    const TRI = ['swimming', 'cycling', 'running']
+    const curMain = (user?.info as { mainSport?: string } | undefined)?.mainSport
+    let next: string[]
+    const extra: Record<string, unknown> = {}
+    if (v === 'triathlon') {
+      if (cur.includes('triathlon')) { next = cur.filter((x) => x !== 'triathlon'); if (curMain === 'triathlon') extra.mainSport = '' } // keep the 3 disciplines; user can remove individually
+      else { next = Array.from(new Set([...cur, 'triathlon', ...TRI])); extra.mainSport = 'triathlon' } // add tri + all 3, star it
+    } else if (cur.includes('triathlon') && TRI.includes(v) && cur.includes(v)) {
+      next = cur.filter((x) => x !== v && x !== 'triathlon'); if (curMain === 'triathlon') extra.mainSport = '' // can't drop one leg of a triathlon → drop the umbrella too
+    } else {
+      next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
+    }
+    authApi.saveProfile({ sports: next, ...extra }).then(() => { refresh(); setSportSaved(true); setTimeout(() => setSportSaved(false), 1500) }).catch(() => {})
   }
   const diet = dietSel ?? ((user?.info as { diet?: string } | undefined)?.diet ?? 'no preference') // #5005 — optimistic tap, then the server value
   const setDiet = (v: string) => { setDietSel(v); setSetting('diet', v); authApi.saveProfile({ diet: v }).then(() => refresh()).catch(() => setDietSel(null)); setDietSaved(true); setTimeout(() => setDietSaved(false), 1500) }

@@ -11,7 +11,7 @@ import { BenchmarksCard } from '../Benchmarks'
 // CSS = swim threshold pace (sec/100 m), stored server-side in sportSettings.swimming.thresholdPace.
 const ZONE_COLORS = ['#5ec8ff', '#34e07d', '#f5b53d', '#ff8f3d', '#ff5d5d'] // cool → warm, matches the run zones
 
-export default function SwimmingStats() {
+export default function SwimmingStats({ embedded }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isSwimmer = hasModule(user?.sports || [], 'swimming')
@@ -25,10 +25,10 @@ export default function SwimmingStats() {
 
   return (
     <div>
-      <div className="sub-head">
+      {!embedded && <div className="sub-head">
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
         <div className="sub-head-t"><h1>Swimming</h1><p>CSS · D′ · TTE · SWOLF · zones</p></div>
-      </div>
+      </div>}
       {!isSwimmer ? (
         <p className="meta">Add Swimming in <Link to="/profile" style={{ color: 'var(--accent)' }}>Profile</Link> to see your swim stats.</p>
       ) : (

@@ -5,6 +5,9 @@ import { fetchSwimCurve, fetchActivities, sportOfActivity } from '../intervals'
 import { fmtPace } from '../running-paces'
 import { fmtPace100 } from '../swimming'
 import { parseRaceType, triathlonSynthesis, RACE_DEMAND, RACE_LABEL, type Discipline, type RaceType } from '../triathlon'
+import CyclingStats from './CyclingStats'
+import RunningStats from './RunningStats'
+import SwimmingStats from './SwimmingStats'
 
 // #570 — Triathlon orchestration layer (JM pick: Option A + demand bar, own page). A THIN synthesis over the three
 // sport engines: your LIMITER, the 3 benchmarks, and training balance vs the race. No new benchmark — it reads swim
@@ -15,12 +18,17 @@ const D: Record<Discipline, { icon: string; color: string; bg: string; name: str
   run: { icon: '🏃', color: '#ff8f5d', bg: '#3a221a', name: 'Run', unit: 'threshold' },
 }
 
-export default function TriathlonStats() {
+const DISC_PANEL: Record<Discipline, () => React.ReactElement> = {
+  bike: () => <CyclingStats embedded />, swim: () => <SwimmingStats embedded />, run: () => <RunningStats embedded />,
+}
+
+export default function TriathlonStats({ embedded }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isTri = (user?.sports || []).includes('triathlon')
   const [swimCss, setSwimCss] = useState<{ v: number; computed: boolean } | null>(null)
   const [load, setLoad] = useState<{ swim: number; bike: number; run: number } | null>(null)
+  const [open, setOpen] = useState<Discipline | null>(null) // which discipline's full stats are expanded inline
 
   useEffect(() => {
     if (!isTri) return
@@ -65,7 +73,7 @@ export default function TriathlonStats() {
   const lim = syn.limiter ? syn.disciplines.find((x) => x.discipline === syn.limiter)! : null
   return (
     <div>
-      <div className="sub-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button><div className="sub-head-t"><h1>Triathlon</h1><p>Limiter · balance · combined load</p></div></div>
+      {!embedded && <div className="sub-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button><div className="sub-head-t"><h1>Triathlon</h1><p>Limiter · balance · combined load</p></div></div>}
 
       <div className="eyebrow" style={{ margin: '2px 2px 0' }}>🏊🚴🏃 {raceType ? `Target: ${RACE_LABEL[raceType]}` : 'Set your race in your goals to tailor the balance'}</div>
 
@@ -115,10 +123,29 @@ export default function TriathlonStats() {
       </div>
 
       {!user?.hasIcuKey && <p className="meta" style={{ margin: '10px 2px' }}>Connect intervals.icu to fill in your training-load balance.</p>}
-      <div className="stack" style={{ gap: 8, marginTop: 12 }}>
-        <Link className="card" to="/swimming-stats" style={{ padding: '11px 14px', display: 'block' }}><div className="card-row"><div className="thumb" style={{ color: '#38bdf8' }}>🏊</div><div className="card-body"><h3>Swimming</h3><div className="meta">CSS · D′ · TTE · SWOLF · zones ›</div></div></div></Link>
-        <Link className="card" to="/cycling-stats" style={{ padding: '11px 14px', display: 'block' }}><div className="card-row"><div className="thumb" style={{ color: '#f5b53d' }}>🚴</div><div className="card-body"><h3>Cycling</h3><div className="meta">Power curve · eFTP · VO₂max ›</div></div></div></Link>
-        <Link className="card" to="/running-stats" style={{ padding: '11px 14px', display: 'block' }}><div className="card-row"><div className="thumb" style={{ color: '#ff8f5d' }}>🏃</div><div className="card-body"><h3>Running</h3><div className="meta">Threshold pace · zones · VDOT ›</div></div></div></Link>
+
+      {/* Per-discipline — each expands INLINE to its full stats (the merged Triathlon tab, #570). */}
+      <div className="eyebrow" style={{ margin: '16px 4px 2px' }}>Per discipline</div>
+      <div className="stack" style={{ gap: 9 }}>
+        {(['bike', 'swim', 'run'] as Discipline[]).map((d) => {
+          const s = syn.disciplines.find((x) => x.discipline === d)!
+          const isOpen = open === d
+          const sub = d === 'bike' ? 'Power curve · eFTP · W/kg' : d === 'swim' ? 'CSS · D′ · TTE · SWOLF · zones' : 'Threshold · zones · VDOT'
+          return (
+            <div key={d} className="card" style={{ padding: 0, overflow: 'hidden', borderColor: isOpen ? D[d].color + '55' : undefined }}>
+              <button onClick={() => setOpen(isOpen ? null : d)} style={{ width: '100%', background: 'none', border: 'none', color: 'inherit', textAlign: 'left', cursor: 'pointer', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 9, background: D[d].bg, color: D[d].color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flex: 'none' }}>{D[d].icon}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <b>{D[d].name === 'Bike' ? 'Cycling' : D[d].name === 'Swim' ? 'Swimming' : 'Running'}</b> <span className="meta" style={{ fontSize: 12, color: s.hasBenchmark ? undefined : '#f0b145' }}>· {s.hasBenchmark ? `${valOf(d)}${unitOf(d) === 'W' ? ' W' : unitOf(d)}` : `${D[d].unit} not set`}</span>
+                  {!isOpen && <div className="bar" style={{ height: 6, borderRadius: 5, background: '#2c313c', overflow: 'hidden', marginTop: 6 }}><i style={{ display: 'block', height: '100%', width: `${Math.max(4, s.readiness)}%`, background: D[d].color, borderRadius: 5 }} /></div>}
+                  {!isOpen && <div className="meta" style={{ fontSize: 11, marginTop: 3 }}>{sub}</div>}
+                </div>
+                <span style={{ color: 'var(--text-dim)', fontSize: 18, flex: 'none' }}>{isOpen ? '⌄' : '›'}</span>
+              </button>
+              {isOpen && <div style={{ padding: '0 14px 12px', borderTop: '1px solid #23272f' }}>{DISC_PANEL[d]()}</div>}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

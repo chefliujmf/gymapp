@@ -3137,5 +3137,15 @@ consistently on card + detail.
 "When an activity is done you see the attached planned workout; clicking it we should NOT see (Done?) nor 'Open
 Platyplus on your phone to run'." (forcePlanned mode in CoachPlanDetail.)
 ### #570 — Thin TRIATHLON orchestration layer (leverages the 3 engines) 🧪 (built, to test)
+### #571 — Stats = INLINE TABS (Overview + per-sport), triathlete gets a MERGED Triathlon tab 🧪 (built)
+"break Stats into tabs for quicker per-sport access." Picked Option A (top pills, inline switch, own bottom nav stays
+Plan·Stats) + for a triathlete MERGE swim/bike/run under one Triathlon tab (synthesis + expandable disciplines). Built:
+StatsHub tabbed; per-sport pages take an `embedded` prop; TriathlonStats embedded = synthesis + per-discipline accordion.
+### #572 — Profile: picking Triathlon auto-selects+locks swim/bike/run + stars it as main sport 🧪 (built)
+"when you choose triathlon, ensure all 3 sports selected + stay selected + auto-star as main sport." `toggleSport`:
+triathlon on → adds swim/bike/run + mainSport='triathlon'; dropping a leg drops the umbrella.
+### #573 — GYM variety: warm-up always the same + repeated exercises (rowing) — wife feedback ⬜ (for after)
+JM's wife: the gym warm-up is always identical and some exercises repeat (rowing). Question: aim for variety? is the
+gym workout generator good enough? → investigate the generator's warm-up + exercise-selection variety (diagnosis + options).
 "yes to a thin orchestration layer that leverages the three, do that." Limiter analysis (CSS/FTP/threshold vs race
 demands) + combined multi-sport load view + race pacing. NOT a 4th benchmark engine — synthesis on top of the 3.

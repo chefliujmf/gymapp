@@ -1,10 +1,15 @@
 import { Link } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Dumbbell, Bike, Footprints, Brain, Salad, Activity, History, PlusCircle, HeartPulse, Waves, Trophy } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 import { BenchmarksCard } from '../Benchmarks'
 import PageHead from '../PageHead'
+import CyclingStats from './CyclingStats'
+import RunningStats from './RunningStats'
+import SwimmingStats from './SwimmingStats'
+import TriathlonStats from './TriathlonStats'
+import Progress from './Progress'
 
 type Item = { label: string; sub: string; to: string; icon: ReactNode; mine?: boolean }
 
@@ -71,21 +76,38 @@ const STAT_ICON: Record<string, ReactNode> = {
 const toItem = (s: Spec): Item => ({ label: s.label, sub: s.sub, to: s.to, icon: STAT_ICON[s.key] })
 
 /** Stats hub — GLOBAL (cross-sport) + PER SPORT sections (#193). */
+// #570 — Stats is now INLINE-TABBED (JM): an Overview tab (global benchmarks + Load/Form · Wellness · History) plus
+// one tab per sport you do — quick 1-tap access without leaving Stats. A TRIATHLETE gets a single merged "Triathlon"
+// tab (swim+bike+run inside it) instead of three separate ones. Tabs adapt to the athlete's sports.
+const TAB_EMOJI: Record<string, string> = { triathlon: '🏊🚴🏃', cycling: '🚴', running: '🏃', swimming: '🏊', strength: '💪' }
 export function StatsHub() {
   const { user } = useAuth()
   const sports = user?.sports || []
+  const isTri = sports.includes('triathlon')
   const { global, perSport } = statsGroups(sports)
+  // Triathletes merge cycling/running/swimming INTO the Triathlon tab — drop the standalone ones.
+  const sportTabs = perSport.filter((s) => !(isTri && ['cycling', 'running', 'swimming'].includes(s.key)))
+  const tabs = [{ key: 'overview', label: 'Overview' }, ...sportTabs.map((s) => ({ key: s.key, label: s.label }))]
+  const [tab, setTab] = useState('overview')
+  const active = tabs.some((t) => t.key === tab) ? tab : 'overview'
   return (
     <div>
-      <PageHead title="Stats" sub={sports.length ? `For your sports: ${sports.join(', ')}` : 'Your trends & progress'} />
-      <div className="section-title">Global</div>
-      <BenchmarksCard />{/* #228: global benchmarks lead Stats, editable here too */}
-      <div className="stack">{global.map((s) => <HubLink key={s.key} it={toItem(s)} />)}</div>
-      {perSport.length > 0 && <>
-        <div className="section-title">Per sport</div>
-        <div className="stack">{perSport.map((s) => <HubLink key={s.key} it={toItem(s)} />)}</div>
+      <PageHead title="Stats" sub={active === 'overview' ? 'Your trends & progress' : 'Tap a tab for that sport'} />
+      {tabs.length > 1 && (
+        <div className="chips" style={{ marginBottom: 12 }}>
+          {tabs.map((t) => <button key={t.key} className={'chip' + (active === t.key ? ' chip--active' : '')} onClick={() => setTab(t.key)}>{TAB_EMOJI[t.key] ? `${TAB_EMOJI[t.key]} ` : ''}{t.label}</button>)}
+        </div>
+      )}
+      {active === 'overview' && <>
+        <BenchmarksCard />{/* #228: global benchmarks (VO₂max, sleep, whole-body) lead the Overview */}
+        <div className="stack">{global.map((s) => <HubLink key={s.key} it={toItem(s)} />)}</div>
+        {sports.length > 0 && <p className="meta" style={{ marginTop: 14 }}>Tabs show only your sports — <Link to="/profile" style={{ color: 'var(--accent)' }}>edit sports</Link>.</p>}
       </>}
-      {sports.length > 0 && <p className="meta" style={{ marginTop: 14 }}>Only what's relevant to your sports — <Link to="/profile" style={{ color: 'var(--accent)' }}>edit sports</Link>.</p>}
+      {active === 'triathlon' && <TriathlonStats embedded />}
+      {active === 'cycling' && <CyclingStats embedded />}
+      {active === 'running' && <RunningStats embedded />}
+      {active === 'swimming' && <SwimmingStats embedded />}
+      {active === 'strength' && <Progress embedded />}
     </div>
   )
 }
