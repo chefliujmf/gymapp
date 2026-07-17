@@ -1987,6 +1987,17 @@ function planToIcuEvent(plan, items = []) {
     const native = nativeWorkoutText(segs, isRun)
     if (!isRun && segs.length) ev.workout_doc = { steps: segs.flatMap((s) => encodeStep(s, false)) }
     ev.description = [native, stripDerivedWorkout(stripPlatyplusLinks(plan.notes)), shortCoachNote(plan)].filter(Boolean).join('\n\n')
+  } else if (plan.sport === 'swim') {
+    // #swim-tri — swim plans are distance sets (create_swim precomputes duration/distance/sTSS). No power/pace
+    // workout_doc (intervals' swim model differs); push a Swim event carrying the LOAD so Form/CTL counts it.
+    ev.type = 'Swim'
+    const dur = Number(plan.moving_time) || 0
+    if (dur > 0) { ev.moving_time = dur; ev.time_target = dur }
+    if (Number(plan.distanceM) > 0) ev.distance = Number(plan.distanceM)
+    const stss = Number(plan.icu_training_load) || 0
+    if (stss > 0) ev.icu_training_load = stss
+    const link = `${ORIGIN}/coach/${encodeURIComponent(plan.id)}`
+    ev.description = [`🏊 Open workout in Platyplus → ${link}`, stripPlatyplusLinks(plan.notes), brief].filter(Boolean).join('\n\n')
   } else {
     ev.type = 'WeightTraining'
     // #434 — push a gym LOAD (+ duration) so intervals' Form/CTL COUNTS strength work (was 0 → gym ignored).
@@ -2191,7 +2202,7 @@ async function deletePlanById(user, id, actor = 'coach') {
 // (Step resolve/flatten — incl. the "5 W" power_zone fix + #312 pace read — live in ./icu-steps.js.)
 function icuEventToPlan(ev) {
   const date = String(ev.start_date_local || '').slice(0, 10)
-  const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
+  const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : ev.type === 'Swim' ? 'swim' : 'gym'
   const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: stripDerivedWorkout(stripPlatyplusLinks(ev.description || '')), origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
   if (sport === 'ride' || sport === 'run') {
     plan.segments = flattenIcuStepsSrv(ev.workout_doc?.steps || [])
@@ -2224,7 +2235,7 @@ async function reconcileFromIcu(user, from, to) {
   const orphanCandidates = [] // #414 — our pushed events that no plan claims; deleted AFTER the loop, fail-safe-guarded
   for (const ev of events || []) {
     if (ev.category && ev.category !== 'WORKOUT') continue
-    if (!['Ride', 'Run', 'WeightTraining'].includes(ev.type)) continue
+    if (!['Ride', 'Run', 'Swim', 'WeightTraining'].includes(ev.type)) continue
     if (ownedIcuIds.has(ev.id)) {
       // We already have this event as a plan — REFRESH its derived fields from intervals so
       // edits to the workout (and the #217 power_zone fix) propagate. icu-origin ONLY:
@@ -2250,7 +2261,7 @@ async function reconcileFromIcu(user, from, to) {
     if (ev.external_id && (planIds.has(ev.external_id) || planIds.has(extId))) continue
     // A plan already exists for this day+sport+title → Platyplus wins, don't re-import a copy.
     const date = String(ev.start_date_local || '').slice(0, 10)
-    const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
+    const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : ev.type === 'Swim' ? 'swim' : 'gym'
     if (planKeys.has(planKey(date, sport, ev.name))) continue
     // #377/#414 — an event WE pushed (external_id = a Platyplus plan id; gym also carries the "Open workout in
     // Platyplus" deep-link) that reached HERE means no current plan claims it — not by icuEventId (1773), not by

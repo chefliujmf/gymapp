@@ -23,7 +23,7 @@ export function eventMatchesPlan(plan, event) {
 }
 
 // Sport bucket for an intervals event TYPE (Ride/Run/WeightTraining → ride/run/gym).
-export const eventSport = (type) => (type === 'Ride' ? 'ride' : type === 'Run' ? 'run' : 'gym')
+export const eventSport = (type) => (type === 'Ride' ? 'ride' : type === 'Run' ? 'run' : type === 'Swim' ? 'swim' : 'gym')
 // A planned "slot" key — one workout per day+sport.
 export const slotKey = (date, sport) => `${String(date).slice(0, 10)}|${sport}`
 
