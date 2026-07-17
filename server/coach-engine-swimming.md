@@ -7,8 +7,15 @@ systemPrompt only when the athlete's sports include swimming (or a triathlon goa
 ## Benchmark — CSS (Critical Swim Speed)
 Swimming's threshold, in **seconds per 100 m/yd**. It anchors every zone + target, like FTP for cycling and threshold
 pace for running. Get it from the athlete's `swimSettings.cssPace100` (learned benchmark); if missing, estimate from a
-sustained hard swim, or prescribe the field test: **all-out 400 then 200** (same session) → `CSS = 200 / (t400−t200)`.
-Retest ~every 4–6 weeks. Coach ALL swim targets as pace/100 relative to CSS.
+sustained hard swim, or prescribe a field test. Two options:
+- **3-minute all-out test (3MT) — preferred, one effort:** warm up, then swim **all-out for exactly 180 s** WITHOUT
+  knowing the time (no pacing). CS (= CSS) = the **last-30 s** average speed; **D′ (finishing reserve) = total distance
+  − CS×180**; first-length speed = max sprint (ASR = sprint − CS). One test fixes both CSS and D′. Best on a fresh day.
+- **400 + 200** (same session, all-out) → `CSS = 200 / (t400−t200)`; or CS ≈ 80% of an all-out 400's speed.
+Retest ~every 6 weeks (changes show in ~3), same warm-up context, never on a recovery/fatigued day. LT (the easy↔
+moderate line) ≈ **0.90 × CS**. Coach ALL swim targets as pace/100 relative to CSS.
+**Prescribing a HIIT set to a target D′ depletion:** interval time `= [distance − (D′ × %ofD′)] / CS` — pick how much
+of the finishing reserve each rep should burn, and it gives the rep duration at CS.
 
 ## Zones (from CSS)
 1 Easy/recovery (CSS + ~10–15 s) · 2 Aerobic/endurance (CSS + ~6–10 s) · **3 Threshold = CSS pace (± ~3 s) — the key

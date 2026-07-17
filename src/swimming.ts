@@ -17,6 +17,33 @@ export function criticalSwimSpeed(t400Sec: number, t200Sec: number, d400 = 400, 
   return { cssSpeed, cssPace100: 100 / cssSpeed }
 }
 
+export interface ThreeMinResult extends CssResult { dPrime: number; mssSpeed?: number; masSpeed?: number; asr?: number }
+
+/** #swim-tri — the 3-MINUTE ALL-OUT SWIM TEST (3MT), per Dr. Luis Rodriguez (Burnley & Jones framework for swimming).
+ *  A single maximal 180 s swim with NO pacing demarcates zones in one test (vs the 400+200). Critical Speed = the
+ *  average speed of the LAST 30 s (steady-state end power); D′ = the finite distance covered ABOVE CS across the test
+ *  (totalDistance − CS×180). Optionally pass the FIRST-lap distance/time for MSS (max sprint speed) → ASR.
+ *   - totalDistanceM: metres swum in the full 180 s.
+ *   - last30sDistanceM: metres in the final 30 s (or the last two 25 m laps ÷ their time — the CS proxy).
+ *   - firstLapDistanceM / firstLapSec: optional first-length split for MSS = distance/time → ASR = MSS − CS. */
+export function criticalSpeedFrom3MT(totalDistanceM: number, last30sDistanceM: number, firstLapDistanceM?: number, firstLapSec?: number): ThreeMinResult | null {
+  if (!(totalDistanceM > 0) || !(last30sDistanceM > 0)) return null
+  const cssSpeed = last30sDistanceM / 30 // m/s = Critical Speed
+  if (!(cssSpeed > 0)) return null
+  const dPrime = Math.max(0, Math.round(totalDistanceM - cssSpeed * 180)) // distance above CS over the test
+  const out: ThreeMinResult = { cssSpeed, cssPace100: 100 / cssSpeed, dPrime }
+  if (firstLapDistanceM && firstLapSec && firstLapSec > 0) {
+    out.mssSpeed = firstLapDistanceM / firstLapSec // maximal sprint speed
+    out.masSpeed = cssSpeed // CS is our best on-hand aerobic-speed anchor (true MAS ≈ the ~75 s speed)
+    out.asr = Math.max(0, out.mssSpeed - cssSpeed) // anaerobic speed reserve
+  }
+  return out
+}
+
+/** #swim-tri — lactate-threshold pace (the moderate↔heavy boundary): LT ≈ 0.90 × CS speed (Burnley & Jones, via the
+ *  3MT literature). Returned as s/100 (the slower/easier number). Our Z2 top ≈ this by design. */
+export const lactateThresholdPace = (cssPace100: number) => Math.round(cssPace100 / 0.90)
+
 /** Pace (s/100) at a given fraction of CSS SPEED. Slower effort (fraction < 1) → bigger pace number. */
 export const paceAtPct = (cssPace100: number, pctOfCssSpeed: number) => cssPace100 / pctOfCssSpeed
 

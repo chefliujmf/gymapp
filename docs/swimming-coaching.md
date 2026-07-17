@@ -10,6 +10,9 @@ Distilled from the source books (never copied) + established swim science. The p
 - **Terri Schneider — *The Swimmer's Workout Handbook*** (threshold-based interval sets, warm-up/main/cool-down, drills, equipment).
 - **Ian McLeod — *Swimming Anatomy*** (stroke muscles + dryland/strength for swimming).
 - Field-test science: **Critical Swim Speed** (Wakayoshi 1992; Ginn) — the swim analogue of FTP / threshold pace.
+- **Dr. Luis Rodriguez** — *Using the 3-Minute All-Out Test to accurately demarcate training zones in swimming*
+  (drcoachluisrodriguez.wixsite.com; applies Burnley & Jones 2007 critical-power/zone framework to swimming: CS from
+  the last 30 s, D′ = distance above CS, LT ≈ 0.90·CS, MSS/MAS/ASR, HIIT prescription via `t = [dist − D′·%] / CS`).
 
 ## 1. The benchmark — CSS (Critical Swim Speed)
 CSS is swimming's **FTP/threshold-pace equivalent**: the fastest pace an athlete can sustain aerobically, in
@@ -23,8 +26,23 @@ CSS pace /100 m = 100 / CSS speed                        // the number we actual
 ```
 Example: 400 in 6:00 (360 s), 200 in 2:52 (172 s) → CSS = 200/(360−172) = 1.064 m/s → **1:34 /100 m**.
 - **Also inferable from activities** (like eFTP): intervals swim activities carry per-100 pace + distance; the best
-  sustained ~10–30 min efforts estimate CSS without a formal test. Prefer a real 400/200 when available.
+  sustained ~10–30 min efforts estimate CSS without a formal test. Prefer a real test when available.
 - Store per-athlete: `cssPace100` (seconds/100 m) + the source/confidence, in the local benchmarks (mirrors FTP/threshold-pace).
+
+**Field test (the SINGLE-TEST alternative — the 3-minute all-out test, "3MT"):** one maximal 180 s swim demarcates
+zones in ONE effort (Dr. Luis Rodriguez, applying Burnley & Jones' critical-power framework to swimming — see Sources).
+Warm up as usual, then swim **all-out for exactly 180 s**, evenly-lit pool, **without knowing the elapsed time** (any
+awareness → pacing → invalid). It yields more than the 400/200:
+```
+CS speed (m/s) = average speed of the LAST 30 s   (≈ the last two 25 m laps ÷ their time)  // = Critical Speed = CSS
+CSS pace /100 m = 100 / CS speed
+D′ (m)         = total distance − CS × 180          // the finite distance you cover ABOVE CS = anaerobic reserve
+MSS (m/s)      = first-length speed (max sprint) ; ASR = MSS − CS   // anaerobic speed reserve (sprint headroom)
+```
+`criticalSpeedFrom3MT()` in `src/swimming.ts` (unit-tested) computes CS/CSS + D′ (+ ASR if a first-lap split is given).
+Retest **every ~6 weeks** (changes can show in ~3), never on a recovery/fatigued day, same warm-up context each time.
+Why prefer it: it fixes CS **and** D′ from one test (the 400/200 only gives CSS), and per-athlete zone spreads vary
+too much to infer from a best-average pace alone. A **400 m all-out** is a lighter proxy (CS ≈ 80% of the 400 speed).
 
 ## 2. Zones (derived from CSS — the swim PACE_ANCHORS)
 Percent-of-CSS-**speed** bands, expressed as a pace offset per 100 m (slower than CSS = +seconds). Keep
