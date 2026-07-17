@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { calApi, newId } from '../calendar'
 import { recipes, mindSessions, endurance, workouts } from '../data/catalog'
+import { swimWorkouts, swimFocusLabel } from '../data/swim-workouts'
 import { segmentsFromEndurance } from '../ride'
 import type { WorkoutTemplate, RideTemplate } from '../db'
 import { useAuth } from '../auth/AuthContext'
@@ -9,12 +10,12 @@ import { hasModule } from '../modules'
 import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, X, Upload, Waves, Pill } from 'lucide-react'
 
 // #198: which module each sport tab belongs to (others — meal/mind/recovery/supplement/note — are universal).
-const TAB_MODULE: Record<string, string> = { ride: 'cycling', run: 'running', gym: 'strength' }
+const TAB_MODULE: Record<string, string> = { ride: 'cycling', run: 'running', swim: 'swimming', gym: 'strength' }
 
-export type SheetType = '' | 'ride' | 'run' | 'gym' | 'meal' | 'mind' | 'note' | 'recovery' | 'supplement'
+export type SheetType = '' | 'ride' | 'run' | 'swim' | 'gym' | 'meal' | 'mind' | 'note' | 'recovery' | 'supplement'
 
-export const colorFor = (s: string) => (s === 'cycling' || s === 'ride' ? '#34e07d' : s === 'running' || s === 'run' ? '#ffb13d' : s === 'gym' ? '#7fd1ff' : s === 'meal' ? '#ff8fb1' : s === 'mind' ? '#b98cff' : s === 'recovery' ? '#ffcf5c' : s === 'supplement' ? '#4fc8e6' : '#9aa3b2')
-export const iconFor = (s: string, sz = 15) => (s === 'cycling' || s === 'ride' ? <Bike size={sz} /> : s === 'running' || s === 'run' ? <Footprints size={sz} /> : s === 'gym' ? <Dumbbell size={sz} /> : s === 'meal' ? <Salad size={sz} /> : s === 'mind' ? <Brain size={sz} /> : s === 'recovery' ? <Waves size={sz} /> : s === 'supplement' ? <Pill size={sz} /> : <StickyNote size={sz} />)
+export const colorFor = (s: string) => (s === 'cycling' || s === 'ride' ? '#34e07d' : s === 'running' || s === 'run' ? '#ffb13d' : s === 'swimming' || s === 'swim' ? '#38bdf8' : s === 'gym' ? '#7fd1ff' : s === 'meal' ? '#ff8fb1' : s === 'mind' ? '#b98cff' : s === 'recovery' ? '#ffcf5c' : s === 'supplement' ? '#4fc8e6' : '#9aa3b2')
+export const iconFor = (s: string, sz = 15) => (s === 'cycling' || s === 'ride' ? <Bike size={sz} /> : s === 'running' || s === 'run' ? <Footprints size={sz} /> : s === 'swimming' || s === 'swim' ? <Waves size={sz} /> : s === 'gym' ? <Dumbbell size={sz} /> : s === 'meal' ? <Salad size={sz} /> : s === 'mind' ? <Brain size={sz} /> : s === 'recovery' ? <Waves size={sz} /> : s === 'supplement' ? <Pill size={sz} /> : <StickyNote size={sz} />)
 
 const RECOVERY = [
   { kind: 'sauna', title: 'Sauna', minutes: 15, emoji: '🔥' },
@@ -65,7 +66,7 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
           <>
             <div className="sheet-types">
               {/* Eat/Mind deactivated 2026-07-11; Recovery items parked 2026-07-15 (JM) — Add = ride/run/gym/note only. */}
-              {([['ride', 'Ride', Bike], ['run', 'Run', Footprints], ['gym', 'Gym', Dumbbell], ['note', 'Note', StickyNote]] as const).filter(([t]) => !TAB_MODULE[t] || hasModule(sports, TAB_MODULE[t])).map(([t, label, Icon]) => (
+              {([['ride', 'Ride', Bike], ['run', 'Run', Footprints], ['swim', 'Swim', Waves], ['gym', 'Gym', Dumbbell], ['note', 'Note', StickyNote]] as const).filter(([t]) => !TAB_MODULE[t] || hasModule(sports, TAB_MODULE[t])).map(([t, label, Icon]) => (
                 <button key={t} className="sheet-type" style={{ color: colorFor(t) }} onClick={() => setType(t)}><Icon size={22} /><span>{label}</span></button>
               ))}
             </div>
@@ -102,6 +103,11 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
               {(type === 'ride' || type === 'run') && rideRun(type).map((w) => (
                 <button key={w.id} className="card" disabled={busy} onClick={() => add(() => calApi.savePlan({ id: newId(), date, sport: type, title: w.name, ftp, segments: segmentsFromEndurance(w) }))}>
                   <div className="card-row"><div className="thumb">{iconFor(type)}</div><div className="card-body"><h3>{w.name}</h3><div className="meta">{w.duration} min · {w.category}</div></div></div>
+                </button>
+              ))}
+              {type === 'swim' && swimWorkouts.filter((w) => !q || w.name.toLowerCase().includes(q.toLowerCase()) || swimFocusLabel[w.focus].toLowerCase().includes(q.toLowerCase())).map((w) => (
+                <button key={w.id} className="card" disabled={busy} onClick={() => add(() => calApi.savePlan({ id: newId(), date, sport: 'swim', title: w.name, objective: w.summary, notes: w.structure.map((s) => `${s.part}: ${s.detail}`).join('\n') }))}>
+                  <div className="card-row"><div className="thumb" style={{ color: '#38bdf8' }}>{iconFor('swim')}</div><div className="card-body"><h3>{w.name}</h3><div className="meta">{swimFocusLabel[w.focus]} · {w.distanceM} m · {w.durationMin} min · {w.level}</div></div></div>
                 </button>
               ))}
               {type === 'meal' && meals.map((r) => (
