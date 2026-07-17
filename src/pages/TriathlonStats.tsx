@@ -79,7 +79,7 @@ export default function TriathlonStats({ embedded }: { embedded?: boolean } = {}
 
       {/* LIMITER callout */}
       {lim ? (
-        <div className="card" style={{ marginTop: 10, background: '#2a1d16', border: '1px solid #4a2f20' }}>
+        <div className="card" style={{ marginTop: 10, padding: 14, background: '#2a1d16', border: '1px solid #4a2f20' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
             <div><span className="eyebrow" style={{ color: '#f0b145' }}>⚠ Your limiter</span><div style={{ fontSize: 22, fontWeight: 800, marginTop: 1 }}>{D[lim.discipline].name === 'Swim' ? 'Swimming' : D[lim.discipline].name === 'Bike' ? 'Cycling' : 'Running'}</div></div>
             <span className="tag" style={{ background: '#3a2a1c', color: '#f0b145', fontWeight: 800 }}>biggest opportunity</span>
@@ -87,7 +87,7 @@ export default function TriathlonStats({ embedded }: { embedded?: boolean } = {}
           <div className="meta" style={{ marginTop: 7, color: '#e6c9a8' }}>{syn.insight}</div>
         </div>
       ) : (
-        <div className="card" style={{ marginTop: 10, background: '#12241a', border: '1px solid #1f3a2a' }}>
+        <div className="card" style={{ marginTop: 10, padding: 14, background: '#12241a', border: '1px solid #1f3a2a' }}>
           <span className="eyebrow" style={{ color: 'var(--accent)' }}>✓ Balanced</span>
           <div className="meta" style={{ marginTop: 6 }}>{syn.insight}</div>
         </div>

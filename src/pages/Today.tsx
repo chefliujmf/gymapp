@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting, listTemplates, listRideTemplates, type WorkoutTemplate, type RideTemplate } from '../db'
 import { WeekStrip, MiniProfile, DoneStats } from '../ui'
 import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, fetchActivityStreams, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
-import { PowerBlocks } from '../charts'
+import { PowerBlocks, ZoneBlocks } from '../charts'
 import { incompleteFeedback } from '../feedbackGaps' // #387 — surface the "to review" count on Today
 import { useAuth } from '../auth/AuthContext' // #review-skip — exclude skipped sessions from the count
 import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, setCoachPlans, type CoachPlan } from '../plan'
@@ -13,7 +13,7 @@ import { calApi, type CalItem } from '../calendar'
 import { recipes, mindSessions } from '../data/catalog'
 import type { Recipe } from '../types'
 import { localISO } from '../date'
-import { Bike, Dumbbell, Footprints, Target, Salad, Brain, StickyNote, Plus, Check, Flag } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Waves, Target, Salad, Brain, StickyNote, Plus, Check, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet } from './AddSheet'
 import { authApi, type Checkin, type Readiness } from '../auth/api'
@@ -382,19 +382,23 @@ function PlanCard({ e, showDate, onSwap, onRemove, done, act }: { e: IcuEvent; s
 // like a done PlanCard (sport thumb + name + DoneStats), taps through to its analysed result, so a day the
 // athlete actually trained never reads "Nothing scheduled". Read-only (no swap/remove — it already happened).
 function ActivityCard({ a }: { a: IcuActivity }) {
-  const sport = sportOfActivity(a) // 'run' | 'ride' | 'gym'
-  const icon = sport === 'ride' ? <Bike strokeWidth={1.75} /> : sport === 'gym' ? <Dumbbell strokeWidth={1.75} /> : <Footprints strokeWidth={1.75} />
-  const label = sport === 'ride' ? 'Ride' : sport === 'gym' ? 'Gym' : 'Run'
-  // A completed (unplanned) ride shows its real power profile, like the detail page + planned MiniProfile,
-  // instead of a generic icon (JM: keep the thumbnail consistent — it has power data).
-  const [watts, setWatts] = useState<(number | null)[] | null>(null)
-  useEffect(() => { if (sport === 'ride') fetchActivityStreams(a.id, ['watts']).then((st) => setWatts(st.watts || [])).catch(() => {}) }, [a.id, sport])
-  const hasPower = (watts?.filter((v) => v != null).length || 0) >= 9
+  const { user } = useAuth()
+  const sport = sportOfActivity(a) // 'run' | 'ride' | 'gym' | 'swim'
+  const icon = sport === 'ride' ? <Bike strokeWidth={1.75} /> : sport === 'gym' ? <Dumbbell strokeWidth={1.75} /> : sport === 'swim' ? <Waves strokeWidth={1.75} /> : <Footprints strokeWidth={1.75} />
+  const label = sport === 'ride' ? 'Ride' : sport === 'gym' ? 'Gym' : sport === 'swim' ? 'Swim' : 'Run'
+  // #575 — a completed (unplanned) ride shows its real power profile as zone-blocks; a run/swim shows the SAME zone-
+  // blocks from its SPEED stream (anchor = threshold/CSS speed) instead of a generic icon — consistent across sports.
+  const [stream, setStream] = useState<(number | null)[] | null>(null)
+  useEffect(() => { if (['ride', 'run', 'swim'].includes(sport)) fetchActivityStreams(a.id, [sport === 'ride' ? 'watts' : 'velocity_smooth']).then((st) => setStream((sport === 'ride' ? st.watts : st.velocity_smooth) || [])).catch(() => {}) }, [a.id, sport])
+  const hasBlocks = (stream?.filter((v) => v != null).length || 0) >= 9
+  const thrPace = (user?.runThresholdPace || (user?.sportSettings as { running?: { thresholdPace?: number } } | undefined)?.running?.thresholdPace) || null
+  const cssPace = (user?.sportSettings as { swimming?: { thresholdPace?: number } } | undefined)?.swimming?.thresholdPace || null
+  const anchor = sport === 'swim' ? (cssPace ? 100 / cssPace : undefined) : sport === 'run' ? (thrPace ? 1000 / thrPace : undefined) : undefined
   return (
     <div className="today-entry">
       <Link to={`/activity/${a.id}`} className="card card--done">
         <div className="card-row">
-          {hasPower ? <div className="thumb"><PowerBlocks watts={watts!} /></div> : <div className={'thumb thumb--' + sport}>{icon}</div>}
+          {hasBlocks ? <div className="thumb">{sport === 'ride' ? <PowerBlocks watts={stream!} /> : <ZoneBlocks values={stream!} anchor={anchor} />}</div> : <div className={'thumb thumb--' + sport}>{icon}</div>}
           <div className="card-body">
             <span className="eyebrow">{label} · completed</span>
             <h3 style={{ opacity: 0.6 }}>{a.name || label}</h3>
