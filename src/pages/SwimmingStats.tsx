@@ -1,7 +1,8 @@
-import { type CSSProperties } from 'react'
+import { type CSSProperties, useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
+import { fetchSwimCurve } from '../intervals'
 import { swimZones, fmtPace100 } from '../swimming'
 import { BenchmarksCard } from '../Benchmarks'
 
@@ -14,7 +15,12 @@ export default function SwimmingStats() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isSwimmer = hasModule(user?.sports || [], 'swimming')
-  const css = user?.sportSettings?.swimming?.thresholdPace || null // sec/100 m
+  const [computedCss, setComputedCss] = useState<number | null>(null) // from the intervals swim pace-curve
+  useEffect(() => {
+    if (!user?.hasIcuKey || !isSwimmer) return
+    fetchSwimCurve(365).then((c) => { if (c?.cs && c.cs > 0) setComputedCss(Math.round(100 / c.cs)) }).catch(() => {})
+  }, [user?.hasIcuKey, isSwimmer])
+  const css = user?.sportSettings?.swimming?.thresholdPace || computedCss || null // manual wins, else computed. sec/100 m
   const zones = css ? swimZones(css) : []
 
   return (

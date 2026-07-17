@@ -115,6 +115,45 @@ export async function fetchPaceCurve(days: number): Promise<PaceCurve | null> {
     return secs.length >= 2 ? { secs, pace, dist: dm, cs: pmodel?.criticalSpeed, dPrime: pmodel?.dPrime, r2: pmodel?.r2 } : null
   } catch { return null }
 }
+// #swim-tri — SWIM mean-max PACE curve from intervals.icu (mirrors fetchPaceCurve, type=Swim). intervals fits the
+// same 2-param critical-speed model for swimming: `cs` = critical speed (m/s) → CSS = 100/cs (sec/100 m); `dPrime`
+// = anaerobic distance reserve (m). pace100[] = sec/100 m per best-effort point. Read-only; null on no key/empty.
+export interface SwimCurve { secs: number[]; pace100: number[]; dist: number[]; cs?: number; dPrime?: number; r2?: number }
+export async function fetchSwimCurve(days: number): Promise<SwimCurve | null> {
+  const { apiKey, athleteId, serverKey } = await getIcuConfig()
+  if (!apiKey && !serverKey) return null
+  try {
+    const res = await fetch(`${ICU}/athlete/${athleteId}/pace-curves?curves=${days}d&type=Swim`, { headers: icuHeaders(apiKey) })
+    if (!res.ok) return null
+    const data = await res.json()
+    const curve = data?.list?.[0] || (Array.isArray(data) ? data[0] : data)
+    const dist: number[] = curve?.distance || [], val: number[] = curve?.values || []
+    if (!dist.length || !val.length) return null
+    const pts = [] as { s: number; p: number; d: number }[]
+    for (let i = 0; i < dist.length; i++) if (dist[i] > 0 && val[i] > 0) pts.push({ s: Math.round(val[i]), p: Math.round((val[i] / dist[i]) * 100), d: dist[i] }) // p = sec/100 m
+    pts.sort((a, b) => a.s - b.s)
+    const secs: number[] = [], pace100: number[] = [], dm: number[] = []
+    for (const pt of pts) {
+      if (secs.length && pt.s === secs[secs.length - 1]) { if (pt.p < pace100[pace100.length - 1]) { pace100[pace100.length - 1] = pt.p; dm[dm.length - 1] = pt.d } }
+      else { secs.push(pt.s); pace100.push(pt.p); dm.push(pt.d) }
+    }
+    const pmodel = (curve?.paceModels || [])[0]
+    return secs.length >= 2 ? { secs, pace100, dist: dm, cs: pmodel?.criticalSpeed, dPrime: pmodel?.dPrime, r2: pmodel?.r2 } : null
+  } catch { return null }
+}
+// #swim-tri — a quick summary of the athlete's recent swims: how many (for the "after N swims" gates), average SWOLF
+// (intervals stores `average_swolf` on pool swims), and the longest continuous swim (a real TTE-at-CSS observation).
+export async function fetchSwimSummary(days = 365): Promise<{ swims: number; swolf: number | null; longestSec: number | null; longestPace100: number | null }> {
+  const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
+  const acts = (await fetchActivities(from, to)).filter((a) => /swim/i.test(a.type || ''))
+  const swolfs = acts.map((a) => (a as unknown as { average_swolf?: number }).average_swolf).filter((v): v is number => typeof v === 'number' && v > 0)
+  const swolf = swolfs.length ? Math.round(swolfs.reduce((s, v) => s + v, 0) / swolfs.length) : null
+  let longest = null as IcuActivity | null
+  for (const a of acts) if (a.moving_time && a.distance && (!longest || a.moving_time > (longest.moving_time || 0))) longest = a
+  const longestSec = longest?.moving_time || null
+  const longestPace100 = longest && longest.moving_time && longest.distance ? Math.round(longest.moving_time / (longest.distance / 100)) : null
+  return { swims: acts.length, swolf, longestSec, longestPace100 }
+}
 // #403 — Efficiency Factor trend. intervals computes EF per activity (icu_efficiency_factor = NP÷HR for a
 // ride, NGP-speed÷HR for a run) — a rising EF = your aerobic engine improving even when FTP/pace is flat.
 export interface EfPoint { date: string; ef: number }

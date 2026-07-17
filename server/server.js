@@ -408,7 +408,7 @@ app.put('/auth/profile', auth, (req, res) => {
     // #508 — the whitelist was missing the model benchmarks (tteRide/tteRun/cp/wPrime/cs/dPrime), so switching one of
     // them to Manual silently dropped the MODE server-side → the card stayed on Auto/computed and the manual value the
     // user typed was never used (JM: "TTE manual won't save"). The VALUE saved (sportSettings); the PREF did not.
-    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed' || v === 'auto') && /^(vo2max|ftp|thresholdPace|maxHr|sleepNeed|tteRide|tteRun|cp|wPrime|cs|dPrime)$/.test(k)) req.user.statPrefs[k] = v
+    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed' || v === 'auto') && /^(vo2max|ftp|thresholdPace|maxHr|sleepNeed|tteRide|tteRun|cp|wPrime|cs|dPrime|css|dPrimeSwim|tteSwim|swolf)$/.test(k)) req.user.statPrefs[k] = v
   }
   // #457 — per-type phone-push preferences (clamped to booleans)
   if (req.body.pushPrefs && typeof req.body.pushPrefs === 'object') {
@@ -981,6 +981,18 @@ app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
     const tte = tteFromPace(c.distance || [], c.values || [], thr) ?? tteModelPace(thr, cs, dP) ?? tteAtThresholdSec()
     const ef = await efFor('Run')
     out.running = { thresholdPaceSec: thr, csPaceSec: csPace, dPrimeM: dP != null ? Math.round(dP) : null, tteSec: tte, vdot: est?.vdot ?? null, ef, profile: computeAthleteProfile({ sport: 'running', threshold: thr, eftp: csPace, tte, cp: csPace, reserveKj: dP != null ? Math.round(dP) : null, reserveBig: 200, ef: ef.latest, efTrend: ef.trend }) }
+  }
+  if (sports.includes('swimming') || sports.includes('triathlon')) {
+    // #swim-tri — swim CSS (critical speed) + D′ from intervals' swim pace-curve; TTE = longest continuous swim at ~CSS.
+    const pcFull = (await icuGet(req.user, `/athlete/${ath}/pace-curves?curves=365d&type=Swim`)) || {}
+    const c = (pcFull.list || [])[0] || {}
+    const pmodel = (c.paceModels || [])[0] || {}
+    const cs = pmodel.criticalSpeed ?? null, dP = pmodel.dPrime ?? null
+    const cssPace = cs > 0 ? Math.round(100 / cs) : (ss.swimming?.thresholdPace ?? null) // sec/100 m (manual fallback)
+    let tte = null
+    const dd = c.distance || [], vv = c.values || []
+    if (cssPace) for (let i = 0; i < dd.length; i++) if (dd[i] > 0 && vv[i] >= 900 && (vv[i] / dd[i]) * 100 <= cssPace * 1.06) tte = Math.max(tte || 0, Math.round(vv[i]))
+    out.swimming = { cssPaceSec: cssPace, dPrimeM: dP != null ? Math.round(dP) : null, tteSec: tte, swolf: ss.swimming?.swolf ?? null }
   }
   res.json(out)
 })
