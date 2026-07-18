@@ -503,8 +503,11 @@ app.get('/auth/intervals/athlete', auth, async (req, res) => {
 })
 // #582 — manual "pull benchmarks from intervals NOW" (also the coach/test hook). Runs the same merge as app-load.
 app.post('/api/resync-benchmarks', apiAuth, async (req, res) => {
+  const before = req.user.sportSettings?.cycling?.ftp ?? null
+  const a = await icuGet(req.user, `/athlete/${req.user.icuAthlete}`).catch(() => null)
+  const mapped = a ? fromIcuSportSettings(a.sportSettings || []) : null
   const ok = await syncBenchmarksFromIcu(req.user).catch(() => false)
-  res.json({ ok, ftp: req.user.ftp || null, cycling: req.user.sportSettings?.cycling || null })
+  res.json({ ok, syncsIntervals: syncsIntervals(req.user), icuAthlete: req.user.icuAthlete || null, mappedCyclingFtp: mapped?.cycling?.ftp ?? null, sportSettingsEntries: Array.isArray(a?.sportSettings) ? a.sportSettings.length : (a ? 'not-array' : 'no-athlete'), before, after: req.user.sportSettings?.cycling?.ftp ?? null })
 })
 
 // #215 — ESTIMATE the runner's threshold pace from intervals' pace curve (Critical Speed),
