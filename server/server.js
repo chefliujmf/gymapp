@@ -521,8 +521,10 @@ app.post('/auth/benchmarks/import', auth, async (req, res) => {
   res.json(pub(req.user))
 })
 app.post('/api/resync-benchmarks', apiAuth, async (req, res) => {
-  const ok = await syncBenchmarksFromIcu(req.user, { overwrite: true }).catch(() => false)
-  res.json({ ok, icuAthlete: req.user.icuAthlete || null, ftp: req.user.ftp || null, cycling: req.user.sportSettings?.cycling || null })
+  // default is the SAFE fill-blank sync (never clobbers a Platyplus value, same as app-load); `?overwrite=1` = explicit import
+  const overwrite = req.query.overwrite === '1' || req.body?.overwrite === true
+  const ok = await syncBenchmarksFromIcu(req.user, { overwrite }).catch(() => false)
+  res.json({ ok, overwrite, icuAthlete: req.user.icuAthlete || null, ftp: req.user.ftp || null, cycling: req.user.sportSettings?.cycling || null })
 })
 
 // #215 — ESTIMATE the runner's threshold pace from intervals' pace curve (Critical Speed),
