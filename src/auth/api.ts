@@ -200,6 +200,8 @@ export const authApi = {
   coachReviews: () => req<CoachReview[]>('/coach-reviews'),
   markNotificationsRead: (ids?: string[]) => req<{ ok: boolean }>('/notifications/read', { method: 'POST', body: { ids } }),
   saveIcu: (icuKey: string, icuAthlete: string) => req<User>('/icu', { method: 'PUT', body: { icuKey, icuAthlete } }),
+  // #582 — EXPLICIT "Import from intervals": overwrite our benchmarks with intervals' current values (the only pull that overwrites)
+  importBenchmarks: () => req<User>('/benchmarks/import', { method: 'POST' }),
   saveAvatar: (avatar: string) => req<User>('/avatar', { method: 'PUT', body: { avatar } }),
   getToken: () => req<{ token: string }>('/token'),
   rotateToken: () => req<{ token: string }>('/token/rotate', { method: 'POST' }),

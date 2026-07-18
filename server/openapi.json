@@ -1214,6 +1214,14 @@
         "responses": { "200": { "description": "updated public user + { synced, pushError }" } }
       }
     },
+    "/auth/benchmarks/import": {
+      "post": {
+        "summary": "Import benchmarks FROM intervals, overwriting Platyplus values (#582 — the ONLY intervals-overwrites-Platyplus path; the app-load/connect sync is fill-blank only, so Platyplus OWNS its numbers). Deliberate user action.",
+        "tags": ["profile"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "updated public user (benchmarks overwritten from intervals)" }, "400": { "description": "not connected" }, "502": { "description": "could not read intervals" } }
+      }
+    },
     "/api/checkins": {
       "get": {
         "summary": "Coach reads the athlete's daily check-ins (energy/sleep/soreness) — recovery signal",

@@ -37,18 +37,18 @@ import { localDate } from './tz.js'
 // our LOCAL benchmarks (cp/wPrime/tte/cs/dPrime) live in the same per-sport object. A shallow `{...ours, ...mapped}`
 // makes mapped.cycling REPLACE the whole cycling object → wipes cp/W′/TTE on every session-load/pull (JM: "manual
 // value does not save" — it saved, then the next sync deleted it). Overlay intervals' fields, keep everything else.
-function mergeIcuSportSettings(existing, mapped, oursWins = false) {
+// #582 — PLATYPLUS OWNS ITS BENCHMARKS (JM directive, "when I enter something it has to STICK / terrible architecture").
+// The durable source of truth is OUR store, NOT intervals. The automatic merge (app-load / connect / pull) is FILL-BLANK:
+// intervals fills a field the user has never set, but NEVER overwrites a Platyplus value — so a wrong/rotated key, or
+// junk on the shared prod athlete, can no longer wipe your data. Platyplus still PUSHES edits OUT to intervals on save
+// (applySportStat) so intervals stays in step. The ONLY intervals-overwrites-Platyplus path is the EXPLICIT
+// "Import from intervals" action (`intervalsWins=true`) — a deliberate tap, never automatic.
+function mergeIcuSportSettings(existing, mapped, intervalsWins = false) {
   const out = { ...(existing || {}) }
   for (const g of Object.keys(mapped || {})) {
-    // #560/#570 BIDIRECTIONAL sync — intervals is the SYSTEM OF RECORD. When this user's edits reach intervals
-    // (prod, or QA on its OWN athlete i644563), intervals-wins per group: a change in intervals pulls in, and a
-    // Platyplus edit was already PUSHED to intervals on save, so they match — true two-way. Only intervals-native
-    // fields (ftp/maxHr/lthr/thresholdPace) are overlaid; our local model benchmarks (cp/wPrime/tte/cs/dPrime/swolf)
-    // are KEPT. `oursWins` = the LOCAL-SANDBOX case (QA still on the shared prod athlete, can't write) — keep the
-    // user's test edit so it isn't clobbered. Same rule for all 3 sports.
-    out[g] = oursWins
-      ? { ...(mapped[g] || {}), ...(out[g] || {}) } // sandbox: ours-wins
-      : { ...(out[g] || {}), ...(mapped[g] || {}) } // bidirectional: intervals-wins
+    out[g] = intervalsWins
+      ? { ...(out[g] || {}), ...(mapped[g] || {}) } // explicit Import: intervals overwrites ours
+      : { ...(mapped[g] || {}), ...(out[g] || {}) } // default fill-blank: our value wins, intervals only fills gaps
   }
   return out
 }
@@ -187,17 +187,21 @@ app.post('/auth/logout', (req, res) => { res.clearCookie(COOKIE); res.json({ ok:
 // Reads the athlete record, maps + merges intervals-native fields (ftp/maxHr/lthr/threshold-pace/CSS/w_prime) — keeping
 // our Platyplus-only ones (cp/tte/cs/dPrime/swolf). Shared by /auth/me (throttled) + the manual resync, so an
 // intervals-side change reflects in Platyplus RELIABLY on next app-open, not only when the Stats card happens to mount.
-async function syncBenchmarksFromIcu(user) {
+// #582 — pull intervals' sport-settings. DEFAULT is fill-blank (Platyplus owns it — never clobbers a user value).
+// `overwrite:true` is the EXPLICIT "Import from intervals" path (the only time intervals overwrites Platyplus).
+async function syncBenchmarksFromIcu(user, { overwrite = false } = {}) {
   if (!user.icuKey) return false
-  // #582 — read via /athlete/0 (the KEY's own athlete), which SELF-HEALS a wrong icuAthlete: if the stored one doesn't
+  // read via /athlete/0 (the KEY's own athlete), which SELF-HEALS a wrong icuAthlete: if the stored one doesn't
   // match the key's real athlete (e.g. a stale i28814 from the old client default), correct it here so the sync works.
   const a = await icuGet(user, '/athlete/0').catch(() => null)
   if (!a || !a.id) return false
   if (String(a.id) !== user.icuAthlete) user.icuAthlete = String(a.id)
   const mapped = fromIcuSportSettings(a.sportSettings || [])
-  user.sportSettings = mergeIcuSportSettings(user.sportSettings, mapped, !syncsIntervals(user))
-  if (mapped.cycling?.ftp != null) user.ftp = mapped.cycling.ftp
-  if (mapped.cycling?.maxHr != null) user.maxHR = mapped.cycling.maxHr
+  user.sportSettings = mergeIcuSportSettings(user.sportSettings, mapped, overwrite)
+  // mirror the coach anchors from the MERGED value (our value when set, intervals only when we had none / on import)
+  const ftp = user.sportSettings.cycling?.ftp, maxHr = user.sportSettings.cycling?.maxHr
+  if (ftp != null) user.ftp = ftp
+  if (maxHr != null) user.maxHR = maxHr
   save(store)
   return true
 }
@@ -416,7 +420,7 @@ app.put('/auth/icu', auth, async (req, res) => {
       // per-sport thresholds) from the athlete's intervals sport-settings ON CONNECT, so the coach has real numbers
       // immediately without the user opening Stats. Fill-if-empty; the Stats cards refine them from the curves later.
       const mapped = fromIcuSportSettings(me.sportSettings || [])
-      req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped, !syncsIntervals(req.user))
+      req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped) // fill-blank: import intervals values the user doesn't already have, never overwrite
       if (mapped.cycling?.ftp != null && req.user.ftp == null) req.user.ftp = mapped.cycling.ftp
       if (mapped.cycling?.maxHr != null && req.user.maxHR == null) req.user.maxHR = mapped.cycling.maxHr
       // …and if settings still left an anchor blank (unconfigured account), COMPUTE it from their history so the
@@ -497,18 +501,27 @@ app.get('/auth/intervals/athlete', auth, async (req, res) => {
   const a = await icuGet(req.user, `/athlete/${ath}`)
   if (!a) return res.status(502).json({ connected: true, error: 'could not read intervals athlete' })
   const mapped = fromIcuSportSettings(a.sportSettings || [])
-  // refresh the local mirror from intervals (canonical), keeping Platyplus-only fields
-  req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped, !syncsIntervals(req.user))
-  if (mapped.cycling?.ftp != null) req.user.ftp = mapped.cycling.ftp
-  if (mapped.cycling?.maxHr != null) req.user.maxHR = mapped.cycling.maxHr
+  // #582 — FILL-BLANK only: Platyplus owns its numbers, so reading the athlete never overwrites a value the user set
+  // (the response still returns intervals' raw `mapped` for the "what's in intervals" display + the Import button).
+  req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped)
+  const mFtp = req.user.sportSettings.cycling?.ftp, mMax = req.user.sportSettings.cycling?.maxHr
+  if (mFtp != null) req.user.ftp = mFtp
+  if (mMax != null) req.user.maxHR = mMax
   const weight = a.icu_weight != null ? a.icu_weight : (a.weight != null ? a.weight : null)
   if (weight != null && weight > 0) req.user.weight = weight // #207 Part 4: stash for the server-side VO₂max estimate
   save(store)
   res.json({ connected: true, sportSettings: mapped, weight, source: 'intervals' })
 })
-// #582 — manual "pull benchmarks from intervals NOW" (also self-heals a wrong icuAthlete). Same merge as app-load.
+// #582 — EXPLICIT "Import from intervals" (the ONLY intervals-overwrites-Platyplus path). Deliberate: overwrite=true.
+// UI button (Stats/Connections) + the coach/test hook both land here. Also self-heals a wrong icuAthlete via /athlete/0.
+app.post('/auth/benchmarks/import', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.status(400).json({ error: 'not connected to intervals' })
+  const ok = await syncBenchmarksFromIcu(req.user, { overwrite: true }).catch(() => false)
+  if (!ok) return res.status(502).json({ error: 'could not read intervals' })
+  res.json(pub(req.user))
+})
 app.post('/api/resync-benchmarks', apiAuth, async (req, res) => {
-  const ok = await syncBenchmarksFromIcu(req.user).catch(() => false)
+  const ok = await syncBenchmarksFromIcu(req.user, { overwrite: true }).catch(() => false)
   res.json({ ok, icuAthlete: req.user.icuAthlete || null, ftp: req.user.ftp || null, cycling: req.user.sportSettings?.cycling || null })
 })
 
