@@ -1861,6 +1861,26 @@ app.post('/auth/chat/history', auth, (req, res) => {
   res.json(t.msgs || [])
 })
 
+// #580 — MECHANICAL SAY=DO GUARANTEE. The coach's PROSE can drift from the calendar (it once narrated a plan it never
+// built). So whenever the coach talks about the plan, the APP appends the REAL calendar — computed deterministically
+// from the store (which already reflects any create/move/delete the coach just did) — as an authoritative block. A
+// session the coach invented simply won't be in it; a promised session that IS built will be. The athlete always sees
+// ground truth, right under the coach's words. Pure read of user.plans; best-effort.
+const PLAN_TALK_RX = /\b(plan\w*|schedul\w*|rest day|tomorrow|today|(?:mon|tues|wednes|thurs|fri|satur|sun)day|next (?:session|week|ride|run|swim|workout|day|few days)|this week|upcoming|(?:i've|i have|i'll|i will) (?:scheduled|set|added|planned|put|booked))/i
+async function upcomingPlanSummary(user, days = 7) {
+  const today = await athleteToday(user)
+  const end = addDays(today, days)
+  const plans = (user.plans || []).filter((p) => p && p.date >= today && p.date <= end).sort((a, b) => a.date.localeCompare(b.date))
+  const line = (p) => {
+    const d = new Date(p.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    const sp = ({ ride: 'Ride', run: 'Run', gym: 'Gym', swim: 'Swim' })[p.sport] || p.sport || 'Session'
+    const mins = Array.isArray(p.segments) && p.segments.length ? Math.round(p.segments.reduce((s, x) => s + (Number(x.duration) || 0), 0) / 60) : null
+    return `• ${d} — ${p.title || sp}${mins ? ` · ~${mins} min` : ''}`
+  }
+  const header = '\n\n———\n📋 **Your actual plan** — straight from your calendar (this is what is really scheduled; if anything above isn\'t here, it isn\'t booked):\n'
+  return plans.length ? header + plans.map(line).join('\n') : header + `• Nothing scheduled in the next ${days} days.`
+}
+
 app.post('/auth/chat', auth, async (req, res) => {
   const message = String(req.body?.message || '').trim().slice(0, 4000)
   if (!message) return res.status(400).json({ error: 'empty message' })
@@ -1908,6 +1928,8 @@ app.post('/auth/chat', auth, async (req, res) => {
         }
       } finally { clearTimeout(killer) }
     } catch (e) { send({ error: 'coach unavailable: ' + (e.message || e) }) }
+    // #580 — append the authoritative real-calendar block when the coach talked about the plan.
+    if (reply && PLAN_TALK_RX.test(reply)) { try { const b = await upcomingPlanSummary(req.user); if (b) { reply += b; send({ delta: b }) } } catch { /* best-effort */ } }
     return pend()
   }
 

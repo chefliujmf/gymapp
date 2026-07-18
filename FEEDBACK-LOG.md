@@ -3182,7 +3182,7 @@ benchmark card fetched the intervals pull once on mount, so on a synced (interva
 the stale pull → "can't change"; now `loadPull()` runs after every save. **FULL METRIC AUDIT (JM: "be sure for all"):**
 intervals-native/two-way = FTP·maxHr·LTHR·threshold-pace·CSS·W′. Platyplus-only (no intervals field) = CP·TTE·CS·D′·
 SWOLF·VO₂max (CP≈FTP; intervals models power as FTP+W′). Verified against the live i644563 sport-settings schema.
-### #580 — Coach SAY ≠ DO: narrates plans it never built; feedback "Next: …" doesn't match the calendar 🧪
+### #580 — Coach SAY = DO: instruction + MECHANICAL calendar-truth guarantee 🧪
 JM: asked coach to rest today + run tomorrow, it said yes but planned a BIKE ride today. Yesterday's feedback said
 "Next: Rest tomorrow, Z2 Sunday, gym Monday, Wed threshold test" — none of it was on the calendar. And reviews mention
 progress/adjustments but never the actual next workouts. Root cause: NO rule forcing the coach's WORDS to match the
