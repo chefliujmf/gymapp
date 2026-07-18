@@ -3192,3 +3192,9 @@ describe what's ACTUALLY there; never narrate a session that isn't scheduled. (2
 come from list_schedule (real next 1-2 sessions), never invented. Reaches the coach on deploy (systemPrompt is built
 server-side + sent to the host chat-helper). Test: chat "rest today, run tomorrow" → the calendar must match, and no
 ghost "threshold test Wednesday" in reviews.
+### #581 — Coach mislabels weather days ("tomorrow Fri" on a Saturday) 🧪
+Verified: JM's tz IS correct (America/Toronto, Montreal; it's Saturday everywhere). NOT a live tz bug — the coach was
+computing weekdays itself and got them wrong. Fixes: /api/weather defaults to the athlete's LOCAL today (was icuDay(0)=
+UTC) + returns `weekday`/`relative`(today/tomorrow)/`isToday` labels computed server-side; get_weather tool says to USE
+those labels, never compute the day. + capture Open-Meteo's resolved tz as a fallback when intervals has none (JM: use
+my location for the tz). (get_weather desc is host-only → coach on prod deploy.)

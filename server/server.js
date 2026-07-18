@@ -2762,7 +2762,14 @@ async function athleteLatLon(user) {
 
 // #341 — the day's forecast + coaching guidance for the athlete's location (Open-Meteo, FREE, no key).
 app.get('/api/weather', apiAuth, async (req, res) => {
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : icuDay(0)
+  // #581 — default to the athlete's LOCAL today (was icuDay(0) = UTC, wrong near midnight). And hand the coach the
+  // WEEKDAY + whether it's today/tomorrow/yesterday, computed SERVER-SIDE, so it never mislabels days itself (JM: the
+  // coach said "tomorrow Fri" on a Saturday). The coach must relay these labels, not compute the day-of-week.
+  const today = await athleteToday(req.user)
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today
+  const weekday = (() => { try { return new Date(date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }) } catch { return null } })()
+  const diff = Math.round((new Date(date + 'T00:00:00Z') - new Date(today + 'T00:00:00Z')) / 86400000)
+  const relative = diff === 0 ? 'today' : diff === 1 ? 'tomorrow' : diff === -1 ? 'yesterday' : diff > 0 ? `in ${diff} days` : `${-diff} days ago`
   const loc = await athleteLatLon(req.user).catch(() => null)
   if (!loc) return res.json({ available: false, needsLocation: true, reason: 'No location yet — ask the athlete where they train (city), or it fills in from their next GPS activity.' })
   try {
@@ -2770,10 +2777,13 @@ app.get('/api/weather', apiAuth, async (req, res) => {
     const r = await fetch(url, { headers: { 'user-agent': 'platyplus/1.0' } })
     if (!r.ok) return res.json({ available: false, reason: `weather service ${r.status}` })
     const j = await r.json()
+    // #581 (JM: "use my LOCATION for the timezone") — Open-Meteo resolves the IANA tz for the lat/lon; capture it as
+    // the athlete's tz when intervals hasn't set one, so "today" is right even without an intervals timezone.
+    if (j.timezone && !req.user.icuTimezone) { req.user.icuTimezone = j.timezone; save(store) }
     const d = j.daily || {}
     const at = (k) => (Array.isArray(d[k]) ? d[k][0] : null)
     const g = weatherGuidance({ tMax: at('temperature_2m_max'), tApparentMax: at('apparent_temperature_max'), tMin: at('temperature_2m_min'), precipProb: at('precipitation_probability_max'), windMax: at('wind_speed_10m_max') })
-    res.json({ available: true, date, ...g })
+    res.json({ available: true, date, weekday, relative, isToday: diff === 0, todayLocal: today, ...g })
   } catch (e) { res.json({ available: false, reason: (e && e.message) || 'weather fetch failed' }) }
 })
 
