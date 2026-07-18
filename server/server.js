@@ -183,6 +183,21 @@ app.post('/auth/login', (req, res) => {
   setSession(res, u); res.json(pub(u))
 })
 app.post('/auth/logout', (req, res) => { res.clearCookie(COOKIE); res.json({ ok: true }) })
+// #582 — refresh the per-sport BENCHMARKS from intervals (the PULL direction), the SAME merge as the pull endpoint.
+// Reads the athlete record, maps + merges intervals-native fields (ftp/maxHr/lthr/threshold-pace/CSS/w_prime) — keeping
+// our Platyplus-only ones (cp/tte/cs/dPrime/swolf). Shared by /auth/me (throttled) + the manual resync, so an
+// intervals-side change reflects in Platyplus RELIABLY on next app-open, not only when the Stats card happens to mount.
+async function syncBenchmarksFromIcu(user) {
+  if (!user.icuKey || !user.icuAthlete) return false
+  const a = await icuGet(user, `/athlete/${user.icuAthlete}`).catch(() => null)
+  if (!a) return false
+  const mapped = fromIcuSportSettings(a.sportSettings || [])
+  user.sportSettings = mergeIcuSportSettings(user.sportSettings, mapped, !syncsIntervals(user))
+  if (mapped.cycling?.ftp != null) user.ftp = mapped.cycling.ftp
+  if (mapped.cycling?.maxHr != null) user.maxHR = mapped.cycling.maxHr
+  save(store)
+  return true
+}
 app.get('/auth/me', auth, async (req, res) => {
   // #265/#1003 — backfill height/DOB/sex/weight from the intervals athlete record on session load if still missing.
   // GUARDED to only fetch while something's absent, so it stops as soon as they're filled (no per-load overhead after).
@@ -191,6 +206,8 @@ app.get('/auth/me', auth, async (req, res) => {
     const me = await icuGet(u, `/athlete/${u.icuAthlete}`).catch(() => null)
     if (me) { syncAthleteProfile(u, me); save(store) }
   }
+  // #582 — keep benchmarks in step with intervals on app-load, THROTTLED (~3 min/user) so it's not a fetch per request.
+  if (syncsIntervals(u) && Date.now() - (u.benchSyncAt || 0) > 3 * 60 * 1000) { u.benchSyncAt = Date.now(); await syncBenchmarksFromIcu(u).catch(() => {}) }
   // #497/#501 — also backfill the COMPUTED coach anchors (FTP/maxHR/run pace) for already-connected users who
   // predate the connect-time stash, so nobody is left un-analysed. Guarded: runs only while an anchor is still blank.
   if (u.icuKey && u.icuAthlete && (u.ftp == null || u.maxHR == null || u.runPaceEst == null)) {
@@ -469,6 +486,7 @@ app.put('/auth/profile', auth, (req, res) => {
 // + weight, mapped to our shape. intervals is CANONICAL for these — we also refresh our local
 // mirror (+ flat ftp/maxHR the coach reads) so nothing drifts.
 app.get('/auth/intervals/athlete', auth, async (req, res) => {
+  res.set('Cache-Control', 'no-store') // #582 — never let the browser cache the pull (else an intervals change never reaches the client)
   if (!req.user.icuKey || !req.user.icuAthlete) return res.json({ connected: false })
   const ath = req.user.icuAthlete
   const a = await icuGet(req.user, `/athlete/${ath}`)
@@ -482,6 +500,11 @@ app.get('/auth/intervals/athlete', auth, async (req, res) => {
   if (weight != null && weight > 0) req.user.weight = weight // #207 Part 4: stash for the server-side VO₂max estimate
   save(store)
   res.json({ connected: true, sportSettings: mapped, weight, source: 'intervals' })
+})
+// #582 — manual "pull benchmarks from intervals NOW" (also the coach/test hook). Runs the same merge as app-load.
+app.post('/api/resync-benchmarks', apiAuth, async (req, res) => {
+  const ok = await syncBenchmarksFromIcu(req.user).catch(() => false)
+  res.json({ ok, ftp: req.user.ftp || null, cycling: req.user.sportSettings?.cycling || null })
 })
 
 // #215 — ESTIMATE the runner's threshold pace from intervals' pace curve (Critical Speed),
