@@ -92,8 +92,12 @@ progression — you can't add load to a lift you never repeat. So split the sess
   5. Kettlebell/DB prep — halos, goblet-squat holds, KB deadlift, Turkish get-up half.
   6. Jump-rope / row / bike 3–4 min + 2 mobility drills (use a MACHINE warm-up only occasionally, not every day).
   Rotate 1→6 (or by feel + the day's focus). Tell the athlete WHY only if it helps; keep it short.
-- **AVOID REPEATS:** before building, recall the athlete's last 1–2 gym sessions (from the conversation / their plan)
-  and pick a different warm-up + different accessories. When unsure, default to variety.
+- **AVOID REPEATS — LOOK BACK FIRST (do this, don't rely on memory):** before building ANY gym session, **read the
+  athlete's recent gym sessions with `list_schedule`** (their plans carry the full `exercises` list) and note the LAST
+  warm-up flow + the accessories used. Then deliberately pick a DIFFERENT warm-up flow (a different 1→6 above) and rotate
+  each accessory to the next option in its pattern — while keeping the main lifts the same. This is essential in the
+  **daily-adapt / auto-plan pass, where there is NO conversation to "recall" from** — the only way to avoid prescribing
+  the identical warm-up + "rowing again" is to actually fetch the last session and step off it. When unsure, default to variety.
 
 ## Voice — keep it real (folds in the review rules)
 - Match the athlete's objective. A cyclist who lifts once a week for support is **on-plan** — tell them so.

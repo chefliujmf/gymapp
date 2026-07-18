@@ -3219,3 +3219,19 @@ QA DB — data was NOT lost): her 7/17 gym exists as a coach PLAN (`mcp-7kqtcmyt
 the other view → re-nag → she filled it twice (feedback saved under BOTH keys). FIX (JM picked): **auto-link plan↔activity
 by date+sport** so a completed activity fulfilling a planned session is treated as ONE — feedback on either satisfies both,
 no re-nag, no dup; write-back to intervals fires even when saved under the plan id; backfill existing dupes like xenia's.
+BUILT: clones intervals' OWN pairing (`paired_event_id` = same-day+same-type; our plan is the pushed event `icuEventId`),
+day+sport fallback; server links the pair + mirrors feedback + retargets the intervals write-back at the activity.
+
+### #584 — COMMERCIAL LICENSING: only use the FREE library from now on (no Centr etc.) ⬜
+JM: "only use the 'free library' from now on. Centr cannot be used for example for commercialization." Directive: the
+catalog must contain ONLY exercises/media whose license permits COMMERCIAL use — drop Centr + any commercial-restricted
+source (this is a LICENSE axis, distinct from the media-independence gate which only strips third-party URLs). Fix: filter
+`build-catalog` to free/commercially-usable licenses via `content-manifest` (license/commercial fields), drop the rest,
+and add a gate so a non-commercial source can't sneak back in. Check CONTENT.md + content-manifest. Assess which current
+exercises are Centr-sourced and how many free ones remain (may need to backfill the library from free sources).
+
+### #585 — BUG: exercise detail → Back goes to HOME instead of the workout/library ⬜
+JM: "when I click on one exercise to see what needs to be done and press back, it brings me back to home page". The
+exercise-detail view breaks the back-stack — Back should return to the workout/library you came from, not Home. Likely a
+router issue (navigate that replaces history, or a hard-coded home link). Trace the exercise-detail route + how it's
+opened from a workout vs the library; fix so browser/hardware Back returns to the previous screen.
