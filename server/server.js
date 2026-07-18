@@ -188,9 +188,12 @@ app.post('/auth/logout', (req, res) => { res.clearCookie(COOKIE); res.json({ ok:
 // our Platyplus-only ones (cp/tte/cs/dPrime/swolf). Shared by /auth/me (throttled) + the manual resync, so an
 // intervals-side change reflects in Platyplus RELIABLY on next app-open, not only when the Stats card happens to mount.
 async function syncBenchmarksFromIcu(user) {
-  if (!user.icuKey || !user.icuAthlete) return false
-  const a = await icuGet(user, `/athlete/${user.icuAthlete}`).catch(() => null)
-  if (!a) return false
+  if (!user.icuKey) return false
+  // #582 — read via /athlete/0 (the KEY's own athlete), which SELF-HEALS a wrong icuAthlete: if the stored one doesn't
+  // match the key's real athlete (e.g. a stale i28814 from the old client default), correct it here so the sync works.
+  const a = await icuGet(user, '/athlete/0').catch(() => null)
+  if (!a || !a.id) return false
+  if (String(a.id) !== user.icuAthlete) user.icuAthlete = String(a.id)
   const mapped = fromIcuSportSettings(a.sportSettings || [])
   user.sportSettings = mergeIcuSportSettings(user.sportSettings, mapped, !syncsIntervals(user))
   if (mapped.cycling?.ftp != null) user.ftp = mapped.cycling.ftp
@@ -399,13 +402,15 @@ app.put('/auth/activity-link', auth, async (req, res) => {
 })
 app.put('/auth/icu', auth, async (req, res) => {
   if (typeof req.body.icuKey === 'string') req.user.icuKey = req.body.icuKey.trim()
-  if (typeof req.body.icuAthlete === 'string') req.user.icuAthlete = req.body.icuAthlete.trim()
-  // #262: resolve THIS user's own athlete (athlete/0 = the authenticated athlete). Never inherit JM's 'i28814'.
-  // #265/#1003: also fetch the athlete record to sync height/DOB/sex/weight (fill-if-empty).
+  // #582 ROOT-CAUSE FIX — the athlete is ALWAYS the KEY's own (athlete/0 = whoever this key authenticates), resolved
+  // SERVER-SIDE. NEVER trust a client-sent icuAthlete: the browser's device-local id still defaults to the shared prod
+  // athlete i28814, so connecting a QA key wrote icuAthlete=i28814 → syncsIntervals=false → the whole two-way sync was
+  // dead (JM's QA pointed at i28814, not i644563). The old code set it from req.body then only ran athlete/0 "if empty",
+  // so it never corrected the wrong value. Now: a set key ALWAYS re-resolves its real athlete.
   if (req.user.icuKey) {
-    const me = await icuGet(req.user, req.user.icuAthlete ? `/athlete/${req.user.icuAthlete}` : '/athlete/0').catch(() => null)
+    const me = await icuGet(req.user, '/athlete/0').catch(() => null) // athlete/0 = the key's authenticated athlete
     if (me && me.id) {
-      if (!req.user.icuAthlete) req.user.icuAthlete = String(me.id)
+      req.user.icuAthlete = String(me.id) // AUTHORITATIVE — the key's own athlete, never the client's stale value
       syncAthleteProfile(req.user, me)
       // #497/#501 (JM: "for a new user, be sure this analysis is done") — stash the coach ANCHORS (FTP/maxHR + the
       // per-sport thresholds) from the athlete's intervals sport-settings ON CONNECT, so the coach has real numbers
@@ -501,13 +506,10 @@ app.get('/auth/intervals/athlete', auth, async (req, res) => {
   save(store)
   res.json({ connected: true, sportSettings: mapped, weight, source: 'intervals' })
 })
-// #582 — manual "pull benchmarks from intervals NOW" (also the coach/test hook). Runs the same merge as app-load.
+// #582 — manual "pull benchmarks from intervals NOW" (also self-heals a wrong icuAthlete). Same merge as app-load.
 app.post('/api/resync-benchmarks', apiAuth, async (req, res) => {
-  const before = req.user.sportSettings?.cycling?.ftp ?? null
-  const a = await icuGet(req.user, `/athlete/${req.user.icuAthlete}`).catch(() => null)
-  const mapped = a ? fromIcuSportSettings(a.sportSettings || []) : null
   const ok = await syncBenchmarksFromIcu(req.user).catch(() => false)
-  res.json({ ok, syncsIntervals: syncsIntervals(req.user), icuAthlete: req.user.icuAthlete || null, mappedCyclingFtp: mapped?.cycling?.ftp ?? null, sportSettingsEntries: Array.isArray(a?.sportSettings) ? a.sportSettings.length : (a ? 'not-array' : 'no-athlete'), before, after: req.user.sportSettings?.cycling?.ftp ?? null })
+  res.json({ ok, icuAthlete: req.user.icuAthlete || null, ftp: req.user.ftp || null, cycling: req.user.sportSettings?.cycling || null })
 })
 
 // #215 — ESTIMATE the runner's threshold pace from intervals' pace curve (Critical Speed),
