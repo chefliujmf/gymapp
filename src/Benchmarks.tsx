@@ -139,10 +139,13 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
   const [efTrend, setEfTrend] = useState<EfTrend | null>(null) // #403 efficiency-factor trend (for the profile)
   const [open, setOpen] = useState<Key | null>(null)
   const connected = !!user?.hasIcuKey
+  // #579 — re-fetch the fresh intervals pull. Called on mount AND after every benchmark SAVE, otherwise a synced
+  // account (intervals-wins) keeps showing the STALE pull value and a just-saved change looks like it bounced.
+  const loadPull = () => authApi.pullIcuAthlete().then(setPull).catch(() => {})
 
   useEffect(() => {
     if (!connected) return
-    authApi.pullIcuAthlete().then(setPull).catch(() => {})
+    loadPull()
     authApi.runEstimate().then((r) => { if (r.available) { setRunEst(r); if (r.thresholdPace) setPaceEst(r.thresholdPace) } }).catch(() => {}) // #512 keep the full VDOT read
     authApi.powerBenchmarks().then((p) => { if (p.available) { setMap5(p.map5min ?? null); setPbWeight(p.weight ?? null); setFtp20(p.ftp20 ?? null) } setRunsRecent(p.runsRecent ?? null); setCompMaxHr(p.computedMaxHr ?? null); setMaxHrSamples(p.maxHrSamples ?? 0); setMaxHrFrom(p.maxHrFrom ?? ''); setObservedMaxHr((p as { observedMaxHr?: number | null }).observedMaxHr ?? null); setIcuMaxHr((p as { icuMaxHr?: number | null }).icuMaxHr ?? null); setHrPower((p as { hrPower?: { watts: number; hr: number }[] }).hrPower ?? []); setHrPace((p as { hrPace?: { paceSecKm: number; hr: number }[] }).hrPace ?? []); setRideSignals((p as { rideSignals?: RideSignal[] }).rideSignals ?? []) }).catch(() => {}) // #337 · #5007 ftp20 · #497 hrPower/hrPace · #508 rideSignals
     fetchPowerCurve(365).then(setPowerCurve).catch(() => {}) // #401 TTE — a year of efforts for a stable CP/W′ + CS/D′ model fit
@@ -303,7 +306,8 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
     ? { sport: 'cycling', threshold: chosenFtp, eftp: eftpVal, tte: chosenTteRide, cp: chosenCp, reserveKj: chosenWprime, reserveBig: 20, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }
     : { sport: 'running', threshold: chosenPace, eftp: paceEst, tte: chosenTteRun, cp: chosenCs, reserveKj: chosenDprime, reserveBig: 200, ef: efTrend?.latest ?? null, efTrend: efTrend?.trend ?? null }) : null
 
-  const saveSport = (group: 'cycling' | 'running' | 'swimming', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => refresh())
+  // #579 — after saving, refresh the user AND re-pull intervals so the new value shows (not the stale pull).
+  const saveSport = (group: 'cycling' | 'running' | 'swimming', patch: Record<string, number | null>) => authApi.saveSportStat({ group, ...patch }).then(() => { refresh(); loadPull() })
   // #337 — "when will the computed estimate land?" straight from our theory gates, so nothing just says
   // "not available yet". Runs gate (pace): ≥4 runs + ≥25 km / 6 wks. Sleep: 21 nights. VO₂max cycling:
   // a hard ~5-min effort. maxHR: no safe estimate exists — it needs a real max.
