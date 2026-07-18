@@ -3235,3 +3235,15 @@ JM: "when I click on one exercise to see what needs to be done and press back, i
 exercise-detail view breaks the back-stack — Back should return to the workout/library you came from, not Home. Likely a
 router issue (navigate that replaces history, or a hard-coded home link). Trace the exercise-detail route + how it's
 opened from a workout vs the library; fix so browser/hardware Back returns to the previous screen.
+
+### #586 — CRITICAL: 4 coach engines never shipped to the coach (Dockerfile COPY dropped them) 🧪 (fixed)
+Found while wiring up the gym-variety test: `server/Dockerfile` hand-listed the coach engines it COPY'd —
+`coach-engine.md coach-engine-cycling.md coach-engine-female.md` — but the app LOADS six
+(`SPORT_ENGINES`): +running +**strength** +swimming +triathlon. So **strength/gym (incl. the #573 VARIETY work +
+#534 gym engine), running, swimming (#swim-tri), and triathlon (#570) engines were NEVER in the deployed image** →
+buildSystemPrompt silently fell back, so the coach never had them. Almost certainly why the gym warm-ups stayed
+repetitive (the variety engine literally wasn't loaded). FIX: `COPY … coach-engine*.md ./` (glob every engine, present
++ future — never hand-list again). Ships on the QA deploy; then the strength engine + variety finally reach the coach.
+VARIETY REVIEW (#573) done alongside: video-only already enforced (#420 searchExercises filters to e.video); logic is
+sound + personalized; coach CAN see past gym exercises (list_schedule includes them); strengthened the "look back before
+choosing" instruction for the daily-adapt pass (no conversation to recall from).
