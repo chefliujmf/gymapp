@@ -3173,9 +3173,12 @@ JM: "for W' should add typical values range for user to know what to enter manua
 intervals." Added typical W′ ranges (~10–15 recreational / 15–25 trained / 25–35 puncheur) to the card + a note that
 W′ is a Platyplus metric with no intervals field (so the "?" on intervals is EXPECTED, not a sync failure). Same is true
 of CP/D′/TTE/SWOLF — only FTP/maxHr/LTHR/threshold-pace/CSS are intervals-native and sync.
-### #579 — SYNC BUGS to verify end-to-end (JM tested QA, several failed) ⬜ BLOCKED on tailnet (JM VPN)
-JM: maxHR Platyplus 180 vs intervals 185 (didn't sync); FTP 250→260 change failed; can't test VO2max. intervals i644563
-HAS ftp=260, max_hr=185, css=2:00, lthr=168. HYPOTHESES: (a) whole-body maxHR/VO2max are top-level user fields synced
-FILL-IF-EMPTY only (merge only touches sportSettings) → real gap; (b) FTP not pulling → connect may not have resolved
-icuAthlete=i644563 → syncsIntervals=false → all ours-wins. NEED the QA DB (blocked by JM's VPN) to confirm + a real
-round-trip test. DO NOT ship a sync fix untested (JM directive).
+### #579 — SYNC verified END-TO-END (I tested it with the QA key) + 2 real fixes 🧪
+Tested against QA athlete i644563: **PUSH** works (set FTP 247 · maxHr 182 · W′ 19 kJ in Platyplus → all landed on
+intervals, synced=True) and **PULL** works (connect synced 260/185/168 in). JM's original 180/250 were STALE CLIENT
+values — the server was already synced. TWO real fixes shipped: (1) **W′ now syncs** — intervals HAS a `w_prime` field
+in JOULES (JM was right, I was wrong); added the kJ↔J mapping in sport-settings.js. (2) **re-pull after save** — the
+benchmark card fetched the intervals pull once on mount, so on a synced (intervals-wins) account a just-saved FTP showed
+the stale pull → "can't change"; now `loadPull()` runs after every save. **FULL METRIC AUDIT (JM: "be sure for all"):**
+intervals-native/two-way = FTP·maxHr·LTHR·threshold-pace·CSS·W′. Platyplus-only (no intervals field) = CP·TTE·CS·D′·
+SWOLF·VO₂max (CP≈FTP; intervals models power as FTP+W′). Verified against the live i644563 sport-settings schema.
