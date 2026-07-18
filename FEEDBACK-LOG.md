@@ -3198,3 +3198,24 @@ computing weekdays itself and got them wrong. Fixes: /api/weather defaults to th
 UTC) + returns `weekday`/`relative`(today/tomorrow)/`isToday` labels computed server-side; get_weather tool says to USE
 those labels, never compute the day. + capture Open-Meteo's resolved tz as a fallback when intervals has none (JM: use
 my location for the tz). (get_weather desc is host-only → coach on prod deploy.)
+
+### #582 — Platyplus OWNS its benchmarks (a wrong/rotated intervals key can NO LONGER wipe your data) 🧪 (built + PROVEN on QA)
+JM: "when I enter something in the UI it has to STICK / terrible architecture / you have your own store for platyplus".
+ROOT CAUSE of the multi-day "QA never syncs": the stored `icu_key` was JM's REAL key (→ shared prod athlete **i28814**),
+not the QA key (`4jdmnc…` → **i644563**) — the connect form had a manual "Athlete id" field defaulting to i28814 + the
+old connect trusted the client value → Platyplus read/wrote the WRONG athlete (260 not 258), and intervals-wins clobbered
+every UI edit. FIX (JM picked "Platyplus owns it"): (1) connect + all sync resolve the athlete from `/athlete/0` (key's
+own), killed the i28814 default field. (2) `mergeIcuSportSettings` is now **fill-blank for ALL sports** — intervals fills
+only a blank field, NEVER overwrites a Platyplus value. (3) still PUSH edits OUT to intervals on save. (4) NEW explicit
+**"Import from intervals"** button (`POST /auth/benchmarks/import`; `/api/resync-benchmarks?overwrite=1`) is the only
+intervals-overwrites-ours path. **PROVEN live vs i644563 in the DB:** edit→255 sticks + syncs; diverge intervals→250;
+a fill-blank sync leaves it **255 (no clobber)**; Import pulls **250**; restored to **258** both sides. Memory
+`platyplus-sportsettings-save` updated (reverses the old intervals-wins rule). openapi updated.
+
+### #583 — xenia's feedback "asking again" — same session as BOTH a plan + a synced activity, unlinked ⬜ (building)
+JM: "my wife entered her feedback yesterday and now it's asking again, persistence problem again". DIAGNOSIS (verified in
+QA DB — data was NOT lost): her 7/17 gym exists as a coach PLAN (`mcp-7kqtcmyt`) AND a synced intervals ACTIVITY
+(`i166713686`), with EMPTY `activityLinks` + no completed-activity ref on the plan. Feedback under one id doesn't satisfy
+the other view → re-nag → she filled it twice (feedback saved under BOTH keys). FIX (JM picked): **auto-link plan↔activity
+by date+sport** so a completed activity fulfilling a planned session is treated as ONE — feedback on either satisfies both,
+no re-nag, no dup; write-back to intervals fires even when saved under the plan id; backfill existing dupes like xenia's.

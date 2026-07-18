@@ -1104,9 +1104,32 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
   }
 })
 
+// #583 — a completed intervals ACTIVITY and the coach PLAN it fulfilled are ONE session for feedback. Map any sport
+// label (our ride/run/swim/gym OR an intervals type Ride/Run/Swim/WeightTraining) to a canonical group so they match.
+const sportGroupOf = (s) => {
+  const t = String(s || '').toLowerCase()
+  if (/ride|cycl|bike/.test(t)) return 'ride'
+  if (/run/.test(t)) return 'run'
+  if (/swim/.test(t)) return 'swim'
+  if (/gym|weight|strength|workout/.test(t)) return 'gym'
+  return t
+}
+// resolve the OTHER id of a linked plan↔activity pair (activityLinks[activityId] = planId), either direction.
+const siblingFeedbackId = (user, id) => {
+  const links = user.activityLinks || {}
+  if (links[id]) return links[id] // id is an activity → its plan
+  for (const [act, plan] of Object.entries(links)) if (plan === id) return act // id is a plan → its activity
+  return null
+}
 // #273 — post-workout feedback for a COMPLETED intervals ACTIVITY (device rides/runs that have no
 // Platyplus plan). Stored per-user keyed by activity id; triggers an async coach review (activityId).
-app.get('/auth/activity/:id/feedback', auth, (req, res) => res.json((req.user.activityFeedback || {})[String(req.params.id)] || null))
+// #583 — feedback on the LINKED plan/activity counts as this session's, so no view re-nags for feedback already given.
+app.get('/auth/activity/:id/feedback', auth, (req, res) => {
+  const fbs = req.user.activityFeedback || {}
+  const id = String(req.params.id)
+  const sib = siblingFeedbackId(req.user, id)
+  res.json(fbs[id] || (sib && fbs[sib]) || null)
+})
 // Skip a session's feedback — the athlete doesn't want to log it. Drops it from the "to review" list so it
 // stops nagging (a per-user set of activity ids; `incompleteFeedback` filters these out). #review-skip
 app.post('/auth/activity/:id/feedback-skip', auth, (req, res) => {
@@ -1169,7 +1192,7 @@ async function ensureIcuFields(user, { force = false } = {}) {
   } catch (e) { console.error('[ensureIcuFields] ' + (e.message || e)) }
 }
 
-app.post('/auth/activity/:id/feedback', auth, (req, res) => {
+app.post('/auth/activity/:id/feedback', auth, async (req, res) => {
   const id = String(req.params.id)
   const b = req.body || {}
   const fb = {
@@ -1184,11 +1207,40 @@ app.post('/auth/activity/:id/feedback', auth, (req, res) => {
   if (!req.user.activityFeedback) req.user.activityFeedback = {}
   req.user.activityFeedback[id] = fb
   audit(req.user, { actor: 'you', action: 'Logged feedback', target: fb.title || `${fb.sport || 'workout'} ${fb.date || ''}`.trim(), detail: [fb.feel && `felt ${fb.feel}`, fb.rpe && `RPE ${fb.rpe}`].filter(Boolean).join(' · '), kind: 'feedback' }) // #232
+  // #583 — a completed activity + the coach PLAN it fulfilled are ONE session. Link them (either direction), MIRROR the
+  // feedback onto the sibling id, and target the intervals write-back at the ACTIVITY id even when the athlete gave
+  // feedback from the PLANNED view — so no view re-nags for feedback that's already been given (xenia's dup bug).
+  req.user.activityLinks = req.user.activityLinks || {}
+  const isActId = /^i?\d+$/.test(id)
+  let icuActivityId = isActId ? id : null
+  let sibling = siblingFeedbackId(req.user, id)
+  if (!sibling) {
+    if (isActId) { // saved ON the activity → find + link the plan it fulfilled (same local day + sport group)
+      const plan = (req.user.plans || []).find((p) => String(p.date).slice(0, 10) === (fb.date || '') && sportGroupOf(p.sport) === sportGroupOf(fb.sport))
+      if (plan && req.user.activityLinks[id] === undefined) { req.user.activityLinks[id] = plan.id; sibling = plan.id }
+    } else if (req.user.icuKey && req.user.icuAthlete) { // saved ON the plan → find + link the completed activity for its day
+      const plan = (req.user.plans || []).find((p) => p.id === id)
+      const day = plan ? String(plan.date).slice(0, 10) : (fb.date || '')
+      const grp = sportGroupOf(plan ? plan.sport : fb.sport)
+      if (day) {
+        const acts = await icuGet(req.user, `/athlete/${req.user.icuAthlete}/activities?oldest=${day}&newest=${day}`).catch(() => null)
+        const free = (Array.isArray(acts) ? acts : []).filter((a) => req.user.activityLinks[String(a.id)] === undefined)
+        // CLONE intervals' own pairing: it attaches a completed activity to the planned event of the SAME DAY + TYPE and
+        // exposes it as `paired_event_id`. Our plan was pushed as that event (plan.icuEventId), so reuse intervals' pairing
+        // first; fall back to same-day + same-sport-group (the identical criteria) when the plan wasn't pushed / isn't paired.
+        const act = (plan?.icuEventId && free.find((a) => String(a.paired_event_id || '') === String(plan.icuEventId)))
+          || free.find((a) => sportGroupOf(a.type) === grp)
+        if (act) { req.user.activityLinks[String(act.id)] = id; sibling = String(act.id); icuActivityId = String(act.id) }
+      }
+    }
+  } else if (!isActId && /^i?\d+$/.test(sibling)) icuActivityId = sibling // plan saved, its linked activity is the write-back target
+  if (sibling) req.user.activityFeedback[sibling] = fb // MIRROR — both ids report the same feedback
   save(store)
   res.json({ ok: true, feedback: fb })
   // #273 BI-DIRECTIONAL: write feel/RPE + custom fields BACK to the intervals activity (as the
-  // 1-based indices intervals stores), so it shows up in intervals too. Only for real intervals ids.
-  if (req.user.icuKey && /^i?\d+$/.test(id)) {
+  // 1-based indices intervals stores), so it shows up in intervals too. #583 — targets the linked activity
+  // even when feedback came from the planned view, so the Review nag (which reads the activity) is satisfied.
+  if (req.user.icuKey && icuActivityId) {
     // #288 — make sure the custom fields exist BEFORE writing values (guarded flag → runs once); covers
     // athletes who connected before #288 so the 1-based values have somewhere to land.
     if (!req.user.icuFieldsAt) ensureIcuFields(req.user).catch(() => {})
@@ -1197,16 +1249,17 @@ app.post('/auth/activity/:id/feedback', auth, (req, res) => {
     if (fb.rpe) payload.icu_rpe = fb.rpe
     const fbDefs = fbFieldsFor(fb.sport) // #330 — a run's values map through the RUN option list
     for (const [label, val] of Object.entries(fb.fields || {})) { const def = fbDefs[label]; if (def) { const i = def.opts.indexOf(val); if (i >= 0) payload[def.code] = i + 1 } }
-    if (Object.keys(payload).length) icuFetch(req.user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify(payload) }).catch((e) => console.error('[icu-feedback-write] ' + (e.message || e)))
+    if (Object.keys(payload).length) icuFetch(req.user, `/activity/${icuActivityId}`, { method: 'PUT', body: JSON.stringify(payload) }).catch((e) => console.error('[icu-feedback-write] ' + (e.message || e)))
     // #287: the free-text comment isn't a field — it lives in the intervals MESSAGE thread. Post it
     // there (deduped) so "Anything else?" shows up in intervals too, not just Platyplus.
-    if (fb.note && fb.note.trim()) syncActivityNote(req.user, id, fb.note.trim()).catch((e) => console.error('[icu-note-write] ' + (e.message || e)))
+    if (fb.note && fb.note.trim()) syncActivityNote(req.user, icuActivityId, fb.note.trim()).catch((e) => console.error('[icu-note-write] ' + (e.message || e)))
   }
   // async coach review referencing the activity (best-effort; only once the coach is set up).
   if (req.user.coachProfile && req.user.coachProfile.trim()) {
     try {
       const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
-      const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${id}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${id}") with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${id}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. Be concise; decide and act.`
+      const rid = icuActivityId || id // #583 — the real intervals activity when linked (so the coach can read/annotate it), else the plan id
+      const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${rid}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${rid}") with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${rid}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. Be concise; decide and act.`
       runCoachTask(req.user, msg).catch((e) => console.error('[activity-review] ' + (e.message || e)))
     } catch (e) { console.error('[activity-review] trigger ' + e.message) }
   }
