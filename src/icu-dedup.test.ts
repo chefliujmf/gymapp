@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { normTitle, eventMatchesPlan, planDroppedByReconcile, slotKey, orphanIsMoveLeftover, liveHas } from '../server/icu-match.js'
+import { normTitle, eventMatchesPlan, planDroppedByReconcile, slotKey, orphanIsMoveLeftover, liveHas, userMovedPlatyplusPlan } from '../server/icu-match.js'
 
 // #150 — the dedup that decides "is this Platyplus plan already in intervals?" The real bug:
 // the athlete's OTHER coach names the event "...#Codex Coach #Aggressive June Build", so an
@@ -117,5 +117,24 @@ describe('orphanIsMoveLeftover (#446 orphan-GC)', () => {
   it('a different-SPORT live plan in the slot does not trigger deletion', () => {
     const rideSameDay = { id: 'mcp-r', date: '2026-07-09', sport: 'ride', title: 'Endurance', icuEventId: 121371062 }
     expect(orphanIsMoveLeftover(orphan9, { liveIds: new Set([121371062]), plans: [rideSameDay] })).toBe(false)
+  })
+})
+
+// #588 — Platyplus OWNS the plan: a user MOVING a Platyplus-origin event in intervals is reverted, not adopted (reverses #380).
+describe('userMovedPlatyplusPlan — revert a user move done in intervals', () => {
+  it('a Platyplus-origin plan moved to a different day → REVERT (true)', () => {
+    expect(userMovedPlatyplusPlan({ date: '2026-07-20', origin: 'coach' }, '2026-07-22')).toBe(true)
+    expect(userMovedPlatyplusPlan({ date: '2026-07-20' }, '2026-07-22')).toBe(true) // no origin = Platyplus-owned
+  })
+  it('same day → no move, no revert (false)', () => {
+    expect(userMovedPlatyplusPlan({ date: '2026-07-20', origin: 'coach' }, '2026-07-20')).toBe(false)
+    expect(userMovedPlatyplusPlan({ date: '2026-07-20', origin: 'coach' }, '2026-07-20T18:00:00')).toBe(false) // time-of-day ignored
+  })
+  it('an intervals-ORIGIN plan still ADOPTS the move (false — not reverted)', () => {
+    expect(userMovedPlatyplusPlan({ date: '2026-07-20', origin: 'icu' }, '2026-07-22')).toBe(false)
+  })
+  it('missing dates → false (never revert on bad data)', () => {
+    expect(userMovedPlatyplusPlan({ origin: 'coach' }, '2026-07-22')).toBe(false)
+    expect(userMovedPlatyplusPlan({ date: '2026-07-20' }, '')).toBe(false)
   })
 })

@@ -25,7 +25,7 @@ const USE_PG = !!process.env.DATABASE_URL
 const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
-import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover } from './icu-match.js'
+import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { generatePlanSkeleton } from './plan-skeleton.js' // #516c — deterministic 14-day plan skeleton (periodization/load/spacing in code)
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
@@ -2198,7 +2198,8 @@ function planToIcuEvent(plan, items = []) {
     const dispSegs = plan.sport === 'ride' ? bandSteadyPower(segs) : segs
     const native = nativeWorkoutText(dispSegs, isRun)
     if (!isRun && dispSegs.length) ev.workout_doc = { steps: dispSegs.flatMap((s) => encodeStep(s, false)) }
-    ev.description = [native, stripDerivedWorkout(stripPlatyplusLinks(plan.notes)), shortCoachNote(plan)].filter(Boolean).join('\n\n')
+    // #588 — Platyplus owns the plan: label it so the athlete edits in Platyplus, not here (a change made in intervals is reverted on the next sync). Re-composed each push, so it never accumulates.
+    ev.description = [native, stripDerivedWorkout(stripPlatyplusLinks(plan.notes)), shortCoachNote(plan), '📋 Planned in Platyplus — edit it there (changes made here are replaced).'].filter(Boolean).join('\n\n')
   } else if (plan.sport === 'swim') {
     // #swim-tri — swim plans are distance sets (create_swim precomputes duration/distance/sTSS). No power/pace
     // workout_doc (intervals' swim model differs); push a Swim event carrying the LOAD so Form/CTL counts it.
@@ -2443,8 +2444,9 @@ async function reconcileFromIcu(user, from, to) {
   // PLATYPLUS-WINS dedup key: same day + sport + title ⇒ it's the same session.
   const planKey = (date, sport, title) => `${date}|${sport}|${String(title || '').trim().toLowerCase()}`
   const planKeys = new Set(user.plans.map((p) => planKey(p.date, p.sport, p.title)))
-  let imported = 0, refreshed = 0, gcDeleted = 0
+  let imported = 0, refreshed = 0, gcDeleted = 0, reverted = 0
   const orphanCandidates = [] // #414 — our pushed events that no plan claims; deleted AFTER the loop, fail-safe-guarded
+  const revertMoves = [] // #588 — Platyplus-origin plans a user MOVED in intervals; re-pushed to their owned date AFTER the loop
   for (const ev of events || []) {
     if (ev.category && ev.category !== 'WORKOUT') continue
     if (!['Ride', 'Run', 'Swim', 'WeightTraining'].includes(ev.type)) continue
@@ -2454,12 +2456,15 @@ async function reconcileFromIcu(user, from, to) {
       // platyplus-origin plans are master and never overwritten. Completion/feedback untouched.
       const existing = user.plans.find((p) => p.icuEventId === ev.id)
       if (existing) {
-        // #380 — a MOVE made IN intervals WINS FOR THE DAY (JM's pick): adopt the new date so a reschedule
-        // done on the intervals calendar mirrors back to Platyplus. Applies to EVERY origin (incl. gym — the
-        // #377 skip is only for NEW-shell imports, not a date-refresh of an already-owned plan). Content
-        // (exercises/steps/title) stays Platyplus-owned unless the plan itself originated in intervals.
+        // #588 (SUPERSEDES #380 "intervals-move-wins") — Platyplus OWNS the plan; a user must NOT manipulate it in
+        // intervals. If they MOVED a PLATYPLUS-origin planned event to another day there, REVERT it (re-push to its
+        // Platyplus date after the loop — prod-only). An intervals-ORIGIN plan (the user made it in intervals) still
+        // adopts the move. Content stays Platyplus-owned either way (icu-origin still refreshes below).
         const icuDate = String(ev.start_date_local || '').slice(0, 10)
-        if (icuDate && icuDate !== existing.date) { existing.date = icuDate; existing.updatedAt = Date.now(); refreshed++ }
+        if (icuDate && icuDate !== existing.date) {
+          if (userMovedPlatyplusPlan(existing, icuDate)) revertMoves.push(existing) // revert the user's move (re-push below)
+          else { existing.date = icuDate; existing.updatedAt = Date.now(); refreshed++ } // intervals-origin plan: adopt
+        }
         if (existing.origin === 'icu') {
           const fresh = icuEventToPlan(ev)
           const sig = (p) => JSON.stringify([p.title, p.notes, p.segments])
@@ -2523,6 +2528,13 @@ async function reconcileFromIcu(user, from, to) {
       console.warn(`[reconcile GC] ${user.username}: deleted ${safe.length} orphan event(s) [${safe.map((e) => e.id).join(',')}] — leftover/duplicate, no owning plan.`)
     }
   }
+  // #588 — Platyplus OWNS the plan: a user MOVED a Platyplus-origin planned event in intervals → REVERT it by re-pushing
+  // to its OWNED date (pushPlanToIcu finds the moved event by icuEventId + updates it back, no duplicate). PROD-only
+  // (pushPlanToIcu skips on staging). Capped fail-safe. Net effect: intervals is a read-only mirror — a move snaps back.
+  if (!IS_STAGING && revertMoves.length) {
+    for (const p of revertMoves.slice(0, 12)) { try { await pushPlanToIcu(user, p); reverted++ } catch (e) { console.error('[revert-move] ' + (e.message || e)) } }
+    console.warn(`[reconcile revert] ${user.username}: reverted ${reverted}/${revertMoves.length} user move(s) done in intervals — Platyplus owns the plan (#588).`)
+  }
   // Deletion mirror (#150) + replaced-plan cleanup (#185): drop a stored plan whose
   // intervals mirror is gone — icu-origin always, platyplus-origin ONLY when a live
   // (replacement) WORKOUT event now occupies the same day+sport (the coach republished
@@ -2538,9 +2550,9 @@ async function reconcileFromIcu(user, from, to) {
   // (a wrongly-dropped QA plan is unrecoverable). The deletion-mirror is prod-only, like push + the orphan-GC.
   if (!IS_STAGING) user.plans = user.plans.filter((p) => !planDroppedByReconcile(p, { liveIds: liveIcuIds, ownedSlots, from, to }))
   const dropped = before - user.plans.length
-  if (imported || dropped || gcDeleted) audit(user, { actor: 'sync', action: 'Synced from intervals', target: '', detail: [imported && `${imported} imported`, dropped && `${dropped} removed`, gcDeleted && `${gcDeleted} orphan${gcDeleted > 1 ? 's' : ''} cleaned`, refreshed && `${refreshed} refreshed`].filter(Boolean).join(' · '), kind: 'sync' }) // #232/#414
-  if (imported || dropped || refreshed || gcDeleted) save(store)
-  return { imported, dropped, refreshed, gcDeleted, scanned: (events || []).length }
+  if (imported || dropped || gcDeleted || reverted) audit(user, { actor: 'sync', action: 'Synced from intervals', target: '', detail: [imported && `${imported} imported`, dropped && `${dropped} removed`, gcDeleted && `${gcDeleted} orphan${gcDeleted > 1 ? 's' : ''} cleaned`, refreshed && `${refreshed} refreshed`, reverted && `${reverted} move${reverted > 1 ? 's' : ''} reverted`].filter(Boolean).join(' · '), kind: 'sync' }) // #232/#414/#588
+  if (imported || dropped || refreshed || gcDeleted || reverted) save(store)
+  return { imported, dropped, refreshed, gcDeleted, reverted, scanned: (events || []).length }
 }
 
 // ---- calendar items (meal/mind/note) — shared by the UI (/auth) and API (/api).

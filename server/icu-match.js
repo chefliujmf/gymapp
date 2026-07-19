@@ -50,6 +50,16 @@ export function planDroppedByReconcile(plan, { liveIds, ownedSlots, from, to }) 
   return ownedSlots.has(slotKey(plan.date, plan.sport))
 }
 
+// #588 — Platyplus OWNS its plan; users must NOT manipulate it in intervals. A MOVE of a PLATYPLUS-ORIGIN planned event
+// to a different day IN intervals is a manipulation to REVERT (re-push it back to the Platyplus date), not adopt — this
+// REVERSES #380's "intervals-move-wins". An intervals-ORIGIN plan (the user created it in intervals) still adopts moves
+// there. `icuDate` = the event's start_date_local (YYYY-MM-DD). Pure + unit-tested.
+export function userMovedPlatyplusPlan(plan, icuDate) {
+  const planDate = String(plan?.date || '').slice(0, 10)
+  const evDate = String(icuDate || '').slice(0, 10)
+  return !!(evDate && planDate && evDate !== planDate && plan?.origin !== 'icu')
+}
+
 // string/number-tolerant Set membership — icuEventIds get stored as numbers OR strings, and a Set of one type
 // silently misses the other (this quietly defeated the #431 orphan-GC when a plan's link was a string). #446.
 export const liveHas = (set, id) => id != null && (set.has(id) || set.has(String(id)) || set.has(Number(id)))

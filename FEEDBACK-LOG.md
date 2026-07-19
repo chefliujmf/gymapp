@@ -3279,3 +3279,19 @@ here, in the prompt AND Settings) instead of the account-wide count — so a dev
 offered one even when the laptop already has one. Registration already uses `residentKey:'required'` (discoverable), so
 no server change needed. **TEST:** on Android, sign in with password → the "add a passkey on this device" prompt should
 appear → add it → next sign-in uses the phone's fingerprint. (Client-only; ships on the QA deploy.)
+
+### #588 — Platyplus OWNS the plan: users can't manipulate it in intervals (revert-on-sync) 🧪 (built; needs prod verify)
+JM rule (2026-07-19): "I don't want people to start to manipulate their plan in intervals. Platyplus is the owner —
+show it there but they can't modify it." Researched JM's `.ics` idea: intervals CAN subscribe to an external .ics
+(read-only ✓) BUT an .ics carries only type/time/duration/TSS — NOT a structured workout, so it would NOT push
+power/pace steps to the Garmin/Wahoo. JM confirmed he NEEDS the structured workout on his head unit → **.ics rejected;
+API push + REVERT-ON-SYNC + label** (intervals has no per-event lock via the athlete key, so revert IS the enforcement).
+BUILT (SUPERSEDES #380 "intervals-move-wins"): `reconcileFromIcu` now, for a Platyplus-origin event a user MOVED in
+intervals, REVERTS it — re-pushes to its owned date via `pushPlanToIcu` (prod-only; finds the moved event by icuEventId
+→ updates, no dup). `userMovedPlatyplusPlan` (icu-match.js, unit-tested ×4: Platyplus-origin move→revert, same-day→no,
+icu-origin→adopt, bad-data→no). Events labelled "📋 Planned in Platyplus — edit it there (changes here are replaced)",
+stripped on import (stripPlatyplusLinks) so it can't accumulate. intervals-ORIGIN plans still adopt their own moves.
+⚠️ **PROD-ONLY (pushPlanToIcu skips on staging) → can't verify on QA; needs JM's prod test:** move a planned workout in
+intervals → within a reconcile cycle it snaps back to Platyplus's day. Sources:
+[webcal thread](https://forum.intervals.icu/t/external-calendar-webcal-sync-edit/206) ·
+[calendar export](https://forum.intervals.icu/t/export-your-intervals-icu-calendar/576).

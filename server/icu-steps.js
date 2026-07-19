@@ -179,7 +179,9 @@ export function flattenIcuStepsSrv(steps = []) {
 // prepends ANOTHER → they accumulate; cross-env (QA + prod share the athlete) you get one prod + one QA link.
 // Strip any such line wherever notes are composed or imported. Pure + unit-tested.
 export function stripPlatyplusLinks(s) {
-  return String(s || '').replace(/^.*Open workout in Platyplus.*$/gim, '').replace(/\n{3,}/g, '\n\n').trim()
+  // #378 deep-link + #588 "Planned in Platyplus" ownership label — BOTH are regenerated on every push, so strip them
+  // from any imported text so they never persist in plan.notes / accumulate across round-trips.
+  return String(s || '').replace(/^.*Open workout in Platyplus.*$/gim, '').replace(/^.*Planned in Platyplus.*$/gim, '').replace(/\n{3,}/g, '\n\n').trim()
 }
 
 // #388 — the native workout TEXT (Warmup / Nx / "- 12m 90% Sweet Spot" / Cooldown) is REGENERATED on every
