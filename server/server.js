@@ -52,7 +52,7 @@ function mergeIcuSportSettings(existing, mapped, intervalsWins = false) {
   }
   return out
 }
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage)
 import webpush from 'web-push' // #457 — phone push notifications
@@ -2173,8 +2173,11 @@ function planToIcuEvent(plan, items = []) {
     // this text for the pace chart (#331), so each step keeps its "- Xm Y% pace" target. RIDES also carry
     // the structured workout_doc (the chart authority). The coaching brief is TRIMMED below a divider — the
     // full plan (meals/mind/recovery) stays in Platyplus via the link.
-    const native = nativeWorkoutText(segs, isRun)
-    if (!isRun && segs.length) ev.workout_doc = { steps: segs.flatMap((s) => encodeStep(s, false)) }
+    // #479 — RIDES render steady targets as a RIDEABLE min–max RANGE (outdoor you self-regulate to a band); this shapes
+    // ONLY the displayed workout (text + doc), AFTER plannedTss above, so the load is unchanged (band averages to target).
+    const dispSegs = plan.sport === 'ride' ? bandSteadyPower(segs) : segs
+    const native = nativeWorkoutText(dispSegs, isRun)
+    if (!isRun && dispSegs.length) ev.workout_doc = { steps: dispSegs.flatMap((s) => encodeStep(s, false)) }
     ev.description = [native, stripDerivedWorkout(stripPlatyplusLinks(plan.notes)), shortCoachNote(plan)].filter(Boolean).join('\n\n')
   } else if (plan.sport === 'swim') {
     // #swim-tri — swim plans are distance sets (create_swim precomputes duration/distance/sTSS). No power/pace
