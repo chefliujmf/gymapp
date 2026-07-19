@@ -9,7 +9,17 @@ import { attributionFor } from '../attribution'
 export default function ExerciseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const coachTip = (useLocation().state as { coachTip?: string } | null)?.coachTip // #420 — the coach's per-exercise note, shown as the description (catalog has none yet)
+  const loc = useLocation()
+  const coachTip = (loc.state as { coachTip?: string } | null)?.coachTip // #420 — the coach's per-exercise note, shown as the description (catalog has none yet)
+  // #585 — Back must return to where you came from, never dump you on Home. `navigate(-1)` does that WHEN there's real
+  // in-app history; but on a PWA cold-start / after a history replace this page is the FIRST entry (idx 0) and back
+  // exits to the start_url (Home). So: go back if there's history, else use the referrer we were handed, else the library.
+  const goBack = () => {
+    const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0
+    const from = (loc.state as { from?: string } | null)?.from
+    if (idx > 0) navigate(-1)
+    else navigate(from || '/exercises')
+  }
   const ex = id ? allExercisesById[id] : undefined
   const [added, setAdded] = useState(0)
   const gender = (useLiveQuery(() => getSetting('gender')) as 'male' | 'female' | undefined) ?? 'male'
@@ -35,7 +45,7 @@ export default function ExerciseDetail() {
     <div>
       <div className="detail-top">
         <div className="detail-hero detail-hero--video">
-          <button className="back-btn" onClick={() => navigate(-1)}>‹</button>
+          <button className="back-btn" onClick={goBack}>‹</button>
           {video
             ? <video key={video} className="ex-hero-video" src={video} poster={poster} controls autoPlay loop muted playsInline controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={(e) => e.preventDefault()} />
             : poster

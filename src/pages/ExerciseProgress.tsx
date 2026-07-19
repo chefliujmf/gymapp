@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSetting } from '../db'
 import { allExercisesById } from '../data/catalog'
@@ -18,6 +18,14 @@ const rel = (ms: number) => {
 // weekly volume, next progressive-overload target. Science: docs/strength-analytics.md.
 export default function ExerciseProgress() {
   const navigate = useNavigate()
+  const loc = useLocation()
+  // #585 — same robust Back as ExerciseDetail: return to the referrer, never dump on Home when there's no back-history.
+  const goBack = () => {
+    const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0
+    const from = (loc.state as { from?: string } | null)?.from
+    if (idx > 0) navigate(-1)
+    else navigate(from || '/strength')
+  }
   const { name: raw } = useParams()
   const name = decodeURIComponent(raw || '')
   const logs = useLiveQuery(() => db.logs.orderBy('completedAt').toArray())
@@ -34,7 +42,7 @@ export default function ExerciseProgress() {
   if (!logs) return null
   return (
     <div>
-      <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
+      <button className="icon-btn" onClick={goBack} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head"><h1>{name}</h1><p>{[muscle, h ? `${h.sessions} session${h.sessions === 1 ? '' : 's'} in range` : ''].filter(Boolean).join(' · ')}</p></div>
 
       {!h ? <div className="empty"><div className="big">🏋️</div>No logged sets for {name} yet.<br />Complete a session with this exercise to see its progress.</div> : <>
