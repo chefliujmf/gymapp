@@ -30,7 +30,7 @@ import { readiness as computeReadiness, baselines as wellnessBaselines, forecast
 import { generatePlanSkeleton } from './plan-skeleton.js' // #516c — deterministic 14-day plan skeleton (periodization/load/spacing in code)
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
-import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch } from './sport-settings.js'
+import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
 import { planCapViolation } from './plan-cap.js'
 import { localDate } from './tz.js'
 // #508 — DEEP-merge intervals sport-settings into ours PER GROUP. intervals only knows ftp/maxHr/lthr/thresholdPace;
@@ -197,12 +197,16 @@ async function syncBenchmarksFromIcu(user, { overwrite = false } = {}) {
   if (!a || !a.id) return false
   if (String(a.id) !== user.icuAthlete) user.icuAthlete = String(a.id)
   const mapped = fromIcuSportSettings(a.sportSettings || [])
+  const beforeSS = { cycling: { ...(user.sportSettings?.cycling || {}) }, running: { ...(user.sportSettings?.running || {}) }, swimming: { ...(user.sportSettings?.swimming || {}) } } // #563 snapshot
   user.sportSettings = mergeIcuSportSettings(user.sportSettings, mapped, overwrite)
   // mirror the coach anchors from the MERGED value (our value when set, intervals only when we had none / on import)
   const ftp = user.sportSettings.cycling?.ftp, maxHr = user.sportSettings.cycling?.maxHr
   if (ftp != null) user.ftp = ftp
   if (maxHr != null) user.maxHR = maxHr
   save(store)
+  // #563 — an intervals IMPORT that CHANGED an existing benchmark → coach re-evaluates + acknowledges. Fill-blank never
+  // fires (significantBenchChange needs a real before-value), so this only triggers on a deliberate overwrite/import.
+  for (const g of ['cycling', 'running', 'swimming']) maybeCoachBenchmarkAdapt(user, significantBenchChange(g, beforeSS[g], user.sportSettings[g], 'intervals'), 'intervals').catch(() => {})
   return true
 }
 app.get('/auth/me', auth, async (req, res) => {
@@ -684,6 +688,7 @@ async function applySportStat(user, body = {}) {
   if (group === 'swimming' && 'swolf' in body) patch.swolf = numOr(body.swolf, 20, 100)   // #swim-tri SWOLF (strokes + s per length; lower = better)
 
   user.sportSettings = user.sportSettings || {}
+  const beforeGroup = { ...(user.sportSettings[group] || {}) } // #563 — snapshot to detect a meaningful benchmark change
   user.sportSettings[group] = { ...(user.sportSettings[group] || {}), ...patch }
   if (group === 'running' && 'runVdot' in body) user.runVdot = numOr(body.runVdot, 20, 95)
   if (group === 'cycling') {
@@ -708,7 +713,22 @@ async function applySportStat(user, body = {}) {
     } catch (e) { pushError = String(e).slice(0, 120) }
   }
   save(store)
+  // #563 — a meaningful FTP/threshold/CSS edit → have the coach re-evaluate the plan + acknowledge the new number (async, best-effort)
+  maybeCoachBenchmarkAdapt(user, significantBenchChange(group, beforeGroup, user.sportSettings[group], 'manual'), 'manual').catch(() => {})
   return { status: 200, body: { ...pub(user), synced, pushError } }
+}
+// #563 — when a KEY benchmark meaningfully changes (the athlete edits it, or imports a new value from intervals), have the
+// coach RE-EVALUATE the upcoming plan + send ONE short notification acknowledging the new number. Guarded: only for
+// athletes whose writes reach intervals (prod / own athlete — coach planning is prod-only) with a coach set up, and
+// DEBOUNCED (~4h) so rapid edits (258→260→262) don't spam. Same runCoachTask pattern as the activity-review.
+async function maybeCoachBenchmarkAdapt(user, change, source) {
+  if (!change || !syncsIntervals(user)) return
+  if (!(user.coachProfile && user.coachProfile.trim())) return
+  if (Date.now() - (user.lastBenchAdaptAt || 0) < 4 * 3600 * 1000) return
+  user.lastBenchAdaptAt = Date.now(); save(store)
+  const src = source === 'manual' ? 'the athlete set it themselves in Platyplus' : 'imported from intervals.icu'
+  const msg = `The athlete's ${change.label} just changed from ${Math.round(change.from)} to ${Math.round(change.to)} (${change.dir}) — ${src}. Their ${change.group} training zones move with it (each workout's % target stays, but the real watts/paces shift). Re-evaluate the UPCOMING plan with list_schedule: confirm it still fits, and adjust intensity/load ONLY if this change is big enough to matter. Then send ONE short, encouraging notify acknowledging the new ${change.label} (${Math.round(change.to)}) and what — if anything — you changed. Be concise; decide and act.`
+  runCoachTask(user, msg).catch((e) => console.error('[bench-adapt] ' + (e.message || e)))
 }
 app.put('/auth/sport-stat', auth, async (req, res) => {
   const r = await applySportStat(req.user, req.body || {}); res.status(r.status).json(r.body)

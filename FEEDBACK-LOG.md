@@ -3129,7 +3129,7 @@ jargon and inconsistent across sports. Make them plain + consistent.
 ### #562 — Make cycling/running pending copy as EXPLICIT as swimming ⬜
 "swimming seems to be more explicit now than the 2 others" — bring cycling/running "add efforts to firm up" up to the
 swim cards' explicit "needs a few hard efforts across distances" clarity. Consistency.
-### #563 — Coach must KNOW + adapt when a benchmark changes (manual or from intervals) ⬜
+### #563 — Coach must KNOW + adapt when a benchmark changes (manual or from intervals) 🧪 (built)
 "when manual change from intervals, how coach will know and adapt notifications?" — a benchmark change should trigger
 coach awareness → re-plan / a notification acknowledging the new value.
 ### #564 — Manually LINK/UNLINK a planned workout on a completed activity 🧪 (Option A + intervals pairing)
@@ -3162,7 +3162,7 @@ triathlon on → adds swim/bike/run + mainSport='triathlon'; dropping a leg drop
 "same for thumbnail post workout for running, same concept as cycling (swimming follows)." Generalized PowerBlocks →
 ZoneBlocks (values+anchor, sport-agnostic). ActivityDetail run/swim thumbnail = ZoneBlocks from the SPEED stream
 (anchor = threshold/CSS speed). TODO: Calendar + Today thumbnails for run/swim (fetch velocity) for full consistency.
-### #576 — Triathlon LIMITER card lacks bottom-left padding ⬜ (for after)
+### #576 — Triathlon LIMITER card lacks bottom-left padding 🧪 (reconciled 2026-07-19: limiter + balanced cards both have uniform `padding: 14` at TriathlonStats.tsx:82,90 — JM to confirm it's the card he meant; if a different card, re-flag with the screenshot)
 The "YOUR LIMITER" callout text touches the edges (bottom-left). Fix the padding in TriathlonStats.
 ### #573 — GYM variety (Option C, personalized to the athlete + weaknesses) 🧪 (coach-engine; host-sync on prod)
 JM's wife: gym warm-up always identical + exercises repeat (rowing). JM chose **Option C**: coach variety rules (rotate

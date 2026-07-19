@@ -79,6 +79,20 @@ export function icuPatchForGroup(sportSettings, group, patch) {
 /** Which Platyplus sport name (Profile chips) maps to which intervals group. */
 export const SPORT_TO_GROUP = { cycling: 'cycling', running: 'running', swimming: 'swimming' }
 
+// #563 — did a KEY benchmark change enough that the coach should re-evaluate the plan + acknowledge the new number?
+// `before`/`after` are the GROUP's settings objects (e.g. sportSettings.cycling). A MANUAL edit (the athlete MEANT it)
+// fires on a small move; an intervals-detected drift needs a bigger one (eFTP/CSS wiggle from ride to ride). Returns
+// { group, key, label, from, to, dir } for the changed anchor, or null. Pure + unit-tested.
+export function significantBenchChange(group, before, after, source = 'manual') {
+  const M = { cycling: ['ftp', 'FTP'], running: ['thresholdPace', 'threshold pace'], swimming: ['thresholdPace', 'CSS'] }[group]
+  if (!M) return null
+  const [key, label] = M
+  const a = Number(before?.[key]) || 0, b = Number(after?.[key]) || 0
+  const minPct = source === 'manual' ? 0.02 : 0.04
+  if (a > 0 && b > 0 && Math.abs(b - a) / a >= minPct) return { group, key, label, from: a, to: b, dir: b > a ? 'up' : 'down' }
+  return null
+}
+
 /**
  * #268/#1003/#459 — map Platyplus profile-BASICS edits to an intervals athlete PUT body (WRITE-BACK, verified: a partial
  * `PUT /athlete/{id}` merges + returns 200). `changed` = the keys the user just set (req.body); values come from the

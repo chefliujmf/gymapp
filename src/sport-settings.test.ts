@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { fromIcuSportSettings, icuPatchForGroup, paceFromMps, mpsFromPace, runThresholdFromPaceCurve, athleteBasicsPatch } from '../server/sport-settings.js'
+import { fromIcuSportSettings, icuPatchForGroup, paceFromMps, mpsFromPace, runThresholdFromPaceCurve, athleteBasicsPatch, significantBenchChange } from '../server/sport-settings.js'
 
 // jmfiset's real intervals athlete shape (#210 findings): per-sport settings array, each with an id.
 const REAL = [
@@ -101,4 +101,30 @@ describe('athleteBasicsPatch (write-back to intervals)', () => {
   })
   it('empty when nothing relevant changed', () => expect(athleteBasicsPatch(['coachName', 'sleepNeed'], { heightCm: 175 })).toEqual({}))
   it('maps several changed fields at once', () => expect(athleteBasicsPatch(['heightCm', 'dob', 'sex'], { heightCm: 175, dob: '1985-08-16', sex: 'female' })).toEqual({ height: 1.75, icu_date_of_birth: '1985-08-16', sex: 'F' }))
+})
+
+// #563 — a meaningful benchmark change should trigger the coach to re-evaluate + acknowledge.
+describe('significantBenchChange — when to nudge the coach on a benchmark change', () => {
+  it('MANUAL: a ≥2% FTP edit fires (dir up)', () => {
+    expect(significantBenchChange('cycling', { ftp: 250 }, { ftp: 260 }, 'manual')).toMatchObject({ group: 'cycling', label: 'FTP', from: 250, to: 260, dir: 'up' })
+  })
+  it('MANUAL: a tiny <2% tweak does NOT fire', () => {
+    expect(significantBenchChange('cycling', { ftp: 258 }, { ftp: 260 }, 'manual')).toBeNull() // 0.78% < 2%
+  })
+  it('INTERVALS: needs a bigger move (≥4%) to fire — filters out eFTP wiggle', () => {
+    expect(significantBenchChange('cycling', { ftp: 250 }, { ftp: 258 }, 'intervals')).toBeNull() // 3.2% < 4%
+    expect(significantBenchChange('cycling', { ftp: 250 }, { ftp: 265 }, 'intervals')).toMatchObject({ from: 250, to: 265, dir: 'up' }) // 6% ✓
+  })
+  it('FILL-BLANK never fires (no real before-value)', () => {
+    expect(significantBenchChange('cycling', {}, { ftp: 260 }, 'intervals')).toBeNull()
+  })
+  it('running threshold pace + a faster (lower) value reads dir down', () => {
+    expect(significantBenchChange('running', { thresholdPace: 300 }, { thresholdPace: 288 }, 'manual')).toMatchObject({ label: 'threshold pace', dir: 'down' }) // 4% faster
+  })
+  it('swimming CSS is covered', () => {
+    expect(significantBenchChange('swimming', { thresholdPace: 100 }, { thresholdPace: 95 }, 'manual')).toMatchObject({ label: 'CSS', from: 100, to: 95 })
+  })
+  it('a non-anchor group / metric returns null', () => {
+    expect(significantBenchChange('cycling', { wPrime: 20 }, { wPrime: 25 }, 'manual')).toBeNull() // wPrime isn't a plan-zone anchor
+  })
 })
