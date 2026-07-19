@@ -3239,11 +3239,17 @@ source (this is a LICENSE axis, distinct from the media-independence gate which 
 and add a gate so a non-commercial source can't sneak back in. Check CONTENT.md + content-manifest. Assess which current
 exercises are Centr-sourced and how many free ones remain (may need to backfill the library from free sources).
 
-### #585 — BUG: exercise detail → Back goes to HOME instead of the workout/library ⬜
-JM: "when I click on one exercise to see what needs to be done and press back, it brings me back to home page". The
-exercise-detail view breaks the back-stack — Back should return to the workout/library you came from, not Home. Likely a
-router issue (navigate that replaces history, or a hard-coded home link). Trace the exercise-detail route + how it's
-opened from a workout vs the library; fix so browser/hardware Back returns to the previous screen.
+### #585 — BUG: exercise detail → Back goes to HOME instead of the workout/library 🔨 (built, needs device confirm)
+JM: "when I click on one exercise to see what needs to be done and press back, it brings me back to home page". DIAGNOSIS:
+both ExerciseDetail (`/exercises/:id`, from PlanDetail's "Full exercise →" + the /exercises library) and ExerciseProgress
+(`/exercise/:name`, from the post-workout GymSummary which renders INLINE in the GymPlayer route) used bare
+`navigate(-1)`. That returns to the referrer WHEN there's real in-app history — but on a **PWA cold-start** or after an
+**upstream history replace** (Calendar does `setSearchParams({replace:true})`; the gym player renders the summary in place)
+the exercise page is the FIRST history entry (`history.state.idx === 0`), so `navigate(-1)` exits to the PWA start_url =
+**Home**. FIX (both pages): `goBack()` = go back if `idx>0`, else use a passed `state.from` referrer, else a sensible
+parent (`/exercises` · `/strength`) — never Home. Typechecks. ⚠️ Can't repro headlessly (client PWA nav) — **JM to confirm
+on the device**; if it still lands on Home from a SPECIFIC screen, capture that screen so I can thread `state={{from}}`
+through that exact link (the referrer path, so back returns to the workout itself, not just the library).
 
 ### #586 — CRITICAL: 4 coach engines never shipped to the coach (Dockerfile COPY dropped them) 🧪 (fixed)
 Found while wiring up the gym-variety test: `server/Dockerfile` hand-listed the coach engines it COPY'd —
