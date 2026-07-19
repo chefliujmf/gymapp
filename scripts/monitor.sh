@@ -50,7 +50,9 @@ check_backup() {
 # run as this user on that token; once it lapses EVERY coach chat silently 401s (claude exits 1 → the vague "couldn't
 # finish that one"). There's no refresh token, so it needs a manual re-auth — catch it BEFORE it silently dies for a day.
 check_coach_auth() {
-  local cred="$HOME/.claude/.credentials.json" ea now
+  # the coach + bug-worker run as user 'jmf' on jmf's Claude subscription — check THAT credential file explicitly
+  # (the monitor itself runs as root, so $HOME would be /root — the wrong token).
+  local cred="/home/jmf/.claude/.credentials.json" ea now
   [ -f "$cred" ] || { echo "$(ts)  coach  WARN no Claude credentials at $cred" >> "$LOG"; return; }
   ea=$(python3 -c "import json; o=json.load(open('$cred')); o=o.get('claudeAiOauth',o); print(int(o.get('expiresAt',0)))" 2>/dev/null || echo 0)
   [ "${ea:-0}" -gt 0 ] || return
