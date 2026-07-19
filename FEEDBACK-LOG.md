@@ -188,7 +188,7 @@ test guide → the **🧪 Test guide** section below.
 480. ⬜ **Post-workout insights PER GRAPH are poor.** JM 2026-07-10: "post workout insights per graph is poor and not
     great." The per-chart insight line (chart standard "insight line") needs to be genuinely useful, not filler.
     **Route:** feature/quality (this chat).
-479. ⬜ **Target RANGES must be correct — show a range (not a flat value), and read smallest-first.** Two facets, combined
+479. 🧪 **Target RANGES must be correct — show a range (not a flat value), and read smallest-first.** Two facets, combined
     per JM 2026-07-14: **(a) Garmin/trainer target — RANGE outdoor, SPECIFIC value indoor (worker, OPEN):** JM 2026-07-10
     "today on my garmin I did not have a range but just 171 watts which is wrong." ⚠️ **INDOOR vs OUTDOOR (JM 2026-07-14):
     an INDOOR workout SHOULD be a specific value — a smart trainer holds that exact power in ERG mode, exactly how
@@ -202,6 +202,15 @@ test guide → the **🧪 Test guide** section below.
     targets are single values; marathon (potential→realistic) + segment time (start→end) already read ascending — no other
     reversals. **The worker must apply BOTH rules to the Garmin/intervals push (a): a real min–max RANGE, smallest first.**
     **Route:** bug (worker owns (a); (b) done client-side).
+    ✅ **BUILT (a) OUTDOOR, 2026-07-19 (JM re-reported: "the ride does not seem to have ranges for target power… not
+    acceptable for outdoor rides"):** `bandSteadyPower` (server/icu-steps.js, unit-tested) widens a STEADY ride power step
+    `[T,T]` into a symmetric min–max band `[T-Δ,T+Δ]` (smallest first), Δ by intensity (endurance ±6 · SS ±4 · threshold
+    ±3); applied in `planToIcuEvent` AFTER `plannedTss` (text + workout_doc) so LOAD is unchanged (band averages to T).
+    Warm-up ramps + cool-downs untouched. Propagated to the coach: `create_ride` MCP desc + `coach-engine-cycling.md`
+    ("targets are RANGES not points"). Fixed JM's live 07-19 ride (Endurance 68% → 62–74%, load 51 unchanged; verified on
+    intervals). ⬜ REMAINING — INDOOR = specific ERG value: planned rides carry NO indoor/outdoor flag, so ALL rides
+    default to a range for now (outdoor = JM's focus); honouring "indoor → exact value" needs an indoor/ERG designation on
+    the planned ride first. ⚠️ Systemic code is on QA (dev) → reaches PROD on the next promote; today's ride fixed directly.
 478. ⬜ **Eat & Mind must stay SUGGESTIONS — never auto-imposed into the calendar.** JM 2026-07-10 (3 msgs +
     screenshots): "I prefer to keep suggestions for eat and mind; 8 and 9 imposed in my calendar is a no-no…
     this is suggestions I want to keep… not just dinner like this, this is wrong and never asked." The coach's
