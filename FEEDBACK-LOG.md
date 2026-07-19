@@ -3256,3 +3256,20 @@ repetitive (the variety engine literally wasn't loaded). FIX: `COPY … coach-en
 VARIETY REVIEW (#573) done alongside: video-only already enforced (#420 searchExercises filters to e.video); logic is
 sound + personalized; coach CAN see past gym exercises (list_schedule includes them); strengthened the "look back before
 choosing" instruction for the daily-adapt pass (no conversation to recall from).
+
+### #587 — Passkey sign-in fails on Android ("server not available"); password works 🧪 (fixed, to test)
+JM: "on android it asked me to connect, tried to use passkey and said the server was not available, i was able to do it
+with password." DIAGNOSIS (verified in code, not a real outage — password hit the SAME server/origin fine): "the server
+was not available" is NOT one of our strings (our fetch error is "Can't reach the server…") — it's **Android's own
+Credential Manager** message when the usernameless passkey lookup fails. Root cause: JM's passkey is a **platform**
+passkey (`authenticatorAttachment:'platform'`, Touch ID / iCloud on his Mac), so **Android has no LOCAL passkey for the
+account**, and the OS cross-device flow failed. The app should have offered to add an Android passkey but didn't —
+**`PasskeyPrompt` gated on the ACCOUNT-wide `user.passkeys.length > 0`**, and he already had the Mac passkey, so it never
+showed on the phone (passkeys are PER-DEVICE). FIXES: (1) `Login.doPasskey` — ANY passkey-login failure (missing local
+cred / cross-device fail / Android "server not available") now shows ONE clear line ("No passkey on this device yet — use
+your password, then we'll set one up for this device"), never the scary raw OS message; AbortError (user cancelled) stays
+quiet. (2) `PasskeyPrompt` now gates on a **per-device** localStorage flag `pk-added-here` (set when a passkey is added
+here, in the prompt AND Settings) instead of the account-wide count — so a device with no local passkey (Android) IS
+offered one even when the laptop already has one. Registration already uses `residentKey:'required'` (discoverable), so
+no server change needed. **TEST:** on Android, sign in with password → the "add a passkey on this device" prompt should
+appear → add it → next sign-in uses the phone's fingerprint. (Client-only; ships on the QA deploy.)

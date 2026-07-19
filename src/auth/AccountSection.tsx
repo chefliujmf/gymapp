@@ -51,7 +51,7 @@ export default function AccountSection({ only }: { only?: 'account' | 'connectio
   const [pkMsg, setPkMsg] = useState('')
   async function addPasskey() {
     setPkMsg('')
-    try { await apply(await authApi.passkeyRegister(navigator.userAgent.includes('Android') ? 'Phone' : 'This device')); setPkMsg('✓ Passkey added') }
+    try { await apply(await authApi.passkeyRegister(navigator.userAgent.includes('Android') ? 'Phone' : 'This device')); localStorage.setItem('pk-added-here', '1'); setPkMsg('✓ Passkey added') } // #587 — mark this device so PasskeyPrompt stops offering
     catch (e) { setPkMsg('✗ ' + (e as Error).message) }
   }
   async function delPasskey(id: string) { await apply(await authApi.passkeyDelete(id)) }
