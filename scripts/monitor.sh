@@ -46,7 +46,24 @@ check_backup() {
   fi
 }
 
+# Alarm if the COACH's Claude subscription (OAuth) token is expired/expiring. The coach + the autonomous bug-worker
+# run as this user on that token; once it lapses EVERY coach chat silently 401s (claude exits 1 → the vague "couldn't
+# finish that one"). There's no refresh token, so it needs a manual re-auth — catch it BEFORE it silently dies for a day.
+check_coach_auth() {
+  local cred="$HOME/.claude/.credentials.json" ea now
+  [ -f "$cred" ] || { echo "$(ts)  coach  WARN no Claude credentials at $cred" >> "$LOG"; return; }
+  ea=$(python3 -c "import json; o=json.load(open('$cred')); o=o.get('claudeAiOauth',o); print(int(o.get('expiresAt',0)))" 2>/dev/null || echo 0)
+  [ "${ea:-0}" -gt 0 ] || return
+  now=$(( $(date +%s) * 1000 ))
+  if [ "$ea" -lt "$now" ]; then
+    echo "$(ts)  coach  WARN Claude coach token EXPIRED $(( (now-ea)/3600000 ))h ago — coach + bug-worker are 401ing. Re-auth: sudo -u jmf -H claude setup-token" >> "$LOG"
+  elif [ "$ea" -lt "$(( now + 86400000 ))" ]; then
+    echo "$(ts)  coach  WARN Claude coach token expires in <24h — re-auth soon (sudo -u jmf -H claude setup-token)" >> "$LOG"
+  fi
+}
+
 check gymapp /home/jmf/gymapp
 [ -d /home/jmf/gymapp-staging ] && check gymapp-staging /home/jmf/gymapp-staging
 check_backup
+check_coach_auth
 tail -n 800 "$LOG" > "$LOG.tmp" 2>/dev/null && mv -f "$LOG.tmp" "$LOG"

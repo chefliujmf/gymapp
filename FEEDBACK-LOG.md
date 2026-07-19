@@ -3158,7 +3158,7 @@ triathlon on → adds swim/bike/run + mainSport='triathlon'; dropping a leg drop
 ### #574 — Planned RUN chart must match the RIDE (zone-coloured columns, not a line) 🧪 (built)
 "in prod, planned-run graph format is not like cycling; make it the same." PlannedPowerBars now has a run mode
 (run+thrPace): zone columns on a sensible PACE window (min/km), same format as the ride. Line/TrendChart removed.
-### #575 — Post-workout THUMBNAIL for run (+swim) = zone-blocks like cycling 🔨 (ActivityDetail done; Calendar/Today next)
+### #575 — Post-workout THUMBNAIL for run (+swim) = zone-blocks like cycling 🧪 (built — reconciled 2026-07-19: ActivityDetail + Calendar:100-102 + Today:401 ALL render ZoneBlocks for run/swim, PowerBlocks for ride; status was stale)
 "same for thumbnail post workout for running, same concept as cycling (swimming follows)." Generalized PowerBlocks →
 ZoneBlocks (values+anchor, sport-agnostic). ActivityDetail run/swim thumbnail = ZoneBlocks from the SPEED stream
 (anchor = threshold/CSS speed). TODO: Calendar + Today thumbnails for run/swim (fetch velocity) for full consistency.
