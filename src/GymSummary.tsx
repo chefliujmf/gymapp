@@ -83,7 +83,7 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
             {rows.map((e, i) => (
               <Link key={i} to={`/exercise/${encodeURIComponent(e.name)}`} className="gym-exc">
                 <div className="gym-exc__top"><strong>{e.name}{e.pr && <span className="pr-badge">PR 🏅</span>} <span style={{ color: 'var(--accent)' }}>›</span></strong>{e.est > 0 && <span className="meta" style={{ flex: 'none' }}>est 1RM {e.est} kg</span>}</div>
-                <div className="gym-exc__sets">{e.sets.map((s) => `${s.weight ? s.weight + '×' : 'BW×'}${s.reps || 0}`).join(' · ')}{e.vol > 0 ? ` — ${e.vol.toLocaleString()} kg` : ''}</div>
+                <div className="gym-exc__sets">{e.sets.map((s) => `${s.weight ? s.weight + '×' : 'bodyweight ×'}${s.reps || 0}`).join(' · ')}{e.vol > 0 ? ` — ${e.vol.toLocaleString()} kg` : ''}</div>
                 <div className="gymbar"><i style={{ width: `${Math.round((e.vol / maxVol) * 100)}%` }} /></div>
               </Link>
             ))}

@@ -115,7 +115,7 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
         </div>
       ))}
       <div className="section-title">Anything else?</div>
-      <textarea className="fb-ta" value={note} onChange={(e) => setNote(e.target.value)} placeholder="How the body felt, life context, niggles…" />
+      <textarea className="fb-ta" value={note} onChange={(e) => setNote(e.target.value)} placeholder="How the body felt, any niggles…" />
       <button className="btn" style={{ marginTop: 14 }} onClick={save} disabled={!feel && !rpe}>Save &amp; get coach review</button>
     </div>
   )
