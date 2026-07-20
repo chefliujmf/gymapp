@@ -59,7 +59,7 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
     <>
       {/* ONE coach block at the TOP (matches ride/run ActivityDetail #503): verdict → your feedback → source links. */}
       <CoachVerdict review={review} note={note} />
-      <ActivityFeedback id={feedbackId} altIds={altFeedbackIds} sport="gym" date={feedbackDate} reviewShownAbove />
+      <ActivityFeedback id={feedbackId} altIds={altFeedbackIds} sport="gym" date={feedbackDate} reviewShownAbove={!!review} />
       {(planId || activityId) && (
         <div className="done-links">
           {planId && <Link className="done-link done-link--map" to={`/coach/${planId}`}>📋 Planned workout →</Link>}

@@ -72,7 +72,8 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
       {review.verdict && <p className="pw-fbrev__v">{review.verdict}</p>}
       {review.takeaways && review.takeaways.length > 0 && <ul className="pw-fbrev__l">{review.takeaways.slice(0, 3).map((t, i) => <li key={i}>{t}</li>)}</ul>}
     </div>
-  )) : reviewing ? (
+  )) : reviewShownAbove ? null // #598 — a review IS shown above (parent's CoachVerdict) but this component's own matcher missed it → DON'T nag "hasn't reviewed / Retry" under an existing review
+    : reviewing ? (
     <div className="pw-fbrev pw-fbrev--pending"><div className="pw-fbrev__h">🔎 Your coach is reviewing this session…</div><p className="pw-fbrev__v">Takeaways will appear <b>right here</b>{sport === 'gym' ? <>, on <Link to="/progress" className="pw-fbrev__link">Progress</Link></> : null}, and as a 🔔 notification — usually within a minute or two.</p></div>
   ) : saved ? (
     // #589 — saved but NO review landed + not polling = it's stuck (coach was down / errored). Offer a RETRY instead of
