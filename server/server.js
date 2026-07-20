@@ -1913,7 +1913,7 @@ async function runCoachTask(user, message) {
     const args = ['-p', message, '--output-format', 'stream-json', '--verbose', '--mcp-config', mcpConfig, '--allowedTools', 'mcp__platyplus', '--disallowedTools', CHAT_DENY, '--append-system-prompt-file', spFile]
     const proc = spawn(CLAUDE_BIN, args, { env: process.env })
     proc.stdin?.end()
-    const killer = setTimeout(() => { proc.kill('SIGKILL'); reject(new Error('coach task timeout')) }, 180000)
+    const killer = setTimeout(() => { proc.kill('SIGKILL'); reject(new Error('coach task timeout')) }, 600000) // #608 — match the chat-helper: a strength adapt's full rebuild (many search_exercises + creates) needs >240s
     proc.stdout.on('data', () => {}); proc.stderr.on('data', () => {}) // drain
     proc.on('error', (e) => { clearTimeout(killer); cleanup(); reject(e) })
     proc.on('close', () => { clearTimeout(killer); cleanup(); resolve() })
