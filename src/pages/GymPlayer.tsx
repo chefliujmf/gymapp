@@ -320,7 +320,7 @@ export default function GymPlayer() {
           </div>
           {(() => { const fk = gymFeedbackKeys({ date: localISO(), workoutId: w.workoutId }); return <GymSummary minutes={finalMin} exercises={exLogs} review={review} bestE1rm={e1rmMap} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={localISO()} /> })()}
           <button className="btn" style={{ marginTop: 18 }} onClick={() => navigate('/progress')}>View progress</button>
-          <button className="btn btn--ghost" onClick={() => navigate('/exercises')}>Done</button>
+          <button className="btn btn--ghost" onClick={() => navigate('/plan')}>Done</button>
         </div>
       </div>
     )
