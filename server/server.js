@@ -3393,7 +3393,7 @@ function restDowsFromAvailability(av) {
 function buildSkeletonForUser(user, today) {
   const sports = user.sports && user.sports.length ? user.sports : (user.sport ? [user.sport] : ['cycling'])
   const loadPlan = Array.isArray(user.info?.loadPlan) && user.info.loadPlan.length ? user.info.loadPlan : null
-  return generatePlanSkeleton({ today, days: DAILY_HORIZON, sports, trainingDays: Number(user.info?.trainingDays) || 0, restDows: restDowsFromAvailability(user.info?.availability) || undefined, ctl: user.ctl, atl: user.atl, loadPlan })
+  return generatePlanSkeleton({ today, days: DAILY_HORIZON, sports, trainingDays: Number(user.info?.trainingDays) || 0, restDows: restDowsFromAvailability(user.info?.availability) || undefined, ctl: user.ctl, atl: user.atl, loadPlan, pregnant: !!(user.sex === 'female' && user.info && user.info.pregnant) })
 }
 function skeletonText(skel) {
   if (!skel || !skel.days || !skel.days.length) return ''

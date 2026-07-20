@@ -155,7 +155,7 @@ const zoneTitle = (zoneKey, sport) => {
 // opts: { today, days=14, sports, trainingDays, restDows, ctl, loadPlan(blocks), atl }
 // Returns { days: [{date,dow,cls,dayType,sport,zone,targetTss,durationMin,segments,title}], blocks, dailyTss, formEnd }
 export function generatePlanSkeleton(opts = {}) {
-  const { today, days = 14, sports = ['cycling'], trainingDays = 0, restDows, ctl, loadPlan, atl } = opts
+  const { today, days = 14, sports = ['cycling'], trainingDays = 0, restDows, ctl, loadPlan, atl, pregnant = false } = opts
   if (!today) return { days: [], blocks: [], dailyTss: {} }
   const from = today, to = addDays(today, days - 1)
   const rest = restDows && restDows.length ? restDows : recentRestDows({})
@@ -191,10 +191,15 @@ export function generatePlanSkeleton(opts = {}) {
       const phase = phaseFor(d.date)
       const dayType = DAYTYPE[d.sport] || 'ride'
       if (dayType === 'gym') { out.push({ date: d.date, dow: dow(d.date), cls: d.cls, dayType, sport: 'gym', zone: null, targetTss: Math.round(t) || 0, durationMin: 45, segments: [], title: 'Strength session' }); continue }
-      const qi = d.cls === 'quality' ? qCount++ : 0
-      const zoneKey = suggestIntensityZone(d.cls, phase, qi, wi)
+      // #609 — PREGNANCY is MAINTAIN-only: never program threshold/sweet-spot/VO2 quality days (contraindicated —
+      // easy/endurance by RPE + talk test only). Demote every quality day to easy and trim its load so the coach
+      // APPLIES an appropriate plan instead of hard intervals. (The #PREGNANCY prompt block still handles the rest.)
+      const cls = pregnant && d.cls === 'quality' ? 'easy' : d.cls
+      if (pregnant) t = Math.min(t, 45) // maintenance ceiling — no big TSS days in pregnancy
+      const qi = cls === 'quality' ? qCount++ : 0
+      const zoneKey = suggestIntensityZone(cls, phase, qi, wi)
       const built = zoneKey ? buildWorkoutSegments(zoneKey, t) : { segments: [], durationMin: 0, tss: 0 }
-      out.push({ date: d.date, dow: dow(d.date), cls: d.cls, dayType, sport: d.sport, zone: zoneKey, targetTss: Math.round(t) || 0, durationMin: built.durationMin, segments: built.segments, title: zoneTitle(zoneKey, d.sport) })
+      out.push({ date: d.date, dow: dow(d.date), cls, dayType, sport: d.sport, zone: zoneKey, targetTss: Math.round(t) || 0, durationMin: built.durationMin, segments: built.segments, title: zoneTitle(zoneKey, d.sport) })
     }
   })
 
