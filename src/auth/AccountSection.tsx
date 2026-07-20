@@ -59,7 +59,6 @@ export default function AccountSection({ only }: { only?: 'account' | 'connectio
   // intervals.icu (account-level). #582 — the athlete is resolved SERVER-SIDE from the key (/athlete/0); the client
   // must NEVER send an athlete id (it used to default to i28814 → pointed accounts at JM's shared prod athlete).
   const [icuKey, setIcuKey] = useState(''); const [icuMsg, setIcuMsg] = useState('')
-  const [impBusy, setImpBusy] = useState(false); const [impMsg, setImpMsg] = useState<string>() // #582 import-from-intervals
   async function saveIcu() {
     setIcuMsg('Saving…')
     try { await apply(await authApi.saveIcu(icuKey, '')); setIcuKey(''); setIcuMsg('✓ Saved to your account') } // athlete resolved from the key
@@ -133,22 +132,7 @@ export default function AccountSection({ only }: { only?: 'account' | 'connectio
       <input className="search" type="password" placeholder={user.hasIcuKey ? '•••••• (saved) — paste to replace' : 'API key'} value={icuKey} onChange={(e) => setIcuKey(e.target.value)} />
       <button className="btn" onClick={saveIcu} disabled={!icuKey}>Save to account</button>
       {icuMsg && <p className="meta" style={{ marginTop: 8 }}>{icuMsg}</p>}
-      {user.hasIcuKey && <>
-        <ResyncToIntervals />
-        {/* #582 — Platyplus OWNS your benchmarks: your numbers never get overwritten automatically. This is the deliberate
-            way to pull intervals' CURRENT values in (e.g. after you changed something in intervals itself). */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-          <button className="btn btn--ghost" style={{ width: 'auto', padding: '8px 14px' }} disabled={impBusy}
-            onClick={async () => {
-              if (!confirm('Import your FTP, thresholds, W′ and other numbers FROM intervals? This overwrites your Platyplus values with what intervals has right now.')) return
-              setImpBusy(true); setImpMsg(undefined)
-              try { await apply(await authApi.importBenchmarks()); setImpMsg('✓ Imported from intervals') }
-              catch (e) { setImpMsg('✗ ' + (e as Error).message) }
-              finally { setImpBusy(false) }
-            }}>{impBusy ? 'Importing…' : '↓ Import benchmarks from intervals'}</button>
-          <p className="meta" style={{ margin: 0 }}>{impMsg || 'Your Platyplus numbers stay yours — this pulls intervals’ values in only when you ask.'}</p>
-        </div>
-      </>}
+      {user.hasIcuKey && <ResyncToIntervals />}
 
       {user.role === 'admin' && <>
       <div className="section-title">Coach API</div>
