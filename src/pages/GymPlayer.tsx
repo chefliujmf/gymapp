@@ -327,21 +327,42 @@ export default function GymPlayer() {
   }
 
   const sec = Math.ceil(remaining)
-  const showVid = cur.kind === 'timed' || cur.kind === 'set'
-  const group = cur.kind === 'timed' || cur.kind === 'set' ? cur.ex.group : undefined
-  const name = cur.kind === 'ready' ? (cur.next?.name ?? 'Get ready') : cur.kind === 'rest' ? cur.next.name : cur.ex.name
+  // #591 Option A — the editable JeFit SET GRID. It renders for a reps 'set' step AND for the rest
+  // BETWEEN two sets of the same reps exercise (rest becomes a background countdown banner), so logging is
+  // one continuous editable grid, never one-set-at-a-time. Timed exercises keep the big countdown timer.
+  const gEx = cur.kind === 'set' || cur.kind === 'timed' ? cur.ex : cur.kind === 'rest' ? cur.next : null
+  const gExIndex = cur.kind === 'set' ? cur.exIndex : cur.kind === 'rest' ? cur.nextNo - 1 : -1
+  const gridShow = cur.kind === 'set' || (cur.kind === 'rest' && cur.next?.mode === 'reps')
+  const showVid = cur.kind === 'timed' || cur.kind === 'set' || (cur.kind === 'rest' && cur.next?.mode === 'reps')
+  const group = gEx?.group
+  const name = cur.kind === 'ready' ? (cur.next?.name ?? 'Get ready') : gEx?.name ?? 'Rest'
+  const gSetCount = gExIndex >= 0 ? Math.max(steps.filter((s) => s.kind === 'set' && s.exIndex === gExIndex).length, gEx?.sets || 1, log[gExIndex]?.length || 0) : 0
+  const nextSetStep = steps.slice(idx + 1).find((s): s is Extract<Step, { kind: 'set' }> => s.kind === 'set' && s.exIndex === gExIndex)
+  const gCurSetNo = cur.kind === 'set' ? cur.setNo : (nextSetStep?.setNo ?? 1)
+  const gTargetReps = gEx?.reps ?? 0
+  const gE1rm = gEx ? e1rmMap.get(gEx.name)?.e1rm : undefined
+  // Suggested weight (PLACEHOLDER only — never overrides what you type/clear): from your est 1RM for the
+  // target reps, else the last weight logged this exercise. (#295 carry-forward.)
+  const gSuggestW = gE1rm && gTargetReps ? roundLoad(weightForReps(gE1rm, gTargetReps)) : (gExIndex >= 0 ? log[gExIndex]?.find((s) => s?.weight)?.weight : undefined)
+  const gDoneCount = gExIndex >= 0 ? (log[gExIndex] || []).filter((s) => s?.done).length : 0
+  // Bodyweight (#591 JM): reps-with-no-weight exercises (push-ups, pull-ups). Weight stays OPTIONAL — a set
+  // logs done on reps alone — but the field reads "BW" so it doesn't look like a required number. A LOADED
+  // variation (coach-planned weight, or a weight you typed) still shows the number so you can log it.
+  const gBW = !!gEx?.exId && /bodyweight/i.test(String(allExercisesById[gEx.exId]?.equipment ?? '')) && !gEx?.weight && !(gExIndex >= 0 && (log[gExIndex] || []).some((s) => s?.weight))
   const sub = cur.kind === 'timed' ? `Exercise ${cur.exNo} / ${totalEx}`
-    : cur.kind === 'set' ? `Set ${cur.setNo} / ${cur.sets} · target ${cur.reps} reps${cur.ex.eachSide ? ' each side' : ''}${cur.ex.tempo ? ` · tempo ${cur.ex.tempo}` : ''}`
+    : gridShow && gEx ? `Set ${gCurSetNo} / ${gSetCount} · target ${gTargetReps} reps${gEx.eachSide ? ' each side' : ''}${gEx.tempo ? ` · tempo ${gEx.tempo}` : ''}`
     : cur.kind === 'rest' ? `Up next · ${cur.nextNo} / ${totalEx}` : `Starting · ${totalEx} exercises`
-  const setEntry = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 1]) : undefined
-  const prevSet = cur.kind === 'set' ? (log[cur.exIndex]?.[cur.setNo - 2]) : undefined
-  // Carry-forward is a PLACEHOLDER suggestion only — it never overrides what you type
-  // or clear (that was the "can't delete the weight" bug). Done-set falls back to it.
-  // Coach prescribes reps → the app fills the weight from your estimated 1RM (best ~4mo).
-  const curE1rm = cur.kind === 'set' ? e1rmMap.get(cur.ex.name)?.e1rm : undefined
-  const presc = cur.kind === 'set' && curE1rm && cur.reps ? roundLoad(weightForReps(curE1rm, cur.reps)) : undefined
-  const suggestWeight = prevSet?.weight ?? presc ?? (cur.kind === 'set' ? cur.weight : undefined)
-  const suggestReps = prevSet?.reps ?? (cur.kind === 'set' ? cur.reps : undefined)
+  // Mark/clear a set done (with typed or suggested values) + fire a PR toast when it beats the best e1RM.
+  function markSetDone(exIndex: number, setNo: number, exName: string, doneVal: boolean) {
+    const e = log[exIndex]?.[setNo - 1]
+    const wgt = e?.weight ?? (setNo > 1 ? log[exIndex]?.[setNo - 2]?.weight : undefined) ?? gSuggestW
+    const rps = e?.reps ?? gTargetReps
+    logSet(exIndex, setNo, { done: doneVal, weight: wgt, reps: rps })
+    if (doneVal && wgt && rps) {
+      const v = e1rm(wgt, rps), best = e1rmMap.get(exName)?.e1rm || 0
+      if (v > best + 0.1) { setPr({ name: exName, v: Math.round(v) }); setE1rmMap((m) => new Map(m).set(exName, { e1rm: v, date: '' })); setTimeout(() => setPr(null), 3800) }
+    }
+  }
   const curExNo = cur.kind === 'set' ? cur.exNo : cur.kind === 'timed' ? cur.exNo : cur.kind === 'rest' ? cur.nextNo : 0
   const workoutElapsed = Math.max(0, Math.floor((now - startedAt) / 1000))
   const toggleUnit = () => setSetting('units', units === 'imperial' ? 'metric' : 'imperial')
@@ -365,10 +386,10 @@ export default function GymPlayer() {
       <div className={'gp2-stage' + (cur.kind === 'rest' ? ' gp2-stage--rest' : '')}
         onTouchStart={(e) => { touchX.current = e.touches[0].clientX }}
         onTouchEnd={(e) => { const dx = e.changedTouches[0].clientX - touchX.current; if (Math.abs(dx) > 60) swipeEx(dx < 0 ? 1 : -1) }}>
-        {showVid
-          ? <StageVideo ex={cur.ex} female={female} stills={stills} />
+        {showVid && gEx
+          ? <StageVideo ex={gEx} female={female} stills={stills} />
           : <div className="gp2-restbig">{cur.kind === 'rest' ? 'REST' : 'GET READY'}</div>}
-        {showVid && (cur.ex.video || cur.ex.image) && (
+        {showVid && gEx && (gEx.video || gEx.image) && (
           <button className="gp2-demotoggle" onClick={(e) => { e.stopPropagation(); setStillsOverride(!stills) }} title="Switch demo image/video">
             {stills ? '▶ Video' : '🖼 Still'}
           </button>
@@ -377,52 +398,44 @@ export default function GymPlayer() {
 
       <div className="gp2-info">
         {group && <div className="gp2-group">{group}</div>}
-        <h2 className="gp2-name">{name}</h2>
+        <h2 className="gp2-name">{name}{gE1rm ? <span className="gp2-1rm">1RM {Math.round(gE1rm)}{unit}</span> : null}</h2>
         <div className="gp2-sub">{sub}</div>
         {/* #255 — the per-exercise coach insight DURING the set (was only in the pre-workout preview). */}
-        {(cur.kind === 'set' || cur.kind === 'timed') && cur.ex.tip && <div className="gp2-tip">💡 {cur.ex.tip}</div>}
+        {gEx?.tip && (gridShow || cur.kind === 'timed') && <div className="gp2-tip">💡 {gEx.tip}</div>}
       </div>
 
-      {cur.kind === 'set' ? (
-        <div className="gp2-logbar">
-          <label className="gp2-f">weight<input type="number" inputMode="decimal" value={setEntry?.weight ?? ''} placeholder={suggestWeight != null ? String(suggestWeight) : ''} onChange={(e) => logSet(cur.exIndex, cur.setNo, { weight: e.target.value === '' ? undefined : Number(e.target.value) })} /><button type="button" className="gp2-unit" onClick={toggleUnit} title="kg / lb">{unit}</button></label>
-          <span className="gp2-x2">×</span>
-          <label className="gp2-f"><input type="number" inputMode="numeric" value={setEntry?.reps ?? ''} placeholder={suggestReps != null ? String(suggestReps) : ''} onChange={(e) => logSet(cur.exIndex, cur.setNo, { reps: e.target.value === '' ? undefined : Number(e.target.value) })} />reps</label>
-          <button className="gp2-skip" onClick={advance} title="Skip this set">Skip</button>
-          <button className="gp2-done" onClick={() => {
-            const wgt = setEntry?.weight ?? suggestWeight, rps = setEntry?.reps ?? suggestReps
-            logSet(cur.exIndex, cur.setNo, { done: true, weight: wgt, reps: rps })
-            if (wgt && rps) { // PR: did this set beat the best e1RM for this lift?
-              const v = e1rm(wgt, rps), best = e1rmMap.get(cur.ex.name)?.e1rm || 0
-              if (v > best + 0.1) { setPr({ name: cur.ex.name, v: Math.round(v) }); setE1rmMap((m) => new Map(m).set(cur.ex.name, { e1rm: v, date: '' })); setTimeout(() => setPr(null), 3800) }
-            }
-            advance()
-          }}>Done set →</button>
+      {gridShow && gEx ? (
+        /* #591 Option A — editable set grid: tap any weight/reps to fix it (even mid-workout), tap ✓ to log
+           a set. Rest between sets shows as a banner so the grid stays put. */
+        <div className="gp2-gridwrap">
+          {cur.kind === 'rest' && <div className="gp2-restbanner">⏱ Rest {clock(remaining)}<button className="gp2-restskip" onClick={advance}>skip →</button></div>}
+          <div className="gp2-grid">
+            {Array.from({ length: gSetCount }, (_, k) => {
+              const sn = k + 1
+              const e = log[gExIndex]?.[sn - 1]
+              const isCur = cur.kind === 'set' && sn === gCurSetNo
+              return (
+                <div key={sn} className={'gp2-grow' + (isCur ? ' cur' : '') + (e?.done ? ' done' : '')}>
+                  <span className="gp2-gn">{sn}</span>
+                  <label className="gp2-gf"><input type="number" inputMode="decimal" value={e?.weight ?? ''} placeholder={gSuggestW != null ? String(gSuggestW) : (gBW ? 'BW' : '')} onChange={(ev) => logSet(gExIndex, sn, { weight: ev.target.value === '' ? undefined : Number(ev.target.value) })} /><button type="button" className="gp2-gu gp2-gu--btn" onClick={toggleUnit} title="kg / lb">{gBW && e?.weight == null ? 'BW' : unit}</button></label>
+                  <span className="gp2-gx">×</span>
+                  <label className="gp2-gf"><input type="number" inputMode="numeric" value={e?.reps ?? ''} placeholder={gTargetReps ? String(gTargetReps) : ''} onChange={(ev) => logSet(gExIndex, sn, { reps: ev.target.value === '' ? undefined : Number(ev.target.value) })} /><span className="gp2-gu">reps</span></label>
+                  <button className={'gp2-gck' + (e?.done ? ' on' : '')} onClick={() => markSetDone(gExIndex, sn, gEx.name, !e?.done)} title={e?.done ? 'Logged — tap to undo' : 'Log this set'}>✓</button>
+                </div>
+              )
+            })}
+            {cur.kind === 'set' && <button className="gp2-grow gp2-addset" onClick={addSet} title="Add a set">＋ add set</button>}
+          </div>
+          {pr && <div className="gp2-pr">🎉 New 1RM! {pr.name} · {pr.v}{unit}</div>}
+          {cur.kind === 'set' && (
+            <div className="gp2-gridcta">
+              <button className="gp2-skip" onClick={advance} title="Skip to next">{gDoneCount >= gSetCount ? 'Next →' : 'Skip'}</button>
+              <button className="gp2-done" onClick={() => { markSetDone(gExIndex, gCurSetNo, gEx.name, true); advance() }}>Log Set {gCurSetNo}</button>
+            </div>
+          )}
         </div>
       ) : (
         <div className={'gp2-timer' + (sec <= 3 && showVid ? ' gp2-timer--pulse' : '') + (cur.kind === 'rest' ? ' gp2-timer--rest' : '')}>{clock(remaining)}</div>
-      )}
-
-      {cur.kind === 'set' && presc != null && <div className="gp2-presc">💡 ≈ {presc}{unit} for {cur.reps} reps — from your est. 1RM {Math.round(curE1rm || 0)}{unit}</div>}
-      {pr && <div className="gp2-pr">🎉 New 1RM! {pr.name} · {pr.v}{unit}</div>}
-
-      {cur.kind === 'set' && (
-        <div className="gp2-setlist">
-          {Array.from({ length: cur.sets }, (_, k) => {
-            const sn = k + 1
-            const e = log[cur.exIndex]?.[sn - 1]
-            const isCur = sn === cur.setNo
-            const stepI = steps.findIndex((s) => s.kind === 'set' && s.exIndex === cur.exIndex && s.setNo === sn)
-            return (
-              <button key={sn} className={'gp2-setrow' + (isCur ? ' cur' : '') + (e?.done ? ' done' : '')} onClick={() => stepI >= 0 && jump(stepI)}>
-                <span className="gp2-setn">{e?.done ? '✓' : isCur ? '▸' : sn}</span>
-                <span className="gp2-setv">{e?.weight != null ? `${e.weight}${unit}` : '—'} × {e?.reps != null ? e.reps : cur.reps}</span>
-                <span className="gp2-set1rm">{e?.weight && e?.reps ? `1RM ${Math.round(e1rm(e.weight, e.reps))}${unit}` : ''}</span>
-              </button>
-            )
-          })}
-          <button className="gp2-setrow gp2-addset" onClick={addSet} title="Add a set">＋ set</button>
-        </div>
       )}
 
       <div className="gp2-dots">
