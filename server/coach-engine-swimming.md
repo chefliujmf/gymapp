@@ -50,8 +50,9 @@ skeleton honest — rotate the SHAPE, not the dose (build the rotation ON TOP of
   repetition to drive an adaptation (a CSS threshold block IS the same key set on purpose). When the block's purpose
   demands it, KEEP the key set but vary the drills, distances/send-off, and warm-up around it.
 - **LOOK BACK FIRST (do this, don't rely on memory):** before building swim sessions — especially in the silent
-  **daily-adapt / auto-plan pass where you have NO conversation to recall from** — call `list_schedule` (planned) and
-  `get_recent_activities` (completed) to see the set structures + drills already used in the last ~2 weeks, then
+  **daily-adapt / auto-plan pass where you have NO conversation to recall from** — call `get_session_history` (the
+  dedicated recent + upcoming look-back, ONE cheap call — #614), cross-checked with `get_recent_activities` for what you
+  actually completed, to see the set structures + drills already used in the last ~2 weeks, then
   deliberately pick a DIFFERENT shape for the next one, still honoring the week's purpose + the intensity ceiling.
   When unsure, default to variety.
 
