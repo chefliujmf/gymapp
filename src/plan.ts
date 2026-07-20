@@ -13,6 +13,7 @@ export interface CoachPlan {
   title: string
   notes?: string
   ftp?: number
+  indoor?: boolean // #479 — ride done indoor (ERG, specific watts) vs outdoor (rideable range)
   segments?: Segment[]
   rounds?: number
   exercises?: Array<{ name: string; exId?: string; mode?: 'timed' | 'reps'; seconds?: number; sets?: number; reps?: number; weight?: number; rest?: number; tempo?: string; tip?: string; section?: 'warmup' | 'main' | 'cooldown'; eachSide?: boolean }>

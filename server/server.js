@@ -1487,6 +1487,16 @@ app.get('/auth/plan/:id', auth, (req, res) => {
 // Calendar authoring (session): create/update/delete workout plans from the UI
 // — same path as the coach API, so it auto-pushes to intervals.
 app.post('/auth/plans', auth, async (req, res) => { const r = await upsertPlan(req.user, req.body, 'you'); res.status(r.status).json(r.body) })
+// #479 — the athlete flips a planned RIDE between INDOOR (ERG, specific watts) and OUTDOOR (rideable range); we
+// re-push so the intervals event + workout steps re-encode (VirtualRide+point vs Ride+band). Owner-scoped.
+app.post('/auth/plan/:id/indoor', auth, async (req, res) => {
+  const p = (req.user.plans || []).find((x) => x.id === req.params.id)
+  if (!p) return res.status(404).json({ error: 'not found' })
+  if (p.sport !== 'ride') return res.status(400).json({ error: 'indoor/outdoor applies to rides' })
+  p.indoor = !!req.body?.indoor; p.updatedAt = Date.now(); save(store)
+  await pushPlanToIcu(req.user, p).catch(() => {}) // prod-only push (IS_STAGING no-op)
+  res.json({ ok: true, indoor: p.indoor })
+})
 // Import intervals.icu-origin planned workouts into Platyplus (Platyplus then owns them).
 app.post('/auth/plans/sync', auth, async (req, res) => {
   const from = req.body?.from || req.query.from, to = req.body?.to || req.query.to
@@ -2197,7 +2207,9 @@ function planToIcuEvent(plan, items = []) {
   const ev = { start_date_local: plan.date + 'T00:00:00', category: 'WORKOUT', name: plan.title, external_id: plan.id, description: '' }
   if (plan.sport === 'ride' || plan.sport === 'run') {
     const segs = normalizeRamps(clampEasyEfforts(plan.title, plan.segments || []).segments) // #331c + #384 last-line guard on the push (flat cool-downs; covers pre-guard plans on re-sync)
-    ev.type = plan.sport === 'ride' ? 'Ride' : 'Run'
+    // #479 — INDOOR ride = VirtualRide (ERG holds a SPECIFIC watt); OUTDOOR = Ride (a rideable power RANGE/band you
+    // self-regulate). Same as intervals' own indoor flag → Garmin/trainer treat it right. Default (indoor unset) = outdoor.
+    ev.type = plan.sport === 'ride' ? (plan.indoor ? 'VirtualRide' : 'Ride') : 'Run'
     ev.moving_time = segs.reduce((s, x) => s + (Number(x.duration) || 0), 0)
     // #372 — supply the planned LOAD (Coggan TSS from the %targets) so intervals' Form/CTL/ATL PROJECTS the
     // fatigue. intervals doesn't compute planned load for API-created workouts, so ours stayed null → flat Form.
@@ -2217,7 +2229,8 @@ function planToIcuEvent(plan, items = []) {
     // full plan (meals/mind/recovery) stays in Platyplus via the link.
     // #479 — RIDES render steady targets as a RIDEABLE min–max RANGE (outdoor you self-regulate to a band); this shapes
     // ONLY the displayed workout (text + doc), AFTER plannedTss above, so the load is unchanged (band averages to target).
-    const dispSegs = plan.sport === 'ride' ? bandSteadyPower(segs) : segs
+    // #479 — band steady targets into a RIDEABLE RANGE for OUTDOOR only; an INDOOR (ERG) ride keeps the SPECIFIC point.
+    const dispSegs = (plan.sport === 'ride' && !plan.indoor) ? bandSteadyPower(segs) : segs
     const native = nativeWorkoutText(dispSegs, isRun)
     if (!isRun && dispSegs.length) ev.workout_doc = { steps: dispSegs.flatMap((s) => encodeStep(s, false)) }
     // #588 — Platyplus owns the plan: label it so the athlete edits in Platyplus, not here (a change made in intervals is reverted on the next sync). Re-composed each push, so it never accumulates.
@@ -2399,7 +2412,7 @@ async function upsertPlan(user, body, actor = 'coach') {
     icuEventId: i >= 0 ? user.plans[i].icuEventId : undefined,
     ...(body.sport === 'gym'
       ? { rounds: Number(body.rounds) || 1, exercises: (Array.isArray(body.exercises) ? body.exercises : []).map(withDefaultTempo) }
-      : { ftp: Number(body.ftp) || undefined, segments: Array.isArray(body.segments) ? body.segments : [] }),
+      : { ftp: Number(body.ftp) || undefined, segments: Array.isArray(body.segments) ? body.segments : [], indoor: body.indoor != null ? !!body.indoor : (i >= 0 ? user.plans[i]?.indoor : undefined) }), // #479 indoor(ERG=specific) vs outdoor(range); kept across updates unless the body sets it
   }
   // #331c — HARD guard: never persist an "easy/recovery/warm-up"-labelled run/ride segment at near-threshold
   // effort (95% is NEVER easy — any sport). Fixes it at the source so the DB, the app view, AND the intervals
@@ -2437,8 +2450,9 @@ async function deletePlanById(user, id, actor = 'coach') {
 // (Step resolve/flatten — incl. the "5 W" power_zone fix + #312 pace read — live in ./icu-steps.js.)
 function icuEventToPlan(ev) {
   const date = String(ev.start_date_local || '').slice(0, 10)
-  const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : ev.type === 'Swim' ? 'swim' : 'gym'
+  const sport = (ev.type === 'Ride' || ev.type === 'VirtualRide') ? 'ride' : ev.type === 'Run' ? 'run' : ev.type === 'Swim' ? 'swim' : 'gym' // #479 VirtualRide = indoor ride
   const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: stripDerivedWorkout(stripPlatyplusLinks(ev.description || '')), origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
+  if (ev.type === 'VirtualRide') plan.indoor = true // #479 — preserve the indoor flag on import
   if (sport === 'ride' || sport === 'run') {
     plan.segments = flattenIcuStepsSrv(ev.workout_doc?.steps || [])
   } else {

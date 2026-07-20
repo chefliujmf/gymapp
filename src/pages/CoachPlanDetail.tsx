@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { getCoachPlan, fetchCoachPlan, gymSessionFromPlan, setGymSession, resolveDemo, estimateGymMinutes, findGymLogForPlan, type CoachPlan } from '../plan'
+import { authApi } from '../auth/api'
 import { calApi, type CalItem } from '../calendar'
 import { MiniProfile } from '../ui'
 import { workoutSummary, structureRows, plannedLoad } from '../workout-summary'
@@ -43,6 +44,11 @@ export default function CoachPlanDetail() {
   const [open, setOpen] = useState<Set<number>>(new Set())
   const [sheet, setSheet] = useState<{ title: string; body: string } | null>(null)
   const [ftp, setFtp] = useState<number>()
+  // #479 — indoor(ERG, specific watts) vs outdoor(rideable range). Default from the plan (coach-inferred); the athlete flips it → re-push.
+  const [indoor, setIndoor] = useState(false)
+  const [indoorSaving, setIndoorSaving] = useState(false)
+  useEffect(() => { setIndoor(!!p?.indoor) }, [p?.id, p?.indoor])
+  const flipIndoor = async (v: boolean) => { setIndoor(v); setIndoorSaving(true); try { await authApi.setPlanIndoor(p!.id, v) } catch { setIndoor(!v) } finally { setIndoorSaving(false) } }
   // #285 — if this planned workout is DONE (a completed activity exists for its day+sport), show the
   // post-workout stuff: coach verdict + feedback + a link to the full analysis. Turns the planned view
   // into the post view once completed, instead of a bare notes dump.
@@ -114,6 +120,26 @@ export default function CoachPlanDetail() {
           <h1 style={{ margin: 0 }}>{p.title}</h1>
         </div>
       </div>
+
+      {/* #479 — INDOOR (ERG holds the exact watts) vs OUTDOOR (a rideable power range you self-regulate). Coach sets a
+          default; flip it any time before you ride and the workout re-pushes to your head unit/trainer. */}
+      {p.sport === 'ride' && (
+        <div className="card" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span className="meta" style={{ fontWeight: 700 }}>Where are you riding this?</span>
+          <div style={{ display: 'inline-flex', gap: 6 }}>
+            {([['Outdoor', false, '🌤 range'], ['Indoor', true, '🎯 ERG']] as [string, boolean, string][]).map(([label, val, hint]) => (
+              <button key={label} onClick={() => !indoorSaving && flipIndoor(val)} disabled={indoorSaving}
+                style={{ padding: '7px 12px', borderRadius: 999, fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                  border: '1px solid ' + (indoor === val ? 'var(--accent)' : 'var(--line)'),
+                  background: indoor === val ? 'var(--accent)' : 'var(--bg-soft)',
+                  color: indoor === val ? 'var(--on-accent)' : 'var(--text-dim)' }}>
+                {label} <span style={{ opacity: .8, fontWeight: 600 }}>· {hint}</span>
+              </button>
+            ))}
+          </div>
+          <span className="meta" style={{ flexBasis: '100%', margin: 0 }}>{indoor ? 'Indoor: your trainer holds each specific target (ERG).' : 'Outdoor: steady targets show as a rideable range you self-regulate to.'}</span>
+        </div>
+      )}
 
       {/* #155 — a DONE workout redirects to its RESULTS page (ride/run → /activity/:id, gym → /feedback/:id),
           so this page only ever shows a PLANNED (or missed) session. No inline completed view here. */}
