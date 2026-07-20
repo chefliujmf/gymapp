@@ -35,7 +35,7 @@ export default function AccountMenu() {
           <NavLink to="/profile" className="acct__item" role="menuitem" onClick={() => setOpen(false)}><User size={16} /> Profile</NavLink>
           <NavLink to="/settings" className="acct__item" role="menuitem" onClick={() => setOpen(false)}><Settings size={16} /> Settings</NavLink>
           {user.role === 'admin' && <NavLink to="/admin" className="acct__item" role="menuitem" onClick={() => setOpen(false)}><Shield size={16} /> Admin</NavLink>}
-          <a href="/api/docs" target="_blank" rel="noreferrer" className="acct__item" role="menuitem" onClick={() => setOpen(false)}><Code2 size={16} /> Coach API</a>
+          {user.role === 'admin' && <a href="/api/docs" target="_blank" rel="noreferrer" className="acct__item" role="menuitem" onClick={() => setOpen(false)}><Code2 size={16} /> Coach API</a>}
           <button className="acct__item acct__item--danger" role="menuitem" onClick={logout}><LogOut size={16} /> Log out</button>
         </div>
       )}
