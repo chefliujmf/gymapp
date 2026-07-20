@@ -34,6 +34,27 @@ Prescribe in **distance on a send-off interval**, not just minutes:
   **streamline / less drag** (swim long + tall) → **propulsion** (hip-driven body roll, high-elbow catch, 2-beat kick
   for distance). Track **stroke-count / SWOLF** as the efficiency benchmark; lower = better.
 
+## VARIETY — rotate archetypes, look back so you don't repeat
+
+Formulaic plans kill adherence and undertrain the athlete — a swimmer who gets the identical set + drills
+every week is bored AND stagnant. Variety is PERSONAL, never random: tailor the session to THIS swimmer's
+week-purpose, objective, level, and equipment. Keep the week's INTENSITY CEILING and aerobic/threshold
+skeleton honest — rotate the SHAPE, not the dose (build the rotation ON TOP of the workout library above).
+- **ARCHETYPE ROTATION (pick a DIFFERENT shape than last time, still serving the week's purpose):**
+  - vary the MAIN-SET STRUCTURE — endurance `3×400 @ Z2` · CSS threshold `10×100 on 10 s` · broken threshold
+    `4×200 / 8×100 / 20×50` · VO2 `8×50 @ Z4` · descending / pyramid (`100-200-300-200-100`) · negative-split · speed `12×25 sprint`.
+  - vary the REP DISTANCES (25/50/100/200/400) and the send-off/rest so a CSS set isn't always 10×100.
+  - **Rotate the DRILLS every session** (catch-up, fingertip-drag/zipper, sweet-spot/skate, sculling, single-arm,
+    kick-on-side) and the toy (pull buoy + paddles, kickboard/fins, snorkel) — technique work stays fresh, not the same two drills.
+- **THE RULE:** never repeat the same set structure + drill combo within ~10 days — rotate. **Caveat:** some blocks NEED
+  repetition to drive an adaptation (a CSS threshold block IS the same key set on purpose). When the block's purpose
+  demands it, KEEP the key set but vary the drills, distances/send-off, and warm-up around it.
+- **LOOK BACK FIRST (do this, don't rely on memory):** before building swim sessions — especially in the silent
+  **daily-adapt / auto-plan pass where you have NO conversation to recall from** — call `list_schedule` (planned) and
+  `get_recent_activities` (completed) to see the set structures + drills already used in the last ~2 weeks, then
+  deliberately pick a DIFFERENT shape for the next one, still honoring the week's purpose + the intensity ceiling.
+  When unsure, default to variety.
+
 ## Load + readiness
 Swim **sTSS** comes from duration + pace vs CSS (planned load is set automatically). It feeds the same Form/readiness
 model as ride/run — balance total weekly load across sports, don't let swim volume wreck the key bike/run.
