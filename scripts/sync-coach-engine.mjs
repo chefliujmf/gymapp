@@ -78,7 +78,7 @@ that most helps this athlete improve — tied to their data + goal, prescribed c
 
 function bundle(sources) {
   let body = ''
-  for (const s of sources) body += `\n\n<!-- source: cyclingcoach/${s} -->\n## [${basename(s, '.md')}]\n` + readFileSync(join(engineRepo, s), 'utf8').trim() + '\n'
+  for (const s of sources) body += `\n\n## [${basename(s, '.md')}]\n` + readFileSync(join(engineRepo, s), 'utf8').trim() + '\n'
   return body
 }
 const out = (name) => join(here, '..', 'server', name)
