@@ -180,6 +180,7 @@ export const authApi = {
   checkins: (from: string, to: string) => req<Checkin[]>(`/checkins?from=${from}&to=${to}`),
   readiness: (date: string) => req<Readiness>(`/readiness?date=${date}`),
   handleMissed: () => req<{ missed: number; paired?: number }>(`/plans/handle-missed`, { method: 'POST', body: {} }), // #156/#346
+  setPlanIndoor: (id: string, indoor: boolean) => req<{ ok: boolean; indoor: boolean }>(`/plan/${encodeURIComponent(id)}/indoor`, { method: 'POST', body: { indoor } }), // #479 indoor(ERG)/outdoor(range)
   audit: () => req<AuditEvent[]>(`/audit`), // #232
   location: () => req<{ name: string | null; lat: number | null; lon: number | null; source: 'saved' | 'intervals' | null; timezone: string | null }>(`/location`), // #341
   saveLocation: (city: string) => req<{ name: string; lat: number; lon: number; source: string }>(`/location`, { method: 'POST', body: { city } }), // #341/#268
