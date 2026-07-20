@@ -73,7 +73,7 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
       {review.takeaways && review.takeaways.length > 0 && <ul className="pw-fbrev__l">{review.takeaways.slice(0, 3).map((t, i) => <li key={i}>{t}</li>)}</ul>}
     </div>
   )) : reviewing ? (
-    <div className="pw-fbrev pw-fbrev--pending"><div className="pw-fbrev__h">🔎 Your coach is reviewing this session…</div><p className="pw-fbrev__v">Takeaways will appear <b>right here</b>, on <Link to="/progress" className="pw-fbrev__link">Progress</Link>, and as a 🔔 notification — usually within a minute or two.</p></div>
+    <div className="pw-fbrev pw-fbrev--pending"><div className="pw-fbrev__h">🔎 Your coach is reviewing this session…</div><p className="pw-fbrev__v">Takeaways will appear <b>right here</b>{sport === 'gym' ? <>, on <Link to="/progress" className="pw-fbrev__link">Progress</Link></> : null}, and as a 🔔 notification — usually within a minute or two.</p></div>
   ) : saved ? (
     // #589 — saved but NO review landed + not polling = it's stuck (coach was down / errored). Offer a RETRY instead of
     // a dead-end "takeaways will show here" that never fills.
