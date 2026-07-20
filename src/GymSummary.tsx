@@ -38,22 +38,23 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
     return { name: ex.name, sets: ss, vol, est, muscle, pr }
   }).filter((e) => e.sets.length)
 
-  const totVol = Math.round(rows.reduce((v, e) => v + e.vol, 0))
   const totSets = rows.reduce((s, e) => s + e.sets.length, 0)
   const totReps = rows.reduce((s, e) => s + e.sets.reduce((r, x) => r + (x.reps || 0), 0), 0)
-  const maxVol = Math.max(1, ...rows.map((e) => e.vol))
   const muscles = [...new Set(rows.map((e) => e.muscle).filter(Boolean))]
   const prCount = rows.filter((e) => e.pr).length
 
+  // #601 — VOLUME dropped from the gym recap (JM: tonnage isn't actionable for a user or the coach).
   const hero: [string, string][] = [
-    totVol > 0 ? ['Volume', `${totVol.toLocaleString()} kg`] : ['Exercises', String(rows.length)],
+    ['Exercises', String(rows.length || '—')],
     ['Sets', String(totSets || '—')],
     ['Reps', String(totReps || '—')],
     ['Time', `${minutes} min`],
   ]
-  const insight = totVol > 0
-    ? `${totSets} sets · ${totVol.toLocaleString()} kg moved${prCount ? ` · ${prCount} PR${prCount > 1 ? 's' : ''} 🏅` : ''}. Recover well — protein tonight.`
-    : `All ${rows.length} exercises done. Log your weights next time and I'll track volume & PRs for you.`
+  // #602 — insight stays FACTUAL. No generic nutrition/recovery prescription (JM: risky without the athlete's
+  // metabolism/goals — the coach review above has that context and personalises it). Just the training recap.
+  const insight = totSets > 0
+    ? `${totSets} set${totSets > 1 ? 's' : ''} · ${totReps} rep${totReps > 1 ? 's' : ''}${prCount ? ` · ${prCount} PR${prCount > 1 ? 's' : ''} 🏅` : ''} logged. Your coach reviews it above.`
+    : `All ${rows.length} exercises done. Log your weights next time and I'll track your PRs.`
 
   return (
     <>
@@ -83,8 +84,7 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
             {rows.map((e, i) => (
               <Link key={i} to={`/exercise/${encodeURIComponent(e.name)}`} className="gym-exc">
                 <div className="gym-exc__top"><strong>{e.name}{e.pr && <span className="pr-badge">PR 🏅</span>} <span style={{ color: 'var(--accent)' }}>›</span></strong>{e.est > 0 && <span className="meta" style={{ flex: 'none' }}>est 1RM {e.est} kg</span>}</div>
-                <div className="gym-exc__sets">{e.sets.map((s) => `${s.weight ? s.weight + '×' : 'bodyweight ×'}${s.reps || 0}`).join(' · ')}{e.vol > 0 ? ` — ${e.vol.toLocaleString()} kg` : ''}</div>
-                <div className="gymbar"><i style={{ width: `${Math.round((e.vol / maxVol) * 100)}%` }} /></div>
+                <div className="gym-exc__sets">{e.sets.map((s) => `${s.weight ? s.weight + '×' : 'bodyweight ×'}${s.reps || 0}`).join(' · ')}</div>
               </Link>
             ))}
           </div>
