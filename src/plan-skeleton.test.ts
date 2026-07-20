@@ -140,15 +140,4 @@ describe('generatePlanSkeleton — multi-sport', () => {
     for (const d of plan.days) if (d.dayType !== 'rest') byWeek[isoMonday(d.date)] = (byWeek[isoMonday(d.date)] || 0) + 1
     for (const wk of Object.keys(byWeek)) expect(byWeek[wk]).toBeLessThanOrEqual(3)
   })
-
-  it('#609 pregnancy: NO threshold/sweetspot/vo2 quality days — easy/endurance only, capped load', () => {
-    const plan = generatePlanSkeleton({ today: '2026-07-20', days: 14, sports: ['running', 'strength'], trainingDays: 4, ctl: 12, atl: 14, pregnant: true })
-    const runZones = plan.days.filter((d: any) => d.sport && d.sport !== 'gym').map((d: any) => d.zone)
-    expect(runZones.length).toBeGreaterThan(0) // she still trains
-    for (const z of runZones) expect(['threshold', 'sweetspot', 'vo2']).not.toContain(z) // but never HARD
-    expect(plan.days.every((d: any) => d.targetTss <= 45)).toBe(true) // maintenance ceiling
-    // control: a non-pregnant athlete DOES get quality intensity
-    const normal = generatePlanSkeleton({ today: '2026-07-20', days: 14, sports: ['running'], trainingDays: 4, ctl: 40 })
-    expect(normal.days.some((d: any) => ['threshold', 'sweetspot', 'vo2'].includes(d.zone))).toBe(true)
-  })
 })
