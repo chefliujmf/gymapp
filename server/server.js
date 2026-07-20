@@ -2215,9 +2215,10 @@ function planToIcuEvent(plan, items = []) {
     // this text for the pace chart (#331), so each step keeps its "- Xm Y% pace" target. RIDES also carry
     // the structured workout_doc (the chart authority). The coaching brief is TRIMMED below a divider — the
     // full plan (meals/mind/recovery) stays in Platyplus via the link.
-    // #479 — RIDES render steady targets as a RIDEABLE min–max RANGE (outdoor you self-regulate to a band); this shapes
-    // ONLY the displayed workout (text + doc), AFTER plannedTss above, so the load is unchanged (band averages to target).
-    const dispSegs = plan.sport === 'ride' ? bandSteadyPower(segs) : segs
+    // #479 HELD from prod (JM tested it fail) — the outdoor power-RANGE banding is neutralized for this promote; steady
+    // ride targets stay as flat points until #479 is reworked. (bandSteadyPower + the coach-engine range text still ship
+    // inert; the runtime behavior is off.) Re-enable by restoring: plan.sport === 'ride' ? bandSteadyPower(segs) : segs.
+    const dispSegs = segs
     const native = nativeWorkoutText(dispSegs, isRun)
     if (!isRun && dispSegs.length) ev.workout_doc = { steps: dispSegs.flatMap((s) => encodeStep(s, false)) }
     // #588 — Platyplus owns the plan: label it so the athlete edits in Platyplus, not here (a change made in intervals is reverted on the next sync). Re-composed each push, so it never accumulates.
