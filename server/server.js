@@ -1703,25 +1703,32 @@ function athleteWeekShape(user) {
 // clamp it in code: no ride/run segment may exceed the athlete's ceiling %, and once the Mon–Sun week already has
 // its allowed number of moderate/quality days, any further hard session is clamped down to easy endurance. A build
 // athlete's ceiling is VO2 (130%) → nothing clamps. Mutates plan.segments (+ relabels a now-inaccurate title).
+const QUALITY_TITLE = /sweet.?spot|threshold|\bvo.?2\b|over.?under|\bvo2max\b/i // titles that claim a hard/quality session
 function enforceShapeIntensity(user, plan) {
-  if (!plan || (plan.sport !== 'ride' && plan.sport !== 'run') || !Array.isArray(plan.segments) || !plan.segments.length) return
+  if (!plan || (plan.sport !== 'ride' && plan.sport !== 'run') || !Array.isArray(plan.segments)) return
   const shape = athleteWeekShape(user)
   const ceilPct = CEILING_PCT[shape.intensityCeiling] || CEILING_PCT.vo2
   const maxModerate = (shape.qualityDays || 0) + (shape.moderateDays || 0)
   const topOf = (segs) => Math.max(0, ...(segs || []).map((s) => Math.max(Number(s.powerStart) || 0, Number(s.powerEnd) || 0)))
-  const isModerate = (segs) => topOf(segs) >= CEILING_PCT.tempo // ≥ tempo counts as a moderate/quality day
+  // a session counts as "moderate/quality" if its EFFORT is ≥ tempo OR its TITLE claims quality/tempo (the coach
+  // mislabels — a "Sweet Spot Run" with soft segments must still count so the week's allowance is real).
+  const isModerate = (p) => topOf(p.segments) >= CEILING_PCT.tempo || QUALITY_TITLE.test(p.title || '') || /\btempo\b/i.test(p.title || '')
   const mon = isoMonday(plan.date), sun = addDays(mon, 6)
-  const otherModerate = (user.plans || []).filter((p) => p.id !== plan.id && p.date >= mon && p.date <= sun && (p.sport === 'ride' || p.sport === 'run') && isModerate(p.segments)).length
-  // hard session but the week's moderate/quality allowance is already spent → force it EASY (endurance)
-  const effCeil = (topOf(plan.segments) >= CEILING_PCT.tempo && otherModerate >= maxModerate) ? CEILING_PCT.endurance : ceilPct
+  const otherModerate = (user.plans || []).filter((p) => p.id !== plan.id && p.date >= mon && p.date <= sun && (p.sport === 'ride' || p.sport === 'run') && isModerate(p)).length
+  const thisIsModerate = topOf(plan.segments) >= CEILING_PCT.tempo || QUALITY_TITLE.test(plan.title || '')
+  // If this session is moderate/quality but the week's allowance is already spent → force it EASY (endurance).
+  const effCeil = (thisIsModerate && otherModerate >= maxModerate) ? CEILING_PCT.endurance : ceilPct
   let clamped = 0
-  for (const s of plan.segments) {
+  for (const s of (plan.segments || [])) {
     if ((Number(s.powerStart) || 0) > effCeil) { s.powerStart = effCeil; clamped++ }
     if ((Number(s.powerEnd) || 0) > effCeil) { s.powerEnd = effCeil; clamped++ }
   }
-  if (clamped) {
-    console.log(`[shape-enforce] ${user.username || ''} "${plan.title}" clamped ${clamped} seg → ${effCeil}% (${shape.loadBand}, ceil ${shape.intensityCeiling}, wk moderate ${otherModerate}/${maxModerate})`)
-    if (effCeil <= CEILING_PCT.tempo && /sweet.?spot|threshold|vo.?2|interval|\d+×/i.test(plan.title)) {
+  // RETITLE any quality-claiming title on a maintenance athlete (even if segments were already soft, so it can't
+  // just LOOK like a sweet-spot/threshold session it isn't allowed to be) — to the enforced level.
+  const titleLies = shape.loadBand === 'maintenance' && QUALITY_TITLE.test(plan.title || '')
+  if (clamped || titleLies) {
+    console.log(`[shape-enforce] ${user.username || ''} "${plan.title}" clamp=${clamped} → ${effCeil}% (${shape.loadBand}, ceil ${shape.intensityCeiling}, wk moderate ${otherModerate}/${maxModerate})`)
+    if (titleLies || (effCeil <= CEILING_PCT.tempo && QUALITY_TITLE.test(plan.title || ''))) {
       const noun = plan.sport === 'run' ? 'Run' : 'Ride'
       plan.title = effCeil <= CEILING_PCT.endurance ? `Easy Aerobic ${noun}` : `Tempo ${noun}`
     }
