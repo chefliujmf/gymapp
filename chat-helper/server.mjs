@@ -75,9 +75,12 @@ const server = http.createServer((req, res) => {
     let buf = '', err = '', done = false, gotText = false, timedOut = false, resultErr = ''
     const t0 = Date.now()
     const cleanup = () => { try { unlinkSync(spFile) } catch { /* already gone */ } }
-    // give slow tool chains (intervals wellness reads) headroom; on timeout flag it so `close` reports it
-    // instead of ending silently ("note but nothing" — the exact bug JM hit).
-    const killer = setTimeout(() => { timedOut = true; proc.kill('SIGKILL') }, 240000)
+    // #608 — 240s was too short for a STRENGTH athlete's full plan rebuild. A daily-adapt that builds 2 gym
+    // sessions from an empty schedule makes 25-40 tool round-trips (one search_exercises per exercise + creates);
+    // at ~6s each it blew past 240s and got SIGKILLed MID-BUILD → zero sessions saved (Xenia's plan never rebuilt,
+    // while a cycling adapt with structured ride segments finishes fast). Give it real headroom. (Follow-up: cut
+    // the per-exercise search round-trips — batch/library — so it's fast AND cheap, per coach-token-thrift #590.)
+    const killer = setTimeout(() => { timedOut = true; proc.kill('SIGKILL') }, 600000)
     const end = () => { if (done) return; done = true; clearTimeout(killer); cleanup(); send({ done: true }); res.end() }
     proc.stdout.on('data', (d) => {
       buf += d
