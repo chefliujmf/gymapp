@@ -46,21 +46,16 @@ check_backup() {
   fi
 }
 
-# Alarm if the COACH's Claude subscription (OAuth) token is expired/expiring. The coach + the autonomous bug-worker
-# run as this user on that token; once it lapses EVERY coach chat silently 401s (claude exits 1 → the vague "couldn't
-# finish that one"). There's no refresh token, so it needs a manual re-auth — catch it BEFORE it silently dies for a day.
+# Alarm if the COACH's Claude auth is FAILING. The coach + bug-worker run as user 'jmf' on a LONG-LIVED
+# CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, ~1yr, stored in /home/jmf/.claude-coach-token + read by the
+# platyplus-chat* services). It's an opaque token with no readable expiry, so we DETECT a real failure by watching the
+# coach service logs for the OAuth-expired / 401 signature (logged on the first failed call) — cheap, and it catches
+# expiry the moment it bites instead of silently 401ing for a day. When it fires: regenerate the token (below) + restart.
 check_coach_auth() {
-  # the coach + bug-worker run as user 'jmf' on jmf's Claude subscription — check THAT credential file explicitly
-  # (the monitor itself runs as root, so $HOME would be /root — the wrong token).
-  local cred="/home/jmf/.claude/.credentials.json" ea now
-  [ -f "$cred" ] || { echo "$(ts)  coach  WARN no Claude credentials at $cred" >> "$LOG"; return; }
-  ea=$(python3 -c "import json; o=json.load(open('$cred')); o=o.get('claudeAiOauth',o); print(int(o.get('expiresAt',0)))" 2>/dev/null || echo 0)
-  [ "${ea:-0}" -gt 0 ] || return
-  now=$(( $(date +%s) * 1000 ))
-  if [ "$ea" -lt "$now" ]; then
-    echo "$(ts)  coach  WARN Claude coach token EXPIRED $(( (now-ea)/3600000 ))h ago — coach + bug-worker are 401ing. Re-auth: sudo -u jmf -H claude setup-token" >> "$LOG"
-  elif [ "$ea" -lt "$(( now + 86400000 ))" ]; then
-    echo "$(ts)  coach  WARN Claude coach token expires in <24h — re-auth soon (sudo -u jmf -H claude setup-token)" >> "$LOG"
+  local hits
+  hits=$(journalctl -u platyplus-chat -u platyplus-chat-prod --since "2 hours ago" --no-pager 2>/dev/null | grep -ciE "OAuth access token has expired|authentication_failed|401 .*o?auth" || true)
+  if [ "${hits:-0}" -gt 0 ]; then
+    echo "$(ts)  coach  WARN Claude coach token FAILING (${hits} auth error(s)/2h) — regenerate: on the Mac run 'claude setup-token', then: put it in /home/jmf/.claude-coach-token (CLAUDE_CODE_OAUTH_TOKEN=…) + 'systemctl restart platyplus-chat platyplus-chat-prod'" >> "$LOG"
   fi
 }
 
