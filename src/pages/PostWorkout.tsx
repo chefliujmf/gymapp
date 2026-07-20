@@ -110,7 +110,7 @@ export default function PostWorkout() {
       ))}
 
       <div className="section-title">Anything else?</div>
-      <textarea className="fb-ta" value={note} onChange={(e) => setNote(e.target.value)} placeholder="How the body felt, life context, niggles…" />
+      <textarea className="fb-ta" value={note} onChange={(e) => setNote(e.target.value)} placeholder="How the body felt, any niggles…" />
 
       <button className="btn" style={{ marginTop: 14 }} onClick={save} disabled={saved}>{saved ? 'Saved ✓' : 'Save'}</button>
     </div>

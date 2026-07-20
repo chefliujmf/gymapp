@@ -277,7 +277,7 @@ export default function GymPlayer() {
             const est = ex.mode === 'reps' ? e1rmFor(ex.name) : undefined
             const sug = est ? roundLoad(weightForReps(est.e1rm, ex.reps || 10)) : null
             const lastSets = (log[i] || []).filter((s) => (s.reps || 0) > 0)
-            const lastStr = lastSets.length ? lastSets.slice(0, 3).map((s) => `${s.weight ? s.weight + '×' : 'BW×'}${s.reps}`).join(' · ') : null
+            const lastStr = lastSets.length ? lastSets.slice(0, 3).map((s) => `${s.weight ? s.weight + '×' : 'bodyweight ×'}${s.reps}`).join(' · ') : null
             return (
             <div key={i} className="card" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px' }}>
               <div className="thumb" style={{ width: 42, height: 42, flex: 'none' }}>{ex.image ? <img src={ex.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : '🏋️'}</div>
