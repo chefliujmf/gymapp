@@ -7,17 +7,17 @@ import { BenchmarksCard } from '../Benchmarks'
 
 // #225 — Cycling per-sport stats: power curve · eFTP · VO₂max · W/kg. Split out of /fitness (which
 // is now global Load & Form only).
-export default function CyclingStats() {
+export default function CyclingStats({ embedded }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isCycling = hasModule(user?.sports || [], 'cycling')
 
   return (
     <div>
-      <div className="sub-head">
+      {!embedded && <div className="sub-head">
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
         <div className="sub-head-t"><h1>Cycling</h1><p>FTP · CP · W′ · VO₂max · Max HR</p></div>
-      </div>
+      </div>}
       {!isCycling ? (
         <p className="meta">Add Cycling in <span style={{ color: 'var(--accent)' }}>Profile</span> to see your power stats.</p>
       ) : !user?.hasIcuKey ? (

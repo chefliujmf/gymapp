@@ -46,7 +46,21 @@ check_backup() {
   fi
 }
 
+# Alarm if the COACH's Claude auth is FAILING. The coach + bug-worker run as user 'jmf' on a LONG-LIVED
+# CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, ~1yr, stored in /home/jmf/.claude-coach-token + read by the
+# platyplus-chat* services). It's an opaque token with no readable expiry, so we DETECT a real failure by watching the
+# coach service logs for the OAuth-expired / 401 signature (logged on the first failed call) — cheap, and it catches
+# expiry the moment it bites instead of silently 401ing for a day. When it fires: regenerate the token (below) + restart.
+check_coach_auth() {
+  local hits
+  hits=$(journalctl -u platyplus-chat -u platyplus-chat-prod --since "2 hours ago" --no-pager 2>/dev/null | grep -ciE "OAuth access token has expired|authentication_failed|401 .*o?auth" || true)
+  if [ "${hits:-0}" -gt 0 ]; then
+    echo "$(ts)  coach  WARN Claude coach token FAILING (${hits} auth error(s)/2h) — regenerate: on the Mac run 'claude setup-token', then: put it in /home/jmf/.claude-coach-token (CLAUDE_CODE_OAUTH_TOKEN=…) + 'systemctl restart platyplus-chat platyplus-chat-prod'" >> "$LOG"
+  fi
+}
+
 check gymapp /home/jmf/gymapp
 [ -d /home/jmf/gymapp-staging ] && check gymapp-staging /home/jmf/gymapp-staging
 check_backup
+check_coach_auth
 tail -n 800 "$LOG" > "$LOG.tmp" 2>/dev/null && mv -f "$LOG.tmp" "$LOG"

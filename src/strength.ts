@@ -133,7 +133,10 @@ function* eachDoneSet(logs: WorkoutLog[]): Generator<DoneSet> {
       const name = log.exNames[Number(idx)]
       const exId = log.exIds?.[Number(idx)]
       if (!name || !Array.isArray(arr)) continue
-      for (const s of arr) if (s.done && s.weight && s.reps) yield { name, exId, weight: s.weight, reps: s.reps, date: log.date, at }
+      // #591 — a done set counts even with NO weight (bodyweight: push-ups, pull-ups, glute bridge). Weight is
+      // optional (→ 0); e1RM consumers guard weight>0 so bodyweight never shows a bogus "0 kg 1RM", but set-COUNTING
+      // (sets-per-muscle) includes it — a bodyweight set is still a working set for that muscle.
+      for (const s of arr) if (s.done && !s.warmup && s.reps) yield { name, exId, weight: s.weight || 0, reps: s.reps, date: log.date, at }
     }
   }
 }
@@ -261,6 +264,7 @@ function seriesByExercise(logs: WorkoutLog[]): Map<string, { exId?: string; pts:
     let e = m.get(s.name)
     if (!e) { e = { exId: s.exId, byDay: new Map() }; m.set(s.name, e) }
     const est = e1rm(s.weight, s.reps)
+    if (!est) continue // bodyweight (no weight) → no 1RM point; it still counted for sets-per-muscle upstream
     const cur = e.byDay.get(s.date)
     if (!cur || est > cur.e1rm) e.byDay.set(s.date, { e1rm: est, reps: s.reps })
   }
@@ -312,7 +316,7 @@ export function exerciseHistory(logs: WorkoutLog[], name: string, fmt: (kg: numb
   const repBucket = new Map<number, { reps: number; weight: number; e1rm: number; date: number }>()
   for (const s of sets) {
     const est = e1rm(s.weight, s.reps)
-    byDay.set(s.date, Math.max(byDay.get(s.date) || 0, est))
+    if (est) byDay.set(s.date, Math.max(byDay.get(s.date) || 0, est)) // bodyweight sets add no 1RM point (guard 0 kg)
     const wk = Math.floor(s.at / (7 * 864e5))
     volByWeek.set(wk, (volByWeek.get(wk) || 0) + s.weight * s.reps)
     const bucket = s.reps <= 1 ? 1 : s.reps <= 3 ? 3 : s.reps <= 5 ? 5 : s.reps <= 8 ? 8 : s.reps <= 12 ? 12 : 15

@@ -72,7 +72,7 @@ const server = http.createServer((req, res) => {
     const proc = spawn(CLAUDE_BIN, args, { env })
     console.log(`[chat] req: ${message.slice(0, 70).replace(/\s+/g, ' ')}${p.sessionId ? ' (resume)' : ''}`)
     proc.stdin?.end()
-    let buf = '', err = '', done = false, gotText = false, timedOut = false
+    let buf = '', err = '', done = false, gotText = false, timedOut = false, resultErr = ''
     const t0 = Date.now()
     const cleanup = () => { try { unlinkSync(spFile) } catch { /* already gone */ } }
     // give slow tool chains (intervals wellness reads) headroom; on timeout flag it so `close` reports it
@@ -90,6 +90,10 @@ const server = http.createServer((req, res) => {
         // #353 — surface tool activity so the UI can show "reviewing your …" instead of a frozen screen.
         else if (ev.type === 'stream_event' && ev.event?.type === 'content_block_start' && ev.event.content_block?.type === 'tool_use') send({ tool: friendlyTool(ev.event.content_block.name) })
         else if (ev.type === 'result' && ev.session_id) send({ sessionId: ev.session_id })
+        // Capture a hard error carried in the result event (e.g. auth/OAuth expired, 401) — it lands on STDOUT as a
+        // `result` event with is_error, NOT on stderr, so without this the coach exits 1 and we'd only ever say the
+        // vague "couldn't finish that one" (hiding a fixable cause like an expired coach login). #587-followup.
+        if (ev.type === 'result' && ev.is_error) resultErr = String(ev.result || ev.api_error_status || 'error')
       }
     })
     proc.stderr.on('data', (d) => (err += d))
@@ -97,11 +101,15 @@ const server = http.createServer((req, res) => {
     proc.on('close', (code) => {
       // NEVER end silently. If we produced no answer, tell the user WHY so they don't stare at "note but nothing".
       if (!done && !gotText) {
+        const authExpired = /authenticat|oauth|expired|401|invalid api key|log ?in/i.test(resultErr)
         if (timedOut) send({ error: 'That took too long — the coach was still gathering your data. Please try again.' })
+        else if (authExpired) send({ error: 'Your coach’s sign-in has expired and needs to be re-authenticated on the server (an admin task). Your data is safe — this is just the coach’s login.' })
+        else if (resultErr) send({ error: 'The coach hit an error: ' + resultErr.slice(0, 160) })
         else if (err) send({ error: err.slice(0, 200) })
         else send({ error: 'The coach couldn’t finish that one — please try again.' })
       }
-      const outcome = gotText ? 'ok' : timedOut ? 'TIMEOUT' : err ? 'err' : 'empty'
+      const outcome = gotText ? 'ok' : timedOut ? 'TIMEOUT' : (resultErr || err) ? 'err' : 'empty'
+      if (resultErr && !gotText) console.log(`[chat] result-error: ${resultErr.slice(0, 120)}`)
       console.log(`[chat] ${outcome} · ${Math.round((Date.now() - t0) / 1000)}s · exit=${code}`)
       end()
     })

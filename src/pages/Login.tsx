@@ -33,14 +33,13 @@ export default function Login() {
     setErr(''); setBusy(true)
     try { await apply(await authApi.passkeyLoginDiscoverable()) }
     catch (e) {
-      // #266 (option C): give CLEAR feedback instead of looking like "nothing happened".
-      // A fresh device has no passkey to offer, or the OS dialog was cancelled → guide to
-      // password, after which we offer to set one up (PasskeyPrompt).
+      // #587 — on the LOGIN screen, EVERY passkey failure resolves the same way: this device has no
+      // passkey to offer (yours may live on another device), the OS cross-device lookup failed (Android
+      // shows a confusing "server not available"), or the dialog was cancelled → just use the password,
+      // then we offer to add a passkey ON THIS device (PasskeyPrompt). So don't surface the scary raw
+      // OS message — give ONE clear line. AbortError = the user dismissed the sheet on purpose → stay quiet.
       const name = (e as { name?: string }).name
-      const noCred = name === 'NotAllowedError' || name === 'AbortError' || /no passkey|not recognised|unknown|expired/i.test((e as Error).message || '')
-      setErr(noCred
-        ? 'No passkey on this device yet. Sign in with your password below — then we’ll offer to set one up.'
-        : ((e as Error).message || 'Passkey sign-in failed — use your password.'))
+      if (name !== 'AbortError') setErr('No passkey on this device yet — sign in with your password below, then we’ll set one up for this device.')
       setUsePassword(true)
     } finally { setBusy(false) }
   }

@@ -37,7 +37,7 @@ describe('incompleteFeedback', () => {
       { id: 3, start_date_local: '2026-07-01' }, // missing both
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ] as any
-    const r = incompleteFeedback(acts)
+    const r = incompleteFeedback(acts, undefined, Infinity) // Infinity → ignore recency for the core-logic test
     expect(r.map((x) => x.act.id)).toEqual([3, 2]) // oldest first, complete one excluded
   })
   it('#review-skip — excludes activities the athlete skipped', () => {
@@ -46,7 +46,17 @@ describe('incompleteFeedback', () => {
       { id: 3, start_date_local: '2026-07-01' }, // missing both
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ] as any
-    expect(incompleteFeedback(acts, new Set(['3'])).map((x) => x.act.id)).toEqual([2]) // 3 skipped → gone
-    expect(incompleteFeedback(acts, new Set(['2', '3'])).length).toBe(0) // both skipped → nothing to review
+    expect(incompleteFeedback(acts, new Set(['3']), Infinity).map((x) => x.act.id)).toEqual([2]) // 3 skipped → gone
+    expect(incompleteFeedback(acts, new Set(['2', '3']), Infinity).length).toBe(0) // both skipped → nothing to review
+  })
+  it('#565 — old activities (past the recency window) do NOT flag', () => {
+    const iso = (d: number) => new Date(Date.now() - d * 86400000).toISOString().slice(0, 10)
+    const acts = [
+      { id: 'recent', start_date_local: iso(5) },   // 5 days ago, missing feedback → flags
+      { id: 'old', start_date_local: iso(90) },     // 90 days ago, missing feedback → stale, no flag
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ] as any
+    expect(incompleteFeedback(acts).map((x) => x.act.id)).toEqual(['recent']) // default 30d window drops the old one
+    expect(incompleteFeedback(acts, undefined, 120).map((x) => x.act.id).sort()).toEqual(['old', 'recent']) // wider window includes both
   })
 })

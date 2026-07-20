@@ -64,6 +64,22 @@ export function normalizeRamps(segments = []) {
   })
 }
 
+// #479 — an OUTDOOR ride target must be a RIDEABLE RANGE (you self-regulate to a band), not a flat point that's
+// impossible to hold. Widen a STEADY ride power step [T,T] into a symmetric min–max band [T-Δ, T+Δ] (smallest first).
+// Δ scales with intensity: endurance is ridden loosely (wide band), threshold is held tight. TSS is UNAFFECTED — this
+// runs AFTER plannedTss and only shapes the DISPLAYED workout (native text + workout_doc); the band averages back to T.
+// Warm-up ramps (start≠end), labelled cool-downs, and recovery (≤55%) are left as authored.
+export const powerBandWidth = (pct) => pct <= 55 ? 0 : pct <= 75 ? 6 : pct <= 90 ? 4 : pct <= 105 ? 3 : 4
+export function bandSteadyPower(segments = []) {
+  return (segments || []).map((s) => {
+    const ps = Number(s.powerStart) || 0, pe = s.powerEnd != null ? Number(s.powerEnd) : ps
+    if (ps !== pe) return s // a ramp (e.g. warm-up) — already a range
+    if (/warm[ -]?up|cool[ -]?down/i.test(String(s.label || ''))) return s // intentional single-value easy blocks
+    const d = powerBandWidth(ps); if (!d) return s
+    return { ...s, powerStart: ps - d, powerEnd: ps + d } // min–max band, smallest first (#479)
+  })
+}
+
 // Encode ONE plan segment (powerStart/powerEnd = % of FTP for rides, % of threshold pace for runs)
 // into intervals workout_doc step(s). Splits a step longer than MAX into interpolated chunks — a
 // single over-long step makes the intervals workout render EMPTY (matches cyclingcoach split_long_doc_step).
@@ -163,7 +179,9 @@ export function flattenIcuStepsSrv(steps = []) {
 // prepends ANOTHER → they accumulate; cross-env (QA + prod share the athlete) you get one prod + one QA link.
 // Strip any such line wherever notes are composed or imported. Pure + unit-tested.
 export function stripPlatyplusLinks(s) {
-  return String(s || '').replace(/^.*Open workout in Platyplus.*$/gim, '').replace(/\n{3,}/g, '\n\n').trim()
+  // #378 deep-link + #588 "Planned in Platyplus" ownership label — BOTH are regenerated on every push, so strip them
+  // from any imported text so they never persist in plan.notes / accumulate across round-trips.
+  return String(s || '').replace(/^.*Open workout in Platyplus.*$/gim, '').replace(/^.*Planned in Platyplus.*$/gim, '').replace(/\n{3,}/g, '\n\n').trim()
 }
 
 // #388 — the native workout TEXT (Warmup / Nx / "- 12m 90% Sweet Spot" / Cooldown) is REGENERATED on every

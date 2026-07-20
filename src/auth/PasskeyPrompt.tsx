@@ -11,22 +11,27 @@ import { useAuth } from './AuthContext'
 // prompt until onboarding is done, and the copy makes clear it's their phone's fingerprint/PIN
 // (a platform passkey), fully optional.
 const DISMISS_KEY = 'pk-prompt-dismissed'
+// #587 — passkeys are PER-DEVICE, so gate this on whether a passkey was added ON THIS DEVICE (a local flag),
+// NOT the account-wide passkey count. The old `user.passkeys.length > 0` check meant a user with a passkey on
+// their laptop was NEVER offered one on their phone → they were stuck typing the password on Android.
+export const PK_ADDED_HERE = 'pk-added-here'
 
 export default function PasskeyPrompt() {
   const { user, apply } = useAuth()
   const supported = typeof window !== 'undefined' && !!window.PublicKeyCredential
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === '1')
+  const [addedHere, setAddedHere] = useState(() => localStorage.getItem(PK_ADDED_HERE) === '1')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
   // #311: never during onboarding — only once the coach has finished setting them up.
   const onboarded = !!user?.onboardedAt
-  if (!supported || !user || !onboarded || (user.passkeys?.length ?? 0) > 0 || dismissed) return null
+  if (!supported || !user || !onboarded || addedHere || dismissed) return null
 
   function close() { localStorage.setItem(DISMISS_KEY, '1'); setDismissed(true) }
   async function add() {
     setErr(''); setBusy(true)
-    try { await apply(await authApi.passkeyRegister(navigator.userAgent.includes('Android') ? 'Phone' : 'This device')); close() }
+    try { await apply(await authApi.passkeyRegister(navigator.userAgent.includes('Android') ? 'Phone' : 'This device')); localStorage.setItem(PK_ADDED_HERE, '1'); setAddedHere(true); close() }
     catch (e) { setErr((e as Error).message || 'Could not add a passkey here.') } finally { setBusy(false) }
   }
 

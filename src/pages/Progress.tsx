@@ -58,7 +58,7 @@ function ActCard({ icon, title, detail, tone, onClick }: { icon: string; title: 
   )
 }
 
-export default function Progress() {
+export default function Progress({ embedded }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const logs = useLiveQuery(() => db.logs.orderBy('completedAt').toArray())
   const imp = (useLiveQuery(() => getSetting('units')) as string | undefined) === 'imperial'
@@ -133,8 +133,8 @@ export default function Progress() {
 
   return (
     <div>
-      <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
-      <div className="page-head"><h1>Strength</h1><p>What to push, what's stalling, what's balanced</p></div>
+      {!embedded && <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>}
+      {!embedded && <div className="page-head"><h1>Strength</h1><p>What to push, what's stalling, what's balanced</p></div>}
 
       <DateRangeFilter presets={TRAINING_PRESETS} from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
 
@@ -167,7 +167,7 @@ export default function Progress() {
         {lifts.length === 0 && (
           <div className="card" style={{ padding: 14, marginTop: 11 }}>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>📊 Your strength analytics build as you log sets</div>
-            <p className="meta" style={{ lineHeight: 1.5 }}>Log a gym session <b>in the app</b> with <b>weight × reps</b> per exercise (an intervals-imported gym only carries duration &amp; load — no set detail). Then this page unlocks: working <b>1-RM per lift</b> with confidence, weekly <b>sets per muscle</b> vs the 10–20 growth target, <b>stall alerts &amp; PRs</b>, and a tap-through <b>progress page</b> for every exercise.</p>
+            <p className="meta" style={{ lineHeight: 1.5 }}>Log a gym session <b>in the app</b> with <b>weight × reps</b> per exercise (an intervals-imported gym only carries duration &amp; load — no set detail). Then this page unlocks: working <b>1-RM per lift</b> with confidence, weekly <b>sets per muscle</b> your coach reads to judge the right volume for your sport &amp; goal, <b>stall alerts &amp; PRs</b>, and a tap-through <b>progress page</b> for every exercise.</p>
           </div>
         )}
 

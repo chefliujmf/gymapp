@@ -9,15 +9,17 @@ import { ICU_FIELDS, ICU_FIELD_CODES, GYM_FIELDS, FIELDS } from './pages/PostWor
 const byLabel = Object.fromEntries(ICU_FIELDS)
 
 describe('post-workout feedback matches intervals custom fields (#147)', () => {
-  it('has exactly the six intervals ACTIVITY_FIELDs, in order', () => {
+  it('has the intervals ACTIVITY_FIELDs, in order (Life Constraint + Mental State removed per JM #593)', () => {
     expect(ICU_FIELDS.map(([label]) => label)).toEqual([
-      'Legs Before', 'Legs After', 'Fuel/GI', 'Pain/Niggles', 'Life Constraint', 'Mental State',
+      'Legs Before', 'Legs After', 'Fuel/GI', 'Pain/Niggles',
     ])
   })
 
-  it('includes the two fields JM reported MISSING', () => {
-    expect(byLabel['Life Constraint']).toBeDefined()
-    expect(byLabel['Mental State']).toBeDefined()
+  it('no longer offers Life Constraint / Mental State (removed everywhere, #593)', () => {
+    expect(byLabel['Life Constraint']).toBeUndefined()
+    expect(byLabel['Mental State']).toBeUndefined()
+    expect(Object.fromEntries(GYM_FIELDS)['Mental State']).toBeUndefined()
+    expect(Object.fromEntries(FIELDS.run)['Life Constraint']).toBeUndefined()
   })
 
   it('Legs After has the full intervals option list (the reported bug)', () => {
@@ -31,8 +33,6 @@ describe('post-workout feedback matches intervals custom fields (#147)', () => {
     expect(byLabel['Legs Before']).toEqual(['fresh', 'normal', 'relaxed', 'heavy', 'sore', 'flat', 'tired'])
     expect(byLabel['Fuel/GI']).toEqual(['not needed', 'water only OK', 'carbs OK', 'underfueled', 'GI issue', 'too much fuel'])
     expect(byLabel['Pain/Niggles']).toEqual(['none', 'knee', 'back', 'neck/shoulder', 'foot', 'saddle', 'other'])
-    expect(byLabel['Life Constraint']).toEqual(['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other'])
-    expect(byLabel['Mental State']).toEqual(['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out'])
   })
 
   it('every label maps to its intervals field code (for future write-back)', () => {

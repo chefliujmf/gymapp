@@ -39,11 +39,10 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
   const sportFields = FIELDS[sport] || FIELDS.gym
   // #364 — after saving, tell the athlete the coach IS reviewing + poll so the takeaways appear here
   // (no reload) the moment they land — the coach review runs async server-side (~1–3 min).
-  async function save() {
-    const prevAt = review?.at || ''
-    await authApi.activityFeedback(id, { feel, rpe, fields, note, sport, date }).catch(() => {})
-    setSaved(true); setEditing(false); setReviewing(true)
-    if (onSaved) setTimeout(onSaved, 800) // #442b — came from /review → knock-out loop: brief "saved" then back to the list
+  // #364/#589 — poll for the coach's review after a submit OR a retry. On give-up, we DON'T just fall silent — the
+  // render offers a "Retry" (when saved + no review + not polling), so a stuck review (e.g. the coach was down) is recoverable.
+  function startReviewPoll(prevAt: string) {
+    setReviewing(true)
     let tries = 0
     const poll = () => authApi.coachReviews().then((rs) => {
       const m = matchReview(rs)
@@ -51,6 +50,18 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
       if (++tries < 20) setTimeout(poll, 10000); else setReviewing(false)
     }).catch(() => { if (++tries < 20) setTimeout(poll, 10000); else setReviewing(false) })
     setTimeout(poll, 7000)
+  }
+  async function save() {
+    const prevAt = review?.at || ''
+    await authApi.activityFeedback(id, { feel, rpe, fields, note, sport, date }).catch(() => {})
+    setSaved(true); setEditing(false)
+    if (onSaved) setTimeout(onSaved, 800) // #442b — came from /review → knock-out loop: brief "saved" then back to the list
+    startReviewPoll(prevAt)
+  }
+  // #589 — re-run a coach review that never landed (coach was down / errored). Re-triggers server-side, then re-polls.
+  async function retryReview() {
+    try { await authApi.retryReview(id); startReviewPoll(review?.at || '') }
+    catch { /* leave the retry button so they can try again */ }
   }
   // #364 — the review / "reviewing…" block shown under the collapsed feedback, so you always know
   // the coach saw it + WHERE the takeaways will appear.
@@ -61,10 +72,16 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
       {review.verdict && <p className="pw-fbrev__v">{review.verdict}</p>}
       {review.takeaways && review.takeaways.length > 0 && <ul className="pw-fbrev__l">{review.takeaways.slice(0, 3).map((t, i) => <li key={i}>{t}</li>)}</ul>}
     </div>
-  )) : reviewing ? (
-    <div className="pw-fbrev pw-fbrev--pending"><div className="pw-fbrev__h">🔎 Your coach is reviewing this session…</div><p className="pw-fbrev__v">Takeaways will appear <b>right here</b>, on <Link to="/progress" className="pw-fbrev__link">Progress</Link>, and as a 🔔 notification — usually within a minute or two.</p></div>
+  )) : reviewShownAbove ? null // #598 — a review IS shown above (parent's CoachVerdict) but this component's own matcher missed it → DON'T nag "hasn't reviewed / Retry" under an existing review
+    : reviewing ? (
+    <div className="pw-fbrev pw-fbrev--pending"><div className="pw-fbrev__h">🔎 Your coach is reviewing this session…</div><p className="pw-fbrev__v">Takeaways will appear <b>right here</b>{sport === 'gym' ? <>, on <Link to="/progress" className="pw-fbrev__link">Progress</Link></> : null}, and as a 🔔 notification — usually within a minute or two.</p></div>
   ) : saved ? (
-    <div className="pw-fbrev pw-fbrev--pending"><p className="pw-fbrev__v">Your coach's takeaways will show <b>here</b> + on <Link to="/progress" className="pw-fbrev__link">Progress</Link> + as a 🔔 notification.</p></div>
+    // #589 — saved but NO review landed + not polling = it's stuck (coach was down / errored). Offer a RETRY instead of
+    // a dead-end "takeaways will show here" that never fills.
+    <div className="pw-fbrev pw-fbrev--pending">
+      <p className="pw-fbrev__v">Your coach hasn’t reviewed this yet.</p>
+      <button className="btn btn--ghost" style={{ width: 'auto', padding: '6px 14px', marginTop: 6 }} onClick={retryReview}>🔁 Retry coach review</button>
+    </div>
   ) : null
   if (!loaded) return null
   if (saved && !editing) {

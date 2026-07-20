@@ -1,0 +1,84 @@
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--swim:#38bdf8;--bike:#f5b53d;--run:#ff8f5d;--warn:#f0b145}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  body{background:#05070a;color:var(--text);padding:20px;display:flex;gap:26px;flex-wrap:wrap;justify-content:center}
+  .phone{width:430px;background:var(--bg);border-radius:26px;padding:16px;border:1px solid #1c2028}
+  .opt-label{font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin:0 0 4px 4px}
+  .opt-note{font-size:11.5px;color:var(--dim);margin:0 0 10px 4px}
+  h1{font-size:25px;margin:0}
+  .eyebrow{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .sect{font-size:13px;font-weight:800;color:var(--text);margin:16px 4px 8px}
+  .card{background:linear-gradient(160deg,#21252f,#191c24);border:1px solid #262b36;border-radius:16px;padding:15px;margin-top:10px}
+  .sub{font-size:12.5px;color:var(--dim)}
+  .row{display:flex;align-items:center;gap:10px}
+  .pill{font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:20px;letter-spacing:.03em}
+  .bar{height:6px;border-radius:5px;background:#2c313c;overflow:hidden;margin-top:6px}
+  .bar>i{display:block;height:100%;border-radius:5px}
+  .disc{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid #23272f}
+  .disc:last-child{border-bottom:0}
+  .ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+  .big{font-size:20px;font-weight:800}
+  .ins{background:#12241a;border-left:3px solid var(--accent);border-radius:9px;padding:9px 11px;font-size:12.5px;color:#cdeeda;margin-top:10px;display:flex;gap:7px}
+  .lim{background:#2a1d16;border:1px solid #4a2f20;border-radius:13px;padding:12px}
+  .seg{display:flex;height:11px;border-radius:6px;overflow:hidden;margin-top:7px}
+  .seg>span{display:block}
+  .hub{display:flex;align-items:center;gap:12px;background:linear-gradient(160deg,#20242e,#181b22);border:1px solid #262b36;border-radius:14px;padding:13px 14px;margin-top:9px}
+  .hub .hi{width:40px;height:40px;border-radius:11px;background:#252a34;display:flex;align-items:center;justify-content:center;font-size:19px;flex:none}
+  .hub h3{font-size:15px;margin:0}
+  .hub .m{font-size:12px;color:var(--dim)}
+  .chev{margin-left:auto;color:var(--dim);font-size:20px}
+  .mut{color:var(--dim)}
+</style>
+
+<!-- ========= PLACEMENT 1 — SYNTHESIS CARD AT TOP OF STATS (recommended) ========= -->
+<div class="phone">
+  <div class="opt-label">Placement 1 · Top of Stats</div>
+  <p class="opt-note">The synthesis card leads; per-sport cards follow. One tap to the big picture.</p>
+  <h1>Stats</h1>
+
+  <div class="sect">🏊🚴🏃 Triathlon <span class="mut" style="font-weight:400">· your race, across all three</span></div>
+  <!-- Option A synthesis card, inline -->
+  <div class="card" style="padding:14px">
+    <div class="eyebrow" style="margin-bottom:9px">Base phase · 70.3 in 14 wk</div>
+    <div class="lim">
+      <div class="row" style="justify-content:space-between">
+        <div><span class="eyebrow" style="color:var(--warn)">⚠ Your limiter</span><div class="big" style="margin-top:1px">Swimming</div></div>
+        <span class="pill" style="background:#3a2a1c;color:var(--warn)">biggest opportunity</span>
+      </div>
+      <div class="sub" style="margin-top:7px;color:#e6c9a8">No swim data yet — ~⅙ of race time left on the table. 2 easy swims/wk moves your finish most.</div>
+    </div>
+    <div style="margin-top:6px">
+      <div class="disc"><div class="ic" style="background:#123047;color:var(--swim)">🏊</div><div style="flex:1"><b>Swim</b> <span class="mut" style="font-size:11px">CSS</span><div class="bar"><i style="width:8%;background:var(--swim)"></i></div></div><div style="text-align:right"><div style="font-size:14px;color:var(--warn);font-weight:800">—</div><div class="mut" style="font-size:10px">set CSS</div></div></div>
+      <div class="disc"><div class="ic" style="background:#3a2f14;color:var(--bike)">🚴</div><div style="flex:1"><b>Bike</b> <span class="mut" style="font-size:11px">FTP</span><div class="bar"><i style="width:82%;background:var(--bike)"></i></div></div><div style="text-align:right"><div style="font-size:14px;font-weight:800">253<span class="mut" style="font-size:10px"> W</span></div><div style="font-size:10px;color:var(--accent)">strong</div></div></div>
+      <div class="disc"><div class="ic" style="background:#3a221a;color:var(--run)">🏃</div><div style="flex:1"><b>Run</b> <span class="mut" style="font-size:11px">threshold</span><div class="bar"><i style="width:74%;background:var(--run)"></i></div></div><div style="text-align:right"><div style="font-size:14px;font-weight:800">5:28<span class="mut" style="font-size:10px"> /km</span></div><div style="font-size:10px;color:var(--accent)">strong</div></div></div>
+    </div>
+    <div style="margin-top:11px">
+      <div class="row" style="justify-content:space-between"><span class="eyebrow">Load share vs 70.3 demand</span></div>
+      <div class="seg"><span style="width:5%;background:var(--swim)"></span><span style="width:64%;background:var(--bike)"></span><span style="width:31%;background:var(--run)"></span></div>
+      <div class="sub" style="margin-top:4px">you 🏊5·🚴64·🏃31</div>
+      <div class="seg" style="opacity:.55;height:8px"><span style="width:15%;background:var(--swim)"></span><span style="width:55%;background:var(--bike)"></span><span style="width:30%;background:var(--run)"></span></div>
+      <div class="sub" style="margin-top:4px">race 🏊15·🚴55·🏃30 — <b style="color:var(--warn)">swim under-served</b></div>
+    </div>
+    <div class="ins"><span>💡</span>Strong cyclist + runner; swimming's the one lever. Add 2 swims and I'll fold them in.</div>
+  </div>
+
+  <div class="sect">Per sport</div>
+  <div class="hub"><div class="hi" style="color:var(--swim)">🏊</div><div><h3>Swimming</h3><div class="m">CSS · D′ · TTE · SWOLF · zones</div></div><span class="chev">›</span></div>
+  <div class="hub"><div class="hi" style="color:var(--bike)">🚴</div><div><h3>Cycling</h3><div class="m">Power curve · eFTP · VO₂max · W/kg</div></div><span class="chev">›</span></div>
+  <div class="hub"><div class="hi" style="color:var(--run)">🏃</div><div><h3>Running</h3><div class="m">Threshold pace · zones · VDOT</div></div><span class="chev">›</span></div>
+</div>
+
+<!-- ========= PLACEMENT 2 — TRIATHLON AS A PER-SPORT LIST ENTRY (own page) ========= -->
+<div class="phone">
+  <div class="opt-label">Placement 2 · Own page</div>
+  <p class="opt-note">A "Triathlon" row in the per-sport list → opens a dedicated /triathlon page.</p>
+  <h1>Stats</h1>
+
+  <div class="sect">Per sport</div>
+  <div class="hub" style="border-color:#2f5f43;background:linear-gradient(160deg,#1a2a22,#141b18)"><div class="hi" style="color:var(--accent);background:#17301f">🏊🚴🏃</div><div><h3>Triathlon</h3><div class="m">Limiter · race readiness · combined load</div></div><span class="chev">›</span></div>
+  <div class="hub"><div class="hi" style="color:var(--swim)">🏊</div><div><h3>Swimming</h3><div class="m">CSS · D′ · TTE · SWOLF · zones</div></div><span class="chev">›</span></div>
+  <div class="hub"><div class="hi" style="color:var(--bike)">🚴</div><div><h3>Cycling</h3><div class="m">Power curve · eFTP · VO₂max · W/kg</div></div><span class="chev">›</span></div>
+  <div class="hub"><div class="hi" style="color:var(--run)">🏃</div><div><h3>Running</h3><div class="m">Threshold pace · zones · VDOT</div></div><span class="chev">›</span></div>
+
+  <div class="sub" style="text-align:center;margin-top:16px;opacity:.7">— tap Triathlon → full-screen synthesis (the Option-A card) —</div>
+</div>

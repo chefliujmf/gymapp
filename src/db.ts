@@ -96,6 +96,7 @@ export interface SetEntry {
   weight?: number
   reps?: number
   done: boolean
+  warmup?: boolean // #591 (JeFit "W") — a warm-up set: logged, but excluded from working-set analytics + tonnage
 }
 
 /**
