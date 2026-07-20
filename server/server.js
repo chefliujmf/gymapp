@@ -27,7 +27,6 @@ import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchan
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
-import { generatePlanSkeleton } from './plan-skeleton.js' // #516c — deterministic 14-day plan skeleton (periodization/load/spacing in code)
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -3369,50 +3368,20 @@ process.on('uncaughtException', (e) => console.error(`[uncaughtException] ${e?.s
 // (Form/freshness are always available), then a REFINE pass once overnight HRV/sleep/RHR lands in
 // intervals. Runs in-process (single instance); guarded once-per-pass-per-day via user.dailyAdapt.
 const DAILY_HORIZON = 14 // days the coach keeps populated + adapted ahead
-// #516c — derive generatePlanSkeleton() inputs from the athlete + render the computed skeleton for the coach prompt.
-const _SKEL_DOW = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
-function restDowsFromAvailability(av) {
-  if (!av || typeof av !== 'object') return null
-  const out = []
-  for (const [k, d] of Object.entries(_SKEL_DOW)) if (!(Number(av[k]) > 0)) out.push(d)
-  return out.length && out.length < 7 ? out : null // some (not all) days off = a usable rest pattern
-}
-function buildSkeletonForUser(user, today) {
-  const sports = user.sports && user.sports.length ? user.sports : (user.sport ? [user.sport] : ['cycling'])
-  const loadPlan = Array.isArray(user.info?.loadPlan) && user.info.loadPlan.length ? user.info.loadPlan : null
-  return generatePlanSkeleton({ today, days: DAILY_HORIZON, sports, trainingDays: Number(user.info?.trainingDays) || 0, restDows: restDowsFromAvailability(user.info?.availability) || undefined, ctl: user.ctl, atl: user.atl, loadPlan })
-}
-function skeletonText(skel) {
-  if (!skel || !skel.days || !skel.days.length) return ''
-  const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  const durTxt = (s) => (s >= 60 && s % 60 === 0 ? `${s / 60}m` : `${s}s`)
-  return skel.days.map((d) => {
-    if (d.cls === 'rest' || !d.sport) return `${WD[d.dow]} ${d.date}: REST`
-    if (d.dayType === 'gym') return `${WD[d.dow]} ${d.date}: strength (~${d.targetTss} load, ~${d.durationMin}min)`
-    const work = (d.segments || []).filter((s) => !/warm|cool|recover/i.test(s.label || ''))
-    const w0 = work[0]
-    const body = work.length > 1 ? `${work.length}×${durTxt(w0.duration)}@${w0.powerStart}%` : (w0 ? `${durTxt(w0.duration)}@${w0.powerStart}%` : '')
-    return `${WD[d.dow]} ${d.date}: ${d.dayType} · ${d.zone} · ~${d.targetTss} TSS · ~${d.durationMin}min (${body})`
-  }).join('\n')
-}
-function dailyAdaptMsg(today, pass, skel) {
+// #610 (JM 2026-07-20) — SKELETON REMOVED. #516's code-computed skeleton cut coach cost but handed EVERY athlete
+// the same generic threshold/sweet-spot/VO2 rotation and told the coach to "apply it", which destroyed the
+// per-athlete individualization the coach used to do (pre-#516). Per JM's token-thrift rule (#590), NEVER trade
+// quality for tokens — so the coach OWNS the plan again and BUILDS each session individualized to the athlete.
+function dailyAdaptMsg(today, pass, cov) {
   const head = pass === 'refine'
     ? `Daily auto-adaptation — REFINE pass (${today}). Their overnight HRV/sleep/resting-HR has now LANDED in intervals — read it (get_wellness) + their check-in (get_checkins). If it changes today's readiness vs earlier, refine; if nothing meaningful changed, don't churn the plan.`
     : `Daily auto-adaptation — EARLY pass (${today}). Overnight HRV/sleep from their watch usually ISN'T synced this early, so decide from their FRESHNESS / Form (CTL−ATL, always available — get_wellness) + their latest check-in (get_checkins). You'll get a refine pass later once HRV/sleep lands.`
-  // #516c — the 14-day plan SKELETON is COMPUTED in code (periodization, per-day load, rest/long/hard spacing,
-  // weekly-day cap, Form target). Hand it to the coach as the authoritative plan to APPLY + refine, so it stops
-  // re-deriving the plan across many passes (that multi-pass orchestration was the #439 horizon-fill loop).
-  const plan = skel && skel.days && skel.days.length
-    ? `\n\n# YOUR COMPUTED ${DAILY_HORIZON}-DAY PLAN — already periodized + load-balanced; APPLY it, don't re-derive it.\nEach line = day → sport · intensity zone · target load (TSS) · duration · the work set. Intensity % is % of THRESHOLD (FTP on the bike, threshold pace on runs). Form projects to ~${skel.formEnd != null ? skel.formEnd : '?'} at the horizon end (green productive zone is roughly −10 to −20).\n${skeletonText(skel)}`
+  const gap = cov && cov.tail >= 3
+    ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. The plan currently REACHES only ${cov.last || 'today'} — ${cov.tail} days SHORT of the ~2-week end (${cov.end}). EXTEND it to ~${cov.end}: add sessions from ${cov.firstEmpty} through ${cov.end}, UP TO (never beyond) their HARD weekly training-days cap + availability — leave genuine REST days blank.`
     : ''
-  return `${head}${plan}
-
-Your job THIS pass — APPLY the computed plan above, then REFINE it to how they're ACTUALLY recovering:
-1) Read their readiness NOW: get_checkins (today's check-in) + get_wellness (Form/Freshness; HRV/sleep if synced).
-2) Make the calendar MATCH the computed plan: list_schedule, then create the missing sessions, move/adjust ones that differ, and remove stragglers — so the rolling ${DAILY_HORIZON} days equal the plan above. Author every ride/run as STRUCTURED steps (warmup / work / cooldown with targets) so it syncs as a followable workout, and give each a plain-language title + description (no jargon).
-3) REFINE with your judgement — the part code can't do: if they're under-recovered, ease TODAY + the next day or two (drop a quality day to endurance, trim volume, or insert rest); if they're fresh and it's a build, keep the stimulus. Honor their goals, availability windows, equipment, and the female-athlete / cycle / pregnancy guidance. You have the FINAL say — OVERRIDE any day that doesn't fit this athlete.
-The periodization, per-day load, rest/long/hard spacing, weekly-day cap and Form target are ALREADY correct in the computed plan — do NOT re-derive them; spend your effort on the readiness refinement + good structured workouts. Never double-book a day / exceed their max sessions per day / exceed their HARD weekly training-days cap.
-This pass is ONLY the WORKOUT plan (no activity reviews / meals / mind / separate recovery items — Eat/Mind + standalone recovery blocks are OFF/parked). Recovery guidance rides as TEXT on the workout (its recovery/notes field), NEVER a separate calendar item. It is SILENT (#498): make the changes but do NOT notify / push — they already got their one check-in ping today; never send a second. If genuinely uncertain, make the sensible conservative choice rather than asking — never push a question. Decide and act. Be concise.`
+  return `${head}${gap} Then BUILD + adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule first). **INDIVIDUALIZE every session to THIS athlete — YOU own the plan, there is no template to copy.** Use their full profile + your per-sport & female-athlete engines: their SPORT(S) — only sports they actually do (a runner gets runs, a swimmer pool/CSS sets, a lifter gym; NEVER program a session they can't do, e.g. a ride for someone with no bike); SEX; AGE (a teen = technique + no maximal loading; masters = extra recovery); repro-state — if PREGNANT, coach MODERATE / MAINTAIN by RPE + talk test, trimester-adjusted, never max or to-exhaustion (apply your female-athlete pregnancy guidance), otherwise factor menstrual phase; their GOALS; fitness/experience; equipment. Match load to how they're recovering + their weekly frequency/availability; keep ~${DAILY_HORIZON} days populated (never double-book / exceed max-per-day / exceed the HARD weekly training-days cap). Author each ride/run/swim as STRUCTURED steps (warmup/work/cooldown with real targets) so it's followable on their device.
+**NAMING + DESCRIPTION: name and describe every session by its PURPOSE + concrete stats the athlete can act on** — the duration, the interval structure, target pace/power/effort, a coaching cue — NOT a vague "easy / hard / Z2 endurance" label (bare intensity words are unhelpful and annoying here). Make each description worth reading, with real substance.
+This pass is ONLY the WORKOUT plan (no activity reviews / meals / mind / separate recovery items — Eat/Mind + standalone recovery blocks are OFF/parked). Recovery guidance rides as TEXT on the workout (its recovery/notes field), NEVER a separate calendar item. It is SILENT (#498): make the changes with the tools but do NOT notify / push — they already got their one check-in ping today; never send a second. If genuinely uncertain, make the sensible conservative choice rather than asking — never push a question. Decide and act. Be concise.`
 }
 // #439 — FOCUSED horizon-fill (no reviews / fuel / mind distraction) so the coach actually populates the back
 // half of the ~2-week window. Used to re-drive it when one adapt pass left the horizon short.
@@ -3439,11 +3408,11 @@ function sharpenMsg(today) {
 async function runDailyAdapt(user, pass) {
   try {
     const today = await athleteToday(user)
-    // #516c — compute the 14-day plan SKELETON in code, then ONE pass has the coach APPLY + refine it (was:
-    // dailyAdaptMsg + a horizon-fill loop of up to 5 MORE coach sessions). Periodization/load/spacing/caps are
-    // deterministic now, so the coach spends its round-trips on readiness refinement, not re-deriving the plan.
-    const skel = buildSkeletonForUser(user, today)
-    await runCoachTask(user, dailyAdaptMsg(today, pass, skel))
+    // #610 — the coach BUILDS + individualizes the plan (skeleton removed, #516 reverted). It plans the horizon,
+    // then a bounded fill loop tops up any tail still short of the ~2-week window (#439 coverage metric).
+    const covOf = () => horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON)
+    await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()))
+    for (let i = 0; i < 5 && covOf().tail >= 3; i++) await runCoachTask(user, horizonFillMsg(today, covOf()))
     // 2) REVIEWS + 3) ROUND-OUT — their OWN focused passes, ONCE/day (dedup) so we don't re-spawn the coach
     //    for them on both the early AND refine passes.
     user.dailyAdapt = user.dailyAdapt || {}
