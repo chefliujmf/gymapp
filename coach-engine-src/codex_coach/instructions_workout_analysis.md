@@ -65,7 +65,7 @@ Use simple grades:
 
 The Intervals.icu activity Notes/comment thread is for coaching conclusions, not raw analysis.
 
-Use [coach_feedback_format.md](</Users/jmfiset/dev/cyclingcoach/codex_coach/coach_feedback_format.md>) as the required activity-note format. Every completed-workout coach note must include the same blocks: verdict, execution, body/recovery exercises, mind, next, nutrition, recovery, today's workout supplement needs, daily baseline, and skip today.
+Every completed-workout coach note (saved via the `save_coach_review` tool) must cover: verdict, execution, body/recovery, mind, next, nutrition, recovery, today's supplement needs, daily baseline, and skip-today — the app formats these into the standard Coach-note + Recovery/Supplements comments.
 Keep these separate:
 - athlete feedback: the athlete's own words or quick-select context;
 - coach feedback: athlete-facing interpretation and action;
@@ -87,7 +87,7 @@ For `COACHCHECK`, this is a hard completion gate, not a style preference. Before
 
 If the readback does not show both comments, add the missing block immediately and read back again.
 
-**Note shape:** use the exact templates in [coach_feedback_format.md](</Users/jmfiset/dev/cyclingcoach/codex_coach/coach_feedback_format.md>), which is the single source of truth for the main `Coach note - ...` comment and the separate `Recovery / Supplements` comment (and their required blocks). Do not restate the templates here — follow that file so the two cannot drift.
+**Note shape:** fill the `save_coach_review` fields — the app renders them into the main `Coach note` comment and the separate `Recovery / Supplements` comment, so you never hand-format or let the two drift.
 
 Keep most sections to one or two bullets. If a bullet needs semicolons, it is too dense; split it or use a separate topic comment.
 
