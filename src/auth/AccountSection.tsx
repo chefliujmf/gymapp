@@ -123,7 +123,7 @@ export default function AccountSection({ only }: { only?: 'account' | 'connectio
       {(!only || only === 'connections') && <>
       <div className="section-title">intervals.icu (your account)</div>
       {user.hasIcuKey ? (
-        <p className="meta" style={{ marginTop: -4 }}>✓ Key stored on your account — syncs on every device.</p>
+        <p className="meta" style={{ marginTop: -4 }}>✓ Key stored on your account — syncs on every device. {user.icuAthlete ? <>Athlete <b style={{ color: 'var(--accent)' }}>{user.icuAthlete}</b> (resolved from your key).</> : <b style={{ color: 'var(--danger)' }}>No athlete resolved — re-save your key to reconnect.</b>}</p>
       ) : (
         <p className="meta" style={{ marginTop: -4 }}>
           Get your key: <a href="https://intervals.icu/settings" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>intervals.icu → Settings ↗</a> → <b>Developer Settings</b> → API Key → <b>(view)</b>, then paste it below. Your Athlete ID is shown right there too.
