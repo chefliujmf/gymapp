@@ -3490,7 +3490,13 @@ async function dailyAdaptTick() {
     try { dailyReminderPush(user, today, hour) } catch (e) { console.error('[reminder] ' + (e.message || e)) }
     if (IS_STAGING) continue // #381 — coach auto-adapt is PROD-only (shared athlete); the reminder above is fine on both
     await healMirror(user) // #5026 — backstop read-repair (the primary trigger is sync-on-load, below)
-    if (!user.icuKey || !user.coachProfile || !String(user.coachProfile).trim()) continue
+    // #606 (JM 2026-07-20) — coaching does NOT require intervals. The old `!user.icuKey` gate SKIPPED any athlete
+    // without a personal intervals key, so their 14-day horizon never got (re)built — while `handle-missed` STILL
+    // removed their stale/missed sessions, leaving them with an empty plan (Xenia's plans died at Jul 17: cleanup ran,
+    // rebuild was gated off). The planner is intervals-OPTIONAL: the skeleton is coded, readiness degrades to the
+    // check-in scores when there's no wellness, and pushPlanToIcu no-ops without an athlete — so a check-in-only
+    // athlete still gets a full plan. Gate on the COACH being set up, not on intervals.
+    if (!user.coachProfile || !String(user.coachProfile).trim()) continue
     user.dailyAdapt = user.dailyAdapt || {}
     try {
       // #469 (JM 2026-07-10) — ONE adapt per day, AFTER the check-in. The old everyday ~4am MORNING pass was
