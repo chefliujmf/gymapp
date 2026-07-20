@@ -27,7 +27,7 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
   avgHr?: number           // device average HR, shown as a chip
 }) {
   const rows = exercises.map((ex) => {
-    const ss = (ex.sets || []).filter((s) => s?.done && (s.reps || 0) > 0)
+    const ss = (ex.sets || []).filter((s) => s?.done && !s?.warmup && (s.reps || 0) > 0) // #591 warm-ups excluded from working stats
     const vol = ss.reduce((v, s) => v + (s.weight || 0) * (s.reps || 0), 0)
     const top = ss.slice().sort((a, b) => (b.weight || 0) - (a.weight || 0))[0]
     const est = top?.weight ? Math.round(e1rm(top.weight, top.reps || 1)) : 0

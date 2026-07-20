@@ -108,6 +108,12 @@ describe('weeklySetsPerMuscle (Schoenfeld 10–20 landmark, per TRAINING week)',
     const bw = (n: number) => [log(0, [{ name: 'Bench', sets: Array(n).fill([0, 10]) as [number, number][] }]), log(14, [{ name: 'Bench', sets: Array(n).fill([0, 10]) as [number, number][] }])]
     expect(weeklySetsPerMuscle(bw(12), muscleOf).find((v) => v.muscle === 'Chest')).toMatchObject({ perWeek: 12, status: 'ok' })
   })
+  it('EXCLUDES warm-up sets from working-set count (#591 JeFit "W")', () => {
+    // 2 warm-up + 3 working Bench sets in one week → only the 3 working count toward Chest.
+    const sets = [{ weight: 40, reps: 8, done: true, warmup: true }, { weight: 40, reps: 8, done: true, warmup: true }, { weight: 80, reps: 8, done: true }, { weight: 80, reps: 8, done: true }, { weight: 80, reps: 8, done: true }]
+    const l = { workoutId: 'w', title: 'S', discipline: 'strength', duration: 45, date: new Date(EPOCH).toISOString().slice(0, 10), completedAt: EPOCH, sets: { 0: sets }, exNames: ['Bench'], exIds: [undefined] } as unknown as WorkoutLog
+    expect(weeklySetsPerMuscle([l], muscleOf).find((v) => v.muscle === 'Chest')!.total).toBe(3)
+  })
 })
 
 describe('inferGymFocus (main sport is the strongest signal, #534)', () => {

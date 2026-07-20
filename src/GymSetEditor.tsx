@@ -23,7 +23,7 @@ export default function GymSetEditor({ log, exNames, onSaved }: { log: WorkoutLo
   })
   const save = async () => {
     const flat = Object.values(sets).flat()
-    const volume = flat.reduce((v, s) => v + (s?.done ? (s.weight || 0) * (s.reps || 0) : 0), 0)
+    const volume = flat.reduce((v, s) => v + (s?.done && !s?.warmup ? (s.weight || 0) * (s.reps || 0) : 0), 0)
     const setsCompleted = flat.filter((s) => s?.done).length
     if (log.id != null) await db.logs.update(log.id, { sets, volume, setsCompleted })
     if (log.sid) fetch(`/auth/logs/${log.sid}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ sets, volume, setsCompleted }) }).catch(() => {})
@@ -37,8 +37,8 @@ export default function GymSetEditor({ log, exNames, onSaved }: { log: WorkoutLo
           <div className="section-title" style={{ marginTop: 2 }}>{exNames[ex] || `Exercise ${ex + 1}`}</div>
           <div className="gp2-grid">
             {(sets[ex] || []).map((s, si) => (
-              <div key={si} className={'gp2-grow' + (s.done ? ' done' : '')}>
-                <span className="gp2-gn">{si + 1}</span>
+              <div key={si} className={'gp2-grow' + (s.done ? ' done' : '') + (s.warmup ? ' warm' : '')}>
+                <button type="button" className={'gp2-gn' + (s.warmup ? ' gp2-gn--w' : '')} onClick={() => patch(ex, si, { warmup: !s.warmup })} title={s.warmup ? 'Warm-up set — tap to make it a working set' : 'Tap to mark a warm-up set'}>{s.warmup ? 'W' : si + 1}</button>
                 <label className="gp2-gf"><input type="number" inputMode="decimal" value={toDisp(s.weight)} placeholder="—" onChange={(e) => patch(ex, si, { weight: e.target.value === '' ? undefined : fromDisp(Number(e.target.value)) })} /><span className="gp2-gu">{unit}</span></label>
                 <span className="gp2-gx">×</span>
                 <label className="gp2-gf"><input type="number" inputMode="numeric" value={s.reps ?? ''} placeholder="—" onChange={(e) => patch(ex, si, { reps: e.target.value === '' ? undefined : Number(e.target.value) })} /><span className="gp2-gu">reps</span></label>

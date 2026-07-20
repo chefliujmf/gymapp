@@ -136,7 +136,7 @@ function* eachDoneSet(logs: WorkoutLog[]): Generator<DoneSet> {
       // #591 — a done set counts even with NO weight (bodyweight: push-ups, pull-ups, glute bridge). Weight is
       // optional (→ 0); e1RM consumers guard weight>0 so bodyweight never shows a bogus "0 kg 1RM", but set-COUNTING
       // (sets-per-muscle) includes it — a bodyweight set is still a working set for that muscle.
-      for (const s of arr) if (s.done && s.reps) yield { name, exId, weight: s.weight || 0, reps: s.reps, date: log.date, at }
+      for (const s of arr) if (s.done && !s.warmup && s.reps) yield { name, exId, weight: s.weight || 0, reps: s.reps, date: log.date, at }
     }
   }
 }

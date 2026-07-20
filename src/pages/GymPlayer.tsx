@@ -240,7 +240,7 @@ export default function GymPlayer() {
     const wallMin = Math.max(1, Math.round((Date.now() - startedAt) / 60000))   // wall-clock elapsed (fragile)
     const flat = Object.values(log).flat()
     const setsCompleted = flat.filter((s) => s?.done).length
-    const volume = flat.reduce((v, s) => v + (s?.done ? (s.weight || 0) * (s.reps || 0) : 0), 0)
+    const volume = flat.reduce((v, s) => v + (s?.done && !s?.warmup ? (s.weight || 0) * (s.reps || 0) : 0), 0)
     // #527/#251 — a tab close / reload can reset `startedAt`, logging an impossibly-short time (20 sets in "11 min").
     // Fall back to the PLANNED duration (== what intervals shows) when the wall-clock is implausible for the work done.
     const duration = reliableSessionMinutes({ wallMin, setsCompleted, plannedMin: w.duration })
@@ -415,8 +415,8 @@ export default function GymPlayer() {
               const e = log[gExIndex]?.[sn - 1]
               const isCur = cur.kind === 'set' && sn === gCurSetNo
               return (
-                <div key={sn} className={'gp2-grow' + (isCur ? ' cur' : '') + (e?.done ? ' done' : '')}>
-                  <span className="gp2-gn">{sn}</span>
+                <div key={sn} className={'gp2-grow' + (isCur ? ' cur' : '') + (e?.done ? ' done' : '') + (e?.warmup ? ' warm' : '')}>
+                  <button type="button" className={'gp2-gn' + (e?.warmup ? ' gp2-gn--w' : '')} onClick={() => logSet(gExIndex, sn, { warmup: !e?.warmup })} title={e?.warmup ? 'Warm-up set — tap to make it a working set' : 'Tap to mark a warm-up set'}>{e?.warmup ? 'W' : sn}</button>
                   {gBW && e?.weight == null
                     ? <span className="gp2-gbw">bodyweight</span>
                     : <><label className="gp2-gf"><input type="number" inputMode="decimal" value={e?.weight ?? ''} placeholder={gSuggestW != null ? String(gSuggestW) : ''} onChange={(ev) => logSet(gExIndex, sn, { weight: ev.target.value === '' ? undefined : Number(ev.target.value) })} /><button type="button" className="gp2-gu gp2-gu--btn" onClick={toggleUnit} title="kg / lb">{unit}</button></label><span className="gp2-gx">×</span></>}
