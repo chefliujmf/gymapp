@@ -740,13 +740,14 @@ select.search { appearance: none; -webkit-appearance: none; }
 .gp2-skip { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:var(--text-dim,#9aa3b2); font-size:13px; font-weight:700; padding:0 14px; border-radius:12px; cursor:pointer; }
 .gp2-skip:active { transform:scale(.96); }
 /* #591 Option A — editable JeFit-style SET GRID (replaces the one-at-a-time logbar for reps exercises). */
-.gp2-1rm { font-size:12px; font-weight:700; color:#3d7bff; margin-left:8px; }
+.gp2-1rm { font-size:12px; font-weight:700; color:var(--accent,#34e07d); margin-left:8px; }
+.gp2-gbw { flex:1; text-align:center; font-size:12px; font-weight:700; letter-spacing:.3px; color:var(--text-dim,#9aa3b2); }
 .gp2-gridwrap { flex:1; min-height:0; overflow-y:auto; padding:4px 14px 2px; }
 .gp2-restbanner { display:flex; align-items:center; justify-content:center; gap:10px; font-size:13px; font-weight:700; color:var(--text-dim,#9aa3b2); background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:8px 12px; margin-bottom:8px; }
 .gp2-restskip { background:none; border:none; color:var(--accent,#34e07d); font-weight:800; font-size:13px; cursor:pointer; }
 .gp2-grid { display:flex; flex-direction:column; gap:8px; }
 .gp2-grow { display:flex; align-items:center; gap:8px; padding:8px; border-radius:12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); }
-.gp2-grow.cur { outline:2px solid #3d7bff; background:rgba(61,123,255,.10); }
+.gp2-grow.cur { outline:2px solid var(--accent,#34e07d); background:rgba(52,224,125,.08); }
 .gp2-grow.done { background:rgba(52,224,125,.09); border-color:rgba(52,224,125,.3); }
 .gp2-gn { width:26px; height:26px; flex:none; display:flex; align-items:center; justify-content:center; border-radius:8px; background:rgba(255,255,255,.08); font-size:12px; font-weight:800; color:var(--text-dim,#9aa3b2); }
 .gp2-gf { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:11px; color:var(--text-dim,#8b93a1); }

@@ -417,8 +417,9 @@ export default function GymPlayer() {
               return (
                 <div key={sn} className={'gp2-grow' + (isCur ? ' cur' : '') + (e?.done ? ' done' : '')}>
                   <span className="gp2-gn">{sn}</span>
-                  <label className="gp2-gf"><input type="number" inputMode="decimal" value={e?.weight ?? ''} placeholder={gSuggestW != null ? String(gSuggestW) : (gBW ? 'BW' : '')} onChange={(ev) => logSet(gExIndex, sn, { weight: ev.target.value === '' ? undefined : Number(ev.target.value) })} /><button type="button" className="gp2-gu gp2-gu--btn" onClick={toggleUnit} title="kg / lb">{gBW && e?.weight == null ? 'BW' : unit}</button></label>
-                  <span className="gp2-gx">×</span>
+                  {gBW && e?.weight == null
+                    ? <span className="gp2-gbw">bodyweight</span>
+                    : <><label className="gp2-gf"><input type="number" inputMode="decimal" value={e?.weight ?? ''} placeholder={gSuggestW != null ? String(gSuggestW) : ''} onChange={(ev) => logSet(gExIndex, sn, { weight: ev.target.value === '' ? undefined : Number(ev.target.value) })} /><button type="button" className="gp2-gu gp2-gu--btn" onClick={toggleUnit} title="kg / lb">{unit}</button></label><span className="gp2-gx">×</span></>}
                   <label className="gp2-gf"><input type="number" inputMode="numeric" value={e?.reps ?? ''} placeholder={gTargetReps ? String(gTargetReps) : ''} onChange={(ev) => logSet(gExIndex, sn, { reps: ev.target.value === '' ? undefined : Number(ev.target.value) })} /><span className="gp2-gu">reps</span></label>
                   <button className={'gp2-gck' + (e?.done ? ' on' : '')} onClick={() => markSetDone(gExIndex, sn, gEx.name, !e?.done)} title={e?.done ? 'Logged — tap to undo' : 'Log this set'}>✓</button>
                 </div>
