@@ -1097,6 +1097,39 @@ app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
   res.json(out)
 })
 
+// #364/#589 — the async coach review of a completed session (best-effort; only if a coach is set up). EXTRACTED so the
+// feedback POST *and* the #589 retry (a stuck/failed review — e.g. the coach was down when feedback was saved) share ONE
+// trigger. Returns false when there's nothing to run (no coach / no feedback), so the caller can tell the user.
+function triggerActivityReview(user, id, fb, icuActivityId) {
+  if (!fb || !(user.coachProfile && user.coachProfile.trim())) return false
+  const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
+  const rid = icuActivityId || id
+  const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${rid}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${rid}") with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${rid}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. Be concise; decide and act.`
+  runCoachTask(user, msg).catch((e) => console.error('[activity-review] ' + (e.message || e)))
+  return true
+}
+function triggerPlanReview(user, plan, fb) {
+  if (!fb || !(user.coachProfile && user.coachProfile.trim())) return false
+  const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
+  const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}", and activityId if it matched a device activity) with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). If it matched a device activity, ALSO set a PUBLIC-safe title + description with set_activity_text (activity id from get_recent_activities) — workout/route/effort only, NO health/score/plan. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. Be concise; don't ask questions — just review and act.`
+  runCoachTask(user, msg).catch((e) => console.error('[coach-review] ' + (e.message || e)))
+  return true
+}
+// #589 — RETRY a stuck/failed coach review. When feedback was saved but no review ever landed (e.g. the coach was down),
+// the athlete was stuck on "reviewing…" with no recourse. This re-runs the review from the STORED feedback. `id` = an
+// intervals activity id (in activityFeedback) OR a plan/gym id (plan.feedback).
+app.post('/auth/activity/:id/review-retry', auth, (req, res) => {
+  const id = String(req.params.id)
+  const afb = (req.user.activityFeedback || {})[id]
+  const plan = (req.user.plans || []).find((p) => p.id === id)
+  let ok = false
+  if (afb) ok = triggerActivityReview(req.user, id, afb)
+  else if (plan && plan.feedback) ok = triggerPlanReview(req.user, plan, plan.feedback)
+  else return res.status(404).json({ error: 'no saved feedback to review for this session' })
+  if (!ok) return res.status(409).json({ error: 'set up your coach first' })
+  res.json({ ok: true, retrying: true })
+})
+
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads
 // it (it comes back on /api/plans). Fields are sport-specific; kept as a free object.
 app.post('/auth/plan/:id/feedback', auth, (req, res) => {
@@ -1112,16 +1145,8 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
   }
   save(store)
   res.json({ ok: true, feedback: plan.feedback })
-  // #76: fire an async coach review on the feedback (best-effort, non-blocking). Only
-  // for athletes who've set up their coach (skip mid-onboarding users).
-  if (req.user.coachProfile && req.user.coachProfile.trim()) {
-    try {
-      const fb = plan.feedback
-      const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
-      const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}", and activityId if it matched a device activity) with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). If it matched a device activity, ALSO set a PUBLIC-safe title + description with set_activity_text (activity id from get_recent_activities) — workout/route/effort only, NO health/score/plan. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. Be concise; don't ask questions — just review and act.`
-      runCoachTask(req.user, msg).catch((e) => console.error('[coach-review] ' + (e.message || e)))
-    } catch (e) { console.error('[coach-review] trigger ' + e.message) }
-  }
+  // #76/#589 — fire the async coach review (best-effort, non-blocking; extracted so the #589 retry reuses it).
+  triggerPlanReview(req.user, plan, plan.feedback)
 })
 
 // #583 — a completed intervals ACTIVITY and the coach PLAN it fulfilled are ONE session for feedback. Map any sport
@@ -1274,15 +1299,8 @@ app.post('/auth/activity/:id/feedback', auth, async (req, res) => {
     // there (deduped) so "Anything else?" shows up in intervals too, not just Platyplus.
     if (fb.note && fb.note.trim()) syncActivityNote(req.user, icuActivityId, fb.note.trim()).catch((e) => console.error('[icu-note-write] ' + (e.message || e)))
   }
-  // async coach review referencing the activity (best-effort; only once the coach is set up).
-  if (req.user.coachProfile && req.user.coachProfile.trim()) {
-    try {
-      const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
-      const rid = icuActivityId || id // #583 — the real intervals activity when linked (so the coach can read/annotate it), else the plan id
-      const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${rid}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${rid}") with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${rid}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. Be concise; decide and act.`
-      runCoachTask(req.user, msg).catch((e) => console.error('[activity-review] ' + (e.message || e)))
-    } catch (e) { console.error('[activity-review] trigger ' + e.message) }
-  }
+  // #364/#589 — async coach review of the activity (best-effort; extracted so the #589 retry reuses it).
+  triggerActivityReview(req.user, id, fb, icuActivityId)
 })
 
 // admin: user management

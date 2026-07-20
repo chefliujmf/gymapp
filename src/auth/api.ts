@@ -188,6 +188,7 @@ export const authApi = {
   getActivityFeedback: (id: string) => req<{ feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; at?: number } | null>(`/activity/${encodeURIComponent(id)}/feedback`),
   activityFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; sport?: string; date?: string }) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   feedbackSkip: (id: string) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback-skip`, { method: 'POST' }),
+  retryReview: (id: string) => req<{ ok: boolean; retrying: boolean }>(`/activity/${encodeURIComponent(id)}/review-retry`, { method: 'POST' }), // #589 — re-run a stuck coach review
   promoteProd: () => req<{ ok: boolean }>('/promote-prod', { method: 'POST' }),
   // Fan a Platyplus-recorded workout out to intervals (match-first, server-side, #122/#123).
   completeActivity: (a: { sport: string; title: string; date: string; startIso: string; durationSec: number; samples: { t: number; power?: number; cadence?: number; hr?: number }[] }) =>

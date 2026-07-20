@@ -3295,3 +3295,13 @@ stripped on import (stripPlatyplusLinks) so it can't accumulate. intervals-ORIGI
 intervals → within a reconcile cycle it snaps back to Platyplus's day. Sources:
 [webcal thread](https://forum.intervals.icu/t/external-calendar-webcal-sync-edit/206) ·
 [calendar export](https://forum.intervals.icu/t/export-your-intervals-icu-calendar/576).
+
+### #589 — RETRY a stuck coach review (feedback given, review never landed) 🧪 (built; testing live)
+JM: "there is no retry for an activity done with feedback and waiting for coach review, we need to have that." Real gap —
+esp. after the coach was DOWN for a day: every review triggered in that window silently failed, leaving the athlete stuck
+on "🔎 reviewing…" with no recourse. FIX: extracted the review trigger into `triggerActivityReview`/`triggerPlanReview`
+(server.js), added `POST /auth/activity/:id/review-retry` that re-runs the review from the STORED feedback (activity id →
+activityFeedback, or plan/gym id → plan.feedback). Client (`ActivityFeedback.tsx`): the poll no longer dead-ends — when a
+review is saved but none landed and we're not polling, it shows a **"🔁 Retry coach review"** button that re-triggers +
+re-polls. Covers both the timeout case AND opening an old session whose review never came. Typechecks; testing end-to-end
+now that the coach is back.
