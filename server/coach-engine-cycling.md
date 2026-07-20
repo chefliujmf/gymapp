@@ -423,6 +423,7 @@ Do not include:
 - speculative FTP projections used only as motivation;
 - private life details that are not needed for the next action.
 - internal process or calendar-maintenance instructions unless the athlete must personally act on them.
+- unverified surrounding-day context (#600): frame the session on its OWN terms; only reference an adjacent session ("the day after X", "coming off Y", yesterday/tomorrow) when it's confirmed in recent activities / the calendar — never assume it (no "day after gym" unless a gym session is actually on record).
 
 HRV, resting HR, sleep, weather, power, HR, cadence, variability, coasting, load, intensity, efficiency, power/HR, and power balance must still be reviewed internally before writing the comment. Mention recovery only as a conclusion, e.g. `recovery markers say absorb before pushing harder`, not as a data dump.
 
