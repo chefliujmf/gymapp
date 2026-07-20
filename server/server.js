@@ -919,7 +919,9 @@ app.get('/auth/readiness', auth, async (req, res) => {
   const data = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${oldest.toISOString().slice(0, 10)}&newest=${date}`)
   if (!data) return res.json({ connected: false })
   const rows = (Array.isArray(data) ? data : []).map((d) => ({
-    date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
+    // #597 — Form matches intervals: ONE decimal (CTL−ATL), NOT integer-rounded. Math.round turned −3.5 into −4
+    // while intervals + the rest of the app (round1) show −3.5, so prod disagreed with intervals by a whole point.
+    date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round((d.ctl - d.atl) * 10) / 10 : null,
     restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, eftp: d.eftp ?? d.icu_eftp ?? null,
     sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null,
     weight: d.weight ?? null, // #265 — for BMR/TDEE fuel targets
@@ -2857,7 +2859,9 @@ app.get('/api/intervals/wellness', apiAuth, async (req, res) => {
   const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete}/wellness?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
   if (!data) return res.json({ connected: false, wellness: [] })
   const wellness = (Array.isArray(data) ? data : []).map((d) => ({
-    date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
+    // #597 — Form matches intervals: ONE decimal (CTL−ATL), NOT integer-rounded. Math.round turned −3.5 into −4
+    // while intervals + the rest of the app (round1) show −3.5, so prod disagreed with intervals by a whole point.
+    date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round((d.ctl - d.atl) * 10) / 10 : null,
     restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null, weight: d.weight ?? null,
   }))
   res.json({ connected: true, wellness })
