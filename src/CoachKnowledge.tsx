@@ -23,8 +23,7 @@ export default function CoachKnowledge() {
 
   return (
     <div className="card" style={{ padding: 16 }}>
-      <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 14 }}>🧠 What your coach knows about you</div>
-
+      {/* #521 (JM 2026-07-15) — dropped the "What your coach knows about you" title; the user just enters their objective, the heading added nothing. */}
       {/* ── Your goal, in your own words (or just tell the coach in chat) ── */}
       <div style={GRP}>🎯 Your goal {saved && <span className="meta" style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>· Saved ✓</span>}</div>
       <p className="meta" style={{ margin: '0 2px 8px' }}>What are you training for? Write it in your own words — or just tell your coach in chat and it'll ask what it needs.</p>
