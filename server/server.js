@@ -27,7 +27,7 @@ import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchan
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
-import { weekShape } from './week-shape.js' // #613 — code-decided week structure (single source of truth for quality-day count + intensity ceiling)
+import { weekShape, CEILING_PCT } from './week-shape.js' // #613/#615 — code-decided week structure + the SERVER-SIDE intensity ceiling that ENFORCES it
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -1698,6 +1698,36 @@ function athleteWeekShape(user) {
   })
 }
 
+// #615 — ENFORCE the athlete's week-shape intensity ceiling + quality-day COUNT on the plan being saved. The
+// prompt-only "0 quality days for pregnancy" was IGNORED by the LLM (it still wrote sweet-spot intervals), so we
+// clamp it in code: no ride/run segment may exceed the athlete's ceiling %, and once the Mon–Sun week already has
+// its allowed number of moderate/quality days, any further hard session is clamped down to easy endurance. A build
+// athlete's ceiling is VO2 (130%) → nothing clamps. Mutates plan.segments (+ relabels a now-inaccurate title).
+function enforceShapeIntensity(user, plan) {
+  if (!plan || (plan.sport !== 'ride' && plan.sport !== 'run') || !Array.isArray(plan.segments) || !plan.segments.length) return
+  const shape = athleteWeekShape(user)
+  const ceilPct = CEILING_PCT[shape.intensityCeiling] || CEILING_PCT.vo2
+  const maxModerate = (shape.qualityDays || 0) + (shape.moderateDays || 0)
+  const topOf = (segs) => Math.max(0, ...(segs || []).map((s) => Math.max(Number(s.powerStart) || 0, Number(s.powerEnd) || 0)))
+  const isModerate = (segs) => topOf(segs) >= CEILING_PCT.tempo // ≥ tempo counts as a moderate/quality day
+  const mon = isoMonday(plan.date), sun = addDays(mon, 6)
+  const otherModerate = (user.plans || []).filter((p) => p.id !== plan.id && p.date >= mon && p.date <= sun && (p.sport === 'ride' || p.sport === 'run') && isModerate(p.segments)).length
+  // hard session but the week's moderate/quality allowance is already spent → force it EASY (endurance)
+  const effCeil = (topOf(plan.segments) >= CEILING_PCT.tempo && otherModerate >= maxModerate) ? CEILING_PCT.endurance : ceilPct
+  let clamped = 0
+  for (const s of plan.segments) {
+    if ((Number(s.powerStart) || 0) > effCeil) { s.powerStart = effCeil; clamped++ }
+    if ((Number(s.powerEnd) || 0) > effCeil) { s.powerEnd = effCeil; clamped++ }
+  }
+  if (clamped) {
+    console.log(`[shape-enforce] ${user.username || ''} "${plan.title}" clamped ${clamped} seg → ${effCeil}% (${shape.loadBand}, ceil ${shape.intensityCeiling}, wk moderate ${otherModerate}/${maxModerate})`)
+    if (effCeil <= CEILING_PCT.tempo && /sweet.?spot|threshold|vo.?2|interval|\d+×/i.test(plan.title)) {
+      const noun = plan.sport === 'run' ? 'Run' : 'Ride'
+      plan.title = effCeil <= CEILING_PCT.endurance ? `Easy Aerobic ${noun}` : `Tempo ${noun}`
+    }
+  }
+}
+
 function buildSystemPrompt(user) {
   const name = user.coachName || 'Coach'
   const prof = user.coachProfile || ''
@@ -2443,6 +2473,7 @@ async function upsertPlan(user, body, actor = 'coach') {
   // #331c — HARD guard: never persist an "easy/recovery/warm-up"-labelled run/ride segment at near-threshold
   // effort (95% is NEVER easy — any sport). Fixes it at the source so the DB, the app view, AND the intervals
   // push are all sane, even when the coach fat-fingers the %.
+  enforceShapeIntensity(user, plan) // #615 — ENFORCE the week-shape ceiling + quality-day count IN CODE (the prompt was ignored)
   if ((plan.sport === 'ride' || plan.sport === 'run') && Array.isArray(plan.segments) && plan.segments.length) { // #614 — power/pace clamp is for ride/run only, not swim
     const g = clampEasyEfforts(plan.title, plan.segments)
     if (g.clamped) { plan.segments = g.segments; console.log(`[clampEasyEfforts] ${user.username} "${plan.title}" — clamped ${g.clamped} easy segment(s) below ${'threshold'}`) }
