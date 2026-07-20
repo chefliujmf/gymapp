@@ -1705,7 +1705,9 @@ function athleteWeekShape(user) {
 // athlete's ceiling is VO2 (130%) → nothing clamps. Mutates plan.segments (+ relabels a now-inaccurate title).
 const QUALITY_TITLE = /sweet.?spot|threshold|\bvo.?2\b|over.?under|\bvo2max\b/i // titles that claim a hard/quality session
 function enforceShapeIntensity(user, plan) {
-  if (!plan || (plan.sport !== 'ride' && plan.sport !== 'run') || !Array.isArray(plan.segments)) return
+  // #617 — run even with NO segments: a maintenance athlete's "Sweet Spot Run" title must be relabeled even when
+  // the coach gave it no structured steps (that was slipping 2 sweet-spot TITLES through for the pregnant athlete).
+  if (!plan || (plan.sport !== 'ride' && plan.sport !== 'run')) return
   const shape = athleteWeekShape(user)
   const ceilPct = CEILING_PCT[shape.intensityCeiling] || CEILING_PCT.vo2
   const maxModerate = (shape.qualityDays || 0) + (shape.moderateDays || 0)
