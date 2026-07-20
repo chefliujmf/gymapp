@@ -70,7 +70,7 @@ server.tool('get_metrics',
   wrap(() => api('GET', '/api/athlete-metrics')))
 
 server.tool('get_weather',
-  "Get the day's WEATHER forecast + coaching guidance for the athlete's location (free, no key). Call it before planning or confirming an OUTDOOR run/ride, especially in heat/cold. Returns feels-like temp, wind, rain%, and ready-made guidance (heat derating, hydration, cold layers, wind, or move-indoors). { needsLocation:true } means no location yet — ask the athlete their city (it also auto-fills from their next GPS activity). Use it to ADJUST intensity/pace + add fuel/hydration notes, don't just report it. NEVER put the weather in a workout's TITLE or description (no \"Rain Day\", \"Hot Day\", \"Windy…\"): title + describe every session by its TRAINING content and purpose (\"Full-Body Strength\", \"Sweet-Spot 3×12\"); weather only informs whether it's indoor/outdoor, the intensity, and fuel/hydration — it is never the name or theme.",
+  "Get the day's WEATHER forecast + coaching guidance for the athlete's location (free, no key). Call it before planning or confirming an OUTDOOR run/ride, especially in heat/cold. Returns feels-like temp, wind, rain%, ready-made guidance (heat derating, hydration, cold layers, wind, or move-indoors), AND the day's LABELS: `weekday` (e.g. \"Saturday\"), `relative` (\"today\"/\"tomorrow\"/\"yesterday\"/\"in N days\"), and `todayLocal`. **ALWAYS use these labels when you name the day — NEVER compute the day-of-week or 'today/tomorrow' yourself (you get it wrong): if `relative` is \"today\" the forecast IS for today, so say \"today\", not \"tomorrow\".** Pass `date` (YYYY-MM-DD) for a specific day; omitted = the athlete's local today. { needsLocation:true } means no location yet — ask the athlete their city (it also auto-fills from their next GPS activity). Use it to ADJUST intensity/pace + add fuel/hydration notes, don't just report it. NEVER put the weather in a workout's TITLE or description (no \"Rain Day\", \"Hot Day\", \"Windy…\"): title + describe every session by its TRAINING content and purpose (\"Full-Body Strength\", \"Sweet-Spot 3×12\"); weather only informs whether it's indoor/outdoor, the intensity, and fuel/hydration — it is never the name or theme.",
   { date: DATE.optional().describe('YYYY-MM-DD; default today. Use the planned session date.') },
   wrap((a) => api('GET', `/api/weather${a.date ? `?date=${a.date}` : ''}`)))
 
@@ -139,7 +139,7 @@ const COACHING = {
 }
 const coachingOf = (a) => ({ objective: a.objective, cues: a.cues, tip: a.tip, success: a.success, recovery: a.recovery, fuel: a.fuel, mind: a.mind })
 server.tool('create_workout',
-  'Schedule a strength/gym workout on a date. Platyplus is the MASTER and mirrors to intervals.icu. Re-call with the same id to UPDATE. THREE HARD REQUIREMENTS (the tool REJECTS the plan otherwise, so build them in up front): (1) a WARM-UP and a COOL-DOWN, each broken into INDIVIDUAL moves — one entry per move, tagged section:"warmup"/"cooldown", every one with a real library exId from search_exercises (arm circles, leg swings, high knees, cat-cow, jogging in place, glute bridge, targeted stretches…); NEVER cram moves into one "Warm-up: A, B, C" line. (2) Order the MAIN set by equipment (barbell → dumbbell → cable/machine → bodyweight/trunk) so the athlete isn\'t ping-ponging stations. (3) Every single-side move (Pallof press, split squat/Bulgarian, single-arm/leg, side plank, suitcase carry, Copenhagen…) MUST be prescribed both sides — set eachSide:true (renders "each side") or write explicit left/right entries. Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind strategy). ONE SESSION/DAY: the app REJECTS (409) a 2nd session on a day already at the athlete\'s max, AND any session that would exceed their HARD weekly training-days cap (move or combine, do NOT add a new day past the cap) — re-call with that day\'s existing id to fold moves in, or move it to a free day. Gym EXERCISES live + render in Platyplus (intervals has no gym model — it only gets a deep-link) — ALWAYS send the full structured exercises here; to UPDATE a gym session, re-call with its SAME id (never leave a gym session with no exercises).',
+  'Schedule a strength/gym workout on a date. Platyplus is the MASTER and mirrors to intervals.icu. Re-call with the same id to UPDATE. THREE HARD REQUIREMENTS (the tool REJECTS the plan otherwise, so build them in up front): (1) a WARM-UP and a COOL-DOWN, each broken into INDIVIDUAL moves — one entry per move, tagged section:"warmup"/"cooldown", every one with a real library exId from search_exercises (arm circles, leg swings, high knees, cat-cow, jogging in place, glute bridge, targeted stretches…); NEVER cram moves into one "Warm-up: A, B, C" line. VARIETY (#573): FIRST read the athlete\'s last gym session with list_schedule (plans carry the full exercises) so you can step OFF it — do NOT reuse the last warm-up, and ROTATE the movement-prep flow every session (mobility / dynamic / activation / movement-ramp / KB-prep), and ROTATE accessories within their pattern (horizontal pull = barbell row → chest-supported row → 1-arm DB row → cable row → inverted row; NOT "rowing" every time). KEEP the 1–3 MAIN compound lifts stable week to week so load/reps progress. Every move comes from search_exercises (video-only pool), so each has a demo. See coach-engine-strength "VARIETY". (2) Order the MAIN set by equipment (barbell → dumbbell → cable/machine → bodyweight/trunk) so the athlete isn\'t ping-ponging stations. (3) Every single-side move (Pallof press, split squat/Bulgarian, single-arm/leg, side plank, suitcase carry, Copenhagen…) MUST be prescribed both sides — set eachSide:true (renders "each side") or write explicit left/right entries. Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind strategy). ONE SESSION/DAY: the app REJECTS (409) a 2nd session on a day already at the athlete\'s max, AND any session that would exceed their HARD weekly training-days cap (move or combine, do NOT add a new day past the cap) — re-call with that day\'s existing id to fold moves in, or move it to a free day. Gym EXERCISES live + render in Platyplus (intervals has no gym model — it only gets a deep-link) — ALWAYS send the full structured exercises here; to UPDATE a gym session, re-call with its SAME id (never leave a gym session with no exercises).',
   {
     date: DATE,
     title: z.string(),
@@ -187,7 +187,7 @@ const makeEndurance = (sport) => wrap((a) => api('POST', '/api/plan', {
 }))
 
 server.tool('create_ride',
-  'Schedule a structured bike workout (power intervals). Platyplus is master; mirrors to intervals.icu as a real workout (steps → head unit/trainer). Re-call with same id to update. ONE SESSION/DAY: the app REJECTS (409) a 2nd session on a day already at the athlete\'s max, AND any session that would exceed their HARD weekly training-days cap (move or combine, do NOT add a new day past the cap) — never book two short rides; COMBINE into that day\'s existing session (re-call with its id) or move it to a free day. The app auto-computes the planned LOAD (TSS) from your segments and sends it to intervals so Form/CTL/ATL project correctly — you do NOT set load. Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind).',
+  'Schedule a structured bike workout (power intervals). Platyplus is master; mirrors to intervals.icu as a real workout (steps → head unit/trainer). Re-call with same id to update. ONE SESSION/DAY: the app REJECTS (409) a 2nd session on a day already at the athlete\'s max, AND any session that would exceed their HARD weekly training-days cap (move or combine, do NOT add a new day past the cap) — never book two short rides; COMBINE into that day\'s existing session (re-call with its id) or move it to a free day. The app auto-computes the planned LOAD (TSS) from your segments and sends it to intervals so Form/CTL/ATL project correctly — you do NOT set load. TARGETS ARE RANGES (#479): rides are ridden OUTDOORS, so give the CENTER %FTP per steady segment (powerStart==powerEnd) and the app auto-widens it into a rideable min–max band (wide for endurance, tight for threshold) — never a single unholdable number; don\'t write a range into the label. (Warm-ups stay a ramp, cool-downs stay easy.) Optionally attach the coaching shell (objective/cues/success/recovery/fuel/mind).',
   { date: DATE, title: z.string(), ftp: z.number().optional().describe('override FTP in watts'), segments: SEGMENTS, notes: z.string().optional(), ...COACHING, id: z.string().optional() },
   makeEndurance('ride'))
 
@@ -195,6 +195,47 @@ server.tool('create_run',
   'Schedule a structured run. Coach it the RUNNING way — Daniels E/M/T/I/R off threshold PACE (see SEGMENTS for the zones), not by bike power. The app converts each segment % to the athlete\'s real min/km. Re-call with same id to update. ONE SESSION/DAY: the app REJECTS (409) a 2nd session on a day already at the athlete\'s max, AND any session that would exceed their HARD weekly training-days cap (move or combine, do NOT add a new day past the cap) — COMBINE into that day\'s existing session (re-call with its id) or move it. The app auto-computes the planned LOAD (TSS) and sends it to intervals so Form projects — you do NOT set load. Optionally attach the coaching shell.',
   { date: DATE, title: z.string(), ftp: z.number().optional(), segments: SEGMENTS, notes: z.string().optional(), ...COACHING, id: z.string().optional() },
   makeEndurance('run'))
+
+// #swim-tri — swim workouts are DISTANCE sets on a send-off (not power/pace time-segments), coached by CSS zone.
+const SWIM_ZONE_IF = { 1: 0.72, 2: 0.85, 3: 1.0, 4: 1.06, 5: 1.16 } // % of CSS speed → IF for sTSS
+const SWIM_ZONE_LABEL = { 1: 'Z1 easy', 2: 'Z2 aerobic', 3: 'CSS', 4: 'Z4 race-pace', 5: 'Z5 sprint' }
+const makeSwim = wrap((a) => {
+  const css = a.cssPace100 > 0 ? a.cssPace100 : 100 // s/100; default nominal if the athlete's CSS isn't known
+  let distM = 0, durS = 0, sTSS = 0
+  const lines = { warmup: [], drills: [], main: [], cooldown: [] }
+  for (const s of a.sets) {
+    const reps = s.reps || 1, z = s.zone || 2, IF = SWIM_ZONE_IF[z] || 0.85
+    const perRepS = (s.distanceM / 100) * (css / IF) // easier zones (lower IF) take longer per 100
+    distM += reps * s.distanceM
+    durS += reps * (perRepS + (s.restSec || 0))
+    sTSS += (reps * perRepS * IF * IF) / 36 // work time only
+    const sec = lines[s.section] ? s.section : 'main'
+    lines[sec].push(`${reps > 1 ? reps + '×' : ''}${s.distanceM}${s.zone ? ' @ ' + (SWIM_ZONE_LABEL[z] || '') : ''}${s.restSec ? ` (${s.restSec}s rest)` : ''}${s.note ? ' — ' + s.note : ''}`)
+  }
+  const notesStr = ['warmup', 'drills', 'main', 'cooldown'].filter((k) => lines[k].length).map((k) => `${k[0].toUpperCase() + k.slice(1)}: ${lines[k].join(', ')}`).join('\n')
+  return api('POST', '/api/plan', {
+    id: a.id || newId(), date: a.date, sport: 'swim', title: a.title,
+    notes: (a.notes ? a.notes + '\n' : '') + notesStr,
+    moving_time: Math.round(durS), distanceM: distM, icu_training_load: Math.round(sTSS),
+    ...coachingOf(a),
+  })
+})
+server.tool('create_swim',
+  'Schedule a SWIM workout (distance sets on a send-off, prescribed by CSS zone). Platyplus is master; mirrors to intervals.icu. Re-call with same id to update. ONE SESSION/DAY + respect the HARD weekly training-days cap — combine/move, do NOT add past the cap. Build it the swim way: warm-up → DRILLS (technique EVERY session — catch-up, fingertip-drag, sculling, kick-on-side) → MAIN set → cool-down. Coach by CSS zone (3 = CSS/threshold = the key zone; a productive week is mostly Z1-2 aerobic + 1-2 CSS sets + a little speed). The app computes total distance, duration, and sTSS load. Distances in metres (yard pool reads the same). Attach the coaching shell.',
+  {
+    date: DATE, title: z.string(),
+    sets: z.array(z.object({
+      reps: z.number().int().min(1).optional().describe('default 1'),
+      distanceM: z.number().int().positive().describe('metres (or yards) per rep, e.g. 100'),
+      zone: z.number().int().min(1).max(5).optional().describe('CSS zone: 1 easy/recovery · 2 aerobic · 3 CSS/threshold · 4 VO₂/race-pace · 5 sprint'),
+      restSec: z.number().int().optional().describe('rest between reps in seconds'),
+      section: z.enum(['warmup', 'drills', 'main', 'cooldown']).optional().describe("default 'main'"),
+      note: z.string().optional().describe('drill name or cue, e.g. "catch-up drill", "hold CSS", "pull + paddles", "sight every 6 strokes"'),
+    })).min(1).describe('ordered sets: warm-up, drills, main, cool-down'),
+    cssPace100: z.number().optional().describe("athlete's CSS in seconds per 100 (for pacing + load); omit if unknown"),
+    notes: z.string().optional(), ...COACHING, id: z.string().optional(),
+  },
+  makeSwim)
 
 server.tool('remove_workout', 'Delete a scheduled workout/ride/run by id (also removes its intervals.icu mirror).',
   { id: z.string() }, wrap((a) => api('DELETE', `/api/plan/${encodeURIComponent(a.id)}`)))

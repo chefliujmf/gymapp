@@ -7,6 +7,7 @@ import { DoneStats } from '../ui'
 import { db, type WorkoutLog } from '../db'
 import { bestE1rmByExercise } from '../strength'
 import GymSummary from '../GymSummary'
+import GymSetEditor from '../GymSetEditor'
 
 // Feedback field defs now live in the shared, React-free module (used by the intervals reader too).
 export { FEEL, RPE, ICU_FIELDS, ICU_FIELD_CODES, GYM_FIELDS, FIELDS } from '../icu-fields'
@@ -30,6 +31,7 @@ export default function PostWorkout() {
   const [gymLog, setGymLog] = useState<WorkoutLog | null>(null)
   const [bestE1rm, setBestE1rm] = useState<Map<string, { e1rm: number; date: string }>>(new Map())
   const [review, setReview] = useState<CoachReview | null>(null)
+  const [editSets, setEditSets] = useState(false)
   // fetch the day's device activity for EVERY sport incl. gym — a watch-recorded gym gives us HR + time (#NNN).
   useEffect(() => { if (p) fetchActivities(p.date, p.date).then((a) => setAct(a.find((x) => sportOfActivity(x) === p.sport))).catch(() => {}) }, [p?.date, p?.sport])
   useEffect(() => {
@@ -61,6 +63,15 @@ export default function PostWorkout() {
           const fk = gymFeedbackKeys({ date: gymLog.date, planId: p.id, activityId: act?.id, workoutId: gymLog.workoutId })
           return <GymSummary minutes={durMin} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={gymLog.date} planId={p.id} activityId={act?.id != null ? String(act.id) : undefined} avgHr={(act as { icu_average_hr?: number; average_heartrate?: number } | undefined)?.icu_average_hr || (act as { average_heartrate?: number } | undefined)?.average_heartrate} />
         })()}
+        {/* #591 — edit a completed session's sets from the result page (fix a mistyped weight/rep → recompute). */}
+        {gymLog.id != null && (
+          <div style={{ marginTop: 8 }}>
+            <button className="btn btn--ghost" onClick={() => setEditSets((v) => !v)}>{editSets ? 'Done editing' : '✏️ Edit sets'}</button>
+            {editSets && <div className="card" style={{ padding: '12px 14px', marginTop: 8 }}>
+              <GymSetEditor log={gymLog} exNames={gymLog.exNames || []} onSaved={(s) => setGymLog((g) => g ? { ...g, sets: s } : g)} />
+            </div>}
+          </div>
+        )}
       </div>
     )
   }

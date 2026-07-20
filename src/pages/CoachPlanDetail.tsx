@@ -10,7 +10,7 @@ import { getSetting, db } from '../db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
 import { fmtPace, paceFromPowerPct } from '../running-paces'
-import { InfoDot, TrendChart, PlannedPowerBars, minuteTicks } from '../charts'
+import { InfoDot, PlannedPowerBars } from '../charts'
 import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
 import { linkify } from '../linkify'
@@ -125,7 +125,6 @@ export default function CoachPlanDetail() {
         const sum = workoutSummary(p.segments!, rFtp)
         const rows = structureRows(p.segments!, rFtp)
         const load = plannedLoad(p.segments!, rFtp)
-        const totalSec = p.segments!.reduce((s, x) => s + (Number(x.duration) || 0), 0)
         const keySet = rows.filter((r) => r.pct >= 88).sort((a, b) => b.durationSec * b.count - a.durationSec * a.count)[0]
         const fmtDur = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${s}s`)
         // #331 — a RUN targets PACE (min/km), NOT watts. Convert each % (of threshold pace) to a pace
@@ -139,8 +138,6 @@ export default function CoachPlanDetail() {
         // #331b — SMOOTH run chart: sample each segment (incl. ramps) and remap to pace-% as a FLOAT, so a
         // ramp draws a clean line — not the jagged integer staircase plannedSeries(…,100) made. Effort-up
         // (harder = higher), just like the cycling power chart; fmt maps the pace-% back to min/km.
-        const runShape = (): number[] => { const out: number[] = []; for (const s of (p.segments || [])) { const dur = Number(s.duration) || 0; const n = Math.max(2, Math.round(dur / 5)); const a = Number(s.powerStart) || 0, b = s.powerEnd != null ? Number(s.powerEnd) : a; for (let i = 0; i < n; i++) { const f = n > 1 ? i / (n - 1) : 0; out.push(paceFromPowerPct(a + (b - a) * f)) } } return out }
-        const runFmt = (v: number) => (thrPace && v > 0 ? `${fmtPace(Math.round(thrPace * 100 / v))}` : `${Math.round(v)}%`)
         // #280 hero (4 headline targets) + chips (JM pick B, same spirit as post-workout)
         const hero: [string, string][] = [
           load ? ['Target TSS', String(load.tss)] : null,
@@ -162,11 +159,10 @@ export default function CoachPlanDetail() {
           {/* #280 planned power SHAPE — dense chart standard */}
           <div className="tl-card" style={{ marginTop: 8 }}>
             {/* #331 — a RUN never shows watts: pace curve if we have a threshold pace, else the % shape. */}
-            <div className="tl-clabel">{isRun ? (thrPace ? 'PLANNED PACE · min/km · target shape' : 'PLANNED EFFORT · % of threshold · target shape') : 'PLANNED POWER · W · by zone'}</div>
-            {/* #357 — a ride shows zone-coloured COLUMNS (intervals.icu style), not a single-colour ramp. Runs keep the pace/effort line. */}
-            {isRun
-              ? <TrendChart series={[{ label: 'Target', data: runShape(), color: '#34e07d', area: true }]} height={150} axes unit={thrPace ? '/km' : '%'} fmt={runFmt} xTicks={minuteTicks(totalSec)} straight minSpan={22} />
-              : <PlannedPowerBars segments={p.segments!} ftp={rFtp} height={150} />}
+            <div className="tl-clabel">{isRun ? (thrPace ? 'PLANNED PACE · min/km · by zone' : 'PLANNED EFFORT · % of threshold · by zone') : 'PLANNED POWER · W · by zone'}</div>
+            {/* #357/#574 — BOTH ride and run show zone-coloured COLUMNS (intervals.icu style), same format (JM). The run
+                passes run+thrPace so the bars read as PACE (min/km) on a sensible window instead of watts. */}
+            <PlannedPowerBars segments={p.segments!} ftp={rFtp} height={150} run={isRun} thrPace={isRun ? thrPace : null} />
             {isRun && !thrPace && <div className="act-ins"><span className="tag">⚙</span>Set your <Link to="/profile?onboard=1#ob-numbers" style={{ color: 'var(--accent)' }}>threshold pace</Link> so these show as min/km.</div>}
             <div className="act-ins"><span className="tag">💡</span>{p.cues?.[0] || (sum && sum.mainPct >= 91 ? 'Warm up fully — the first hard effort should feel controlled, not a shock; keep recoveries easy and let HR drop.' : 'Hold steady targets — smooth and repeatable beats spiky.')}</div>
           </div>
@@ -185,7 +181,9 @@ export default function CoachPlanDetail() {
               </div>
             </>
           )}
-          {canPlayHere(!!ble.bridge)
+          {/* #569 — when opened FROM a completed activity (forcePlanned), this is a read-only "what was planned" view:
+              no "do it now" play button, no phone-to-run banner (the session is already done). */}
+          {forcePlanned ? null : canPlayHere(!!ble.bridge)
             ? <button className="btn" style={{ marginTop: 10 }} onClick={startRide}>▶ {p.sport === 'run' ? 'Run' : 'Ride'} now</button>
             : <div className="phone-gate" style={{ marginTop: 10 }}>📱 Open Platyplus on your phone to {p.sport === 'run' ? 'run' : 'ride'} — that's where your HR strap{p.sport === 'run' ? '' : ' & trainer'} connect{p.sport === 'run' ? 's' : ''} (Bluetooth works on mobile).</div>}
         </>
@@ -298,7 +296,8 @@ export default function CoachPlanDetail() {
       {p.success && <div className="plansec"><span className="plansec__k">✓ Success</span><p className="plansec__v">{p.success}</p></div>}
       {p.cues && p.cues.length > 0 && <div className="plansec"><span className="plansec__k">💬 Cues</span><p className="plansec__v">{p.cues.join(' · ')}</p></div>}
 
-      <Link to={`/feedback/${p.id}`} className="btn btn--ghost" style={{ marginTop: 18, display: 'block', textAlign: 'center' }}>✓ Done? Log how it went →</Link>
+      {/* #569 — hide the "Done?" CTA in the read-only as-planned view (the activity is already completed). */}
+      {!forcePlanned && <Link to={`/feedback/${p.id}`} className="btn btn--ghost" style={{ marginTop: 18, display: 'block', textAlign: 'center' }}>✓ Done? Log how it went →</Link>}
 
       {sheet && (
         <div className="sheet-back" onClick={() => setSheet(null)}>

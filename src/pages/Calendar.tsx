@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchEvents, deleteEvent, sportOf, flattenIcuSteps, fetchActivities, fetchActivityStreams, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
 // #5013 — a completed intervals activity with no matching plan/event is an UNPLANNED workout.
 import { MiniProfile, DoneStats } from '../ui'
-import { PowerBlocks } from '../charts'
+import { PowerBlocks, ZoneBlocks } from '../charts'
 import { fetchGymPlans, syncIcuPlans, setCoachPlans, type CoachPlan } from '../plan'
 import { calApi, type CalItem } from '../calendar'
 import { recipes } from '../data/catalog'
@@ -75,22 +75,31 @@ export default function Calendar() {
   // (needs watts); guarded once per activity; bounded to the loaded window's rides lacking a plan profile.
   const [rideStreams, setRideStreams] = useState<Record<string, (number | null)[]>>({})
   const streamReq = useRef<Set<string>>(new Set())
+  // #575 — threshold SPEEDS (m/s) to anchor run/swim zone-blocks: run 1000/thresholdPace, swim 100/CSS.
+  const thrPace = (user?.runThresholdPace || (user?.sportSettings as { running?: { thresholdPace?: number } } | undefined)?.running?.thresholdPace) || null
+  const cssPace = (user?.sportSettings as { swimming?: { thresholdPace?: number } } | undefined)?.swimming?.thresholdPace || null
   useEffect(() => {
     const hasPlanProfile = (d: string) =>
       plans.some((p) => p.date === d && p.sport === 'ride' && (p.segments?.length || 0) > 0) ||
       events.some((ev) => ev.start_date_local.slice(0, 10) === d && sportOf(ev) === 'cycling' && flattenIcuSteps(ev.workout_doc?.steps).length > 0)
     activities
-      .filter((a) => sportOfActivity(a) === 'ride' && !streamReq.current.has(String(a.id)) && !hasPlanProfile((a.start_date_local || '').slice(0, 10)))
+      .filter((a) => ['ride', 'run', 'swim'].includes(sportOfActivity(a)) && !streamReq.current.has(String(a.id)) && !hasPlanProfile((a.start_date_local || '').slice(0, 10)))
       .forEach((a) => {
         streamReq.current.add(String(a.id))
-        fetchActivityStreams(a.id, ['watts']).then((st) => setRideStreams((s) => ({ ...s, [String(a.id)]: st.watts || [] }))).catch(() => {})
+        const isRide = sportOfActivity(a) === 'ride'
+        fetchActivityStreams(a.id, [isRide ? 'watts' : 'velocity_smooth']).then((st) => setRideStreams((s) => ({ ...s, [String(a.id)]: (isRide ? st.watts : st.velocity_smooth) || [] }))).catch(() => {})
       })
   }, [activities, plans, events])
-  // A PowerBlocks chip for a completed ride whose watts stream we have (≥9 real samples), else null → icon.
+  // A zone-block chip for a completed ride (watts) / run·swim (speed) whose stream we have (≥9 real samples), else null → icon.
   const powerBlocks = (a?: IcuActivity) => {
-    if (!a || sportOfActivity(a) !== 'ride') return null
-    const w = rideStreams[String(a.id)]
-    return w && w.filter((v) => v != null).length >= 9 ? <PowerBlocks watts={w} ftp={ftp} /> : null
+    if (!a) return null
+    const sp = sportOfActivity(a)
+    if (!['ride', 'run', 'swim'].includes(sp)) return null
+    const s = rideStreams[String(a.id)]
+    if (!s || s.filter((v) => v != null).length < 9) return null
+    if (sp === 'ride') return <PowerBlocks watts={s} ftp={ftp} />
+    const anchor = sp === 'swim' ? (cssPace ? 100 / cssPace : undefined) : (thrPace ? 1000 / thrPace : undefined)
+    return <ZoneBlocks values={s} anchor={anchor} />
   }
 
   const changeView = (v: View) => { setView(v); setSetting('calView', v); try { localStorage.setItem('calView', v) } catch { /* ignore */ } }
@@ -208,7 +217,7 @@ export default function Calendar() {
     const kind = kindOf(e)
     const atp = isAtp(e)
     const k = kind as string
-    const mod = atp ? 'note' : k === 'cycling' || k === 'ride' ? 'ride' : k === 'running' || k === 'run' ? 'run' : k === 'gym' ? 'gym' : k === 'meal' ? 'meal' : k === 'mind' ? 'mind' : 'note'
+    const mod = atp ? 'note' : k === 'cycling' || k === 'ride' ? 'ride' : k === 'running' || k === 'run' ? 'run' : k === 'swimming' || k === 'swim' ? 'swim' : k === 'gym' ? 'gym' : k === 'meal' ? 'meal' : k === 'mind' ? 'mind' : 'note'
     const photo = e.k === 'item' && e.item.type === 'meal' && e.item.refId ? recipes.find((r) => r.id === e.item.refId)?.thumbnail : undefined
     // Match Today: rides/runs show their power profile, not a generic icon.
     const segs = !atp && (mod === 'ride' || mod === 'run')

@@ -1,0 +1,138 @@
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--swim:#38bdf8;--bike:#f5b53d;--run:#ff8f5d;--warn:#f0b145}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  body{background:#05070a;color:var(--text);padding:20px;display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+  .phone{width:430px;background:var(--bg);border-radius:26px;padding:16px;border:1px solid #1c2028}
+  .opt-label{font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin:0 0 10px 4px}
+  h1{font-size:26px;margin:0}
+  .eyebrow{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .card{background:linear-gradient(160deg,#21252f,#191c24);border:1px solid #262b36;border-radius:16px;padding:15px;margin-top:12px}
+  .sub{font-size:12.5px;color:var(--dim)}
+  .row{display:flex;align-items:center;gap:10px}
+  .pill{font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;letter-spacing:.03em}
+  .bar{height:7px;border-radius:5px;background:#2c313c;overflow:hidden;margin-top:6px}
+  .bar>i{display:block;height:100%;border-radius:5px}
+  .disc{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #23272f}
+  .disc:last-child{border-bottom:0}
+  .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+  .big{font-size:22px;font-weight:800}
+  .ins{background:#12241a;border-left:3px solid var(--accent);border-radius:9px;padding:10px 12px;font-size:13px;color:#cdeeda;margin-top:12px;display:flex;gap:8px}
+  .lim{background:#2a1d16;border:1px solid #4a2f20;border-radius:14px;padding:14px;margin-top:12px}
+  .seg{display:flex;height:12px;border-radius:6px;overflow:hidden;margin-top:8px}
+  .seg>span{display:block}
+  .gauge{width:96px;height:96px;border-radius:50%;background:conic-gradient(var(--warn) 0 62%,#2c313c 62% 100%);display:flex;align-items:center;justify-content:center;flex:none}
+  .gauge>div{width:74px;height:74px;border-radius:50%;background:#191c24;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .mut{color:var(--dim)}
+  table{width:100%;border-collapse:collapse;margin-top:6px}
+  td{padding:6px 0;font-size:13px;border-bottom:1px solid #23272f}
+  td:last-child{text-align:right;font-weight:700}
+</style>
+
+<!-- ============ OPTION A — LIMITER-FIRST (compact, "what to work on") ============ -->
+<div class="phone">
+  <div class="opt-label">Option A · Limiter-first</div>
+  <div class="eyebrow">🏊🚴🏃 Triathlon · Base phase · A-race in 14 wk</div>
+  <h1>Your three sports</h1>
+  <div class="sub" style="margin-top:3px">One engine, three disciplines — balanced to your race.</div>
+
+  <div class="lim">
+    <div class="row" style="justify-content:space-between">
+      <div><span class="eyebrow" style="color:var(--warn)">⚠ Your limiter</span><div class="big" style="margin-top:2px">Swimming</div></div>
+      <span class="pill" style="background:#3a2a1c;color:var(--warn)">biggest opportunity</span>
+    </div>
+    <div class="sub" style="margin-top:8px;color:#e6c9a8">No swim data yet, and it's ~⅙ of race time you're leaving on the table. Even 2 easy swims/week will move your finish time more than another bike block.</div>
+  </div>
+
+  <div class="card">
+    <div class="disc">
+      <div class="ic" style="background:#123047;color:var(--swim)">🏊</div>
+      <div style="flex:1"><b>Swim</b> <span class="mut" style="font-size:12px">· CSS</span><div class="bar"><i style="width:8%;background:var(--swim)"></i></div></div>
+      <div style="text-align:right"><div class="big" style="font-size:16px;color:var(--warn)">— </div><div class="mut" style="font-size:11px">set CSS</div></div>
+    </div>
+    <div class="disc">
+      <div class="ic" style="background:#3a2f14;color:var(--bike)">🚴</div>
+      <div style="flex:1"><b>Bike</b> <span class="mut" style="font-size:12px">· FTP</span><div class="bar"><i style="width:82%;background:var(--bike)"></i></div></div>
+      <div style="text-align:right"><div class="big" style="font-size:16px">253<span style="font-size:11px" class="mut"> W</span></div><div style="font-size:11px;color:var(--accent)">strong</div></div>
+    </div>
+    <div class="disc">
+      <div class="ic" style="background:#3a221a;color:var(--run)">🏃</div>
+      <div style="flex:1"><b>Run</b> <span class="mut" style="font-size:12px">· threshold</span><div class="bar"><i style="width:74%;background:var(--run)"></i></div></div>
+      <div style="text-align:right"><div class="big" style="font-size:16px">5:28<span style="font-size:11px" class="mut"> /km</span></div><div style="font-size:11px;color:var(--accent)">strong</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:13px 15px">
+    <div class="row" style="justify-content:space-between"><span class="eyebrow">This week's load</span><b>410 <span class="mut" style="font-weight:400;font-size:12px">/ ~520 target</span></b></div>
+    <div class="seg"><span style="width:5%;background:var(--swim)"></span><span style="width:64%;background:var(--bike)"></span><span style="width:31%;background:var(--run)"></span></div>
+    <div class="sub" style="margin-top:7px">🏊 5% · 🚴 64% · 🏃 31% — a 70.3 wants ~15/55/30. <b style="color:var(--warn)">Swim under-served.</b></div>
+  </div>
+
+  <div class="ins"><span>💡</span>You're a strong cyclist and runner; swimming is the one lever left. Add 2 technique-focused swims this week and I'll fold them into your plan.</div>
+</div>
+
+<!-- ============ OPTION B — THREE-DISCIPLINE DASHBOARD (richer) ============ -->
+<div class="phone">
+  <div class="opt-label">Option B · Dashboard</div>
+  <div class="eyebrow">🏊🚴🏃 Triathlon</div>
+  <h1>Triathlon profile</h1>
+  <div class="sub" style="margin-top:3px">Base phase · 70.3 in 14 weeks</div>
+
+  <div class="card">
+    <div class="row"><div class="ic" style="background:#123047;color:var(--swim)">🏊</div><div style="flex:1"><b>Swimming</b><div class="sub">CSS · your swim threshold</div></div><span class="pill" style="background:#3a2a1c;color:var(--warn)">LIMITER</span></div>
+    <div class="row" style="margin-top:10px;justify-content:space-between"><div class="big" style="color:var(--warn)">— <span style="font-size:13px" class="mut">not set</span></div><div class="sub" style="text-align:right">no swims logged<br>log 2–3 to assess</div></div>
+    <div class="bar"><i style="width:8%;background:var(--swim)"></i></div>
+  </div>
+
+  <div class="card">
+    <div class="row"><div class="ic" style="background:#3a2f14;color:var(--bike)">🚴</div><div style="flex:1"><b>Cycling</b><div class="sub">FTP · eFTP confirmed</div></div><span class="pill" style="background:#14301f;color:var(--accent)">STRENGTH</span></div>
+    <div class="row" style="margin-top:10px;justify-content:space-between"><div class="big">253 <span style="font-size:13px" class="mut">W · 3.6 W/kg</span></div><div class="sub" style="text-align:right;color:var(--accent)">strong ✓<br>diesel engine</div></div>
+    <div class="bar"><i style="width:82%;background:var(--bike)"></i></div>
+  </div>
+
+  <div class="card">
+    <div class="row"><div class="ic" style="background:#3a221a;color:var(--run)">🏃</div><div style="flex:1"><b>Running</b><div class="sub">Threshold pace · race VDOT</div></div><span class="pill" style="background:#14301f;color:var(--accent)">SOLID</span></div>
+    <div class="row" style="margin-top:10px;justify-content:space-between"><div class="big">5:28 <span style="font-size:13px" class="mut">/km</span></div><div class="sub" style="text-align:right;color:var(--accent)">strong ✓</div></div>
+    <div class="bar"><i style="width:74%;background:var(--run)"></i></div>
+  </div>
+
+  <div class="card" style="background:#12241a;border-color:#1f3a2a">
+    <span class="eyebrow">Combined load · all 3 sports</span>
+    <div class="row" style="margin-top:6px;justify-content:space-between"><div class="big">410 <span class="mut" style="font-size:12px">TSS this wk</span></div><div style="text-align:right"><div style="color:var(--accent);font-weight:700">Form −12</div><div class="sub">productive</div></div></div>
+    <div class="seg" style="margin-top:10px"><span style="width:5%;background:var(--swim)"></span><span style="width:64%;background:var(--bike)"></span><span style="width:31%;background:var(--run)"></span></div>
+    <div class="sub" style="margin-top:6px">🏊 5 · 🚴 64 · 🏃 31% &nbsp;vs&nbsp; 70.3 target 15/55/30</div>
+  </div>
+  <div class="ins"><span>💡</span>Bike + run are race-ready. Swimming is unassessed and under-trained — it's your #1 opportunity. Log a 400 + 200 or a 3-min all-out swim to set CSS.</div>
+</div>
+
+<!-- ============ OPTION C — RACE-TARGETED READINESS ============ -->
+<div class="phone">
+  <div class="opt-label">Option C · Race-targeted</div>
+  <div class="eyebrow">🎯 Target · Ironman 70.3 · 14 weeks out</div>
+  <h1>Race readiness</h1>
+
+  <div class="card" style="display:flex;gap:16px;align-items:center">
+    <div class="gauge"><div><div class="big" style="font-size:24px">62<span style="font-size:13px">%</span></div><div class="sub" style="font-size:10px">READY</div></div></div>
+    <div style="flex:1">
+      <div class="sub">Base phase · on track for the bike & run, held back by the swim.</div>
+      <div class="row" style="margin-top:8px;gap:6px"><span class="pill" style="background:#3a2a1c;color:var(--warn)">Swim limits it</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="eyebrow">Where you stand vs the race</span>
+    <table>
+      <tr><td>🏊 Swim <span class="mut">· 1.9 km</span></td><td style="color:var(--warn)">CSS not set →</td></tr>
+      <tr><td>🚴 Bike <span class="mut">· 90 km</span></td><td style="color:var(--accent)">FTP 253 W · ready</td></tr>
+      <tr><td>🏃 Run <span class="mut">· 21 km</span></td><td style="color:var(--accent)">5:28/km · ready</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <span class="eyebrow">Training share vs race demand</span>
+    <div class="seg" style="height:16px;margin-top:8px"><span style="width:5%;background:var(--swim)"></span><span style="width:64%;background:var(--bike)"></span><span style="width:31%;background:var(--run)"></span></div>
+    <div class="sub" style="margin-top:6px">your last 4 wk: 🏊 5 · 🚴 64 · 🏃 31%</div>
+    <div class="seg" style="height:8px;margin-top:8px;opacity:.6"><span style="width:15%;background:var(--swim)"></span><span style="width:55%;background:var(--bike)"></span><span style="width:30%;background:var(--run)"></span></div>
+    <div class="sub" style="margin-top:6px">70.3 demand: 🏊 15 · 🚴 55 · 🏃 30%</div>
+  </div>
+  <div class="ins"><span>💡</span>The swim is 15% of the race and ~0% of your training. Closing that gap is the fastest path to a better time — let's add 2 swims/week.</div>
+</div>

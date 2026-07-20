@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, detectRepeat, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from '../server/icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, detectRepeat, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from '../server/icu-steps.js'
 
 // #434 — gym plans carry a LOAD so intervals Form/CTL counts strength (was pushed as 0).
 describe('plannedGymTss — gym LOAD from exercises (KB Friel ~45 TSS/h)', () => {
@@ -256,5 +256,28 @@ describe('isPlatyplusPushedEvent (#414)', () => {
     expect(isPlatyplusPushedEvent(null)).toBe(false)
     expect(isPlatyplusPushedEvent(undefined)).toBe(false)
     expect(isPlatyplusPushedEvent('nope')).toBe(false)
+  })
+})
+
+describe('#479 bandSteadyPower — outdoor rides get a rideable min–max RANGE, not a flat point', () => {
+  it('widens a steady endurance target into a symmetric band (smallest first), TSS preserved', () => {
+    const [wu, endur, cd] = bandSteadyPower([
+      { duration: 600, powerStart: 55, powerEnd: 68, label: 'Warm-up ramp' }, // ramp
+      { duration: 3300, powerStart: 68, powerEnd: 68, label: 'Endurance Z2' }, // steady → band
+      { duration: 300, powerStart: 45, powerEnd: 45, label: 'Cool-down' },     // easy, ≤55 → keep
+    ])
+    expect([wu.powerStart, wu.powerEnd]).toEqual([55, 68])   // warm-up ramp untouched
+    expect([endur.powerStart, endur.powerEnd]).toEqual([62, 74]) // 68 → 62–74 (±6 endurance), smallest first
+    expect(endur.powerStart).toBeLessThan(endur.powerEnd)
+    expect((endur.powerStart + endur.powerEnd) / 2).toBe(68)  // symmetric → averages back to target (TSS unchanged)
+    expect([cd.powerStart, cd.powerEnd]).toEqual([45, 45])   // cool-down / recovery stays flat
+  })
+  it('holds threshold tighter than endurance', () => {
+    const [t] = bandSteadyPower([{ duration: 1200, powerStart: 98, powerEnd: 98, label: '4×10 threshold' }])
+    expect([t.powerStart, t.powerEnd]).toEqual([95, 101]) // ±3 at threshold
+  })
+  it('leaves a step that is already a range alone (no double-banding)', () => {
+    const [s] = bandSteadyPower([{ duration: 600, powerStart: 62, powerEnd: 74, label: 'Endurance Z2' }])
+    expect([s.powerStart, s.powerEnd]).toEqual([62, 74])
   })
 })

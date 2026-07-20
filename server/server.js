@@ -25,24 +25,34 @@ const USE_PG = !!process.env.DATABASE_URL
 const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
-import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover } from './icu-match.js'
+import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { generatePlanSkeleton } from './plan-skeleton.js' // #516c — deterministic 14-day plan skeleton (periodization/load/spacing in code)
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
-import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch } from './sport-settings.js'
+import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
 import { planCapViolation } from './plan-cap.js'
 import { localDate } from './tz.js'
 // #508 — DEEP-merge intervals sport-settings into ours PER GROUP. intervals only knows ftp/maxHr/lthr/thresholdPace;
 // our LOCAL benchmarks (cp/wPrime/tte/cs/dPrime) live in the same per-sport object. A shallow `{...ours, ...mapped}`
 // makes mapped.cycling REPLACE the whole cycling object → wipes cp/W′/TTE on every session-load/pull (JM: "manual
 // value does not save" — it saved, then the next sync deleted it). Overlay intervals' fields, keep everything else.
-function mergeIcuSportSettings(existing, mapped) {
+// #582 — PLATYPLUS OWNS ITS BENCHMARKS (JM directive, "when I enter something it has to STICK / terrible architecture").
+// The durable source of truth is OUR store, NOT intervals. The automatic merge (app-load / connect / pull) is FILL-BLANK:
+// intervals fills a field the user has never set, but NEVER overwrites a Platyplus value — so a wrong/rotated key, or
+// junk on the shared prod athlete, can no longer wipe your data. Platyplus still PUSHES edits OUT to intervals on save
+// (applySportStat) so intervals stays in step. The ONLY intervals-overwrites-Platyplus path is the EXPLICIT
+// "Import from intervals" action (`intervalsWins=true`) — a deliberate tap, never automatic.
+function mergeIcuSportSettings(existing, mapped, intervalsWins = false) {
   const out = { ...(existing || {}) }
-  for (const g of Object.keys(mapped || {})) out[g] = { ...(out[g] || {}), ...(mapped[g] || {}) }
+  for (const g of Object.keys(mapped || {})) {
+    out[g] = intervalsWins
+      ? { ...(out[g] || {}), ...(mapped[g] || {}) } // explicit Import: intervals overwrites ours
+      : { ...(mapped[g] || {}), ...(out[g] || {}) } // default fill-blank: our value wins, intervals only fills gaps
+  }
   return out
 }
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage)
 import webpush from 'web-push' // #457 — phone push notifications
@@ -66,6 +76,11 @@ if (PUSH_ENABLED) { try { webpush.setVapidDetails(process.env.VAPID_SUBJECT || `
 // intervals — it never MIRRORS plans out (pushPlanToIcu) and never runs the auto-scheduler. Only prod
 // writes. QA still reconciles IN (read) so it shows the calendar. Detected from the QA RP_ID/ORIGIN.
 const IS_STAGING = process.env.STAGING === '1' || /-qa\.|staging/i.test(`${RP_ID} ${ORIGIN}`)
+// #570-follow — the ONLY reason QA is read-only toward intervals is that it USED to share prod's real athlete i28814.
+// A user pointed at a DIFFERENT athlete (e.g. the QA test athlete i644563) is safe to write — it never touches prod.
+// So "can this user's writes reach intervals?" = has key+athlete AND is not the shared-prod athlete on staging.
+const SHARED_PROD_ATHLETE = 'i28814'
+const syncsIntervals = (u) => !!(u && u.icuKey && u.icuAthlete) && !(IS_STAGING && u.icuAthlete === SHARED_PROD_ATHLETE)
 // #491 — Eat + Mind are DEACTIVATED app-wide (JM 2026-07-11, "simplify for now"): nav tabs are gone, so the coach
 // must NOT put meals / mind / supplements on the calendar (they'd be orphan items with no section to show them).
 // Training + Recovery + notes stay. Reversible: flip to false to bring Eat/Mind back (and restore the nav tabs).
@@ -128,7 +143,7 @@ async function sendMail(to, subject, text) {
 
 // ---- helpers -------------------------------------------------------------
 const sha = (s) => createHash('sha256').update(s).digest('hex')
-const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, feedbackSkips: u.feedbackSkips || [], statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, cyclePhase: u.cyclePhase || null, cyclePhaseAt: u.cyclePhaseAt || null, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
+const pub = (u) => ({ id: u.id, username: u.username, email: u.email, role: u.role, info: u.info || {}, avatar: u.avatar || '', coachName: u.coachName || '', sports: u.sports || (u.sport ? [u.sport] : []), sex: u.sex || '', hasCoachProfile: !!(u.coachProfile && u.coachProfile.trim()), hasIcuKey: !!u.icuKey, icuAthlete: u.icuAthlete || '', sleepNeed: u.sleepNeed || null, maxHR: u.maxHR || null, ftp: u.ftp || null, vo2max: u.vo2max || null, sportSettings: u.sportSettings || {}, runVdot: u.runVdot || null, runThresholdPace: u.sportSettings?.running?.thresholdPace || null, statPrefs: u.statPrefs || {}, learnReadiness: u.learnReadiness !== false, feedbackSkips: u.feedbackSkips || [], statsSyncedAt: u.statsSyncedAt || 0, onboardedAt: u.onboardedAt || 0, cyclePhase: u.cyclePhase || null, cyclePhaseAt: u.cyclePhaseAt || null, staging: IS_STAGING, syncsIntervals: syncsIntervals(u), activityLinks: u.activityLinks || {}, passkeys: (u.passkeys || []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt })) })
 const findById = (id) => store.users.find((u) => u.id === id)
 const findByLogin = (login) => { const l = String(login || '').trim().toLowerCase(); return l ? store.users.find((u) => (u.username || '').toLowerCase() === l || (u.email || '').toLowerCase() === l) : undefined }
 const challenges = new Map() // transient WebAuthn challenges, keyed by user id
@@ -168,6 +183,32 @@ app.post('/auth/login', (req, res) => {
   setSession(res, u); res.json(pub(u))
 })
 app.post('/auth/logout', (req, res) => { res.clearCookie(COOKIE); res.json({ ok: true }) })
+// #582 — refresh the per-sport BENCHMARKS from intervals (the PULL direction), the SAME merge as the pull endpoint.
+// Reads the athlete record, maps + merges intervals-native fields (ftp/maxHr/lthr/threshold-pace/CSS/w_prime) — keeping
+// our Platyplus-only ones (cp/tte/cs/dPrime/swolf). Shared by /auth/me (throttled) + the manual resync, so an
+// intervals-side change reflects in Platyplus RELIABLY on next app-open, not only when the Stats card happens to mount.
+// #582 — pull intervals' sport-settings. DEFAULT is fill-blank (Platyplus owns it — never clobbers a user value).
+// `overwrite:true` is the EXPLICIT "Import from intervals" path (the only time intervals overwrites Platyplus).
+async function syncBenchmarksFromIcu(user, { overwrite = false } = {}) {
+  if (!user.icuKey) return false
+  // read via /athlete/0 (the KEY's own athlete), which SELF-HEALS a wrong icuAthlete: if the stored one doesn't
+  // match the key's real athlete (e.g. a stale i28814 from the old client default), correct it here so the sync works.
+  const a = await icuGet(user, '/athlete/0').catch(() => null)
+  if (!a || !a.id) return false
+  if (String(a.id) !== user.icuAthlete) user.icuAthlete = String(a.id)
+  const mapped = fromIcuSportSettings(a.sportSettings || [])
+  const beforeSS = { cycling: { ...(user.sportSettings?.cycling || {}) }, running: { ...(user.sportSettings?.running || {}) }, swimming: { ...(user.sportSettings?.swimming || {}) } } // #563 snapshot
+  user.sportSettings = mergeIcuSportSettings(user.sportSettings, mapped, overwrite)
+  // mirror the coach anchors from the MERGED value (our value when set, intervals only when we had none / on import)
+  const ftp = user.sportSettings.cycling?.ftp, maxHr = user.sportSettings.cycling?.maxHr
+  if (ftp != null) user.ftp = ftp
+  if (maxHr != null) user.maxHR = maxHr
+  save(store)
+  // #563 — an intervals IMPORT that CHANGED an existing benchmark → coach re-evaluates + acknowledges. Fill-blank never
+  // fires (significantBenchChange needs a real before-value), so this only triggers on a deliberate overwrite/import.
+  for (const g of ['cycling', 'running', 'swimming']) maybeCoachBenchmarkAdapt(user, significantBenchChange(g, beforeSS[g], user.sportSettings[g], 'intervals'), 'intervals').catch(() => {})
+  return true
+}
 app.get('/auth/me', auth, async (req, res) => {
   // #265/#1003 — backfill height/DOB/sex/weight from the intervals athlete record on session load if still missing.
   // GUARDED to only fetch while something's absent, so it stops as soon as they're filled (no per-load overhead after).
@@ -176,6 +217,8 @@ app.get('/auth/me', auth, async (req, res) => {
     const me = await icuGet(u, `/athlete/${u.icuAthlete}`).catch(() => null)
     if (me) { syncAthleteProfile(u, me); save(store) }
   }
+  // #582 — keep benchmarks in step with intervals on app-load, THROTTLED (~3 min/user) so it's not a fetch per request.
+  if (syncsIntervals(u) && Date.now() - (u.benchSyncAt || 0) > 3 * 60 * 1000) { u.benchSyncAt = Date.now(); await syncBenchmarksFromIcu(u).catch(() => {}) }
   // #497/#501 — also backfill the COMPUTED coach anchors (FTP/maxHR/run pace) for already-connected users who
   // predate the connect-time stash, so nobody is left un-analysed. Guarded: runs only while an anchor is still blank.
   if (u.icuKey && u.icuAthlete && (u.ftp == null || u.maxHR == null || u.runPaceEst == null)) {
@@ -345,21 +388,43 @@ async function computeAndStashAnchors(user) {
   }
   return changed
 }
+// #564 — manually LINK / UNLINK a completed activity to a planned workout (overrides the day+sport auto-match).
+// activityLinks[activityId] = planId (explicit link) | null (explicit UNLINK → suppress the auto-match). Mirrors the
+// pairing to intervals best-effort (only when this user's writes reach intervals): pair to the plan's event, or unpair.
+app.put('/auth/activity-link', auth, async (req, res) => {
+  const activityId = String(req.body.activityId || '').trim()
+  if (!activityId) return res.status(400).json({ error: 'activityId required' })
+  const planId = req.body.planId ? String(req.body.planId).trim() : null // null/absent = unlink
+  const icuEventId = req.body.icuEventId ? String(req.body.icuEventId).trim() : null
+  req.user.activityLinks = req.user.activityLinks || {}
+  req.user.activityLinks[activityId] = planId
+  save(store)
+  let icuPaired = null
+  if (syncsIntervals(req.user)) {
+    try {
+      if (planId && icuEventId) icuPaired = await pairActivityToPlan(req.user, activityId, icuEventId) // pair to the linked plan's event
+      else { await icuFetch(req.user, `/activity/${activityId}`, { method: 'PUT', body: JSON.stringify({ paired_event_id: null }) }).catch(() => {}); icuPaired = false } // unpair on unlink
+    } catch { /* best-effort — the Platyplus link is the source of truth */ }
+  }
+  res.json({ ...pub(req.user), icuPaired })
+})
 app.put('/auth/icu', auth, async (req, res) => {
   if (typeof req.body.icuKey === 'string') req.user.icuKey = req.body.icuKey.trim()
-  if (typeof req.body.icuAthlete === 'string') req.user.icuAthlete = req.body.icuAthlete.trim()
-  // #262: resolve THIS user's own athlete (athlete/0 = the authenticated athlete). Never inherit JM's 'i28814'.
-  // #265/#1003: also fetch the athlete record to sync height/DOB/sex/weight (fill-if-empty).
+  // #582 ROOT-CAUSE FIX — the athlete is ALWAYS the KEY's own (athlete/0 = whoever this key authenticates), resolved
+  // SERVER-SIDE. NEVER trust a client-sent icuAthlete: the browser's device-local id still defaults to the shared prod
+  // athlete i28814, so connecting a QA key wrote icuAthlete=i28814 → syncsIntervals=false → the whole two-way sync was
+  // dead (JM's QA pointed at i28814, not i644563). The old code set it from req.body then only ran athlete/0 "if empty",
+  // so it never corrected the wrong value. Now: a set key ALWAYS re-resolves its real athlete.
   if (req.user.icuKey) {
-    const me = await icuGet(req.user, req.user.icuAthlete ? `/athlete/${req.user.icuAthlete}` : '/athlete/0').catch(() => null)
+    const me = await icuGet(req.user, '/athlete/0').catch(() => null) // athlete/0 = the key's authenticated athlete
     if (me && me.id) {
-      if (!req.user.icuAthlete) req.user.icuAthlete = String(me.id)
+      req.user.icuAthlete = String(me.id) // AUTHORITATIVE — the key's own athlete, never the client's stale value
       syncAthleteProfile(req.user, me)
       // #497/#501 (JM: "for a new user, be sure this analysis is done") — stash the coach ANCHORS (FTP/maxHR + the
       // per-sport thresholds) from the athlete's intervals sport-settings ON CONNECT, so the coach has real numbers
       // immediately without the user opening Stats. Fill-if-empty; the Stats cards refine them from the curves later.
       const mapped = fromIcuSportSettings(me.sportSettings || [])
-      req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped)
+      req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped) // fill-blank: import intervals values the user doesn't already have, never overwrite
       if (mapped.cycling?.ftp != null && req.user.ftp == null) req.user.ftp = mapped.cycling.ftp
       if (mapped.cycling?.maxHr != null && req.user.maxHR == null) req.user.maxHR = mapped.cycling.maxHr
       // …and if settings still left an anchor blank (unconfigured account), COMPUTE it from their history so the
@@ -408,7 +473,7 @@ app.put('/auth/profile', auth, (req, res) => {
     // #508 — the whitelist was missing the model benchmarks (tteRide/tteRun/cp/wPrime/cs/dPrime), so switching one of
     // them to Manual silently dropped the MODE server-side → the card stayed on Auto/computed and the manual value the
     // user typed was never used (JM: "TTE manual won't save"). The VALUE saved (sportSettings); the PREF did not.
-    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed' || v === 'auto') && /^(vo2max|ftp|thresholdPace|maxHr|sleepNeed|tteRide|tteRun|cp|wPrime|cs|dPrime)$/.test(k)) req.user.statPrefs[k] = v
+    for (const [k, v] of Object.entries(req.body.statPrefs)) if ((v === 'manual' || v === 'computed' || v === 'auto') && /^(vo2max|ftp|thresholdPace|maxHr|sleepNeed|tteRide|tteRun|cp|wPrime|cs|dPrime|css|dPrimeSwim|tteSwim|swolf)$/.test(k)) req.user.statPrefs[k] = v
   }
   // #457 — per-type phone-push preferences (clamped to booleans)
   if (req.body.pushPrefs && typeof req.body.pushPrefs === 'object') {
@@ -434,19 +499,36 @@ app.put('/auth/profile', auth, (req, res) => {
 // + weight, mapped to our shape. intervals is CANONICAL for these — we also refresh our local
 // mirror (+ flat ftp/maxHR the coach reads) so nothing drifts.
 app.get('/auth/intervals/athlete', auth, async (req, res) => {
+  res.set('Cache-Control', 'no-store') // #582 — never let the browser cache the pull (else an intervals change never reaches the client)
   if (!req.user.icuKey || !req.user.icuAthlete) return res.json({ connected: false })
   const ath = req.user.icuAthlete
   const a = await icuGet(req.user, `/athlete/${ath}`)
   if (!a) return res.status(502).json({ connected: true, error: 'could not read intervals athlete' })
   const mapped = fromIcuSportSettings(a.sportSettings || [])
-  // refresh the local mirror from intervals (canonical), keeping Platyplus-only fields
+  // #582 — FILL-BLANK only: Platyplus owns its numbers, so reading the athlete never overwrites a value the user set
+  // (the response still returns intervals' raw `mapped` for the "what's in intervals" display + the Import button).
   req.user.sportSettings = mergeIcuSportSettings(req.user.sportSettings, mapped)
-  if (mapped.cycling?.ftp != null) req.user.ftp = mapped.cycling.ftp
-  if (mapped.cycling?.maxHr != null) req.user.maxHR = mapped.cycling.maxHr
+  const mFtp = req.user.sportSettings.cycling?.ftp, mMax = req.user.sportSettings.cycling?.maxHr
+  if (mFtp != null) req.user.ftp = mFtp
+  if (mMax != null) req.user.maxHR = mMax
   const weight = a.icu_weight != null ? a.icu_weight : (a.weight != null ? a.weight : null)
   if (weight != null && weight > 0) req.user.weight = weight // #207 Part 4: stash for the server-side VO₂max estimate
   save(store)
   res.json({ connected: true, sportSettings: mapped, weight, source: 'intervals' })
+})
+// #582 — EXPLICIT "Import from intervals" (the ONLY intervals-overwrites-Platyplus path). Deliberate: overwrite=true.
+// UI button (Stats/Connections) + the coach/test hook both land here. Also self-heals a wrong icuAthlete via /athlete/0.
+app.post('/auth/benchmarks/import', auth, async (req, res) => {
+  if (!req.user.icuKey) return res.status(400).json({ error: 'not connected to intervals' })
+  const ok = await syncBenchmarksFromIcu(req.user, { overwrite: true }).catch(() => false)
+  if (!ok) return res.status(502).json({ error: 'could not read intervals' })
+  res.json(pub(req.user))
+})
+app.post('/api/resync-benchmarks', apiAuth, async (req, res) => {
+  // default is the SAFE fill-blank sync (never clobbers a Platyplus value, same as app-load); `?overwrite=1` = explicit import
+  const overwrite = req.query.overwrite === '1' || req.body?.overwrite === true
+  const ok = await syncBenchmarksFromIcu(req.user, { overwrite }).catch(() => false)
+  res.json({ ok, overwrite, icuAthlete: req.user.icuAthlete || null, ftp: req.user.ftp || null, cycling: req.user.sportSettings?.cycling || null })
 })
 
 // #215 — ESTIMATE the runner's threshold pace from intervals' pace curve (Critical Speed),
@@ -602,8 +684,11 @@ async function applySportStat(user, body = {}) {
   if (group === 'cycling' && 'wPrime' in body) patch.wPrime = numOr(body.wPrime, 2, 60) // #403 W′ (kJ)
   if (group === 'running' && 'cs' in body) patch.cs = numOr(body.cs, 120, 900)  // #403 critical speed (sec/km)
   if (group === 'running' && 'dPrime' in body) patch.dPrime = numOr(body.dPrime, 50, 400) // #403 D′ (m)
+  if (group === 'swimming' && 'dPrime' in body) patch.dPrime = numOr(body.dPrime, 5, 150) // #swim-tri D′ (m) — smaller reserve than running
+  if (group === 'swimming' && 'swolf' in body) patch.swolf = numOr(body.swolf, 20, 100)   // #swim-tri SWOLF (strokes + s per length; lower = better)
 
   user.sportSettings = user.sportSettings || {}
+  const beforeGroup = { ...(user.sportSettings[group] || {}) } // #563 — snapshot to detect a meaningful benchmark change
   user.sportSettings[group] = { ...(user.sportSettings[group] || {}), ...patch }
   if (group === 'running' && 'runVdot' in body) user.runVdot = numOr(body.runVdot, 20, 95)
   if (group === 'cycling') {
@@ -612,7 +697,9 @@ async function applySportStat(user, body = {}) {
   }
 
   let synced = false, pushError = null
-  if (user.icuKey) {
+  // #570 — push to intervals when this user's writes are safe: prod, OR QA on its OWN athlete (i644563). Never when
+  // QA still points at the shared prod athlete i28814 (that write would corrupt prod + clobber the local value).
+  if (syncsIntervals(user)) {
     const ath = user.icuAthlete
     try {
       const list = await icuGet(user, `/athlete/${ath}/sport-settings`)
@@ -626,7 +713,22 @@ async function applySportStat(user, body = {}) {
     } catch (e) { pushError = String(e).slice(0, 120) }
   }
   save(store)
+  // #563 — a meaningful FTP/threshold/CSS edit → have the coach re-evaluate the plan + acknowledge the new number (async, best-effort)
+  maybeCoachBenchmarkAdapt(user, significantBenchChange(group, beforeGroup, user.sportSettings[group], 'manual'), 'manual').catch(() => {})
   return { status: 200, body: { ...pub(user), synced, pushError } }
+}
+// #563 — when a KEY benchmark meaningfully changes (the athlete edits it, or imports a new value from intervals), have the
+// coach RE-EVALUATE the upcoming plan + send ONE short notification acknowledging the new number. Guarded: only for
+// athletes whose writes reach intervals (prod / own athlete — coach planning is prod-only) with a coach set up, and
+// DEBOUNCED (~4h) so rapid edits (258→260→262) don't spam. Same runCoachTask pattern as the activity-review.
+async function maybeCoachBenchmarkAdapt(user, change, source) {
+  if (!change || !syncsIntervals(user)) return
+  if (!(user.coachProfile && user.coachProfile.trim())) return
+  if (Date.now() - (user.lastBenchAdaptAt || 0) < 4 * 3600 * 1000) return
+  user.lastBenchAdaptAt = Date.now(); save(store)
+  const src = source === 'manual' ? 'the athlete set it themselves in Platyplus' : 'imported from intervals.icu'
+  const msg = `The athlete's ${change.label} just changed from ${Math.round(change.from)} to ${Math.round(change.to)} (${change.dir}) — ${src}. Their ${change.group} training zones move with it (each workout's % target stays, but the real watts/paces shift). Re-evaluate the UPCOMING plan with list_schedule: confirm it still fits, and adjust intensity/load ONLY if this change is big enough to matter. Then send ONE short, encouraging notify acknowledging the new ${change.label} (${Math.round(change.to)}) and what — if anything — you changed. Be concise; decide and act.`
+  runCoachTask(user, msg).catch((e) => console.error('[bench-adapt] ' + (e.message || e)))
 }
 app.put('/auth/sport-stat', auth, async (req, res) => {
   const r = await applySportStat(req.user, req.body || {}); res.status(r.status).json(r.body)
@@ -817,7 +919,9 @@ app.get('/auth/readiness', auth, async (req, res) => {
   const data = await icuGet(req.user, `/athlete/${ath}/wellness?oldest=${oldest.toISOString().slice(0, 10)}&newest=${date}`)
   if (!data) return res.json({ connected: false })
   const rows = (Array.isArray(data) ? data : []).map((d) => ({
-    date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
+    // #597 — Form matches intervals: ONE decimal (CTL−ATL), NOT integer-rounded. Math.round turned −3.5 into −4
+    // while intervals + the rest of the app (round1) show −3.5, so prod disagreed with intervals by a whole point.
+    date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round((d.ctl - d.atl) * 10) / 10 : null,
     restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, eftp: d.eftp ?? d.icu_eftp ?? null,
     sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null,
     weight: d.weight ?? null, // #265 — for BMR/TDEE fuel targets
@@ -980,7 +1084,52 @@ app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
     const ef = await efFor('Run')
     out.running = { thresholdPaceSec: thr, csPaceSec: csPace, dPrimeM: dP != null ? Math.round(dP) : null, tteSec: tte, vdot: est?.vdot ?? null, ef, profile: computeAthleteProfile({ sport: 'running', threshold: thr, eftp: csPace, tte, cp: csPace, reserveKj: dP != null ? Math.round(dP) : null, reserveBig: 200, ef: ef.latest, efTrend: ef.trend }) }
   }
+  if (sports.includes('swimming') || sports.includes('triathlon')) {
+    // #swim-tri — swim CSS (critical speed) + D′ from intervals' swim pace-curve; TTE = longest continuous swim at ~CSS.
+    const pcFull = (await icuGet(req.user, `/athlete/${ath}/pace-curves?curves=365d&type=Swim`)) || {}
+    const c = (pcFull.list || [])[0] || {}
+    const pmodel = (c.paceModels || [])[0] || {}
+    const cs = pmodel.criticalSpeed ?? null, dP = pmodel.dPrime ?? null
+    const cssPace = cs > 0 ? Math.round(100 / cs) : (ss.swimming?.thresholdPace ?? null) // sec/100 m (manual fallback)
+    let tte = null
+    const dd = c.distance || [], vv = c.values || []
+    if (cssPace) for (let i = 0; i < dd.length; i++) if (dd[i] > 0 && vv[i] >= 900 && (vv[i] / dd[i]) * 100 <= cssPace * 1.06) tte = Math.max(tte || 0, Math.round(vv[i]))
+    out.swimming = { cssPaceSec: cssPace, dPrimeM: dP != null ? Math.round(dP) : null, tteSec: tte, swolf: ss.swimming?.swolf ?? null }
+  }
   res.json(out)
+})
+
+// #364/#589 — the async coach review of a completed session (best-effort; only if a coach is set up). EXTRACTED so the
+// feedback POST *and* the #589 retry (a stuck/failed review — e.g. the coach was down when feedback was saved) share ONE
+// trigger. Returns false when there's nothing to run (no coach / no feedback), so the caller can tell the user.
+function triggerActivityReview(user, id, fb, icuActivityId) {
+  if (!fb || !(user.coachProfile && user.coachProfile.trim())) return false
+  const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
+  const rid = icuActivityId || id
+  const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${rid}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${rid}") with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${rid}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. Be concise; decide and act.`
+  runCoachTask(user, msg).catch((e) => console.error('[activity-review] ' + (e.message || e)))
+  return true
+}
+function triggerPlanReview(user, plan, fb) {
+  if (!fb || !(user.coachProfile && user.coachProfile.trim())) return false
+  const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
+  const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}", and activityId if it matched a device activity) with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). If it matched a device activity, ALSO set a PUBLIC-safe title + description with set_activity_text (activity id from get_recent_activities) — workout/route/effort only, NO health/score/plan. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. Be concise; don't ask questions — just review and act.`
+  runCoachTask(user, msg).catch((e) => console.error('[coach-review] ' + (e.message || e)))
+  return true
+}
+// #589 — RETRY a stuck/failed coach review. When feedback was saved but no review ever landed (e.g. the coach was down),
+// the athlete was stuck on "reviewing…" with no recourse. This re-runs the review from the STORED feedback. `id` = an
+// intervals activity id (in activityFeedback) OR a plan/gym id (plan.feedback).
+app.post('/auth/activity/:id/review-retry', auth, (req, res) => {
+  const id = String(req.params.id)
+  const afb = (req.user.activityFeedback || {})[id]
+  const plan = (req.user.plans || []).find((p) => p.id === id)
+  let ok = false
+  if (afb) ok = triggerActivityReview(req.user, id, afb)
+  else if (plan && plan.feedback) ok = triggerPlanReview(req.user, plan, plan.feedback)
+  else return res.status(404).json({ error: 'no saved feedback to review for this session' })
+  if (!ok) return res.status(409).json({ error: 'set up your coach first' })
+  res.json({ ok: true, retrying: true })
 })
 
 // Post-workout feedback (how the session went) — stored on the plan so the coach reads
@@ -998,21 +1147,36 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
   }
   save(store)
   res.json({ ok: true, feedback: plan.feedback })
-  // #76: fire an async coach review on the feedback (best-effort, non-blocking). Only
-  // for athletes who've set up their coach (skip mid-onboarding users).
-  if (req.user.coachProfile && req.user.coachProfile.trim()) {
-    try {
-      const fb = plan.feedback
-      const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
-      const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}", and activityId if it matched a device activity) with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). If it matched a device activity, ALSO set a PUBLIC-safe title + description with set_activity_text (activity id from get_recent_activities) — workout/route/effort only, NO health/score/plan. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. Be concise; don't ask questions — just review and act.`
-      runCoachTask(req.user, msg).catch((e) => console.error('[coach-review] ' + (e.message || e)))
-    } catch (e) { console.error('[coach-review] trigger ' + e.message) }
-  }
+  // #76/#589 — fire the async coach review (best-effort, non-blocking; extracted so the #589 retry reuses it).
+  triggerPlanReview(req.user, plan, plan.feedback)
 })
 
+// #583 — a completed intervals ACTIVITY and the coach PLAN it fulfilled are ONE session for feedback. Map any sport
+// label (our ride/run/swim/gym OR an intervals type Ride/Run/Swim/WeightTraining) to a canonical group so they match.
+const sportGroupOf = (s) => {
+  const t = String(s || '').toLowerCase()
+  if (/ride|cycl|bike/.test(t)) return 'ride'
+  if (/run/.test(t)) return 'run'
+  if (/swim/.test(t)) return 'swim'
+  if (/gym|weight|strength|workout/.test(t)) return 'gym'
+  return t
+}
+// resolve the OTHER id of a linked plan↔activity pair (activityLinks[activityId] = planId), either direction.
+const siblingFeedbackId = (user, id) => {
+  const links = user.activityLinks || {}
+  if (links[id]) return links[id] // id is an activity → its plan
+  for (const [act, plan] of Object.entries(links)) if (plan === id) return act // id is a plan → its activity
+  return null
+}
 // #273 — post-workout feedback for a COMPLETED intervals ACTIVITY (device rides/runs that have no
 // Platyplus plan). Stored per-user keyed by activity id; triggers an async coach review (activityId).
-app.get('/auth/activity/:id/feedback', auth, (req, res) => res.json((req.user.activityFeedback || {})[String(req.params.id)] || null))
+// #583 — feedback on the LINKED plan/activity counts as this session's, so no view re-nags for feedback already given.
+app.get('/auth/activity/:id/feedback', auth, (req, res) => {
+  const fbs = req.user.activityFeedback || {}
+  const id = String(req.params.id)
+  const sib = siblingFeedbackId(req.user, id)
+  res.json(fbs[id] || (sib && fbs[sib]) || null)
+})
 // Skip a session's feedback — the athlete doesn't want to log it. Drops it from the "to review" list so it
 // stops nagging (a per-user set of activity ids; `incompleteFeedback` filters these out). #review-skip
 app.post('/auth/activity/:id/feedback-skip', auth, (req, res) => {
@@ -1075,7 +1239,7 @@ async function ensureIcuFields(user, { force = false } = {}) {
   } catch (e) { console.error('[ensureIcuFields] ' + (e.message || e)) }
 }
 
-app.post('/auth/activity/:id/feedback', auth, (req, res) => {
+app.post('/auth/activity/:id/feedback', auth, async (req, res) => {
   const id = String(req.params.id)
   const b = req.body || {}
   const fb = {
@@ -1090,11 +1254,40 @@ app.post('/auth/activity/:id/feedback', auth, (req, res) => {
   if (!req.user.activityFeedback) req.user.activityFeedback = {}
   req.user.activityFeedback[id] = fb
   audit(req.user, { actor: 'you', action: 'Logged feedback', target: fb.title || `${fb.sport || 'workout'} ${fb.date || ''}`.trim(), detail: [fb.feel && `felt ${fb.feel}`, fb.rpe && `RPE ${fb.rpe}`].filter(Boolean).join(' · '), kind: 'feedback' }) // #232
+  // #583 — a completed activity + the coach PLAN it fulfilled are ONE session. Link them (either direction), MIRROR the
+  // feedback onto the sibling id, and target the intervals write-back at the ACTIVITY id even when the athlete gave
+  // feedback from the PLANNED view — so no view re-nags for feedback that's already been given (xenia's dup bug).
+  req.user.activityLinks = req.user.activityLinks || {}
+  const isActId = /^i?\d+$/.test(id)
+  let icuActivityId = isActId ? id : null
+  let sibling = siblingFeedbackId(req.user, id)
+  if (!sibling) {
+    if (isActId) { // saved ON the activity → find + link the plan it fulfilled (same local day + sport group)
+      const plan = (req.user.plans || []).find((p) => String(p.date).slice(0, 10) === (fb.date || '') && sportGroupOf(p.sport) === sportGroupOf(fb.sport))
+      if (plan && req.user.activityLinks[id] === undefined) { req.user.activityLinks[id] = plan.id; sibling = plan.id }
+    } else if (req.user.icuKey && req.user.icuAthlete) { // saved ON the plan → find + link the completed activity for its day
+      const plan = (req.user.plans || []).find((p) => p.id === id)
+      const day = plan ? String(plan.date).slice(0, 10) : (fb.date || '')
+      const grp = sportGroupOf(plan ? plan.sport : fb.sport)
+      if (day) {
+        const acts = await icuGet(req.user, `/athlete/${req.user.icuAthlete}/activities?oldest=${day}&newest=${day}`).catch(() => null)
+        const free = (Array.isArray(acts) ? acts : []).filter((a) => req.user.activityLinks[String(a.id)] === undefined)
+        // CLONE intervals' own pairing: it attaches a completed activity to the planned event of the SAME DAY + TYPE and
+        // exposes it as `paired_event_id`. Our plan was pushed as that event (plan.icuEventId), so reuse intervals' pairing
+        // first; fall back to same-day + same-sport-group (the identical criteria) when the plan wasn't pushed / isn't paired.
+        const act = (plan?.icuEventId && free.find((a) => String(a.paired_event_id || '') === String(plan.icuEventId)))
+          || free.find((a) => sportGroupOf(a.type) === grp)
+        if (act) { req.user.activityLinks[String(act.id)] = id; sibling = String(act.id); icuActivityId = String(act.id) }
+      }
+    }
+  } else if (!isActId && /^i?\d+$/.test(sibling)) icuActivityId = sibling // plan saved, its linked activity is the write-back target
+  if (sibling) req.user.activityFeedback[sibling] = fb // MIRROR — both ids report the same feedback
   save(store)
   res.json({ ok: true, feedback: fb })
   // #273 BI-DIRECTIONAL: write feel/RPE + custom fields BACK to the intervals activity (as the
-  // 1-based indices intervals stores), so it shows up in intervals too. Only for real intervals ids.
-  if (req.user.icuKey && /^i?\d+$/.test(id)) {
+  // 1-based indices intervals stores), so it shows up in intervals too. #583 — targets the linked activity
+  // even when feedback came from the planned view, so the Review nag (which reads the activity) is satisfied.
+  if (req.user.icuKey && icuActivityId) {
     // #288 — make sure the custom fields exist BEFORE writing values (guarded flag → runs once); covers
     // athletes who connected before #288 so the 1-based values have somewhere to land.
     if (!req.user.icuFieldsAt) ensureIcuFields(req.user).catch(() => {})
@@ -1103,19 +1296,13 @@ app.post('/auth/activity/:id/feedback', auth, (req, res) => {
     if (fb.rpe) payload.icu_rpe = fb.rpe
     const fbDefs = fbFieldsFor(fb.sport) // #330 — a run's values map through the RUN option list
     for (const [label, val] of Object.entries(fb.fields || {})) { const def = fbDefs[label]; if (def) { const i = def.opts.indexOf(val); if (i >= 0) payload[def.code] = i + 1 } }
-    if (Object.keys(payload).length) icuFetch(req.user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify(payload) }).catch((e) => console.error('[icu-feedback-write] ' + (e.message || e)))
+    if (Object.keys(payload).length) icuFetch(req.user, `/activity/${icuActivityId}`, { method: 'PUT', body: JSON.stringify(payload) }).catch((e) => console.error('[icu-feedback-write] ' + (e.message || e)))
     // #287: the free-text comment isn't a field — it lives in the intervals MESSAGE thread. Post it
     // there (deduped) so "Anything else?" shows up in intervals too, not just Platyplus.
-    if (fb.note && fb.note.trim()) syncActivityNote(req.user, id, fb.note.trim()).catch((e) => console.error('[icu-note-write] ' + (e.message || e)))
+    if (fb.note && fb.note.trim()) syncActivityNote(req.user, icuActivityId, fb.note.trim()).catch((e) => console.error('[icu-note-write] ' + (e.message || e)))
   }
-  // async coach review referencing the activity (best-effort; only once the coach is set up).
-  if (req.user.coachProfile && req.user.coachProfile.trim()) {
-    try {
-      const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
-      const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${id}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${id}") with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${id}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. Be concise; decide and act.`
-      runCoachTask(req.user, msg).catch((e) => console.error('[activity-review] ' + (e.message || e)))
-    } catch (e) { console.error('[activity-review] trigger ' + e.message) }
-  }
+  // #364/#589 — async coach review of the activity (best-effort; extracted so the #589 retry reuses it).
+  triggerActivityReview(req.user, id, fb, icuActivityId)
 })
 
 // admin: user management
@@ -1282,8 +1469,11 @@ app.get('/auth/my-reports', auth, (req, res) => {
 })
 
 // ---- coach API token (shown to its owner only) ---------------------------
-app.get('/auth/token', auth, (req, res) => res.json({ token: req.user.apiToken }))
-app.post('/auth/token/rotate', auth, (req, res) => { req.user.apiToken = randomBytes(24).toString('base64url'); save(store); res.json({ token: req.user.apiToken }) })
+// #577 (JM: "I don't want people to use the API, just me or an admin") — obtaining/rotating the Coach API token is
+// ADMIN-ONLY. Every user still HAS a token and their coach still uses it SERVER-SIDE to push plans (apiAuth stays
+// per-user, so the coach works for everyone) — non-admins just can't fetch it to call /api/* by hand. UI already hides it.
+app.get('/auth/token', auth, admin, (req, res) => res.json({ token: req.user.apiToken }))
+app.post('/auth/token/rotate', auth, admin, (req, res) => { req.user.apiToken = randomBytes(24).toString('base64url'); save(store); res.json({ token: req.user.apiToken }) })
 
 // The app (session) reads its own plans for the Today merge-by-id.
 app.get('/auth/plans', auth, (req, res) => { healMirror(req.user).catch(() => {}); res.json(plansInRange(req.user, req.query.from, req.query.to)) }) // #5026 — sync-on-load: repair the intervals mirror when the athlete opens the plan view (fire-and-forget, cooldown-guarded)
@@ -1396,7 +1586,9 @@ app.delete('/auth/items/:id', auth, (req, res) => { deleteItemById(req.user, req
 app.get('/auth/logs', auth, (req, res) => res.json(req.user.logs || []))
 app.post('/auth/logs', auth, (req, res) => {
   const b = req.body || {}
-  const log = { sid: newId(), workoutId: b.workoutId || '', title: b.title || '', discipline: b.discipline || '', duration: Number(b.duration) || 0, date: b.date || new Date().toISOString().slice(0, 10), completedAt: b.completedAt || Date.now(), setsCompleted: b.setsCompleted, volume: b.volume, tss: b.tss, sets: b.sets, notes: b.notes }
+  // exNames/exIds MUST be persisted (#591): bestE1rmByExercise + the by-exercise summary key sets to their
+  // exercise by name — dropping them here made every synced gym log show "Exercise N" and starved the 1-RM analytics.
+  const log = { sid: newId(), workoutId: b.workoutId || '', title: b.title || '', discipline: b.discipline || '', duration: Number(b.duration) || 0, date: b.date || new Date().toISOString().slice(0, 10), completedAt: b.completedAt || Date.now(), setsCompleted: b.setsCompleted, volume: b.volume, tss: b.tss, sets: b.sets, exNames: b.exNames, exIds: b.exIds, notes: b.notes }
   req.user.logs = req.user.logs || []; req.user.logs.push(log); save(store); res.status(201).json(log)
 })
 app.put('/auth/logs/:sid', auth, (req, res) => { const l = (req.user.logs || []).find((x) => x.sid === req.params.sid); if (!l) return res.status(404).json({ error: 'not found' }); Object.assign(l, req.body || {}, { sid: l.sid }); save(store); res.json(l) })
@@ -1472,6 +1664,10 @@ const SPORT_ENGINES = [
   { key: 'running', file: 'coach-engine-running.md', sports: ['running', 'triathlon'], rx: /\b(run|running|jog|marathon|\b5k\b|\b10k\b|half|ultra|vdot|daniels|threshold pace)\b/i },
   // #534 — strength engine (peer to cycling/running): 1-RM + %1RM zones, GOAL-DEPENDENT volume, concurrent-training.
   { key: 'strength', file: 'coach-engine-strength.md', sports: ['strength', 'gym'], rx: /\b(gym|strength|lift|lifting|weights?|squat|bench|deadlift|hypertroph|1[\s-]?rm|dumbbell|barbell)\b/i },
+  // #swim-tri — swimming engine (peer to cycling/running): CSS benchmark + zones + technique/SWOLF + sTSS.
+  { key: 'swimming', file: 'coach-engine-swimming.md', sports: ['swimming', 'swim', 'triathlon'], rx: /\b(swim|swimming|css|critical swim|freestyle|backstroke|breaststroke|open[- ]?water|pool)\b/i },
+  // #swim-tri — triathlon PLANNING layer (not a benchmark): Friel periodization + weekly 3-sport balance + bricks.
+  { key: 'triathlon', file: 'coach-engine-triathlon.md', sports: ['triathlon'], rx: /\b(triathlon|triathlete|ironman|70\.3|\bbrick\b|olympic distance|sprint tri)\b/i },
 ].map((e) => ({ ...e, text: loadEngine(e.file) }))
 
 function buildSystemPrompt(user) {
@@ -1498,6 +1694,11 @@ function buildSystemPrompt(user) {
   tail += `\n\n# TODAY — it is **${todayWd ? todayWd + ', ' : ''}${todayIso}** in the athlete's local time (${ptz}). This is the ONE source of truth for the date: anchor EVERY "today / tonight / tomorrow / yesterday / this week / next week" to it, and IGNORE any other clock or date you might infer. When they say "today" they mean ${todayIso} (${todayWd}). Your scheduling tools (list_schedule, create/move/delete) operate on this same local date, so a change they ask for "today" must land on ${todayIso}. Before you move or delete a session because they're unavailable, confirm the DATE you're acting on matches ${todayIso} (or the exact day they named) — don't act on the wrong day.`
   // #500 (JM 2026-07-12) — plain language, no jargon, in ANYTHING the athlete reads.
   p += `\n\n# PLAIN LANGUAGE — no jargon: the athlete may NOT be technical, so in everything they read — notify messages, activity titles/descriptions, chat replies — NEVER use abbreviations or coaching shorthand. Do not write "TTE", "CTL", "ATL", "IF", "NP", "VI", "W′", "eFTP", "FTP", "Form", "Z2/Z4", "TSS". Say it in plain words instead: "how fresh you are" (not Form), "your threshold power / the hardest pace you can hold ~an hour" (not FTP/eFTP), "how hard it was compared with your threshold" (not IF), "training load" (not TSS), "easy / hard" (not zone numbers). If a number genuinely helps, describe what it means in the same breath. When you explain a plan CHANGE, be specific and concrete about WHAT you changed and WHY (which day, which session, longer/shorter/easier, the reason) — never a vague "plan updated".`
+  p += `\n\n# SAY = DO — your WORDS must match the CALENDAR (the #1 trust rule; the athlete has caught you breaking it). NEVER describe, promise, or agree to a plan you have not ACTUALLY built and then verified. The moment you tell the athlete about a session — in chat, in a review's "next" line, anywhere — that EXACT session (right SPORT, right DAY, right intensity) must already be on their calendar. Concretely:
+1. **Do exactly what they ask.** If they say "rest today and a run today or tomorrow", then make today rest (delete/clear the session that's there — even if it was a ride) and create a RUN on the day they meant — NOT a ride, NOT a different day. If their request is ambiguous, pick the sensible reading and state it; do not quietly substitute a different sport or day.
+2. **Build it, then READ IT BACK.** After any create/move/delete, call list_schedule and confirm the calendar now matches what you're about to say. If it doesn't, fix it before you reply.
+3. **Only describe what is really there.** Before you write "Rest tomorrow, easy spin Sunday, gym Monday, threshold test Wednesday", STOP: is each of those an actual scheduled session you can see in list_schedule? If not, either schedule it now or do NOT say it. A plan you narrate but didn't build is a lie to the athlete — it is the single fastest way to lose their trust.
+4. **You may re-plan later** (the plan adapts) — but at the instant you speak, your words = the current calendar. When you say "yes" to a request, the yes means you have DONE it, not that you intend to.`
   if (COACH_ENGINE) p += `\n\n# Your coaching method (the Platyplus engine — apply it to THIS athlete per their profile)\n` + COACH_ENGINE
   // Gated modules — only the athletes they apply to get them (the engine is ONE coach,
   // not cycling-for-everyone). Prefer the STRUCTURED fields (sport from onboarding, sex
@@ -1529,6 +1730,16 @@ function buildSystemPrompt(user) {
     const obj = ((user.info && user.info.goals && user.info.goals.notes) || '').trim()
     tail += `\n\n# GYM FOCUS — main sport: ${ms || 'none set'}. Sports: ${sports.join(', ') || '—'}. Objective: ${obj ? `"${obj.slice(0, 240)}"` : 'not stated — ask what they want from the gym'}. Derive the gym focus per coach-engine-strength.md: an ENDURANCE main sport with NO muscle intent → pure SUPPORT (maintenance dose, minimal effective volume, kept clear of key rides/runs — never treat low gym volume as a deficit); an ENDURANCE main sport who ALSO wants muscle → SUPPORT+BUILD, i.e. **concurrent hypertrophy** (you CAN build lean muscle while the sport stays #1 — give a real but MODERATE dose ~6–12 hard sets/muscle/wk, dosed and scheduled around key sessions; don't wreck the sport, don't shame them for cycling-first); a MUSCLE goal with gym as the main event → full hypertrophy (10–20 sets/muscle/wk); a strength/1-RM goal → strength (heavy, >85% 1RM, low volume). Match volume, %1RM intensity, and scheduling to that focus AND the current phase — in a big endurance block, dial the gym down.`
   }
+  // #swim-tri — TRIATHLON: multi-sport planning layer. Apply Friel periodization keyed to the athlete's stated A-race.
+  if (sports.includes('triathlon')) {
+    const tgoal = ((user.info && user.info.goals && user.info.goals.notes) || '').trim()
+    tail += `\n\n# TRIATHLON — this athlete races triathlon (swim + bike + run as ONE season). Plan per coach-engine-triathlon.md.
+- **A-RACE & PHASE:** ${tgoal ? `Their goal, in their words: "${tgoal.slice(0, 300)}". Read the race DATE + DISTANCE from it (sprint / Olympic / 70.3 / Ironman).` : 'They have NOT stated a race yet — ASK for their A-race date + distance so you can periodize; until then hold a general base.'} Count back from race day and set the Friel phase (Prep → Base → Build → Peak → Race → Transition). Tell them which phase they're in and why.
+- **WEEKLY BALANCE:** program all THREE sports each week, biased to the athlete's LIMITER (weakest/most-race-costly discipline) and the race's demands — not an even split. Swim technique is high-frequency + low-load; bike carries the most training load; run is the most injury-costly so cap hard-run frequency. Each session goes to ITS OWN zones (ride % FTP, run pace off threshold, swim pace off CSS).
+- **BRICKS:** schedule bike→run bricks in Build/Peak to train the transition (legs off the bike). Keep the run portion controlled early in the block.
+- **TOTAL LOAD:** the three sports SHARE one recovery budget — sum load across all of them against the weekly band + this athlete's day/week caps; don't let three "moderate" days stack into an overload. Strength is periodized support (Hagerman): heavier in base, maintenance in build/peak, cut in race week.
+Use create_swim / create_ride / create_run / create_workout, each to its own zones, balanced to total load and periodized to the A-race.`
+  }
   // #207 Phase 2: the athlete's own benchmarks — so the coach judges intensity FOR THEM.
   const stats = []
   // #236/#277: FTP resolves by statPrefs.ftp — computed/AUTO prefer eFTP when available, else the set FTP.
@@ -1545,6 +1756,8 @@ function buildSystemPrompt(user) {
   const tpComputed = wantsComputed('thresholdPace') && user.runPaceEst > 0
   const tp = tpComputed ? user.runPaceEst : user.sportSettings?.running?.thresholdPace // sec/km
   if (tp > 0) { const m = Math.floor(tp / 60), s = String(Math.round(tp % 60)).padStart(2, '0'); stats.push(`running threshold pace ${m}:${s}/km${tpComputed ? ' (estimated)' : user.runVdot ? ` (VDOT ${user.runVdot})` : ''}`) }
+  const css = user.sportSettings?.swimming?.thresholdPace // #swim-tri — CSS in sec/100 m
+  if (css > 0) { const m = Math.floor(css / 60), s = String(Math.round(css % 60)).padStart(2, '0'); stats.push(`swim CSS ${m}:${s}/100 m`) }
   const rhr = user.sportSettings?.running?.maxHr
   if (rhr && rhr !== user.maxHR) stats.push(`running max HR ${rhr} bpm`)
   if (user.sleepNeed) stats.push(`sleep need ~${user.sleepNeed} h`)
@@ -1554,7 +1767,7 @@ function buildSystemPrompt(user) {
   if (user.hrvBaseline?.mean) bl2.push(`HRV baseline ~${user.hrvBaseline.mean} ms${user.hrvBaseline.cv7 != null ? ` (7-day variability ${user.hrvBaseline.cv7}%)` : ''}`)
   if (user.rhrBaseline?.mean) bl2.push(`resting HR baseline ~${user.rhrBaseline.mean}±${user.rhrBaseline.sd} bpm`)
   if (bl2.length) p += `\n\n# THIS ATHLETE'S LEARNED BASELINES (their OWN ~60-day norm) — ${bl2.join(', ')}.\nInterpret today's HRV/resting-HR as a DEVIATION from these, never as textbook absolutes: a clear HRV drop or resting-HR rise vs baseline (beyond ~1 SD, especially multi-day) signals accumulating fatigue, poor sleep, or oncoming illness → ease off; within the normal band → train as planned. Rising 7-day HRV variability is itself a fatigue flag. Always cross-check with their check-in and Form before deciding.`
-  if (stats.length) p += `\n\n# THIS ATHLETE'S BENCHMARKS — ${stats.join(', ')}.\nJudge how hard a session is FOR THEM against these: prescribe ride intensities as % of THEIR FTP and RUN intensities as a pace off THEIR threshold pace (Daniels E/M/T/I/R), set HR zones off THEIR max HR, and gym loads by reps (the app fills the weight). Their sleep NEED is ~${user.sleepNeed || 8} h — score sleep against that, not a generic 8 h.`
+  if (stats.length) p += `\n\n# THIS ATHLETE'S BENCHMARKS — ${stats.join(', ')}.\nJudge how hard a session is FOR THEM against these: prescribe ride intensities as % of THEIR FTP, RUN intensities as a pace off THEIR threshold pace (Daniels E/M/T/I/R), SWIM sets as a pace off THEIR CSS (zone 3 = CSS pace — pass it to create_swim as cssPace100), set HR zones off THEIR max HR, and gym loads by reps (the app fills the weight). Their sleep NEED is ~${user.sleepNeed || 8} h — score sleep against that, not a generic 8 h.`
   // #497 — the anchors are only as good as the last quality effort behind them; when one is UNCONFIRMED, have the
   // coach proactively work in a single targeted refining effort (NOT an all-out test — JM's rule). Heuristic-based:
   // the coach already reads recent activities, so it can judge "no recent hard effort" without any confidence plumbing.
@@ -1786,6 +1999,26 @@ app.post('/auth/chat/history', auth, (req, res) => {
   res.json(t.msgs || [])
 })
 
+// #580 — MECHANICAL SAY=DO GUARANTEE. The coach's PROSE can drift from the calendar (it once narrated a plan it never
+// built). So whenever the coach talks about the plan, the APP appends the REAL calendar — computed deterministically
+// from the store (which already reflects any create/move/delete the coach just did) — as an authoritative block. A
+// session the coach invented simply won't be in it; a promised session that IS built will be. The athlete always sees
+// ground truth, right under the coach's words. Pure read of user.plans; best-effort.
+const PLAN_TALK_RX = /\b(plan\w*|schedul\w*|rest day|tomorrow|today|(?:mon|tues|wednes|thurs|fri|satur|sun)day|next (?:session|week|ride|run|swim|workout|day|few days)|this week|upcoming|(?:i've|i have|i'll|i will) (?:scheduled|set|added|planned|put|booked))/i
+async function upcomingPlanSummary(user, days = 7) {
+  const today = await athleteToday(user)
+  const end = addDays(today, days)
+  const plans = (user.plans || []).filter((p) => p && p.date >= today && p.date <= end).sort((a, b) => a.date.localeCompare(b.date))
+  const line = (p) => {
+    const d = new Date(p.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    const sp = ({ ride: 'Ride', run: 'Run', gym: 'Gym', swim: 'Swim' })[p.sport] || p.sport || 'Session'
+    const mins = Array.isArray(p.segments) && p.segments.length ? Math.round(p.segments.reduce((s, x) => s + (Number(x.duration) || 0), 0) / 60) : null
+    return `• ${d} — ${p.title || sp}${mins ? ` · ~${mins} min` : ''}`
+  }
+  const header = '\n\n———\n📋 **Your actual plan** — straight from your calendar (this is what is really scheduled; if anything above isn\'t here, it isn\'t booked):\n'
+  return plans.length ? header + plans.map(line).join('\n') : header + `• Nothing scheduled in the next ${days} days.`
+}
+
 app.post('/auth/chat', auth, async (req, res) => {
   const message = String(req.body?.message || '').trim().slice(0, 4000)
   if (!message) return res.status(400).json({ error: 'empty message' })
@@ -1833,6 +2066,8 @@ app.post('/auth/chat', auth, async (req, res) => {
         }
       } finally { clearTimeout(killer) }
     } catch (e) { send({ error: 'coach unavailable: ' + (e.message || e) }) }
+    // #580 — append the authoritative real-calendar block when the coach talked about the plan.
+    if (reply && PLAN_TALK_RX.test(reply)) { try { const b = await upcomingPlanSummary(req.user); if (b) { reply += b; send({ delta: b }) } } catch { /* best-effort */ } }
     return pend()
   }
 
@@ -1980,9 +2215,24 @@ function planToIcuEvent(plan, items = []) {
     // this text for the pace chart (#331), so each step keeps its "- Xm Y% pace" target. RIDES also carry
     // the structured workout_doc (the chart authority). The coaching brief is TRIMMED below a divider — the
     // full plan (meals/mind/recovery) stays in Platyplus via the link.
-    const native = nativeWorkoutText(segs, isRun)
-    if (!isRun && segs.length) ev.workout_doc = { steps: segs.flatMap((s) => encodeStep(s, false)) }
-    ev.description = [native, stripDerivedWorkout(stripPlatyplusLinks(plan.notes)), shortCoachNote(plan)].filter(Boolean).join('\n\n')
+    // #479 — RIDES render steady targets as a RIDEABLE min–max RANGE (outdoor you self-regulate to a band); this shapes
+    // ONLY the displayed workout (text + doc), AFTER plannedTss above, so the load is unchanged (band averages to target).
+    const dispSegs = plan.sport === 'ride' ? bandSteadyPower(segs) : segs
+    const native = nativeWorkoutText(dispSegs, isRun)
+    if (!isRun && dispSegs.length) ev.workout_doc = { steps: dispSegs.flatMap((s) => encodeStep(s, false)) }
+    // #588 — Platyplus owns the plan: label it so the athlete edits in Platyplus, not here (a change made in intervals is reverted on the next sync). Re-composed each push, so it never accumulates.
+    ev.description = [native, stripDerivedWorkout(stripPlatyplusLinks(plan.notes)), shortCoachNote(plan), '📋 Planned in Platyplus — edit it there (changes made here are replaced).'].filter(Boolean).join('\n\n')
+  } else if (plan.sport === 'swim') {
+    // #swim-tri — swim plans are distance sets (create_swim precomputes duration/distance/sTSS). No power/pace
+    // workout_doc (intervals' swim model differs); push a Swim event carrying the LOAD so Form/CTL counts it.
+    ev.type = 'Swim'
+    const dur = Number(plan.moving_time) || 0
+    if (dur > 0) { ev.moving_time = dur; ev.time_target = dur }
+    if (Number(plan.distanceM) > 0) ev.distance = Number(plan.distanceM)
+    const stss = Number(plan.icu_training_load) || 0
+    if (stss > 0) ev.icu_training_load = stss
+    const link = `${ORIGIN}/coach/${encodeURIComponent(plan.id)}`
+    ev.description = [`🏊 Open workout in Platyplus → ${link}`, stripPlatyplusLinks(plan.notes), brief].filter(Boolean).join('\n\n')
   } else {
     ev.type = 'WeightTraining'
     // #434 — push a gym LOAD (+ duration) so intervals' Form/CTL COUNTS strength work (was 0 → gym ignored).
@@ -2187,7 +2437,7 @@ async function deletePlanById(user, id, actor = 'coach') {
 // (Step resolve/flatten — incl. the "5 W" power_zone fix + #312 pace read — live in ./icu-steps.js.)
 function icuEventToPlan(ev) {
   const date = String(ev.start_date_local || '').slice(0, 10)
-  const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
+  const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : ev.type === 'Swim' ? 'swim' : 'gym'
   const plan = { id: ev.external_id || `icu-${ev.id}`, date, sport, title: ev.name || 'Workout', notes: stripDerivedWorkout(stripPlatyplusLinks(ev.description || '')), origin: 'icu', icuEventId: ev.id, updatedAt: Date.now() }
   if (sport === 'ride' || sport === 'run') {
     plan.segments = flattenIcuStepsSrv(ev.workout_doc?.steps || [])
@@ -2216,23 +2466,27 @@ async function reconcileFromIcu(user, from, to) {
   // PLATYPLUS-WINS dedup key: same day + sport + title ⇒ it's the same session.
   const planKey = (date, sport, title) => `${date}|${sport}|${String(title || '').trim().toLowerCase()}`
   const planKeys = new Set(user.plans.map((p) => planKey(p.date, p.sport, p.title)))
-  let imported = 0, refreshed = 0, gcDeleted = 0
+  let imported = 0, refreshed = 0, gcDeleted = 0, reverted = 0
   const orphanCandidates = [] // #414 — our pushed events that no plan claims; deleted AFTER the loop, fail-safe-guarded
+  const revertMoves = [] // #588 — Platyplus-origin plans a user MOVED in intervals; re-pushed to their owned date AFTER the loop
   for (const ev of events || []) {
     if (ev.category && ev.category !== 'WORKOUT') continue
-    if (!['Ride', 'Run', 'WeightTraining'].includes(ev.type)) continue
+    if (!['Ride', 'Run', 'Swim', 'WeightTraining'].includes(ev.type)) continue
     if (ownedIcuIds.has(ev.id)) {
       // We already have this event as a plan — REFRESH its derived fields from intervals so
       // edits to the workout (and the #217 power_zone fix) propagate. icu-origin ONLY:
       // platyplus-origin plans are master and never overwritten. Completion/feedback untouched.
       const existing = user.plans.find((p) => p.icuEventId === ev.id)
       if (existing) {
-        // #380 — a MOVE made IN intervals WINS FOR THE DAY (JM's pick): adopt the new date so a reschedule
-        // done on the intervals calendar mirrors back to Platyplus. Applies to EVERY origin (incl. gym — the
-        // #377 skip is only for NEW-shell imports, not a date-refresh of an already-owned plan). Content
-        // (exercises/steps/title) stays Platyplus-owned unless the plan itself originated in intervals.
+        // #588 (SUPERSEDES #380 "intervals-move-wins") — Platyplus OWNS the plan; a user must NOT manipulate it in
+        // intervals. If they MOVED a PLATYPLUS-origin planned event to another day there, REVERT it (re-push to its
+        // Platyplus date after the loop — prod-only). An intervals-ORIGIN plan (the user made it in intervals) still
+        // adopts the move. Content stays Platyplus-owned either way (icu-origin still refreshes below).
         const icuDate = String(ev.start_date_local || '').slice(0, 10)
-        if (icuDate && icuDate !== existing.date) { existing.date = icuDate; existing.updatedAt = Date.now(); refreshed++ }
+        if (icuDate && icuDate !== existing.date) {
+          if (userMovedPlatyplusPlan(existing, icuDate)) revertMoves.push(existing) // revert the user's move (re-push below)
+          else { existing.date = icuDate; existing.updatedAt = Date.now(); refreshed++ } // intervals-origin plan: adopt
+        }
         if (existing.origin === 'icu') {
           const fresh = icuEventToPlan(ev)
           const sig = (p) => JSON.stringify([p.title, p.notes, p.segments])
@@ -2246,7 +2500,7 @@ async function reconcileFromIcu(user, from, to) {
     if (ev.external_id && (planIds.has(ev.external_id) || planIds.has(extId))) continue
     // A plan already exists for this day+sport+title → Platyplus wins, don't re-import a copy.
     const date = String(ev.start_date_local || '').slice(0, 10)
-    const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : 'gym'
+    const sport = ev.type === 'Ride' ? 'ride' : ev.type === 'Run' ? 'run' : ev.type === 'Swim' ? 'swim' : 'gym'
     if (planKeys.has(planKey(date, sport, ev.name))) continue
     // #377/#414 — an event WE pushed (external_id = a Platyplus plan id; gym also carries the "Open workout in
     // Platyplus" deep-link) that reached HERE means no current plan claims it — not by icuEventId (1773), not by
@@ -2296,6 +2550,13 @@ async function reconcileFromIcu(user, from, to) {
       console.warn(`[reconcile GC] ${user.username}: deleted ${safe.length} orphan event(s) [${safe.map((e) => e.id).join(',')}] — leftover/duplicate, no owning plan.`)
     }
   }
+  // #588 — Platyplus OWNS the plan: a user MOVED a Platyplus-origin planned event in intervals → REVERT it by re-pushing
+  // to its OWNED date (pushPlanToIcu finds the moved event by icuEventId + updates it back, no duplicate). PROD-only
+  // (pushPlanToIcu skips on staging). Capped fail-safe. Net effect: intervals is a read-only mirror — a move snaps back.
+  if (!IS_STAGING && revertMoves.length) {
+    for (const p of revertMoves.slice(0, 12)) { try { await pushPlanToIcu(user, p); reverted++ } catch (e) { console.error('[revert-move] ' + (e.message || e)) } }
+    console.warn(`[reconcile revert] ${user.username}: reverted ${reverted}/${revertMoves.length} user move(s) done in intervals — Platyplus owns the plan (#588).`)
+  }
   // Deletion mirror (#150) + replaced-plan cleanup (#185): drop a stored plan whose
   // intervals mirror is gone — icu-origin always, platyplus-origin ONLY when a live
   // (replacement) WORKOUT event now occupies the same day+sport (the coach republished
@@ -2311,9 +2572,9 @@ async function reconcileFromIcu(user, from, to) {
   // (a wrongly-dropped QA plan is unrecoverable). The deletion-mirror is prod-only, like push + the orphan-GC.
   if (!IS_STAGING) user.plans = user.plans.filter((p) => !planDroppedByReconcile(p, { liveIds: liveIcuIds, ownedSlots, from, to }))
   const dropped = before - user.plans.length
-  if (imported || dropped || gcDeleted) audit(user, { actor: 'sync', action: 'Synced from intervals', target: '', detail: [imported && `${imported} imported`, dropped && `${dropped} removed`, gcDeleted && `${gcDeleted} orphan${gcDeleted > 1 ? 's' : ''} cleaned`, refreshed && `${refreshed} refreshed`].filter(Boolean).join(' · '), kind: 'sync' }) // #232/#414
-  if (imported || dropped || refreshed || gcDeleted) save(store)
-  return { imported, dropped, refreshed, gcDeleted, scanned: (events || []).length }
+  if (imported || dropped || gcDeleted || reverted) audit(user, { actor: 'sync', action: 'Synced from intervals', target: '', detail: [imported && `${imported} imported`, dropped && `${dropped} removed`, gcDeleted && `${gcDeleted} orphan${gcDeleted > 1 ? 's' : ''} cleaned`, refreshed && `${refreshed} refreshed`, reverted && `${reverted} move${reverted > 1 ? 's' : ''} reverted`].filter(Boolean).join(' · '), kind: 'sync' }) // #232/#414/#588
+  if (imported || dropped || refreshed || gcDeleted || reverted) save(store)
+  return { imported, dropped, refreshed, gcDeleted, reverted, scanned: (events || []).length }
 }
 
 // ---- calendar items (meal/mind/note) — shared by the UI (/auth) and API (/api).
@@ -2598,7 +2859,9 @@ app.get('/api/intervals/wellness', apiAuth, async (req, res) => {
   const data = await icuGet(req.user, `/athlete/${req.user.icuAthlete}/wellness?oldest=${icuDay(days)}&newest=${icuDay(0)}`)
   if (!data) return res.json({ connected: false, wellness: [] })
   const wellness = (Array.isArray(data) ? data : []).map((d) => ({
-    date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round(d.ctl - d.atl) : null,
+    // #597 — Form matches intervals: ONE decimal (CTL−ATL), NOT integer-rounded. Math.round turned −3.5 into −4
+    // while intervals + the rest of the app (round1) show −3.5, so prod disagreed with intervals by a whole point.
+    date: d.id, fitness: d.ctl, fatigue: d.atl, form: d.ctl != null && d.atl != null ? Math.round((d.ctl - d.atl) * 10) / 10 : null,
     restingHR: d.restingHR, hrv: d.hrv ?? d.hrvSDNN ?? null, sleepHours: d.sleepSecs ? +(d.sleepSecs / 3600).toFixed(1) : null, sleepScore: d.sleepScore ?? null, weight: d.weight ?? null,
   }))
   res.json({ connected: true, wellness })
@@ -2654,7 +2917,14 @@ async function athleteLatLon(user) {
 
 // #341 — the day's forecast + coaching guidance for the athlete's location (Open-Meteo, FREE, no key).
 app.get('/api/weather', apiAuth, async (req, res) => {
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : icuDay(0)
+  // #581 — default to the athlete's LOCAL today (was icuDay(0) = UTC, wrong near midnight). And hand the coach the
+  // WEEKDAY + whether it's today/tomorrow/yesterday, computed SERVER-SIDE, so it never mislabels days itself (JM: the
+  // coach said "tomorrow Fri" on a Saturday). The coach must relay these labels, not compute the day-of-week.
+  const today = await athleteToday(req.user)
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today
+  const weekday = (() => { try { return new Date(date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }) } catch { return null } })()
+  const diff = Math.round((new Date(date + 'T00:00:00Z') - new Date(today + 'T00:00:00Z')) / 86400000)
+  const relative = diff === 0 ? 'today' : diff === 1 ? 'tomorrow' : diff === -1 ? 'yesterday' : diff > 0 ? `in ${diff} days` : `${-diff} days ago`
   const loc = await athleteLatLon(req.user).catch(() => null)
   if (!loc) return res.json({ available: false, needsLocation: true, reason: 'No location yet — ask the athlete where they train (city), or it fills in from their next GPS activity.' })
   try {
@@ -2662,10 +2932,13 @@ app.get('/api/weather', apiAuth, async (req, res) => {
     const r = await fetch(url, { headers: { 'user-agent': 'platyplus/1.0' } })
     if (!r.ok) return res.json({ available: false, reason: `weather service ${r.status}` })
     const j = await r.json()
+    // #581 (JM: "use my LOCATION for the timezone") — Open-Meteo resolves the IANA tz for the lat/lon; capture it as
+    // the athlete's tz when intervals hasn't set one, so "today" is right even without an intervals timezone.
+    if (j.timezone && !req.user.icuTimezone) { req.user.icuTimezone = j.timezone; save(store) }
     const d = j.daily || {}
     const at = (k) => (Array.isArray(d[k]) ? d[k][0] : null)
     const g = weatherGuidance({ tMax: at('temperature_2m_max'), tApparentMax: at('apparent_temperature_max'), tMin: at('temperature_2m_min'), precipProb: at('precipitation_probability_max'), windMax: at('wind_speed_10m_max') })
-    res.json({ available: true, date, ...g })
+    res.json({ available: true, date, weekday, relative, isToday: diff === 0, todayLocal: today, ...g })
   } catch (e) { res.json({ available: false, reason: (e && e.message) || 'weather fetch failed' }) }
 })
 
@@ -3148,7 +3421,7 @@ function horizonFillMsg(today, cov) {
 // #439 (JM idea) — SEPARATE focused pass per topic beats one giant prompt (the coach gave each partial
 // attention + ran out). REVIEWS pass:
 function reviewMsg(today) {
-  return `Daily REVIEW pass (${today}) — do ONLY activity reviews now. get_recent_activities flags each activity's \`reviewed\` status + its \`id\`: for any completed activity in the last week with \`reviewed:false\`, REVIEW it — save_coach_review with that exact \`id\` (a score + one-line verdict + 2-4 takeaways; ticks the Coach box + posts your note) and give it a public-safe title/description via set_activity_text. SKIP anything already \`reviewed:true\` (never re-review); cap at the few most recent so nothing piles up. Don't touch the plan or add meals/mind in this pass. Be concise.`
+  return `Daily REVIEW pass (${today}) — do ONLY activity reviews now. get_recent_activities flags each activity's \`reviewed\` status + its \`id\`: for any completed activity in the last week with \`reviewed:false\`, REVIEW it — save_coach_review with that exact \`id\` (a score + one-line verdict + 2-4 takeaways; ticks the Coach box + posts your note) and give it a public-safe title/description via set_activity_text. SKIP anything already \`reviewed:true\` (never re-review); cap at the few most recent so nothing piles up. WHAT'S NEXT (JM #580): the athlete WANTS the review to end with their actual upcoming sessions, but it MUST be TRUE — call list_schedule first and base the review's \`next\` on their REAL next 1–2 scheduled sessions (right sport + day), noting the plan can still adapt. NEVER invent upcoming workouts (no "threshold test Wednesday" unless it is actually on the calendar) — your words must match the calendar (see SAY = DO). Don't CHANGE the plan in this pass, just reflect it truthfully. Be concise.`
 }
 // ROUND-OUT pass — FUEL / MIND / RECOVERY around the (already-set) plan:
 function roundOutMsg(today) {

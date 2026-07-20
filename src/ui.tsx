@@ -13,9 +13,11 @@ const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 /** Mon–Sun strip for the current week, today highlighted. week header. */
 export function WeekStrip({ selected, onSelect, marked }: { selected?: string; onSelect?: (iso: string) => void; marked?: Set<string> } = {}) {
   const now = new Date()
-  const [offset, setOffset] = useState(0) // weeks from the current week (‹ ›)
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + offset * 7)
+  // The strip follows the SELECTED day's week (#594 — deep-links / cross-week nav stay in sync), NOT an
+  // internal offset that ignored `selected` (which left the strip on "this week" while the day was Jul 27).
+  const wkMon = (d: Date) => { const m = new Date(d); m.setDate(d.getDate() - ((d.getDay() + 6) % 7)); m.setHours(0, 0, 0, 0); return m }
+  const monday = wkMon(selected ? new Date(selected + 'T00:00') : now)
+  const offset = Math.round((monday.getTime() - wkMon(now).getTime()) / (7 * 864e5)) // weeks from the current week
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
@@ -24,23 +26,17 @@ export function WeekStrip({ selected, onSelect, marked }: { selected?: string; o
   const sunday = days[6]
   const todayKey = now.toDateString()
   const label = `${monday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${sunday.toLocaleDateString(undefined, monday.getMonth() === sunday.getMonth() ? { day: 'numeric' } : { month: 'short', day: 'numeric' })}`
-  // Changing week moves the selection to the EDGE you scroll toward (next → that week's
-  // Monday, prev → its Sunday) so it stays continuous. (#205)
-  const mondayOf = (off: number) => { const m = new Date(now); m.setDate(now.getDate() - ((now.getDay() + 6) % 7) + off * 7); return m }
-  const goWeek = (delta: number) => {
-    const newOff = offset + delta
-    setOffset(newOff)
-    const m = mondayOf(newOff)
-    onSelect?.(localISO(delta < 0 ? new Date(m.getFullYear(), m.getMonth(), m.getDate() + 6) : m))
-  }
+  // ‹ › move the SELECTED day one week toward the edge you scroll (next → that week's Monday, prev → its
+  // Sunday) so it stays continuous. (#205) The parent's `selected` then re-anchors the whole strip.
+  const goWeek = (delta: number) => { const m = new Date(monday); m.setDate(monday.getDate() + delta * 7); onSelect?.(localISO(delta < 0 ? new Date(m.getFullYear(), m.getMonth(), m.getDate() + 6) : m)) }
   // "Today" shows as soon as the selected date isn't today — even within this week. (#205)
   const away = offset !== 0 || (!!selected && selected !== localISO(now))
   return (
     <>
       <div className="weeknav">
         <button className="weeknav__a" onClick={() => goWeek(-1)} aria-label="Previous week">‹</button>
-        <span className="weeknav__l">{offset === 0 ? 'This week' : label}</span>
-        {away && <button className="weeknav__today" onClick={() => { setOffset(0); onSelect?.(localISO(now)) }}>Today</button>}
+        <span className="weeknav__l">{offset === 0 ? 'This week' : offset === 1 ? 'Next week' : offset === -1 ? 'Last week' : label}</span>
+        {away && <button className="weeknav__today" onClick={() => onSelect?.(localISO(now))}>Today</button>}
         <button className="weeknav__a" onClick={() => goWeek(1)} aria-label="Next week">›</button>
       </div>
       <div className="week">

@@ -1,0 +1,112 @@
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--swim:#38bdf8;--bike:#f5b53d;--run:#ff8f5d}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  body{background:#05070a;color:var(--text);padding:20px;display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+  .phone{width:400px;height:760px;background:var(--bg);border-radius:26px;border:1px solid #1c2028;position:relative;overflow:hidden;display:flex;flex-direction:column}
+  .scr{flex:1;overflow:hidden;padding:16px 16px 0}
+  .opt{font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin:0 0 3px 4px}
+  .note{font-size:11.5px;color:var(--dim);margin:0 0 8px 4px;min-height:30px}
+  h1{font-size:24px;margin:0 0 10px}
+  .eyebrow{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .card{background:linear-gradient(160deg,#21252f,#191c24);border:1px solid #262b36;border-radius:14px;padding:13px;margin-top:9px}
+  .sub{font-size:12px;color:var(--dim)}
+  .tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px}
+  .tab{font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:20px;background:#20242e;border:1px solid #262b36;color:var(--dim);display:flex;align-items:center;gap:5px}
+  .tab.on{background:#17301f;border-color:#2f5f43;color:var(--accent)}
+  .bench{display:flex;gap:9px}
+  .bench>div{flex:1;background:linear-gradient(160deg,#21252f,#191c24);border:1px solid #262b36;border-radius:13px;padding:12px}
+  .big{font-size:22px;font-weight:800}
+  .row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid #23272f}
+  .row:last-child{border-bottom:0}
+  .ic{width:34px;height:34px;border-radius:10px;background:#252a34;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+  .chev{margin-left:auto;color:var(--dim)}
+  /* bottom nav */
+  .nav{display:flex;border-top:1px solid #1c2028;background:#0c0f13}
+  .ni{flex:1;padding:9px 0 12px;text-align:center;color:var(--dim);font-size:10.5px;font-weight:600}
+  .ni.on{color:var(--accent)}
+  .ni .d{font-size:20px;line-height:1.1}
+  .ni.tiny .d{font-size:17px}
+  .warn{background:#2a1d16;border:1px solid #4a2f20;border-radius:10px;padding:8px 10px;font-size:11.5px;color:#e6c9a8;margin-top:9px}
+  .good{background:#12241a;border-left:3px solid var(--accent);border-radius:9px;padding:8px 10px;font-size:11.5px;color:#cdeeda;margin-top:9px}
+</style>
+
+<!-- ============ OPTION A — TOP SPORT TABS ON STATS (recommended) ============ -->
+<div class="phone">
+  <div class="scr">
+    <div class="opt">Option A · Sport tabs on Stats</div>
+    <div class="note">Bottom nav stays Plan · Stats. A pill row at the top of Stats switches sport — 1 tap, adapts to your sports.</div>
+    <h1>Stats</h1>
+    <div class="tabs">
+      <span class="tab">Overview</span>
+      <span class="tab on">🚴 Ride</span>
+      <span class="tab">🏃 Run</span>
+      <span class="tab">🏊 Swim</span>
+      <span class="tab">💪</span>
+    </div>
+    <div class="bench" style="margin-top:9px">
+      <div><div class="eyebrow">FTP</div><div class="big">253<span style="font-size:12px" class="sub"> W</span></div><div class="sub" style="color:var(--accent)">confirmed</div></div>
+      <div><div class="eyebrow">TTE</div><div class="big">57:00</div><div class="sub" style="color:var(--accent)">strong</div></div>
+    </div>
+    <div class="bench" style="margin-top:9px">
+      <div><div class="eyebrow">CP</div><div class="big">248<span style="font-size:12px" class="sub"> W</span></div></div>
+      <div><div class="eyebrow">W′</div><div class="big">17.1<span style="font-size:12px" class="sub"> kJ</span></div></div>
+    </div>
+    <div class="good">💡 Diesel engine — strong endurance, FTP has room to climb.</div>
+    <div class="card"><div class="eyebrow">Power curve · this season</div><div class="sub" style="margin-top:6px">▁▂▃▅▆▇▇▆▅▄▃▂▂▁ &nbsp;tap for the full curve ›</div></div>
+  </div>
+  <div class="nav">
+    <div class="ni"><div class="d">📅</div>Plan</div>
+    <div class="ni on"><div class="d">📊</div>Stats</div>
+  </div>
+</div>
+
+<!-- ============ OPTION B — PER-SPORT IN THE BOTTOM NAV (what you asked) ============ -->
+<div class="phone">
+  <div class="scr">
+    <div class="opt">Option B · Sports in the bottom nav</div>
+    <div class="note">Each sport is its own bottom tab. Literally what you asked — but note the crowding + that it changes per athlete.</div>
+    <h1>Cycling</h1>
+    <div class="bench">
+      <div><div class="eyebrow">FTP</div><div class="big">253<span style="font-size:12px" class="sub"> W</span></div><div class="sub" style="color:var(--accent)">confirmed</div></div>
+      <div><div class="eyebrow">TTE</div><div class="big">57:00</div></div>
+    </div>
+    <div class="bench" style="margin-top:9px">
+      <div><div class="eyebrow">CP</div><div class="big">248<span style="font-size:12px" class="sub"> W</span></div></div>
+      <div><div class="eyebrow">W′</div><div class="big">17.1<span style="font-size:12px" class="sub"> kJ</span></div></div>
+    </div>
+    <div class="good">💡 Diesel engine — FTP has room to climb.</div>
+    <div class="warn">⚠ 5 bottom tabs for a triathlete (+ Strength). A gym-only user would see just Plan · Gym · Stats — the bar changes per person, and Load/Form · Wellness · History have nowhere to live.</div>
+  </div>
+  <div class="nav">
+    <div class="ni tiny"><div class="d">📅</div>Plan</div>
+    <div class="ni tiny on"><div class="d">🚴</div>Ride</div>
+    <div class="ni tiny"><div class="d">🏃</div>Run</div>
+    <div class="ni tiny"><div class="d">🏊</div>Swim</div>
+    <div class="ni tiny"><div class="d">📊</div>Stats</div>
+  </div>
+</div>
+
+<!-- ============ OPTION C — STICKY SPORT SWITCHER ============ -->
+<div class="phone">
+  <div class="scr">
+    <div class="opt">Option C · Sticky sport switcher</div>
+    <div class="note">One scrollable Stats page; a sport row STICKS to the top as you scroll and jumps to that section.</div>
+    <h1>Stats</h1>
+    <div class="tabs" style="position:sticky;top:0;background:var(--bg);padding:6px 0;border-bottom:1px solid #1c2028">
+      <span class="tab on" style="padding:6px 10px">🎯 All</span>
+      <span class="tab" style="padding:6px 10px">🚴</span>
+      <span class="tab" style="padding:6px 10px">🏃</span>
+      <span class="tab" style="padding:6px 10px">🏊</span>
+      <span class="tab" style="padding:6px 10px">💪</span>
+    </div>
+    <div class="card"><div class="row"><div class="ic">📈</div><div><b>Load &amp; Form</b><div class="sub">readiness · all sports</div></div><span class="chev">›</span></div></div>
+    <div class="eyebrow" style="margin:12px 4px 0">🚴 Cycling</div>
+    <div class="card"><div class="row"><div class="ic" style="color:var(--bike)">🚴</div><div><b>FTP 253 W · CP 248</b><div class="sub">power curve · eFTP · W/kg</div></div><span class="chev">›</span></div></div>
+    <div class="eyebrow" style="margin:12px 4px 0">🏃 Running</div>
+    <div class="card"><div class="row"><div class="ic" style="color:var(--run)">🏃</div><div><b>5:28/km · VDOT</b><div class="sub">zones · race predictions</div></div><span class="chev">›</span></div></div>
+  </div>
+  <div class="nav">
+    <div class="ni"><div class="d">📅</div>Plan</div>
+    <div class="ni on"><div class="d">📊</div>Stats</div>
+  </div>
+</div>

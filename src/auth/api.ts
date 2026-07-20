@@ -48,9 +48,12 @@ export interface User {
   onboardedAt?: number // #257 set when the coach finishes onboarding (profile + first week)
   cyclePhase?: string | null // #422 — current menstrual phase auto-derived from intervals wellness (last readiness read)
   cyclePhaseAt?: string | null // #422 — the date that phase is as-of (YYYY-MM-DD)
+  staging?: boolean // #560 — this env is QA/staging
+  syncsIntervals?: boolean // #570 — do this user's benchmark edits reach intervals? (prod, or QA on its OWN athlete). false = local sandbox (QA on the shared prod athlete)
+  activityLinks?: Record<string, string | null> // #564 — manual activity→plan links: planId (linked) | null (explicitly unlinked, suppress the auto-match)
 }
 
-export interface SportStat { ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null }
+export interface SportStat { ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; tte?: number | null; cp?: number | null; wPrime?: number | null; cs?: number | null; dPrime?: number | null; swolf?: number | null }
 export type SportGroup = 'cycling' | 'running' | 'swimming'
 export interface IcuAthletePull {
   connected: boolean
@@ -167,8 +170,10 @@ export const authApi = {
   readinessForecast: (date: string) => req<{ connected: boolean; future?: boolean; available?: boolean; date?: string; daysOut?: number; form?: number; freshness?: number | null; acwr?: number | null; totalPlannedLoad?: number; plannedDays?: number }>(`/readiness-forecast?date=${date}`),
   // #248 — per-day CTL/ATL/Form projection (forward line on Load & Form charts).
   readinessProjection: (days = 14) => req<{ connected: boolean; available?: boolean; dates?: string[]; loads?: number[]; plannedThrough?: string; ctl?: number[]; atl?: number[]; form?: number[] }>(`/readiness-projection?days=${days}`),
-  saveSportStat: (body: { group: SportGroup; ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; runVdot?: number | null }) =>
+  saveSportStat: (body: { group: SportGroup; ftp?: number | null; maxHr?: number | null; lthr?: number | null; thresholdPace?: number | null; runVdot?: number | null; tte?: number | null; cp?: number | null; wPrime?: number | null; cs?: number | null; dPrime?: number | null; swolf?: number | null }) =>
     req<User & { synced?: boolean; pushError?: string | null }>('/sport-stat', { method: 'PUT', body }),
+  // #564 — link/unlink a completed activity to a planned workout. planId null = unlink. icuEventId (optional) mirrors the pairing to intervals.
+  linkActivity: (body: { activityId: string; planId: string | null; icuEventId?: string | null }) => req<User & { icuPaired?: boolean | null }>('/activity-link', { method: 'PUT', body }),
   getAthlete: () => req<{ profile: string; updatedAt: number }>('/profile/athlete'),
   saveAthlete: (profile: string) => req<{ profile: string; updatedAt: number }>('/profile/athlete', { method: 'PUT', body: { profile } }),
   checkin: (data: Checkin) => req<Checkin>('/checkin', { method: 'POST', body: data }),
@@ -183,6 +188,7 @@ export const authApi = {
   getActivityFeedback: (id: string) => req<{ feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; at?: number } | null>(`/activity/${encodeURIComponent(id)}/feedback`),
   activityFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; sport?: string; date?: string }) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   feedbackSkip: (id: string) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback-skip`, { method: 'POST' }),
+  retryReview: (id: string) => req<{ ok: boolean; retrying: boolean }>(`/activity/${encodeURIComponent(id)}/review-retry`, { method: 'POST' }), // #589 — re-run a stuck coach review
   promoteProd: () => req<{ ok: boolean }>('/promote-prod', { method: 'POST' }),
   // Fan a Platyplus-recorded workout out to intervals (match-first, server-side, #122/#123).
   completeActivity: (a: { sport: string; title: string; date: string; startIso: string; durationSec: number; samples: { t: number; power?: number; cadence?: number; hr?: number }[] }) =>
@@ -195,6 +201,8 @@ export const authApi = {
   coachReviews: () => req<CoachReview[]>('/coach-reviews'),
   markNotificationsRead: (ids?: string[]) => req<{ ok: boolean }>('/notifications/read', { method: 'POST', body: { ids } }),
   saveIcu: (icuKey: string, icuAthlete: string) => req<User>('/icu', { method: 'PUT', body: { icuKey, icuAthlete } }),
+  // #582 — EXPLICIT "Import from intervals": overwrite our benchmarks with intervals' current values (the only pull that overwrites)
+  importBenchmarks: () => req<User>('/benchmarks/import', { method: 'POST' }),
   saveAvatar: (avatar: string) => req<User>('/avatar', { method: 'PUT', body: { avatar } }),
   getToken: () => req<{ token: string }>('/token'),
   rotateToken: () => req<{ token: string }>('/token/rotate', { method: 'POST' }),

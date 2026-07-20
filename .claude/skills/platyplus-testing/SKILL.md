@@ -1,6 +1,6 @@
 ---
 name: platyplus-testing
-description: Test + verification discipline for Platyplus — log every report first, write a test with every fix, "built ≠ done" (only JM marks ✅), keep the 🧪 Test guide section of FEEDBACK-LOG.md current. Use on EVERY bug fix or feature, before claiming anything works.
+description: Test + verification discipline for Platyplus — log every report first, write a test with every fix, "built ≠ done" (only JM marks ✅), STACK the verification layers (unit → type → API/DB/intervals round-trip → BROWSER E2E via the Claude Code Chrome extension), keep the 🧪 Test guide section of FEEDBACK-LOG.md current. Use on EVERY bug fix or feature, before claiming anything works.
 ---
 
 # Test & verify (Platyplus) — earn the ✅
@@ -83,6 +83,26 @@ Work **ONE item at a time**, NOT a batch of 10. Keep only a small rolling `totes
 - `npm test` — unit (vitest, `src/*.test.ts`). First added 2026-06-26 (`src/zones.test.ts`).
 - `npm run test:smoke` — API integration against the dev API (`scripts/smoke-test.mjs`).
 - The **🧪 Test guide section of `FEEDBACK-LOG.md`** / `TESTING.md` — the manual rows JM eyeballs per gate.
+
+## Verification LAYERS — STACK them (JM 2026-07-19: "it's another layer of testing in fact")
+No single check proves a fix. Run these cheapest→realest, and only claim "verified" for the layers you ACTUALLY ran
+(never imply a layer you skipped):
+1. **Unit test** (`npm test`, vitest) — pure logic; the permanent regression net (rule 3). Extract the pure fn if needed.
+2. **Type + syntax** — `npx tsc --noEmit` for the client, `node --check server/*.js` + `node --check mcp/server.js`.
+3. **API / DB / intervals round-trip** — hit the REAL QA endpoint with a token, read the actual Postgres row, and for
+   anything that syncs, read it BACK from intervals. The round-trip is the proof, not "the code says so" — this is how
+   the #582 benchmark sync + the #479 power-range fix were proven (edit → DB shows it → intervals event shows it).
+   ⚠️ QA is on the tailnet only (JM's VPN blocks it); server files are FLATTENED in the container (`/app/server.js`).
+4. **BROWSER E2E — the TOP layer (JM 2026-07-19, NEW RULE).** DRIVE THE ACTUAL APP in a real browser with the Claude
+   Code **Chrome extension** — JM's account is left signed in on **QA (and prod if needed)**. Reproduce the exact user
+   flow on the screen he'll use and confirm the fix VISUALLY. This is the ONLY layer that catches CLIENT / PWA / UX bugs
+   the server checks miss — e.g. #585 (exercise-detail Back → Home) was cookie-gated + un-verifiable headlessly; an
+   actual browser click is the honest proof. Do this for EVERY visual/interaction change before flipping it to 🧪.
+   - **If the browser tools aren't connected** (ToolSearch finds no navigate/click/snapshot tools), SAY SO and fall back
+     to layers 1–3 — do NOT pretend a browser test happened. The Chrome extension must be paired to the running `claude`
+     session first. See memory `platyplus-browser-testing`.
+- **Rule of thumb:** a server/logic fix → layers 1–3. Anything JM SEES → ALSO layer 4. "Built" still ≠ "done": even a
+  green layer-4 run is a 🧪 handoff, not a ✅ — only JM's `pass` on QA earns the ✅ (rule 2).
 
 ## The loop for each item
 log it → write a failing test that captures the bug → fix until green → commit (test + fix + the

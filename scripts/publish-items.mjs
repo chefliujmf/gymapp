@@ -9,7 +9,12 @@ import { fileURLToPath } from 'node:url'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SRC = join(ROOT, 'src/data/generated/backlog.json')
 const DEST = process.env.SHARED_ITEMS || '/home/jmf/backlog-shared/items.json'
-const maxN = (arr) => (Array.isArray(arr) ? arr : []).reduce((m, it) => Math.max(m, Number(it?.n) || 0), 0)
+// Compare ROADMAP items only (#1..999). App-added items (#1000+, user reports/admin-adds) live in the triage
+// `added` list and are merged client-side — they are NOT in this built list. Counting them here froze publishing
+// forever: a stored list polluted with #1000+ had a higher max than every roadmap-only build (#595), so the
+// `>= maxN` guard always skipped and To-test went permanently stale (#596, JM 2026-07-20).
+const REPORT_BASE = 1000
+const maxN = (arr) => (Array.isArray(arr) ? arr : []).reduce((m, it) => { const n = Number(it?.n) || 0; return n < REPORT_BASE && n > m ? n : m }, 0)
 
 if (!existsSync(dirname(DEST))) { console.log(`publish-items: shared dir ${dirname(DEST)} absent — skip (not on the box)`); process.exit(0) }
 

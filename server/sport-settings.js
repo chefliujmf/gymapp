@@ -43,6 +43,7 @@ export function fromIcuSportSettings(sportSettings) {
     const e = sportSettings[idx]
     const stat = {}
     if (group === 'cycling' && e.ftp != null) stat.ftp = e.ftp
+    if (group === 'cycling' && e.w_prime != null) stat.wPrime = Math.round(e.w_prime / 100) / 10 // #578 W′: intervals stores JOULES → our kJ (1 decimal)
     if (e.max_hr != null) stat.maxHr = e.max_hr
     if (e.lthr != null) stat.lthr = e.lthr
     const pace = paceFromMps(group, e.threshold_pace)
@@ -68,6 +69,7 @@ export function icuPatchForGroup(sportSettings, group, patch) {
   if (e.id == null) return null
   const body = {}
   if (group === 'cycling' && 'ftp' in patch) body.ftp = patch.ftp
+  if (group === 'cycling' && 'wPrime' in patch && patch.wPrime != null) body.w_prime = Math.round(patch.wPrime * 1000) // #578 W′: our kJ → intervals JOULES
   if ('maxHr' in patch) body.max_hr = patch.maxHr
   if ('lthr' in patch) body.lthr = patch.lthr
   if ('thresholdPace' in patch) body.threshold_pace = mpsFromPace(group, patch.thresholdPace)
@@ -76,6 +78,20 @@ export function icuPatchForGroup(sportSettings, group, patch) {
 
 /** Which Platyplus sport name (Profile chips) maps to which intervals group. */
 export const SPORT_TO_GROUP = { cycling: 'cycling', running: 'running', swimming: 'swimming' }
+
+// #563 — did a KEY benchmark change enough that the coach should re-evaluate the plan + acknowledge the new number?
+// `before`/`after` are the GROUP's settings objects (e.g. sportSettings.cycling). A MANUAL edit (the athlete MEANT it)
+// fires on a small move; an intervals-detected drift needs a bigger one (eFTP/CSS wiggle from ride to ride). Returns
+// { group, key, label, from, to, dir } for the changed anchor, or null. Pure + unit-tested.
+export function significantBenchChange(group, before, after, source = 'manual') {
+  const M = { cycling: ['ftp', 'FTP'], running: ['thresholdPace', 'threshold pace'], swimming: ['thresholdPace', 'CSS'] }[group]
+  if (!M) return null
+  const [key, label] = M
+  const a = Number(before?.[key]) || 0, b = Number(after?.[key]) || 0
+  const minPct = source === 'manual' ? 0.02 : 0.04
+  if (a > 0 && b > 0 && Math.abs(b - a) / a >= minPct) return { group, key, label, from: a, to: b, dir: b > a ? 'up' : 'down' }
+  return null
+}
 
 /**
  * #268/#1003/#459 — map Platyplus profile-BASICS edits to an intervals athlete PUT body (WRITE-BACK, verified: a partial

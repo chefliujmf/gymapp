@@ -1,0 +1,91 @@
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--swim:#38bdf8;--bike:#f5b53d;--run:#ff8f5d;--warn:#f0b145}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  body{background:#05070a;color:var(--text);padding:20px;display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+  .phone{width:400px;height:820px;background:var(--bg);border-radius:26px;border:1px solid #1c2028;position:relative;overflow:hidden;display:flex;flex-direction:column}
+  .scr{flex:1;overflow:hidden;padding:15px 15px 0}
+  .opt{font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin:0 0 3px 4px}
+  .note{font-size:11.5px;color:var(--dim);margin:0 0 9px 4px;min-height:28px}
+  h1{font-size:23px;margin:0 0 9px}
+  .eyebrow{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .card{background:linear-gradient(160deg,#21252f,#191c24);border:1px solid #262b36;border-radius:14px;padding:12px 13px;margin-top:9px}
+  .sub{font-size:12px;color:var(--dim)}
+  .tabs{display:flex;gap:7px;flex-wrap:wrap}
+  .tab{font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:20px;background:#20242e;border:1px solid #262b36;color:var(--dim)}
+  .tab.on{background:#17301f;border-color:#2f5f43;color:var(--accent)}
+  .big{font-size:20px;font-weight:800}
+  .row{display:flex;align-items:center;gap:11px}
+  .ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+  .chev{margin-left:auto;color:var(--dim);font-size:19px}
+  .nav{display:flex;border-top:1px solid #1c2028;background:#0c0f13}
+  .ni{flex:1;padding:9px 0 12px;text-align:center;color:var(--dim);font-size:10.5px;font-weight:600}
+  .ni.on{color:var(--accent)}.ni .d{font-size:20px;line-height:1.1}
+  .lim{background:#2a1d16;border:1px solid #4a2f20;border-radius:12px;padding:11px}
+  .seg{display:flex;height:9px;border-radius:5px;overflow:hidden;margin-top:6px}.seg>span{display:block}
+  .grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+  .mini{background:#191c24;border:1px solid #23272f;border-radius:11px;padding:9px 11px}
+  .bar{height:6px;border-radius:5px;background:#2c313c;overflow:hidden;margin-top:5px}.bar>i{display:block;height:100%;border-radius:5px}
+</style>
+
+<!-- ===== TRIATHLON TAB (merged: synthesis + all 3 disciplines in one tab) ===== -->
+<div class="phone">
+  <div class="scr">
+    <div class="opt">Triathlete · merged Triathlon tab</div>
+    <div class="note">All three disciplines live under ONE tab: the synthesis on top, then each sport expandable. 3 tabs total.</div>
+    <h1>Stats</h1>
+    <div class="tabs"><span class="tab">Overview</span><span class="tab on">🏊🚴🏃 Triathlon</span><span class="tab">💪 Strength</span></div>
+
+    <!-- synthesis -->
+    <div class="lim" style="margin-top:11px">
+      <div class="row" style="justify-content:space-between"><div><span class="eyebrow" style="color:var(--warn)">⚠ Limiter</span><div class="big" style="margin-top:1px">Swimming</div></div><span class="tab" style="background:#3a2a1c;color:var(--warn);border:none;padding:4px 9px">biggest opportunity</span></div>
+      <div class="sub" style="margin-top:6px;color:#e6c9a8">Strong cyclist + runner; swim is the one lever. 2 swims/wk moves your finish most.</div>
+    </div>
+    <div class="card" style="padding:10px 13px">
+      <div class="eyebrow" style="margin-bottom:4px">Load share vs 70.3</div>
+      <div class="seg"><span style="width:5%;background:var(--swim)"></span><span style="width:64%;background:var(--bike)"></span><span style="width:31%;background:var(--run)"></span></div>
+      <div class="sub" style="margin-top:4px">you 🏊5·🚴64·🏃31 &nbsp;vs&nbsp; race 15·55·30 — <b style="color:var(--warn)">swim under-served</b></div>
+    </div>
+
+    <!-- per-discipline accordion -->
+    <div class="eyebrow" style="margin:14px 4px 2px">Per discipline</div>
+
+    <!-- Cycling expanded -->
+    <div class="card" style="border-color:#3a2f14">
+      <div class="row"><div class="ic" style="background:#3a2f14;color:var(--bike)">🚴</div><div style="flex:1"><b>Cycling</b> <span class="sub">· FTP 253 W</span></div><span class="chev">⌄</span></div>
+      <div class="grid4">
+        <div class="mini"><div class="eyebrow">FTP</div><div class="big" style="font-size:17px">253<span class="sub" style="font-size:11px"> W</span></div></div>
+        <div class="mini"><div class="eyebrow">CP</div><div class="big" style="font-size:17px">248<span class="sub" style="font-size:11px"> W</span></div></div>
+        <div class="mini"><div class="eyebrow">W′</div><div class="big" style="font-size:17px">17.1<span class="sub" style="font-size:11px"> kJ</span></div></div>
+        <div class="mini"><div class="eyebrow">TTE</div><div class="big" style="font-size:17px">57:00</div></div>
+      </div>
+      <div class="sub" style="margin-top:8px;color:var(--accent)">power curve · VO₂max · W/kg ›</div>
+    </div>
+
+    <!-- Swim collapsed -->
+    <div class="card">
+      <div class="row"><div class="ic" style="background:#123047;color:var(--swim)">🏊</div><div style="flex:1"><b>Swimming</b> <span style="color:var(--warn);font-size:12px">· CSS not set</span></div><span class="chev">›</span></div>
+      <div class="bar"><i style="width:8%;background:var(--swim)"></i></div>
+    </div>
+    <!-- Run collapsed -->
+    <div class="card">
+      <div class="row"><div class="ic" style="background:#3a221a;color:var(--run)">🏃</div><div style="flex:1"><b>Running</b> <span class="sub">· 5:28/km</span></div><span class="chev">›</span></div>
+      <div class="bar"><i style="width:74%;background:var(--run)"></i></div>
+    </div>
+  </div>
+  <div class="nav"><div class="ni"><div class="d">📅</div>Plan</div><div class="ni on"><div class="d">📊</div>Stats</div></div>
+</div>
+
+<!-- ===== OVERVIEW TAB (the global stuff has a home) ===== -->
+<div class="phone">
+  <div class="scr">
+    <div class="opt">Same person · Overview tab</div>
+    <div class="note">The global stats (all-sport) live here — nothing homeless. Tabs adapt: a triathlete = Overview · Triathlon · Strength.</div>
+    <h1>Stats</h1>
+    <div class="tabs"><span class="tab on">Overview</span><span class="tab">🏊🚴🏃 Triathlon</span><span class="tab">💪 Strength</span></div>
+    <div class="card" style="margin-top:11px"><div class="row"><div class="ic" style="background:#252a34"><span style="color:var(--accent)">📈</span></div><div style="flex:1"><b>Load &amp; Form</b><div class="sub">Fitness · Fatigue · Form · readiness</div></div><span class="chev">›</span></div></div>
+    <div class="card"><div class="row"><div class="ic" style="background:#252a34">❤️</div><div style="flex:1"><b>Wellness</b><div class="sub">Sleep · HRV · resting HR · weight</div></div><span class="chev">›</span></div></div>
+    <div class="card"><div class="row"><div class="ic" style="background:#252a34">🕓</div><div style="flex:1"><b>History</b><div class="sub">All logged sessions · every sport</div></div><span class="chev">›</span></div></div>
+    <div class="card" style="background:#12241a;border-color:#1f3a2a;margin-top:16px"><div class="sub" style="color:#cdeeda">💡 A plain cyclist sees just <b>Overview · 🚴 Cycling</b>. A gym-only user: <b>Overview · 💪 Strength</b>. Tabs = only the sports you do.</div></div>
+  </div>
+  <div class="nav"><div class="ni"><div class="d">📅</div>Plan</div><div class="ni on"><div class="d">📊</div>Stats</div></div>
+</div>

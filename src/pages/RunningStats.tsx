@@ -24,7 +24,7 @@ const ZONES: [keyof ReturnType<typeof paceZones>, string, string][] = [
 // #398 — a cool→warm effort spectrum (easy = recovery blue … rep = redline), matching the pace-curve/zone UX.
 const ZONE_COLORS: Record<string, string> = { easy: '#5ec8ff', marathon: '#34e07d', threshold: '#f5b53d', interval: '#ff8f3d', rep: '#ff5d5d' }
 
-export default function RunningStats() {
+export default function RunningStats({ embedded }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [runVol, setRunVol] = useState<{ available: boolean; longestKm?: number; weeklyKm?: number } | null>(null)
@@ -54,10 +54,10 @@ export default function RunningStats() {
 
   return (
     <div>
-      <div className="sub-head">
+      {!embedded && <div className="sub-head">
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
         <div className="sub-head-t"><h1>Running</h1><p>Threshold pace · Daniels zones · VDOT · race predictions</p></div>
-      </div>
+      </div>}
       {!isRunner ? (
         <p className="meta">Add Running in <span style={{ color: 'var(--accent)' }}>Profile</span> to see your pace stats.</p>
       ) : !vdot ? (

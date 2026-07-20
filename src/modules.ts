@@ -2,24 +2,24 @@
 // Add sheet, Fitness) so toggling a sport in Profile flips ALL of it consistently — no surface
 // rolls its own sport logic, no half-gated screens. Keep CONTENT adaptive, structure stable.
 
-export const MODULES = ['cycling', 'running', 'strength', 'yoga', 'pilates', 'meditation'] as const
+export const MODULES = ['cycling', 'running', 'swimming', 'strength', 'yoga', 'pilates', 'meditation'] as const
 export type Module = (typeof MODULES)[number]
 
-// Endurance sports — Form/CTL/ATL come from these. Triathlon implies cycling + running.
-export const ENDURANCE = ['cycling', 'running', 'triathlon']
-const EXPAND: Record<string, string[]> = { triathlon: ['cycling', 'running'] }
+// Endurance sports — Form/CTL/ATL come from these. Triathlon implies swim + cycling + running (#swim-tri).
+export const ENDURANCE = ['cycling', 'running', 'swimming', 'triathlon']
+const EXPAND: Record<string, string[]> = { triathlon: ['swimming', 'cycling', 'running'] }
 
 /**
  * Canonical set of modules the athlete does, with derived umbrellas:
- *  • triathlon → cycling + running
+ *  • triathlon → swimming + cycling + running
  *  • any of yoga/pilates/meditation → also 'mind'
- *  • cycling or running → also 'endurance'
+ *  • cycling or running or swimming → also 'endurance'
  */
 export function userModules(sports: string[] = []): Set<string> {
   const set = new Set<string>()
   for (const s of sports) for (const m of EXPAND[s] || [s]) set.add(m)
   if (['yoga', 'pilates', 'meditation'].some((m) => set.has(m))) set.add('mind')
-  if (set.has('cycling') || set.has('running')) set.add('endurance')
+  if (set.has('cycling') || set.has('running') || set.has('swimming')) set.add('endurance')
   return set
 }
 

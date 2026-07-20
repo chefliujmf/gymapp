@@ -22,6 +22,26 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+598. 🧪 **"Retry coach review" button shows UNDER an existing review (JM 2026-07-20).** The review is present (rendered above by `CoachVerdict`), yet `ActivityFeedback` still shows "Your coach hasn't reviewed this yet · 🔁 Retry coach review" below it. ROOT CAUSE: parents (`GymSummary`, `ActivityDetail`) passed `reviewShownAbove` as a hardcoded `true`, and `ActivityFeedback` only used it to DEDUP when its OWN matcher (`matchReview` by feedbackId/altIds) found the review. When the parent's `CoachVerdict` (matched by planId/activityId/date) shows a review that this component's matcher misses, `review` is null → it falls to the `saved` branch → the false "hasn't reviewed / Retry" nag. FIX: parents now pass `reviewShownAbove={!!review}` (true only when a review actually exists above), and `ActivityFeedback` returns null for the pending/retry block when `reviewShownAbove` — so it never nags under an existing review, while a genuinely stuck review (no review above) still offers Retry (#589 preserved). **Verify:** open a reviewed activity (gym or ride) → coach review shows once, NO "Retry" underneath; an un-reviewed/stuck one still shows Retry. **Route:** feedback/review UI (`ActivityFeedback` + callers). ✅ built.
+
+597. 🧪 **Prod Form disagreed with intervals by a whole point — showed −4 vs intervals' −3 (JM 2026-07-20).** ROOT CAUSE (found via a background agent + live wellness data): `/auth/readiness` (`server.js` ~922) AND a second wellness endpoint (~2860) computed `form: Math.round(d.ctl − d.atl)` — INTEGER rounding — while intervals + the rest of the app use one decimal (`round1`). Your Jul 20 Form is genuinely −3.51 (CTL 32.8/ATL 36.3); `Math.round(−3.51) = −4`, so prod hard-rounded to −4 while intervals shows −3.5/−3. FIX: both endpoints now use ONE decimal (`Math.round((ctl−atl)*10)/10`) → −3.5, matching intervals; no more whole-point disagreement. (A residual day-anchor nuance can still differ by ~0.5 — intervals' "today" Form is conventionally the morning/prior-day value — but the misleading integer jump is gone.) **Verify:** Stats → Load & Form (or the readiness card) shows Form to one decimal, matching intervals. **Route:** readiness/wellness (`server.js` form rounding). ✅ fixed.
+
+596. 🧪 **Admin backlog "To test" filter showed 0 while the banner listed 8–9 to-test items — the shared item LIST was frozen stale (JM 2026-07-20).** ROOT CAUSE: the server serves the admin item list from the shared `/srv/backlog/items.json` (`readItems`, `server.js` ~1355), published by `scripts/publish-items.mjs` (#485) at the tail of `build:app`. Its republish guard `maxN(built) >= maxN(stored)` used the RAW max item number — but the built list is ROADMAP-only (max #595) while the stored `items.json` was polluted with app-ADDED items #1000–1002 (max 1002, which live in triage `added`, merged client-side, NOT in the built list). So `595 >= 1002` was always false → **it skipped every publish, freezing the list** ~70 items behind (missing 520–595). The triage correctly marked 9 items `totest`, and the banner (reads triage directly) showed them, but the filter counts over the stale `merged` list → 0. FIX: (a) **immediate** — regenerated + republished `items.json` (434 items, max 595) → filter now shows "To test 17" (verified in-browser); (b) **durable** — `maxN` in `publish-items.mjs` now counts ROADMAP items only (#1..999), so app-added #1000+ can't re-freeze it. **Verify:** Admin → Backlog → "To test" chip shows a non-zero count matching the to-test items; add a new item + deploy → it appears. Ties #485. **Route:** backlog infra (`publish-items.mjs` + `server.js` readItems). ✅ fixed + browser-verified.
+
+595. 🧪 **Forecast card doesn't refresh on plan change / activity done — showed "Likely fatigued −14.1" while current Form is −3 (JM 2026-07-20).** DIAGNOSIS (with JM's real intervals data): the **−14.1 is CORRECT math** — current Form −3.5 (Jul 20, CTL 32.8/ATL 36.3) + the actual planned week Jul 21–26 = **349 TSS across 5 real sessions** (Threshold 4×10 =95, Long Ride Sweet-Spot =109, + 3 easy) projects Form to −14.1 by Jul 27 morning (CTL/ATL projection verified). The forecast is doing its job: the cumulative fatigue the WEEK leaves you carrying in, not today's −3. **The REAL bug (JM's point):** `ForecastCard` (`Today.tsx`) re-fetched only on `[day]` change, so changing the plan (remove/move a session) or completing/skipping an activity left it STALE until you navigated away+back. The data is right (planned load → actual once done, read from the same intervals events feed); the card just didn't refresh reactively. **Fix:** added a `planRev` counter bumped whenever `load()` re-fetches events (which reflect both plan edits AND a completed session's planned→actual load flip); `ForecastCard` now re-fetches on `[day, rev]` (silent refresh, no flash; day-change still remounts via `key`). NOTE: plan→intervals push is **prod-only** (`IS_STAGING` makes QA read-only to intervals), so a QA plan edit won't move the forecast (it reads intervals) — this refresh is the PROD behavior. **Verify (prod):** on a future day, remove/move a session or complete one → the forecast Form/verdict updates without leaving the day. **Route:** readiness forecast (`Today.tsx` ForecastCard). ✅ built. Pure math already unit-tested (`readiness.test.ts`); refresh = reactive UI (browser step).
+
+594. 🧪 **Plan Day strip desyncs from the selected day — shows "This week / Mon 20" while the day content is "Mon 27" (JM 2026-07-20).** Diagnosis: `WeekStrip` (`src/ui.tsx`) derived its displayed week from an INTERNAL `offset` state (default 0 = current week) and IGNORED the `selected` prop — so a deep-link / cross-week nav to `?d=2026-07-27` set the day content to Jul 27 but left the strip on the current week (Jul 20–26), highlighting today (Mon 20) via the "today" class, no day marked selected. Fix: the strip now ANCHORS to `selected`'s week (`wkMon(selected)`), derives `offset` from it (label shows This/Next/Last week or the range), and ‹ › move the selected day ±1 week (parent re-anchors). **Verify:** open a future session (e.g. Jul 27) via a card/deep-link → the strip shows THAT week with Jul 27 outlined + label "Next week" (not "This week / Mon 20"). **Route:** Plan/Today day strip (`WeekStrip`). ✅ built. Visual/date logic → browser-verified (no pure-fn extraction).
+
+593. 🧪 **Remove "Life Constraint" + "Mental State" from post-workout feedback — ALL sports (JM 2026-07-20).** Both fields dropped from `src/icu-fields.ts` `ICU_FIELDS` (ride), `RUN_FIELDS` (run), `GYM_FIELDS` (gym); swim + triathlon inherit gym via `FIELDS[sport] || FIELDS.gym`, so they're gone everywhere. Kept the `ICU_FIELD_CODES`/`intervals.ts` type entries so any OLD stored values still read back harmlessly. Updated `feedback.test.ts` (now asserts they're ABSENT). **Verify:** finish/open any activity's feedback (ride/run/gym/swim/tri) → no "Life Constraint" or "Mental State" section. **Route:** feedback fields. ✅ built.
+
+592. ⬜ **Attach SCREENSHOTS to feedback — admin backlog AND the user report button (mobile-friendly) (JM 2026-07-19).** FEATURE (not a bug — defer until bugs clear). JM wants to attach screenshots to (a) his OWN backlog feedback/comments (Admin → Backlog) and (b) a user's report from the **top-right report button** (`src/ReportButton.tsx`), which "is useful on mobile too" (so the picker must offer the phone CAMERA + gallery, ties the #5010 camera discussion). **Scope/where:** client `ReportButton.tsx` (add image attach + preview) + `AdminBacklog` (attach on comments/items); server the user-report add-path + `PUT /auth/admin/backlog/:n` (`server/server.js` ~1396) to accept image(s); render thumbnails in the "What to test"/report view. **Storage decision (do NOT bloat the shared `/srv/backlog/backlog.json`):** the app already accepts `data:image/(png|jpeg|webp)` (express.json 25mb, profile-pic pattern ~L444) — but backlog is a small shared JSON, so SAVE attachments as FILES under the media/backlog volume and store only a path/URL ref in the item (not base64 inline). Cap size + validate type like the profile-pic guard. **Route:** report UX + admin backlog + server upload. **Options-first mock** (report sheet with attach + preview; admin item with thumbnails) before build. Ties #1000 (report sheet mobile overflow), #1002 (report audio), #5006 (QA report send). 
+
+591. ⬜ **GYM SESSION FLOW is a disaster — entered weights don't count, session ends on the removed "Train" page, 1-RM never populates (JM 2026-07-19, browser-tested on QA).** JM logged a gym session on QA to exercise #448's 1-RM and hit a broken flow. **Diagnosis (evidence, from the QA log doc + code):** the saved log (`plan-mcp-4pxgmfb2`, 2026-07-19) has `sets:{"2":[{done:false,reps:10,weight:5}],"4":[{done:false,weight:30}],"5":[{done:false,weight:30}]}` — i.e. weights/reps WERE typed but every set is **`done:false`**, `setsCompleted:0`, `volume:0`, **no `exNames`**, `duration:1`. So: (1) **Finish routes to a dead page** — `GymPlayer.tsx:323` the post-workout **"Done" button → `navigate('/exercises')`**, the old Train/exercises browse page removed from nav by #487 (route still exists but is nav-less → JM's "brings me to the train page"). Fix: route to `/plan` (day view) or the activity result; "View progress" (:322 → `/progress`) is fine. (2) **Entered weights don't complete the set** — typing a weight does NOT mark the set `done`; `finish()` (:238–253, which marks completion + computes `volume`/`setsCompleted` + saves `exNames`/`exIds`) was never reached, so a **phantom 0-volume session** persists and `bestE1rmByExercise`/`eachDoneSet` (require `s.done && s.weight && s.reps` AND `log.exNames`) skip it → **1-RM stays empty even though data was entered**. (3) **Confusing weight-entry UX** ("super confusing to enter my weights") — no clear "log this set" affordance; entering a weight silently doesn't count. **This is THE blocker to #448 being real** (the analytics engine is correct; the LOGGING flow never feeds it completed weight×reps + exNames). NOTE: the pure workout LIBRARY is 100% timed (139 workouts / 2641 exercises, 0 reps-based) — reps only come from COACH-planned sessions (like this `plan-mcp` one), so the logging flow MUST work for those. **Route:** gym player / logging UX (`GymPlayer.tsx`) + #448 strength analytics. **Fix plan (options-first, JM sees it):** mock the gym set-logging flow (clear per-set "done" affordance, weight/reps that visibly count, sane finish → result/plan, no phantom empty logs) before building. Also clean up the phantom 2026-07-19 QA log. Ties #448/#251/#227/#252/#504. **⬆️ SCOPE (JM 2026-07-19): the gym experience must be REVIEWED DEEPLY, modeled on JeFit** (JM: "in the past I gave multiple examples to enter weight in a session, from JeFit"). Hard requirements: (1) a **JeFit-style per-exercise set grid** (rows of set# · target · weight · reps, tap to log/check a set) as the entry model; (2) **edit values WHILE working out** (fix a mistyped weight/rep mid-session); (3) **edit values POST-workout** too (correct a completed session's sets from the result page → recompute volume/e1RM). **JeFit MODEL (JM shared the screenshot 2026-07-19 — this is the target):** a **per-exercise SET GRID**, each row = `set# · weight(lb/kg) · reps · ✓`; warm-up rows tagged **W**, working sets numbered 1/2/3, a **+** row to add a set; weight & reps are **inline-editable** (current set highlighted/underlined) so you FIX mistakes mid-workout; a **per-set ✓** turns green when logged (THE missing "mark-done" affordance — the root of our `done:false` bug); a big **"Log Set"** button logs the current set + advances; **rest-timer** + **note** icons in the bottom bar; prev/target prefilled; **estimated 1RM shown inline** on the exercise header ("1RM: 62.1"). (Watch companion in the ref is out of scope.) **First deliverable = a rendered options-first mock of the whole gym-logging experience** (in-workout grid + edit + post-workout edit), not a code patch. ✅ MOCK DONE + **JM PICKED Option A · JeFit set-grid** (2026-07-19, `mockups/gym-logging-jefit.html`): per-exercise SET GRID, inline-editable weight/reps, per-set ✓ (fixes the `done:false` bug), big "Log Set", inline 1RM, W/warm-up rows + add-set, video as a tappable thumbnail; post-workout edit reuses the SAME grid from the activity result. 🔨 BUILDING. **IN-WORKOUT GRID BUILT (2026-07-19, `GymPlayer.tsx` + `styles.css`):** replaced the one-set-at-a-time logbar with the editable grid (all sets on screen, inline-edit weight/reps mid-workout, per-set ✓ that logs the set — fixes the `done:false` phantom-log bug, live 1RM in header, grid stays put across rest via a rest banner, add-set). **Bodyweight-aware (JM: "some don't have weight, just time and/or reps with bodyweight"):** timed exercises keep the timer; reps exercises keep weight OPTIONAL (a set logs done on reps alone) and show **"BW"** when the exercise is bodyweight (still lets you load a weighted variation). ✅ **POST-WORKOUT EDIT BUILT** (`src/GymSetEditor.tsx` + PostWorkout "✏️ Edit sets" toggle): editable set grid on the result page (reuses History's `db.logs.update` + `PUT /auth/logs/:sid` save + recompute volume/setsCompleted/1RM; respects kg/lb). ⏳ STILL TODO: (2) warm-up (W) rows ✅ DONE — tap a set's number badge to toggle it to **W** (amber, `--amber` per theme); warm-up sets log but are EXCLUDED from tonnage + working-set analytics (`eachDoneSet`/sets-per-muscle/GymSummary), in both the live grid + post-workout editor; unit test (33 pass). [interaction = tap-the-number default, easy to change if JM prefers a different affordance]; 🚨 **ROOT-CAUSE FOUND + FIXED (2026-07-19, browser-verified): the server `POST /auth/logs` whitelist DROPPED `exNames`/`exIds`** (`server.js` ~1587) — so EVERY gym log lost its exercise names on save. Effects: the by-exercise summary showed "Exercise 3/5" (not "Glute bridge"/"Dumbbell RDL"), AND — critically — `bestE1rmByExercise`/`weeklySetsPerMuscle` KEY on `log.exNames`, so with names stripped **the #448 1-RM + sets-per-muscle analytics could NEVER populate from a synced log, no matter how the session was logged.** This is a big chunk of why #448 looked empty. Fix: added `exNames`/`exIds` to the POST whitelist (server change → image rebuild). Existing pre-fix logs still lack names (re-log or backfill). (3) analytics follow-up — `eachDoneSet`/sets-per-muscle in `strength.ts` require `done&&weight&&reps` so **bodyweight sets don't count toward sets-per-muscle** (they should count the set even with no weight; e1RM stays weight-gated) — ✅ FIXED (`eachDoneSet` now yields reps-only sets → sets-per-muscle counts bodyweight; e1RM series/history guard weight>0 so no bogus "0 kg 1RM"; unit test in `strength.test.ts`, 32 pass). (4) clean the phantom 2026-07-19 QA log ✅ DONE (deleted via `DELETE /auth/logs/:sid`). **JM QA-tested the grid live 2026-07-19 ("looks better") + 3 fixes done same session:** (a) **"BW" was cryptic** (JM "what is BW?") → bodyweight sets now show the word **"bodyweight"** (not an abbreviation); a coach-loaded/typed weight still shows the number+unit. (b) **BLUE wasn't our theme** (JM "why is there blue" — I'd copied JeFit's blue) → current-row highlight + inline 1RM now use the **green accent** (`var(--accent)`). (c) **Coach must define sets in advance** (JM) — the grid already renders exactly the coach's prescribed set count (Glute bridge 1×12, Dumbbell Bench 3×8…), and "+ add set" covers ad-hoc; if a prescription looks too light (1 set) that's the COACH's set/volume call to tune under #534 (goal-aware volume), not a grid bug. Re-verify on QA after redeploy. Existing prior gym mockups to build from: `mockups/gym-*.html`, `post-gym.html`, `coach-gym.html`. ✅ landed already: the dead-end routing fix (finish "Done" → `/plan` instead of the removed `/exercises`).
+
+590. ⬜ **Coach TOKEN THRIFT — prefer CODE over MCP calls wherever quality is equal-or-better (JM 2026-07-19, standing principle).** JM: "we always have to be optimal in the coach token usage; anything we can rely more on code vs MCP calls and coach is better for this goal — but ONLY if we guarantee same or higher quality results." So this is a **hard constraint on every coach-touching change**: before adding/keeping an MCP round-trip or dumping data into the systemPrompt, ask "can deterministic server code compute/inject this instead, at ≥ the quality?" If yes, do it in code (cheaper, faster, more reliable); if code would degrade quality, keep the coach call. Targets to audit: (a) facts the coach currently fetches via MCP that the server already knows and could pre-inject (calendar, benchmarks, readiness, recent activities) — server-side context beats a tool call; (b) multi-tool sequences the coach runs each turn that a single server-computed block could replace; (c) the ~128 KB systemPrompt itself — trim anything not earning its tokens (#352 argv cap). Non-negotiable guardrail: **never trade quality for tokens** — measure/verify parity before switching a path to code. Fold this into the coach-engine, MCP, and readiness work (it's a lens, not a one-off). **Route:** coach engine / MCP / server context. See skill `coach-token-thrift` + memory [[platyplus-coach-token-thrift]].
+
+580. ⬜ **Streamline intervals.icu connect at signup — one-field paste + auto-resolve athlete id (JM 2026-07-17, "for later").** Today's connect flow makes the user paste an API key AND hand-type their Athlete ID (`AccountSection.tsx` ~L123 → `PUT /auth/icu` `server.js` ~L383), which is clunky and is the source of the manual-athlete-id typo bug class (#453/#456 seed-leak). **Fix (zero external dependency, buildable now):** "Connect intervals.icu" → deep-link straight to the intervals **API-key page** (Settings → Developer) → user pastes the key (ONE field) → Platyplus calls `GET /api/v1/athlete/0` (VERIFIED: `0` self-resolves to the key's owner for API-KEY auth too, per David's official API-access guide), reads the `id` off the response, auto-fills `icuAthlete`, pulls history. Keep athlete-id entry as a hidden/advanced fallback. **Later / public-launch:** layer intervals **OAuth 2.0** on top as the primary one-tap button (authorize → `POST https://intervals.icu/api/oauth/token`, bearer, no refresh tokens, scopes `ACTIVITY:WRITE,WELLNESS:READ,CALENDAR:WRITE,SETTINGS:READ`) — OAuth structurally kills manual athlete-id AND lets a brand-new user sign up (Strava/email) inline on the intervals authorize page during the same redirect (closest thing to "both accounts at once"). ⚠️ OAuth app registration is NOT self-serve = one email to david@intervals.icu (name/logo≥128px/privacy-URL/redirect URIs), but the app is **owner-usable immediately** (build/test on your own account; his "visible to all users" go-live review only gates OTHER users, never blocks dev). NOTE: there is **NO API to auto-CREATE an intervals account** — signup is interactive-only (confirmed: forum "register new user via API" thread has zero replies). **Route:** connect/onboarding UX + `server.js` icu save. **Design:** options-first mock of the one-field connect screen before build.
+
 536. ⬜ **Freshness tooltip mislabels raw Form as a 1–5 rating + chip shows a stale morning snapshot (JM 2026-07-16).** Diagnosis: `Today.tsx` ~L100 renders `training load — Form ${tsb}, acute-vs-chronic ${acwr}` — the RAW numbers (JM today: Form +1.0, ACWR 0.97, both FRESH/ideal), but printed as bare "Form 1, acute-vs-chronic 1" right next to the legend "1 = wrecked / very sore" → reads like a wrecked rating of 1 (JM: "form is at 1? really?"). Two bugs: (a) **labeling** — drop of the `+` sign + no plain-language, so a healthy +1 Form looks like a 1/5 score; (b) **stale value** — the model actually returns freshness **5** for today's live wellness (verified), but the chip shows **4** because it stored the value at the morning check-in before today's load settled (JM: "I should be 5, otherwise I'll never be"). **Fix options:** A — tooltip copy only: signed + plain-language, un-confusable ("Form +1 (fresh) · load balance 0.97 (ideal) · about your usual"; separate the 1–5 legend); B — also keep freshness LIVE (re-derive through the day / on view) so the chip reflects current wellness, not the stale morning snapshot; C — both (rec). **Route:** readiness display (`Today.tsx` tooltip + freshness refresh). Ties #158/#159/#207 readiness model. Note: the scale ALREADY reaches 5 for a fresh day (Form ≥ ~-5 + ACWR 0.8–1.2) — no mapping change needed. ✅ BUILT: (A) tooltip signed + plain-word, (B) live-refresh non-overridden rows. **+ AUDIT FINDING FIXED (JM-approved, science-backed):** Xenia (pregnant, CTL ~13) read "Fatigued 2" because ACWR is spurious at LOW chronic load (Impellizzeri 2020 "Conceptual Issues & Pitfalls"; Lolli 2019 coupling; Wang 2020) — `freshness()` now weights ACWR by `clamp((CTL−8)/22)` and ×0.4 more when `pregnant` (HR-load unreliable in pregnancy → ACOG 804). JM CTL30 unchanged (5); Xenia → 3. Threaded `pregnant` through `readiness()`/`forecastFreshness()` + `/auth/readiness` + forecast. Docs: `readiness-scores.md` + `pregnancy-coaching.md`. Tests: 4 new in `src/readiness.test.ts`.
 
 535. 🧪 **Missed-workout handling is INVISIBLE + context-free — the coach should acknowledge it honestly (JM 2026-07-16).** ✅ BUILT (option A, compassionate+persuasive tone JM picked): the missed-handler now stashes `user.recentRemovals` (title/sport/date, ~5-day window) when it removes a missed session; the ONE check-in notification (`server.js` check-in trigger) now injects a `missBlock` that has the coach — inside that SAME single notification — (1) check `get_recent_activities` and CREDIT a replacement workout warmly, (2) else if fitness/freshness is dipping, name it VERY respectfully/compassionately (never guilt-trip) then gently PERSUADE toward the one session that gets them back on track, (3) else note the removal lightly + reassure. Prod-only (like all #498 coach notifications) → JM tests on prod on the next real miss + check-in. **Original:** JM skipped yesterday's workout; the coach correctly removed it — but the notification never said so. Root cause (a deliberate tension): missed sessions are removed **SILENTLY** (`server.js` ~1333, "do NOT call notify" per #498's one-notification rule), and the ONE check-in notification (`server.js` ~746) is told to "keep it to TODAY" → forward-only, so it never mentions (1) that the session was **removed/moved**, (2) the **impact** of missing it — OR acknowledges if the athlete already **did an alternative** (check `get_recent_activities`), or (3) that **cumulative load is dipping below target** ("you're not doing enough"). JM wants the coach to be honest + contextual about misses, not silently delete. **Fix (respect #498 = still ONE notification):** enrich the check-in message so the coach ALSO looks back ~1–2 days, and if a session was missed/removed, folds a brief honest line into that single notification — what was dropped/moved, its consequence for the plan/goal, credit for any replacement activity, and a straight (non-nagging) flag if load is trending low. Prompt change in `buildSystemPrompt`/the check-in trigger + possibly feed the handle-missed context in. **Options (pending JM's pick):** A — enrich the check-in notification only (rec, one notification); B — a separate low-key "here's what I changed" note when a removal happens (breaks the one-push rule); C — a silent in-app "plan changes" log the athlete can review (no push). **Route:** coach engine / notifications (`coach-engine.md` + check-in trigger). Ties #498/#156/#469.
@@ -186,7 +206,7 @@ test guide → the **🧪 Test guide** section below.
 480. ⬜ **Post-workout insights PER GRAPH are poor.** JM 2026-07-10: "post workout insights per graph is poor and not
     great." The per-chart insight line (chart standard "insight line") needs to be genuinely useful, not filler.
     **Route:** feature/quality (this chat).
-479. ⬜ **Target RANGES must be correct — show a range (not a flat value), and read smallest-first.** Two facets, combined
+479. 🧪 **Target RANGES must be correct — show a range (not a flat value), and read smallest-first.** Two facets, combined
     per JM 2026-07-14: **(a) Garmin/trainer target — RANGE outdoor, SPECIFIC value indoor (worker, OPEN):** JM 2026-07-10
     "today on my garmin I did not have a range but just 171 watts which is wrong." ⚠️ **INDOOR vs OUTDOOR (JM 2026-07-14):
     an INDOOR workout SHOULD be a specific value — a smart trainer holds that exact power in ERG mode, exactly how
@@ -200,6 +220,15 @@ test guide → the **🧪 Test guide** section below.
     targets are single values; marathon (potential→realistic) + segment time (start→end) already read ascending — no other
     reversals. **The worker must apply BOTH rules to the Garmin/intervals push (a): a real min–max RANGE, smallest first.**
     **Route:** bug (worker owns (a); (b) done client-side).
+    ✅ **BUILT (a) OUTDOOR, 2026-07-19 (JM re-reported: "the ride does not seem to have ranges for target power… not
+    acceptable for outdoor rides"):** `bandSteadyPower` (server/icu-steps.js, unit-tested) widens a STEADY ride power step
+    `[T,T]` into a symmetric min–max band `[T-Δ,T+Δ]` (smallest first), Δ by intensity (endurance ±6 · SS ±4 · threshold
+    ±3); applied in `planToIcuEvent` AFTER `plannedTss` (text + workout_doc) so LOAD is unchanged (band averages to T).
+    Warm-up ramps + cool-downs untouched. Propagated to the coach: `create_ride` MCP desc + `coach-engine-cycling.md`
+    ("targets are RANGES not points"). Fixed JM's live 07-19 ride (Endurance 68% → 62–74%, load 51 unchanged; verified on
+    intervals). ⬜ REMAINING — INDOOR = specific ERG value: planned rides carry NO indoor/outdoor flag, so ALL rides
+    default to a range for now (outdoor = JM's focus); honouring "indoor → exact value" needs an indoor/ERG designation on
+    the planned ride first. ⚠️ Systemic code is on QA (dev) → reaches PROD on the next promote; today's ride fixed directly.
 478. ⬜ **Eat & Mind must stay SUGGESTIONS — never auto-imposed into the calendar.** JM 2026-07-10 (3 msgs +
     screenshots): "I prefer to keep suggestions for eat and mind; 8 and 9 imposed in my calendar is a no-no…
     this is suggestions I want to keep… not just dinner like this, this is wrong and never asked." The coach's
@@ -3104,3 +3133,193 @@ updated`, **NOT a second copy**. If `errors > 0`, tell me the count — that's w
 > **Discipline (now permanent):** every fix lands with a test here + in `src/*.test.ts`; `🔨 built ≠ done`;
 > only JM marks ✅ after the manual step passes. See `CLAUDE.md` → Testing, skill `platyplus-testing`,
 > memory `platyplus-testing-workflow`.
+
+## 2026-07-17 — JM feedback batch (swim/tri + benchmarks + activity view)
+### #560 — BIDIRECTIONAL benchmark sync (intervals ↔ Platyplus), all 3 sports 🧪 (built, to test)
+Ask: "change a value in intervals → syncs to Platyplus, change in Platyplus → syncs to intervals. CRITICAL. running,
+swimming, cycling. If you change the value after computed, it needs to be in intervals!! Platyplus = extension of
+intervals (analytics), Platyplus = planning/execution." → intervals is the SYSTEM OF RECORD. PROD: push-on-edit +
+intervals-wins pull = true two-way. QA shares athlete i28814 (can't write) → QA is a LOCAL SANDBOX (staging=ours-wins).
+Consistent rule for all 3 sports. ⚠️ true bidirectional is PROD-only unless we give QA its own intervals athlete.
+### #561 — "Curve" chip is unclear + inconsistent 🧪 (→ "Best-efforts")
+"what does curve mean in running and cycling? lol" — the method chips (Curve / eFTP / VDOT / Race VDOT / CP model) are
+jargon and inconsistent across sports. Make them plain + consistent.
+### #562 — Make cycling/running pending copy as EXPLICIT as swimming ⬜
+"swimming seems to be more explicit now than the 2 others" — bring cycling/running "add efforts to firm up" up to the
+swim cards' explicit "needs a few hard efforts across distances" clarity. Consistency.
+### #563 — Coach must KNOW + adapt when a benchmark changes (manual or from intervals) 🧪 (built)
+"when manual change from intervals, how coach will know and adapt notifications?" — a benchmark change should trigger
+coach awareness → re-plan / a notification acknowledging the new value.
+### #564 — Manually LINK/UNLINK a planned workout on a completed activity 🧪 (Option A + intervals pairing)
+"add, delete planned workout to a complete one in Platyplus (be sure works with intervals.icu)."
+### #565 — BUG: "missing feedback" flags stale activities 🧪 (recency window; recent false-positives need a sample)
+"Missing feedback (old ones, not showing activity details). Some flagged as missing but feedback is there and coach
+reviewed." Fix the missing-feedback detection + old activities not showing details.
+### #566 — Remove the map & flyby link 🧪
+"remove map & flyby link" (activity detail Map/Flyby tab).
+### #567 — Show BOTH avg + NP together 🧪 (timeline header now "NP · avg · max")
+"cycling card shows avg power 160, open activity NP shows 164, but we don't see both on both levels." Show avg + NP
+consistently on card + detail.
+### #568 — BUG: warm-up bar higher than endurance 🧪 (bar height = mean, colour = peak)
+"warm-up higher than the endurance block??? Workout of July 17 in prod." Planned power-by-zone maps warm-up > endurance.
+### #569 — Planned view from a completed activity: hide "Done?" + phone banner 🧪
+"When an activity is done you see the attached planned workout; clicking it we should NOT see (Done?) nor 'Open
+Platyplus on your phone to run'." (forcePlanned mode in CoachPlanDetail.)
+### #570 — Thin TRIATHLON orchestration layer (leverages the 3 engines) 🧪 (built, to test)
+### #571 — Stats = INLINE TABS (Overview + per-sport), triathlete gets a MERGED Triathlon tab 🧪 (built)
+"break Stats into tabs for quicker per-sport access." Picked Option A (top pills, inline switch, own bottom nav stays
+Plan·Stats) + for a triathlete MERGE swim/bike/run under one Triathlon tab (synthesis + expandable disciplines). Built:
+StatsHub tabbed; per-sport pages take an `embedded` prop; TriathlonStats embedded = synthesis + per-discipline accordion.
+### #572 — Profile: picking Triathlon auto-selects+locks swim/bike/run + stars it as main sport 🧪 (built)
+"when you choose triathlon, ensure all 3 sports selected + stay selected + auto-star as main sport." `toggleSport`:
+triathlon on → adds swim/bike/run + mainSport='triathlon'; dropping a leg drops the umbrella.
+### #574 — Planned RUN chart must match the RIDE (zone-coloured columns, not a line) 🧪 (built)
+"in prod, planned-run graph format is not like cycling; make it the same." PlannedPowerBars now has a run mode
+(run+thrPace): zone columns on a sensible PACE window (min/km), same format as the ride. Line/TrendChart removed.
+### #575 — Post-workout THUMBNAIL for run (+swim) = zone-blocks like cycling 🧪 (built — reconciled 2026-07-19: ActivityDetail + Calendar:100-102 + Today:401 ALL render ZoneBlocks for run/swim, PowerBlocks for ride; status was stale)
+"same for thumbnail post workout for running, same concept as cycling (swimming follows)." Generalized PowerBlocks →
+ZoneBlocks (values+anchor, sport-agnostic). ActivityDetail run/swim thumbnail = ZoneBlocks from the SPEED stream
+(anchor = threshold/CSS speed). TODO: Calendar + Today thumbnails for run/swim (fetch velocity) for full consistency.
+### #576 — Triathlon LIMITER card lacks bottom-left padding 🧪 (reconciled 2026-07-19: limiter + balanced cards both have uniform `padding: 14` at TriathlonStats.tsx:82,90 — JM to confirm it's the card he meant; if a different card, re-flag with the screenshot)
+The "YOUR LIMITER" callout text touches the edges (bottom-left). Fix the padding in TriathlonStats.
+### #573 — GYM variety (Option C, personalized to the athlete + weaknesses) 🧪 (coach-engine; host-sync on prod)
+JM's wife: gym warm-up always identical + exercises repeat (rowing). JM chose **Option C**: coach variety rules (rotate
+warm-up + main-set exercises, don't repeat a pattern each session, keep the KEY strength lifts stable for progression) +
+a warm-up ROTATION library the app cycles through. Build both. → coach-engine-strength.md + create_workout guidance +
+recent-exercise awareness + a warm-up rotation set.
+JM's wife: the gym warm-up is always identical and some exercises repeat (rowing). Question: aim for variety? is the
+gym workout generator good enough? → investigate the generator's warm-up + exercise-selection variety (diagnosis + options).
+"yes to a thin orchestration layer that leverages the three, do that." Limiter analysis (CSS/FTP/threshold vs race
+demands) + combined multi-sport load view + race pacing. NOT a 4th benchmark engine — synthesis on top of the 3.
+### #577 — Restrict the Coach API to admins (JM: "I don't want people to use the API, just me or an admin") 🧪
+The Coach API token box was already ADMIN-only in the UI, but the token endpoints (/auth/token, /auth/token/rotate)
+were auth-gated (any user). Now admin-only, so a non-admin can't fetch/rotate their token to call /api/* by hand. Their
+coach STILL works — apiAuth stays per-user and the coach reads the token server-side (invisible to the user).
+### #578 — W′ card: add typical values + clarify it's Platyplus-only (not on intervals) 🧪
+JM: "for W' should add typical values range for user to know what to enter manually? changed value still a ? in
+intervals." Added typical W′ ranges (~10–15 recreational / 15–25 trained / 25–35 puncheur) to the card + a note that
+W′ is a Platyplus metric with no intervals field (so the "?" on intervals is EXPECTED, not a sync failure). Same is true
+of CP/D′/TTE/SWOLF — only FTP/maxHr/LTHR/threshold-pace/CSS are intervals-native and sync.
+### #579 — SYNC verified END-TO-END (I tested it with the QA key) + 2 real fixes 🧪
+Tested against QA athlete i644563: **PUSH** works (set FTP 247 · maxHr 182 · W′ 19 kJ in Platyplus → all landed on
+intervals, synced=True) and **PULL** works (connect synced 260/185/168 in). JM's original 180/250 were STALE CLIENT
+values — the server was already synced. TWO real fixes shipped: (1) **W′ now syncs** — intervals HAS a `w_prime` field
+in JOULES (JM was right, I was wrong); added the kJ↔J mapping in sport-settings.js. (2) **re-pull after save** — the
+benchmark card fetched the intervals pull once on mount, so on a synced (intervals-wins) account a just-saved FTP showed
+the stale pull → "can't change"; now `loadPull()` runs after every save. **FULL METRIC AUDIT (JM: "be sure for all"):**
+intervals-native/two-way = FTP·maxHr·LTHR·threshold-pace·CSS·W′. Platyplus-only (no intervals field) = CP·TTE·CS·D′·
+SWOLF·VO₂max (CP≈FTP; intervals models power as FTP+W′). Verified against the live i644563 sport-settings schema.
+### #580 — Coach SAY = DO: instruction + MECHANICAL calendar-truth guarantee 🧪
+JM: asked coach to rest today + run tomorrow, it said yes but planned a BIKE ride today. Yesterday's feedback said
+"Next: Rest tomorrow, Z2 Sunday, gym Monday, Wed threshold test" — none of it was on the calendar. And reviews mention
+progress/adjustments but never the actual next workouts. Root cause: NO rule forcing the coach's WORDS to match the
+CALENDAR — it narrates intentions it hasn't built/verified. FIX (coach behavior): (1) new "# SAY = DO" system-prompt
+block (buildSystemPrompt) — do EXACTLY what's asked (right sport+day), build it, list_schedule to VERIFY, only then
+describe what's ACTUALLY there; never narrate a session that isn't scheduled. (2) reviewMsg — the review's "next" MUST
+come from list_schedule (real next 1-2 sessions), never invented. Reaches the coach on deploy (systemPrompt is built
+server-side + sent to the host chat-helper). Test: chat "rest today, run tomorrow" → the calendar must match, and no
+ghost "threshold test Wednesday" in reviews.
+### #581 — Coach mislabels weather days ("tomorrow Fri" on a Saturday) 🧪
+Verified: JM's tz IS correct (America/Toronto, Montreal; it's Saturday everywhere). NOT a live tz bug — the coach was
+computing weekdays itself and got them wrong. Fixes: /api/weather defaults to the athlete's LOCAL today (was icuDay(0)=
+UTC) + returns `weekday`/`relative`(today/tomorrow)/`isToday` labels computed server-side; get_weather tool says to USE
+those labels, never compute the day. + capture Open-Meteo's resolved tz as a fallback when intervals has none (JM: use
+my location for the tz). (get_weather desc is host-only → coach on prod deploy.)
+
+### #582 — Platyplus OWNS its benchmarks (a wrong/rotated intervals key can NO LONGER wipe your data) 🧪 (built + PROVEN on QA)
+JM: "when I enter something in the UI it has to STICK / terrible architecture / you have your own store for platyplus".
+ROOT CAUSE of the multi-day "QA never syncs": the stored `icu_key` was JM's REAL key (→ shared prod athlete **i28814**),
+not the QA key (`4jdmnc…` → **i644563**) — the connect form had a manual "Athlete id" field defaulting to i28814 + the
+old connect trusted the client value → Platyplus read/wrote the WRONG athlete (260 not 258), and intervals-wins clobbered
+every UI edit. FIX (JM picked "Platyplus owns it"): (1) connect + all sync resolve the athlete from `/athlete/0` (key's
+own), killed the i28814 default field. (2) `mergeIcuSportSettings` is now **fill-blank for ALL sports** — intervals fills
+only a blank field, NEVER overwrites a Platyplus value. (3) still PUSH edits OUT to intervals on save. (4) NEW explicit
+**"Import from intervals"** button (`POST /auth/benchmarks/import`; `/api/resync-benchmarks?overwrite=1`) is the only
+intervals-overwrites-ours path. **PROVEN live vs i644563 in the DB:** edit→255 sticks + syncs; diverge intervals→250;
+a fill-blank sync leaves it **255 (no clobber)**; Import pulls **250**; restored to **258** both sides. Memory
+`platyplus-sportsettings-save` updated (reverses the old intervals-wins rule). openapi updated.
+
+### #583 — xenia's feedback "asking again" — same session as BOTH a plan + a synced activity, unlinked ⬜ (building)
+JM: "my wife entered her feedback yesterday and now it's asking again, persistence problem again". DIAGNOSIS (verified in
+QA DB — data was NOT lost): her 7/17 gym exists as a coach PLAN (`mcp-7kqtcmyt`) AND a synced intervals ACTIVITY
+(`i166713686`), with EMPTY `activityLinks` + no completed-activity ref on the plan. Feedback under one id doesn't satisfy
+the other view → re-nag → she filled it twice (feedback saved under BOTH keys). FIX (JM picked): **auto-link plan↔activity
+by date+sport** so a completed activity fulfilling a planned session is treated as ONE — feedback on either satisfies both,
+no re-nag, no dup; write-back to intervals fires even when saved under the plan id; backfill existing dupes like xenia's.
+BUILT: clones intervals' OWN pairing (`paired_event_id` = same-day+same-type; our plan is the pushed event `icuEventId`),
+day+sport fallback; server links the pair + mirrors feedback + retargets the intervals write-back at the activity.
+
+### #584 — COMMERCIAL LICENSING: only use the FREE library from now on (no Centr etc.) ⬜
+JM: "only use the 'free library' from now on. Centr cannot be used for example for commercialization." Directive: the
+catalog must contain ONLY exercises/media whose license permits COMMERCIAL use — drop Centr + any commercial-restricted
+source (this is a LICENSE axis, distinct from the media-independence gate which only strips third-party URLs). Fix: filter
+`build-catalog` to free/commercially-usable licenses via `content-manifest` (license/commercial fields), drop the rest,
+and add a gate so a non-commercial source can't sneak back in. Check CONTENT.md + content-manifest. Assess which current
+exercises are Centr-sourced and how many free ones remain (may need to backfill the library from free sources).
+
+### #585 — BUG: exercise detail → Back goes to HOME instead of the workout/library 🔨 (built, needs device confirm)
+JM: "when I click on one exercise to see what needs to be done and press back, it brings me back to home page". DIAGNOSIS:
+both ExerciseDetail (`/exercises/:id`, from PlanDetail's "Full exercise →" + the /exercises library) and ExerciseProgress
+(`/exercise/:name`, from the post-workout GymSummary which renders INLINE in the GymPlayer route) used bare
+`navigate(-1)`. That returns to the referrer WHEN there's real in-app history — but on a **PWA cold-start** or after an
+**upstream history replace** (Calendar does `setSearchParams({replace:true})`; the gym player renders the summary in place)
+the exercise page is the FIRST history entry (`history.state.idx === 0`), so `navigate(-1)` exits to the PWA start_url =
+**Home**. FIX (both pages): `goBack()` = go back if `idx>0`, else use a passed `state.from` referrer, else a sensible
+parent (`/exercises` · `/strength`) — never Home. Typechecks. ⚠️ Can't repro headlessly (client PWA nav) — **JM to confirm
+on the device**; if it still lands on Home from a SPECIFIC screen, capture that screen so I can thread `state={{from}}`
+through that exact link (the referrer path, so back returns to the workout itself, not just the library).
+
+### #586 — CRITICAL: 4 coach engines never shipped to the coach (Dockerfile COPY dropped them) 🧪 (fixed)
+Found while wiring up the gym-variety test: `server/Dockerfile` hand-listed the coach engines it COPY'd —
+`coach-engine.md coach-engine-cycling.md coach-engine-female.md` — but the app LOADS six
+(`SPORT_ENGINES`): +running +**strength** +swimming +triathlon. So **strength/gym (incl. the #573 VARIETY work +
+#534 gym engine), running, swimming (#swim-tri), and triathlon (#570) engines were NEVER in the deployed image** →
+buildSystemPrompt silently fell back, so the coach never had them. Almost certainly why the gym warm-ups stayed
+repetitive (the variety engine literally wasn't loaded). FIX: `COPY … coach-engine*.md ./` (glob every engine, present
++ future — never hand-list again). Ships on the QA deploy; then the strength engine + variety finally reach the coach.
+VARIETY REVIEW (#573) done alongside: video-only already enforced (#420 searchExercises filters to e.video); logic is
+sound + personalized; coach CAN see past gym exercises (list_schedule includes them); strengthened the "look back before
+choosing" instruction for the daily-adapt pass (no conversation to recall from).
+
+### #587 — Passkey sign-in fails on Android ("server not available"); password works 🧪 (fixed, to test)
+JM: "on android it asked me to connect, tried to use passkey and said the server was not available, i was able to do it
+with password." DIAGNOSIS (verified in code, not a real outage — password hit the SAME server/origin fine): "the server
+was not available" is NOT one of our strings (our fetch error is "Can't reach the server…") — it's **Android's own
+Credential Manager** message when the usernameless passkey lookup fails. Root cause: JM's passkey is a **platform**
+passkey (`authenticatorAttachment:'platform'`, Touch ID / iCloud on his Mac), so **Android has no LOCAL passkey for the
+account**, and the OS cross-device flow failed. The app should have offered to add an Android passkey but didn't —
+**`PasskeyPrompt` gated on the ACCOUNT-wide `user.passkeys.length > 0`**, and he already had the Mac passkey, so it never
+showed on the phone (passkeys are PER-DEVICE). FIXES: (1) `Login.doPasskey` — ANY passkey-login failure (missing local
+cred / cross-device fail / Android "server not available") now shows ONE clear line ("No passkey on this device yet — use
+your password, then we'll set one up for this device"), never the scary raw OS message; AbortError (user cancelled) stays
+quiet. (2) `PasskeyPrompt` now gates on a **per-device** localStorage flag `pk-added-here` (set when a passkey is added
+here, in the prompt AND Settings) instead of the account-wide count — so a device with no local passkey (Android) IS
+offered one even when the laptop already has one. Registration already uses `residentKey:'required'` (discoverable), so
+no server change needed. **TEST:** on Android, sign in with password → the "add a passkey on this device" prompt should
+appear → add it → next sign-in uses the phone's fingerprint. (Client-only; ships on the QA deploy.)
+
+### #588 — Platyplus OWNS the plan: users can't manipulate it in intervals (revert-on-sync) 🧪 (built; needs prod verify)
+JM rule (2026-07-19): "I don't want people to start to manipulate their plan in intervals. Platyplus is the owner —
+show it there but they can't modify it." Researched JM's `.ics` idea: intervals CAN subscribe to an external .ics
+(read-only ✓) BUT an .ics carries only type/time/duration/TSS — NOT a structured workout, so it would NOT push
+power/pace steps to the Garmin/Wahoo. JM confirmed he NEEDS the structured workout on his head unit → **.ics rejected;
+API push + REVERT-ON-SYNC + label** (intervals has no per-event lock via the athlete key, so revert IS the enforcement).
+BUILT (SUPERSEDES #380 "intervals-move-wins"): `reconcileFromIcu` now, for a Platyplus-origin event a user MOVED in
+intervals, REVERTS it — re-pushes to its owned date via `pushPlanToIcu` (prod-only; finds the moved event by icuEventId
+→ updates, no dup). `userMovedPlatyplusPlan` (icu-match.js, unit-tested ×4: Platyplus-origin move→revert, same-day→no,
+icu-origin→adopt, bad-data→no). Events labelled "📋 Planned in Platyplus — edit it there (changes here are replaced)",
+stripped on import (stripPlatyplusLinks) so it can't accumulate. intervals-ORIGIN plans still adopt their own moves.
+⚠️ **PROD-ONLY (pushPlanToIcu skips on staging) → can't verify on QA; needs JM's prod test:** move a planned workout in
+intervals → within a reconcile cycle it snaps back to Platyplus's day. Sources:
+[webcal thread](https://forum.intervals.icu/t/external-calendar-webcal-sync-edit/206) ·
+[calendar export](https://forum.intervals.icu/t/export-your-intervals-icu-calendar/576).
+
+### #589 — RETRY a stuck coach review (feedback given, review never landed) 🧪 (built; testing live)
+JM: "there is no retry for an activity done with feedback and waiting for coach review, we need to have that." Real gap —
+esp. after the coach was DOWN for a day: every review triggered in that window silently failed, leaving the athlete stuck
+on "🔎 reviewing…" with no recourse. FIX: extracted the review trigger into `triggerActivityReview`/`triggerPlanReview`
+(server.js), added `POST /auth/activity/:id/review-retry` that re-runs the review from the STORED feedback (activity id →
+activityFeedback, or plan/gym id → plan.feedback). Client (`ActivityFeedback.tsx`): the poll no longer dead-ends — when a
+review is saved but none landed and we're not polling, it shows a **"🔁 Retry coach review"** button that re-triggers +
+re-polls. Covers both the timeout case AND opening an old session whose review never came. Typechecks; testing end-to-end
+now that the coach is back.

@@ -32,10 +32,15 @@ export function feedbackStatus(a: IcuActivity | null | undefined): FeedbackStatu
 }
 
 /** Completed activities whose CORE feedback is missing — oldest first, so nothing goes stale.
- *  `skip` = activity ids the athlete chose to skip reviewing (#review-skip) — excluded from the list. */
-export function incompleteFeedback(acts: IcuActivity[], skip?: Set<string>): { act: IcuActivity; status: FeedbackStatus }[] {
+ *  `skip` = activity ids the athlete chose to skip reviewing (#review-skip) — excluded from the list.
+ *  #565 — only RECENT sessions nag: an activity older than `sinceDays` (default 30) is stale — the athlete moved on,
+ *  it may already have coach-reviewed/feel data we don't see, and nagging about a month-old run is just noise. Pass a
+ *  bigger `sinceDays` (or Infinity) to include everything. */
+export function incompleteFeedback(acts: IcuActivity[], skip?: Set<string>, sinceDays = 30): { act: IcuActivity; status: FeedbackStatus }[] {
+  const dateOf = (a: IcuActivity) => String((a as unknown as { start_date_local?: string }).start_date_local || '')
+  const cutoff = Number.isFinite(sinceDays) ? new Date(Date.now() - sinceDays * 86400000).toISOString().slice(0, 10) : ''
   return acts
     .map((act) => ({ act, status: feedbackStatus(act) }))
-    .filter((x) => x.status.needsFeedback && !(skip && skip.has(String((x.act as unknown as { id?: unknown }).id))))
-    .sort((a, b) => String((a.act as unknown as { start_date_local?: string }).start_date_local || '').localeCompare(String((b.act as unknown as { start_date_local?: string }).start_date_local || '')))
+    .filter((x) => x.status.needsFeedback && !(skip && skip.has(String((x.act as unknown as { id?: unknown }).id))) && dateOf(x.act).slice(0, 10) >= cutoff)
+    .sort((a, b) => dateOf(a.act).localeCompare(dateOf(b.act)))
 }
