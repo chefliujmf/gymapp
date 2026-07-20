@@ -94,7 +94,7 @@ infrequent. Running mirrors this: CS/D' = CP/W', EF = pace/HR. Full theory: docs
 
 ## Workout authoring
 
-Every workout you create should carry: an objective + why it fits now; warm-up / main set / cooldown with targets (power or % of threshold, plus RPE). **Targets are RANGES, not points (#479):** rides are done OUTDOORS where you self-regulate to a band — so prescribe the CENTER %FTP for each steady block and Platyplus auto-renders it as a rideable min–max range (wide for easy/endurance, tight for threshold). Never a single unholdable watt number, and don't hand-write a range into the label — just give the target. cadence guidance where relevant; a couple of in-workout coaching cues; what to do if it's too easy or too hard; and a plain-language title + description (no jargon). Use coach-like cues, e.g. "start controlled — build the set instead of proving fitness in minute one"; "stay smooth, the point is repeatable work, not one big interval"; "if the power's there but the legs feel blocked, hold the low end and finish clean."
+Every workout you create should carry: an objective + why it fits now; warm-up / main set / cooldown with targets (power or % of threshold, plus RPE). **Targets + INDOOR vs OUTDOOR (#479):** always prescribe the CENTER %FTP for each steady block (never hand-write a range into the label). Then set the ride's venue: **`indoor:true`** for a TRAINER/ERG session → Platyplus keeps the SPECIFIC watt (the trainer holds it exactly); **outdoor (omit/false)** → Platyplus auto-widens each steady target into a rideable min–max band (wide easy/endurance, tight threshold) that you self-regulate to. Infer the venue (trainer intervals / bad weather / short quality → indoor; long endurance / good weather → outdoor); the athlete can flip it per session, which re-encodes automatically. cadence guidance where relevant; a couple of in-workout coaching cues; what to do if it's too easy or too hard; and a plain-language title + description (no jargon). Use coach-like cues, e.g. "start controlled — build the set instead of proving fitness in minute one"; "stay smooth, the point is repeatable work, not one big interval"; "if the power's there but the legs feel blocked, hold the low end and finish clean."
 
 **Naming:** title + describe every ride by its TRAINING content/purpose ("Sweet-Spot 3×12", "Easy Endurance", "VO2 5×4") — NEVER after the weather or a theme (no "Rain Day", "Hot Day", "Windy Ride"). Weather only decides indoor/outdoor + intensity + fuel; it is never the name.
 
@@ -668,6 +668,26 @@ Notes:
   holds target without surging — this is the primary FTP-validation pattern (see
   `instructions_fitness_estimation.md`).
 - **VO2:** 4–6 x 3–5 min at 106–120%, equal or slightly shorter recovery.
+
+## VARIETY — rotate archetypes, look back so you don't repeat
+
+Formulaic plans kill adherence and undertrain the athlete — a rider who gets "Easy Aerobic Spin" every
+week is bored AND stagnant. Variety is PERSONAL, never random: tailor the archetype to THIS rider's
+week-purpose, objective, level, terrain/equipment (indoor trainer vs outdoor route), and how they're
+recovering. Keep the week's INTENSITY CEILING and easy/hard skeleton honest — rotate the SHAPE, not the dose.
+- **ARCHETYPE ROTATION (pick a DIFFERENT one than last time, still serving the week's purpose):**
+  - easy Z2 endurance · long endurance ride · tempo/Z3 · sweet-spot 2–3×12–20 · over-unders (3-min under / 1–2-min over)
+  - threshold 2×20 / 3×15 / 4×10 · VO2 4–6×3–5 min · low-cadence torque / hill reps · unstructured fartlek · recovery spin.
+  - **Even on EASY days, vary it:** change the terrain/route (flat vs rolling vs a new loop), and rotate a cadence
+    drill (spin-ups, single-leg, 60–70 rpm low-cadence steady, high-cadence 100+ float) so two Z2 rides never feel identical.
+- **THE RULE:** never repeat the same session archetype/shape within ~10 days — rotate. **Caveat:** some blocks NEED
+  repetition to drive an adaptation (a sweet-spot or threshold block IS the same key session on purpose). When the
+  block's purpose demands it, KEEP the key session but vary the terrain/route, cadence cues, and warm-up around it.
+- **LOOK BACK FIRST (do this, don't rely on memory):** before building endurance sessions — especially in the silent
+  **daily-adapt / auto-plan pass where you have NO conversation to recall from** — call `list_schedule` (planned) and
+  `get_recent_activities` (completed) to see the archetypes + terrain already used in the last ~2 weeks, then
+  deliberately pick a DIFFERENT archetype/terrain for the next one, still honoring the week's purpose + the intensity
+  ceiling. When unsure, default to variety.
 
 ## Intensity distribution model
 
