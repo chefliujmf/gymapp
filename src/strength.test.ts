@@ -103,6 +103,11 @@ describe('weeklySetsPerMuscle (Schoenfeld 10–20 landmark, per TRAINING week)',
     const logs = [log(0, [{ name: 'Mystery', sets: [[50, 5]] }])]
     expect(weeklySetsPerMuscle(logs, muscleOf)).toEqual([])
   })
+  it('counts BODYWEIGHT sets (no weight) toward sets-per-muscle (#591)', () => {
+    // 12 done sets of a Chest move with weight 0 (bodyweight) across 2 training weeks = 12/wk, still counted.
+    const bw = (n: number) => [log(0, [{ name: 'Bench', sets: Array(n).fill([0, 10]) as [number, number][] }]), log(14, [{ name: 'Bench', sets: Array(n).fill([0, 10]) as [number, number][] }])]
+    expect(weeklySetsPerMuscle(bw(12), muscleOf).find((v) => v.muscle === 'Chest')).toMatchObject({ perWeek: 12, status: 'ok' })
+  })
 })
 
 describe('inferGymFocus (main sport is the strongest signal, #534)', () => {
