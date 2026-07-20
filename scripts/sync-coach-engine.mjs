@@ -84,6 +84,19 @@ function bundle(sources) {
 const out = (name) => join(here, '..', 'server', name)
 const words = (p) => readFileSync(p, 'utf8').split(/\s+/).length
 
+// ⚠️ #603 — DEPRECATED / UNSAFE TO RUN. The shipped server/coach-engine-*.md have DRIFTED: they've been
+// HAND-EDITED directly (e.g. #479 indoor/outdoor, #614 variety, public-text) WITHOUT back-porting to
+// coach-engine-src/, AND deactivated-feature sections (nutrition/psychology/weekly-checkin per #491 Eat/Mind off)
+// were trimmed from the shipped generic engine but still live in the source. Running this sync would SILENTLY
+// REVERT those direct edits and re-bloat the generic engine. The shipped `server/coach-engine-*.md` are now the
+// CANONICAL, hand-maintained files — edit them directly. This script is kept only as historical reference + the
+// name-gate; it REFUSES to overwrite unless you truly mean it (COACH_ENGINE_SYNC_FORCE=1), after reconciling the drift.
+if (process.env.COACH_ENGINE_SYNC_FORCE !== '1') {
+  console.error('sync-coach-engine: REFUSING to run — the shipped engines are hand-maintained + drifted from this source (#603).\n' +
+    'Running this would REVERT direct edits (e.g. #479/#614) and re-bloat coach-engine.md. Edit server/coach-engine-*.md directly.\n' +
+    'If you have reconciled the drift and truly want to regenerate, re-run with COACH_ENGINE_SYNC_FORCE=1.')
+  process.exit(1)
+}
 writeFileSync(out('coach-engine.md'), HEADER('generic method (all athletes)', 'Sport-agnostic coaching method — applies to every Platyplus user.') + bundle(SHARED))
 writeFileSync(out('coach-engine-cycling.md'), HEADER('cycling/endurance method (gated)', 'Injected ONLY for cyclists/endurance athletes. Do NOT apply bike-volume / FTP / outdoor-ride rules to non-endurance athletes.') + bundle(CYCLING))
 writeFileSync(out('coach-engine-female.md'), HEADER('female-athlete module (gated)', 'Injected ONLY for female athletes.') + bundle(FEMALE))
