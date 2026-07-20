@@ -78,6 +78,10 @@ server.tool('get_weather',
   { date: DATE.optional().describe('YYYY-MM-DD; default today. Use the planned session date.') },
   wrap((a) => api('GET', `/api/weather${a.date ? `?date=${a.date}` : ''}`)))
 
+server.tool('get_session_history',
+  "COMPACT digest of the athlete's recent + upcoming PLANNED sessions — just {date, sport, title, zone} (titles are the ARCHETYPE signal), NOT the full workout blobs. **Call this BEFORE building or adjusting the plan and deliberately pick a DIFFERENT archetype/shape than the recent ones — this is how you VARY the plan and never repeat the same 'Easy Aerobic Spin' or warm-up twice in a row.** Cheap; use it every plan-building pass instead of diffing list_schedule.",
+  { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 21') },
+  wrap((a) => api('GET', `/api/session-history?days=${a.days || 21}`)))
 server.tool('get_recent_activities',
   "Read the athlete's recently COMPLETED activities from intervals.icu: each has `id` (the activity id — pass it to save_coach_review / set_activity_text to review or annotate THAT activity), `date` (the athlete's LOCAL date), `when` + `daysAgo` (an AUTHORITATIVE relative-day label computed in the athlete's timezone, e.g. `when:\"yesterday\"` / `\"2 days ago\"` / `\"today\"` — ALWAYS use this when you mention when a session happened; NEVER eyeball 'yesterday' from the raw date, you'll be a day off), type, indoor/outdoor, duration, distance, avg HR, avg power, Load (TSS), intensity (IF), RPE, feel, and `reviewed` (true once you've reviewed it — the reviewed/NOT-reviewed tracker; `reviewed:false` means it's still waiting for your review). READ-ONLY; returns { connected:false } if intervals.icu isn't connected.",
   { days: z.number().int().min(1).max(60).optional().describe('lookback days; default 14') },

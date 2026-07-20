@@ -1955,7 +1955,7 @@ async function runCoachTask(user, message) {
 }
 
 // #353 — a human phrase for the tool the coach is calling, shown as "Reviewing your …" in the UI.
-const TOOL_LABEL = { get_wellness: 'your wellness data', get_checkins: 'your check-ins', get_recent_activities: 'your recent activity', list_schedule: 'your schedule', get_weather: 'the weather', check_connections: 'your connections', search_exercises: 'the exercise library', search_recipes: 'recipes', create_workout: 'a gym session', create_ride: 'a ride', create_run: 'a run', schedule_recovery: 'recovery', schedule_supplement: 'supplements', save_coach_review: 'your review', set_activity_text: 'your activity notes', set_athlete_profile: 'your profile', set_thresholds: 'your thresholds', set_weekly_target: 'your week', save_coach_memory: 'your coaching notes', schedule_meal: 'a meal', schedule_mind: 'a mind session', notify: 'a note for you' }
+const TOOL_LABEL = { get_wellness: 'your wellness data', get_checkins: 'your check-ins', get_recent_activities: 'your recent activity', get_session_history: 'your recent sessions', list_schedule: 'your schedule', get_weather: 'the weather', check_connections: 'your connections', search_exercises: 'the exercise library', search_recipes: 'recipes', create_workout: 'a gym session', create_ride: 'a ride', create_run: 'a run', schedule_recovery: 'recovery', schedule_supplement: 'supplements', save_coach_review: 'your review', set_activity_text: 'your activity notes', set_athlete_profile: 'your profile', set_thresholds: 'your thresholds', set_weekly_target: 'your week', save_coach_memory: 'your coaching notes', schedule_meal: 'a meal', schedule_mind: 'a mind session', notify: 'a note for you' }
 const friendlyTool = (name) => { const t = String(name || '').replace(/^mcp__platyplus__/, ''); return TOOL_LABEL[t] || t.replace(/_/g, ' ') }
 
 // #363 — coach conversations as THREADS (ChatGPT/Claude-style): named + searchable, each keeping its own
@@ -2178,7 +2178,7 @@ function validatePlan(b) {
   if (!b || typeof b !== 'object') return 'body must be a JSON object'
   if (!b.id || typeof b.id !== 'string') return 'id (string, your shared id) is required'
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return 'date (YYYY-MM-DD) is required'
-  if (!['gym', 'ride', 'run'].includes(b.sport)) return "sport must be 'gym' | 'ride' | 'run'"
+  if (!['gym', 'ride', 'run', 'swim'].includes(b.sport)) return "sport must be 'gym' | 'ride' | 'run' | 'swim'" // #614 — swim was rejected here → create_swim was dead
   if (!b.title || typeof b.title !== 'string') return 'title (string) is required'
   return null
 }
@@ -2436,12 +2436,14 @@ async function upsertPlan(user, body, actor = 'coach') {
     icuEventId: i >= 0 ? user.plans[i].icuEventId : undefined,
     ...(body.sport === 'gym'
       ? { rounds: Number(body.rounds) || 1, exercises: (Array.isArray(body.exercises) ? body.exercises : []).map(withDefaultTempo) }
+      : body.sport === 'swim'
+      ? { segments: Array.isArray(body.segments) ? body.segments : [], moving_time: Number(body.moving_time) || undefined, distanceM: Number(body.distanceM) || undefined, icu_training_load: Number(body.icu_training_load) || undefined } // #614 — carry swim's time/distance/load so the push path (swim TSS) isn't silently dropped
       : { ftp: Number(body.ftp) || undefined, segments: Array.isArray(body.segments) ? body.segments : [], indoor: body.indoor != null ? !!body.indoor : (i >= 0 ? user.plans[i]?.indoor : undefined) }), // #479 indoor(ERG=specific) vs outdoor(range); kept across updates unless the body sets it
   }
   // #331c — HARD guard: never persist an "easy/recovery/warm-up"-labelled run/ride segment at near-threshold
   // effort (95% is NEVER easy — any sport). Fixes it at the source so the DB, the app view, AND the intervals
   // push are all sane, even when the coach fat-fingers the %.
-  if (plan.sport !== 'gym' && Array.isArray(plan.segments) && plan.segments.length) {
+  if ((plan.sport === 'ride' || plan.sport === 'run') && Array.isArray(plan.segments) && plan.segments.length) { // #614 — power/pace clamp is for ride/run only, not swim
     const g = clampEasyEfforts(plan.title, plan.segments)
     if (g.clamped) { plan.segments = g.segments; console.log(`[clampEasyEfforts] ${user.username} "${plan.title}" — clamped ${g.clamped} easy segment(s) below ${'threshold'}`) }
     plan.segments = normalizeRamps(plan.segments) // #384 — flat cool-downs + warm-ups ramp up, so intervals never shows a backwards "150-117" range
@@ -2746,6 +2748,20 @@ function searchSessions(q, limit, kind) {
 // Upsert a planned session by id (idempotent — re-POST to update).
 app.post('/api/plan', apiAuth, async (req, res) => { const r = await upsertPlan(req.user, req.body); res.status(r.status).json(r.body) })
 app.get('/api/plans', apiAuth, (req, res) => res.json(plansInRange(req.user, req.query.from, req.query.to)))
+// #614 — compact SESSION-HISTORY digest for VARIETY (the look-back). Returns recent + upcoming PLANNED sessions as
+// {date, sport, title, when} ONLY — not the full exercise/segment blobs — so the coach can cheaply see which
+// ARCHETYPES it already used (titles are the archetype signal) and deliberately pick a DIFFERENT one. This is the
+// mechanism that ends formulaic plans (the repeated "Easy Aerobic Spin"); much cheaper than diffing list_schedule.
+app.get('/api/session-history', apiAuth, (req, res) => {
+  const days = Math.min(60, Math.max(1, Number(req.query.days) || 21))
+  const today = localTodayInTz(req.user.icuTimezone)
+  const from = addDays(today, -days), to = addDays(today, 16)
+  const sessions = (req.user.plans || [])
+    .filter((p) => p.date && p.date >= from && p.date <= to)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .map((p) => ({ date: p.date, sport: p.sport, title: p.title || '', zone: p.zone || undefined, when: p.date < today ? 'past' : p.date === today ? 'today' : 'upcoming' }))
+  res.json({ from, to, note: 'archetype signal = titles; vary the next session vs these', sessions })
+})
 app.get('/api/plan/:id', apiAuth, (req, res) => { const p = (req.user.plans || []).find((x) => x.id === req.params.id); return p ? res.json(p) : res.status(404).json({ error: 'not found' }) })
 app.delete('/api/plan/:id', apiAuth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
 app.get('/api/strava/activities', apiAuth, async (req, res) => {
@@ -3428,7 +3444,7 @@ function dailyAdaptMsg(today, pass, cov) {
     ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. The plan currently REACHES only ${cov.last || 'today'} — ${cov.tail} days SHORT of the ~2-week end (${cov.end}). EXTEND it to ~${cov.end}: add sessions from ${cov.firstEmpty} through ${cov.end}, UP TO (never beyond) their HARD weekly training-days cap + availability — leave genuine REST days blank.`
     : ''
   return `${head}${gap} Then BUILD + adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule first). **INDIVIDUALIZE every session to THIS athlete — YOU own the plan, there is no template to copy.** Use their full profile + your per-sport & female-athlete engines: their SPORT(S) — only sports they actually do (a runner gets runs, a swimmer pool/CSS sets, a lifter gym; NEVER program a session they can't do, e.g. a ride for someone with no bike); SEX; AGE (a teen = technique + no maximal loading; masters = extra recovery); repro-state — if PREGNANT, coach MODERATE / MAINTAIN by RPE + talk test, trimester-adjusted, never max or to-exhaustion (apply your female-athlete pregnancy guidance), otherwise factor menstrual phase; their GOALS; fitness/experience; equipment. **Follow the computed # THIS WEEK'S SHAPE (in your system prompt) EXACTLY — its quality-day count + intensity ceiling are authoritative; never add a quality/hard day beyond it (this is how pregnancy stays maintenance).** Match load to how they're recovering + their weekly frequency/availability; keep ~${DAILY_HORIZON} days populated (never double-book / exceed max-per-day / exceed the HARD weekly training-days cap). Author each ride/run/swim as STRUCTURED steps (warmup/work/cooldown with real targets) so it's followable on their device.
-**WORK FAST — minimize round-trips (this must be quick):** read get_wellness + get_checkins + list_schedule in PARALLEL in one batch; for any gym session look up ALL its moves (warm-up + main + cool-down) in ONE search_exercises call via \`queries=[…]\` — NEVER one exercise at a time. Don't re-read what you already have. Decide fast and create.
+**VARY IT — never repeat the same shape:** call **get_session_history** first and deliberately pick DIFFERENT archetypes/terrain than the recent sessions (rotate per your sport engine's VARIETY list) — no two "Easy Aerobic Spin"s or identical warm-ups back to back. **Be efficient with tool calls** — read get_wellness + get_checkins + get_session_history in parallel, and look up ALL a gym session's moves in ONE search_exercises(\`queries=[…]\`) call, never one at a time — but this is the once-a-day PLAN BUILD, so take the care to individualize, vary, and dose it right; don't rush it into a generic week.
 **NAMING + DESCRIPTION: name and describe every session by its PURPOSE + concrete stats the athlete can act on** — the duration, the interval structure, target pace/power/effort, a coaching cue — NOT a vague "easy / hard / Z2 endurance" label (bare intensity words are unhelpful and annoying here). Make each description worth reading, with real substance.
 This pass is ONLY the WORKOUT plan (no activity reviews / meals / mind / separate recovery items — Eat/Mind + standalone recovery blocks are OFF/parked). Recovery guidance rides as TEXT on the workout (its recovery/notes field), NEVER a separate calendar item. It is SILENT (#498): make the changes with the tools but do NOT notify / push — they already got their one check-in ping today; never send a second. If genuinely uncertain, make the sensible conservative choice rather than asking — never push a question. Decide and act. Be concise.`
 }

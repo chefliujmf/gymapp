@@ -669,6 +669,26 @@ Notes:
   `instructions_fitness_estimation.md`).
 - **VO2:** 4–6 x 3–5 min at 106–120%, equal or slightly shorter recovery.
 
+## VARIETY — rotate archetypes, look back so you don't repeat
+
+Formulaic plans kill adherence and undertrain the athlete — a rider who gets "Easy Aerobic Spin" every
+week is bored AND stagnant. Variety is PERSONAL, never random: tailor the archetype to THIS rider's
+week-purpose, objective, level, terrain/equipment (indoor trainer vs outdoor route), and how they're
+recovering. Keep the week's INTENSITY CEILING and easy/hard skeleton honest — rotate the SHAPE, not the dose.
+- **ARCHETYPE ROTATION (pick a DIFFERENT one than last time, still serving the week's purpose):**
+  - easy Z2 endurance · long endurance ride · tempo/Z3 · sweet-spot 2–3×12–20 · over-unders (3-min under / 1–2-min over)
+  - threshold 2×20 / 3×15 / 4×10 · VO2 4–6×3–5 min · low-cadence torque / hill reps · unstructured fartlek · recovery spin.
+  - **Even on EASY days, vary it:** change the terrain/route (flat vs rolling vs a new loop), and rotate a cadence
+    drill (spin-ups, single-leg, 60–70 rpm low-cadence steady, high-cadence 100+ float) so two Z2 rides never feel identical.
+- **THE RULE:** never repeat the same session archetype/shape within ~10 days — rotate. **Caveat:** some blocks NEED
+  repetition to drive an adaptation (a sweet-spot or threshold block IS the same key session on purpose). When the
+  block's purpose demands it, KEEP the key session but vary the terrain/route, cadence cues, and warm-up around it.
+- **LOOK BACK FIRST (do this, don't rely on memory):** before building endurance sessions — especially in the silent
+  **daily-adapt / auto-plan pass where you have NO conversation to recall from** — call `list_schedule` (planned) and
+  `get_recent_activities` (completed) to see the archetypes + terrain already used in the last ~2 weeks, then
+  deliberately pick a DIFFERENT archetype/terrain for the next one, still honoring the week's purpose + the intensity
+  ceiling. When unsure, default to variety.
+
 ## Intensity distribution model
 
 Distribution is measured by **time**, not by TSS. Target across a build block:
