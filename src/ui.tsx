@@ -295,7 +295,7 @@ export function DoneStats({ a }: { a: IcuActivity }) {
     <div className="done-stats">
       {/* Row 1: external links (left) + the Indoor/Outdoor label — keeps row 2 free for metrics (#60). */}
       <div className="done-row done-row--labels">
-        {isRideRun && a.id && <Link className="done-link done-link--map" to={`/activity/${a.id}`} onClick={(e) => e.stopPropagation()}>🗺 Map & flyby →</Link>}
+        {/* #611 — "Map & flyby" link removed (JM: we won't use it; the map/flyby tab was already dropped in #566). */}
         {a.id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://intervals.icu/activities/${a.id}`)}>intervals ↗</span>}
         {a.strava_id && <span className="done-link" role="link" tabIndex={0} onClick={(e) => openExt(e, `https://www.strava.com/activities/${a.strava_id}`)}>Strava ↗</span>}
         <span className="done-badge">
