@@ -2,7 +2,7 @@
 
 Use this format after a completed workout is read back from Intervals.icu.
 
-For the Intervals.icu activity-facing note, use [coach_feedback_format.md](</Users/jmfiset/dev/cyclingcoach/codex_coach/coach_feedback_format.md>) as the required format.
+For the private coach note, fill the `save_coach_review` tool fields (verdict, execution, takeaways, body, next, recovery, score) — the app formats them into the standard Coach-note.
 
 ## Workout
 

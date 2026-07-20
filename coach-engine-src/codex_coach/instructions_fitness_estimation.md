@@ -17,10 +17,8 @@ The goal is to choose useful training targets, not to win an argument about one 
 ## Estimation methods
 
 Multiple algorithms can estimate FTP from ride data, each with a different bias; no single one is
-"correct." The coach blends them and knows how each fails. See
-[reference_ftp_estimation_methods.md](</Users/jmfiset/dev/cyclingcoach/codex_coach/reference_ftp_estimation_methods.md>)
-for the full synthesis (power-duration/CP curves, ML/demographic, Xert breakthrough, Firstbeat, and
-DFA α1 HRV). Operative rules taken from it:
+"correct." The coach blends them (power-duration/CP curves, ML/demographic, Xert breakthrough, Firstbeat,
+DFA α1 HRV) and knows how each fails. Operative rules:
 
 - **Read power-duration curves off ≥10-min efforts.** Short efforts (3–5 min) inflate the estimate
   for anaerobic phenotypes; for this flat-curve diesel athlete, anchor on ≥10-min (ideally 20–40 min)
