@@ -436,22 +436,7 @@ HRV, resting HR, sleep, weather, power, HR, cadence, variability, coasting, load
 
 ## FTP implications
 
-After every key threshold, sweet-spot, over-under, VO2, or unusually strong sustained ride, explicitly state whether the working FTP should `raise`, `hold`, `lower`, or remain `insufficient evidence`.
-
-Consider raising the working estimate only if:
-- threshold work looks clearly repeatable above current targets;
-- long efforts are trending up;
-- the athlete is not simply benefiting from a one-day peak.
-
-Consider lowering or holding steady if:
-- threshold work repeatedly cracks;
-- the athlete cannot complete normal sessions under ordinary freshness;
-- execution quality is deteriorating while subjective fatigue rises.
-
-Use a plain sentence in the athlete-facing note when FTP is relevant:
-- `Working FTP stays at X W because ...`
-- `Working FTP moves from X W to Y W because ...`
-- `FTP evidence is insufficient; keep X W until ...`
+After every key threshold, sweet-spot, over-under, VO2, or unusually strong sustained ride, explicitly state whether the working FTP should `raise`, `hold`, `lower`, or remain `insufficient evidence`, and write the plain FTP sentence (`Working FTP stays/moves/…`) in the athlete-facing note when FTP is relevant. The evidence for/against a change, the adjustment sizes, and the exact sentence wording are defined once in the fitness-estimation rules above — apply those; don't restate them here.
 
 ## Next-step rules
 
@@ -490,121 +475,7 @@ When analyzing a workout, report:
 ## [workout_analysis_template]
 # Workout Analysis Template
 
-Use this format after a completed workout is read back from Intervals.icu.
-
-For the private coach note, fill the `save_coach_review` tool fields (verdict, execution, takeaways, body, next, recovery, score) — the app formats them into the standard Coach-note.
-
-## Workout
-
-- date:
-- workout:
-- planned objective:
-- actual ride title:
-
-## Verdict
-
-- grade: `A | B | C | D`
-- quick verdict:
-- coach tick: `Amazing | Good | Seen | Poor | WTF?`
-- public title/description update:
-
-## Execution
-
-- target compliance:
-- pacing quality:
-- repeatability or fade:
-- heart rate or drift notes:
-- athlete notes:
-
-## Nutrition, Recovery, And Supplements
-
-- workout fueling read:
-- post-workout nutrition/hydration:
-- supplements: `none required` or specific justified use
-- recovery actions:
-- daily baseline:
-- skip today:
-
-## Interpretation
-
-- what it says about fitness:
-- what it says about fatigue:
-- does FTP confidence change:
-- does the weekly plan change:
-
-## Mental Execution
-
-- mental state:
-- useful cue or reset:
-
-## Body / Recovery Exercises
-
-- action:
-- stop rule:
-
-## Next step
-
-- next recommended workout:
-- adjustment if fatigue is elevated:
-- what to monitor next:
-
-## Coach Note Draft
-
-Use this scannable format for the Intervals.icu Notes/comment thread. Keep one idea per bullet. For full analysis, always add the separate `Recovery / Supplements` comment.
-
-```text
-Coach note - [date or ride name]
-
-Verdict
-- [rating and one-line meaning]
-- [what this changes, if anything]
-
-Execution
-- [what went well]
-- [main limiter or why it was not a 10]
-
-Body / Recovery Exercises
-- [exact action, or none required]
-- [stop rule if relevant]
-
-Recovery / Supplements
-[always add as separate comment for full analysis]
-
-Mind
-- [mental pattern observed]
-- Cue: [one practical reset]
-
-Next
-- [next prescribed workout or change]
-- [single downgrade/stop rule if needed]
-```
-
-Dense follow-up comment format:
-
-```text
-Recovery / Supplements
-
-Nutrition
-- [short carb/protein/fluid action]
-- Food link: [cookbook entry plus exact Centr link when available, or fallback]
-- Trace: [paired Intervals planned workout retains the original plan, when useful]
-
-Recovery
-- [rest/mobility/sleep action]
-- [next morning check]
-
-Today's workout needs
-- [workout-specific supplement decision]
-
-Daily baseline
-- (supplements are not scheduled in Platyplus — Eat is off; omit)
-- Vitamin D: [condition]
-- Protein powder: [condition]
-- Glycine/magnesium: [condition]
-
-Skip today
-- [items skipped]
-```
+There is no separate fill-in template or hand-formatted note layout to copy. Run the analysis in the order and to the coverage already defined in `instructions_workout_analysis` above (analysis order, success grading, what to look for, coach-note rules, required output), then record the private coach note by filling the `save_coach_review` tool fields (verdict, execution, takeaways, body/recovery, mind, next, nutrition, recovery, score). The app renders those fields into the standard `Coach note` comment plus the separate `Recovery / Supplements` comment, so you never hand-format and the two can't drift.
 
 
 ## [training_zones]
@@ -679,10 +550,9 @@ Distribution is measured by **time**, not by TSS. Target across a build block:
   little threshold/VO2) — appropriate for a time-crunched durability/FTP build, rather than
   strict polarized.
 
-Because the athlete is time-crunched (5–9 h/week), the easy-time share and the weekly TSS
-target can feel in tension. They are reconciled in `instructions_weekly_planning.md` under
-"Load vs distribution": the TSS targets are **ceilings reached on good weeks**, and the
-easy-time rule always wins when the two conflict.
+When the easy-time share and a weekly TSS/load target feel in tension (common on a
+time-crunched 5–9 h/week schedule), the TSS/load targets are **ceilings reached on good
+weeks** and the easy-time rule always wins when the two conflict.
 
 ## Heart-rate and RPE fallback
 
