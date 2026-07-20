@@ -1584,7 +1584,9 @@ app.delete('/auth/items/:id', auth, (req, res) => { deleteItemById(req.user, req
 app.get('/auth/logs', auth, (req, res) => res.json(req.user.logs || []))
 app.post('/auth/logs', auth, (req, res) => {
   const b = req.body || {}
-  const log = { sid: newId(), workoutId: b.workoutId || '', title: b.title || '', discipline: b.discipline || '', duration: Number(b.duration) || 0, date: b.date || new Date().toISOString().slice(0, 10), completedAt: b.completedAt || Date.now(), setsCompleted: b.setsCompleted, volume: b.volume, tss: b.tss, sets: b.sets, notes: b.notes }
+  // exNames/exIds MUST be persisted (#591): bestE1rmByExercise + the by-exercise summary key sets to their
+  // exercise by name — dropping them here made every synced gym log show "Exercise N" and starved the 1-RM analytics.
+  const log = { sid: newId(), workoutId: b.workoutId || '', title: b.title || '', discipline: b.discipline || '', duration: Number(b.duration) || 0, date: b.date || new Date().toISOString().slice(0, 10), completedAt: b.completedAt || Date.now(), setsCompleted: b.setsCompleted, volume: b.volume, tss: b.tss, sets: b.sets, exNames: b.exNames, exIds: b.exIds, notes: b.notes }
   req.user.logs = req.user.logs || []; req.user.logs.push(log); save(store); res.status(201).json(log)
 })
 app.put('/auth/logs/:sid', auth, (req, res) => { const l = (req.user.logs || []).find((x) => x.sid === req.params.sid); if (!l) return res.status(404).json({ error: 'not found' }); Object.assign(l, req.body || {}, { sid: l.sid }); save(store); res.json(l) })
