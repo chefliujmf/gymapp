@@ -12,8 +12,6 @@ export const ICU_FIELDS: [string, string[]][] = [
   ['Legs After', ['strong', 'normal', 'tired OK', 'barely tired', 'heavy', 'sore', 'cooked']],
   ['Fuel/GI', ['not needed', 'water only OK', 'carbs OK', 'underfueled', 'GI issue', 'too much fuel']],
   ['Pain/Niggles', ['none', 'knee', 'back', 'neck/shoulder', 'foot', 'saddle', 'other']],
-  ['Life Constraint', ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other']],
-  ['Mental State', ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out']],
 ]
 // intervals field CODE (the activity property name) for each label.
 export const ICU_FIELD_CODES: Record<string, string> = { 'Legs Before': 'LegsBefore', 'Legs After': 'LegsAfter', 'Fuel/GI': 'FuelGI', 'Pain/Niggles': 'PainNiggles', 'Life Constraint': 'LifeConstraint', 'Mental State': 'MentalState' }
@@ -26,8 +24,6 @@ export const RUN_FIELDS: [string, string[]][] = [
   ['Legs After', ['strong', 'normal', 'tired OK', 'barely tired', 'heavy', 'sore', 'cooked']],
   ['Fuel/GI', ['not needed', 'water only OK', 'gels/carbs OK', 'underfueled', 'GI issue', 'too much fuel']],
   ['Pain/Niggles', ['none', 'knee', 'shin/calf', 'foot/ankle', 'hip', 'IT band', 'hamstring', 'other']],
-  ['Life Constraint', ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other']],
-  ['Mental State', ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out']],
 ]
 
 // GYM is its OWN set (#152) — no Legs/Fuel. These are Platyplus-only (intervals has no gym custom fields).
@@ -35,8 +31,6 @@ export const GYM_FIELDS: [string, string[]][] = [
   ['Soreness/pump', ['none', 'light', 'good pump', 'sore', 'very sore']],
   ['Form', ['clean', 'mostly clean', 'broke down']],
   ['Pain/Niggles', ['none', 'shoulder', 'low back', 'knee', 'wrist', 'elbow', 'other']],
-  ['Life Constraint', ['none', 'time cap', 'family', 'work', 'poor sleep', 'stress', 'weather', 'other']],
-  ['Mental State', ['calm', 'focused', 'impatient', 'overexcited', 'doubtful', 'frustrated', 'checked out']],
 ]
 export const FIELDS: Record<string, [string, string[]][]> = { ride: ICU_FIELDS, run: RUN_FIELDS, gym: GYM_FIELDS }
 
