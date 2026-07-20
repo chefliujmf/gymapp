@@ -1737,6 +1737,17 @@ function enforceShapeIntensity(user, plan) {
   }
 }
 
+// #618 — the save-time clamp only fires on sessions the coach WRITES; stale ride/run sessions from an earlier run
+// (created before the shape was enforced) sit untouched and keep a wrong intensity/title. Sweep ALL future ride/run
+// plans through the clamp (date order, so the quality-day count builds correctly) at the end of every adapt.
+function reenforceShapeAll(user) {
+  const today = localTodayInTz(user && user.icuTimezone)
+  const future = (user.plans || []).filter((p) => p && p.date >= today && (p.sport === 'ride' || p.sport === 'run')).sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  let changed = false
+  for (const p of future) { const t0 = p.title, seg0 = JSON.stringify(p.segments || []); enforceShapeIntensity(user, p); if (p.title !== t0 || JSON.stringify(p.segments || []) !== seg0) changed = true }
+  if (changed) save(store)
+}
+
 function buildSystemPrompt(user) {
   const name = user.coachName || 'Coach'
   const prof = user.coachProfile || ''
@@ -3533,6 +3544,7 @@ async function runDailyAdapt(user, pass) {
       // recovery guidance now rides on the workout's own `recovery` text (set during the workout adapt above), so there's
       // nothing for a separate pass to do. (roundOutMsg kept in case it returns for the roadmap.)
     }
+    reenforceShapeAll(user) // #618 — sweep ALL future ride/run sessions through the shape clamp, incl. stale ones the coach didn't touch
   } catch (e) { console.error(`[daily-adapt ${pass}] ${user.username || ''} ${e.message || e}`) }
 }
 // One scheduler tick: fire the due pass for each coached athlete. Called every ~30 min.
