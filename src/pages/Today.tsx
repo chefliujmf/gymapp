@@ -222,10 +222,11 @@ export function CheckInCard({ day, onChange, compact = false }: { day: string; o
 // Energy & Sleep fill in from that day's check-in.
 const FORECAST_FACES = ['💀', '😖', '😐', '🙂', '😎']
 const freshLabel = (s: number) => s >= 4.3 ? 'Likely fresh' : s >= 3.4 ? 'Likely fresh enough' : s >= 2.5 ? 'Moderately recovered' : s >= 1.6 ? 'Likely fatigued' : 'Likely wrecked'
-function ForecastCard({ day, fmtDay }: { day: string; fmtDay: (s: string) => string }) {
+function ForecastCard({ day, rev = 0, fmtDay }: { day: string; rev?: number; fmtDay: (s: string) => string }) {
   const [f, setF] = useState<Awaited<ReturnType<typeof authApi.readinessForecast>> | null>(null)
   const [loaded, setLoaded] = useState(false)
-  useEffect(() => { let live = true; setF(null); setLoaded(false); authApi.readinessForecast(day).then((r) => { if (live) setF(r) }).catch(() => {}).finally(() => { if (live) setLoaded(true) }); return () => { live = false } }, [day])
+  // #595 — re-fetch on `day` AND `rev` (plan/activity reload) so the forecast tracks plan changes + completions.
+  useEffect(() => { let live = true; authApi.readinessForecast(day).then((r) => { if (live) { setF(r); setLoaded(true) } }).catch(() => { if (live) setLoaded(true) }); return () => { live = false } }, [day, rev])
   if (!loaded) return null
   if (!f?.connected) return <div className="card forecast forecast--muted">📊 Connect intervals.icu to forecast how recovered you'll be on {fmtDay(day)}.</div>
   if (!f.available || f.freshness == null) return <div className="card forecast forecast--muted">📊 Not enough training data yet to forecast {fmtDay(day)}.</div>
@@ -463,6 +464,9 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
   const diet = useLiveQuery(() => getSetting('diet'))
   const [events, setEvents] = useState<IcuEvent[] | null>(null)
   const [activities, setActivities] = useState<IcuActivity[]>([])
+  // #595 — bumps whenever the plan/activity data reloads, so the future-day FORECAST re-fetches when the
+  // plan changes OR a session is completed (a done event's load flips planned→actual in the same feed).
+  const [planRev, setPlanRev] = useState(0)
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [items, setItems] = useState<CalItem[]>([])
   const [checkin, setCheckin] = useState<Checkin | null>(null) // #202: drives the readiness verdict banner
@@ -477,7 +481,7 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
 
   const load = useCallback(() => {
     const [a, b] = weekRange()
-    fetchEvents(a, b).then((evs) => { setEvents(evs); setPlanEvents(evs) }).catch((e) => setErr((e as Error).message))
+    fetchEvents(a, b).then((evs) => { setEvents(evs); setPlanEvents(evs); setPlanRev((r) => r + 1) }).catch((e) => setErr((e as Error).message))
     // Mirror intervals-origin workouts into Platyplus first, THEN read the owned plans.
     syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then((pl) => { setPlans(pl); setCoachPlans(pl) }))
     fetchActivities(a, b).then(setActivities).catch(() => setActivities([]))
@@ -635,7 +639,7 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
       <WeekStrip selected={selDay} onSelect={setSelDay} marked={markedDays} />
 
       {/* #223: today = check-in + live verdict; future = freshness FORECAST (no fake "fresh"); past = logged. */}
-      {isFuture ? <ForecastCard key={selDay} day={selDay} fmtDay={fmtDay} /> : <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />}
+      {isFuture ? <ForecastCard key={selDay} day={selDay} rev={planRev} fmtDay={fmtDay} /> : <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />}
 
       {/* #387 — nudge to review completed sessions still missing feedback (links to the full list on Logs). */}
       <ToReviewCard acts={activities} />
