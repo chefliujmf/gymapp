@@ -9,6 +9,13 @@
 
 // intensity ceiling, low → high (matches plan-skeleton ZONES + the sport engines' zone names)
 export const CEILINGS = ['recovery', 'endurance', 'tempo', 'sweetspot', 'threshold', 'vo2']
+// ceiling → max % of threshold (FTP / threshold-pace). Used by the SERVER-SIDE clamp so a maintenance/pregnancy
+// athlete physically can't be saved a session above their ceiling, no matter what the coach writes (#615 —
+// the prompt-only "0 quality days" was ignored by the LLM; this ENFORCES it). Build athletes: vo2=120 → nothing clamps.
+export const CEILING_PCT = { recovery: 60, endurance: 75, tempo: 85, sweetspot: 93, threshold: 102, vo2: 130 }
+
+/** Is this athlete on a MAINTENANCE shape (no structured quality) — pregnancy / consistency-with-0-quality? */
+export function isMaintenance(shape) { return !!shape && shape.loadBand === 'maintenance' }
 
 /**
  * @param {object} p profile-derived inputs (all optional; sensible defaults)

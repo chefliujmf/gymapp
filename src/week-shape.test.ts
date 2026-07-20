@@ -61,3 +61,17 @@ describe('weekShape — #613 the code-decided week structure (single source of t
     }
   })
 })
+
+// @ts-expect-error — plain JS server module, no types
+import { CEILING_PCT } from '../server/week-shape.js'
+describe('#615 CEILING_PCT enforces the dose', () => {
+  it('is monotonic low→high', () => {
+    const order = ['recovery','endurance','tempo','sweetspot','threshold','vo2']
+    for (let i=1;i<order.length;i++) expect(CEILING_PCT[order[i]]).toBeGreaterThan(CEILING_PCT[order[i-1]])
+  })
+  it('a pregnancy ceiling (tempo) is BELOW sweet-spot/threshold — so those get clamped', () => {
+    const preg = weekShape({ pregnant: true, trimester: 1 })
+    expect(CEILING_PCT[preg.intensityCeiling]).toBeLessThan(CEILING_PCT.sweetspot)
+    expect(CEILING_PCT[preg.intensityCeiling]).toBeLessThan(CEILING_PCT.threshold)
+  })
+})
