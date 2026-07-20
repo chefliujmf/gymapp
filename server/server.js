@@ -3286,7 +3286,17 @@ async function postCoachNote(user, id, r) {
   // does NOT set it — this write is what actually checks the box (#436, verified by round-trip on prod).
   await icuFetch(user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify({ coach_tick: coachTick(score) }) }).catch((e) => console.error('[coach-tick] ' + (e.message || e)))
 }
-app.get('/api/exercises', apiAuth, (req, res) => res.json(searchExercises(req.query.q, req.query.limit, req.query.equipment)))
+app.get('/api/exercises', apiAuth, (req, res) => {
+  // #612 — BATCH search: `qs` = pipe-separated queries → one call returns a { query: results[] } map, so the coach
+  // looks up a WHOLE gym session's moves in ONE round-trip instead of 20-30 (the big adapt-speed win).
+  if (req.query.qs != null && String(req.query.qs).length) {
+    const queries = String(req.query.qs).split('|').map((s) => s.trim()).filter(Boolean).slice(0, 40)
+    const out = {}
+    for (const q of queries) out[q] = searchExercises(q, req.query.limit || 6, req.query.equipment)
+    return res.json(out)
+  }
+  res.json(searchExercises(req.query.q, req.query.limit, req.query.equipment))
+})
 // Recipe + session catalog search — the coach picks a real id for fuel meals / mind sessions.
 app.get('/api/recipes', apiAuth, (req, res) => res.json(searchRecipes(req.query.q, req.query.limit, req.query.category, req.query.diet || req.user.info?.diet)))
 app.get('/api/sessions', apiAuth, (req, res) => res.json(searchSessions(req.query.q, req.query.limit, req.query.kind)))
@@ -3393,6 +3403,7 @@ function dailyAdaptMsg(today, pass, cov) {
     ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. The plan currently REACHES only ${cov.last || 'today'} — ${cov.tail} days SHORT of the ~2-week end (${cov.end}). EXTEND it to ~${cov.end}: add sessions from ${cov.firstEmpty} through ${cov.end}, UP TO (never beyond) their HARD weekly training-days cap + availability — leave genuine REST days blank.`
     : ''
   return `${head}${gap} Then BUILD + adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule first). **INDIVIDUALIZE every session to THIS athlete — YOU own the plan, there is no template to copy.** Use their full profile + your per-sport & female-athlete engines: their SPORT(S) — only sports they actually do (a runner gets runs, a swimmer pool/CSS sets, a lifter gym; NEVER program a session they can't do, e.g. a ride for someone with no bike); SEX; AGE (a teen = technique + no maximal loading; masters = extra recovery); repro-state — if PREGNANT, coach MODERATE / MAINTAIN by RPE + talk test, trimester-adjusted, never max or to-exhaustion (apply your female-athlete pregnancy guidance), otherwise factor menstrual phase; their GOALS; fitness/experience; equipment. Match load to how they're recovering + their weekly frequency/availability; keep ~${DAILY_HORIZON} days populated (never double-book / exceed max-per-day / exceed the HARD weekly training-days cap). Author each ride/run/swim as STRUCTURED steps (warmup/work/cooldown with real targets) so it's followable on their device.
+**WORK FAST — minimize round-trips (this must be quick):** read get_wellness + get_checkins + list_schedule in PARALLEL in one batch; for any gym session look up ALL its moves (warm-up + main + cool-down) in ONE search_exercises call via \`queries=[…]\` — NEVER one exercise at a time. Don't re-read what you already have. Decide fast and create.
 **NAMING + DESCRIPTION: name and describe every session by its PURPOSE + concrete stats the athlete can act on** — the duration, the interval structure, target pace/power/effort, a coaching cue — NOT a vague "easy / hard / Z2 endurance" label (bare intensity words are unhelpful and annoying here). Make each description worth reading, with real substance.
 This pass is ONLY the WORKOUT plan (no activity reviews / meals / mind / separate recovery items — Eat/Mind + standalone recovery blocks are OFF/parked). Recovery guidance rides as TEXT on the workout (its recovery/notes field), NEVER a separate calendar item. It is SILENT (#498): make the changes with the tools but do NOT notify / push — they already got their one check-in ping today; never send a second. If genuinely uncertain, make the sensible conservative choice rather than asking — never push a question. Decide and act. Be concise.`
 }
@@ -3421,11 +3432,13 @@ function sharpenMsg(today) {
 async function runDailyAdapt(user, pass) {
   try {
     const today = await athleteToday(user)
-    // #610 — the coach BUILDS + individualizes the plan (skeleton removed, #516 reverted). It plans the horizon,
-    // then a bounded fill loop tops up any tail still short of the ~2-week window (#439 coverage metric).
+    // #610/#612 — the coach BUILDS + individualizes the plan in ONE pass (skeleton removed #516; multi-pass fill
+    // loop removed #612 — it was spawning up to 5 EXTRA coach runs = minutes wasted). The single pass owns the full
+    // ~2-week horizon (its prompt makes filling to the window end the first job); at most ONE fallback top-up if it
+    // still comes up badly short, never a 5-deep loop.
     const covOf = () => horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON)
     await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()))
-    for (let i = 0; i < 5 && covOf().tail >= 3; i++) await runCoachTask(user, horizonFillMsg(today, covOf()))
+    if (covOf().tail >= 4) await runCoachTask(user, horizonFillMsg(today, covOf())) // single top-up only
     // 2) REVIEWS + 3) ROUND-OUT — their OWN focused passes, ONCE/day (dedup) so we don't re-spawn the coach
     //    for them on both the early AND refine passes.
     user.dailyAdapt = user.dailyAdapt || {}
