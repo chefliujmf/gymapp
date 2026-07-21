@@ -94,6 +94,18 @@ describe('#648 rep scheme by focus — a cyclist gets HEAVY LOW-rep, not 3×10',
     expect(ex[3].reps).toBe(12) // arms accessory unchanged
     expect(ex[0].reps).toBe(10) // warm-up untouched
   })
+  it('#663 a SECOND same-pattern lift is an accessory — a cyclist keeps 12-rep Leg Press after Back Squat', () => {
+    const ex = [
+      { name: 'Barbell Back Squat', section: 'main', mode: 'reps', reps: 5 },  // main squat → in range, unchanged
+      { name: 'Leg Press', section: 'main', mode: 'reps', reps: 12 },          // 2nd squat-pattern = ACCESSORY → keep 12
+      { name: 'Romanian Deadlift', section: 'main', mode: 'reps', reps: 10 },  // main hinge → clamp to 6
+    ]
+    const n = clampMainReps(ex, 'support')
+    expect(n).toBe(1)            // only the RDL clamped
+    expect(ex[0].reps).toBe(5)   // squat unchanged (in range)
+    expect(ex[1].reps).toBe(12)  // leg press accessory kept
+    expect(ex[2].reps).toBe(6)   // RDL clamped
+  })
   it('#649 a bodybuilder (muscle) keeps 10-rep squats (within 6-12), does not clamp', () => {
     const ex = [{ name: 'Back Squat', section: 'main', mode: 'reps', reps: 10 }]
     expect(clampMainReps(ex, 'muscle')).toBe(0)

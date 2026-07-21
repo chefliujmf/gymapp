@@ -79,16 +79,23 @@ export function mainsRepRange(focus) {
   const m = rs && String(rs.mains).match(/(\d+)\s*[-–]\s*(\d+)/)
   return m ? [Number(m[1]), Number(m[2])] : null
 }
-/** Clamp each MAIN compound lift's reps into the focus rep band. Mutates `exercises`, returns the count changed. */
+/** Clamp each MAIN compound lift's reps into the focus rep band. Mutates `exercises`, returns the count changed.
+ *  Only the FIRST exercise of each main pattern (the primary compound for that pattern) is a "main" — a SECOND
+ *  same-pattern move (e.g. Leg Press after Back Squat) is an ACCESSORY and keeps its reps (may run moderate). This
+ *  stops a support cyclist's 12-rep accessory being wrongly clamped to 6 (#663). Arms/core/carry are never mains. */
 export function clampMainReps(exercises, focus) {
   const range = mainsRepRange(focus)
   if (!range) return 0
   const [lo, hi] = range
+  const seenMainPattern = new Set()
   let n = 0
   for (const ex of (exercises || [])) {
     if (!ex || ex.section === 'warmup' || ex.section === 'cooldown') continue
     if (!(ex.mode === 'reps' || ex.reps != null)) continue
-    if (!MAIN_PATTERNS.has(patternFromExercise(ex.name))) continue // only the big compound lifts; accessories keep their reps
+    const pat = patternFromExercise(ex.name)
+    if (!MAIN_PATTERNS.has(pat)) continue          // arms/core/carry/unknown → accessory, keep reps
+    if (seenMainPattern.has(pat)) continue         // 2nd move of the same pattern → accessory, keep reps
+    seenMainPattern.add(pat)
     const r = Number(ex.reps)
     if (!(r > 0)) continue
     if (r > hi) { ex.reps = hi; n++ } else if (r < lo) { ex.reps = lo; n++ }
