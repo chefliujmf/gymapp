@@ -45,7 +45,7 @@ if [ "${DEPLOY_LOCAL:-0}" = "1" ]; then
   write_auth_env "$STAGE_DIR"
   # force-recreate on secret injection so an auth.env-only change actually loads.
   RECREATE=""; [ -n "${AUTH_ENV:-}" ] && RECREATE="--force-recreate"
-  ( cd "$STAGE_DIR" && docker compose up -d --build $RECREATE )
+  ( cd "$STAGE_DIR" && docker compose up -d --build --remove-orphans $RECREATE )
   wait_staging local
 else
   echo ">> syncing dist + server + compose to ${XPS_HOST}:${STAGE_DIR}"
@@ -53,7 +53,7 @@ else
   rsync -az --delete dist/ "${XPS_HOST}:${STAGE_DIR}/dist/"
   rsync -az server/ "${XPS_HOST}:${STAGE_DIR}/server/"
   rsync -az docker-compose.staging.yml "${XPS_HOST}:${STAGE_DIR}/docker-compose.yml"
-  ssh "$XPS_HOST" "cd '$STAGE_DIR' && docker compose up -d --build"
+  ssh "$XPS_HOST" "cd '$STAGE_DIR' && docker compose up -d --build --remove-orphans"
   wait_staging remote
 fi
 echo "OK: QA -> https://jmf-xps-13-9343.tail8ece92.ts.net  (tailnet only)"
