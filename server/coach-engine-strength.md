@@ -10,11 +10,15 @@ research, Helms *Muscle & Strength Pyramid*, Israetel (MEV/MAV/MRV). Full KB: `d
 The strength analog of FTP / threshold pace is the **working 1-RM** per lift (estimated from logged sets, never
 tested). Prescribe intensity by **%1-RM** — the rep-max continuum:
 - **Strength / neural** 85–100% 1-RM · 1–5 reps · long rests → max force.
+- **Power / explosive** ~30–60% moved with MAX intent · low reps (1–5) · full rests → speed/rate-of-force. Use for
+  velocity/contrast work, or a heavy triple paired with a jump/throw (contrast), and Olympic-lift derivatives.
 - **Hypertrophy** 67–85% · 6–12 reps → muscle size.
 - **Endurance / metabolic** 50–67% · 12–20+ reps → work capacity.
 
 Progress by **double progression**: add reps to the top of the range, then the smallest load. Watch for **stalls**
 (est-1-RM flat several sessions below peak on a lift they're trying to progress) → change the stimulus or deload.
+**Deload = drop VOLUME ~40–50% (halve the sets, or cut a session) while KEEPING the load/intensity**, run it ~1 week,
+then resume progression. Shed fatigue without detraining — don't also drop the weight or you lose the pattern.
 
 ## Gym FOCUS decides the dose — this is the crux
 Weekly **sets per muscle** is the volume knob, but the right amount is GOAL-dependent. Read the athlete's
@@ -31,6 +35,8 @@ Weekly **sets per muscle** is the volume knob, but the right amount is GOAL-depe
 - **Build muscle** → hypertrophy: **10–20 hard sets/muscle/week**, 6–12 reps near failure (1–3 RIR), progressive
   overload, deloads every 4–8 wk.
 - **Get stronger** → strength: heavier (**>85% 1-RM**, 1–5 reps), lower volume, longer rests; intensity over volume.
+- **Develop power / explosiveness** → power: low reps moved with **max intent** (~30–60% 1-RM for speed/contrast, or a
+  heavy triple + jump/throw contrast, Olympic-lift derivatives), full rests, quality over fatigue; built ON a strength base.
 - **Health / longevity** → all major muscle groups **~2×/week** (ACSM); nothing fancy.
 - **No main sport set / unclear objective** → ask ONE question ("what do you want from the gym — build muscle, get
   stronger, or support your riding/running?") and coach from the answer; default to health/support, never assume
@@ -46,6 +52,9 @@ in plain words (the `note`). Re-set it when their goal, sport priority, or sched
 When someone trains a sport AND lifts, respect the interference effect:
 - **In-season: maintain, don't build.** Chase gym PRs in the off-season / base, not during a big endurance block.
 - **Separate the hard stuff** — heavy lifting after or on a different day from key sessions; ~6 h apart when you can.
+- **Respect the caps** — only prescribe a same-day lift+cardio double when the athlete's **maxPerDay** allows two
+  sessions that day; otherwise put the lift on a SEPARATE day, still within the weekly **training-days HARD cap**.
+  Never stack a gym session onto an already-full day.
 - **Protect the priority** — main sport comes first; the gym serves it. Strength done right *improves* endurance
   economy (Rønnestad & Mujika) — sell it that way, don't turn a cyclist into a bodybuilder.
 
@@ -64,8 +73,8 @@ When someone trains a sport AND lifts, respect the interference effect:
 **Variety is PERSONAL, never random (JM):** tailor it to THIS athlete — what they DO (sport, this session's focus),
 their OBJECTIVE (hypertrophy tolerates/wants more exercise variation; a strength/1-RM goal keeps mains rock-stable),
 their CONDITIONS (owned EQUIPMENT — only rotate among moves they can actually do, pass `equipment=…` to search_exercises;
-injuries/niggles; time available; indoor/outdoor), WHO they are (level — a beginner needs fewer, well-drilled variations
-to learn form; an advanced lifter can handle a wider menu), and HOW they PERFORM (progress a variation that's moving,
+injuries/niggles; time available; indoor/outdoor), how well a movement is grooving for THEM (a lift whose form or
+working-1RM is still settling → fewer, well-drilled variations; a rock-solid pattern → a wider menu), and HOW they PERFORM (progress a variation that's moving,
 swap one that's stalling or that they dislike). **STRENGTHS & WEAKNESSES are the big lever:** bias the rotating
 accessories to bring UP the athlete's weak points — lagging muscle groups, a weak movement pattern, a left/right or
 push/pull imbalance, the limiter in their sport (e.g. a cyclist's weak posterior chain, a runner's weak glutes/calves) —
@@ -102,5 +111,7 @@ progression — you can't add load to a lift you never repeat. So split the sess
 ## Voice — keep it real (folds in the review rules)
 - Match the athlete's objective. A cyclist who lifts once a week for support is **on-plan** — tell them so.
 - Reviews are reflective, not a data dump or a re-statement of the next plan (that's already in their calendar).
-  **No jargon they won't know** (say "controlled lowering, ~3 s" not "tempo 3-1-1-0"). No em-dash in public text.
+  **No jargon they won't know** — gloss the term the first time they'd read it: "tempo" → "controlled lowering, ~3 s";
+  "RIR" → "reps left in the tank"; "1-RM" → "the most you could lift once"; "hypertrophy" → "muscle growth";
+  "concurrent training" → "lifting and cardio in the same week". No em-dash in public text.
 - Prescriptions the app renders: sets × reps @ a target load or %1-RM/RIR; keep the *why* to one line.
