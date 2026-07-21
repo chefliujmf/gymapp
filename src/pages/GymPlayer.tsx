@@ -174,7 +174,10 @@ export default function GymPlayer() {
   const isManual = cur?.kind === 'set'
   const elapsed = paused ? pausedAt / 1000 : (now - segStart) / 1000
   const remaining = cur && !isManual ? Math.max(0, (cur as { duration: number }).duration - elapsed) : 0
-  const upNext = (() => { for (let j = idx + 1; j < steps.length; j++) { const s = steps[j]; if (s.kind === 'timed' || s.kind === 'set') return s.ex } return null })()
+  // #641 — "Up next" must point at the next DIFFERENT exercise, not this exercise's own next set
+  // (mid-sets it showed the same name as "Up next", which read as a bug).
+  const curExNoNow = cur?.kind === 'set' ? cur.exNo : cur?.kind === 'timed' ? cur.exNo : cur?.kind === 'rest' ? cur.nextNo : 0
+  const upNext = (() => { for (let j = idx + 1; j < steps.length; j++) { const s = steps[j]; if ((s.kind === 'timed' || s.kind === 'set') && s.exNo !== curExNoNow) return s.ex } return null })()
 
   function jump(to: number) { setIdx(to); setSegStart(Date.now()); setPaused(false); setPausedAt(0) }
   function advance() { if (idx + 1 < steps.length) jump(idx + 1); else finish() }
@@ -383,7 +386,7 @@ export default function GymPlayer() {
         <button className="gp2-finish" onClick={() => { if (confirm('Finish & log this workout now?')) finish() }}>Finish</button>
       </div>
 
-      <div className={'gp2-stage' + (cur.kind === 'rest' ? ' gp2-stage--rest' : '')}
+      <div className={'gp2-stage' + (cur.kind === 'rest' ? ' gp2-stage--rest' : '') + (gridShow ? ' gp2-stage--tight' : '')}
         onTouchStart={(e) => { touchX.current = e.touches[0].clientX }}
         onTouchEnd={(e) => { const dx = e.changedTouches[0].clientX - touchX.current; if (Math.abs(dx) > 60) swipeEx(dx < 0 ? 1 : -1) }}>
         {showVid && gEx
@@ -417,9 +420,10 @@ export default function GymPlayer() {
               return (
                 <div key={sn} className={'gp2-grow' + (isCur ? ' cur' : '') + (e?.done ? ' done' : '') + (e?.warmup ? ' warm' : '')}>
                   <button type="button" className={'gp2-gn' + (e?.warmup ? ' gp2-gn--w' : '')} onClick={() => logSet(gExIndex, sn, { warmup: !e?.warmup })} title={e?.warmup ? 'Warm-up set — tap to make it a working set' : 'Tap to mark a warm-up set'}>{e?.warmup ? 'W' : sn}</button>
-                  {gBW && e?.weight == null
-                    ? <span className="gp2-gbw">bodyweight</span>
-                    : <><label className="gp2-gf"><input type="number" inputMode="decimal" value={e?.weight ?? ''} placeholder={gSuggestW != null ? String(gSuggestW) : ''} onChange={(ev) => logSet(gExIndex, sn, { weight: ev.target.value === '' ? undefined : Number(ev.target.value) })} /><button type="button" className="gp2-gu gp2-gu--btn" onClick={toggleUnit} title="kg / lb">{unit}</button></label><span className="gp2-gx">×</span></>}
+                  {/* #639 — ALWAYS allow logging a weight: a "bodyweight"-tagged move (goblet squat, weighted
+                      push-up, vest pull-up) is often loaded. Show the input with a "BW" placeholder instead of
+                      locking it to a static label, so you can track the weight you actually used. */}
+                  <><label className="gp2-gf"><input type="number" inputMode="decimal" value={e?.weight ?? ''} placeholder={gBW ? 'BW' : (gSuggestW != null ? String(gSuggestW) : '')} onChange={(ev) => logSet(gExIndex, sn, { weight: ev.target.value === '' ? undefined : Number(ev.target.value) })} /><button type="button" className="gp2-gu gp2-gu--btn" onClick={toggleUnit} title="kg / lb">{unit}</button></label><span className="gp2-gx">×</span></>
                   <label className="gp2-gf"><input type="number" inputMode="numeric" value={e?.reps ?? ''} placeholder={gTargetReps ? String(gTargetReps) : ''} onChange={(ev) => logSet(gExIndex, sn, { reps: ev.target.value === '' ? undefined : Number(ev.target.value) })} /><span className="gp2-gu">reps</span></label>
                   <button className={'gp2-gck' + (e?.done ? ' on' : '')} onClick={() => markSetDone(gExIndex, sn, gEx.name, !e?.done)} title={e?.done ? 'Logged — tap to undo' : 'Log this set'}>✓</button>
                 </div>
@@ -455,10 +459,12 @@ export default function GymPlayer() {
         </div>
       )}
 
+      {/* #640 — the big arrows now jump whole EXERCISE ↔ exercise (skip an exercise you're not doing);
+          set-level nav stays on the grid's "Skip"/"Log Set" and the rest banner's "skip →". */}
       <div className="gp2-controls">
-        <button className="gp2-ctrl" onClick={() => jump(Math.max(0, idx - 1))}>‹‹</button>
+        <button className="gp2-ctrl" onClick={() => swipeEx(-1)} title="Previous exercise">‹‹</button>
         {!isManual && <button className="gp2-ctrl gp2-ctrl--play" onClick={() => { if (paused) { setSegStart(Date.now() - pausedAt); setPaused(false) } else { setPausedAt(now - segStart); setPaused(true) } }}>{paused ? '▶' : '❚❚'}</button>}
-        <button className="gp2-ctrl" onClick={advance}>››</button>
+        <button className="gp2-ctrl" onClick={() => swipeEx(1)} title="Skip exercise">››</button>
       </div>
     </div>
   )
