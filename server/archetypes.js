@@ -98,10 +98,14 @@ export function keyFromTitle(title = '') {
 export function assignArchetypeBlock({ sport = 'ride', qualityDays = 0, easyDays = 0, ceiling = 'vo2', recentKeys = [], weeks = 2 } = {}) {
   const out = []
   const used = [...recentKeys]
+  const usedCues = []
   for (let w = 0; w < weeks; w++) {
-    const quality = assignQuality({ sport, count: qualityDays, ceiling, recentKeys: used, weekIndex: w })
+    // quality: rely on the carried-forward `used` for cross-week rotation (NOT weekIndex — in a small pool the
+    // weekIndex offset fought the freshness skip and re-picked last week's archetype, e.g. Strides two weeks running).
+    const quality = assignQuality({ sport, count: qualityDays, ceiling, recentKeys: used, weekIndex: 0 })
     quality.forEach((a) => used.push(a.key)) // carry forward so next week avoids these too
-    const easy = assignEasy({ sport, count: easyDays, recentCues: [], weekIndex: w })
+    const easy = assignEasy({ sport, count: easyDays, recentCues: usedCues, weekIndex: 0 })
+    easy.forEach((c) => usedCues.push(c)) // same for easy cues — genuinely different week to week
     out.push({ weekIndex: w, quality, easy })
   }
   return out
