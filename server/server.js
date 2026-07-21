@@ -2886,7 +2886,9 @@ function searchExercises(q, limit, equipment) {
       .sort((a, b) => (b.ov - a.ov) || (rankExerciseHit(b.e, n) - rankExerciseHit(a.e, n)))
       .map((x) => x.e)
   }
-  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, equipment: e.equipment, image: e.image, video: e.video }))
+  // #664 — surface the derived TYPE hints so the coach copies them onto the plan instead of guessing (timed vs reps,
+  // each-side, loadable). A plank comes back timed:true, a single-arm row eachSide:true, a goblet squat loaded:true.
+  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, equipment: e.equipment, image: e.image, video: e.video, ...(e.timed ? { timed: true, seconds: e.seconds || 40 } : {}), ...(e.eachSide ? { eachSide: true } : {}), ...(e.loaded ? { loaded: true } : {}) }))
 }
 // Recipe + mind/movement catalogs — let the coach PICK real Platyplus content by id
 // (for fuel meals + meditation/yoga/pilates sessions), mirroring the exercise catalog.
