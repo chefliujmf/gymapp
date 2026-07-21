@@ -39,11 +39,12 @@ export function honestTitle(effCeil, sport, date) {
  * budget is already spent, forces this session to easy (endurance) and relabels an over-stated title honestly.
  * @returns {{changed:boolean, clamped:number, effCeil:number, overBudget:boolean}}
  */
+const ENDURANCE_SPORTS = new Set(['ride', 'run', 'swim']) // #620 — swim carries the same %threshold-pace segments, so it's clamped too
 export function enforceShape(shape, plan, siblings = []) {
-  if (!plan || (plan.sport !== 'ride' && plan.sport !== 'run')) return { changed: false, clamped: 0, effCeil: 0, overBudget: false }
+  if (!plan || !ENDURANCE_SPORTS.has(plan.sport)) return { changed: false, clamped: 0, effCeil: 0, overBudget: false }
   const ceilPct = CEILING_PCT[shape.intensityCeiling] || CEILING_PCT.vo2
   const maxModerate = (shape.qualityDays || 0) + (shape.moderateDays || 0)
-  const otherModerate = siblings.filter((p) => p && p.id !== plan.id && (p.sport === 'ride' || p.sport === 'run') && isModerate(p)).length
+  const otherModerate = siblings.filter((p) => p && p.id !== plan.id && ENDURANCE_SPORTS.has(p.sport) && isModerate(p)).length
   const thisIsModerate = isModerate(plan)
   const overBudget = thisIsModerate && otherModerate >= maxModerate
   const effCeil = overBudget ? CEILING_PCT.endurance : ceilPct

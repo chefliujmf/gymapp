@@ -89,6 +89,18 @@ describe('#620 shape-enforce — the rest of the athlete matrix (commercializati
     sweep(shape, week)
     expect(topOf(week[0])).toBeLessThan(115) // never a maximal VO2 session for a teen
   })
+
+  it('SWIMMER, pregnant → a hard CSS swim is clamped to the tempo ceiling (swim is enforced too, not skipped)', () => {
+    const shape = weekShape({ pregnant: true, trimester: 1, goalFocus: 'consistency', trainingDays: 4 })
+    const week = [
+      { id: 'a', date: '2026-07-21', sport: 'swim', title: 'CSS Intervals 8×100', ...seg(100) },
+      { id: 'b', date: '2026-07-23', sport: 'swim', title: 'Threshold Swim', ...seg(98) },
+      { id: 'c', date: '2026-07-25', sport: 'swim', title: 'Easy Technique Swim', ...seg(65) },
+    ]
+    const out = sweep(shape, week)
+    for (const p of out) expect(topOf(p)).toBeLessThanOrEqual(85) // no swim segment above the tempo ceiling
+    expect(out.filter((p) => isModerate(p)).length).toBeLessThanOrEqual(1) // ≤1 moderate swim/week
+  })
 })
 
 describe('#620 honestTitle — varied easy relabels, honest downgrades', () => {
