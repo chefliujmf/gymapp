@@ -75,11 +75,12 @@ function cyclePhaseOf(start?: string, len = 28): { day: number; phase: string } 
   return { day, phase }
 }
 function CycleFields({ user, refresh }: { user: User; refresh: () => Promise<void> }) {
-  const info = (user.info || {}) as { cycleStart?: string; cycleLength?: number; pregnant?: boolean }
+  const info = (user.info || {}) as { cycleStart?: string; cycleLength?: number; pregnant?: boolean; postpartumSince?: string }
   const [start, setStart] = useState(info.cycleStart || '')
   const [len, setLen] = useState<number>(info.cycleLength || 28)
+  const [ppSince, setPpSince] = useState(info.postpartumSince || '') // #631 — recent birth date → graded return
   const [saved, setSaved] = useState(false)
-  const save = (patch: { cycleStart?: string; cycleLength?: number; pregnant?: boolean }) => { authApi.saveProfile(patch).then(() => { refresh().catch(() => {}); setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {}) }
+  const save = (patch: { cycleStart?: string; cycleLength?: number; pregnant?: boolean; postpartumSince?: string }) => { authApi.saveProfile(patch).then(() => { refresh().catch(() => {}); setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {}) }
   const pregnant = !!info.pregnant
   const ph = cyclePhaseOf(start, len)
   // #422 — if intervals wellness already gives us the phase (she logs her period there), SHOW it and
@@ -100,6 +101,10 @@ function CycleFields({ user, refresh }: { user: User; refresh: () => Promise<voi
           {icuPhase && (
             <p className="meta" style={{ margin: '2px 2px 8px', color: 'var(--accent)' }}>Read from intervals.icu: currently <b>{icuPhase}</b>{user.cyclePhaseAt ? ` (as of ${user.cyclePhaseAt})` : ''}. Your coach adapts load, recovery &amp; fuelling automatically — no need to enter anything below.</p>
           )}
+          {/* #631 — postpartum: a graded return (maintenance → build over ~12 weeks), pelvic-floor first. Private. */}
+          <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3, margin: '0 2px 8px' }}>Recently gave birth? <span style={{ fontWeight: 400 }}>(date — your coach ramps you back gradually, pelvic-floor first; clear it once you're back to full training)</span>
+            <input type="date" className="search" style={{ maxWidth: 160 }} value={ppSince} onChange={(e) => { setPpSince(e.target.value); save({ postpartumSince: e.target.value }) }} />
+          </label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>Last period start
               <input type="date" className="search" style={{ maxWidth: 160 }} value={start} onChange={(e) => { setStart(e.target.value); save({ cycleStart: e.target.value }) }} />

@@ -26,6 +26,18 @@ describe('weekShape — #613 the code-decided week structure (single source of t
     expect(s.intensityCeiling).toBe('endurance')
   })
 
+  it('POSTPARTUM: a graded return, NOT a snap back to a build (#631)', () => {
+    const early = weekShape({ postpartumWeeks: 3, goalFocus: ['performance'], goalNotes: 'get my fitness back fast', trainingDays: 4 })
+    expect(early.loadBand).toBe('maintenance')
+    expect(early.qualityDays).toBe(0) // first ~6 weeks: no structured quality even on an ambitious goal
+    expect(HARD).not.toContain(early.intensityCeiling)
+    const mid = weekShape({ postpartumWeeks: 8, goalFocus: ['performance'], goalNotes: 'race', trainingDays: 5 })
+    expect(mid.qualityDays).toBe(1) // weeks 6–12: one quality day back
+    expect(mid.intensityCeiling).not.toBe('vo2')
+    // past 12 weeks, symptom-free → normal build resumes
+    expect(weekShape({ postpartumWeeks: 20, goalFocus: ['performance'], goalNotes: 'race', trainingDays: 5 }).qualityDays).toBe(2)
+  })
+
   it('BUILD goal (wants faster/FTP) → 2 quality days, build band', () => {
     const s = weekShape({ goalFocus: ['performance'], goalNotes: 'raise my FTP and get faster', ctl: 60, trainingDays: 5 })
     expect(s.loadBand).toBe('build')

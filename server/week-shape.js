@@ -35,12 +35,25 @@ export function isMaintenance(shape) { return !!shape && shape.loadBand === 'mai
  */
 export function weekShape(p = {}) {
   const {
-    pregnant = false, trimester = null,
+    pregnant = false, trimester = null, postpartumWeeks = null,
     cyclePhase = null, cycleFresh = false,
     goalFocus = [], goalNotes = '',
     trainingDays = 0, ageYears = null,
   } = p // NB: no `ctl` — fitness is NOT a classification here; it drives VOLUME via weeklyLoadBudget, not the week's shape
   const cap = (q) => (trainingDays > 0 ? Math.min(q, Math.max(1, trainingDays - 1)) : q) // never spend the whole week on quality
+
+  // ── POSTPARTUM: a GRADED return, not a snap back to a build (#631). Pregnancy=false must NOT jump straight to 2 VO2
+  //    days the week after birth — the deconditioned / pelvic-floor-vulnerable window needs a ramp. ────────────────
+  if (!pregnant && postpartumWeeks != null && postpartumWeeks >= 0 && postpartumWeeks < 12) {
+    const early = postpartumWeeks < 6
+    return {
+      loadBand: early ? 'maintenance' : 'flat',
+      qualityDays: early ? 0 : 1,
+      moderateDays: early ? 1 : 0,
+      intensityCeiling: early ? 'endurance' : 'sweetspot',
+      rationale: `POSTPARTUM (~${Math.round(postpartumWeeks)} wk) — a GRADED RETURN, not a build. ${early ? 'First ~6 weeks: rebuild base + PELVIC FLOOR + deep core, mostly EASY, no impact/rush, cleared by her clinician first (esp. after a C-section).' : 'Weeks 6–12: gradually reintroduce ONE quality day + impact as pelvic floor + core allow.'} Progress by how she FEELS + clinician guidance; watch for leaking, heaviness/pressure, or abdominal doming and back off if they appear. Ramp to a full build only after ~12 weeks and symptom-free.`,
+    }
+  }
 
   // ── PREGNANCY overrides everything: MAINTAIN, never build. ──────────────────────────────────────────
   if (pregnant) {
