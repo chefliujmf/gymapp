@@ -13,7 +13,7 @@ export interface GymExLog { name: string; exId?: string; sets: SetEntry[] }
 // by-exercise sets/PR cards + the feedback stack. Same #286 language as ActivityDetail (which is
 // device rides/runs); gym's "analysis" is the sets/PRs, not a power timeline. Used by the GymPlayer
 // done screen AND the revisit path (PostWorkout /feedback/:id).
-export default function GymSummary({ minutes, exercises, review, note, bestE1rm, feedbackId, feedbackDate, altFeedbackIds, planId, activityId, avgHr }: {
+export default function GymSummary({ minutes, exercises, review, note, bestE1rm, feedbackId, feedbackDate, altFeedbackIds, planId, activityId, avgHr, awaitReview = false }: {
   minutes: number
   exercises: GymExLog[]
   review?: CoachReview | null
@@ -25,6 +25,7 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
   planId?: string          // #NNN — source links (matches ride/run): the coach plan this fulfilled
   activityId?: string      // …and the device activity (HR + time), if a watch recorded it
   avgHr?: number           // device average HR, shown as a chip
+  awaitReview?: boolean    // #JM — a JUST-completed session: wait for the async coach review, don't flash "Retry"
 }) {
   const rows = exercises.map((ex) => {
     const ss = (ex.sets || []).filter((s) => s?.done && !s?.warmup && (s.reps || 0) > 0) // #591 warm-ups excluded from working stats
@@ -60,7 +61,7 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
     <>
       {/* ONE coach block at the TOP (matches ride/run ActivityDetail #503): verdict → your feedback → source links. */}
       <CoachVerdict review={review} note={note} />
-      <ActivityFeedback id={feedbackId} altIds={altFeedbackIds} sport="gym" date={feedbackDate} reviewShownAbove={!!review} />
+      <ActivityFeedback id={feedbackId} altIds={altFeedbackIds} sport="gym" date={feedbackDate} reviewShownAbove={!!review} awaitReview={awaitReview} />
       {(planId || activityId) && (
         <div className="done-links">
           {planId && <Link className="done-link done-link--map" to={`/coach/${planId}`}>📋 Planned workout →</Link>}

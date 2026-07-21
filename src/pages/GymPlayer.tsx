@@ -328,7 +328,7 @@ export default function GymPlayer() {
             <h1 style={{ margin: '6px 0 2px' }}>Workout complete</h1>
             <p style={{ color: 'var(--text-dim,#888)', margin: 0 }}>{w.title}</p>
           </div>
-          {(() => { const fk = gymFeedbackKeys({ date: localISO(), workoutId: w.workoutId }); return <GymSummary minutes={finalMin} exercises={exLogs} review={review} bestE1rm={e1rmMap} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={localISO()} /> })()}
+          {(() => { const fk = gymFeedbackKeys({ date: localISO(), workoutId: w.workoutId }); return <GymSummary minutes={finalMin} exercises={exLogs} review={review} bestE1rm={e1rmMap} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={localISO()} awaitReview /> })()}
           <button className="btn" style={{ marginTop: 18 }} onClick={() => navigate('/progress')}>View progress</button>
           <button className="btn btn--ghost" onClick={() => navigate('/plan')}>Done</button>
         </div>
