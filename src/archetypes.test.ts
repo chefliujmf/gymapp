@@ -66,6 +66,13 @@ describe('#620 assignArchetypeBlock — the block emitted into the prompt', () =
     for (const wk of b as any[]) for (const a of wk.quality) expect(['sweetspot', 'threshold', 'overunder', 'hills', 'mpace', 'vo2', 'fartlek']).not.toContain(a.key)
   })
 
+  it('even a SMALL pool (tempo-ceiling: strides/tempo) alternates week to week — not the same archetype twice', () => {
+    const b = assignArchetypeBlock({ sport: 'run', qualityDays: 1, easyDays: 3, ceiling: 'tempo', weeks: 2 })
+    expect(b[0].quality[0].key).not.toBe(b[1].quality[0].key) // strides wk1, tempo wk2 (was strides+strides before the fix)
+    // easy cues also differ across the two weeks
+    expect(b[0].easy.join()).not.toBe(b[1].easy.join())
+  })
+
   it('a swimmer gets SWIM archetypes (not silently substituted with a run/ride)', () => {
     const b = assignArchetypeBlock({ sport: 'swim', qualityDays: 2, easyDays: 2, ceiling: 'threshold', weeks: 1 })
     for (const a of b[0].quality as any[]) expect(ARCHETYPE_KEYS.swim).toContain(a.key)

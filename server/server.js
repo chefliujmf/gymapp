@@ -3562,8 +3562,11 @@ async function runDailyAdapt(user, pass) {
       // recovery guidance now rides on the workout's own `recovery` text (set during the workout adapt above), so there's
       // nothing for a separate pass to do. (roundOutMsg kept in case it returns for the roadmap.)
     }
-    await reenforceShapeAll(user) // #618/#620 — sweep ALL future ride/run through the shape clamp (incl. stale ones the coach didn't touch), then re-push clamped ones to intervals
   } catch (e) { console.error(`[daily-adapt ${pass}] ${user.username || ''} ${e.message || e}`) }
+  // #620 — the shape ENFORCEMENT runs in its OWN try, ALWAYS, even if an LLM pass above threw (a coach-service
+  // hiccup must NEVER leave stale sweet-spot / over-budget sessions on a maintenance athlete's plan). This is the
+  // safety net; it's pure + fast (no LLM) so it's cheap to guarantee.
+  try { await reenforceShapeAll(user) } catch (e) { console.error(`[reenforce ${user.username || ''}] ${e.message || e}`) }
 }
 // One scheduler tick: fire the due pass for each coached athlete. Called every ~30 min.
 // #463 — DAILY REMINDER phone push (opt-in via pushPrefs.reminders, default OFF). Once/day in the athlete's
