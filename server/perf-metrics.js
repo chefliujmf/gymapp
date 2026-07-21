@@ -49,9 +49,26 @@ export function efSummary(points) {
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
 export function athleteProfile(inp) {
   const cyc = inp.sport === 'cycling'
+  const swim = inp.sport === 'swimming'
   const tteMin = inp.tte != null ? inp.tte / 60 : null
   const shortTte = tteMin != null && tteMin < 25, longTte = tteMin != null && tteMin >= 40
   const bigReserve = inp.reserveKj != null && inp.reserveBig != null && inp.reserveKj >= inp.reserveBig
+  // #629 — SWIM branch: prescribe off CSS (threshold), swim TTE (how long they hold CSS), D′ (sprint reserve, m) and
+  // SWOLF (efficiency, the swim analogue of EF). Previously a swim call fell into the RUN branch → "threshold RUNS".
+  if (swim) {
+    const highSwolf = inp.swolf != null && inp.swolf >= 40 // efficiency headroom (rough; varies by pool + height)
+    let type = 'Balanced swimmer', badge = 'building', summary = 'Balanced — room to grow how long you hold CSS + your efficiency.'
+    if (shortTte) { type = 'Sprint-biased'; badge = 'building endurance'; summary = 'Good speed, short CSS staying power — you can hit CSS but not hold it yet.' }
+    else if (longTte) { type = bigReserve ? 'All-round swimmer' : 'Distance engine'; badge = bigReserve ? 'well-rounded' : 'raise the ceiling'; summary = bigReserve ? 'Strong CSS endurance AND a sprint.' : 'Strong CSS endurance, modest sprint — the top end has room.' }
+    const focus = []
+    if (shortTte) focus.push('Extensive CSS sets (3–4×300–400 @ ~CSS, short rest) → grow how long you hold CSS.')
+    else if (longTte) focus.push('Raise the ceiling: 8–10×100 a touch faster than CSS, short rest.')
+    else focus.push('Alternate CSS-endurance sets (broken 400s) with short 25/50 speed.')
+    if (!bigReserve) focus.push('Weekly speed set (10–12×25 fast, full rest) to hold/grow D′.')
+    focus.push(highSwolf ? 'Technique/efficiency focus — drill-heavy sets to bring SWOLF down (fewer strokes, tighter time).' : 'Hold efficiency (SWOLF) as speed rises — distance-per-stroke + stroke-rate work.')
+    focus.push('Mostly the efforts ARE the data — CSS/D′/TTE sharpen as you swim; a short 3-min or 400 m test only if the fit goes stale.')
+    return { type, badge, summary, tteMin, focus }
+  }
   let type = 'Balanced', badge = 'building', summary = ''
   if (shortTte) { type = 'Punchy threshold'; badge = 'building endurance'; summary = `Good ${cyc ? 'power' : 'speed'}, short staying power — can HIT threshold but not HOLD it yet.` }
   else if (longTte) { type = bigReserve ? 'All-rounder' : 'Diesel engine'; badge = bigReserve ? 'well-rounded' : 'raise the ceiling'; summary = bigReserve ? 'Strong fatigue resistance AND a healthy kick.' : `Strong fatigue resistance, modest kick — ${cyc ? 'FTP' : 'threshold'} has room to climb.` }

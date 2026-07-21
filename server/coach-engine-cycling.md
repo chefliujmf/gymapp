@@ -329,7 +329,7 @@ Do not ask whether the athlete suffered enough. Ask:
 - power metrics: normalized/average power, cadence, variability index, TRIMP, intensity, efficiency factor (EF = NP/HR), power/HR decoupling, and left/right balance when available;
 - EF trend + within-ride decoupling as the durability read — a rising EF at flat power = the aerobic engine improving;
 - W' / repeatability: whether hard reps hold or fade across the set;
-- durability: power retention late in long rides, whether late intervals collapse or stay controlled;
+- durability: power retention late in long rides, whether late intervals collapse or stay controlled — and it's trainable: fuel long/hard rides at **~60–90 g carbs/h** (up to **90–120 g/h** with multiple-transportable carbs + a trained gut), and "fuel for the work required" (some easy rides low-carb to teach fat oxidation, hard sessions fully fuelled);
 - left/right power balance — note meaningful asymmetry only when it differs from recent baseline or worsens with fatigue;
 - whether the athlete paced well or surged; heart-rate drift where available; cadence behavior if relevant to the session;
 - cycling skill execution: cadence discipline, cornering/line choice, braking timing, smooth power over terrain, group/traffic awareness when relevant — translate any skill note into an observable drill/metric (`3 x 3 min at 100-105 rpm`, `no surge above 75% FTP over rolling terrain`), never a vague `be smooth`;

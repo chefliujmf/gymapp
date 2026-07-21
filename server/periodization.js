@@ -13,9 +13,13 @@ import { weeklyLoadBudget } from './readiness.js'
 function blockCycle(b, easeTop = false) {
   const peak = easeTop ? (b ? b.build : null) : (b ? b.hard : null) // masters/teen: don't stack a true overload week
   const recMult = easeTop ? 0.6 : 0.7                               // ...and take a deeper recovery week
+  // #629 — the two build weeks must ACTUALLY RAMP (not the same target twice — that was the flat-progression bug the
+  // audit caught). Week 1 sits at the build floor; week 2 climbs toward the peak; then the peak; then recovery.
+  const build1 = b ? b.build : null
+  const build2 = b ? Math.round((b.build + (easeTop ? b.build : b.hard)) / 2) : null // midway build→peak (or flat if eased)
   return [
-    { phase: 'build',    target: b ? b.build : null,                       note: 'Build week 1 of the block — PROGRESS vs last week: add a little (a rep, a few minutes, or a touch more time at target) to the key session. Not a flat repeat.' },
-    { phase: 'build',    target: b ? b.build : null,                       note: 'Build week 2 — push the ramp a little further; this is the biggest ordinary week before the recovery week.' },
+    { phase: 'build',    target: build1,                                   note: 'Build week 1 of the block — PROGRESS vs last week: add a little (a rep, a few minutes, or a touch more time at target) to the key session. Not a flat repeat.' },
+    { phase: 'build',    target: build2,                                   note: `Build week 2 — RAMP UP from week 1${build1 && build2 ? ` (~${build1}→${build2} TSS)` : ''}: this is the biggest ordinary week before the recovery week, so add a bit more than last week.` },
     { phase: 'peak',     target: peak,                                     note: `Peak / overload week — the hardest week of the block${easeTop ? ', kept SUBMAXIMAL here (younger / masters athlete — no true overload; ease the very top end)' : ' (a productive peak dips Form into the green, about −10 to −20)'}. Then next week recovers.` },
     { phase: 'recovery', target: b ? Math.round(b.sustainable * recMult) : null, note: `RECOVERY week — pull volume back about ${Math.round((1 - recMult) * 100)}%, keep intensity light and short. Do NOT progress load; let the block’s fitness consolidate. This is where the adaptation banks.` },
   ]
