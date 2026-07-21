@@ -99,9 +99,10 @@ describe('#652 thresholdSizing — interval rep length from the athlete TTE', ()
     const diesel = thresholdSizing(40 * 60, 'ride') // TTE 40 min
     const punchy = thresholdSizing(20 * 60, 'ride') // TTE 20 min
     expect(diesel).toMatch(/TTE . 40 min/)
-    expect(diesel).toMatch(/20 min each/)   // ~half of 40
-    expect(punchy).toMatch(/10 min each/)   // ~half of 20
-    expect(diesel).toMatch(/do NOT default to a fixed 3.15/)
+    expect(diesel).toMatch(/~20 min/)   // ~half of 40
+    expect(punchy).toMatch(/~10 min/)   // ~half of 20
+    expect(diesel).toMatch(/PROGRESSIVELY EXTEND|RAISE your TTE/)
+    expect(diesel).toMatch(/LIMITER/)
   })
   it('returns null when there is no usable TTE (archetype default stands)', () => {
     expect(thresholdSizing(0)).toBeNull()
