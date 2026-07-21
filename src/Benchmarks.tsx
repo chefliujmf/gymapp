@@ -569,7 +569,7 @@ export function BenchmarksCard({ showTrendsLink = false, only, profile }: { show
             ))}
           </div>
           {prof.reads.map((m) => <div key={m.k} className="prof__m"><div className="prof__mk"><span className="k">{m.k}</span><b>{m.v}</b></div><div className="r">{m.r}</div></div>)}
-          <div className="prof__foc"><h4>🎯 What your coach will work on</h4>{pregnant ? <ul><li>Health &amp; function first — a strong, comfortable pregnancy, adapted by trimester. These metrics are a baseline to return to after, not targets now.</li></ul> : <ul>{prof.focus.map((f, i) => <li key={i}>{f}</li>)}</ul>}</div>
+          <div className="prof__foc"><h4>🎯 {pregnant ? 'Your focus right now' : 'What would move your numbers most'}</h4>{pregnant ? <ul><li>Health &amp; function first — a strong, comfortable pregnancy, adapted by trimester. These metrics are a baseline to return to after, not targets now.</li></ul> : <ul>{prof.focus.map((f, i) => <li key={i}>{f}</li>)}</ul>}</div>
         </div>
       )}
       {showTrendsLink && <Link to="/stats" className="bm-trends">See trends &amp; race predictions in Stats ›</Link>}
