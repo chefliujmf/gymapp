@@ -1783,10 +1783,20 @@ async function reenforceShapeAll(user) {
     enforceGymRepScheme(user, p); enforceTeenGym(user, p)
     if (JSON.stringify((p.exercises || []).map((e) => e && e.reps)) !== ex0) gymTouched++
   }
-  if (touched.length || gymTouched) {
+  // #671 SAFETY — PRIVACY sweep over EVERY future plan's text. The #650 save-time scrub only catches NEW writes; a
+  // pregnant athlete's STALE plans still leaked "pregnant/trimester" into descriptions that sync to intervals→Strava.
+  // Scrub them here too, and re-push the changed ride/run/swim so the PUBLIC copy is clean, not just the DB.
+  const privacyTouched = []
+  for (const p of (user.plans || []).filter((x) => x && x.date >= today)) {
+    let ch = false
+    for (const k of ['title', 'notes', 'objective', 'success']) { if (typeof p[k] === 'string') { const v = scrubPrivate(p[k]); if (v !== p[k]) { p[k] = v; ch = true } } }
+    if (ch) { privacyTouched.push(p); if (!touched.includes(p) && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim')) touched.push(p) }
+  }
+  if (touched.length || gymTouched || privacyTouched.length) {
+    if (privacyTouched.length) console.log(`[privacy-sweep] ${user.username || ''} — scrubbed ${privacyTouched.length} plan(s)`)
     save(store)
-    // B2 (#620) — a clamped session must also re-push to intervals, else the sweet-spot/threshold version stays on
-    // the athlete's Garmin/intervals calendar even though Platyplus relabeled it. prod-only (pushPlanToIcu no-ops on QA).
+    // B2 (#620) — a clamped/scrubbed session must also re-push to intervals, else the old version stays on the
+    // athlete's Garmin/intervals calendar even though Platyplus fixed it. prod-only (pushPlanToIcu no-ops on QA).
     for (const p of touched.slice(0, 20)) { try { await pushPlanToIcu(user, p) } catch (e) { console.error('[reenforce-push] ' + (e.message || e)) } }
   }
 }
