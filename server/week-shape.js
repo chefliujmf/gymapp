@@ -25,7 +25,6 @@ export function isMaintenance(shape) { return !!shape && shape.loadBand === 'mai
  *   cycleFresh      boolean       (cyclePhase is recent enough to trust)
  *   goalFocus       string[]      (info.goals.focus)
  *   goalNotes       string
- *   ctl             number|null   (fitness — for the TSS band)
  *   trainingDays    number        (weekly HARD cap)
  *   ageYears        number|null
  * @returns {{ loadBand, qualityDays, moderateDays, intensityCeiling, rationale }}
@@ -39,8 +38,8 @@ export function weekShape(p = {}) {
     pregnant = false, trimester = null,
     cyclePhase = null, cycleFresh = false,
     goalFocus = [], goalNotes = '',
-    ctl = null, trainingDays = 0, ageYears = null,
-  } = p
+    trainingDays = 0, ageYears = null,
+  } = p // NB: no `ctl` — fitness is NOT a classification here; it drives VOLUME via weeklyLoadBudget, not the week's shape
   const cap = (q) => (trainingDays > 0 ? Math.min(q, Math.max(1, trainingDays - 1)) : q) // never spend the whole week on quality
 
   // ── PREGNANCY overrides everything: MAINTAIN, never build. ──────────────────────────────────────────
@@ -66,11 +65,11 @@ export function weekShape(p = {}) {
   if (wantsMaintain && !wantsBuild) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'sweetspot' } // consistency: 1 quality, keep fit
   else { loadBand = 'build'; qualityDays = 2; intensityCeiling = 'vo2' } // default/build: 2 quality
 
-  // ── fitness (CTL) adjustment — a genuine BEGINNER (low chronic load) must NOT be handed an advanced athlete's
-  //    2 × VO2 build. Cap to ONE quality day + ease the ceiling off VO2, so they build gradually (as their CTL
-  //    rises they graduate back to the full build). Only fires on a KNOWN-low CTL; unknown (null) stays default. ──
-  const beginner = typeof ctl === 'number' && ctl > 0 && ctl < 25
-  if (beginner && loadBand === 'build') { qualityDays = Math.min(qualityDays, 1); if (intensityCeiling === 'vo2') intensityCeiling = 'threshold' }
+  // NO fitness "beginner/advanced" CLASSIFICATION (JM 2026-07-20): don't bucket athletes. Everything is already
+  // RELATIVE to their own numbers — zones are % of THEIR threshold (88% of a low FTP is appropriately easy), and
+  // weekly VOLUME scales from THEIR CTL (weeklyLoadBudget). The plan's job is simply to improve those numbers; the
+  // right progression is IMPLICIT in training relative to where they actually are. So quality-day COUNT is goal-driven,
+  // intensity is relative, volume is CTL-driven — a lower-fitness athlete just has lower absolute numbers, not a label.
 
   // ── age adjustments ──────────────────────────────────────────────────────────────────────────────
   if (teen) { qualityDays = Math.min(qualityDays, 1); intensityCeiling = 'threshold' } // technique-first, submaximal, NO maximal loading
@@ -89,6 +88,6 @@ export function weekShape(p = {}) {
     qualityDays,
     moderateDays: 0,
     intensityCeiling,
-    rationale: `${bandWord} week — ${qualityDays} structured quality day${qualityDays !== 1 ? 's' : ''} (ceiling: ${intensityCeiling}), never back-to-back, easy days between; everything else easy/endurance + their strength.${beginner ? ' BEGINNER (low fitness): build gradually — 1 quality day, no VO2 grinding yet.' : ''}${teen ? ' TEEN: technique-first, submaximal — no maximal/1-RM loading, no VO2 grinding.' : ''}${masters ? ' MASTERS: extra recovery, ease the very top end.' : ''}`,
+    rationale: `${bandWord} week — ${qualityDays} structured quality day${qualityDays !== 1 ? 's' : ''} (ceiling: ${intensityCeiling}), never back-to-back, easy days between; everything else easy/endurance + their strength. All intensities are % of THEIR own threshold and volume scales to THEIR fitness — the plan works to improve those numbers.${teen ? ' TEEN: technique-first, submaximal — no maximal/1-RM loading, no VO2 grinding.' : ''}${masters ? ' MASTERS: extra recovery, ease the very top end.' : ''}`,
   }
 }
