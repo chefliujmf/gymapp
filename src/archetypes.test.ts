@@ -28,8 +28,8 @@ describe('#620 code-driven variety — assignQuality', () => {
   })
 
   it('rotates week to week (weekIndex changes the assignment)', () => {
-    const w0 = assignQuality({ sport: 'ride', count: 2, ceiling: 'vo2', weekIndex: 0 }).map((x) => x.key).join()
-    const w1 = assignQuality({ sport: 'ride', count: 2, ceiling: 'vo2', weekIndex: 1 }).map((x) => x.key).join()
+    const w0 = assignQuality({ sport: 'ride', count: 2, ceiling: 'vo2', weekIndex: 0 }).map((x: any) => x.key).join()
+    const w1 = assignQuality({ sport: 'ride', count: 2, ceiling: 'vo2', weekIndex: 1 }).map((x: any) => x.key).join()
     expect(w0).not.toBe(w1)
   })
 
