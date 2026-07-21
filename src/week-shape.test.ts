@@ -44,13 +44,14 @@ describe('weekShape — #613 the code-decided week structure (single source of t
     expect(s.intensityCeiling).not.toBe('vo2')
   })
 
-  it('BEGINNER (low CTL) with a build goal is NOT handed 2 × VO2 — 1 quality, ceiling off VO2', () => {
-    const beginner = weekShape({ goalFocus: ['performance'], goalNotes: 'get faster and race', ctl: 12, trainingDays: 5 })
-    const advanced = weekShape({ goalFocus: ['performance'], goalNotes: 'get faster and race', ctl: 70, trainingDays: 5 })
-    expect(advanced.qualityDays).toBe(2)
-    expect(advanced.intensityCeiling).toBe('vo2')
-    expect(beginner.qualityDays).toBe(1) // build gradually
-    expect(beginner.intensityCeiling).not.toBe('vo2') // no VO2 grinding for a beginner
+  it('does NOT bucket by fitness — CTL never changes the week SHAPE (intensity is % of THEIR threshold, volume scales elsewhere)', () => {
+    // JM 2026-07-20: forget "beginner vs advanced". A low-fitness athlete just has lower absolute numbers; the shape
+    // (quality-day count + relative ceiling) is goal-driven and identical — the plan works to improve their numbers.
+    const low = weekShape({ goalFocus: ['performance'], goalNotes: 'get faster and race', ctl: 12, trainingDays: 5 })
+    const high = weekShape({ goalFocus: ['performance'], goalNotes: 'get faster and race', ctl: 70, trainingDays: 5 })
+    expect(low.qualityDays).toBe(high.qualityDays)
+    expect(low.intensityCeiling).toBe(high.intensityCeiling)
+    expect(high.qualityDays).toBe(2) // a build goal is 2 quality regardless of fitness level
   })
 
   it('MASTERS (55+) build: ease the very top end (no VO2 ceiling)', () => {
