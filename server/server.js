@@ -1710,10 +1710,10 @@ function athleteWeekShape(user) {
 // logic (ceiling clamp + moderate-day count + honest relabel) lives in the unit-tested server/shape-enforce.js; here we
 // just compute the shape + the same-week ride/run siblings, run it, and log. Mutates plan.segments + plan.title.
 function enforceShapeIntensity(user, plan) {
-  if (!plan || (plan.sport !== 'ride' && plan.sport !== 'run')) return
+  if (!plan || (plan.sport !== 'ride' && plan.sport !== 'run' && plan.sport !== 'swim')) return
   const shape = athleteWeekShape(user)
   const mon = isoMonday(plan.date), sun = addDays(mon, 6)
-  const siblings = (user.plans || []).filter((p) => p && p.date >= mon && p.date <= sun && (p.sport === 'ride' || p.sport === 'run'))
+  const siblings = (user.plans || []).filter((p) => p && p.date >= mon && p.date <= sun && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim'))
   const r = enforceShape(shape, plan, siblings)
   if (r.changed || r.clamped) console.log(`[shape-enforce] ${user.username || ''} "${plan.title}" clamp=${r.clamped} over=${r.overBudget} → ${r.effCeil}% (${shape.loadBand}, ceil ${shape.intensityCeiling})`)
 }
@@ -1723,7 +1723,7 @@ function enforceShapeIntensity(user, plan) {
 // plans through the clamp (date order, so the quality-day count builds correctly) at the end of every adapt.
 async function reenforceShapeAll(user) {
   const today = localTodayInTz(user && user.icuTimezone)
-  const future = (user.plans || []).filter((p) => p && p.date >= today && (p.sport === 'ride' || p.sport === 'run')).sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  const future = (user.plans || []).filter((p) => p && p.date >= today && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim')).sort((a, b) => String(a.date).localeCompare(String(b.date)))
   const touched = []
   for (const p of future) { const t0 = p.title, seg0 = JSON.stringify(p.segments || []); enforceShapeIntensity(user, p); if (p.title !== t0 || JSON.stringify(p.segments || []) !== seg0) touched.push(p) }
   if (touched.length) {

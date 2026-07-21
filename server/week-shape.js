@@ -39,7 +39,7 @@ export function weekShape(p = {}) {
     pregnant = false, trimester = null,
     cyclePhase = null, cycleFresh = false,
     goalFocus = [], goalNotes = '',
-    trainingDays = 0, ageYears = null,
+    ctl = null, trainingDays = 0, ageYears = null,
   } = p
   const cap = (q) => (trainingDays > 0 ? Math.min(q, Math.max(1, trainingDays - 1)) : q) // never spend the whole week on quality
 
@@ -66,6 +66,12 @@ export function weekShape(p = {}) {
   if (wantsMaintain && !wantsBuild) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'sweetspot' } // consistency: 1 quality, keep fit
   else { loadBand = 'build'; qualityDays = 2; intensityCeiling = 'vo2' } // default/build: 2 quality
 
+  // ── fitness (CTL) adjustment — a genuine BEGINNER (low chronic load) must NOT be handed an advanced athlete's
+  //    2 × VO2 build. Cap to ONE quality day + ease the ceiling off VO2, so they build gradually (as their CTL
+  //    rises they graduate back to the full build). Only fires on a KNOWN-low CTL; unknown (null) stays default. ──
+  const beginner = typeof ctl === 'number' && ctl > 0 && ctl < 25
+  if (beginner && loadBand === 'build') { qualityDays = Math.min(qualityDays, 1); if (intensityCeiling === 'vo2') intensityCeiling = 'threshold' }
+
   // ── age adjustments ──────────────────────────────────────────────────────────────────────────────
   if (teen) { qualityDays = Math.min(qualityDays, 1); intensityCeiling = 'threshold' } // technique-first, submaximal, NO maximal loading
   if (masters && loadBand === 'build') { intensityCeiling = 'threshold' } // more recovery, ease the very top end
@@ -83,6 +89,6 @@ export function weekShape(p = {}) {
     qualityDays,
     moderateDays: 0,
     intensityCeiling,
-    rationale: `${bandWord} week — ${qualityDays} structured quality day${qualityDays !== 1 ? 's' : ''} (ceiling: ${intensityCeiling}), never back-to-back, easy days between; everything else easy/endurance + their strength.${teen ? ' TEEN: technique-first, submaximal — no maximal/1-RM loading, no VO2 grinding.' : ''}${masters ? ' MASTERS: extra recovery, ease the very top end.' : ''}`,
+    rationale: `${bandWord} week — ${qualityDays} structured quality day${qualityDays !== 1 ? 's' : ''} (ceiling: ${intensityCeiling}), never back-to-back, easy days between; everything else easy/endurance + their strength.${beginner ? ' BEGINNER (low fitness): build gradually — 1 quality day, no VO2 grinding yet.' : ''}${teen ? ' TEEN: technique-first, submaximal — no maximal/1-RM loading, no VO2 grinding.' : ''}${masters ? ' MASTERS: extra recovery, ease the very top end.' : ''}`,
   }
 }
