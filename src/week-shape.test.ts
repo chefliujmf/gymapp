@@ -44,6 +44,26 @@ describe('weekShape — #613 the code-decided week structure (single source of t
     expect(s.intensityCeiling).not.toBe('vo2')
   })
 
+  it('BEGINNER (low CTL) with a build goal is NOT handed 2 × VO2 — 1 quality, ceiling off VO2', () => {
+    const beginner = weekShape({ goalFocus: ['performance'], goalNotes: 'get faster and race', ctl: 12, trainingDays: 5 })
+    const advanced = weekShape({ goalFocus: ['performance'], goalNotes: 'get faster and race', ctl: 70, trainingDays: 5 })
+    expect(advanced.qualityDays).toBe(2)
+    expect(advanced.intensityCeiling).toBe('vo2')
+    expect(beginner.qualityDays).toBe(1) // build gradually
+    expect(beginner.intensityCeiling).not.toBe('vo2') // no VO2 grinding for a beginner
+  })
+
+  it('MASTERS (55+) build: ease the very top end (no VO2 ceiling)', () => {
+    const s = weekShape({ goalFocus: ['performance'], goalNotes: 'race', ctl: 60, ageYears: 60, trainingDays: 6 })
+    expect(s.loadBand).toBe('build')
+    expect(s.intensityCeiling).not.toBe('vo2')
+  })
+
+  it('CYCLING FEMALE, non-pregnant, fresh follicular phase → normal build (not eased)', () => {
+    const s = weekShape({ goalFocus: ['performance'], goalNotes: 'race', ctl: 60, trainingDays: 6, cyclePhase: 'follicular', cycleFresh: true })
+    expect(s.qualityDays).toBe(2) // follicular is a GO phase — not down-weighted like luteal/PMS
+  })
+
   it('weekly training-days cap limits quality days', () => {
     const s = weekShape({ goalFocus: ['performance'], goalNotes: 'race', trainingDays: 2 })
     expect(s.qualityDays).toBeLessThanOrEqual(1) // trainingDays 2 → at most 1 quality (leave an easy day)
