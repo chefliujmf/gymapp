@@ -73,6 +73,13 @@ block** (start ~last 20–40 min, grow toward continuous M for a marathon build)
 keep the front easy. Fuel it: carbs **~60–90 g/h** once you're past ~60–75 min (trained guts + marathon-pace work can push **90–120 g/h** with multiple-transportable carbs — glucose+fructose); practice race-day fluids/gels on the long run so nothing
 is new on race day.
 
+## STRENGTH & PLYOMETRICS FOR RUNNERS (economy is trainable off the road)
+Some of the strongest evidence in the sport: **heavy strength (squats/deadlifts, low reps, high intent) + plyometrics
+(hops, bounds, skips)** improve running ECONOMY and top-end without adding running volume — a real lever, not optional
+extra. Program **1–2 short sessions/week**, kept away from the key run (concurrent-training interference — the strength
+engine handles the timing), lighter in a race week. Especially valuable for masters (counters power loss) and any
+runner whose economy/durability is the limiter. Don't let it fatigue the key quality run — support, not compromise.
+
 ## Beyond threshold — CS / D' / EF / TTE (read the athlete as a PROFILE)
 
 Platyplus shows these on the running stats page + an athlete-PROFILE synthesis card. Coach from the profile, not one number:
