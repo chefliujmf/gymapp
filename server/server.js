@@ -30,6 +30,7 @@ import { readiness as computeReadiness, baselines as wellnessBaselines, forecast
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
 import { assignArchetypeBlock, keyFromTitle } from './archetypes.js' // #620 — code-decided VARIETY (assign archetypes, don't hope the LLM varies)
 import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, unit-tested clamp that ENFORCES the week shape on a plan
+import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -1903,10 +1904,24 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const pf = pfKey && Array.isArray(pfAll[pfKey]) ? pfAll[pfKey].filter((f) => f && !/mostly the efforts ARE the data/i.test(f)) : []
     if (pf.length) tail += `\n\n# DEVELOPMENT PRIORITIES — computed from THIS athlete's OWN numbers (TTE / W′ / EF); this is the exact focus they see on their Stats page, so the PLAN must reflect it. Spend the week's quality-day budget on THESE, and choose the # THIS BLOCK'S VARIETY archetypes to serve them (don't schedule generic quality that ignores their limiter):\n- ${pf.slice(0, 4).join('\n- ')}`
   }
-  // #375/#613 — the TSS BAND (numbers only). The QUALITY-DAY COUNT comes from THE WEEK'S SHAPE above, NOT here.
+  // #626 — PERIODIZATION: where this week sits in the meso-cycle, so the coach PROGRESSES load week-over-week
+  // (build → build → peak → recovery) + TAPERS into an A-race. Skip for maintenance (pregnancy) — not a build.
+  let per = null
+  if (shape.loadBand !== 'maintenance') {
+    const thisMon = isoMonday(todayIso)
+    const anchorMon = isoMonday(user.onboardedAt ? new Date(user.onboardedAt).toISOString().slice(0, 10) : '2024-01-01')
+    const weeksSinceAnchor = Math.max(0, Math.floor((Date.parse(thisMon) - Date.parse(anchorMon)) / (7 * 86400000)))
+    const rd = user.info && user.info.raceDate
+    const weeksToRace = (rd && /^\d{4}-\d{2}-\d{2}$/.test(rd) && rd >= todayIso) ? Math.floor((Date.parse(isoMonday(rd)) - Date.parse(thisMon)) / (7 * 86400000)) : null
+    const ageYears = (user.info && user.info.dob) ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
+    per = periodizationPhase({ ctl: user.ctl, weeksSinceAnchor, weeksToRace, ageYears })
+    const raceBit = weeksToRace != null ? ` Their A-race${user.info && user.info.raceName ? ` (${user.info.raceName})` : ''} is ~${weeksToRace} week${weeksToRace !== 1 ? 's' : ''} out.` : ''
+    tail += `\n\n# THIS BLOCK'S PROGRESSION — the plan is PERIODIZED, NOT the same every week: this is a **${per.phase.toUpperCase()} week**${per.weekInCycle ? ` (week ${per.weekInCycle} of a 4-week build→peak→recovery block)` : ''}.${raceBit} ${per.note}${per.target ? ` Aim ≈ **${per.target} TSS** this week.` : ''} PROGRESS week-over-week — compare to last week (get_session_history / list_schedule) and nudge the build weeks UP, pull the recovery week DOWN; never ship an identical week.`
+  }
+  // #375/#613/#626 — the TSS target now comes from THE PROGRESSION above (periodized), not a flat band.
   const budget = weeklyLoadBudget(user.ctl)
   tail += shape.loadBand === 'build'
-    ? `\n\n# WEEKLY LOAD BUDGET (numbers for a BUILD week): a productive build creates real stimulus — aim so Form dips into the GREEN zone (~−10 to −20). ${budget ? `Their CTL≈${user.ctl} → ~${budget.build}-${budget.hard} TSS (flat ≈ ${budget.sustainable}, overload cap ≈ ${budget.cap}).` : `Read CTL with get_wellness: flat ≈ CTL×7, build ≈ CTL×9-11.`} Avoid BOTH: too easy (Form stuck grey >−8 = junk) and too hard (past the cap / Form below ~−25 without a NAMED overload block + recovery week). After planning, sum the week's TSS and check the Form forecast lands green. Multi-week block? use set_load_plan.`
+    ? `\n\n# WEEKLY LOAD BUDGET: aim for THIS week's periodized target${per && per.target ? ` (≈${per.target} TSS, the ${per.phase} week — see # THIS BLOCK'S PROGRESSION)` : ''}. A productive BUILD or PEAK week dips Form into the GREEN zone (~−10 to −20); a RECOVERY week should let Form rise back toward grey — that's correct, not junk. ${budget ? `Reference band (CTL≈${user.ctl}): flat ≈ ${budget.sustainable}, build ≈ ${budget.build}, peak ≈ ${budget.hard}, cap ≈ ${budget.cap} TSS.` : `Read CTL with get_wellness: flat ≈ CTL×7, build ≈ CTL×9-11.`} After planning, sum the week's TSS and check the Form forecast matches the phase.`
     : `\n\n# WEEKLY LOAD BUDGET — this is a ${shape.loadBand.toUpperCase()} week, NOT a build: hold load around ${budget ? `~${budget.sustainable} TSS (CTL≈${user.ctl}×7)` : 'CTL×7 (flat)'}. Do NOT chase Form into the −10..−20 build zone and do NOT add quality beyond the shape above — a mid/grey Form on an easy/maintenance week is CORRECT, not junk. Keep easy days genuinely easy.`
   // #341 — weather-aware coaching for OUTDOOR sessions.
   p += `\n\n# WEATHER (outdoor sessions): before planning or confirming an outdoor run/ride — especially in heat or cold — call get_weather (date = the session day). In the heat, DERATE: judge easy days by feel/HR (pace/power hold at a higher cost), trim quality targets, add hydration/electrolyte + fueling notes, prefer the cool hour or shade, and move a hard session indoors when it's extreme. Cold → longer warm-up + layers; strong wind → ride to effort not speed; likely rain → grip/visibility or indoors. Fold it into the plan/notes, don't just report it. If it returns needsLocation, ask their city once.`
