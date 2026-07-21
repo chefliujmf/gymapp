@@ -9,6 +9,10 @@ import { assignEasy } from './archetypes.js'
 
 export const QUALITY_TITLE = /sweet.?spot|threshold|\bvo.?2\b|over.?under|\bvo2max\b/i // titles claiming a hard session
 const TEMPO_TITLE = /\btempo\b/i
+// #632 — SURGE / variable-intensity sessions (fartlek, surges, pickups, hill reps) spike intensity above their
+// average, so they're inappropriate on a MAINTENANCE week (pregnancy) even when the average sits under the ceiling.
+// A maintenance athlete's fartlek/surge title is relabeled to a STEADY session (JM: "no fartlek for pregnancy").
+const SURGE_TITLE = /fartlek|surge|pick.?up|hill.?rep|\bsprint/i
 
 const topOf = (segs) => Math.max(0, ...(segs || []).map((s) => Math.max(Number(s.powerStart) || 0, Number(s.powerEnd) || 0)))
 // a session counts as "moderate/quality" if its EFFORT is ≥ tempo OR its TITLE claims quality/tempo (the coach
@@ -53,12 +57,14 @@ export function enforceShape(shape, plan, siblings = []) {
     if ((Number(s.powerStart) || 0) > effCeil) { s.powerStart = effCeil; clamped++ }
     if ((Number(s.powerEnd) || 0) > effCeil) { s.powerEnd = effCeil; clamped++ }
   }
-  const titleLies = shape.loadBand === 'maintenance' && QUALITY_TITLE.test(plan.title || '')
+  // a maintenance athlete (pregnancy) must not carry a quality-claiming OR a surge/fartlek title (#632).
+  const titleLies = shape.loadBand === 'maintenance' && (QUALITY_TITLE.test(plan.title || '') || SURGE_TITLE.test(plan.title || ''))
   // an OVER-BUDGET tempo/quality session with NO segments still carries a "Tempo Run" title that must become easy —
   // clamped=0 (nothing to clamp) so without this the excess tempo title survives. This is the core "all tempo" fix.
   const overBudgetTitle = overBudget && (QUALITY_TITLE.test(plan.title || '') || TEMPO_TITLE.test(plan.title || ''))
   let changed = clamped > 0
   if (titleLies || overBudgetTitle || (clamped && QUALITY_TITLE.test(plan.title || ''))) {
+    // a maintenance surge title becomes a STEADY session at the same ceiling (Tempo/Easy), not a relabel that keeps the surge
     const t = honestTitle(effCeil, plan.sport, plan.date)
     if (t !== plan.title) { plan.title = t; changed = true }
   }
