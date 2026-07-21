@@ -354,7 +354,6 @@ export default function GymPlayer() {
   // Suggested weight (PLACEHOLDER only — never overrides what you type/clear): from your est 1RM for the
   // target reps, else the last weight logged this exercise. (#295 carry-forward.)
   const gSuggestW = gE1rm && gTargetReps ? roundLoad(weightForReps(gE1rm, gTargetReps)) : (gExIndex >= 0 ? log[gExIndex]?.find((s) => s?.weight)?.weight : undefined)
-  const gDoneCount = gExIndex >= 0 ? (log[gExIndex] || []).filter((s) => s?.done).length : 0
   // Bodyweight (#591 JM): reps-with-no-weight exercises (push-ups, pull-ups). Weight stays OPTIONAL — a set
   // logs done on reps alone — but the field reads "BW" so it doesn't look like a required number. A LOADED
   // variation (coach-planned weight, or a weight you typed) still shows the number so you can log it.
@@ -439,12 +438,17 @@ export default function GymPlayer() {
             {cur.kind === 'set' && <button className="gp2-grow gp2-addset" onClick={addSet} title="Add a set">＋ add set</button>}
           </div>
           {pr && <div className="gp2-pr">🎉 New 1RM! {pr.name} · {Math.round(toDispN(pr.v)!)}{unit}</div>}
-          {cur.kind === 'set' && (
+          {cur.kind === 'set' && (() => {
+            // #662 (JM) — the PRIMARY button logs the set (green ✓) + starts the rest timer (advance → the rest step).
+            // On the LAST set of the LAST exercise there's no next → it becomes FINISH (log this set + end the workout).
+            const isFinalSet = !steps.slice(idx + 1).some((s) => s.kind === 'set')
+            return (
             <div className="gp2-gridcta">
-              <button className="gp2-skip" onClick={advance} title="Skip to next">{gDoneCount >= gSetCount ? 'Next →' : 'Skip'}</button>
-              <button className="gp2-done" onClick={() => { markSetDone(gExIndex, gCurSetNo, gEx.name, true); advance() }}>Log Set {gCurSetNo}</button>
+              <button className="gp2-skip" onClick={advance} title={isFinalSet ? 'Finish without logging this set' : 'Skip this set'}>Skip</button>
+              <button className="gp2-done" onClick={() => { markSetDone(gExIndex, gCurSetNo, gEx.name, true); if (isFinalSet) finish(); else advance() }}>{isFinalSet ? '✓ Finish' : `Log set ${gCurSetNo} → rest`}</button>
             </div>
-          )}
+            )
+          })()}
         </div>
       ) : (
         <div className={'gp2-timer' + (sec <= 3 && showVid ? ' gp2-timer--pulse' : '') + (cur.kind === 'rest' ? ' gp2-timer--rest' : '')}>{clock(remaining)}</div>
