@@ -105,6 +105,7 @@ As estrogen and progesterone decline, the old "lower the intensity, eat less" in
 ### Intensity — RPE and the TALK TEST, never heart rate
 - **HR is unreliable in pregnancy** (resting HR climbs ~10-20 bpm, blood volume is up) — do NOT prescribe or read HR zones. Use **RPE** + the **talk test**: moderate = she can still hold a conversation.
 - **MAINTENANCE only — a hard ceiling the server enforces.** NO structured quality (no sweet-spot, no threshold, no VO2), at most ONE moderate/tempo session in the week, and everything else easy. Ceiling = **tempo in T1/T2, easy endurance only in T3.** Even if she was trained for vigorous intervals, NEVER program them — the server hard-clamps any sweet-spot/threshold/VO2 down to tempo/easy, so it will strip them anyway. Gauge effort by RPE + the talk test.
+- **STEADY efforts only — NO fartlek, surges, pick-ups, hill reps, or sprints.** Variable-intensity work spikes effort above its average, which is exactly what pregnancy avoids. The one allowed moderate session is a STEADY continuous tempo by RPE + talk test, not a surging one. (The server also relabels a maintenance athlete's fartlek/surge title to a steady session.)
 - No training to exhaustion, no max/near-max efforts, no competition/PR attempts.
 
 ### Universal safety rules (all trimesters)

@@ -103,6 +103,13 @@ describe('#620 shape-enforce — the rest of the athlete matrix (commercializati
     expect(out.filter((p) => isModerate(p)).length).toBe(2) // 3 hard across 3 sports → capped at the 2-quality budget
   })
 
+  it('PREGNANT: a fartlek/surge run is relabeled to steady (no surges in maintenance, #632)', () => {
+    const shape = weekShape({ pregnant: true, trimester: 1, goalFocus: 'consistency', trainingDays: 4 })
+    const week = [{ id: 'a', date: '2026-08-04', sport: 'run', title: 'Fartlek Run', ...seg(80) }]
+    const out = sweep(shape, week)
+    expect(/fartlek|surge|pick.?up/i.test(out[0].title)).toBe(false) // no fartlek/surge title survives on a maintenance week
+  })
+
   it('SWIMMER, pregnant → a hard CSS swim is clamped to the tempo ceiling (swim is enforced too, not skipped)', () => {
     const shape = weekShape({ pregnant: true, trimester: 1, goalFocus: 'consistency', trainingDays: 4 })
     const week = [
