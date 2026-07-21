@@ -134,6 +134,13 @@ export default function GymPlayer() {
   // kg/lbs from the saved units preference; toggleable live during the workout.
   const units = (useLiveQuery(() => getSetting('units')) as string | undefined) ?? 'metric'
   const unit = units === 'imperial' ? 'lb' : 'kg'
+  // #646 — weight is stored canonically in KG. The in-workout grid must DISPLAY it in the chosen unit and
+  // convert what you type back to kg, else the kg/lb toggle just relabels without converting (felt broken).
+  const imp = units === 'imperial'
+  const LB = 2.2046226
+  const toDispN = (kg?: number) => kg == null ? undefined : (imp ? Math.round(kg * LB * 10) / 10 : kg)
+  const toDisp = (kg?: number) => { const v = toDispN(kg); return v == null ? '' : String(v) }
+  const fromDisp = (v: number) => imp ? v / LB : v
   const stillsPref = (useLiveQuery(() => getSetting('exerciseStills')) as string | undefined) === '1'
   // In-workout override (#53): flip image/video on the fly without leaving the player.
   const [stillsOverride, setStillsOverride] = useState<boolean | null>(null)
@@ -280,7 +287,7 @@ export default function GymPlayer() {
             const est = ex.mode === 'reps' ? e1rmFor(ex.name) : undefined
             const sug = est ? roundLoad(weightForReps(est.e1rm, ex.reps || 10)) : null
             const lastSets = (log[i] || []).filter((s) => (s.reps || 0) > 0)
-            const lastStr = lastSets.length ? lastSets.slice(0, 3).map((s) => `${s.weight ? s.weight + '×' : 'bodyweight ×'}${s.reps}`).join(' · ') : null
+            const lastStr = lastSets.length ? lastSets.slice(0, 3).map((s) => `${s.weight ? toDisp(s.weight) + '×' : 'bodyweight ×'}${s.reps}`).join(' · ') : null
             return (
             <div key={i} className="card" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px' }}>
               <div className="thumb" style={{ width: 42, height: 42, flex: 'none' }}>{ex.image ? <img src={ex.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : '🏋️'}</div>
@@ -289,8 +296,8 @@ export default function GymPlayer() {
                 <div className="meta">{ex.mode === 'reps' ? `${ex.sets}×${ex.reps}` : `${ex.seconds}s`}{ex.eachSide ? ' each side' : ''} · ~{Math.max(1, Math.round(estSec(ex) / 60))} min{ex.tempo ? <span className="tl-tempo"> · tempo {ex.tempo}</span> : ''}</div>
                 {(sug || est || lastStr) && (
                   <div className="gp-ins">
-                    {sug ? <span className="gp-pill gp-pill--sug">suggested <b>{sug} kg</b></span> : ex.mode === 'reps' ? <span className="gp-pill">log a weight to get a target</span> : null}
-                    {est ? <span className="gp-pill">est 1RM <b>{Math.round(est.e1rm)} kg</b></span> : null}
+                    {sug ? <span className="gp-pill gp-pill--sug">suggested <b>{toDispN(sug)} {unit}</b></span> : ex.mode === 'reps' ? <span className="gp-pill">log a weight to get a target</span> : null}
+                    {est ? <span className="gp-pill">est 1RM <b>{Math.round(toDispN(est.e1rm)!)} {unit}</b></span> : null}
                     {lastStr ? <span className="gp-pill">last <b>{lastStr}</b></span> : null}
                   </div>
                 )}
@@ -401,7 +408,7 @@ export default function GymPlayer() {
 
       <div className="gp2-info">
         {group && <div className="gp2-group">{group}</div>}
-        <h2 className="gp2-name">{name}{gE1rm ? <span className="gp2-1rm">1RM {Math.round(gE1rm)}{unit}</span> : null}</h2>
+        <h2 className="gp2-name">{name}{gE1rm ? <span className="gp2-1rm">1RM {Math.round(toDispN(gE1rm)!)}{unit}</span> : null}</h2>
         <div className="gp2-sub">{sub}</div>
         {/* #255 — the per-exercise coach insight DURING the set (was only in the pre-workout preview). */}
         {gEx?.tip && (gridShow || cur.kind === 'timed') && <div className="gp2-tip">💡 {gEx.tip}</div>}
@@ -423,7 +430,7 @@ export default function GymPlayer() {
                   {/* #639 — ALWAYS allow logging a weight: a "bodyweight"-tagged move (goblet squat, weighted
                       push-up, vest pull-up) is often loaded. Show the input with a "BW" placeholder instead of
                       locking it to a static label, so you can track the weight you actually used. */}
-                  <><label className="gp2-gf"><input type="number" inputMode="decimal" value={e?.weight ?? ''} placeholder={gBW ? 'BW' : (gSuggestW != null ? String(gSuggestW) : '')} onChange={(ev) => logSet(gExIndex, sn, { weight: ev.target.value === '' ? undefined : Number(ev.target.value) })} /><button type="button" className="gp2-gu gp2-gu--btn" onClick={toggleUnit} title="kg / lb">{unit}</button></label><span className="gp2-gx">×</span></>
+                  <><label className="gp2-gf"><input type="number" inputMode="decimal" value={toDisp(e?.weight)} placeholder={gBW ? 'BW' : (gSuggestW != null ? toDisp(gSuggestW) : '')} onChange={(ev) => logSet(gExIndex, sn, { weight: ev.target.value === '' ? undefined : fromDisp(Number(ev.target.value)) })} /><button type="button" className="gp2-gu gp2-gu--btn" onClick={toggleUnit} title="Tap to switch kg / lb">{unit}</button></label><span className="gp2-gx">×</span></>
                   <label className="gp2-gf"><input type="number" inputMode="numeric" value={e?.reps ?? ''} placeholder={gTargetReps ? String(gTargetReps) : ''} onChange={(ev) => logSet(gExIndex, sn, { reps: ev.target.value === '' ? undefined : Number(ev.target.value) })} /><span className="gp2-gu">reps</span></label>
                   <button className={'gp2-gck' + (e?.done ? ' on' : '')} onClick={() => markSetDone(gExIndex, sn, gEx.name, !e?.done)} title={e?.done ? 'Logged — tap to undo' : 'Log this set'}>✓</button>
                 </div>
@@ -431,7 +438,7 @@ export default function GymPlayer() {
             })}
             {cur.kind === 'set' && <button className="gp2-grow gp2-addset" onClick={addSet} title="Add a set">＋ add set</button>}
           </div>
-          {pr && <div className="gp2-pr">🎉 New 1RM! {pr.name} · {pr.v}{unit}</div>}
+          {pr && <div className="gp2-pr">🎉 New 1RM! {pr.name} · {Math.round(toDispN(pr.v)!)}{unit}</div>}
           {cur.kind === 'set' && (
             <div className="gp2-gridcta">
               <button className="gp2-skip" onClick={advance} title="Skip to next">{gDoneCount >= gSetCount ? 'Next →' : 'Skip'}</button>
