@@ -22,6 +22,25 @@ test guide → the **🧪 Test guide** section below.
 
 ## 🔨 / ⬜ Open queue
 
+**★ 2026-07-21 JM feedback batch (day-view + gym + feedback UX — surfaced while testing; ADDRESS next pass):**
+
+680. ⬜ **RE-AUDIT the whole gym + feedback + coach-review process again (JM 2026-07-21).** JM wants a fresh end-to-end audit of the whole flow — too many issues surfacing. Do a full UX + coach-output audit of: gym completion → titles → coach review "next" → feedback capture/edit/dismiss → the day-view extras. Ties #665.
+
+679. ⬜ **"got asked for feedback AGAIN" on a COMPLETED gym (JM 2026-07-21, PROD screenshot).** The "1 session needs your feedback / Review →" banner still shows for the ✓Completed/Done gym. The #661 fix (exclude gym from the intervals-based nag) is on QA, NOT prod — but VERIFY it fully resolves this (the completed gym should never nag). Confirm on QA then promote. Ties #661.
+
+678. ⬜ **Editing SETS — no way to DISMISS/cancel (JM 2026-07-21).** Same as #677 for the set editor: no cancel, changes can't be discarded. Add a cancel/back that discards edits. **Route:** GymSetEditor.tsx / the set-edit UI.
+
+677. ⬜ **Editing "how it went" feedback — can't DISMISS; Save re-triggers a coach review → LLM overuse (JM 2026-07-21).** When JM edits already-saved feedback, there's no cancel — he must click Save, which re-fires a coach review every time. A user could spam that = wasted LLM $. Fix: a CANCEL/dismiss that discards edits without saving; and Save should NOT re-trigger a coach review if the feedback is unchanged (or debounce/gate re-reviews). Ties [[platyplus-coach-token-thrift]]. **Route:** ActivityFeedback.tsx (save/edit/cancel + review-retrigger gate).
+
+676. ⬜ **Coach review "next" STILL names today's / next gym (JM 2026-07-21) — #625 regression.** The activity review's Next section again mentions the upcoming gym/workouts instead of the OBJECTIVE only. #625 was supposed to fix this (Next = objective, not the calendar). Re-verify the reviewMsg + save_coach_review guidance actually holds on a real review. Ties #625.
+
+675. ⬜ **Gym plan TITLES repeat / generic across days (JM 2026-07-21, QA: "on 27 and on Aug 3, same title, generic").** Coach-built gym sessions get repeated/generic titles (e.g. "Full-Body Strength A/B") — no title VARIETY like the endurance archetypes give. Give gym sessions distinct, descriptive titles per session (movement/focus of the day), not a generic repeat. Ties #620 variety (gym analogue), #658 sport-emphasis. **Route:** gym engine title guidance (create_workout / coach-engine-strength.md / a gym archetype-title layer).
+
+674. ⬜ **Gym completed-activity TITLE "(windy — gym instead of the ride)" — "no no no" (JM 2026-07-21).** The parenthetical reason-in-the-title reads badly. A session title should be clean + about the session ("Cyclist Strength"), never the circumstance ("windy — gym instead of the ride"). (This one was MY manual swap title, but the rule applies to the coach too.) Ties [[platyplus-coach-public-text-voice]]. **Route:** fix JM's plan title + the title-voice rule.
+
+673. ⬜ **REMOVE the "✓ 1 logged today — see history →" line from the Day view (JM 2026-07-21, emphatic "NEVER ASKED THAT").** JM never asked for this line on the day view — remove it. **Route:** Today.tsx day view (the logged-today summary line).
+
+
 **★ 2026-07-21 GYM PLAYER pass (JM tested his windy-day gym-swap live on prod, screenshots).** Data-modelling + player-UX cluster. #638-#641 fixed in `GymPlayer.tsx`/`styles.css` (dev, pending QA sign-off); #642-#644 open.
 
 646. 🧪 **Can't switch kg↔lb DURING a workout (JM 2026-07-21).** The in-workout set grid stored + displayed weight in raw KG and never converted — tapping the unit chip only relabeled "kg"→"lb" without converting the number, so it felt broken. Now weight is canonical kg but DISPLAYS in the chosen unit and converts what you type back (toDisp/fromDisp, like the post-workout editor). Also converted the 1RM chip, PR toast, and the pre-workout preview pills (suggested / est 1RM / last) + made the toggle tooltip explicit ("Tap to switch kg / lb"). **Route:** GymPlayer.tsx. ✅ built (dev).
