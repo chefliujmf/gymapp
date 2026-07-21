@@ -31,6 +31,7 @@ import { weekShape } from './week-shape.js' // #613/#615 — code-decided week s
 import { assignArchetypeBlock, keyFromTitle } from './archetypes.js' // #620 — code-decided VARIETY (assign archetypes, don't hope the LLM varies)
 import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, unit-tested clamp that ENFORCES the week shape on a plan
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
+import { assignWeeklyGym, gymBalanceLines } from './gym-split.js' // #636 — code-driven gym muscle-group BALANCE (arms guaranteed) + accessory rotation
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -1855,6 +1856,11 @@ function buildSystemPrompt(user) {
     const ms = user.info && user.info.mainSport
     const obj = ((user.info && user.info.goals && user.info.goals.notes) || '').trim()
     tail += `\n\n# GYM FOCUS — main sport: ${ms || 'none set'}. Sports: ${sports.join(', ') || '—'}. Objective: ${obj ? `"${obj.slice(0, 240)}"` : 'not stated — ask what they want from the gym'}. Derive the gym focus per coach-engine-strength.md: an ENDURANCE main sport with NO muscle intent → pure SUPPORT (maintenance dose, minimal effective volume, kept clear of key rides/runs — never treat low gym volume as a deficit); an ENDURANCE main sport who ALSO wants muscle → SUPPORT+BUILD, i.e. **concurrent hypertrophy** (you CAN build lean muscle while the sport stays #1 — give a real but MODERATE dose ~6–12 hard sets/muscle/wk, dosed and scheduled around key sessions; don't wreck the sport, don't shame them for cycling-first); a MUSCLE goal with gym as the main event → full hypertrophy (10–20 sets/muscle/wk); a strength/1-RM goal → strength (heavy, >85% 1RM, low volume). Match volume, %1RM intensity, and scheduling to that focus AND the current phase — in a big endurance block, dial the gym down.`
+    // #636 — code-driven GYM BALANCE (the endurance #620, applied to gym). Guarantee every movement pattern incl. ARMS
+    // + carry over the week, keep the mains stable (progress), rotate accessories fresh (anti-boredom).
+    const recentGymEx = (user.plans || []).filter((p) => p && p.sport === 'gym').slice(-3).flatMap((p) => (p.exercises || []).map((e) => e && e.name)).filter(Boolean)
+    const gymAssign = assignWeeklyGym({ recentExercises: recentGymEx })
+    tail += `\n\n# THIS WEEK'S GYM BALANCE — MANDATORY: across the week's gym session(s) COVER every movement pattern — and **ARMS (biceps + triceps)** + a loaded **carry** are REQUIRED, never skipped (they were being forgotten). Keep the 1-3 MAIN compound lifts STABLE week-to-week so the athlete can TRACK PROGRESS (load/reps trending — don't churn the mains); ROTATE the ACCESSORIES to fresh options (don't repeat last session's). A fresh accessory per pattern this week: ${gymBalanceLines(gymAssign)}. The balance = stable mains (progress) + rotated accessories (anti-boredom) + FULL coverage incl. arms. Look up all moves in ONE search_exercises(queries=[…]) call.`
   }
   // #swim-tri — TRIATHLON: multi-sport planning layer. Apply Friel periodization keyed to the athlete's stated A-race.
   if (sports.includes('triathlon')) {
