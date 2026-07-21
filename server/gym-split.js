@@ -68,6 +68,33 @@ function normFocus(focus) {
   return 'support'
 }
 export function repSchemeFor(focus) { return REP_SCHEME[normFocus(focus)] }
+
+// #649 — the CODE-ENFORCED half of #648. The rep scheme was only INJECTED into the prompt, so the LLM could still
+// save a cyclist 3×10 (the audit's flagship still-open gap). This clamps each MAIN COMPOUND lift's reps into the
+// focus's `mains` band at save time (peer to enforceTeenGym). Accessories (arms/core/carry) + warm-up/cool-down are
+// left alone — they may run moderate. Pure + unit-tested.
+const MAIN_PATTERNS = new Set(['squat', 'hinge', 'hpush', 'vpush', 'hpull', 'vpull'])
+export function mainsRepRange(focus) {
+  const rs = REP_SCHEME[normFocus(focus)]
+  const m = rs && String(rs.mains).match(/(\d+)\s*[-–]\s*(\d+)/)
+  return m ? [Number(m[1]), Number(m[2])] : null
+}
+/** Clamp each MAIN compound lift's reps into the focus rep band. Mutates `exercises`, returns the count changed. */
+export function clampMainReps(exercises, focus) {
+  const range = mainsRepRange(focus)
+  if (!range) return 0
+  const [lo, hi] = range
+  let n = 0
+  for (const ex of (exercises || [])) {
+    if (!ex || ex.section === 'warmup' || ex.section === 'cooldown') continue
+    if (!(ex.mode === 'reps' || ex.reps != null)) continue
+    if (!MAIN_PATTERNS.has(patternFromExercise(ex.name))) continue // only the big compound lifts; accessories keep their reps
+    const r = Number(ex.reps)
+    if (!(r > 0)) continue
+    if (r > hi) { ex.reps = hi; n++ } else if (r < lo) { ex.reps = lo; n++ }
+  }
+  return n
+}
 const LABEL = { squat: 'Squat', hinge: 'Hinge', hpush: 'Horizontal push', vpush: 'Vertical push (shoulders)', hpull: 'Horizontal pull', vpull: 'Vertical pull', core: 'Core', arms: 'ARMS (biceps + triceps)', carry: 'Loaded carry' }
 
 // map an exercise NAME → its movement pattern (the look-back fingerprint, gym analogue of keyFromTitle).

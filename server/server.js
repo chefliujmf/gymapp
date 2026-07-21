@@ -31,7 +31,7 @@ import { weekShape } from './week-shape.js' // #613/#615 — code-decided week s
 import { assignArchetypeBlock, keyFromTitle } from './archetypes.js' // #620 — code-decided VARIETY (assign archetypes, don't hope the LLM varies)
 import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, unit-tested clamp that ENFORCES the week shape on a plan
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
-import { assignWeeklyGym, gymBalanceLines, resolveGymFocus } from './gym-split.js' // #636 — code-driven gym muscle-group BALANCE (arms guaranteed) + accessory rotation; #648 — code-driven REP SCHEME by focus
+import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps } from './gym-split.js' // #636 — code-driven gym muscle-group BALANCE (arms guaranteed) + accessory rotation; #648 — code-driven REP SCHEME by focus; #649 — clampMainReps ENFORCES it at save
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -1743,6 +1743,18 @@ function enforceShapeIntensity(user, plan) {
 // #631 — TEEN gym safety, ENFORCED in code (not just prompted): an under-18 should never be given MAXIMAL / near-1-RM
 // loading (heavy low-rep singles/doubles). Any MAIN-set exercise prescribed under 5 reps (near-maximal) is floored to
 // 5 reps (submaximal, technique-safe). Warm-up/cool-down untouched. Growth-plate + technique-development safety.
+// #649 — ENFORCE the #648 gym rep scheme in code (it was only injected into the prompt, so the LLM could still
+// save a cyclist 3×10). Resolve the athlete's gym focus and clamp each MAIN compound lift's reps into that focus's
+// band (support 3-6 · strength 3-5 · muscle 6-12 …). Accessories/arms untouched. Runs at save + in the daily sweep.
+// enforceTeenGym runs AFTER this so an under-18's teen floor (≥5) always wins over a low support-scheme rep.
+function enforceGymRepScheme(user, plan) {
+  if (!plan || plan.sport !== 'gym') return
+  const obj = ((user.info && user.info.goals && user.info.goals.notes) || '').trim()
+  const focus = resolveGymFocus({ mainSport: user.info && user.info.mainSport, sports: user.sports || [], goal: obj })
+  const n = clampMainReps(plan.exercises || [], focus)
+  if (n) console.log(`[gym-reps] ${user.username || ''} "${plan.title}" — clamped ${n} main lift(s) into ${focus} rep scheme`)
+}
+
 function enforceTeenGym(user, plan) {
   if (!plan || plan.sport !== 'gym') return
   const dob = user.info && user.info.dob
@@ -1763,7 +1775,15 @@ async function reenforceShapeAll(user) {
   const future = (user.plans || []).filter((p) => p && p.date >= today && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim')).sort((a, b) => String(a.date).localeCompare(String(b.date)))
   const touched = []
   for (const p of future) { const t0 = p.title, seg0 = JSON.stringify(p.segments || []); enforceShapeIntensity(user, p); if (p.title !== t0 || JSON.stringify(p.segments || []) !== seg0) touched.push(p) }
-  if (touched.length) {
+  // #649 — GYM has no shape/intensity clamp, but stale gym plans keep a wrong REP SCHEME (a cyclist's old 3×10) and
+  // the teen floor. Sweep every future gym plan through the code enforcement too (no intervals push — gym has no model).
+  let gymTouched = 0
+  for (const p of (user.plans || []).filter((x) => x && x.date >= today && x.sport === 'gym')) {
+    const ex0 = JSON.stringify((p.exercises || []).map((e) => e && e.reps))
+    enforceGymRepScheme(user, p); enforceTeenGym(user, p)
+    if (JSON.stringify((p.exercises || []).map((e) => e && e.reps)) !== ex0) gymTouched++
+  }
+  if (touched.length || gymTouched) {
     save(store)
     // B2 (#620) — a clamped session must also re-push to intervals, else the sweet-spot/threshold version stays on
     // the athlete's Garmin/intervals calendar even though Platyplus relabeled it. prod-only (pushPlanToIcu no-ops on QA).
@@ -2596,6 +2616,7 @@ async function upsertPlan(user, body, actor = 'coach') {
   // effort (95% is NEVER easy — any sport). Fixes it at the source so the DB, the app view, AND the intervals
   // push are all sane, even when the coach fat-fingers the %.
   enforceShapeIntensity(user, plan) // #615 — ENFORCE the week-shape ceiling + quality-day count IN CODE (the prompt was ignored)
+  enforceGymRepScheme(user, plan) // #649 — ENFORCE the #648 gym rep scheme (support cyclist mains 3-6, not 3×10) — before the teen floor
   enforceTeenGym(user, plan) // #631 — under-18: floor near-maximal gym sets to submaximal (no 1-RM loading)
   if ((plan.sport === 'ride' || plan.sport === 'run') && Array.isArray(plan.segments) && plan.segments.length) { // #614 — power/pace clamp is for ride/run only, not swim
     const g = clampEasyEfforts(plan.title, plan.segments)

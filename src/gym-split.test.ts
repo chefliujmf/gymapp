@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module
-import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines } from '../server/gym-split.js'
+import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange } from '../server/gym-split.js'
 
 const flat = (a: any) => a.days.flat()
 
@@ -78,6 +78,31 @@ describe('#648 rep scheme by focus — a cyclist gets HEAVY LOW-rep, not 3×10',
     const rs = repSchemeFor('muscle')
     expect(rs.mains).toBe('6-12')
     expect(rs.tempo).toBe('3-1-1-0')
+  })
+  it('#649 clampMainReps ENFORCES the scheme — a cyclist 3×10 squat is clamped to 6, arms untouched', () => {
+    const ex = [
+      { name: 'Leg swings', section: 'warmup', mode: 'reps', reps: 10 },
+      { name: 'Barbell Back Squat', section: 'main', mode: 'reps', reps: 10 }, // main compound → clamp to 6
+      { name: 'Romanian Deadlift', section: 'main', mode: 'reps', reps: 12 },  // main compound → clamp to 6
+      { name: 'Dumbbell Curl', section: 'main', mode: 'reps', reps: 12 },      // ACCESSORY (arms) → untouched
+      { name: 'Plank', section: 'main', mode: 'timed', seconds: 40 },          // not reps → untouched
+    ]
+    const n = clampMainReps(ex, 'support')
+    expect(n).toBe(2)
+    expect(ex[1].reps).toBe(6) // squat clamped into 3-6
+    expect(ex[2].reps).toBe(6) // RDL clamped
+    expect(ex[3].reps).toBe(12) // arms accessory unchanged
+    expect(ex[0].reps).toBe(10) // warm-up untouched
+  })
+  it('#649 a bodybuilder (muscle) keeps 10-rep squats (within 6-12), does not clamp', () => {
+    const ex = [{ name: 'Back Squat', section: 'main', mode: 'reps', reps: 10 }]
+    expect(clampMainReps(ex, 'muscle')).toBe(0)
+    expect(ex[0].reps).toBe(10)
+  })
+  it('#649 mainsRepRange parses the band per focus', () => {
+    expect(mainsRepRange('support')).toEqual([3, 6])
+    expect(mainsRepRange('strength')).toEqual([3, 5])
+    expect(mainsRepRange('muscle')).toEqual([6, 12])
   })
   it('assignWeeklyGym carries the focus + repScheme, and gymBalanceLines renders it', () => {
     const a = assignWeeklyGym({ sessionsPerWeek: 1, focus: resolveGymFocus({ mainSport: 'cycling' }) })
