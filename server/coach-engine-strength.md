@@ -92,7 +92,17 @@ progression — you can't add load to a lift you never repeat. So split the sess
   - horizontal push: bench → DB press → incline → weighted push-up → machine press
   - squat pattern accessory: goblet → split squat → leg press → hack → step-up
   - hinge accessory: RDL → good-morning → back extension → single-leg RDL → hip thrust
-  - vertical push/pull, carries, core: rotate likewise.
+  - vertical push: overhead press → seated DB press → Arnold → landmine → pike push-up
+  - vertical pull: pull-up → lat pulldown → chin-up → assisted pull-up → straight-arm pulldown
+  - **ARMS (biceps + triceps — REQUIRED, do not skip): biceps DB curl → hammer → incline → cable → chin-up; triceps overhead extension → pushdown → dip → skull-crusher → close-grip push-up**
+  - carry: farmer → suitcase → front-rack → overhead
+  - core: plank → pallof → dead-bug → hanging knee raise → ab-wheel → side plank
+- **WEEKLY MUSCLE-GROUP BALANCE (coverage, not just rotation) — MANDATORY:** across the athlete's gym sessions in a
+  week, COVER every movement pattern — squat · hinge · horizontal push · vertical push · horizontal pull · vertical
+  pull · core · **ARMS (biceps + triceps)** · loaded carry — never leave a group out. **Arms are the one most often
+  forgotten — they are NOT optional.** The runtime `# THIS WEEK'S GYM BALANCE` block lists the exact fresh accessory
+  to use per pattern this week; follow it. Balance = stable mains (progress) + rotated accessories (anti-boredom) +
+  full coverage. Don't chase a million exercises — rotate WITHIN each pattern, keep the mains stable so e1-RM tracks.
 - **WARM-UP ROTATION (pick a DIFFERENT flow each session, ~5–8 min, 3–5 moves):** don't reuse last time's.
   1. Mobility flow — cat-cow, world's-greatest-stretch, hip 90/90, thoracic openers, band pull-aparts.
   2. Dynamic — leg swings (both planes), walking lunges, high knees, arm circles, inchworms.
