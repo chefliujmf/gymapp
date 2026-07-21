@@ -189,6 +189,34 @@ export function assignWeeklyGym({ sessionsPerWeek = 1, focus = 'support', recent
   return { spw, splitName, days, rotations, mustCover: GYM_PATTERNS.slice(), arms: true, focus: f, repScheme: REP_SCHEME[f], emphasis: sportEmphasis({ mainSport, sports }) }
 }
 
+// #687-ENFORCEMENT — CODE-ENFORCE the gym session structure at SAVE. The assembled FRAME injected into the prompt is
+// IGNORED by the LLM (proven on QA — the coach left Dead-Bug-in-warmup-and-main, two rows, glute-bridge-as-reps). So
+// deterministically FIX whatever the coach saves: DEDUP the same MOVEMENT across the whole session incl. across
+// sections (kills #685 + reduces two-of-a-movement to one, #683), and force a HOLD / mobility move to TIMED not reps
+// (#684). Pure + unit-tested. Runs in upsertPlan + the reenforceShapeAll gym sweep.
+const GYM_MODIFIER_RE = /\b(cross|lateral|alternating|alt|single|one|two|arm|arms|leg|legs|side|dumbbell|db|barbell|bb|band|banded|cable|machine|kettlebell|kb|march|standing|seated|bent|over|reverse|incline|decline|wide|close|narrow|neutral|grip|paused?|tempo|deficit|elevated|goblet|front|back|high|low|half|full|assisted|weighted|smith|\bez\b|trap|landmine|floor|flat|bulgarian|split|walking|explosive|slow|two-dumbbell)\b/g
+function normMovement(n) { return String(n || '').toLowerCase().replace(/[+/&-]/g, ' ').replace(GYM_MODIFIER_RE, ' ').replace(/s\b/g, '').replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim() }
+const GYM_HOLD_RE = /\bplank\b|\bhold\b|isometric|dead ?bug|bird ?dog|wall ?sit|\bhang\b|hollow|superman|glute bridge|side plank|\bcarry\b|farmer|\bl-?sit\b|\bstretch\b|cat.?cow|thread the needle|\bpose\b|savasana|\bhover\b|leg ?swing|arm ?circle|world.?s greatest|90-?90|pigeon|cobra|child/i
+/** Fix a coach-authored gym session to the required structure. Mutates a COPY of exercises; returns {exercises, deduped, retimed}. */
+export function enforceGymStructure(exercises = []) {
+  const seen = new Set()
+  let deduped = 0, retimed = 0
+  const out = []
+  for (const ex of (exercises || [])) {
+    if (!ex || !ex.name) { out.push(ex); continue }
+    const key = normMovement(ex.name) || String(ex.name).toLowerCase().trim()
+    if (seen.has(key)) { deduped++; continue } // same movement already in the session (any section) → drop the repeat
+    seen.add(key)
+    const e = { ...ex }
+    if (GYM_HOLD_RE.test(e.name) && (e.mode === 'reps' || (e.mode !== 'timed' && e.reps != null))) { // a hold prescribed as reps → timed
+      e.mode = 'timed'; if (!(Number(e.seconds) > 0)) e.seconds = /carry|farmer|\bplank\b|\bhold\b|wall ?sit|\bhang\b|hollow|bridge/i.test(e.name) ? 40 : 30
+      delete e.reps; retimed++
+    }
+    out.push(e)
+  }
+  return { exercises: out, deduped, retimed }
+}
+
 // #687 — WORLD-CLASS gym session ASSEMBLER (JM: "create the workout from the list of exercises, tailored to the person
 // — not templates"). Compose the FULL session IN CODE from the library, adapted to the athlete's variables (sport,
 // focus, equipment, recent history), with the structure the LLM kept botching guaranteed: correct SECTIONING (real

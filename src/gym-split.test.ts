@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module
-import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession } from '../server/gym-split.js'
+import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure } from '../server/gym-split.js'
 
 const flat = (a: any) => a.days.flat()
 
@@ -213,5 +213,38 @@ describe('#687 assembleGymSession — world-class, tailored, ALL personas, no ra
       const uni = s.exercises.find((e: any) => /single|split squat|lunge|one-arm|pallof|figure-4/i.test(e.name))
       if (uni) expect(uni.eachSide).toBe(true)
     }
+  })
+})
+
+describe('#687-enforce enforceGymStructure — deterministic save-time fix (the LLM ignores the frame)', () => {
+  it("fixes JM's exact broken session: 2nd row dropped, dup dead-bug dropped, glute-bridge-reps → timed", () => {
+    const ex = [
+      { name: 'Cat cow', section: 'warmup', mode: 'timed', seconds: 45 },
+      { name: 'Glute bridge', section: 'warmup', mode: 'reps', sets: 1, reps: 12 },
+      { name: 'Dead Bugs Cross Lateral', section: 'warmup', mode: 'timed', seconds: 45 },
+      { name: 'Dumbbell Bench Press', section: 'main', mode: 'reps', sets: 3, reps: 8 },
+      { name: 'Bent Over Two-Dumbbell Row', section: 'main', mode: 'reps', sets: 3, reps: 8 },
+      { name: 'One-Arm Dumbbell Row', section: 'main', mode: 'reps', sets: 2, reps: 10 },
+      { name: 'Dead Bug', section: 'main', mode: 'reps', sets: 3, reps: 10 },
+    ]
+    const r = (enforceGymStructure as any)(ex)
+    const names = r.exercises.map((e: any) => e.name)
+    expect(names.filter((n: string) => /row/i.test(n)).length).toBe(1) // #683 — one row only
+    expect(names.filter((n: string) => /dead ?bug/i.test(n)).length).toBe(1) // #685 — dead bug once
+    const gb = r.exercises.find((e: any) => /glute bridge/i.test(e.name))
+    expect(gb.mode).toBe('timed') // #684 — hold is timed, not reps
+    expect(gb.reps).toBeUndefined()
+    expect(r.deduped).toBe(2); expect(r.retimed).toBe(1)
+  })
+  it('leaves a clean session untouched (no false dedup of distinct movements)', () => {
+    const ex = [
+      { name: 'Barbell Back Squat', section: 'main', mode: 'reps', sets: 3, reps: 6 },
+      { name: 'Romanian Deadlift', section: 'main', mode: 'reps', sets: 3, reps: 6 },
+      { name: 'Dumbbell Bench Press', section: 'main', mode: 'reps', sets: 3, reps: 6 },
+      { name: 'Dumbbell Row', section: 'main', mode: 'reps', sets: 3, reps: 6 },
+    ]
+    const r = (enforceGymStructure as any)(ex)
+    expect(r.deduped).toBe(0); expect(r.retimed).toBe(0)
+    expect(r.exercises.length).toBe(4)
   })
 })

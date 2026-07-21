@@ -31,7 +31,7 @@ import { weekShape } from './week-shape.js' // #613/#615 — code-decided week s
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
 import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, unit-tested clamp that ENFORCES the week shape on a plan
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
-import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 world-class assembler (code composes the session)
+import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save)
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile, goalPriorityFrame } from './perf-metrics.js' // #404; #669 goal-aware priority
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -1779,9 +1779,11 @@ async function reenforceShapeAll(user) {
   // the teen floor. Sweep every future gym plan through the code enforcement too (no intervals push — gym has no model).
   let gymTouched = 0
   for (const p of (user.plans || []).filter((x) => x && x.date >= today && x.sport === 'gym')) {
-    const ex0 = JSON.stringify((p.exercises || []).map((e) => e && e.reps))
-    enforceGymRepScheme(user, p); enforceTeenGym(user, p)
-    if (JSON.stringify((p.exercises || []).map((e) => e && e.reps)) !== ex0) gymTouched++
+    const ex0 = JSON.stringify(p.exercises || [])
+    enforceGymRepScheme(user, p)
+    if (Array.isArray(p.exercises)) { const r = enforceGymStructure(p.exercises); if (r.deduped || r.retimed) p.exercises = r.exercises } // #687-enforce — dedup + hold→timed on stale gym plans
+    enforceTeenGym(user, p)
+    if (JSON.stringify(p.exercises || []) !== ex0) gymTouched++
   }
   // #671 SAFETY — PRIVACY sweep over EVERY future plan's text. The #650 save-time scrub only catches NEW writes; a
   // pregnant athlete's STALE plans still leaked "pregnant/trimester" into descriptions that sync to intervals→Strava.
@@ -2640,6 +2642,10 @@ async function upsertPlan(user, body, actor = 'coach') {
   // push are all sane, even when the coach fat-fingers the %.
   enforceShapeIntensity(user, plan) // #615 — ENFORCE the week-shape ceiling + quality-day count IN CODE (the prompt was ignored)
   enforceGymRepScheme(user, plan) // #649 — ENFORCE the #648 gym rep scheme (support cyclist mains 3-6, not 3×10) — before the teen floor
+  if (plan && plan.sport === 'gym' && Array.isArray(plan.exercises)) { // #687-enforce — dedup the same movement across sections + force holds to timed (the assembled frame is ignored by the LLM)
+    const r = enforceGymStructure(plan.exercises)
+    if (r.deduped || r.retimed) { plan.exercises = r.exercises; console.log(`[gym-structure] ${user.username || ''} "${plan.title}" — deduped ${r.deduped}, retimed ${r.retimed}`) }
+  }
   enforceTeenGym(user, plan) // #631 — under-18: floor near-maximal gym sets to submaximal (no 1-RM loading)
   // #650 — PRIVACY (safety): strip pregnancy/postpartum terms from anything the athlete or the public could read
   // (the title pushes to intervals → Strava). Enforced in code, not just prompted. No-op for normal copy.
