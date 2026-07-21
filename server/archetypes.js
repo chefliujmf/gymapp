@@ -110,3 +110,16 @@ export function assignArchetypeBlock({ sport = 'ride', qualityDays = 0, easyDays
   }
   return out
 }
+
+// #652 — size THRESHOLD / sweet-spot interval rep length from the athlete's TTE (time-to-exhaustion at threshold),
+// instead of a fixed template. Short-TTE athlete → SHORTER reps; long-TTE "diesel" → longer. Rule of thumb
+// (Coggan/Seiler): each threshold rep ≈ half the TTE, total threshold work ≈ 1.2× TTE. Pure + unit-tested.
+// Returns a per-athlete sizing directive to inject, or null when there's no usable TTE (archetype default stands).
+export function thresholdSizing(tteSec, sport = 'ride') {
+  const tteMin = Math.round((Number(tteSec) || 0) / 60)
+  if (!(tteMin >= 8 && tteMin <= 90)) return null
+  const repMin = Math.max(4, Math.min(20, Math.round(tteMin * 0.5)))
+  const totalMin = Math.round(tteMin * 1.2)
+  const reps = Math.max(2, Math.min(5, Math.max(1, Math.round(totalMin / repMin))))
+  return `INTERVAL SIZING — your TTE ≈ ${tteMin} min: size THRESHOLD / sweet-spot reps to ~${repMin} min each, about ${reps} reps (≈${totalMin} min total at/near threshold). This is YOUR number — a shorter TTE means shorter reps; do NOT default to a fixed 3×15.`
+}

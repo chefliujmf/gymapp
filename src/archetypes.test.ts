@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { assignQuality, assignEasy, ARCHETYPE_KEYS, assignArchetypeBlock, keyFromTitle } from '../server/archetypes.js'
+import { assignQuality, assignEasy, ARCHETYPE_KEYS, assignArchetypeBlock, keyFromTitle, thresholdSizing } from '../server/archetypes.js'
 
 describe('#620 code-driven variety — assignQuality', () => {
   it('respects the intensity ceiling: a tempo ceiling yields only ≤tempo archetypes (no threshold/vo2/sweet-spot)', () => {
@@ -91,5 +91,22 @@ describe('#620 keyFromTitle — look-back fingerprint', () => {
     expect(keyFromTitle('VO2 Intervals')).toBe('vo2')
     expect(keyFromTitle('Easy Aerobic Run')).toBeNull()
     expect(keyFromTitle('Long Run')).toBeNull()
+  })
+})
+
+describe('#652 thresholdSizing — interval rep length from the athlete TTE', () => {
+  it('a long-TTE diesel gets longer reps than a short-TTE athlete', () => {
+    const diesel = thresholdSizing(40 * 60, 'ride') // TTE 40 min
+    const punchy = thresholdSizing(20 * 60, 'ride') // TTE 20 min
+    expect(diesel).toMatch(/TTE . 40 min/)
+    expect(diesel).toMatch(/20 min each/)   // ~half of 40
+    expect(punchy).toMatch(/10 min each/)   // ~half of 20
+    expect(diesel).toMatch(/do NOT default to a fixed 3.15/)
+  })
+  it('returns null when there is no usable TTE (archetype default stands)', () => {
+    expect(thresholdSizing(0)).toBeNull()
+    expect(thresholdSizing(null)).toBeNull()
+    expect(thresholdSizing(3 * 60)).toBeNull()   // too short to be a threshold TTE
+    expect(thresholdSizing(200 * 60)).toBeNull() // implausible
   })
 })
