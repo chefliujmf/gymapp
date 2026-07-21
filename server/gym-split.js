@@ -37,29 +37,48 @@ export function patternFromExercise(name) {
   return null
 }
 
-/**
- * Assign the week's gym BALANCE.
- * @param {object} p
- *   focus            'support' | 'maintenance' | 'hypertrophy' | 'strength' | 'power' | ... (from GYM FOCUS)
- *   recentExercises  names from the athlete's recent gym sessions (to rotate accessories fresh)
- * @returns {{ mustCover: string[], rotations: {pattern: freshAccessory}, arms: boolean }}
- *   mustCover: the movement patterns to hit ACROSS this week — ALWAYS includes arms + carry (the coverage guarantee);
- *   rotations: a fresh accessory per pattern (skips anything in recentExercises), anti-boredom while mains stay stable.
- */
-export function assignWeeklyGym({ focus = 'support', recentExercises = [] } = {}) {
-  // full coverage every week — arms + carry are NON-optional (that was the miss). Volume/sets per pattern is the
-  // coach's + GYM FOCUS's job; this guarantees the PATTERNS (incl. arms) are present, not the set count.
-  const mustCover = GYM_PATTERNS.slice()
-  const recent = new Set((recentExercises || []).map((e) => String(e || '').toLowerCase().trim()))
-  const rotations = {}
-  for (const pat of mustCover) {
-    const menu = PATTERNS[pat]
-    rotations[pat] = menu.find((m) => !recent.has(m.toLowerCase())) || menu[0] // first FRESH option, else the head
+// #637 — the SPLIT depends on FREQUENCY + FOCUS + sport (evidence-based, Schoenfeld 2016: each muscle ~2×/week is the
+// hypertrophy sweet spot; 1× maintains). A 1×/week endurance athlete gets FULL-BODY (cover everything in the one
+// session); a 4×/week lifter gets a real SPLIT (upper/lower or PPL) so each muscle is hit ~2×/week without full-body
+// every day. This picks the split + the per-session pattern list, so a bodybuilder isn't full-bodied and a cyclist
+// isn't split into a half-covered week.
+function pickSplit(spw, hyper) {
+  if (spw <= 2 || (!hyper && spw <= 3)) {
+    // ≤2 sessions, or endurance-SUPPORT up to 3 → FULL-BODY each session (compound-led, cover the big patterns + arms)
+    return { name: 'FULL-BODY each session', days: Array.from({ length: spw }, () => GYM_PATTERNS.slice()) }
   }
-  return { mustCover, rotations, arms: true }
+  if (spw >= 5 && hyper) {
+    const push = ['hpush', 'vpush', 'arms', 'core'], pull = ['hpull', 'vpull', 'arms', 'core'], legs = ['squat', 'hinge', 'core', 'carry']
+    const cyc = [push, pull, legs]
+    return { name: 'PUSH / PULL / LEGS (×2 → each muscle ~2×/week)', days: Array.from({ length: spw }, (_, i) => cyc[i % 3]) }
+  }
+  // 3-4 hypertrophy → UPPER / LOWER so each muscle lands ~2×/week
+  const upper = ['hpush', 'vpush', 'hpull', 'vpull', 'arms', 'core'], lower = ['squat', 'hinge', 'core', 'carry']
+  return { name: 'UPPER / LOWER (each muscle ~2×/week)', days: Array.from({ length: spw }, (_, i) => (i % 2 === 0 ? upper : lower)) }
 }
 
-// render the assignment as the prompt block body (label + the fresh accessory per pattern).
+/**
+ * Assign the week's gym split + balance.
+ * @param {object} p
+ *   sessionsPerWeek  how many gym sessions/week (drives full-body vs split)
+ *   focus            'support' | 'maintenance' | 'hypertrophy' | 'muscle' | 'strength' | 'power' (from GYM FOCUS)
+ *   recentExercises  names from recent gym sessions (rotate accessories fresh)
+ * @returns {{ spw, splitName, days: string[][], rotations, mustCover, arms:true }}
+ *   days: the pattern list for each session this week; splitName: the chosen split; rotations: a fresh accessory
+ *   per pattern (skip-recent). ARMS appear in every full-body / upper / push / pull day — never dropped.
+ */
+export function assignWeeklyGym({ sessionsPerWeek = 1, focus = 'support', recentExercises = [] } = {}) {
+  const spw = Math.max(1, Math.min(7, Math.round(Number(sessionsPerWeek) || 1)))
+  const hyper = /hypertroph|muscle|body ?build|physique|\bmass\b|bodybuild/.test(String(focus || '').toLowerCase())
+  const { name: splitName, days } = pickSplit(spw, hyper)
+  const recent = new Set((recentExercises || []).map((e) => String(e || '').toLowerCase().trim()))
+  const rotations = {}
+  for (const pat of GYM_PATTERNS) { const menu = PATTERNS[pat]; rotations[pat] = menu.find((m) => !recent.has(m.toLowerCase())) || menu[0] }
+  return { spw, splitName, days, rotations, mustCover: GYM_PATTERNS.slice(), arms: true }
+}
+
+// render the assignment for the prompt block: the split + each session's patterns (with a fresh accessory each).
 export function gymBalanceLines(assign) {
-  return assign.mustCover.map((pat) => `${LABEL[pat] || pat}: e.g. ${assign.rotations[pat]}`).join(' · ')
+  const perSession = assign.days.map((pats, i) => `Session ${i + 1}: ${pats.map((p) => `${LABEL[p] || p} (e.g. ${assign.rotations[p]})`).join(' · ')}`).join('\n')
+  return `Split = ${assign.splitName} (${assign.spw} gym session${assign.spw !== 1 ? 's' : ''}/week).\n${perSession}`
 }

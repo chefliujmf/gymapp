@@ -97,6 +97,12 @@ progression — you can't add load to a lift you never repeat. So split the sess
   - **ARMS (biceps + triceps — REQUIRED, do not skip): biceps DB curl → hammer → incline → cable → chin-up; triceps overhead extension → pushdown → dip → skull-crusher → close-grip push-up**
   - carry: farmer → suitcase → front-rack → overhead
   - core: plank → pallof → dead-bug → hanging knee raise → ab-wheel → side plank
+- **SPLIT BY FREQUENCY + GOAL (evidence — Schoenfeld: each muscle ~2×/week is the growth sweet spot; 1× maintains):**
+  the runtime `# THIS WEEK'S GYM BALANCE` block computes it from their gym cadence + goal — **1-2 gym sessions/week
+  (an endurance athlete's SUPPORT) → FULL-BODY each session** (cover everything in the one/two sessions); **3-4/week
+  with a MUSCLE goal → an UPPER/LOWER split** (each muscle ~2×/wk); **5-6/week bodybuilder → PUSH/PULL/LEGS ×2.** A
+  cyclist with one gym day is NOT split into a half-covered week; a bodybuilder is NOT full-bodied every day. Follow
+  the block's per-session pattern list.
 - **WEEKLY MUSCLE-GROUP BALANCE (coverage, not just rotation) — MANDATORY:** across the athlete's gym sessions in a
   week, COVER every movement pattern — squat · hinge · horizontal push · vertical push · horizontal pull · vertical
   pull · core · **ARMS (biceps + triceps)** · loaded carry — never leave a group out. **Arms are the one most often
