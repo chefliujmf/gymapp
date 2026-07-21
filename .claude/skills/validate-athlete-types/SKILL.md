@@ -11,6 +11,13 @@ description: A MANDATORY definition-of-done gate for EVERY decision that produce
 
 This gate is cheap to think through and expensive to skip. It is part of the definition of done (CLAUDE.md ▶ TESTING).
 
+
+## Test across ALL personas — unit AND browser (JM 2026-07-21)
+"Test it like crazy for all personas" means BOTH layers, every time, for any athlete-facing change:
+- **Unit:** assert the pure output for EACH persona — a cyclist, a runner, a swimmer, a triathlete, a male, a female, a bodybuilder, a teen, a masters, a beginner-no-benchmarks, a pregnant/postpartum athlete. One assertion per persona, not just the happy path (model: `src/gym-split.test.ts` #687 assembler tests).
+- **Browser (Chrome):** once the change reaches the app/plan, trigger a real re-plan per persona on QA and WALK the result in Chrome (skill `platyplus-browser-testing`) — see the actual session/plan render correctly for each. A pure function is unit-verified; it is only STELLAR once its output is seen in the app for every persona.
+Never sign off "tested" on one persona or one layer.
+
 ## The bar: WORLD-CLASS
 
 We are building a **world-class, data-driven coach** — one that reads the books and the science and applies them correctly to every individual, sport, and goal. "World-class" is a concrete, testable standard, not a slogan:

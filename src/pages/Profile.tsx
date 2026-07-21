@@ -16,7 +16,6 @@ import { dataGaps } from '../dataGaps'
 // #JM 2026-07-15 — Yoga + Pilates removed from the selectable sports for now (nothing can be added to the calendar for
 // them yet) → parked for the roadmap. Existing users who had them keep the data; they just can't newly pick them.
 const SPORTS: [string, string][] = [['cycling', 'Cycling'], ['running', 'Running'], ['swimming', 'Swimming'], ['triathlon', 'Triathlon'], ['strength', 'Strength']]
-const DIETS: [string, string][] = [['vegetarian', 'vegetarian'], ['vegan', 'vegan'], ['no preference', 'no preference']]
 
 
 // #341/#268 — LOCATION (weather-aware coaching + local time). Option C: prefill the detected city (from
@@ -160,8 +159,6 @@ export default function Profile() {
   const coachName = localCoachName ?? user?.coachName ?? ''
   const [coachSaved, setCoachSaved] = useState(false)
   const [sportSaved, setSportSaved] = useState(false)
-  const [dietSaved, setDietSaved] = useState(false)
-  const [dietSel, setDietSel] = useState<string | null>(null) // #5005 — optimistic: reflect the tap immediately, don't wait for the save+refresh round-trip
 
   // Sex from intervals (gates the female-athlete coaching module) — optional.
   useEffect(() => {
@@ -187,8 +184,6 @@ export default function Profile() {
     }
     authApi.saveProfile({ sports: next, ...extra }).then(() => { refresh(); setSportSaved(true); setTimeout(() => setSportSaved(false), 1500) }).catch(() => {})
   }
-  const diet = dietSel ?? ((user?.info as { diet?: string } | undefined)?.diet ?? 'no preference') // #5005 — optimistic tap, then the server value
-  const setDiet = (v: string) => { setDietSel(v); setSetting('diet', v); authApi.saveProfile({ diet: v }).then(() => refresh()).catch(() => setDietSel(null)); setDietSaved(true); setTimeout(() => setDietSaved(false), 1500) }
 
   const connected = !!user?.hasIcuKey
   // #337b — per-sport stat inputs + Daniels zones/predictions moved to Stats (single place). Profile
@@ -295,11 +290,7 @@ export default function Profile() {
       {/* #524 — height + birth date + diet live WITH "About you" (who you are), not scattered lower. */}
       <FuelFields user={user!} refresh={refresh} />
 
-      <div className="section-title">Diet {dietSaved && <span className="meta" style={{ fontWeight: 400 }}>· Saved ✓</span>}</div>
-      <div className="chips">
-        {DIETS.map(([v, label]) => <button key={v} className={'chip' + (diet === v ? ' chip--active' : '')} onClick={() => setDiet(v)}>{label}</button>)}
-      </div>
-      <p className="meta" style={{ margin: '6px 2px 4px' }}>Your coach picks ONLY meals that match — vegetarian shows veg + vegan; vegan shows vegan only.</p>
+      {/* #688 — Diet section removed (Eat is deactivated, won't be used). */}
 
       {/* #329 — optional cycle tracking → the coach adapts load/recovery by phase (uses intervals' phase
           first; this is the fallback + for those not syncing it). Only shown for female athletes. */}
