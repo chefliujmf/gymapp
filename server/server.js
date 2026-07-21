@@ -1920,8 +1920,14 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const rd = user.info && user.info.raceDate
     const weeksToRace = (rd && /^\d{4}-\d{2}-\d{2}$/.test(rd) && rd >= todayIso) ? Math.floor((Date.parse(isoMonday(rd)) - Date.parse(thisMon)) / (7 * 86400000)) : null
     const ageYears = (user.info && user.info.dob) ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
-    per = periodizationPhase({ ctl: user.ctl, weeksSinceAnchor, weeksToRace, ageYears })
-    const raceBit = weeksToRace != null ? ` Their A-race${user.info && user.info.raceName ? ` (${user.info.raceName})` : ''} is ~${weeksToRace} week${weeksToRace !== 1 ? 's' : ''} out.` : ''
+    const form = (typeof user.ctl === 'number' && typeof user.atl === 'number') ? user.ctl - user.atl : null // #630 — autoregulate off Form
+    per = periodizationPhase({ ctl: user.ctl, weeksSinceAnchor, weeksToRace, ageYears, form })
+    // #630 — SEASON MACRO phase (when a race is set): far out = base (volume), mid = build (race intensity), close = peak.
+    const macro = weeksToRace == null ? ''
+      : weeksToRace > 16 ? ` SEASON MACRO = BASE (16+ wks out): emphasise aerobic VOLUME + durability, keep intensity moderate — save race-specific sharpening for later.`
+      : weeksToRace >= 6 ? ` SEASON MACRO = BUILD (6–16 wks out): layer race-specific intensity on top of the base now.`
+      : ` SEASON MACRO = PEAK (3–5 wks out): race-specific quality, trim the volume, sharpen.`
+    const raceBit = weeksToRace != null ? ` Their A-race${user.info && user.info.raceName ? ` (${user.info.raceName})` : ''} is ~${weeksToRace} week${weeksToRace !== 1 ? 's' : ''} out.${macro}` : ''
     tail += `\n\n# THIS BLOCK'S PROGRESSION — the plan is PERIODIZED, NOT the same every week: this is a **${per.phase.toUpperCase()} week**${per.weekInCycle ? ` (week ${per.weekInCycle} of a 4-week build→peak→recovery block)` : ''}.${raceBit} ${per.note}${per.target ? ` Aim ≈ **${per.target} TSS** this week.` : ''} PROGRESS week-over-week — compare to last week (get_session_history / list_schedule) and nudge the build weeks UP, pull the recovery week DOWN; never ship an identical week.`
     // #627 (gap 2/4) — PROGRESS toward the GOAL, measured. Especially on the recovery week: is it actually working?
     tail += `\n\n# PROGRESS CHECK — is the training actually MOVING them toward their goal?${per.phase === 'recovery' ? ' **This is a RECOVERY week — the moment to assess it.**' : ''} Read get_metrics + get_wellness and compare their key numbers now (threshold power/pace, TTE, EF, CTL, and for runners/swimmers CS·D′/CSS) to a few weeks ago. Judge plainly whether they're progressing at the rate their goal needs. If a number has STALLED, CHANGE the stimulus next block — a stalled threshold ⇒ more time-at-threshold; a flat top end ⇒ more VO₂; a falling EF ⇒ more easy base + check recovery/fuel; a shrinking W′/D′ ⇒ short near-max work. If it's climbing, keep the thread. Fold the conclusion into how you shape the NEXT block, and it's what the review's objective talk (# next) should reference — the athlete should always be able to see their training is working.`
@@ -1938,6 +1944,11 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   const goals = user.info?.goals
   if (goals && ((Array.isArray(goals.focus) && goals.focus.length) || (goals.notes && String(goals.notes).trim()))) {
     p += `\n\n# ATHLETE GOALS — CENTER THE PLAN ON THIS: ${Array.isArray(goals.focus) && goals.focus.length ? `focus = ${goals.focus.join(', ')}. ` : ''}${goals.notes ? `In their words: "${String(goals.notes).trim().slice(0, 600)}". ` : ''}Honor it exactly — someone who wants to "stay fit & consistent, NOT bulk up" gets a very different plan than someone chasing a 300 W FTP. When their goal conflicts with a default, follow THEIR goal, and fold it into set_athlete_profile.`
+  // #630 — RAMP IN A BEGINNER. If their profile signals they're NEW to this sport / just starting / coming back after a
+  // long lay-off (from their goal notes, or no training-load history to read), do NOT hand them a full build even if the
+  // goal is ambitious: build easy VOLUME + consistency first, at most 1 quality day early, hold intensity submaximal for
+  // the first few weeks, then progress as they show they're absorbing it. Volume before intensity; consistency before load.
+  p += `\n\n# IF THEY'RE NEW / JUST STARTING (from their profile, or no load history yet) — RAMP IN: build easy volume + consistency first, at MOST 1 quality day early, hold intensity submaximal for the first few weeks, then progress as they absorb it. An ambitious goal does NOT mean 2 hard days in week one for a beginner. Volume before intensity.`
   }
   // #284 — gym prescription depth: tempo (time-under-tension) + per-lift + session tips.
   p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): for each lift set sets×reps and ALWAYS set a TEMPO on strength lifts — 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower · 1s pause · 1s lift · 0s top (slower eccentric ⇒ more time-under-tension ⇒ hypertrophy/control; faster ⇒ power). Default to "3-1-1-0" for main + accessory strength work; only omit tempo for pure mobility/holds/plyometrics. This is REQUIRED, not optional — the app shows it as a chip. Add a one-line FORM tip per lift, and ONE whole-session \`tip\`. Don't set weight — the app fills it from the athlete's e1RM. Keep tips short and practical.`
