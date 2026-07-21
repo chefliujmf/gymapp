@@ -1098,6 +1098,12 @@ app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
     if (cssPace) for (let i = 0; i < dd.length; i++) if (dd[i] > 0 && vv[i] >= 900 && (vv[i] / dd[i]) * 100 <= cssPace * 1.06) tte = Math.max(tte || 0, Math.round(vv[i]))
     out.swimming = { cssPaceSec: cssPace, dPrimeM: dP != null ? Math.round(dP) : null, tteSec: tte, swolf: ss.swimming?.swolf ?? null }
   }
+  // #622 — stash the profile FOCUS (the "what would move your numbers" priorities the Stats card shows) on the user
+  // so the coach's PLAN BUILD targets the SAME priorities (buildSystemPrompt emits them as # DEVELOPMENT PRIORITIES).
+  // The card was disconnected from the plan — it promised coach work the plan didn't contain (SAY=DO). Now one source.
+  const pf = {}
+  for (const g of ['cycling', 'running', 'swimming']) { const f = out[g]?.profile?.focus; if (Array.isArray(f) && f.length) pf[g] = f }
+  if (Object.keys(pf).length && JSON.stringify(pf) !== JSON.stringify(req.user.profileFocus || {})) { req.user.profileFocus = pf; save(store) }
   res.json(out)
 })
 
@@ -1894,6 +1900,15 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   const shape = athleteWeekShape(user)
   tail += `\n\n# THIS WEEK'S SHAPE — computed for THIS athlete; BUILD the plan to match it (do NOT add quality beyond this or exceed the ceiling): **${shape.qualityDays} structured quality day${shape.qualityDays !== 1 ? 's' : ''}/week${shape.moderateDays ? ` + up to ${shape.moderateDays} light-moderate (tempo) day` : ''}, intensity CEILING = ${shape.intensityCeiling} (never program harder than this), load band = ${shape.loadBand}.** ${shape.rationale} Space any quality days apart (easy days between); everything else is easy/endurance + their strength; leave genuine rest days blank.`
   tail += athleteArchetypeBlock(user) // #620 — code-assigned archetype rotation (the FLAVOR of each quality/easy day)
+  // #622 — DEVELOPMENT PRIORITIES: the SAME "what would move your numbers" focus the Stats card shows (stashed from
+  // /api/athlete-metrics), so the PLAN targets it instead of the card promising quality the plan lacks (SAY=DO). Only
+  // when there IS a quality budget to spend (skips pregnancy/maintenance, where the shape already forces easy).
+  if (shape.qualityDays > 0) {
+    const pfAll = user.profileFocus || {}
+    const pfKey = (user.sports || []).includes('cycling') ? 'cycling' : (user.sports || []).includes('running') ? 'running' : (user.sports || []).includes('swimming') ? 'swimming' : Object.keys(pfAll)[0]
+    const pf = pfKey && Array.isArray(pfAll[pfKey]) ? pfAll[pfKey].filter((f) => f && !/mostly the efforts ARE the data/i.test(f)) : []
+    if (pf.length) tail += `\n\n# DEVELOPMENT PRIORITIES — computed from THIS athlete's OWN numbers (TTE / W′ / EF); this is the exact focus they see on their Stats page, so the PLAN must reflect it. Spend the week's quality-day budget on THESE, and choose the # THIS BLOCK'S VARIETY archetypes to serve them (don't schedule generic quality that ignores their limiter):\n- ${pf.slice(0, 4).join('\n- ')}`
+  }
   // #375/#613 — the TSS BAND (numbers only). The QUALITY-DAY COUNT comes from THE WEEK'S SHAPE above, NOT here.
   const budget = weeklyLoadBudget(user.ctl)
   tail += shape.loadBand === 'build'
