@@ -59,4 +59,12 @@ describe('incompleteFeedback', () => {
     expect(incompleteFeedback(acts).map((x) => x.act.id)).toEqual(['recent']) // default 30d window drops the old one
     expect(incompleteFeedback(acts, undefined, 120).map((x) => x.act.id).sort()).toEqual(['old', 'recent']) // wider window includes both
   })
+  it('#661 — a GYM/strength activity is NEVER nagged (its feedback lives in the Platyplus store, not intervals fields)', () => {
+    const acts = [
+      { id: 'ride', type: 'Ride', start_date_local: new Date().toISOString().slice(0, 10) }, // no feel/rpe → flags
+      { id: 'gym', type: 'WeightTraining', start_date_local: new Date().toISOString().slice(0, 10) }, // gym → excluded even with no intervals feedback
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ] as any
+    expect(incompleteFeedback(acts, undefined, Infinity).map((x) => x.act.id)).toEqual(['ride'])
+  })
 })
