@@ -1114,7 +1114,7 @@ app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
 // when it's confirmed in get_recent_activities / the calendar — never assume it. Shared across all 3 review triggers
 // (single-activity, plan, daily pass) so the rule can't drift. Extends the SAY=DO discipline from the future "next" to
 // the review's framing. Keep it ONE tight sentence (token-thrift #590 — it ships on every review turn).
-const REVIEW_OWN_TERMS = 'FRAME the session on its OWN terms: only mention an adjacent session ("the day after X", "coming off Y", yesterday/tomorrow) when you have VERIFIED it in get_recent_activities or the calendar — NEVER assume surrounding-day context (no "day after gym" unless a gym session is actually on record).'
+const REVIEW_OWN_TERMS = 'FRAME the session on its OWN terms: only mention an adjacent session ("the day after X", "coming off Y", yesterday/tomorrow) when you have VERIFIED it in get_recent_activities or the calendar — NEVER assume surrounding-day context (no "day after gym" unless a gym session is actually on record). #625/#676 — WHAT\'S NEXT (the review\'s `next`) = the OBJECTIVE this session moves the athlete toward + how it advanced it; NEVER name, list, or schedule the upcoming workouts ("Tomorrow: Threshold 4×10 … then Sat long ride" is exactly WRONG — the plan lives elsewhere). Talk the goal, not the calendar.'
 // #364/#589 — the async coach review of a completed session (best-effort; only if a coach is set up). EXTRACTED so the
 // feedback POST *and* the #589 retry (a stuck/failed review — e.g. the coach was down when feedback was saved) share ONE
 // trigger. Returns false when there's nothing to run (no coach / no feedback), so the caller can tell the user.
