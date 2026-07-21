@@ -90,6 +90,19 @@ describe('#620 shape-enforce — the rest of the athlete matrix (commercializati
     expect(topOf(week[0])).toBeLessThan(115) // never a maximal VO2 session for a teen
   })
 
+  it('TRIATHLETE (build, 2 quality) → the quality budget is GLOBAL across swim+bike+run, not per-sport', () => {
+    const shape = weekShape({ goalFocus: 'performance', goalNotes: 'race triathlon', ctl: 60, trainingDays: 6 })
+    expect(shape.qualityDays).toBe(2)
+    const week = [
+      { id: 'a', date: '2026-07-21', sport: 'swim', title: 'CSS Intervals', ...seg(100) },
+      { id: 'b', date: '2026-07-22', sport: 'ride', title: 'Threshold 4×10', ...seg(100) },
+      { id: 'c', date: '2026-07-24', sport: 'run', title: 'VO2 Intervals', ...seg(118) },
+      { id: 'd', date: '2026-07-26', sport: 'ride', title: 'Easy Spin', ...seg(60) },
+    ]
+    const out = sweep(shape, week)
+    expect(out.filter((p) => isModerate(p)).length).toBe(2) // 3 hard across 3 sports → capped at the 2-quality budget
+  })
+
   it('SWIMMER, pregnant → a hard CSS swim is clamped to the tempo ceiling (swim is enforced too, not skipped)', () => {
     const shape = weekShape({ pregnant: true, trimester: 1, goalFocus: 'consistency', trainingDays: 4 })
     const week = [
