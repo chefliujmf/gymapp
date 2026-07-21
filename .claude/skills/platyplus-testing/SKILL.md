@@ -9,6 +9,18 @@ description: Test + verification discipline for Platyplus — log every report f
 didn't log JM's reports, so they got lost and he had to repeat them. Trust broke. This is how
 it doesn't happen again.
 
+## ⛔ THE BAR: STELLAR OR IT DOESN'T SHIP (JM 2026-07-21, emphatic)
+> "We don't ship until it's f***ing excellent, then we test MORE, and then we ship if it's **stellar**. Test everything like crazy."
+
+This is the governing standard. It OVERRIDES any urge to promote quickly:
+1. **Excellent BEFORE any test-for-ship.** A change isn't a candidate to promote until it is genuinely excellent — correct, individualized across the athlete matrix, safe, and polished. "It compiles / a unit test passes" is the FLOOR, not the bar.
+2. **Then test EVERYTHING, like crazy.** Not the happy path — the whole matrix. Every athlete persona (sex · repro-state · age · sport · objective · metrics-present AND absent · experience · equipment — see `validate-athlete-types`), every layer (unit → type → API/DB round-trip → the enforce logs → **real-browser E2E** → a real coach RE-PLAN on QA), and the adversarial cases (what breaks it, empty/absent data, a slip the LLM could make). Direct behaviour probes (POST a crafted input, read the result) are STRONGER than eyeballing one run — isolate each rule and prove it fires.
+3. **Test MORE after it looks good.** Passing once is not stellar. Re-run across personas, on a CONFIRMED-current build (deploy churn = stale results — verify the deployed code before trusting an adapt), and look for the thing that's still 90% not 100%.
+4. **Only THEN ship — and only if stellar.** If any dimension is merely "fine", it is NOT stellar → do not promote. Say so plainly and keep working. Never let "good enough" or a tired context push a promote.
+5. **Never rush a build to fit the moment.** A hurried change in exhausted context is the OPPOSITE of stellar — stop and pick it up fresh rather than ship mediocrity. Not-shipping-yet is following this rule, not failing it.
+
+The rest of this skill (log-first, test-with-every-fix, built≠done, layer-stacking) is HOW you reach that bar. `verify-before-ready` + `validate-athlete-types` are its partners.
+
 ## Priority order (JM 2026-07-09) — work the queue in THIS order
 **We fix what's BROKEN first. Features + ideas wait until ZERO bugs remain and everything works as expected**
 ("we work on things that don't work first; once no bugs are reported and all works as expected, then we can work
