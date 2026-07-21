@@ -28,6 +28,7 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { weekShape, CEILING_PCT } from './week-shape.js' // #613/#615 — code-decided week structure + the SERVER-SIDE intensity ceiling that ENFORCES it
+import { assignArchetypeBlock, keyFromTitle, assignEasy } from './archetypes.js' // #620 — code-decided VARIETY (assign archetypes, don't hope the LLM varies)
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -1704,6 +1705,21 @@ function athleteWeekShape(user) {
 // its allowed number of moderate/quality days, any further hard session is clamped down to easy endurance. A build
 // athlete's ceiling is VO2 (130%) → nothing clamps. Mutates plan.segments (+ relabels a now-inaccurate title).
 const QUALITY_TITLE = /sweet.?spot|threshold|\bvo.?2\b|over.?under|\bvo2max\b/i // titles that claim a hard/quality session
+// #620 B1/B4 — the HONEST title for an enforced ceiling %. Easy relabels ROTATE (a distinct cue per date) instead of a
+// flat "Easy Aerobic Run" every time; higher ceilings downgrade to the true level so a clamped title can't overstate.
+function honestTitle(effCeil, sport, date) {
+  const noun = sport === 'run' ? 'Run' : sport === 'swim' ? 'Swim' : 'Ride'
+  if (effCeil <= CEILING_PCT.endurance) {
+    const cues = assignEasy({ sport, count: 6 }).map((c) => c.replace(/\s*\([^)]*\)\s*/g, '').trim())
+    const idx = date ? (parseInt(String(date).replace(/-/g, ''), 10) % cues.length) : 0
+    const cue = cues[idx] || `easy aerobic ${noun.toLowerCase()}`
+    return cue.charAt(0).toUpperCase() + cue.slice(1)
+  }
+  if (effCeil <= CEILING_PCT.tempo) return `Tempo ${noun}`
+  if (effCeil <= CEILING_PCT.sweetspot) return `Sweet-Spot ${noun}`
+  if (effCeil <= CEILING_PCT.threshold) return `Threshold ${noun}`
+  return `${noun} Intervals`
+}
 function enforceShapeIntensity(user, plan) {
   // #617 — run even with NO segments: a maintenance athlete's "Sweet Spot Run" title must be relabeled even when
   // the coach gave it no structured steps (that was slipping 2 sweet-spot TITLES through for the pregnant athlete).
@@ -1717,9 +1733,13 @@ function enforceShapeIntensity(user, plan) {
   const isModerate = (p) => topOf(p.segments) >= CEILING_PCT.tempo || QUALITY_TITLE.test(p.title || '') || /\btempo\b/i.test(p.title || '')
   const mon = isoMonday(plan.date), sun = addDays(mon, 6)
   const otherModerate = (user.plans || []).filter((p) => p.id !== plan.id && p.date >= mon && p.date <= sun && (p.sport === 'ride' || p.sport === 'run') && isModerate(p)).length
-  const thisIsModerate = topOf(plan.segments) >= CEILING_PCT.tempo || QUALITY_TITLE.test(plan.title || '')
+  // #620 — SYMMETRIC with isModerate (was NOT): a title-only "Tempo Run" (no segments) must count as moderate for
+  // ITSELF too, else it consumes the week's moderate budget when OTHERS look at it but is never clamped itself — that's
+  // why a pregnant athlete ended up with ALMOST ALL tempo runs (each individually looked "not moderate" to the clamp).
+  const thisIsModerate = isModerate(plan)
   // If this session is moderate/quality but the week's allowance is already spent → force it EASY (endurance).
-  const effCeil = (thisIsModerate && otherModerate >= maxModerate) ? CEILING_PCT.endurance : ceilPct
+  const overBudget = thisIsModerate && otherModerate >= maxModerate
+  const effCeil = overBudget ? CEILING_PCT.endurance : ceilPct
   let clamped = 0
   for (const s of (plan.segments || [])) {
     if ((Number(s.powerStart) || 0) > effCeil) { s.powerStart = effCeil; clamped++ }
@@ -1728,11 +1748,15 @@ function enforceShapeIntensity(user, plan) {
   // RETITLE any quality-claiming title on a maintenance athlete (even if segments were already soft, so it can't
   // just LOOK like a sweet-spot/threshold session it isn't allowed to be) — to the enforced level.
   const titleLies = shape.loadBand === 'maintenance' && QUALITY_TITLE.test(plan.title || '')
-  if (clamped || titleLies) {
-    console.log(`[shape-enforce] ${user.username || ''} "${plan.title}" clamp=${clamped} → ${effCeil}% (${shape.loadBand}, ceil ${shape.intensityCeiling}, wk moderate ${otherModerate}/${maxModerate})`)
-    if (titleLies || (effCeil <= CEILING_PCT.tempo && QUALITY_TITLE.test(plan.title || ''))) {
-      const noun = plan.sport === 'run' ? 'Run' : 'Ride'
-      plan.title = effCeil <= CEILING_PCT.endurance ? `Easy Aerobic ${noun}` : `Tempo ${noun}`
+  // an OVER-BUDGET tempo/quality session with NO segments still carries a "Tempo Run" title that must become easy —
+  // clamped=0 (nothing to clamp) so without this the excess tempo title survives. This is the core "all tempo" fix.
+  const overBudgetTitle = overBudget && (QUALITY_TITLE.test(plan.title || '') || /\btempo\b/i.test(plan.title || ''))
+  if (clamped || titleLies || overBudgetTitle) {
+    console.log(`[shape-enforce] ${user.username || ''} "${plan.title}" clamp=${clamped} over=${overBudget} → ${effCeil}% (${shape.loadBand}, ceil ${shape.intensityCeiling}, wk moderate ${otherModerate}/${maxModerate})`)
+    // B1 — relabel whenever the title still claims more than the enforced effort supports: a maintenance athlete
+    // (titleLies), an over-budget tempo/quality day forced to easy (overBudgetTitle), or segments clamped DOWN.
+    if (titleLies || overBudgetTitle || (clamped && QUALITY_TITLE.test(plan.title || ''))) {
+      plan.title = honestTitle(effCeil, plan.sport, plan.date)
     }
   }
 }
@@ -1740,12 +1764,42 @@ function enforceShapeIntensity(user, plan) {
 // #618 — the save-time clamp only fires on sessions the coach WRITES; stale ride/run sessions from an earlier run
 // (created before the shape was enforced) sit untouched and keep a wrong intensity/title. Sweep ALL future ride/run
 // plans through the clamp (date order, so the quality-day count builds correctly) at the end of every adapt.
-function reenforceShapeAll(user) {
+async function reenforceShapeAll(user) {
   const today = localTodayInTz(user && user.icuTimezone)
   const future = (user.plans || []).filter((p) => p && p.date >= today && (p.sport === 'ride' || p.sport === 'run')).sort((a, b) => String(a.date).localeCompare(String(b.date)))
-  let changed = false
-  for (const p of future) { const t0 = p.title, seg0 = JSON.stringify(p.segments || []); enforceShapeIntensity(user, p); if (p.title !== t0 || JSON.stringify(p.segments || []) !== seg0) changed = true }
-  if (changed) save(store)
+  const touched = []
+  for (const p of future) { const t0 = p.title, seg0 = JSON.stringify(p.segments || []); enforceShapeIntensity(user, p); if (p.title !== t0 || JSON.stringify(p.segments || []) !== seg0) touched.push(p) }
+  if (touched.length) {
+    save(store)
+    // B2 (#620) — a clamped session must also re-push to intervals, else the sweet-spot/threshold version stays on
+    // the athlete's Garmin/intervals calendar even though Platyplus relabeled it. prod-only (pushPlanToIcu no-ops on QA).
+    for (const p of touched.slice(0, 20)) { try { await pushPlanToIcu(user, p) } catch (e) { console.error('[reenforce-push] ' + (e.message || e)) } }
+  }
+}
+
+// #620 — CODE-DECIDED VARIETY. weekShape decides the DOSE (how many quality days, what ceiling); this decides the
+// FLAVOR (WHICH archetype each of those days is, + rotating easy-day cues), so the coach can't collapse every quality
+// day to sweet-spot/threshold and every easy day to "Easy Aerobic X". We assign the exact shapes and hand them over.
+function athleteArchetypeBlock(user) {
+  const shape = athleteWeekShape(user)
+  const qd = (shape.qualityDays || 0) + (shape.moderateDays || 0) // moderate (pregnancy tempo) counts as its 1 slot
+  const sports = (user.sports && user.sports.length) ? user.sports : (user.sport ? [user.sport] : [])
+  const sport = sports.includes('cycling') ? 'ride' : sports.includes('running') ? 'run' : sports.includes('swimming') ? 'swim' : (sports[0] === 'running' ? 'run' : 'ride')
+  const trainingDays = Number(user.info && user.info.trainingDays) || 5
+  const easyDays = Math.max(1, Math.min(5, trainingDays - qd - 1)) // rough: the rest of the endurance week is easy
+  // recent archetype fingerprint = the last ~14 days of ride/run/swim plan TITLES mapped back to a key
+  const today = localTodayInTz(user && user.icuTimezone)
+  const from = addDays(today, -14)
+  const recentKeys = (user.plans || [])
+    .filter((p) => p && p.date >= from && p.date <= today && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim'))
+    .map((p) => keyFromTitle(p.title)).filter(Boolean)
+  const block = assignArchetypeBlock({ sport, qualityDays: qd, easyDays, ceiling: shape.intensityCeiling, recentKeys, weeks: 2 })
+  const lines = block.map((wk, i) => {
+    const q = wk.quality.length ? wk.quality.map((a) => `${a.label} — ${a.spec}`).join(' · ') : '(none — all easy/endurance)'
+    const e = wk.easy.length ? wk.easy.join(' · ') : 'steady easy'
+    return `Week ${i + 1}: quality day${wk.quality.length !== 1 ? 's' : ''} → ${q}\n  easy-day cues → ${e}`
+  }).join('\n')
+  return `\n\n# THIS BLOCK'S VARIETY — build THESE EXACT archetypes (code-assigned so your plan actually varies; do NOT default every quality day to sweet-spot/threshold, and do NOT name every easy day "Easy Aerobic ${sport === 'run' ? 'Run' : sport === 'swim' ? 'Swim' : 'Spin'}"):\n${lines}\nThe DOSE (count + ceiling) is fixed by THIS WEEK'S SHAPE above; this fixes the FLAVOR. Author the real structured steps, targets, terrain and a distinct title for each — you own the execution, code owns the rotation. Space quality days apart with easy between.`
 }
 
 function buildSystemPrompt(user) {
@@ -1875,6 +1929,7 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   // consistency / teen / cycle-phase all fold into this one function → one authoritative quality-day count.
   const shape = athleteWeekShape(user)
   tail += `\n\n# THIS WEEK'S SHAPE — computed for THIS athlete; BUILD the plan to match it (do NOT add quality beyond this or exceed the ceiling): **${shape.qualityDays} structured quality day${shape.qualityDays !== 1 ? 's' : ''}/week${shape.moderateDays ? ` + up to ${shape.moderateDays} light-moderate (tempo) day` : ''}, intensity CEILING = ${shape.intensityCeiling} (never program harder than this), load band = ${shape.loadBand}.** ${shape.rationale} Space any quality days apart (easy days between); everything else is easy/endurance + their strength; leave genuine rest days blank.`
+  tail += athleteArchetypeBlock(user) // #620 — code-assigned archetype rotation (the FLAVOR of each quality/easy day)
   // #375/#613 — the TSS BAND (numbers only). The QUALITY-DAY COUNT comes from THE WEEK'S SHAPE above, NOT here.
   const budget = weeklyLoadBudget(user.ctl)
   tail += shape.loadBand === 'build'
@@ -3544,7 +3599,7 @@ async function runDailyAdapt(user, pass) {
       // recovery guidance now rides on the workout's own `recovery` text (set during the workout adapt above), so there's
       // nothing for a separate pass to do. (roundOutMsg kept in case it returns for the roadmap.)
     }
-    reenforceShapeAll(user) // #618 — sweep ALL future ride/run sessions through the shape clamp, incl. stale ones the coach didn't touch
+    await reenforceShapeAll(user) // #618/#620 — sweep ALL future ride/run through the shape clamp (incl. stale ones the coach didn't touch), then re-push clamped ones to intervals
   } catch (e) { console.error(`[daily-adapt ${pass}] ${user.username || ''} ${e.message || e}`) }
 }
 // One scheduler tick: fire the due pass for each coached athlete. Called every ~30 min.
