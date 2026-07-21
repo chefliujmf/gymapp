@@ -54,8 +54,9 @@ describe('post-workout feedback matches intervals custom fields (#147)', () => {
 
   it('gym has its OWN gym-specific fields, not cycling Legs/Fuel (#152)', () => {
     const gymLabels = GYM_FIELDS.map(([l]) => l)
-    expect(gymLabels).toContain('Soreness/pump')
+    expect(gymLabels).not.toContain('Soreness/pump') // #660 — removed (jargon nobody understands)
     expect(gymLabels).toContain('Form')
+    expect(gymLabels).toContain('Pain/Niggles')
     expect(gymLabels).not.toContain('Legs After')
     expect(gymLabels).not.toContain('Fuel/GI')
   })

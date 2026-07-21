@@ -33,7 +33,7 @@ import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, uni
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
 import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps } from './gym-split.js' // #636 — code-driven gym muscle-group BALANCE (arms guaranteed) + accessory rotation; #648 — code-driven REP SCHEME by focus; #649 — clampMainReps ENFORCES it at save
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
-import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
+import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile, goalPriorityFrame } from './perf-metrics.js' // #404; #669 goal-aware priority
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
 import { planCapViolation } from './plan-cap.js'
 import { localDate } from './tz.js'
@@ -1969,7 +1969,10 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const pfAll = user.profileFocus || {}
     const pfKey = (user.sports || []).includes('cycling') ? 'cycling' : (user.sports || []).includes('running') ? 'running' : (user.sports || []).includes('swimming') ? 'swimming' : Object.keys(pfAll)[0]
     const pf = pfKey && Array.isArray(pfAll[pfKey]) ? pfAll[pfKey].filter((f) => f && !/mostly the efforts ARE the data/i.test(f)) : []
-    if (pf.length) tail += `\n\n# DEVELOPMENT PRIORITIES — computed from THIS athlete's OWN numbers (TTE / W′ / EF); this is the exact focus they see on their Stats page, so the PLAN must reflect it. Spend the week's quality-day budget on THESE, and choose the # THIS BLOCK'S VARIETY archetypes to serve them (don't schedule generic quality that ignores their limiter):\n- ${pf.slice(0, 4).join('\n- ')}`
+    // #669 — GOAL-AWARE: weight the priorities by what the GOAL demands (respect the user's needs), not weakness alone.
+    const goalText = `${(user.info?.goals?.notes) || ''} ${((user.info?.goals?.focus) || []).join(' ')} ${user.info?.objective || ''}`.trim()
+    const goalFrame = goalPriorityFrame(goalText)
+    if (pf.length) tail += `\n\n# DEVELOPMENT PRIORITIES — computed from THIS athlete's OWN numbers (TTE / W′ / EF); this is the exact focus they see on their Stats page, so the PLAN must reflect it. ${goalFrame} Spend the week's quality-day budget accordingly, and choose the # THIS BLOCK'S VARIETY archetypes to serve them (don't schedule generic quality that ignores this):\n- ${pf.slice(0, 4).join('\n- ')}`
   }
   // #626 — PERIODIZATION: where this week sits in the meso-cycle, so the coach PROGRESSES load week-over-week
   // (build → build → peak → recovery) + TAPERS into an A-race. Skip for maintenance (pregnancy) — not a build.

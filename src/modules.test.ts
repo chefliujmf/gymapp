@@ -33,7 +33,7 @@ describe('hasModule — empty-sports default', () => {
     expect(hasModule(['strength'], 'strength')).toBe(true)
     expect(hasModule(['triathlon'], 'running')).toBe(true)
   })
-  it('MODULES lists the six toggleable disciplines', () => {
-    expect(MODULES).toEqual(['cycling', 'running', 'strength', 'yoga', 'pilates', 'meditation'])
+  it('MODULES lists the toggleable disciplines', () => {
+    expect(MODULES).toEqual(['cycling', 'running', 'swimming', 'strength', 'yoga', 'pilates', 'meditation'])
   })
 })

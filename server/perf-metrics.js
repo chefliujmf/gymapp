@@ -84,3 +84,31 @@ export function athleteProfile(inp) {
   focus.push('Mostly the efforts ARE the data — the CP/W′/TTE models sharpen as they train; a short benchmark test only if the fit goes stale.')
   return { type, badge, summary, tteMin, focus }
 }
+
+// #669 — GOAL-AWARE development priority (JM 2026-07-21). "Train the weakness" is only right for an all-rounder; a
+// specialist trains what the GOAL/EVENT demands. So the plan is built around the goal's DEMANDS (respect the user's
+// needs), attacking a demanded quality where they're weak + sharpening it where strong. A notable out-of-goal weakness
+// may be SUGGESTED (they might adapt their objective) but never forced — the plan serves their stated goal. Pure + tested.
+const GOAL_DEMANDS = [
+  { re: /time.?trial|\btt\b|gran ?fondo|century|sportive|\bfondo\b|long ride|long course|ironman|70\.?3/i, demands: ['threshold', 'durability'] },
+  { re: /crit|criterium|\btrack\b|match ?sprint|\bsprint/i, demands: ['anaerobic power (W′/D′)', 'sprint', 'repeatability'] },
+  { re: /road ?race|hilly|\bclimb|\bkom\b|\bhill/i, demands: ['threshold', 'VO2', 'a finishing sprint'] },
+  { re: /marathon|\bultra\b/i, demands: ['threshold', 'durability', 'fat-oxidation'] },
+  { re: /\b5k\b|\b10k\b|parkrun|\bmile\b/i, demands: ['VO2', 'threshold'] },
+  { re: /\bftp\b|\bwatt|raise.*threshold|threshold/i, demands: ['threshold', 'durability'] },
+  { re: /general|get fit|\bhealth|consistent|all.?round|lose (fat|weight)|lean muscle|stay fit/i, demands: ['balanced'] },
+]
+export function goalDemands(goalText = '') {
+  const g = String(goalText || '')
+  const hit = GOAL_DEMANDS.filter((d) => d.re.test(g)).flatMap((d) => d.demands)
+  return hit.length ? [...new Set(hit)] : ['balanced']
+}
+/** The directive to inject into # DEVELOPMENT PRIORITIES: build around the goal's demands, respect the user's needs,
+ *  suggest (never force) an out-of-goal weakness. */
+export function goalPriorityFrame(goalText = '') {
+  const dem = goalDemands(goalText)
+  if (dem.length === 1 && dem[0] === 'balanced') {
+    return `Their goal is general / all-round, so RAISE THE LIMITER — spend the quality budget on their WEAKEST quality to make them more complete.`
+  }
+  return `Their goal DEMANDS: ${dem.join(' + ')}. Build the plan around THESE — attack a demanded quality where they are WEAK, sharpen it where they are already strong, and do NOT burn the quality budget on a weakness the goal doesn't need. You MAY briefly SUGGEST addressing a notable out-of-goal weakness (they might then adapt their objective), but RESPECT their stated goal: the plan SERVES it, the suggestion is optional.`
+}
