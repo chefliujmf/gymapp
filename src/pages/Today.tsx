@@ -458,7 +458,6 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
   const [selDay, setSelDay] = useState(initialDay || todayISO())
   useEffect(() => { if (initialDay && initialDay !== selDay) setSelDay(initialDay) }, [initialDay]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { onDay?.(selDay) }, [selDay]) // eslint-disable-line react-hooks/exhaustive-deps
-  const todaysLogs = useLiveQuery(() => db.logs.where('date').equals(todayISO()).toArray())
   const dayLogs = useLiveQuery(() => db.logs.where('date').equals(selDay).toArray(), [selDay]) ?? []
   const doneTitles = new Set(dayLogs.map((l) => (l.title || '').toLowerCase().trim()))
   const diet = useLiveQuery(() => getSetting('diet'))
@@ -646,9 +645,7 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
       {/* #457 — one-time opt-in for phone push (plan-change alerts). */}
       <PushNudge />
 
-      {todaysLogs && todaysLogs.length > 0 && (
-        <Link to="/progress" style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 700, marginTop: 4 }}>✓ {todaysLogs.length} logged today — see history →</Link>
-      )}
+      {/* #673 — removed the "N logged today — see history" line (JM never asked for it). */}
 
       {/* #202 Today's plan (workouts + notes) with the readiness verdict banner */}
       <div className="cal-day-head" style={{ marginTop: 8 }}>

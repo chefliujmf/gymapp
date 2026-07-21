@@ -27,8 +27,9 @@ export const RUN_FIELDS: [string, string[]][] = [
 ]
 
 // GYM is its OWN set (#152) — no Legs/Fuel. These are Platyplus-only (intervals has no gym custom fields).
+// #660 (JM 2026-07-21) — dropped "Soreness/pump" (jargon nobody understands). Plain fields only. NOT index-mapped to
+// intervals (only Pain/Niggles has an ICU_FIELD_CODES code), so removing it doesn't break the round-trip.
 export const GYM_FIELDS: [string, string[]][] = [
-  ['Soreness/pump', ['none', 'light', 'good pump', 'sore', 'very sore']],
   ['Form', ['clean', 'mostly clean', 'broke down']],
   ['Pain/Niggles', ['none', 'shoulder', 'low back', 'knee', 'wrist', 'elbow', 'other']],
 ]
