@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from 
 import { dirname, resolve, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
+import { deriveExerciseType } from './derive-exercise-type.mjs' // #664 — stamp timed/eachSide/loaded so the coach/player/guard derive, not guess
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
@@ -607,6 +608,7 @@ const endurance = listJson(JOIN_DIR).map((f) => mapEndurance(readJson(join(JOIN_
 
 console.log('recipes:   ', build('recipes', recipes), `(centr ${centrRecipes.length} + themealdb ${tmdbRecipes.length})`)
 console.log('workouts:  ', build('workouts', workouts))
+for (const e of exercises) deriveExerciseType(e) // #664 — machine-readable type (timed/eachSide/loaded + default seconds)
 console.log('exercises: ', build('exercises', exercises), `(centr ${centrExercises.length} + musclewiki ${mwExtras.length} + free-db ${fedbExtras.length})`)
 { const m = writeContentManifest(exercises, recipes); console.log(`content manifest: ${m.total} items (${m.commercialOk} commercial-OK) -> content-manifest.json + .csv`) }
 // Committed index so the cyclingcoach can pick exercises by id when building
