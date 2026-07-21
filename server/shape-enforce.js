@@ -77,7 +77,8 @@ export function enforceShape(shape, plan, siblings = []) {
     const t = honestTitle(effCeil, plan.sport, plan.date)
     if (t !== plan.title) { plan.title = t; changed = true }
   }
-  // #672 — neutralize surge/burst PROSE so the description matches the relabeled steady title (maintenance surge session)
-  if (wasSurge) for (const k of ['objective', 'notes', 'success']) { if (typeof plan[k] === 'string') { const v = scrubSurgeProse(plan[k]); if (v !== plan[k]) { plan[k] = v; changed = true } } }
+  // #672 — neutralize surge/burst PROSE on ANY maintenance session (NOT gated on the current title being a surge — the
+  // title may already have been relabeled to "Tempo Run" in a prior sweep, orphaning the "effort bursts" prose forever).
+  if (shape.loadBand === 'maintenance') for (const k of ['objective', 'notes', 'success']) { if (typeof plan[k] === 'string') { const v = scrubSurgeProse(plan[k]); if (v !== plan[k]) { plan[k] = v; changed = true } } }
   return { changed, clamped, effCeil, overBudget }
 }
