@@ -16,12 +16,17 @@ interface Goals { focus?: string[]; notes?: string }
 export default function GoalsPicker() {
   const { user, refresh } = useAuth()
   const g = ((user?.info as { goals?: Goals } | undefined)?.goals) || {}
+  const info = (user?.info as { raceDate?: string; raceName?: string } | undefined) || {}
   const [focus, setFocus] = useState<string[]>(g.focus || [])
   const [notes, setNotes] = useState<string>(g.notes || '')
+  const [raceDate, setRaceDate] = useState<string>(info.raceDate || '')
+  const [raceName, setRaceName] = useState<string>(info.raceName || '')
   const [saved, setSaved] = useState(false)
   const flash = () => { setSaved(true); setTimeout(() => setSaved(false), 1500) }
   const save = (next: Goals) => authApi.saveProfile({ goals: { focus, notes, ...next } }).then(() => { flash(); refresh().catch(() => {}) }).catch(() => {})
   const toggle = (v: string) => { const next = focus.includes(v) ? focus.filter((x) => x !== v) : [...focus, v]; setFocus(next); save({ focus: next }) }
+  // #628 (gap 3/4) — the A-race DATE drives periodization + the taper into race week. Saved top-level on info.
+  const saveRace = (d: string, n: string) => authApi.saveProfile({ raceDate: d || undefined, raceName: n || undefined }).then(() => { flash(); refresh().catch(() => {}) }).catch(() => {})
 
   return (
     <>
@@ -36,6 +41,17 @@ export default function GoalsPicker() {
         onChange={(e) => setNotes(e.target.value)}
         onBlur={(e) => save({ notes: e.target.value.trim() })}
       />
+      {focus.includes('race') && (
+        <div style={{ marginTop: 10 }}>
+          <p className="meta" style={{ margin: '0 2px 4px' }}>🏁 Your target event — the coach periodizes toward it and tapers you into race week.</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input className="search" type="date" value={raceDate} style={{ flex: '0 0 auto' }}
+              onChange={(e) => setRaceDate(e.target.value)} onBlur={(e) => saveRace(e.target.value, raceName)} />
+            <input className="search" type="text" value={raceName} placeholder="Event name (optional)" style={{ flex: 1, minWidth: 140 }}
+              onChange={(e) => setRaceName(e.target.value)} onBlur={(e) => saveRace(raceDate, e.target.value.trim())} />
+          </div>
+        </div>
+      )}
       <p className="meta" style={{ margin: '6px 2px 4px' }}>Saved when you tap away — your coach reads it and adapts every plan.</p>
     </>
   )
