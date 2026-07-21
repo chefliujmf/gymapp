@@ -216,7 +216,7 @@ export default function CoachPlanDetail() {
             const mt = (doneActivity as { moving_time?: number }).moving_time
             const hr = Math.round((doneActivity as { icu_average_hr?: number; average_heartrate?: number }).icu_average_hr || (doneActivity as { average_heartrate?: number }).average_heartrate || 0)
             return <>
-              <div className="card" style={{ padding: 12, marginBottom: 10, background: '#12180f', border: '1px solid #26421f' }}>
+              <div className="card" style={{ padding: 12, marginBottom: 10, background: 'rgba(52,224,125,.08)', border: '1px solid rgba(52,224,125,.3)' }}>
                 <div style={{ fontWeight: 700, color: 'var(--accent)' }}>✓ Completed · {dateLabel}</div>
                 <div className="meta" style={{ marginTop: 3 }}>Recorded on your device{mt ? ` · ${Math.round(mt / 60)} min` : ''}{hr ? ` · ${hr} bpm avg HR` : ''}. Weights weren't logged in the app.</div>
                 <Link to={`/activity/${doneActivity.id}`} style={{ color: 'var(--accent)', fontWeight: 600, display: 'inline-block', marginTop: 6, fontSize: 13 }}>View activity ›</Link>
