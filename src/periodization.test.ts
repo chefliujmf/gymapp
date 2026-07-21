@@ -36,6 +36,14 @@ describe('#626 periodization — the meso-cycle the coach progresses through', (
     expect(periodizationPhase({ ctl: 60, weeksSinceAnchor: 0, weeksToRace: 4 }).phase).toBe('build')
   })
 
+  it('AUTOREGULATION: deep-negative Form forces an unplanned recovery week, overriding the calendar (#630)', () => {
+    // week 2 would normally be a PEAK week, but if they are dug into a fatigue hole, recover instead
+    const dugIn = periodizationPhase({ ctl: 60, weeksSinceAnchor: 2, form: -35 })
+    expect(dugIn.phase).toBe('recovery')
+    const fresh = periodizationPhase({ ctl: 60, weeksSinceAnchor: 2, form: -12 })
+    expect(fresh.phase).toBe('peak') // normal Form → calendar phase stands
+  })
+
   it('masters/teen get a GENTLER peak (submaximal) + a DEEPER recovery than an adult', () => {
     const adultPeak = periodizationPhase({ ctl: 60, weeksSinceAnchor: 2 }).target
     const mastersPeak = periodizationPhase({ ctl: 60, weeksSinceAnchor: 2, ageYears: 60 }).target
