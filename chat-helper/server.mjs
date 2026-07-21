@@ -53,10 +53,10 @@ const server = http.createServer((req, res) => {
     try { writeFileSync(spFile, sysPrompt) } catch (e) { res.writeHead(500); return res.end('sysprompt write failed: ' + e.message) }
     const args = [
       '-p', message,
-      // #484 perf — the chat does heavy REPLANNING (constraint-aware plan edits), so we keep the quality model
-      // (CLI default = Opus) unless COACH_MODEL is set. Don't downgrade the planning brain to chase speed; fix the
-      // real slowness (tool round-trips / prompt caching) instead. Set COACH_MODEL=sonnet to A/B test.
-      ...(process.env.COACH_MODEL ? ['--model', process.env.COACH_MODEL] : []),
+      // #634 COST — per-request MODEL tiering (skill commercialization-cost): the caller sets `model` per pass —
+      // the strong model for the quality-critical plan BUILD, Haiku (~¼-1/15 the cost) for the cheap passes
+      // (reviews, sharpen, check-in touch). Falls back to COACH_MODEL env, then the CLI default. Was Opus-everywhere.
+      ...((p.model || process.env.COACH_MODEL) ? ['--model', String(p.model || process.env.COACH_MODEL)] : []),
       '--output-format', 'stream-json', '--include-partial-messages', '--verbose',
       '--mcp-config', mcpConfig,
       '--allowedTools', 'mcp__platyplus',

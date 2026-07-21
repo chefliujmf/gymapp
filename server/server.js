@@ -731,7 +731,7 @@ async function maybeCoachBenchmarkAdapt(user, change, source) {
   user.lastBenchAdaptAt = Date.now(); save(store)
   const src = source === 'manual' ? 'the athlete set it themselves in Platyplus' : 'imported from intervals.icu'
   const msg = `The athlete's ${change.label} just changed from ${Math.round(change.from)} to ${Math.round(change.to)} (${change.dir}) — ${src}. Their ${change.group} training zones move with it (each workout's % target stays, but the real watts/paces shift). Re-evaluate the UPCOMING plan with list_schedule: confirm it still fits, and adjust intensity/load ONLY if this change is big enough to matter. Then send ONE short, encouraging notify acknowledging the new ${change.label} (${Math.round(change.to)}) and what — if anything — you changed. Be concise; decide and act.`
-  runCoachTask(user, msg).catch((e) => console.error('[bench-adapt] ' + (e.message || e)))
+  runCoachTask(user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[bench-adapt] ' + (e.message || e)))
 }
 app.put('/auth/sport-stat', auth, async (req, res) => {
   const r = await applySportStat(req.user, req.body || {}); res.status(r.status).json(r.body)
@@ -855,7 +855,7 @@ app.post('/auth/checkin', auth, (req, res) => {
       const removedStr = removals.map((r) => `"${r.title}" (${r.sport}, was planned ${r.date})`).join('; ')
       const missBlock = removedStr ? ` RECENTLY MISSED — acknowledge it inside this SAME single notification (do NOT send a second one): the athlete did not complete ${removals.length > 1 ? 'these planned sessions' : 'this planned session'} — ${removedStr} — so ${removals.length > 1 ? 'they were' : 'it was'} removed from the calendar. Handle it with CARE, in this order: (1) call get_recent_activities first — if they actually trained something else instead (an off-plan ride/run/gym), CREDIT it warmly and reassure them their training is on track; don't call it "missed". (2) If they genuinely did nothing AND their fitness/freshness is trending below where their goal needs it (read get_wellness), name it — but be VERY respectful, compassionate and diplomatic: life happens, never guilt-trip, scold, or shame. Acknowledge it kindly, then gently PERSUADE and MOTIVATE by pointing to the ONE specific upcoming session that gets them back on track and why it matters to their goal. (3) If their load is still fine despite the skip, just note the removal lightly and reassure. Weave this into the plain-language notification, warmly.` : ''
       const msg = `Morning check-in is in for today (${today}) — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore)${poor ? ' — this reads run-down' : ''}. This is the ONE coach notification the athlete gets after checking in — keep it to TODAY; the rest of their plan is kept up to date separately and SILENTLY (no push), so don't re-plan the whole week here. Overnight HRV/sleep from their watch often hasn't synced to intervals this early, so decide from (a) this subjective check-in and (b) their freshness / form — read get_wellness. Look at TODAY's planned session(s) with list_schedule and make a STICK-OR-ADJUST call: if they're ready, keep the plan; if run-down, EASE today — cut intensity/volume, swap to recovery, or move it — with the tools. Then send EXACTLY ONE notify that explains in PLAIN language what you did and why, e.g. "I moved your Thursday ride to Friday and shortened it to 45 min because your legs are sore" or "Sticking with today's easy spin — you're recovered."${missBlock} Write it so a non-athlete understands: NO abbreviations or jargon (never "TTE", "CTL", "ATL", "IF", "NP", "VI", "Form", "eFTP" — say "how fresh you are", "your threshold power", etc.). One notify only. Don't ask questions — decide and act.`
-      runCoachTask(req.user, msg).catch((e) => console.error('[checkin-decide] ' + (e.message || e)))
+      runCoachTask(req.user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[checkin-decide] ' + (e.message || e)))
     }
   } catch (e) { console.error('[checkin-decide] trigger ' + e.message) }
 })
@@ -1122,14 +1122,14 @@ function triggerActivityReview(user, id, fb, icuActivityId) {
   const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
   const rid = icuActivityId || id
   const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${rid}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${rid}") with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${rid}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. ${REVIEW_OWN_TERMS} Be concise; decide and act.`
-  runCoachTask(user, msg).catch((e) => console.error('[activity-review] ' + (e.message || e)))
+  runCoachTask(user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[activity-review] ' + (e.message || e)))
   return true
 }
 function triggerPlanReview(user, plan, fb) {
   if (!fb || !(user.coachProfile && user.coachProfile.trim())) return false
   const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
   const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}", and activityId if it matched a device activity) with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). If it matched a device activity, ALSO set a PUBLIC-safe title + description with set_activity_text (activity id from get_recent_activities) — workout/route/effort only, NO health/score/plan. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. ${REVIEW_OWN_TERMS} Be concise; don't ask questions — just review and act.`
-  runCoachTask(user, msg).catch((e) => console.error('[coach-review] ' + (e.message || e)))
+  runCoachTask(user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[coach-review] ' + (e.message || e)))
   return true
 }
 // #589 — RETRY a stuck/failed coach review. When feedback was saved but no review ever landed (e.g. the coach was down),
@@ -1580,7 +1580,7 @@ app.post('/auth/plans/handle-missed', auth, async (req, res) => {
     const list = missed.map((p) => `"${p.title}" (${p.sport}, planned ${p.date}, id ${p.id})`).join('; ')
     const ids = missed.map((p) => p.id).join(', ')
     const msg = `The athlete MISSED ${missed.length} planned session${missed.length > 1 ? 's' : ''} (now past, not completed): ${list}. Reassess the REST OF THIS WEEK (list_schedule): if a missed session still matters for the plan, MOVE it to a free upcoming day that fits their availability + the one-session-per-day rule; if the week's stimulus is already covered or there's no room, DROP it. EITHER WAY, remove each missed workout from the calendar now with remove_workout (ids: ${ids}) so it doesn't linger. Keep easy days easy; never stack two hard days. Do this SILENTLY — do NOT call notify / push (#498, JM 2026-07-15): the athlete gets their ONE coach notification at check-in, so this background cleanup must never send a surprise second morning push. Just fix the calendar and stop. Don't nag or ask questions.`
-    runCoachTask(user, msg).catch((e) => console.error('[missed-handler] ' + (e.message || e)))
+    runCoachTask(user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[missed-handler] ' + (e.message || e)))
   }
   res.json({ missed: missed.length, paired, gc })
 })
@@ -1660,6 +1660,11 @@ const CHAT_DENY = 'Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,Task,Notebo
 // chat-helper instead of spawning locally. Set on QA/prod; unset in dev.
 const CHAT_HELPER_URL = process.env.CHAT_HELPER_URL || ''
 const CHAT_HELPER_SECRET = process.env.CHAT_HELPER_SECRET || ''
+// #634 COST — model TIERING (skill commercialization-cost). Cheap passes (reviews/sharpen/check-in touch) → Haiku;
+// the quality-critical plan BUILD → COACH_BUILD_MODEL (null = the helper/CLI default = Opus, pending the A/B/simulation).
+// Both overridable by env so the simulation can vary them without a code change.
+const COACH_CHEAP_MODEL = process.env.COACH_CHEAP_MODEL || 'haiku'
+const COACH_BUILD_MODEL = process.env.COACH_BUILD_MODEL || null
 const coachIdentity = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app, helping ONE user (the signed-in account) with THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. **CONFIDENTIALITY (absolute):** everything about this athlete — their profile, coach-memory, data, plan, and anything they tell you — is STRICTLY PRIVATE to them. NEVER reference, compare to, or bring up ANY other person (another athlete, a family member, another user, "someone else I coach") in your coaching; you have ONLY this athlete's information and you coach ONLY them. What you learn about one person NEVER carries to anyone else. When you schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). TITLE + describe every workout by its TRAINING content and purpose ("Full-Body Strength", "Sweet-Spot 3×12", "Easy Aerobic Run") — NEVER after the weather or a theme (no "Rain Day", "Hot Day", "Windy Ride"); weather only informs indoor/outdoor + intensity + fuel, it is never the name. Be concise, practical and encouraging.
 
 FORMAT FOR A PHONE (never a wall of text): lead with the answer in one line. If the reply runs beyond ~3 sentences, break it up — use a short **bold** mini-header per topic and hyphen "- " bullets for lists (days, steps, options). Keep bullets to one line each. Markdown renders (**bold**, "- " bullets, "## " headers); don't use tables or code blocks. Prefer 2-4 tight sections over one long paragraph.`
@@ -2057,13 +2062,17 @@ function writeSysPromptFile(prompt) {
   writeFileSync(f, prompt)
   return f
 }
-async function runCoachTask(user, message) {
+// #634 COST — per-pass MODEL tiering: the quality-critical plan BUILD runs on the strong model; the cheap passes
+// (reviews, sharpen, check-in touch) run on Haiku (~¼ cost). Pass opts.model ('haiku' | 'sonnet' | 'opus'); omit to
+// use the helper/CLI default. See skill `commercialization-cost`.
+async function runCoachTask(user, message, opts = {}) {
   const systemPrompt = buildSystemPrompt(user)
+  const model = opts.model || null
   if (CHAT_HELPER_URL) {
     const hr = await fetch(CHAT_HELPER_URL + '/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-chat-secret': CHAT_HELPER_SECRET },
-      body: JSON.stringify({ message, token: user.apiToken, coach: user.coachName || 'Coach', systemPrompt }),
+      body: JSON.stringify({ message, token: user.apiToken, coach: user.coachName || 'Coach', systemPrompt, model }),
     })
     if (!hr.ok || !hr.body) throw new Error('coach helper ' + hr.status)
     const reader = hr.body.getReader()
@@ -2074,7 +2083,7 @@ async function runCoachTask(user, message) {
     const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: user.apiToken } } } })
     const spFile = writeSysPromptFile(systemPrompt)
     const cleanup = () => { try { unlinkSync(spFile) } catch { /* gone */ } }
-    const args = ['-p', message, '--output-format', 'stream-json', '--verbose', '--mcp-config', mcpConfig, '--allowedTools', 'mcp__platyplus', '--disallowedTools', CHAT_DENY, '--append-system-prompt-file', spFile]
+    const args = ['-p', message, '--output-format', 'stream-json', '--verbose', ...(model ? ['--model', model] : []), '--mcp-config', mcpConfig, '--allowedTools', 'mcp__platyplus', '--disallowedTools', CHAT_DENY, '--append-system-prompt-file', spFile]
     const proc = spawn(CLAUDE_BIN, args, { env: process.env })
     proc.stdin?.end()
     const killer = setTimeout(() => { proc.kill('SIGKILL'); reject(new Error('coach task timeout')) }, 600000) // #608 — match the chat-helper: a strength adapt's full rebuild (many search_exercises + creates) needs >240s
@@ -3607,7 +3616,7 @@ function roundOutMsg(today) {
 function sharpenMsg(today) {
   return `Daily METRICS-SHARPEN pass (${today}) — keep the athlete's benchmarks HONEST, without demanding tests. Their threshold power / pace, CP·W′ (or CS·D′), VO₂max, TTE and max-HR are in your profile; each is only as good as the last quality effort behind it, and EVERYTHING you prescribe scales from them. Review freshness: get_recent_activities and, for EACH anchor, ask "is there a recent effort that would set it?" — a tempo/threshold effort for the threshold; a hard ~5-min effort for VO₂max/MAP; short near-max reps for W′/D′; an all-out finish for max-HR. For any anchor with NO recent effort behind it (e.g. weeks of only easy rides → the threshold is really a guess), fold ONE targeted, LOW-COST refining effort into the rolling ${DAILY_HORIZON}-day plan (list_schedule → create_ride/run/workout) — NEVER an all-out max test, never a dreaded 20-min: cycling → one 8–15 min hard sustained effort up a climb/segment when fresh (intervals reads eFTP straight from it), or a structured 2×8 only if they'd like a cleaner number; running → a hard 20 min or a 5 k / parkrun; gym → a heavy 3–5 rep top set. Just ENOUGH to re-read the anchor. Rules: at most ONE such effort per pass — pick the STALEST, most important anchor; place it on a day they're FRESH, within their weekly training-day + recovery limits, and never stacked against another hard day; if every anchor already has a recent effort behind it, change nothing. This pass is SILENT (background upkeep — no push; the athlete gets only their one check-in ping). When you DO add one, its title/description explains WHY in plain words ("one harder 15-minute stretch so I can dial in the hardest pace you can hold"), never "to update your FTP". Be concise.`
 }
-async function runDailyAdapt(user, pass) {
+async function runDailyAdapt(user, pass, opts = {}) { // #634 — opts.buildModel lets the simulation A/B the build model
   try {
     const today = await athleteToday(user)
     // #610/#612 — the coach BUILDS + individualizes the plan in ONE pass (skeleton removed #516; multi-pass fill
@@ -3615,8 +3624,9 @@ async function runDailyAdapt(user, pass) {
     // ~2-week horizon (its prompt makes filling to the window end the first job); at most ONE fallback top-up if it
     // still comes up badly short, never a 5-deep loop.
     const covOf = () => horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON)
-    await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()))
-    if (covOf().tail >= 4) await runCoachTask(user, horizonFillMsg(today, covOf())) // single top-up only
+    const buildModel = opts.buildModel || COACH_BUILD_MODEL
+    await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()), { model: buildModel }) // #634 — the BUILD (quality-critical); model set by env/opts, default Opus
+    if (covOf().tail >= 4) await runCoachTask(user, horizonFillMsg(today, covOf()), { model: buildModel }) // single top-up, same tier as the build
     // 2) REVIEWS + 3) ROUND-OUT — their OWN focused passes, ONCE/day (dedup) so we don't re-spawn the coach
     //    for them on both the early AND refine passes.
     user.dailyAdapt = user.dailyAdapt || {}
@@ -3624,8 +3634,8 @@ async function runDailyAdapt(user, pass) {
       user.dailyAdapt.extras = today; save(store)
       // #613 — the sharpen pass INJECTS a hard effort; SKIP it on a maintenance week (pregnancy / consistency
       // block with 0 quality days) so it can't stack a quality day the shape deliberately excluded.
-      if (athleteWeekShape(user).qualityDays > 0) await runCoachTask(user, sharpenMsg(today)) // #508 — review benchmarks + fold ONE refining effort into the plan
-      await runCoachTask(user, reviewMsg(today))
+      if (athleteWeekShape(user).qualityDays > 0) await runCoachTask(user, sharpenMsg(today), { model: COACH_CHEAP_MODEL }) // #634 — cheap pass on Haiku
+      await runCoachTask(user, reviewMsg(today), { model: COACH_CHEAP_MODEL }) // #634 — reviews on Haiku (cheap, quality-tolerant)
       // #JM 2026-07-15 — round-out (recovery/fuel/mind) pass REMOVED: Eat & Mind are off and recovery ITEMS are parked.
       // #629 — and per #623 recovery is NO LONGER written on the workout either (the description is objective + success +
       // fuelling only; the `recovery`/`mind` shell fields are unused + unrendered). So no recovery channel runs right now;
@@ -3689,7 +3699,7 @@ async function dailyAdaptTick() {
 // Run the daily adaptation on demand (testing / "adapt now"). #367
 app.post('/api/coach/daily-adapt', apiAuth, (req, res) => {
   if (!req.user.coachProfile || !String(req.user.coachProfile).trim()) return res.status(400).json({ error: 'coach not set up (no coachProfile)' })
-  runDailyAdapt(req.user, req.body?.pass === 'refine' ? 'refine' : 'early')
+  runDailyAdapt(req.user, req.body?.pass === 'refine' ? 'refine' : 'early', { buildModel: req.body?.buildModel }) // #634 — buildModel for the simulation A/B
   res.status(202).json({ ok: true, running: true })
 })
 // #372 — re-mirror all FUTURE plans to intervals so they pick up the computed planned LOAD (or any
