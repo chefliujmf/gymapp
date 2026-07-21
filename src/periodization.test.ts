@@ -13,12 +13,14 @@ describe('#626 periodization — the meso-cycle the coach progresses through', (
     expect(periodizationPhase({ ctl: 60, weeksSinceAnchor: 7 }).phase).toBe('recovery')
   })
 
-  it('load PROGRESSES then RECOVERS: peak week is the biggest, recovery week the smallest', () => {
-    const build = periodizationPhase({ ctl: 60, weeksSinceAnchor: 0 }).target
+  it('load PROGRESSES then RECOVERS: the two build weeks RAMP, peak is biggest, recovery smallest', () => {
+    const build1 = periodizationPhase({ ctl: 60, weeksSinceAnchor: 0 }).target
+    const build2 = periodizationPhase({ ctl: 60, weeksSinceAnchor: 1 }).target
     const peak = periodizationPhase({ ctl: 60, weeksSinceAnchor: 2 }).target
     const recovery = periodizationPhase({ ctl: 60, weeksSinceAnchor: 3 }).target
-    expect(peak).toBeGreaterThanOrEqual(build)
-    expect(recovery).toBeLessThan(build)
+    expect(build2).toBeGreaterThan(build1) // #629 — real week-over-week ramp, not two identical build weeks
+    expect(peak).toBeGreaterThanOrEqual(build2)
+    expect(recovery).toBeLessThan(build1)
   })
 
   it('an A-race within 2 weeks OVERRIDES the cycle with a taper (volume drops toward race week)', () => {
