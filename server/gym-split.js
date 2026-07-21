@@ -104,6 +104,35 @@ export function clampMainReps(exercises, focus) {
 }
 const LABEL = { squat: 'Squat', hinge: 'Hinge', hpush: 'Horizontal push', vpush: 'Vertical push (shoulders)', hpull: 'Horizontal pull', vpull: 'Vertical pull', core: 'Core', arms: 'ARMS (biceps + triceps)', carry: 'Loaded carry' }
 
+// #658 — SPORT-ADAPTIVE exercise SELECTION. Balance (#636) guarantees full coverage + reps adapt by focus (#648), but
+// the MOVEMENTS were sport-blind: a cyclist and a swimmer got identical selection. A world-class coach differentiates
+// what to PRIORITIZE + the CORE style per sport (Rønnestad cyclist; Beattie/Blagrove runner plyo/economy; swimming
+// S&C shoulder/pull; core = STABILITY not crunches for all endurance). Code-INJECTED (selection is qualitative, not
+// a hard clamp) — the emphasis block steers accessory + priority choice while balance still covers everything.
+const SPORT_EMPHASIS = {
+  cycling: { label: 'cyclist', priority: ['squat', 'hinge'],
+    core: 'anti-rotation + anti-extension (Pallof, dead-bug, plank) for power transfer + sustained aero-position endurance — not crunches',
+    cue: 'Heavy BILATERAL leg + posterior-chain strength (squat, hinge) is the priority; keep upper-body volume LOW (added mass costs watts/kg); no heavy spinal-fatigue right before a key ride.' },
+  running: { label: 'runner', priority: ['squat', 'hinge'],
+    core: 'anti-rotation + hip/glute frontal-plane stability (bird-dog, side plank, monster walks) to resist gait rotation',
+    cue: 'Emphasize SINGLE-LEG strength (split squat, step-up, single-leg RDL — running is single-leg) + a weekly PLYOMETRIC/reactive slot (pogos, bounds, calf/ankle stiffness → economy, Beattie/Blagrove); low total volume near hard runs.' },
+  swimming: { label: 'swimmer', priority: ['vpull', 'hpull'],
+    core: 'rotational + anti-rotation + streamline stiffness (hollow hold, Pallof, ab-rollout)',
+    cue: 'UPPER PULL-dominant (pull-ups, lat pulldown, rows) + SHOULDER-HEALTH prehab (external rotation, scap/rotator-cuff, YTWs — swimmers’ shoulders are injury-prone); legs lighter unless sprint; balance the over-developed internal rotators with pull + external rotation.' },
+  triathlon: { label: 'triathlete', priority: ['squat', 'hinge', 'vpull'],
+    core: 'anti-rotation + rotational (covers bike position, run gait, swim body-line)',
+    cue: 'Blend cyclist + runner + swimmer needs at LOW total volume (3 sports share recovery): heavy legs, some single-leg, upper pull + shoulder health; injury-prevention first.' },
+}
+/** Resolve the sport emphasis from the main sport (or the first endurance sport). gym-first/strength → null (balanced). */
+export function sportEmphasis({ mainSport, sports = [] } = {}) {
+  const cand = String(mainSport || '').toLowerCase() || String((sports || []).map((s) => String(s).toLowerCase()).find((s) => /cycl|ride|bike|\brun|jog|swim|\btri/.test(s)) || '')
+  if (/cycl|ride|bike/.test(cand)) return SPORT_EMPHASIS.cycling
+  if (/\btri/.test(cand)) return SPORT_EMPHASIS.triathlon
+  if (/\brun|jog/.test(cand)) return SPORT_EMPHASIS.running
+  if (/swim/.test(cand)) return SPORT_EMPHASIS.swimming
+  return null // gym/strength-first or unknown → no sport bias, full-balance as-is
+}
+
 // map an exercise NAME → its movement pattern (the look-back fingerprint, gym analogue of keyFromTitle).
 export function patternFromExercise(name) {
   const n = String(name || '').toLowerCase()
@@ -149,7 +178,7 @@ function pickSplit(spw, hyper) {
  *   days: the pattern list for each session this week; splitName: the chosen split; rotations: a fresh accessory
  *   per pattern (skip-recent). ARMS appear in every full-body / upper / push / pull day — never dropped.
  */
-export function assignWeeklyGym({ sessionsPerWeek = 1, focus = 'support', recentExercises = [] } = {}) {
+export function assignWeeklyGym({ sessionsPerWeek = 1, focus = 'support', recentExercises = [], mainSport, sports = [] } = {}) {
   const spw = Math.max(1, Math.min(7, Math.round(Number(sessionsPerWeek) || 1)))
   const f = normFocus(focus)
   const hyper = f === 'muscle' || f === 'support_build' // needs each muscle ~2×/wk → a split; endurance-support → full-body
@@ -157,7 +186,7 @@ export function assignWeeklyGym({ sessionsPerWeek = 1, focus = 'support', recent
   const recent = new Set((recentExercises || []).map((e) => String(e || '').toLowerCase().trim()))
   const rotations = {}
   for (const pat of GYM_PATTERNS) { const menu = PATTERNS[pat]; rotations[pat] = menu.find((m) => !recent.has(m.toLowerCase())) || menu[0] }
-  return { spw, splitName, days, rotations, mustCover: GYM_PATTERNS.slice(), arms: true, focus: f, repScheme: REP_SCHEME[f] }
+  return { spw, splitName, days, rotations, mustCover: GYM_PATTERNS.slice(), arms: true, focus: f, repScheme: REP_SCHEME[f], emphasis: sportEmphasis({ mainSport, sports }) }
 }
 
 // render the assignment for the prompt block: the split + each session's patterns (with a fresh accessory each).
@@ -167,5 +196,9 @@ export function gymBalanceLines(assign) {
   const repLine = rs
     ? `\nREP SCHEME (focus = ${assign.focus}) — PRIMARY compound lifts: ${rs.mains} reps at ~${rs.pctLow}-${rs.pctHigh}% of 1-rep-max, tempo ${rs.tempo}. ${rs.intent} ACCESSORIES / arms: ${rs.accessories} reps. Prescribe the MAINS to this rep row; do NOT default everything to 8-12.`
     : ''
-  return `Split = ${assign.splitName} (${assign.spw} gym session${assign.spw !== 1 ? 's' : ''}/week).\n${perSession}${repLine}`
+  const em = assign.emphasis
+  const emphLine = em
+    ? `\nSPORT EMPHASIS (${em.label}) — still cover every pattern, but PRIORITIZE ${em.priority.map((p) => LABEL[p] || p).join(' + ')} and pick accessories toward: ${em.cue} CORE style: ${em.core}.`
+    : ''
+  return `Split = ${assign.splitName} (${assign.spw} gym session${assign.spw !== 1 ? 's' : ''}/week).\n${perSession}${repLine}${emphLine}`
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module
-import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange } from '../server/gym-split.js'
+import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis } from '../server/gym-split.js'
 
 const flat = (a: any) => a.days.flat()
 
@@ -55,6 +55,31 @@ describe('#636/#637 gym-split — frequency + focus aware balance, arms guarante
   })
 
   it('GYM_PATTERNS has all 9 movement patterns', () => { expect(GYM_PATTERNS.length).toBe(9) })
+})
+
+describe('#658 sport-adaptive selection — a cyclist and a swimmer get DIFFERENT emphasis', () => {
+  it('sportEmphasis resolves per main sport, null for gym-first', () => {
+    expect(sportEmphasis({ mainSport: 'cycling' })?.label).toBe('cyclist')
+    expect(sportEmphasis({ mainSport: 'running' })?.label).toBe('runner')
+    expect(sportEmphasis({ mainSport: 'swimming' })?.label).toBe('swimmer')
+    expect(sportEmphasis({ mainSport: 'triathlon' })?.label).toBe('triathlete')
+    expect(sportEmphasis({ mainSport: 'gym' })).toBeNull()          // gym-first → no bias, full balance
+    expect(sportEmphasis({ sports: ['cycling'] })?.label).toBe('cyclist') // falls back to first endurance sport
+  })
+  it('cyclist prioritizes legs; swimmer prioritizes pull — NOT the same movements', () => {
+    const cyc = sportEmphasis({ mainSport: 'cycling' })!
+    const swm = sportEmphasis({ mainSport: 'swimming' })!
+    expect(cyc.priority).toContain('squat')
+    expect(swm.priority).toContain('vpull')
+    expect(cyc.priority).not.toEqual(swm.priority)
+  })
+  it('assignWeeklyGym carries emphasis and gymBalanceLines renders the sport block', () => {
+    const a = assignWeeklyGym({ sessionsPerWeek: 1, focus: 'support', mainSport: 'swimming' })
+    expect(a.emphasis.label).toBe('swimmer')
+    const lines = gymBalanceLines(a)
+    expect(lines).toMatch(/SPORT EMPHASIS \(swimmer\)/)
+    expect(lines.toLowerCase()).toMatch(/pull|shoulder/)
+  })
 })
 
 describe('#648 rep scheme by focus — a cyclist gets HEAVY LOW-rep, not 3×10', () => {

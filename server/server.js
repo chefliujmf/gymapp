@@ -1886,7 +1886,7 @@ function buildSystemPrompt(user) {
     // #648 — resolve the REAL 5-way focus (mainSport × goal), not a binary muscle/support regex, so support_build /
     // strength each get their own REP SCHEME. An endurance main sport → support (heavy low-rep), never a hypertrophy default.
     const gymFocus = resolveGymFocus({ mainSport: ms, sports, goal: obj })
-    const gymAssign = assignWeeklyGym({ sessionsPerWeek: gymPerWeek, focus: gymFocus, recentExercises: recentGymEx })
+    const gymAssign = assignWeeklyGym({ sessionsPerWeek: gymPerWeek, focus: gymFocus, recentExercises: recentGymEx, mainSport: ms, sports }) // #658 sport-adaptive selection
     tail += `\n\n# THIS WEEK'S GYM BALANCE — MANDATORY (frequency + goal aware, evidence-based). ${gymBalanceLines(gymAssign)}\nRules: hit each major muscle ~2×/week when the goal is muscle (a 1-2×/wk endurance-support athlete gets FULL-BODY instead — cover everything in the session). **ARMS (biceps + triceps) + a loaded carry are REQUIRED wherever the split allows, never dropped** (they were being forgotten). Keep the 1-3 MAIN compound lifts STABLE week-to-week so the athlete can TRACK PROGRESS (load/reps trending — don't churn the mains); ROTATE the ACCESSORIES to the fresh options above (don't repeat last session's). Balance = stable mains (progress) + rotated accessories (anti-boredom) + full coverage. Look up all moves in ONE search_exercises(queries=[…]) call.`
   }
   // #swim-tri — TRIATHLON: multi-sport planning layer. Apply Friel periodization keyed to the athlete's stated A-race.
