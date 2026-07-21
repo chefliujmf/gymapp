@@ -3676,8 +3676,13 @@ function sharpenMsg(today) {
   return `Daily METRICS-SHARPEN pass (${today}) — keep the athlete's benchmarks HONEST, without demanding tests. Their threshold power / pace, CP·W′ (or CS·D′), VO₂max, TTE and max-HR are in your profile; each is only as good as the last quality effort behind it, and EVERYTHING you prescribe scales from them. Review freshness: get_recent_activities and, for EACH anchor, ask "is there a recent effort that would set it?" — a tempo/threshold effort for the threshold; a hard ~5-min effort for VO₂max/MAP; short near-max reps for W′/D′; an all-out finish for max-HR. For any anchor with NO recent effort behind it (e.g. weeks of only easy rides → the threshold is really a guess), fold ONE targeted, LOW-COST refining effort into the rolling ${DAILY_HORIZON}-day plan (list_schedule → create_ride/run/workout) — NEVER an all-out max test, never a dreaded 20-min: cycling → one 8–15 min hard sustained effort up a climb/segment when fresh (intervals reads eFTP straight from it), or a structured 2×8 only if they'd like a cleaner number; running → a hard 20 min or a 5 k / parkrun; gym → a heavy 3–5 rep top set. Just ENOUGH to re-read the anchor. Rules: at most ONE such effort per pass — pick the STALEST, most important anchor; place it on a day they're FRESH, within their weekly training-day + recovery limits, and never stacked against another hard day; if every anchor already has a recent effort behind it, change nothing. This pass is SILENT (background upkeep — no push; the athlete gets only their one check-in ping). When you DO add one, its title/description explains WHY in plain words ("one harder 15-minute stretch so I can dial in the hardest pace you can hold"), never "to update your FTP". Be concise.`
 }
 async function runDailyAdapt(user, pass, opts = {}) { // #634 — opts.buildModel lets the simulation A/B the build model
+  const today = await athleteToday(user)
+  // #671 SAFETY — run the enforcement sweep FIRST (privacy scrub + shape/fartlek relabel + gym rep-scheme of STALE
+  // plans), so a pregnant/teen athlete's EXISTING plans are guaranteed clean even if the slow coach build below hangs
+  // or times out (#608) and never reaches the end-of-function sweep. It runs AGAIN at the end for what the build writes.
+  // Pure + fast (no LLM), so it's cheap to guarantee up front — safety must never depend on the LLM pass completing.
+  try { await reenforceShapeAll(user) } catch (e) { console.error(`[reenforce-pre ${user.username || ''}] ${e.message || e}`) }
   try {
-    const today = await athleteToday(user)
     // #610/#612 — the coach BUILDS + individualizes the plan in ONE pass (skeleton removed #516; multi-pass fill
     // loop removed #612 — it was spawning up to 5 EXTRA coach runs = minutes wasted). The single pass owns the full
     // ~2-week horizon (its prompt makes filling to the window end the first job); at most ONE fallback top-up if it
