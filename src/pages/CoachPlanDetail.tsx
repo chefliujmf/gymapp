@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { getCoachPlan, fetchCoachPlan, gymSessionFromPlan, setGymSession, resolveDemo, estimateGymMinutes, findGymLogForPlan, type CoachPlan } from '../plan'
 import { authApi } from '../auth/api'
-import { calApi, type CalItem } from '../calendar'
 import { MiniProfile } from '../ui'
 import { workoutSummary, structureRows, plannedLoad } from '../workout-summary'
 import { setCurrentRide, canPlayHere } from '../ride'
@@ -40,7 +39,6 @@ export default function CoachPlanDetail() {
     fetchCoachPlan(id).then((res) => { if (cancelled) return; if (res) setP(res); else if (res === null) setWrongAccount(true) })
     return () => { cancelled = true }
   }, [id, p])
-  const [items, setItems] = useState<CalItem[]>([])
   const [open, setOpen] = useState<Set<number>>(new Set())
   const [sheet, setSheet] = useState<{ title: string; body: string } | null>(null)
   const [ftp, setFtp] = useState<number>()
@@ -52,7 +50,6 @@ export default function CoachPlanDetail() {
   // #285 — if this planned workout is DONE (a completed activity exists for its day+sport), show the
   // post-workout stuff: coach verdict + feedback + a link to the full analysis. Turns the planned view
   // into the post view once completed, instead of a bare notes dump.
-  useEffect(() => { if (p) calApi.items(p.date, p.date).then(setItems).catch(() => {}) }, [p?.date])
   useEffect(() => { getSetting('ftp').then((v) => setFtp(Number(v) || undefined)) }, [])
   // #155 — a DONE workout opens its RESULTS page, not the plan: ride/run → /activity/:id (analysis),
   // gym → /feedback/:id (session summary). We detect completion, then redirect (replace). `checkedDone`
@@ -99,8 +96,6 @@ export default function CoachPlanDetail() {
   const todayStr = new Date().toISOString().slice(0, 10)
   if (p.date < todayStr && !checkedDone) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button><h1>Loading…</h1></div>
 
-  const meals = items.filter((it) => it.type === 'meal')
-  const minds = items.filter((it) => it.type === 'mind')
   const mins = Math.round((p.segments || []).reduce((s, x) => s + (Number(x.duration) || 0), 0) / 60)
   const gymMins = p.sport === 'gym' ? estimateGymMinutes(p) : 0 // #317
   const dateLabel = new Date(p.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
@@ -282,45 +277,12 @@ export default function CoachPlanDetail() {
         <div className="plansec"><span className="plansec__k">📋 Plan</span><p className="plansec__v" style={{ whiteSpace: 'pre-wrap' }}>{linkify(p.notes.replace(/\s*(#{1,3})\s*/g, '\n\n').replace(/\*\*/g, '').replace(/^\n+/, '').trim())}</p></div>
       )}
 
-      {(p.fuel?.why || p.fuel?.supplements || meals.length > 0) && (
-        <div className="plansec">
-          <span className="plansec__k">🍽️ Eat</span>
-          {/* #418 — show the fueling strategy INLINE (like Mind #411 / Recovery), not behind a "why" chip that left
-              the section feeling empty. JM: "the why for fuel still weird, put it straight in fuel section". */}
-          {p.fuel?.why && <p className="plansec__v" style={{ marginTop: 4 }}>{p.fuel.why}</p>}
-          {meals.length > 0 && (
-            <div className="mealgrid">
-              {meals.map((m) => (
-                <Link key={m.id} to={m.refId ? `/recipes/${m.refId}` : '#'} state={m.why ? { coachPick: m.why } : undefined} className="mealchip">
-                  <div className="mealchip__th">🍽️</div>
-                  <div style={{ minWidth: 0 }}>{m.mealType && <div className="mealchip__slot">{m.mealType}</div>}<div className="mealchip__nm">{m.title}</div>{m.kcal ? <div className="mealchip__kcal">{m.kcal} kcal</div> : null}</div>
-                </Link>
-              ))}
-            </div>
-          )}
-          {p.fuel?.supplements && <p className="plansec__v" style={{ marginTop: 6 }}>Supplements: {p.fuel.supplements}</p>}
-        </div>
-      )}
-
-      {(p.mind?.why || minds.length > 0) && (
-        <div className="plansec">
-          <span className="plansec__k">🧠 Mind</span>
-          {/* #411 — the mind "why" IS the mental-focus content (not a separate rationale like Fuel), so show it
-              INLINE like Recovery/Success. It used to sit behind a "why" chip, leaving the section body empty on
-              days with no mind CALENDAR items → looked broken. */}
-          {p.mind?.why && <p className="plansec__v" style={{ marginTop: 4 }}>{p.mind.why}</p>}
-          {minds.map((s) => (
-            <Link key={s.id} to={s.refId ? `/mind/${s.refId}` : '#'} state={s.why ? { coachPick: s.why } : undefined} className="mindrow">
-              <span className="mindrow__play">▶</span>
-              <span><span className="mindrow__nm">{s.title}</span>{s.minutes ? <span className="mindrow__sub"> · {s.minutes} min</span> : null}</span>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {p.recovery && <div className="plansec"><span className="plansec__k">🛌 Recovery</span><p className="plansec__v">{p.recovery}</p></div>}
-      {p.success && <div className="plansec"><span className="plansec__k">✓ Success</span><p className="plansec__v">{p.success}</p></div>}
+      {/* #623 (JM): the planned-workout description carries ONLY objective + success criteria + a fuelling cue for
+          THIS session — no recovery, no Eat (meals/supplements), no mind, no past/future. The coach authors every
+          cue and keeps them consistent. (recovery/mind fields still exist in the model but are no longer shown.) */}
       {p.cues && p.cues.length > 0 && <div className="plansec"><span className="plansec__k">💬 Cues</span><p className="plansec__v">{p.cues.join(' · ')}</p></div>}
+      {p.success && <div className="plansec"><span className="plansec__k">✓ Success</span><p className="plansec__v">{p.success}</p></div>}
+      {p.fuel?.why && <div className="plansec"><span className="plansec__k">⛽ Fuel</span><p className="plansec__v">{p.fuel.why}</p></div>}
 
       {/* #569 — hide the "Done?" CTA in the read-only as-planned view (the activity is already completed). */}
       {!forcePlanned && <Link to={`/feedback/${p.id}`} className="btn btn--ghost" style={{ marginTop: 18, display: 'block', textAlign: 'center' }}>✓ Done? Log how it went →</Link>}
