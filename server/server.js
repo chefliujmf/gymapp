@@ -3671,7 +3671,17 @@ async function dailyAdaptTick() {
       // athlete has checked in today — their Sleep/Freshness/Energy + whatever overnight wellness landed give the
       // coach real signal to adapt on. (No check-in today ⇒ no adapt; the next check-in fills/adjusts the horizon.)
       if (user.dailyAdapt.done !== today && hour >= 5 && hour < 23 && (user.checkins || []).some((c) => c.date === today)) {
-        user.dailyAdapt.done = today; save(store); runDailyAdapt(user, 'refine')
+        // #633 COST — the FULL 14-day rebuild is the expensive multi-pass job; run it only when MATERIAL, not every
+        // check-in day. The daily check-in already does a cheap today-only stick-or-adjust. Rebuild the horizon when:
+        // it's been ≥7 days since the last full build (weekly refresh), OR the horizon has run short (needs filling),
+        // OR the coach has never built one. Otherwise skip the costly rebuild for the day. ~80% fewer full adapts.
+        const lastFull = user.dailyAdapt.lastFull
+        const daysSinceFull = lastFull ? Math.floor((Date.parse(today) - Date.parse(lastFull)) / 86400000) : 999
+        const tail = horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON).tail
+        const material = daysSinceFull >= 7 || tail >= 4
+        user.dailyAdapt.done = today
+        if (material) { user.dailyAdapt.lastFull = today; save(store); runDailyAdapt(user, 'refine') }
+        else { save(store); console.log(`[daily-adapt tick] ${user.username || ''} — skipped full rebuild (last ${daysSinceFull}d ago, horizon tail ${tail}); daily check-in handles today`) }
       }
     } catch (e) { console.error(`[daily-adapt tick] ${user.username || ''} ${e.message || e}`) }
   }
