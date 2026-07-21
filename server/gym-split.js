@@ -230,13 +230,18 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
   const mk = (name, section, extra) => ({ name, section, ...(UNILATERAL_RE.test(name) ? { eachSide: true } : {}), ...extra })
   // WARM-UP — 4 mobility/activation moves, TIMED
   const warmup = Array.from({ length: 4 }, () => pick(WARMUP_POOL)).map((n) => mk(n, 'warmup', { mode: 'timed', seconds: 30 }))
-  // MAIN — ONE primary per pattern (dedup by pattern already: the list has each once), emphasis-first, mode + reps by type
+  // MAIN — ONE primary per pattern, EMPHASIS-first. Cap the number of HEAVY primaries by focus so an endurance-support
+  // athlete gets a FOCUSED session (3-4 heavy compounds, sport-priority first — Rønnestad concurrent training), not 6;
+  // compound patterns beyond the cap become moderate ACCESSORIES. Core/arms/carry are always accessories.
+  const maxPrimaries = f === 'support' ? 3 : f === 'support_build' ? 4 : f === 'strength' ? 4 : f === 'health' ? 3 : 6 // muscle → 6
+  let primaries = 0
   const main = orderByEmphasis(patterns, emph).map((pat) => {
     const name = pick(PATTERNS[pat] || [pat])
     if (pat === 'core') return /hold|plank|carry/i.test(name) ? mk(name, 'main', { mode: 'timed', seconds: 40 }) : mk(name, 'main', { mode: 'reps', reps: 12, sets: 2 })
     if (pat === 'carry') return mk(name, 'main', { mode: 'timed', seconds: 40, sets: 2 })
     if (pat === 'arms') return mk(name, 'main', { mode: 'reps', reps: accReps, sets: 2 }) // accessory — moderate reps
-    return mk(name, 'main', { mode: 'reps', reps: hi, sets: 3, tempo: rs.tempo }) // PRIMARY compound — focus rep scheme
+    if (primaries < maxPrimaries) { primaries++; return mk(name, 'main', { mode: 'reps', reps: hi, sets: 3, tempo: rs.tempo }) } // PRIMARY compound — heavy, focus rep scheme
+    return mk(name, 'main', { mode: 'reps', reps: accReps, sets: 2 }) // beyond the cap → moderate ACCESSORY (keeps coverage, less volume)
   })
   // COOL-DOWN — 2 stretches, TIMED
   const cooldown = [pick(COOLDOWN_POOL), pick(COOLDOWN_POOL)].map((n) => mk(n, 'cooldown', { mode: 'timed', seconds: 30 }))
