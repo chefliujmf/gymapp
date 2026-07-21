@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module
-import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis } from '../server/gym-split.js'
+import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession } from '../server/gym-split.js'
 
 const flat = (a: any) => a.days.flat()
 
@@ -149,5 +149,69 @@ describe('#648 rep scheme by focus — a cyclist gets HEAVY LOW-rep, not 3×10',
     expect(lines).toMatch(/REP SCHEME/)
     expect(lines).toMatch(/3-6 reps/)
     expect(lines).not.toMatch(/default everything to 8-12(?!)/) // it must TELL the coach not to default to 8-12
+  })
+})
+
+describe('#687 assembleGymSession — world-class, tailored, ALL personas, no random issues', () => {
+  const P = {
+    cyclist: { mainSport: 'cycling', focus: 'support', patterns: ['squat', 'hinge', 'hpush', 'hpull', 'core', 'arms'] },
+    runner: { mainSport: 'running', focus: 'support', patterns: ['squat', 'hinge', 'core', 'arms'] },
+    swimmer: { mainSport: 'swimming', focus: 'support', patterns: ['vpull', 'hpull', 'vpush', 'core', 'arms'] },
+    triathlete: { mainSport: 'triathlon', focus: 'support', patterns: ['squat', 'hinge', 'vpull', 'core'] },
+    bodybuilder: { mainSport: 'gym', focus: 'muscle', patterns: ['hpush', 'vpush', 'hpull', 'arms', 'core'] },
+    femaleCyclist: { mainSport: 'cycling', focus: 'support_build', patterns: ['squat', 'hinge', 'hpush', 'hpull', 'core', 'arms'] },
+  }
+  const all = Object.entries(P).map(([k, o]) => [k, (assembleGymSession as any)(o)] as const)
+
+  it('NEVER repeats an exercise across the whole session (incl. warm-up vs main — kills #685)', () => {
+    for (const [name, s] of all) {
+      const names = s.exercises.map((e: any) => e.name.toLowerCase())
+      expect(new Set(names).size, `${name} has a duplicate exercise`).toBe(names.length)
+    }
+  })
+  it('warm-up + cool-down are always TIMED; strength lifts are reps (kills #684)', () => {
+    for (const [, s] of all) {
+      for (const e of s.exercises) {
+        if (e.section === 'warmup' || e.section === 'cooldown') expect(e.mode).toBe('timed')
+      }
+      const heavyLift = s.exercises.find((e: any) => e.section === 'main' && /squat|deadlift|bench|press|row|pulldown|pull-up/i.test(e.name))
+      if (heavyLift) expect(heavyLift.mode).toBe('reps')
+    }
+  })
+  it('ONE primary per movement pattern — no two mains of the same pattern (kills #683)', () => {
+    for (const [name, s] of all) {
+      const mainPats = s.exercises.filter((e: any) => e.section === 'main' && e.mode === 'reps' && e.sets === 3).map((e: any) => patternFromExercise(e.name))
+      expect(new Set(mainPats).size, `${name} has two primaries of one pattern`).toBe(mainPats.length)
+    }
+  })
+  it('every session has warm-up, main, and cool-down sections', () => {
+    for (const [, s] of all) {
+      for (const sec of ['warmup', 'main', 'cooldown']) expect(s.exercises.some((e: any) => e.section === sec)).toBe(true)
+    }
+  })
+  it('SPORT-ADAPTS: cyclist/runner lead with LEGS; swimmer leads with PULL', () => {
+    expect(['squat', 'hinge']).toContain(patternFromExercise((all.find(([k]) => k === 'cyclist')![1].exercises.find((e: any) => e.section === 'main')!).name))
+    expect(['vpull', 'hpull']).toContain(patternFromExercise((all.find(([k]) => k === 'swimmer')![1].exercises.find((e: any) => e.section === 'main')!).name))
+  })
+  it('REP SCHEME by focus: support mains heavy (≤6), muscle mains 6-12', () => {
+    const cyc = all.find(([k]) => k === 'cyclist')![1]
+    const bb = all.find(([k]) => k === 'bodybuilder')![1]
+    const cycMain = cyc.exercises.find((e: any) => e.section === 'main' && e.sets === 3)
+    const bbMain = bb.exercises.find((e: any) => e.section === 'main' && e.sets === 3)
+    expect(cycMain.reps).toBeLessThanOrEqual(6)   // support
+    expect(bbMain.reps).toBeGreaterThanOrEqual(6) // muscle
+  })
+  it('distinct TITLE per session slot (kills #675) + sport tag', () => {
+    const s0 = (assembleGymSession as any)({ ...P.cyclist, sessionIndex: 0 })
+    const s1 = (assembleGymSession as any)({ ...P.cyclist, sessionIndex: 1 })
+    expect(s0.title).not.toBe(s1.title)
+    expect(s0.title).toMatch(/Cycling/)
+    expect(all.find(([k]) => k === 'swimmer')![1].title).toMatch(/Swimming/)
+  })
+  it('unilateral moves carry eachSide', () => {
+    for (const [, s] of all) {
+      const uni = s.exercises.find((e: any) => /single|split squat|lunge|one-arm|pallof|figure-4/i.test(e.name))
+      if (uni) expect(uni.eachSide).toBe(true)
+    }
   })
 })

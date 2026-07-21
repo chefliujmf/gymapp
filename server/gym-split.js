@@ -189,6 +189,60 @@ export function assignWeeklyGym({ sessionsPerWeek = 1, focus = 'support', recent
   return { spw, splitName, days, rotations, mustCover: GYM_PATTERNS.slice(), arms: true, focus: f, repScheme: REP_SCHEME[f], emphasis: sportEmphasis({ mainSport, sports }) }
 }
 
+// #687 — WORLD-CLASS gym session ASSEMBLER (JM: "create the workout from the list of exercises, tailored to the person
+// — not templates"). Compose the FULL session IN CODE from the library, adapted to the athlete's variables (sport,
+// focus, equipment, recent history), with the structure the LLM kept botching guaranteed: correct SECTIONING (real
+// warm-up/main/cool-down pools), ONE PRIMARY per movement pattern (#683), DEDUP across the whole session incl. sections
+// (#685), MODE by type — holds/mobility timed, lifts reps (#684), and a DISTINCT title (#675). Hands the coach a FILLED
+// frame (name+section+mode+reps) to resolve exIds + author cues. Pure + unit-tested.
+const WARMUP_POOL = ['Leg swings', 'Arm circles', 'Cat cow', "World's greatest stretch", 'Hip 90-90 rotation', 'Bird dog', 'Glute bridge march', 'Banded monster walk', 'Scapular push-up', 'Ankle rocks', 'Thoracic rotation', 'Band pull-apart']
+const COOLDOWN_POOL = ['Standing quad stretch', 'Hamstring stretch', 'Figure-4 glute stretch', 'Chest doorway stretch', 'Calf stretch', 'Pigeon stretch', "Child's pose", 'Cobra stretch']
+const UNILATERAL_RE = /\bsingle|one[- ]?arm|one[- ]?leg|split squat|bulgarian|\blunge|step[- ]?up|pistol|side plank|pallof|suitcase|figure-4|quad stretch|hamstring stretch|calf stretch|pigeon|90-?90|\bswings\b/i
+// order the session's patterns so the SPORT-EMPHASIS priorities come first (legs for a cyclist, pull for a swimmer)
+function orderByEmphasis(patterns, emph) {
+  if (!emph) return patterns.slice()
+  const pri = new Set(emph.priority)
+  return patterns.slice().sort((a, b) => (pri.has(b) ? 1 : 0) - (pri.has(a) ? 1 : 0))
+}
+function sessionTitle(patterns, emph, sessionIndex) {
+  const has = (p) => patterns.includes(p)
+  const base = (has('squat') || has('hinge')) && (has('hpush') || has('hpull') || has('vpush') || has('vpull')) ? 'Full-Body Strength'
+    : (has('squat') || has('hinge')) ? 'Lower-Body Strength'
+    : (has('hpush') || has('hpull') || has('vpush') || has('vpull')) ? 'Upper-Body Strength' : 'Strength'
+  const slot = ['A', 'B', 'C', 'D'][((sessionIndex % 4) + 4) % 4]
+  const tag = emph ? ({ cyclist: ' for Cycling', runner: ' for Running', swimmer: ' for Swimming', triathlete: ' for Tri' }[emph.label] || '') : ''
+  return `${base} ${slot}${tag}`
+}
+/**
+ * Assemble ONE tailored gym session. @param patterns the movement patterns for THIS session (from the split).
+ * @returns { title, focus, emphasis, exercises:[{name,section,mode,reps?,sets?,seconds?,eachSide?,tempo?}] }
+ */
+export function assembleGymSession({ focus = 'support', mainSport, sports = [], patterns = ['squat', 'hinge', 'hpush', 'hpull', 'core', 'arms'], recentExercises = [], sessionIndex = 0 } = {}) {
+  const f = normFocus(focus)
+  const rs = REP_SCHEME[f]
+  const emph = sportEmphasis({ mainSport, sports })
+  const range = mainsRepRange(f) || [6, 10]
+  const hi = range[1]
+  const accReps = Number((String(rs.accessories).match(/\d+/) || [12])[0]) || 12
+  const recent = new Set((recentExercises || []).map((n) => String(n || '').toLowerCase()))
+  const used = new Set() // DEDUP across the whole session (incl. across sections — kills #685)
+  const pick = (menu) => { const c = menu.find((m) => !recent.has(m.toLowerCase()) && !used.has(m.toLowerCase())) || menu.find((m) => !used.has(m.toLowerCase())) || menu[0]; used.add(String(c).toLowerCase()); return c }
+  const mk = (name, section, extra) => ({ name, section, ...(UNILATERAL_RE.test(name) ? { eachSide: true } : {}), ...extra })
+  // WARM-UP — 4 mobility/activation moves, TIMED
+  const warmup = Array.from({ length: 4 }, () => pick(WARMUP_POOL)).map((n) => mk(n, 'warmup', { mode: 'timed', seconds: 30 }))
+  // MAIN — ONE primary per pattern (dedup by pattern already: the list has each once), emphasis-first, mode + reps by type
+  const main = orderByEmphasis(patterns, emph).map((pat) => {
+    const name = pick(PATTERNS[pat] || [pat])
+    if (pat === 'core') return /hold|plank|carry/i.test(name) ? mk(name, 'main', { mode: 'timed', seconds: 40 }) : mk(name, 'main', { mode: 'reps', reps: 12, sets: 2 })
+    if (pat === 'carry') return mk(name, 'main', { mode: 'timed', seconds: 40, sets: 2 })
+    if (pat === 'arms') return mk(name, 'main', { mode: 'reps', reps: accReps, sets: 2 }) // accessory — moderate reps
+    return mk(name, 'main', { mode: 'reps', reps: hi, sets: 3, tempo: rs.tempo }) // PRIMARY compound — focus rep scheme
+  })
+  // COOL-DOWN — 2 stretches, TIMED
+  const cooldown = [pick(COOLDOWN_POOL), pick(COOLDOWN_POOL)].map((n) => mk(n, 'cooldown', { mode: 'timed', seconds: 30 }))
+  return { title: sessionTitle(patterns, emph, sessionIndex), focus: f, emphasis: emph ? emph.label : null, exercises: [...warmup, ...main, ...cooldown] }
+}
+
 // render the assignment for the prompt block: the split + each session's patterns (with a fresh accessory each).
 export function gymBalanceLines(assign) {
   const perSession = assign.days.map((pats, i) => `Session ${i + 1}: ${pats.map((p) => `${LABEL[p] || p} (e.g. ${assign.rotations[p]})`).join(' · ')}`).join('\n')
