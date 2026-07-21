@@ -27,8 +27,9 @@ import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchan
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
-import { weekShape, CEILING_PCT } from './week-shape.js' // #613/#615 — code-decided week structure + the SERVER-SIDE intensity ceiling that ENFORCES it
-import { assignArchetypeBlock, keyFromTitle, assignEasy } from './archetypes.js' // #620 — code-decided VARIETY (assign archetypes, don't hope the LLM varies)
+import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
+import { assignArchetypeBlock, keyFromTitle } from './archetypes.js' // #620 — code-decided VARIETY (assign archetypes, don't hope the LLM varies)
+import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, unit-tested clamp that ENFORCES the week shape on a plan
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -1704,61 +1705,17 @@ function athleteWeekShape(user) {
 // clamp it in code: no ride/run segment may exceed the athlete's ceiling %, and once the Mon–Sun week already has
 // its allowed number of moderate/quality days, any further hard session is clamped down to easy endurance. A build
 // athlete's ceiling is VO2 (130%) → nothing clamps. Mutates plan.segments (+ relabels a now-inaccurate title).
-const QUALITY_TITLE = /sweet.?spot|threshold|\bvo.?2\b|over.?under|\bvo2max\b/i // titles that claim a hard/quality session
-// #620 B1/B4 — the HONEST title for an enforced ceiling %. Easy relabels ROTATE (a distinct cue per date) instead of a
-// flat "Easy Aerobic Run" every time; higher ceilings downgrade to the true level so a clamped title can't overstate.
-function honestTitle(effCeil, sport, date) {
-  const noun = sport === 'run' ? 'Run' : sport === 'swim' ? 'Swim' : 'Ride'
-  if (effCeil <= CEILING_PCT.endurance) {
-    const cues = assignEasy({ sport, count: 6 }).map((c) => c.replace(/\s*\([^)]*\)\s*/g, '').trim())
-    const idx = date ? (parseInt(String(date).replace(/-/g, ''), 10) % cues.length) : 0
-    const cue = cues[idx] || `easy aerobic ${noun.toLowerCase()}`
-    return cue.charAt(0).toUpperCase() + cue.slice(1)
-  }
-  if (effCeil <= CEILING_PCT.tempo) return `Tempo ${noun}`
-  if (effCeil <= CEILING_PCT.sweetspot) return `Sweet-Spot ${noun}`
-  if (effCeil <= CEILING_PCT.threshold) return `Threshold ${noun}`
-  return `${noun} Intervals`
-}
+// #615/#620 — ENFORCE the athlete's week-shape on the plan being saved. The prompt-only "0 quality days for
+// pregnancy" was IGNORED by the LLM (it still wrote sweet-spot/tempo intervals), so we clamp it in code. All the pure
+// logic (ceiling clamp + moderate-day count + honest relabel) lives in the unit-tested server/shape-enforce.js; here we
+// just compute the shape + the same-week ride/run siblings, run it, and log. Mutates plan.segments + plan.title.
 function enforceShapeIntensity(user, plan) {
-  // #617 — run even with NO segments: a maintenance athlete's "Sweet Spot Run" title must be relabeled even when
-  // the coach gave it no structured steps (that was slipping 2 sweet-spot TITLES through for the pregnant athlete).
   if (!plan || (plan.sport !== 'ride' && plan.sport !== 'run')) return
   const shape = athleteWeekShape(user)
-  const ceilPct = CEILING_PCT[shape.intensityCeiling] || CEILING_PCT.vo2
-  const maxModerate = (shape.qualityDays || 0) + (shape.moderateDays || 0)
-  const topOf = (segs) => Math.max(0, ...(segs || []).map((s) => Math.max(Number(s.powerStart) || 0, Number(s.powerEnd) || 0)))
-  // a session counts as "moderate/quality" if its EFFORT is ≥ tempo OR its TITLE claims quality/tempo (the coach
-  // mislabels — a "Sweet Spot Run" with soft segments must still count so the week's allowance is real).
-  const isModerate = (p) => topOf(p.segments) >= CEILING_PCT.tempo || QUALITY_TITLE.test(p.title || '') || /\btempo\b/i.test(p.title || '')
   const mon = isoMonday(plan.date), sun = addDays(mon, 6)
-  const otherModerate = (user.plans || []).filter((p) => p.id !== plan.id && p.date >= mon && p.date <= sun && (p.sport === 'ride' || p.sport === 'run') && isModerate(p)).length
-  // #620 — SYMMETRIC with isModerate (was NOT): a title-only "Tempo Run" (no segments) must count as moderate for
-  // ITSELF too, else it consumes the week's moderate budget when OTHERS look at it but is never clamped itself — that's
-  // why a pregnant athlete ended up with ALMOST ALL tempo runs (each individually looked "not moderate" to the clamp).
-  const thisIsModerate = isModerate(plan)
-  // If this session is moderate/quality but the week's allowance is already spent → force it EASY (endurance).
-  const overBudget = thisIsModerate && otherModerate >= maxModerate
-  const effCeil = overBudget ? CEILING_PCT.endurance : ceilPct
-  let clamped = 0
-  for (const s of (plan.segments || [])) {
-    if ((Number(s.powerStart) || 0) > effCeil) { s.powerStart = effCeil; clamped++ }
-    if ((Number(s.powerEnd) || 0) > effCeil) { s.powerEnd = effCeil; clamped++ }
-  }
-  // RETITLE any quality-claiming title on a maintenance athlete (even if segments were already soft, so it can't
-  // just LOOK like a sweet-spot/threshold session it isn't allowed to be) — to the enforced level.
-  const titleLies = shape.loadBand === 'maintenance' && QUALITY_TITLE.test(plan.title || '')
-  // an OVER-BUDGET tempo/quality session with NO segments still carries a "Tempo Run" title that must become easy —
-  // clamped=0 (nothing to clamp) so without this the excess tempo title survives. This is the core "all tempo" fix.
-  const overBudgetTitle = overBudget && (QUALITY_TITLE.test(plan.title || '') || /\btempo\b/i.test(plan.title || ''))
-  if (clamped || titleLies || overBudgetTitle) {
-    console.log(`[shape-enforce] ${user.username || ''} "${plan.title}" clamp=${clamped} over=${overBudget} → ${effCeil}% (${shape.loadBand}, ceil ${shape.intensityCeiling}, wk moderate ${otherModerate}/${maxModerate})`)
-    // B1 — relabel whenever the title still claims more than the enforced effort supports: a maintenance athlete
-    // (titleLies), an over-budget tempo/quality day forced to easy (overBudgetTitle), or segments clamped DOWN.
-    if (titleLies || overBudgetTitle || (clamped && QUALITY_TITLE.test(plan.title || ''))) {
-      plan.title = honestTitle(effCeil, plan.sport, plan.date)
-    }
-  }
+  const siblings = (user.plans || []).filter((p) => p && p.date >= mon && p.date <= sun && (p.sport === 'ride' || p.sport === 'run'))
+  const r = enforceShape(shape, plan, siblings)
+  if (r.changed || r.clamped) console.log(`[shape-enforce] ${user.username || ''} "${plan.title}" clamp=${r.clamped} over=${r.overBudget} → ${r.effCeil}% (${shape.loadBand}, ceil ${shape.intensityCeiling})`)
 }
 
 // #618 — the save-time clamp only fires on sessions the coach WRITES; stale ride/run sessions from an earlier run
