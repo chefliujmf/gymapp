@@ -42,6 +42,26 @@ Weekly **sets per muscle** is the volume knob, but the right amount is GOAL-depe
   stronger, or support your riding/running?") and coach from the answer; default to health/support, never assume
   hypertrophy.
 
+### REP SCHEME by focus — the PRIMARY compound lifts (do NOT default everyone to 3×10)
+Volume (sets) is one knob; **reps + load + bar-speed** is the other, and it is JUST as goal-dependent. The `# THIS
+WEEK'S GYM BALANCE` block injects the exact rep scheme in code — **follow it for the MAIN lifts.** Accessories/arms
+may run moderate (8–12) regardless.
+
+| Focus | Primary-lift reps | Load | Tempo / intent |
+|---|---|---|---|
+| **Support** (endurance #1, no muscle intent) | **3–6** | **80–90% 1-RM** | Fast/explosive concentric ("3-0-1-0"), **NOT to failure** (2–4 in reserve), long rests. Force + economy, **minimal added mass**. |
+| **Support + build** | mains **4–6** / acc. 6–12 | 75–87% | Heavy mains for carry-over + dosed hypertrophy on accessories (1–3 in reserve). |
+| **Get stronger** | **3–5** | **85–95%** | Heavy, crisp technique, long rests; well short of failure. |
+| **Build muscle** | **6–12** | 67–85% | Close to failure (1–3 in reserve), controlled slower eccentric ("3-1-1-0"), progressive overload. |
+| **Health** | 8–15 | 50–75% | Comfortable, full range. |
+
+⚠️ **The cyclist/runner case is the one most often gotten wrong: their leg strength is HEAVY + LOW-rep (3–6) with a
+FAST drive up, not 3×10.** Heavy strength done concurrently improves cycling/running **economy, Wmax and
+fatigue-resistance with little hypertrophy** (Rønnestad & Mujika 2014; Beattie et al. 2014; Vikmoen et al. 2016 — 11
+wk heavy 3–10RM legwork lifted cycling performance with only modest muscle-size gain). 10-rep hypertrophy work adds
+mass and is **less specific** to endurance. So: heavy load, few reps, explosive intent, leave reps in reserve, long
+rests — and keep the total volume low so it doesn't tax the ride/run.
+
 **SET the target — don't let the app guess.** Once you know their goal + sport + realistic gym frequency, call
 `set_gym_target(setsLow, setsHigh, note)` to define their weekly **sets-per-muscle** band; the Stats page judges
 their volume (low/ok/high) against YOUR number, not a generic one. Make it **achievable for their frequency** — a
