@@ -1704,8 +1704,11 @@ function athleteWeekShape(user) {
   const pg = (isFemale && user.info && user.info.pregnant) ? pregnancyStage(user.info, today) : null
   const cycleFresh = !!(user && user.cyclePhaseAt && (Date.now() - new Date(user.cyclePhaseAt + 'T00:00:00Z').getTime()) < 6 * 86400000)
   const age = (user && user.info && user.info.dob) ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
+  // #631 — postpartum weeks since birth (from info.postpartumSince), female + not currently pregnant → graded return
+  const ppSince = (isFemale && user.info && user.info.postpartumSince && !(user.info && user.info.pregnant)) ? user.info.postpartumSince : null
+  const postpartumWeeks = (ppSince && /^\d{4}-\d{2}-\d{2}$/.test(ppSince)) ? Math.floor((Date.now() - new Date(ppSince + 'T00:00:00Z').getTime()) / (7 * 86400000)) : null
   return weekShape({
-    pregnant: !!(isFemale && user.info && user.info.pregnant), trimester: pg ? pg.trimester : null,
+    pregnant: !!(isFemale && user.info && user.info.pregnant), trimester: pg ? pg.trimester : null, postpartumWeeks,
     cyclePhase: user && user.cyclePhase, cycleFresh,
     goalFocus: user && user.info && user.info.goals && user.info.goals.focus,
     goalNotes: user && user.info && user.info.goals && user.info.goals.notes,
@@ -1729,6 +1732,21 @@ function enforceShapeIntensity(user, plan) {
   const siblings = (user.plans || []).filter((p) => p && p.date >= mon && p.date <= sun && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim'))
   const r = enforceShape(shape, plan, siblings)
   if (r.changed || r.clamped) console.log(`[shape-enforce] ${user.username || ''} "${plan.title}" clamp=${r.clamped} over=${r.overBudget} → ${r.effCeil}% (${shape.loadBand}, ceil ${shape.intensityCeiling})`)
+}
+
+// #631 — TEEN gym safety, ENFORCED in code (not just prompted): an under-18 should never be given MAXIMAL / near-1-RM
+// loading (heavy low-rep singles/doubles). Any MAIN-set exercise prescribed under 5 reps (near-maximal) is floored to
+// 5 reps (submaximal, technique-safe). Warm-up/cool-down untouched. Growth-plate + technique-development safety.
+function enforceTeenGym(user, plan) {
+  if (!plan || plan.sport !== 'gym') return
+  const dob = user.info && user.info.dob
+  const age = dob ? Math.floor((Date.now() - new Date(dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
+  if (age == null || age >= 18) return
+  let bumped = 0
+  for (const ex of (plan.exercises || [])) {
+    if (ex && (ex.mode === 'reps' || ex.reps != null) && Number(ex.reps) > 0 && Number(ex.reps) < 5 && ex.section !== 'warmup' && ex.section !== 'cooldown') { ex.reps = 5; bumped++ }
+  }
+  if (bumped) console.log(`[teen-gym] ${user.username || ''} "${plan.title}" — floored ${bumped} near-maximal set(s) to 5 reps (under-18: no maximal loading)`)
 }
 
 // #618 — the save-time clamp only fires on sessions the coach WRITES; stale ride/run sessions from an earlier run
@@ -2556,6 +2574,7 @@ async function upsertPlan(user, body, actor = 'coach') {
   // effort (95% is NEVER easy — any sport). Fixes it at the source so the DB, the app view, AND the intervals
   // push are all sane, even when the coach fat-fingers the %.
   enforceShapeIntensity(user, plan) // #615 — ENFORCE the week-shape ceiling + quality-day count IN CODE (the prompt was ignored)
+  enforceTeenGym(user, plan) // #631 — under-18: floor near-maximal gym sets to submaximal (no 1-RM loading)
   if ((plan.sport === 'ride' || plan.sport === 'run') && Array.isArray(plan.segments) && plan.segments.length) { // #614 — power/pace clamp is for ride/run only, not swim
     const g = clampEasyEfforts(plan.title, plan.segments)
     if (g.clamped) { plan.segments = g.segments; console.log(`[clampEasyEfforts] ${user.username} "${plan.title}" — clamped ${g.clamped} easy segment(s) below ${'threshold'}`) }
@@ -3574,7 +3593,7 @@ function horizonFillMsg(today, cov) {
 // #439 (JM idea) — SEPARATE focused pass per topic beats one giant prompt (the coach gave each partial
 // attention + ran out). REVIEWS pass:
 function reviewMsg(today) {
-  return `Daily REVIEW pass (${today}) — do ONLY activity reviews now. get_recent_activities flags each activity's \`reviewed\` status + its \`id\`: for any completed activity in the last week with \`reviewed:false\`, REVIEW it — save_coach_review with that exact \`id\` (a score + one-line verdict + 2-4 takeaways; ticks the Coach box + posts your note) and give it a public-safe title/description via set_activity_text. SKIP anything already \`reviewed:true\` (never re-review); cap at the few most recent so nothing piles up. WHAT'S NEXT = the OBJECTIVE, NOT the next workouts (JM 2026-07-21, reverses #580): end the review by connecting THIS session to what the athlete is BUILDING TOWARD — their goal + the number/quality this work moves (e.g. "this threshold work is growing how long you can hold your hardest effort, which is the limiter for your event"). Do NOT list, name, or preview their upcoming/scheduled sessions — "Today: Z2 spin … Tomorrow: Threshold 4×10 …" is exactly WRONG — and do NOT add recovery / sleep / logistics here. Keep the \`next\` field purely about the OBJECTIVE and how this session moves them toward it; nothing about tomorrow's calendar. Don't CHANGE the plan in this pass, just reflect it truthfully. CALIBRATE each verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. Be concise.`
+  return `Daily REVIEW pass (${today}) — do ONLY activity reviews now. get_recent_activities flags each activity's \`reviewed\` status + its \`id\`: for any completed activity in the last week with \`reviewed:false\`, REVIEW it — save_coach_review with that exact \`id\` (a score + one-line verdict + 2-4 takeaways; ticks the Coach box + posts your note) and give it a public-safe title/description via set_activity_text. SKIP anything already \`reviewed:true\` (never re-review); cap at the few most recent so nothing piles up. WHAT'S NEXT = the OBJECTIVE, NOT the next workouts (JM 2026-07-21, reverses #580): end the review by connecting THIS session to what the athlete is BUILDING TOWARD — their goal + the number/quality this work moves (e.g. "this threshold work is growing how long you can hold your hardest effort, which is the limiter for your event"). Do NOT list, name, or preview their upcoming/scheduled sessions — "Today: Z2 spin … Tomorrow: Threshold 4×10 …" is exactly WRONG — and do NOT add recovery / sleep / logistics here. Keep the \`next\` field purely about the OBJECTIVE and how this session moves them toward it; nothing about tomorrow's calendar. **SHOW THEM THEIR PROGRESS (#631): when you can measure a concrete GAIN — get_metrics now vs a few weeks ago (threshold power/pace up, TTE up, EF up, CS·D′/CSS up) — STATE it plainly as a takeaway ("your threshold is up ~8 W in 6 weeks", "you're holding threshold ~4 min longer than a month ago"). The athlete should SEE their training working, not just be told "good job." Only claim a gain that's REAL in the numbers.** Don't CHANGE the plan in this pass, just reflect it truthfully. CALIBRATE each verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. Be concise.`
 }
 // ROUND-OUT pass — FUEL / MIND / RECOVERY around the (already-set) plan:
 function roundOutMsg(today) {
