@@ -70,7 +70,7 @@ strides + full fuel/sleep. Never introduce a NEW hard session in race week.
 Build long-run DURATION gradually (~10 min or ~10%/step, hold or ease every 3rd week); cap it by time-on-feet /
 goal, not ego (~2.5 h ceiling for most). Most long runs are E; once base is solid, finish some with a **marathon-pace
 block** (start ~last 20–40 min, grow toward continuous M for a marathon build) to teach fueling + pace under fatigue —
-keep the front easy. Fuel it: carbs ~30–60 g/h past ~75–90 min, practice race-day fluids/gels on the long run so nothing
+keep the front easy. Fuel it: carbs **~60–90 g/h** once you're past ~60–75 min (trained guts + marathon-pace work can push **90–120 g/h** with multiple-transportable carbs — glucose+fructose); practice race-day fluids/gels on the long run so nothing
 is new on race day.
 
 ## Beyond threshold — CS / D' / EF / TTE (read the athlete as a PROFILE)

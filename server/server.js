@@ -1062,7 +1062,7 @@ app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
     return efSummary(pts)
   }
   const out = { connected: true }
-  if (sports.includes('cycling') || sports.length === 0) {
+  if (sports.includes('cycling') || sports.includes('triathlon') || sports.length === 0) { // #629 — a triathlete needs their BIKE numbers too
     const c = ((await icuGet(req.user, `/athlete/${ath}/power-curves?curves=365d&type=Ride`))?.list || [])[0] || {}
     const pm = (c.powerModels || []).find((m) => m.type === 'FFT_CURVES') || (c.powerModels || [])[0] || {}
     // #464 — round the watt values (eFTP/CP) at the SOURCE so the coach never emits a raw 240.51825 in its
@@ -1073,7 +1073,7 @@ app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
     const ef = await efFor('Ride'), wKj = wJ != null ? Math.round(wJ / 100) / 10 : null
     out.cycling = { ftp, eftp, cp, wPrimeKj: wKj, tteSec: tte, ef, profile: computeAthleteProfile({ sport: 'cycling', threshold: ftp, eftp, tte, cp, reserveKj: wKj, reserveBig: 20, ef: ef.latest, efTrend: ef.trend }) }
   }
-  if (sports.includes('running') || sports.length === 0) {
+  if (sports.includes('running') || sports.includes('triathlon') || sports.length === 0) { // #629 — and their RUN numbers
     const pcFull = (await icuGet(req.user, `/athlete/${ath}/pace-curves?curves=365d&type=Run`)) || {}
     const c = (pcFull.list || [])[0] || {}
     const pmodel = (c.paceModels || [])[0] || {}
@@ -1097,7 +1097,7 @@ app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
     let tte = null
     const dd = c.distance || [], vv = c.values || []
     if (cssPace) for (let i = 0; i < dd.length; i++) if (dd[i] > 0 && vv[i] >= 900 && (vv[i] / dd[i]) * 100 <= cssPace * 1.06) tte = Math.max(tte || 0, Math.round(vv[i]))
-    out.swimming = { cssPaceSec: cssPace, dPrimeM: dP != null ? Math.round(dP) : null, tteSec: tte, swolf: ss.swimming?.swolf ?? null }
+    out.swimming = { cssPaceSec: cssPace, dPrimeM: dP != null ? Math.round(dP) : null, tteSec: tte, swolf: ss.swimming?.swolf ?? null, profile: computeAthleteProfile({ sport: 'swimming', threshold: cssPace, tte, reserveKj: dP != null ? Math.round(dP) : null, reserveBig: 30, swolf: ss.swimming?.swolf ?? null }) } // #629 — swim now contributes to # DEVELOPMENT PRIORITIES
   }
   // #622 — stash the profile FOCUS (the "what would move your numbers" priorities the Stats card shows) on the user
   // so the coach's PLAN BUILD targets the SAME priorities (buildSystemPrompt emits them as # DEVELOPMENT PRIORITIES).
@@ -3596,9 +3596,10 @@ async function runDailyAdapt(user, pass) {
       // block with 0 quality days) so it can't stack a quality day the shape deliberately excluded.
       if (athleteWeekShape(user).qualityDays > 0) await runCoachTask(user, sharpenMsg(today)) // #508 — review benchmarks + fold ONE refining effort into the plan
       await runCoachTask(user, reviewMsg(today))
-      // #JM 2026-07-15 — round-out (recovery/fuel/mind) pass REMOVED: Eat & Mind are off and recovery ITEMS are parked;
-      // recovery guidance now rides on the workout's own `recovery` text (set during the workout adapt above), so there's
-      // nothing for a separate pass to do. (roundOutMsg kept in case it returns for the roadmap.)
+      // #JM 2026-07-15 — round-out (recovery/fuel/mind) pass REMOVED: Eat & Mind are off and recovery ITEMS are parked.
+      // #629 — and per #623 recovery is NO LONGER written on the workout either (the description is objective + success +
+      // fuelling only; the `recovery`/`mind` shell fields are unused + unrendered). So no recovery channel runs right now;
+      // if one returns it's its own decision, not a silent workout-text ride. (roundOutMsg kept for the roadmap.)
     }
   } catch (e) { console.error(`[daily-adapt ${pass}] ${user.username || ''} ${e.message || e}`) }
   // #620 — the shape ENFORCEMENT runs in its OWN try, ALWAYS, even if an LLM pass above threw (a coach-service

@@ -48,8 +48,9 @@ Rehearse **sighting** (head up every few strokes, straight line), **drafting** (
 **mass-start** positioning + contact, and swimming in the **wetsuit** (buoyancy changes stroke + body position).
 
 ## Race-day fueling (70.3/IM)
-Carb intake/hr + hydration/electrolytes is a **limiter** at long distance — **gut-train it** in long bricks so race
-pace matches a fueling the gut tolerates. Under-fueling the bike breaks the run.
+Carb intake/hr + hydration/electrolytes is a **limiter** at long distance — target **~60–90 g/h** on the bike (up to
+**90–120 g/h** with multiple-transportable carbs + a trained gut), a touch lower running. **Gut-train it** in long
+bricks so race pace matches a fueling the gut tolerates. Under-fueling the bike breaks the run.
 
 ## Baseline volume (self-check, sessions/week per sport)
 Sanity-check frequency by distance: **sprint/Olympic** ≈ swim 2–3 · bike 2–3 · run 2–3; **70.3** ≈ swim 3 · bike 3 ·
