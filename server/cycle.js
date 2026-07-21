@@ -110,3 +110,21 @@ export function pregnancyStage(info = {}, date) {
   const trimester = w == null ? null : w < 14 ? 1 : w < 28 ? 2 : 3
   return { pregnant: true, weeks: w, trimester, dueDate: info.dueDate || null }
 }
+
+// #650 — PRIVACY SCRUB (safety-critical, ENFORCED in code, not just prompted). Pregnancy / postpartum is PRIVATE and
+// must NEVER appear in a workout TITLE / DESCRIPTION or the PUBLIC activity text (which syncs to Strava). The coach is
+// told this, but an LLM can slip — so strip the terms in code at every write chokepoint. Universal (these words never
+// belong in a fitness plan title/public text for anyone) + idempotent. Pure + unit-tested. NB: kept narrow to clear
+// pregnancy terms (no bare "bump"/"expecting") so it never mangles legit copy like "bump up the pace".
+const privateRe = () => /\b(pregnan\w*|prenatal|ante-?natal|trimesters?|postpartum|post-?partum|gestation\w*|baby[ -]?bump)\b/gi
+export function scrubPrivate(text) {
+  if (!text || typeof text !== 'string') return text
+  if (!privateRe().test(text)) return text
+  return text
+    .replace(privateRe(), '')
+    .replace(/\s{2,}/g, ' ')                       // collapse doubled spaces left behind
+    .replace(/\s+([.,;:!?)])/g, '$1')              // no space before punctuation
+    .replace(/([([])\s+/g, '$1')                   // no space after an opening bracket
+    .replace(/^[\s\-–—:,.]+|[\s\-–—:,]+$/g, '')    // trim leftover leading/trailing junk
+    .trim()
+}

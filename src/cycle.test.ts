@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { normalizePhase, phaseFromDay, cycleLoadModifier, cycleReadinessAdjust, cycleContext, phaseFromHistory, pregnancyStage } from '../server/cycle.js'
+import { normalizePhase, phaseFromDay, cycleLoadModifier, cycleReadinessAdjust, cycleContext, phaseFromHistory, pregnancyStage, scrubPrivate } from '../server/cycle.js'
 
 // #329 — menstrual-cycle factor for coaching + readiness.
 describe('normalizePhase (intervals menstrualPhase text → canonical)', () => {
@@ -106,4 +106,25 @@ describe('cycleContext', () => {
     expect(cycleContext({ cycleDay: 3 }).phase).toBe('menstrual')
   })
   it('null when nothing known', () => expect(cycleContext({})).toBeNull())
+})
+
+describe('#650 scrubPrivate — pregnancy/postpartum never reaches a title or public text', () => {
+  it('strips pregnancy terms and tidies the leftover', () => {
+    expect(scrubPrivate('Prenatal Strength Circuit')).toBe('Strength Circuit')
+    expect(scrubPrivate('Easy Z2 (safe in pregnancy)')).toBe('Easy Z2 (safe in)')
+    expect(scrubPrivate('Second trimester maintenance ride')).toBe('Second maintenance ride') // only the sensitive word goes
+    expect(scrubPrivate('Postpartum return run')).toBe('return run')
+    expect(scrubPrivate('Trimester 2 tempo')).toBe('2 tempo')
+  })
+  it('leaves normal training copy untouched — no false positives', () => {
+    expect(scrubPrivate('Sweet-Spot 3×12')).toBe('Sweet-Spot 3×12')
+    expect(scrubPrivate('Bump up the pace on the last rep')).toBe('Bump up the pace on the last rep') // bare "bump" is safe
+    expect(scrubPrivate('Expecting a hard effort today')).toBe('Expecting a hard effort today') // "expecting" not scrubbed
+    expect(scrubPrivate('Easy Aerobic Run')).toBe('Easy Aerobic Run')
+  })
+  it('handles empty / non-strings safely', () => {
+    expect(scrubPrivate('')).toBe('')
+    expect(scrubPrivate(undefined)).toBe(undefined)
+    expect(scrubPrivate(null)).toBe(null)
+  })
 })

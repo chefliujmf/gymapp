@@ -58,7 +58,7 @@ function mergeIcuSportSettings(existing, mapped, intervalsWins = false) {
 }
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
-import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage)
+import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage, scrubPrivate } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage, #650 scrubPrivate)
 import webpush from 'web-push' // #457 — phone push notifications
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -2580,6 +2580,9 @@ async function upsertPlan(user, body, actor = 'coach') {
   // push are all sane, even when the coach fat-fingers the %.
   enforceShapeIntensity(user, plan) // #615 — ENFORCE the week-shape ceiling + quality-day count IN CODE (the prompt was ignored)
   enforceTeenGym(user, plan) // #631 — under-18: floor near-maximal gym sets to submaximal (no 1-RM loading)
+  // #650 — PRIVACY (safety): strip pregnancy/postpartum terms from anything the athlete or the public could read
+  // (the title pushes to intervals → Strava). Enforced in code, not just prompted. No-op for normal copy.
+  for (const k of ['title', 'notes', 'objective', 'success']) if (typeof plan[k] === 'string') plan[k] = scrubPrivate(plan[k])
   if ((plan.sport === 'ride' || plan.sport === 'run') && Array.isArray(plan.segments) && plan.segments.length) { // #614 — power/pace clamp is for ride/run only, not swim
     const g = clampEasyEfforts(plan.title, plan.segments)
     if (g.clamped) { plan.segments = g.segments; console.log(`[clampEasyEfforts] ${user.username} "${plan.title}" — clamped ${g.clamped} easy segment(s) below ${'threshold'}`) }
@@ -3428,10 +3431,12 @@ app.put('/api/activity/:id/public-text', apiAuth, async (req, res) => {
   if (!/^i?\d+$/.test(id)) return res.status(400).json({ error: 'expected an intervals activity id' })
   if (!req.user.icuKey) return res.status(400).json({ error: 'no intervals connection' })
   const payload = {}
-  if (typeof req.body.name === 'string' && req.body.name.trim()) payload.name = req.body.name.trim().slice(0, 200)
+  // #650 — PRIVACY (safety): this is the PUBLIC activity text (syncs to Strava) — scrub pregnancy/postpartum terms in
+  // code before it ever leaves, never trust the LLM to have kept them out.
+  if (typeof req.body.name === 'string' && req.body.name.trim()) payload.name = scrubPrivate(req.body.name.trim()).slice(0, 200)
   if (typeof req.body.description === 'string') {
     // Always sign the public description with the brand tagline (JM 2026-07-16), idempotently.
-    let d = req.body.description.slice(0, 3960).trimEnd()
+    let d = scrubPrivate(req.body.description.slice(0, 3960).trimEnd())
     if (d && !/powered by platyplus/i.test(d)) d = `${d}\n\nPowered by Platyplus`
     payload.description = d
   }
