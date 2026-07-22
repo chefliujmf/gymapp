@@ -29,7 +29,7 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIs
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
-import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, unit-tested clamp that ENFORCES the week shape on a plan
+import { enforceShape, qualityEnduranceDates, concurrentGymCollisions } from './shape-enforce.js' // #615/#620 clamp · #717 concurrent-training separation
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
 import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
@@ -1852,6 +1852,10 @@ async function reenforceShapeAll(user) {
   // #706 — give consecutive same-title gym sessions a clean A/B/C series so the calendar never shows two identical
   // "Full-Body Strength" entries (the coach keeps reusing one generic title). Reconciles across the whole future horizon.
   gymTouched += dedupeGymTitles((user.plans || []).filter((x) => x && x.date >= today && x.sport === 'gym'))
+  // #717 — DETECT concurrent-training collisions (heavy gym ±1 day from a quality endurance day) for visibility; the
+  // buildSystemPrompt separation block is the code-computed prevention (auto-moving is deliberately avoided as too risky).
+  const collisions = concurrentGymCollisions(user.plans || [], today, DAILY_HORIZON)
+  if (collisions.length) console.log(`[concurrent-collision] ${user.username || ''} — ${collisions.length} heavy gym session(s) ±1 day of a quality endurance day: ${collisions.map((p) => p.date).join(', ')}`)
   // #671 SAFETY — PRIVACY sweep over EVERY future plan's text. The #650 save-time scrub only catches NEW writes; a
   // pregnant athlete's STALE plans still leaked "pregnant/trimester" into descriptions that sync to intervals→Strava.
   // Scrub them here too, and re-push the changed ride/run/swim so the PUBLIC copy is clean, not just the DB.
@@ -2040,6 +2044,12 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   if (freq > 0) p += `\n\n# WEEKLY TRAINING DAYS — HARD CAP of ${freq}/week (JM directive): the athlete trains on AT MOST ${freq} distinct days per calendar week (Mon–Sun). This is a HARD limit set in their profile, NOT a target to pad toward — NEVER schedule training on more than ${freq} days in any week, not even an "optional" or "bonus" extra. FEWER is fine when recovery or life calls for it; MORE is never allowed. Before you add a session, count the week's already-planned training days: if it's already at ${freq}, do NOT add a new day — MOVE an existing session instead, or combine into a day that's already training. If they explicitly ask for an extra day beyond ${freq}, tell them it would exceed their weekly cap and to raise it in their profile first. (Server enforces this too — a create that would exceed ${freq} is rejected.)`
   // #345 — most athletes train ONCE a day. Never stack two sessions (e.g. a gym + a run) on the same
   // calendar day beyond this cap unless the athlete explicitly opts into doubles.
+  // #717 (audit) — CONCURRENT-TRAINING SEPARATION: code-COMPUTE the athlete's quality endurance days and hand the coach
+  // the exact list so it keeps HEAVY strength ≥1 day clear of them (interference blunts both). Stronger than a prose rule.
+  const qEndDays = qualityEnduranceDates(user.plans || [], today, DAILY_HORIZON)
+  if (qEndDays.length && (user.sports || []).includes('gym')) {
+    p += `\n\n# CONCURRENT-TRAINING SEPARATION (strength ↔ endurance): the athlete's QUALITY endurance days ahead are ${qEndDays.join(', ')}. Do NOT place a HEAVY gym session (heavy low-rep compound lifts) the day BEFORE or AFTER any of these — residual fatigue blunts BOTH the key endurance session and the lift (Rønnestad/Coffey interference). Put strength on an EASY-endurance or rest-adjacent day, ideally the SAME day AFTER a quality session (PM, if maxPerDay allows) or ≥1 clear day away. Lighter, technique/support gym is fine adjacent; the rule is about HEAVY loading.`
+  }
   const maxPerDay = Math.max(1, Number(user.info?.maxPerDay) || 1)
   p += `\n\n# ONE SESSION PER DAY (max ${maxPerDay}/day): the athlete trains at most ${maxPerDay} session${maxPerDay > 1 ? 's' : ''} per calendar day. ${maxPerDay === 1 ? 'Do NOT schedule two workouts on the same day (no gym + run, no ride + run together) — spread sessions across different days. If two efforts must share a day because time is tight, ask first or fold them into ONE combined session.' : `Never exceed ${maxPerDay} on any single day, and only double up when it genuinely serves the plan (e.g. AM/PM split).`} Respect their weekly availability + rest days when spacing them.`
   // #613 — THE WEEK'S SHAPE is decided in CODE (single source of truth), so the coach BUILDS to it instead of

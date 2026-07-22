@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server modules, no types
-import { enforceShape, isModerate, honestTitle, QUALITY_TITLE } from '../server/shape-enforce.js'
+import { enforceShape, isModerate, honestTitle, QUALITY_TITLE, qualityEnduranceDates, concurrentGymCollisions } from '../server/shape-enforce.js'
 // @ts-expect-error
 import { weekShape } from '../server/week-shape.js'
 
@@ -144,5 +144,17 @@ describe('#672 scrubSurgeProse — description matches the relabeled steady titl
   })
   it('leaves steady/easy prose untouched', () => {
     expect(scrubSurgeProse('Easy Z2 endurance, keep it conversational.')).toBe('Easy Z2 endurance, keep it conversational.')
+  })
+})
+
+describe('#717 concurrent-training separation — detect heavy gym adjacent to a quality endurance day', () => {
+  it('flags a heavy gym the day before/after a quality endurance session; ignores light gym', () => {
+    const plans = [
+      { date: '2026-08-01', sport: 'run', title: 'Threshold 4x10', segments: [{ duration: 600, powerStart: 95 }] },
+      { date: '2026-07-31', sport: 'gym', exercises: [{ mode: 'reps', reps: 5, sets: 3, name: 'Back Squat' }] }, // heavy, day BEFORE → collision
+      { date: '2026-08-05', sport: 'gym', exercises: [{ mode: 'reps', reps: 12, sets: 3, name: 'Curl' }] },        // light, no collision
+    ]
+    expect(qualityEnduranceDates(plans, '2026-07-30', 14)).toEqual(['2026-08-01'])
+    expect(concurrentGymCollisions(plans, '2026-07-30', 14).map((p: any) => p.date)).toEqual(['2026-07-31'])
   })
 })
