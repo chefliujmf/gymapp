@@ -1118,18 +1118,39 @@ const REVIEW_OWN_TERMS = 'FRAME the session on its OWN terms: only mention an ad
 // #364/#589 — the async coach review of a completed session (best-effort; only if a coach is set up). EXTRACTED so the
 // feedback POST *and* the #589 retry (a stuck/failed review — e.g. the coach was down when feedback was saved) share ONE
 // trigger. Returns false when there's nothing to run (no coach / no feedback), so the caller can tell the user.
+// #707 — a GYM's real content (exercises/sets/reps/PRs/duration) lives in the Platyplus log, NOT intervals, so
+// get_recent_activities shows the coach NOTHING for a gym → it reviewed off RPE alone and mis-called a 54-min, 23-set,
+// 5-PR session "light activation" (JM: "still writes bullshit"). Feed the coach the ACTUAL session so it calibrates to
+// VOLUME, not just RPE. Returns '' for non-gym or when there's no log.
+function gymSessionLine(user, date) {
+  const log = (user.logs || []).find((l) => l && l.date === date && /strength|gym/i.test(String(l.discipline || '')))
+  if (!log || !log.sets) return ''
+  const exNames = log.exNames || []
+  let sets = 0, reps = 0; const tops = [], prNames = []
+  for (const [i, arr] of Object.entries(log.sets)) {
+    const working = (Array.isArray(arr) ? arr : []).filter((s) => s && s.done && !s.warmup && Number(s.reps) > 0)
+    sets += working.length; reps += working.reduce((r, s) => r + (Number(s.reps) || 0), 0)
+    const top = working.slice().sort((a, b) => (Number(b.weight) || 0) - (Number(a.weight) || 0))[0]
+    if (top && top.weight) tops.push(`${exNames[i] || 'lift'} ${top.weight}kg×${top.reps}`)
+  }
+  if (!sets) return ''
+  const dur = Number(log.duration) || 0
+  return ` ACTUAL SESSION (from the app log — get_recent_activities does NOT carry gym set-detail, so trust THIS): ${exNames.length} exercises, ${sets} working sets, ${reps} reps${dur ? `, ${dur} min` : ''}. Heaviest sets: ${tops.slice(0, 6).join('; ')}. This is a REAL, substantial strength session — CALIBRATE to this VOLUME + load, NOT to the RPE alone. A LOW RPE here means the athlete was fresh/managing effort, NOT that the session was trivial — do NOT call a full multi-exercise, multi-set session with PRs a "light activation"/"movement day".`
+}
 function triggerActivityReview(user, id, fb, icuActivityId) {
   if (!fb || !(user.coachProfile && user.coachProfile.trim())) return false
   const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
   const rid = icuActivityId || id
-  const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${rid}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${rid}") with a one-line verdict + 2-4 short takeaways ONLY — leave the next field EMPTY (#699) (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${rid}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. ${REVIEW_OWN_TERMS} Be concise; decide and act.`
+  const gymLine = /gym|strength/i.test(fb.sport || '') ? gymSessionLine(user, fb.date) : ''
+  const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${rid}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}.${gymLine} Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${rid}") with a one-line verdict + 2-4 short takeaways ONLY — leave the next field EMPTY (#699) (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${rid}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. ${REVIEW_OWN_TERMS} Be concise; decide and act.`
   runCoachTask(user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[activity-review] ' + (e.message || e)))
   return true
 }
 function triggerPlanReview(user, plan, fb) {
   if (!fb || !(user.coachProfile && user.coachProfile.trim())) return false
   const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
-  const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}", and activityId if it matched a device activity) with a one-line verdict + 2-4 short takeaways ONLY — leave the next field EMPTY (#699) (this auto-posts your note to the intervals Notes thread). If it matched a device activity, ALSO set a PUBLIC-safe title + description with set_activity_text (activity id from get_recent_activities) — workout/route/effort only, NO health/score/plan. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. ${REVIEW_OWN_TERMS} Be concise; don't ask questions — just review and act.`
+  const gymLine = /gym|strength/i.test(plan.sport || '') ? gymSessionLine(user, plan.date) : ''
+  const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}.${gymLine} Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}", and activityId if it matched a device activity) with a one-line verdict + 2-4 short takeaways ONLY — leave the next field EMPTY (#699) (this auto-posts your note to the intervals Notes thread). If it matched a device activity, ALSO set a PUBLIC-safe title + description with set_activity_text (activity id from get_recent_activities) — workout/route/effort only, NO health/score/plan. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. ${REVIEW_OWN_TERMS} Be concise; don't ask questions — just review and act.`
   runCoachTask(user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[coach-review] ' + (e.message || e)))
   return true
 }

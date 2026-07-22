@@ -394,6 +394,9 @@ export default function ActivityDetail() {
     const bestE1rm = gymLogs ? bestE1rmByExercise(gymLogs) : undefined
     const fk = gymFeedbackKeys({ date: dISO, planId: plan?.id, activityId: a.id })
     const avgHr = a.average_heartrate || (a as { icu_average_hr?: number }).icu_average_hr || deviceHr // #695 — fall back to the day's device (Coros) HR
+    // #707 — TITLE: prefer the coach PLAN title / the clean intervals name over the messy gym-LOG title (which carried a
+    // stale "(windy — gym instead of ride)" substitution note, JM). Strip any trailing "(…)" parenthetical as a safety net.
+    const gymTitle = (plan?.title || a.name || gymLog?.title || 'Strength').replace(/\s*\([^)]*\)\s*$/, '').trim() || 'Strength'
     return (
       <div>
         <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -401,7 +404,7 @@ export default function ActivityDetail() {
           <div className="act-thumb thumb--gym" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Dumbbell strokeWidth={1.75} /></div>
           <div style={{ minWidth: 0 }}>
             <span className="eyebrow">Strength{a.start_date_local ? ` · ${new Date(a.start_date_local).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}</span>
-            <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gymLog?.title || a.name || 'Strength'}</h1>
+            <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gymTitle}</h1>
           </div>
         </div>
         {gymLogs == null ? <p className="meta">Loading session…</p>
