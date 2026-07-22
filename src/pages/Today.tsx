@@ -60,10 +60,9 @@ export function CheckInCard({ day, onChange, compact = false }: { day: string; o
   // there"). The endpoint computes it for any date from that day's wellness + prior baselines. (Future
   // days never mount this card — they show a forecast instead.)
   useEffect(() => { let live = true; setRdy(null); setTouched(new Set()); authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day])
-  // #206: overnight HRV/sleep lands in intervals HOURS late (Coros→intervals lag), so a morning
-  // check shows none yet. Re-pull on app focus + a manual ⟳ so a later sync appears without a reload.
-  const [refreshing, setRefreshing] = useState(false)
-  const refreshRdy = () => { if (!isToday) return; setRefreshing(true); authApi.readiness(day).then(setRdy).catch(() => {}).finally(() => setRefreshing(false)) }
+  // #206: overnight HRV/sleep lands in intervals HOURS late (Coros→intervals lag), so a morning check shows none yet.
+  // We re-pull AUTOMATICALLY on app focus/visibility so a later sync appears without a reload. #725 (JM) — the manual
+  // ⟳ button was REMOVED: we control the integration and don't want it overused (the auto-refresh + daily pass cover it).
   useEffect(() => {
     if (!isToday) return
     const onVis = () => { if (document.visibilityState === 'visible') authApi.readiness(day).then(setRdy).catch(() => {}) }
@@ -210,7 +209,6 @@ export function CheckInCard({ day, onChange, compact = false }: { day: string; o
           {(rdy.today?.hrv != null || rdy.today?.restingHR != null || rdy.today?.sleepHours != null)
             ? <span className="wchip wchip--src" title="These values come from intervals.icu"><span className="wchip__up" aria-hidden="true">↑</span> intervals</span>
             : <span className="wchip wchip--wait">{isToday ? 'HRV/sleep not synced yet — auto-fills once your watch syncs' : 'No HRV/sleep for this day — scores are your own read'}</span>}
-          {isToday && <button className="wchip wchip--refresh" onClick={refreshRdy} disabled={refreshing} title="Re-check intervals for a newer Coros sync">{refreshing ? '…' : '⟳'}</button>}
         </div>
       )}
     </div>

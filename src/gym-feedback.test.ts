@@ -1,6 +1,36 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — JS module, no types
-import { fbHasContent, gymHasFeedback, gymFeedbackGaps } from '../server/gym-feedback.js'
+import { fbHasContent, gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from '../server/gym-feedback.js'
+
+// #723 (JM HARD RULE) — "the user MUST enter feedback to get a coach review, there is no way around it." hasSessionFeedback
+// is the ONE universal gate used by the coach-review SAVE 409 + the awaitingFeedback skip flag. Feedback for EVERY sport
+// lives in the Platyplus store (activityFeedback[activityId|planId|gym-{date}] or plan.feedback).
+describe('hasSessionFeedback (#723 — no feedback, no review)', () => {
+  it('is false with no feedback anywhere (a review must be blocked here)', () => {
+    const user = { activityFeedback: {}, plans: [{ id: 'p1', sport: 'ride', date: '2026-07-20' }] }
+    expect(hasSessionFeedback(user, { activityId: 'i123', planId: 'p1', date: '2026-07-20', sport: 'ride' })).toBe(false)
+  })
+  it('true once feedback exists on the activity id (endurance, device activity)', () => {
+    const user = { activityFeedback: { i123: { feel: 'Good', rpe: 4 } }, plans: [] }
+    expect(hasSessionFeedback(user, { activityId: 'i123', sport: 'ride' })).toBe(true)
+  })
+  it('true once feedback exists on the plan (planned session)', () => {
+    const user = { activityFeedback: {}, plans: [{ id: 'p1', sport: 'run', date: '2026-07-20', feedback: { rpe: 6 } }] }
+    expect(hasSessionFeedback(user, { planId: 'p1', date: '2026-07-20', sport: 'run' })).toBe(true)
+  })
+  it('true for a gym via the gym-{date} key', () => {
+    const user = { activityFeedback: { 'gym-2026-07-20': { feel: 'Strong' } }, plans: [] }
+    expect(hasSessionFeedback(user, { date: '2026-07-20', sport: 'gym' })).toBe(true)
+  })
+  it("a same-day gym's feedback does NOT satisfy a non-gym review", () => {
+    const user = { activityFeedback: { 'gym-2026-07-20': { feel: 'Strong' } }, plans: [] }
+    expect(hasSessionFeedback(user, { activityId: 'i999', date: '2026-07-20', sport: 'ride' })).toBe(false)
+  })
+  it('an empty stub does not count', () => {
+    const user = { activityFeedback: { i123: {} }, plans: [] }
+    expect(hasSessionFeedback(user, { activityId: 'i123', sport: 'ride' })).toBe(false)
+  })
+})
 
 // #723 — a completed gym's feedback lives in the Platyplus store (plan.feedback / activityFeedback[gym-{date}|planId|
 // activityId]), NOT on the intervals activity. These guard both the coach's awaitingFeedback grace AND the client nag.

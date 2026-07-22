@@ -10,17 +10,33 @@ const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDa
 // stub the UI may create must NOT satisfy the nag.
 export const fbHasContent = (v) => !!(v && (v.feel || v.rpe || (v.fields && Object.keys(v.fields).length) || (v.note && String(v.note).trim())))
 
-// does the gym on this date/plan/activity have feedback anywhere it could live?
-export function gymHasFeedback(user, { date, planId, activityId } = {}) {
+// #723 (JM HARD RULE) — "the user MUST enter feedback to get a coach review, there is no way around it." Feedback is
+// ALWAYS stored in the Platyplus store when the athlete logs it: `activityFeedback[activityId]` (mirrored to the linked
+// plan id) for a device activity, or `plan.feedback` for a planned session, plus the `gym-{date}` key for a gym. This is
+// the ONE universal "did the athlete log how it went?" check, used by (a) the coach-review SAVE guard (a 409 so a review
+// physically cannot be written without feedback — the daily pass used to do a "data-only" review past a 1-day grace,
+// which is exactly the bug the wife hit), and (b) the awaitingFeedback skip flag + the review-gap nags. All sports.
+export function hasSessionFeedback(user, { activityId, planId, date, sport } = {}) {
   const fb = (user && user.activityFeedback) || {}
-  const keys = [planId, activityId != null ? String(activityId) : null, date ? `gym-${date}` : null].filter(Boolean)
-  if (keys.some((k) => fbHasContent(fb[k]))) return true
+  if (activityId != null && fbHasContent(fb[String(activityId)])) return true
   const plans = (user && user.plans) || []
-  const plan = planId ? plans.find((p) => p && p.id === planId) : null
-  if (plan && fbHasContent(plan.feedback)) return true
-  if (date && plans.some((p) => p && p.sport === 'gym' && String(p.date).slice(0, 10) === date && fbHasContent(p.feedback))) return true
+  if (planId) {
+    if (fbHasContent(fb[planId])) return true
+    const p = plans.find((x) => x && x.id === planId)
+    if (p && fbHasContent(p.feedback)) return true
+  }
+  // gym feedback also lives under a `gym-{date}` key / on the day's gym plan — only consult these for a gym (or when the
+  // sport is unknown), so a non-gym review can't be satisfied by a same-day gym's feedback.
+  const isGym = /gym|weight|strength|workout/i.test(String(sport || ''))
+  if (date && (isGym || !sport)) {
+    if (fbHasContent(fb[`gym-${date}`])) return true
+    if (plans.some((p) => p && p.sport === 'gym' && String(p.date).slice(0, 10) === date && fbHasContent(p.feedback))) return true
+  }
   return false
 }
+
+// gym-specific alias (the review-gap nag is gym-only; endurance nags come from the intervals feel/RPE path).
+export function gymHasFeedback(user, opts = {}) { return hasSessionFeedback(user, { ...opts, sport: 'gym' }) }
 
 // completed gym LOGS in the last `sinceDays` that still lack feedback — oldest first (the banner + review list nag these).
 export function gymFeedbackGaps(user, today, sinceDays = 14) {

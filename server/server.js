@@ -31,7 +31,7 @@ import { weekShape } from './week-shape.js' // #613/#615 — code-decided week s
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
 import { enforceShape, qualityEnduranceDates, concurrentGymCollisions } from './shape-enforce.js' // #615/#620 clamp · #717 concurrent-training separation
 import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
-import { gymHasFeedback, gymFeedbackGaps } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace
+import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
 import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
@@ -3366,16 +3366,15 @@ app.get('/api/intervals/activities', apiAuth, async (req, res) => {
     avgHR: a.average_heartrate ? Math.round(a.average_heartrate) : null, avgW: a.icu_average_watts ? Math.round(a.icu_average_watts) : null,
     load: a.icu_training_load ?? null, intensity: a.icu_intensity ?? null, rpe: a.icu_rpe ?? null, feel: a.feel ?? null, name: a.name,
     reviewed: a.coach_tick != null, coachTick: a.coach_tick ?? null, // #437 — the reviewed/NOT-reviewed tracker: has the coach ticked this activity yet (coach_tick 1-5)?
-    // #681 — GRACE so the coach doesn't review a fresh session BEFORE the athlete logs how it went (JM: a review landed
-    // with the "How did it go?" still empty, and the athlete's later submit then double-reviewed). awaitingFeedback =
-    // recent (today/yesterday), NOT reviewed, and no feel/RPE anywhere yet → the DAILY review pass SKIPS it and lets the
-    // athlete's submit drive the (one) review. Past the grace with still no feedback, it falls through to a data-only review.
-    // #723 — a GYM's feedback lives in the Platyplus store, not the intervals feel/RPE, so check the RIGHT store for it
-    // (else the coach reviewed a gym as "no feedback" even after she'd logged it, and never waited when she hadn't).
-    awaitingFeedback: a.coach_tick == null && daysAgo != null && daysAgo >= 0 && daysAgo <= 1
-      && (/weight|strength|gym|workout/i.test(String(a.type || ''))
-        ? !gymHasFeedback(req.user, { date, activityId: a.id })
-        : (a.feel == null && a.icu_rpe == null && !(req.user.activityFeedback && req.user.activityFeedback[String(a.id)]))),
+    // #681/#723 — the DAILY review pass must SKIP a session flagged awaitingFeedback. Two reasons fold into one flag:
+    //  (1) #723 (JM HARD RULE): NO feedback logged → NEVER review it (any age). A review REQUIRES the athlete's feedback;
+    //      the old code let it "fall through to a data-only review" past a 1-day grace — that's the wife's bug. Feedback
+    //      lives in the Platyplus store for EVERY sport (hasSessionFeedback), not the intervals feel/RPE.
+    //  (2) #681: even WITH feedback, if it's fresh (today/yesterday) and not yet reviewed, skip — the athlete's submit
+    //      already fired the (one) review; reviewing now would double it. Older + fed-back + unreviewed → the pass catches
+    //      it up. The save endpoint 409s a review without feedback regardless, so this flag can't be worked around.
+    awaitingFeedback: a.coach_tick == null && daysAgo != null && daysAgo >= 0
+      && (!hasSessionFeedback(req.user, { activityId: a.id, date, sport: a.type }) || daysAgo <= 1),
   } })
   res.json({ connected: true, activities })
 })
@@ -3608,6 +3607,12 @@ app.post('/api/coach-review', apiAuth, (req, res) => {
   const b = req.body || {}
   const date = String(b.date || '').slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date (YYYY-MM-DD) is required' })
+  // #723 (JM HARD RULE, code-ENFORCED so there's "no way around it") — a coach review REQUIRES the athlete's feedback.
+  // The daily review pass used to review an un-fed-back session data-only past a 1-day grace (the wife saw a review she
+  // never gave feedback for). Reject the save unless the athlete has logged how it went (Platyplus store, all sports).
+  if (!hasSessionFeedback(req.user, { activityId: b.activityId, planId: b.planId, date, sport: b.sport })) {
+    return res.status(409).json({ error: 'no athlete feedback for this session yet — a review requires the athlete to log how it went first (never review a session data-only)' })
+  }
   if (!req.user.coachReviews) req.user.coachReviews = []
   const arr = (x) => Array.isArray(x) ? x.filter((s) => typeof s === 'string').map((s) => s.slice(0, 300)).slice(0, 8) : undefined
   const review = {
@@ -3829,7 +3834,7 @@ function horizonFillMsg(today, cov) {
 // #439 (JM idea) — SEPARATE focused pass per topic beats one giant prompt (the coach gave each partial
 // attention + ran out). REVIEWS pass:
 function reviewMsg(today) {
-  return `Daily REVIEW pass (${today}) — do ONLY activity reviews now. get_recent_activities flags each activity's \`reviewed\` status + its \`id\`: for any completed activity in the last week with \`reviewed:false\`, REVIEW it — save_coach_review with that exact \`id\` (a score + one-line verdict + 2-4 takeaways; ticks the Coach box + posts your note) and give it a public-safe title/description via set_activity_text. SKIP anything already \`reviewed:true\` (never re-review). ⚠️ ALSO SKIP any activity flagged \`awaitingFeedback:true\` — it's fresh (today/yesterday) and the athlete hasn't logged how it went yet; reviewing now would beat their input and then double-review when they submit. Leave it — their submit triggers the review, or it drops the flag after a day and you'll review it next pass. Cap at the few most recent so nothing piles up. #699 (JM) — do NOT write a "what's next" line: leave the \`next\` field EMPTY. The review reflects THIS session + the athlete's progress ONLY; never list, name, or preview upcoming/scheduled sessions, and no recovery/sleep/logistics here. #698 (JM) — NEVER mention "pump"/"no pump". **SHOW THEM THEIR PROGRESS (#631): when you can measure a concrete GAIN — get_metrics now vs a few weeks ago (threshold power/pace up, TTE up, EF up, CS·D′/CSS up) — STATE it plainly as a takeaway ("your threshold is up ~8 W in 6 weeks", "you're holding threshold ~4 min longer than a month ago"). The athlete should SEE their training working, not just be told "good job." Only claim a gain that's REAL in the numbers.** Don't CHANGE the plan in this pass, just reflect it truthfully. CALIBRATE each verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. Be concise.`
+  return `Daily REVIEW pass (${today}) — do ONLY activity reviews now. get_recent_activities flags each activity's \`reviewed\` status + its \`id\`: for any completed activity in the last week with \`reviewed:false\`, REVIEW it — save_coach_review with that exact \`id\` (a score + one-line verdict + 2-4 takeaways; ticks the Coach box + posts your note) and give it a public-safe title/description via set_activity_text. SKIP anything already \`reviewed:true\` (never re-review). ⚠️ NEVER review an activity flagged \`awaitingFeedback:true\` — the athlete has NOT logged how it went, and a review REQUIRES their feedback (there is NO data-only review; the server will 409 you if you try). Leave it — the athlete's feedback submit fires the review, and the flag clears once they've logged it. Only review sessions that have feedback AND \`reviewed:false\`. Cap at the few most recent so nothing piles up. #699 (JM) — do NOT write a "what's next" line: leave the \`next\` field EMPTY. The review reflects THIS session + the athlete's progress ONLY; never list, name, or preview upcoming/scheduled sessions, and no recovery/sleep/logistics here. #698 (JM) — NEVER mention "pump"/"no pump". **SHOW THEM THEIR PROGRESS (#631): when you can measure a concrete GAIN — get_metrics now vs a few weeks ago (threshold power/pace up, TTE up, EF up, CS·D′/CSS up) — STATE it plainly as a takeaway ("your threshold is up ~8 W in 6 weeks", "you're holding threshold ~4 min longer than a month ago"). The athlete should SEE their training working, not just be told "good job." Only claim a gain that's REAL in the numbers.** Don't CHANGE the plan in this pass, just reflect it truthfully. CALIBRATE each verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. Be concise.`
 }
 // ROUND-OUT pass — FUEL / MIND / RECOVERY around the (already-set) plan:
 function roundOutMsg(today) {
