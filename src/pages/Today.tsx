@@ -436,7 +436,7 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
 
 // #387/#442b — a compact "sessions to review" HEADLINE on Today (only when there ARE gaps); taps through to
 // the DEDICATED /review page (NOT History — JM's directive). Keeps Today clean while making feedback stick.
-function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
+export function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
   const { user } = useAuth() // #review-skip — the skipped-sessions count must not include what the athlete dismissed
   const n = incompleteFeedback(acts, new Set((user?.feedbackSkips || []).map(String))).length
   if (!n) return null
@@ -641,7 +641,9 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
       {isFuture ? <ForecastCard key={selDay} day={selDay} rev={planRev} fmtDay={fmtDay} /> : <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />}
 
       {/* #387 — nudge to review completed sessions still missing feedback (links to the full list on Logs). */}
-      <ToReviewCard acts={activities} />
+      {/* #722 — when embedded in the Plan page, the nudge is rendered ONCE at the Calendar level (so it shows on Week/
+          Month/Schedule too, not just Day); standalone Today keeps its own. */}
+      {!embedded && <ToReviewCard acts={activities} />}
       {/* #457 — one-time opt-in for phone push (plan-change alerts). */}
       <PushNudge />
 
