@@ -3037,7 +3037,9 @@ app.post('/auth/activity/complete', auth, async (req, res) => {
   if (!req.user.icuKey) return res.json({ status: 'local-only' }) // no intervals → lives in Platyplus
   try {
     const match = await icuFindMatch(req.user, { date, sport })
-    if (match) return res.json({ status: 'matched', icuId: match.id }) // device recorded it → don't dup
+    // #666 — device (Coros) recorded it → don't dup, AND return its HR + duration so the Platyplus session shows them
+    // (JM: a gym had a coach review but "no HR data" because the device activity's HR was never pulled in).
+    if (match) return res.json({ status: 'matched', icuId: match.id, avgHr: Math.round(match.average_heartrate || 0) || null, durationSec: Math.round(match.moving_time || match.elapsed_time || 0) || null })
     const samples = Array.isArray(b.samples) ? b.samples.slice(0, 60000) : []
     if (!samples.length) return res.json({ status: 'no-stream' }) // nothing to upload (e.g. gym handled separately)
     const startIso = typeof b.startIso === 'string' ? b.startIso : new Date(date + 'T12:00:00Z').toISOString()

@@ -245,6 +245,7 @@ export default function GymPlayer() {
   }
 
   const [finalMin, setFinalMin] = useState(0)
+  const [devHr, setDevHr] = useState<number | undefined>() // #666 — avg HR pulled from a matched device (Coros) activity
   async function finish() {
     if (!w) { setDone(true); return }
     const wallMin = Math.max(1, Math.round((Date.now() - startedAt) / 60000))   // wall-clock elapsed (fragile)
@@ -264,7 +265,7 @@ export default function GymPlayer() {
     // Match-first (#123): if a device (Coros) recorded this gym session in intervals, link it
     // — don't duplicate. No stream here, so when nothing matches it just stays in Platyplus
     // (the coach reads the rich set/rep log from Platyplus anyway).
-    authApi.completeActivity({ sport: 'gym', title: w.title, date: localISO(), startIso: new Date(startedAt).toISOString(), durationSec: duration * 60, samples: [] }).catch(() => { /* best-effort */ })
+    authApi.completeActivity({ sport: 'gym', title: w.title, date: localISO(), startIso: new Date(startedAt).toISOString(), durationSec: duration * 60, samples: [] }).then((r) => { if (r?.avgHr) setDevHr(r.avgHr) }).catch(() => { /* best-effort */ }) // #666 — pull the matched device HR
   }
 
   if (!w || !cur) return <div className="page-head"><h1>No workout loaded</h1><button className="btn" onClick={() => navigate(-1)}>Back</button></div>
@@ -328,7 +329,7 @@ export default function GymPlayer() {
             <h1 style={{ margin: '6px 0 2px' }}>Workout complete</h1>
             <p style={{ color: 'var(--text-dim,#888)', margin: 0 }}>{w.title}</p>
           </div>
-          {(() => { const fk = gymFeedbackKeys({ date: localISO(), workoutId: w.workoutId }); return <GymSummary minutes={finalMin} exercises={exLogs} review={review} bestE1rm={e1rmMap} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={localISO()} awaitReview /> })()}
+          {(() => { const fk = gymFeedbackKeys({ date: localISO(), workoutId: w.workoutId }); return <GymSummary minutes={finalMin} exercises={exLogs} review={review} bestE1rm={e1rmMap} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={localISO()} avgHr={devHr} awaitReview /> })()}
           <button className="btn" style={{ marginTop: 18 }} onClick={() => navigate('/progress')}>View progress</button>
           <button className="btn btn--ghost" onClick={() => navigate('/plan')}>Done</button>
         </div>
