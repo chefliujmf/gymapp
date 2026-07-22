@@ -11,7 +11,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { bestE1rmByExercise, weightForReps, roundLoad } from '../strength'
 import { fmtPace, paceFromPowerPct } from '../running-paces'
 import { InfoDot, PlannedPowerBars } from '../charts'
-import { fetchActivities, sportOfActivity, type IcuActivity } from '../intervals'
+import { fetchActivities, sportOfActivity } from '../intervals'
 import { useAuth } from '../auth/AuthContext'
 import { linkify } from '../linkify'
 
@@ -69,8 +69,7 @@ export default function CoachPlanDetail() {
   }, [p?.id, p?.date, p?.sport, navigate, forcePlanned])
   // gym: completed if a log matches this plan → open its summary. #326 — match by plan-id OR title+day.
   // Else (no in-app log) a DEVICE (Coros/Garmin) may have recorded it in intervals (HR + time) — that still
-  // means DONE (JM: "it is a completed activity after all"), so show a completed banner instead of "Start workout".
-  const [doneActivity, setDoneActivity] = useState<IcuActivity | null>(null)
+  // means DONE — #701 (JM Option A): a completed gym redirects to /activity/:id (like a ride), not a banner here.
   useEffect(() => {
     if (!p || p.sport !== 'gym' || logs === undefined) return
     if (forcePlanned) { setCheckedDone(true); return } // #708 — as-planned view requested: show the PLAN, never redirect to the completed /feedback view (JM: "planned workout should not have the feedback and all that shit")
@@ -79,8 +78,12 @@ export default function CoachPlanDetail() {
     let cancelled = false
     fetchActivities(p.date, p.date).then((a) => {
       if (cancelled) return
-      setDoneActivity(a.find((x) => sportOfActivity(x) === 'gym') || null)
-      setCheckedDone(true)
+      // #701 Option A (JM pick) — a COMPLETED gym (device-recorded, no in-app weights) opens the ACTIVITY view like a
+      // ride/run, NOT this plan page with a completed banner bolted on (that showed a pre-workout session tip + to-do
+      // cues on a done session). The activity view falls back to the plan's exercises + an "add weights" prompt.
+      const dev = a.find((x) => sportOfActivity(x) === 'gym') || null
+      if (dev) { navigate(`/activity/${dev.id}`, { replace: true }); return }
+      setCheckedDone(true) // not done → show the plan as normal
     }).catch(() => { if (!cancelled) setCheckedDone(true) })
     return () => { cancelled = true }
   }, [p?.id, p?.date, p?.sport, logs, navigate, forcePlanned])
@@ -213,19 +216,10 @@ export default function CoachPlanDetail() {
       })()}
       {p.sport === 'gym' && (p.exercises?.length ?? 0) > 0 && (
         <>
-          {doneActivity ? (() => {
-            const mt = (doneActivity as { moving_time?: number }).moving_time
-            const hr = Math.round((doneActivity as { icu_average_hr?: number; average_heartrate?: number }).icu_average_hr || (doneActivity as { average_heartrate?: number }).average_heartrate || 0)
-            return <>
-              <div className="card" style={{ padding: 12, marginBottom: 10, background: 'rgba(52,224,125,.08)', border: '1px solid rgba(52,224,125,.3)' }}>
-                <div style={{ fontWeight: 700, color: 'var(--accent)' }}>✓ Completed · {dateLabel}</div>
-                <div className="meta" style={{ marginTop: 3 }}>Recorded on your device{mt ? ` · ${Math.round(mt / 60)} min` : ''}{hr ? ` · ${hr} bpm avg HR` : ''}. Weights weren't logged in the app.</div>
-                <Link to={`/activity/${doneActivity.id}`} style={{ color: 'var(--accent)', fontWeight: 600, display: 'inline-block', marginTop: 6, fontSize: 13 }}>View activity ›</Link>
-              </div>
-              <button className="btn btn--ghost" onClick={startGym}>✍️ Add the weights you lifted</button>
-            </>
-          })() : <button className="btn" onClick={startGym}>▶ Start workout</button>}
-          {p.tip && <div className="tipbanner">💡 <span><b>Session tip:</b> {p.tip}</span></div>}
+          {/* #701 — a COMPLETED gym now redirects to /activity (Option A), so this page is only ever the PLANNED (or
+              as-planned read-only) view. Show the Start button + the pre-workout session tip ONLY when it's a live plan. */}
+          {!forcePlanned && <button className="btn" onClick={startGym}>▶ Start workout</button>}
+          {p.tip && !forcePlanned && <div className="tipbanner">💡 <span><b>Session tip:</b> {p.tip}</span></div>}
           {/* #332 — warm-up/cool-down are INDIVIDUAL moves (each a demo), grouped under their own header. */}
           {(() => {
             const secOf = (x: { section?: string }) => (x.section === 'warmup' || x.section === 'cooldown' ? x.section : 'main')

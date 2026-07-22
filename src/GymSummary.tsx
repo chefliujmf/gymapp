@@ -13,7 +13,7 @@ export interface GymExLog { name: string; exId?: string; sets: SetEntry[] }
 // by-exercise sets/PR cards + the feedback stack. Same #286 language as ActivityDetail (which is
 // device rides/runs); gym's "analysis" is the sets/PRs, not a power timeline. Used by the GymPlayer
 // done screen AND the revisit path (PostWorkout /feedback/:id).
-export default function GymSummary({ minutes, exercises, review, note, bestE1rm, feedbackId, feedbackDate, altFeedbackIds, planId, activityId, avgHr, awaitReview = false }: {
+export default function GymSummary({ minutes, exercises, review, note, bestE1rm, feedbackId, feedbackDate, altFeedbackIds, planId, activityId, avgHr, awaitReview = false, plannedNoWeights = false, onAddWeights }: {
   minutes: number
   exercises: GymExLog[]
   review?: CoachReview | null
@@ -26,6 +26,8 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
   activityId?: string      // …and the device activity (HR + time), if a watch recorded it
   avgHr?: number           // device average HR, shown as a chip
   awaitReview?: boolean    // #JM — a JUST-completed session: wait for the async coach review, don't flash "Retry"
+  plannedNoWeights?: boolean // #701 — device-recorded gym, NO in-app weights: show the PLANNED exercises as "what you did" + an add-weights prompt (no set detail)
+  onAddWeights?: () => void  // #701 — seeds the gym player from the plan so the athlete can log the weights they lifted
 }) {
   const rows = exercises.map((ex) => {
     const ss = (ex.sets || []).filter((s) => s?.done && !s?.warmup && (s.reps || 0) > 0) // #591 warm-ups excluded from working stats
@@ -37,7 +39,7 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
     const best = bestE1rm?.get(ex.name)?.e1rm
     const pr = est > 0 && (best == null || est >= Math.round(best))
     return { name: ex.name, sets: ss, vol, est, muscle, pr }
-  }).filter((e) => e.sets.length)
+  }).filter((e) => plannedNoWeights || e.sets.length) // #701 — in the no-weights view, keep ALL planned exercises (as "what you did")
 
   const totSets = rows.reduce((s, e) => s + e.sets.length, 0)
   const totReps = rows.reduce((s, e) => s + e.sets.reduce((r, x) => r + (x.reps || 0), 0), 0)
@@ -47,12 +49,17 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
   // #601 — VOLUME dropped from the gym recap (JM: tonnage isn't actionable for a user or the coach).
   // #700 — when HR is present, show it in the HERO row like a ride/run (JM: "HR not shown like other activities") — it
   // takes the 4th slot; reps still show in the insight line below so nothing's lost.
-  const hero: [string, string][] = avgHr
+  // #701 — no-weights (device-recorded) view: hero = Exercises · Time · HR (no sets/reps, none were logged).
+  const hero: [string, string][] = plannedNoWeights
+    ? ([['Exercises', String(rows.length || '—')], ['Time', `${minutes} min`], ...(avgHr ? [['Avg HR', `${Math.round(avgHr)} bpm`]] : [])] as [string, string][])
+    : avgHr
     ? [['Exercises', String(rows.length || '—')], ['Sets', String(totSets || '—')], ['Time', `${minutes} min`], ['Avg HR', `${Math.round(avgHr)} bpm`]]
     : [['Exercises', String(rows.length || '—')], ['Sets', String(totSets || '—')], ['Reps', String(totReps || '—')], ['Time', `${minutes} min`]]
   // #602 — insight stays FACTUAL. No generic nutrition/recovery prescription (JM: risky without the athlete's
   // metabolism/goals — the coach review above has that context and personalises it). Just the training recap.
-  const insight = totSets > 0
+  const insight = plannedNoWeights
+    ? `Recorded on your device${avgHr ? `, ${Math.round(avgHr)} bpm avg` : ''}. Add the weights you lifted and I'll track your PRs.`
+    : totSets > 0
     ? `${totSets} set${totSets > 1 ? 's' : ''} · ${totReps} rep${totReps > 1 ? 's' : ''}${prCount ? ` · ${prCount} PR${prCount > 1 ? 's' : ''} 🏅` : ''} logged. Your coach reviews it above.`
     : `All ${rows.length} exercises done. Log your weights next time and I'll track your PRs.`
 
@@ -67,6 +74,8 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
           {activityId && <Link className="done-link" to={`/activity/${activityId}`}>📈 View activity (HR) →</Link>}
         </div>
       )}
+      {/* #701 — device-recorded gym with no logged weights: a clear CTA to backfill them (drives PRs). */}
+      {plannedNoWeights && onAddWeights && <button onClick={onAddWeights} className="btn btn--ghost" style={{ display: 'block', width: '100%', margin: '2px 0 4px' }}>✍️ Add the weights you lifted</button>}
       <div className="act-hero">{hero.map(([l, v]) => <div key={l} className="ht"><b>{v}</b><span>{l}</span></div>)}</div>
       {(muscles.length > 0 || prCount > 0) && (
         <div className="act-chips">
@@ -78,9 +87,14 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
 
       {rows.length > 0 && (
         <>
-          <div className="section-title" style={{ marginTop: 16 }}>By exercise <span className="meta" style={{ fontWeight: 400 }}>· tap for progress</span></div>
+          <div className="section-title" style={{ marginTop: 16 }}>{plannedNoWeights ? <>What you did <span className="meta" style={{ fontWeight: 400 }}>· tap to add weights</span></> : <>By exercise <span className="meta" style={{ fontWeight: 400 }}>· tap for progress</span></>}</div>
           <div className="stack" style={{ gap: 8 }}>
-            {rows.map((e, i) => (
+            {rows.map((e, i) => plannedNoWeights ? (
+              <button key={i} onClick={onAddWeights} className="gym-exc" style={{ textAlign: 'left', width: '100%' }}>
+                <div className="gym-exc__top"><strong>{e.name} <span style={{ color: 'var(--accent)' }}>›</span></strong></div>
+                <div className="gym-exc__sets">{e.sets.length ? e.sets.map((s) => `${s.weight ? s.weight + '×' : 'bodyweight ×'}${s.reps || 0}`).join(' · ') : <span style={{ color: 'var(--accent)' }}>weights not logged — tap to add</span>}</div>
+              </button>
+            ) : (
               <Link key={i} to={`/exercise/${encodeURIComponent(e.name)}`} className="gym-exc">
                 <div className="gym-exc__top"><strong>{e.name}{e.pr && <span className="pr-badge">PR 🏅</span>} <span style={{ color: 'var(--accent)' }}>›</span></strong>{e.est > 0 && <span className="meta" style={{ flex: 'none' }}>est 1RM {e.est} kg</span>}</div>
                 <div className="gym-exc__sets">{e.sets.map((s) => `${s.weight ? s.weight + '×' : 'bodyweight ×'}${s.reps || 0}`).join(' · ')}</div>
