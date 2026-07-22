@@ -1561,6 +1561,9 @@ app.get('/auth/plans', auth, (req, res) => { healMirror(req.user).catch(() => {}
 // #723 — completed GYM sessions (last 14d) that still lack feedback in the Platyplus store → the client banner nags them
 // (the endurance nag reads the intervals activity, which gym feedback never touches; without this, gyms never nagged).
 app.get('/auth/gym-review-gaps', auth, (req, res) => res.json(gymFeedbackGaps(req.user, localTodayInTz(req.user && req.user.icuTimezone))))
+// #735 — deliberate REST days (sticky; the coach can't re-fill them). GET the list; POST {date, rest} to mark/unmark.
+app.get('/auth/rest-days', auth, (req, res) => res.json(req.user.restDates || []))
+app.post('/auth/rest-day', auth, async (req, res) => { const r = await setRestDay(req.user, req.body && req.body.date, !!(req.body && req.body.rest), 'you'); res.status(r.status).json(r.body) })
 // #528 — fetch ONE plan by id (session auth) so an intervals "Open in Platyplus" deep link works COLD (no prior
 // Today load). Owner-scoped: only the authenticated user's own plan; a 404 means it isn't in THIS account
 // (e.g. the link was opened in a different user's session — the client shows a clearer message than "not found").
@@ -2086,6 +2089,10 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   // never part of the base load.
   const freq = Number(user.info?.trainingDays) || 0
   if (freq > 0) p += `\n\n# WEEKLY TRAINING DAYS — TARGET ${freq}/week (and a hard ceiling) (JM #734): the athlete CHOSE ${freq} training days/week in their profile, so AIM to deliver ${freq} distinct training days each Mon–Sun week, placing the REST day(s) DELIBERATELY where they serve recovery + the week's key sessions. Going UNDER ${freq} is allowed ONLY as a deliberate recovery/objective decision you EXPLAIN to the athlete (e.g. "I'm keeping Friday easy/rest — Form is low after two hard days") — NEVER leave a day silently empty or quietly under-deliver their chosen frequency (an unexplained empty day reads as a bug). If the week is UNDER ${freq} and a day is empty with no genuine recovery reason, FILL it toward the target (respecting one-session-per-day + the concurrent-training spacing). ${freq} is ALSO a HARD CEILING: NEVER schedule MORE than ${freq} days, not even an "optional"/"bonus" extra — if the week is already at ${freq}, MOVE or COMBINE instead of adding a new day. If they ask for more than ${freq}, tell them to raise it in their profile first. (Server enforces the ceiling — a create beyond ${freq} is rejected.)`
+  // #735 — DELIBERATE rest days are OFF-LIMITS. The athlete SET these to rest; the server 409s any session you try to
+  // put on them, and they do NOT count toward the weekly training-days target (never re-fill a rest to hit the number).
+  const restDays = (user.restDates || []).filter((d) => d >= today).slice(0, 21)
+  if (restDays.length) p += `\n\n# REST DAYS — DO NOT SCHEDULE (JM #735): the athlete has set these as deliberate REST days: ${restDays.join(', ')}. NEVER place any session on them — they are OFF (the server rejects it). They do NOT count toward the weekly training-days target, so do not treat them as "empty days to fill". Only schedule one if the athlete EXPLICITLY asks to train that day, and then clear it first with clear_rest_day. When the athlete asks to REST a day (or move a session off it with nothing replacing it), call set_rest_day so the rest sticks.`
   // #345 — most athletes train ONCE a day. Never stack two sessions (e.g. a gym + a run) on the same
   // calendar day beyond this cap unless the athlete explicitly opts into doubles.
   // #717 (audit) — CONCURRENT-TRAINING SEPARATION: code-COMPUTE the athlete's quality endurance days and hand the coach
@@ -2746,6 +2753,17 @@ async function upsertPlan(user, body, actor = 'coach') {
   // uses actor 'you' and is exempt). Fire on a CREATE (i<0) AND on a coach MOVE onto another day (i≥0 with a changed
   // date) — the #5014 gap was that the old guard only ran on create, so the coach could MOVE a session onto a full day
   // and stack two (JM: "2 exercices on jul 11 while max is 1"). A same-day UPDATE (id + same date) stays exempt.
+  // #735 — a deliberate REST day is OFF-LIMITS to the coach (code-enforced, so the adapt/horizon-fill can't silently
+  // re-fill it). The athlete scheduling on it themselves (actor 'you') means they changed their mind → clear the marker.
+  if (isRestDate(user, body.date)) {
+    const cur0 = i >= 0 ? user.plans[i] : null
+    const isNewOrMovedOnto = i < 0 || (cur0 && String(cur0.date).slice(0, 10) !== String(body.date).slice(0, 10))
+    if (isNewOrMovedOnto) {
+      if (actor === 'coach') return { status: 409, body: { error: `${String(body.date).slice(0, 10)} is a deliberate REST day the athlete set — do NOT schedule on it. If they want to train that day instead, they clear the rest first (or ask you to, then use clear_rest_day).` } }
+      const d = String(body.date).slice(0, 10)
+      user.restDates = (user.restDates || []).filter((x) => x !== d); deleteRestNote(user, d).catch(() => {})
+    }
+  }
   if (actor === 'coach') {
     const cur = i >= 0 ? user.plans[i] : null
     const isCoachMove = !!(cur && cur.date !== body.date)
@@ -2819,6 +2837,42 @@ async function upsertPlan(user, body, actor = 'coach') {
   save(store)
   const icu = await pushPlanToIcu(user, plan)
   return { status: i >= 0 ? 200 : 201, body: { ...plan, icu } }
+}
+// #735 — DELIBERATE REST days are STICKY. A rest the athlete asks for (chat → set_rest_day, or a UI toggle) is RECORDED
+// on `user.restDates` and MIRRORED to intervals as a "Rest day" NOTE (prod). The daily-adapt/horizon-fill + the coach
+// create-guard then REFUSE to schedule on it (code-enforced, not prompt-only #728) — so a rest can't be silently
+// re-filled (JM: "requested a rest today, now I see an activity again"). Reversible: training that day clears the marker.
+const isRestDate = (user, date) => Array.isArray(user && user.restDates) && user.restDates.includes(String(date || '').slice(0, 10))
+async function pushRestNote(user, date) { // intervals NOTE mirror (prod-only; QA is read-only toward intervals)
+  if (IS_STAGING || !user.icuKey || !user.icuAthlete) return
+  const ext = `rest-${date}`
+  try {
+    const evs = await icuGet(user, `/athlete/${user.icuAthlete}/events?oldest=${date}&newest=${date}`)
+    if (Array.isArray(evs) && evs.some((e) => e.external_id === ext)) return
+    await icuFetch(user, `/athlete/${user.icuAthlete}/events`, { method: 'POST', body: JSON.stringify({ start_date_local: date + 'T00:00:00', category: 'NOTE', name: 'Rest day 💤', external_id: ext, description: 'Planned rest — Platyplus' }) })
+  } catch (e) { console.error('[rest-note] ' + (e.message || e)) }
+}
+async function deleteRestNote(user, date) {
+  if (IS_STAGING || !user.icuKey || !user.icuAthlete) return
+  try {
+    const evs = await icuGet(user, `/athlete/${user.icuAthlete}/events?oldest=${date}&newest=${date}`)
+    for (const e of (Array.isArray(evs) ? evs : [])) if (e && e.external_id === `rest-${date}`) await icuFetch(user, `/athlete/${user.icuAthlete}/events/${e.id}`, { method: 'DELETE' }).catch(() => {})
+  } catch (e) { console.error('[rest-note-del] ' + (e.message || e)) }
+}
+// mark/unmark a day as a deliberate rest. rest=true also REMOVES any sessions already on that day (that's the point).
+async function setRestDay(user, date, rest, actor = 'you') {
+  const d = String(date || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { status: 400, body: { error: 'date (YYYY-MM-DD) required' } }
+  if (rest) {
+    for (const p of (user.plans || []).filter((p) => p && String(p.date).slice(0, 10) === d)) await deletePlanById(user, p.id, actor)
+    user.restDates = Array.from(new Set([...(user.restDates || []), d])).sort().slice(-160)
+    audit(user, { actor, action: 'Rest day', target: d, kind: 'plan' })
+    save(store); await pushRestNote(user, d).catch(() => {})
+  } else {
+    user.restDates = (user.restDates || []).filter((x) => x !== d)
+    save(store); await deleteRestNote(user, d).catch(() => {})
+  }
+  return { status: 200, body: { ok: true, date: d, rest: !!rest } }
 }
 async function deletePlanById(user, id, actor = 'coach') {
   const plan = (user.plans || []).find((x) => x.id === id)
@@ -3641,6 +3695,9 @@ app.post('/api/coach/load-plan', apiAuth, async (req, res) => {
 // not intervals. Stored per-user; surfaced in-app (Progress takeaways + post-workout).
 // Keyed by date (+ optional planId/activityId) so re-POST updates. Mirror-to-intervals
 // is a follow-on (the planned-workout mirror already exists).
+// #735 — the coach marks/clears a deliberate REST day when the athlete asks (set_rest_day / clear_rest_day MCP tools).
+// Marking a rest REMOVES any session that day + records it sticky so no later adapt re-fills it.
+app.post('/api/rest-day', apiAuth, async (req, res) => { const r = await setRestDay(req.user, req.body && req.body.date, (req.body && req.body.rest) !== false, 'coach'); res.status(r.status).json(r.body) })
 app.post('/api/coach-review', apiAuth, (req, res) => {
   const b = req.body || {}
   const date = String(b.date || '').slice(0, 10)
@@ -3898,7 +3955,7 @@ async function runDailyAdapt(user, pass, opts = {}) { // #634 — opts.buildMode
     // loop removed #612 — it was spawning up to 5 EXTRA coach runs = minutes wasted). The single pass owns the full
     // ~2-week horizon (its prompt makes filling to the window end the first job); at most ONE fallback top-up if it
     // still comes up badly short, never a 5-deep loop.
-    const covOf = () => horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON)
+    const covOf = () => horizonCoverage([...(user.plans || []).map((p) => p.date), ...(user.restDates || [])], today, DAILY_HORIZON)
     const buildModel = opts.buildModel || COACH_BUILD_MODEL
     await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()), { model: buildModel }) // #634 — the BUILD (quality-critical); model set by env/opts, default Opus
     if (covOf().tail >= 4) await runCoachTask(user, horizonFillMsg(today, covOf()), { model: buildModel }) // single top-up, same tier as the build
@@ -3962,7 +4019,7 @@ async function dailyAdaptTick() {
         // OR the coach has never built one. Otherwise skip the costly rebuild for the day. ~80% fewer full adapts.
         const lastFull = user.dailyAdapt.lastFull
         const daysSinceFull = lastFull ? Math.floor((Date.parse(today) - Date.parse(lastFull)) / 86400000) : 999
-        const tail = horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON).tail
+        const tail = horizonCoverage([...(user.plans || []).map((p) => p.date), ...(user.restDates || [])], today, DAILY_HORIZON).tail
         const material = daysSinceFull >= 7 || tail >= 4
         user.dailyAdapt.done = today
         if (material) { user.dailyAdapt.lastFull = today; save(store); runDailyAdapt(user, 'refine') }

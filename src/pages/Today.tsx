@@ -475,6 +475,7 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
   const [err, setErr] = useState<string>()
   // #146: the Add sheet opens IN PLACE on Today (the same shared sheet the Plan page uses).
   const [sheet, setSheet] = useState<{ date: string } | null>(null)
+  const [restDays, setRestDays] = useState<string[]>([]) // #735 — deliberate rest days (sticky)
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const [rideTemplates, setRideTemplates] = useState<RideTemplate[]>([])
   const [ftp, setFtp] = useState(260)
@@ -487,6 +488,7 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
     syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then((pl) => { setPlans(pl); setCoachPlans(pl) }))
     fetchActivities(a, b).then(setActivities).catch(() => setActivities([]))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
+    authApi.restDays().then(setRestDays).catch(() => setRestDays([])) // #735
   }, [])
   useEffect(() => { load() }, [load])
   // #293 one-time: re-reconcile a WIDE window (past 45d → future 30d) so EXISTING plans pick up the
@@ -653,8 +655,12 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
 
       {/* #202 Today's plan (workouts + notes) with the readiness verdict banner */}
       <div className="cal-day-head" style={{ marginTop: 8 }}>
-        <div className="section-title" style={{ margin: 0 }}>{selDay === todayISO() ? "Today's plan" : fmtDay(selDay)}</div>
-        <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => swapOn(selDay)}><Plus size={16} /> Add</button>
+        <div className="section-title" style={{ margin: 0 }}>{selDay === todayISO() ? "Today's plan" : fmtDay(selDay)}{restDays.includes(selDay) ? <span className="meta" style={{ fontWeight: 400 }}> · 💤 Rest day</span> : null}</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {/* #735 — mark/clear a DELIBERATE rest day (sticky: the coach won't re-fill it). */}
+          <button className="btn btn--ghost" style={{ width: 'auto', padding: '8px 12px' }} title="A rest day your coach won't re-fill" onClick={() => authApi.setRestDay(selDay, !restDays.includes(selDay)).then(() => load()).catch(() => {})}>{restDays.includes(selDay) ? 'Clear rest' : '💤 Rest'}</button>
+          <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => swapOn(selDay)}><Plus size={16} /> Add</button>
+        </div>
       </div>
       {err === 'NO_KEY' ? (
         <p className="meta">Connect intervals.icu in <Link to="/profile">Profile</Link> for your coach's plan — you can still add your own below.</p>
