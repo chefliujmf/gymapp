@@ -1,9 +1,11 @@
 import { ICU_FIELDS, ICU_FIELD_CODES } from './icu-fields'
-import type { IcuActivity } from './intervals'
+import { sportOfActivity, type IcuActivity } from './intervals'
 
-// #661 — a strength/gym activity, by its EXPLICIT intervals type (not the sportOfActivity catch-all, which defaults
-// anything unknown to 'gym'). Gym feedback lives in the Platyplus store, not on the intervals activity fields.
-const isStrengthActivity = (a: IcuActivity): boolean => /weight ?training|strength|\bgym\b|workout/i.test(String((a as unknown as { type?: string }).type || ''))
+// #679 — the nag reads feel/icu_rpe off the INTERVALS activity, which only exists for ENDURANCE sessions (ride/run/
+// swim). A gym / strength / anything-else session's feedback lives in the Platyplus store, invisible here — so nagging
+// it is ALWAYS a false positive. The #661 "exclude strength by type string" was fragile (a gym whose type didn't match
+// slipped through, JM). Bulletproof: only ENDURANCE activities can ever need feedback via this intervals-based nag.
+const ENDURANCE = new Set(['ride', 'run', 'swim'])
 
 // #340 — which finished sessions still need feedback? The CORE the coach needs is "how it felt" + RPE;
 // the intervals custom fields (Legs, Fuel, Pain, …) add richness but are optional, so they drive the
@@ -45,9 +47,8 @@ export function incompleteFeedback(acts: IcuActivity[], skip?: Set<string>, sinc
   const cutoff = Number.isFinite(sinceDays) ? new Date(Date.now() - sinceDays * 86400000).toISOString().slice(0, 10) : ''
   return acts
     .map((act) => ({ act, status: feedbackStatus(act) }))
-    // #661 — EXCLUDE gym/strength: its feedback lives in the Platyplus store (keyed gym-<date>), NOT on the intervals
-    // activity's feel/icu_rpe — so feedbackStatus can NEVER see it and would nag forever even after the athlete rated
-    // it (JM re-asked on the day page). Gym feedback is captured inline at the session summary + reviewed there.
-    .filter((x) => x.status.needsFeedback && !isStrengthActivity(x.act) && !(skip && skip.has(String((x.act as unknown as { id?: unknown }).id))) && dateOf(x.act).slice(0, 10) >= cutoff)
+    // #679 — ONLY endurance (ride/run/swim) can nag: their feedback lives on the intervals activity this reads. A gym
+    // or any non-endurance session is captured/reviewed in Platyplus and can NEVER be assessed here → never nag it.
+    .filter((x) => x.status.needsFeedback && ENDURANCE.has(sportOfActivity(x.act)) && !(skip && skip.has(String((x.act as unknown as { id?: unknown }).id))) && dateOf(x.act).slice(0, 10) >= cutoff)
     .sort((a, b) => dateOf(a.act).localeCompare(dateOf(b.act)))
 }
