@@ -31,6 +31,7 @@ import { weekShape } from './week-shape.js' // #613/#615 — code-decided week s
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
 import { enforceShape, qualityEnduranceDates, concurrentGymCollisions } from './shape-enforce.js' // #615/#620 clamp · #717 concurrent-training separation
 import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
+import { gymHasFeedback, gymFeedbackGaps } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
 import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
@@ -1219,6 +1220,7 @@ const siblingFeedbackId = (user, id) => {
   for (const [act, plan] of Object.entries(links)) if (plan === id) return act // id is a plan → its activity
   return null
 }
+// #723 — gym feedback lives in the Platyplus store, not the intervals activity. Pure helpers extracted + unit-tested.
 // #273 — post-workout feedback for a COMPLETED intervals ACTIVITY (device rides/runs that have no
 // Platyplus plan). Stored per-user keyed by activity id; triggers an async coach review (activityId).
 // #583 — feedback on the LINKED plan/activity counts as this session's, so no view re-nags for feedback already given.
@@ -1533,6 +1535,9 @@ app.post('/auth/token/rotate', auth, admin, (req, res) => { req.user.apiToken = 
 
 // The app (session) reads its own plans for the Today merge-by-id.
 app.get('/auth/plans', auth, (req, res) => { healMirror(req.user).catch(() => {}); res.json(plansInRange(req.user, req.query.from, req.query.to)) }) // #5026 — sync-on-load: repair the intervals mirror when the athlete opens the plan view (fire-and-forget, cooldown-guarded)
+// #723 — completed GYM sessions (last 14d) that still lack feedback in the Platyplus store → the client banner nags them
+// (the endurance nag reads the intervals activity, which gym feedback never touches; without this, gyms never nagged).
+app.get('/auth/gym-review-gaps', auth, (req, res) => res.json(gymFeedbackGaps(req.user, localTodayInTz(req.user && req.user.icuTimezone))))
 // #528 — fetch ONE plan by id (session auth) so an intervals "Open in Platyplus" deep link works COLD (no prior
 // Today load). Owner-scoped: only the authenticated user's own plan; a 404 means it isn't in THIS account
 // (e.g. the link was opened in a different user's session — the client shows a clearer message than "not found").
@@ -3365,9 +3370,12 @@ app.get('/api/intervals/activities', apiAuth, async (req, res) => {
     // with the "How did it go?" still empty, and the athlete's later submit then double-reviewed). awaitingFeedback =
     // recent (today/yesterday), NOT reviewed, and no feel/RPE anywhere yet → the DAILY review pass SKIPS it and lets the
     // athlete's submit drive the (one) review. Past the grace with still no feedback, it falls through to a data-only review.
-    awaitingFeedback: a.coach_tick == null && a.feel == null && a.icu_rpe == null
-      && !(req.user.activityFeedback && req.user.activityFeedback[String(a.id)])
-      && daysAgo != null && daysAgo >= 0 && daysAgo <= 1,
+    // #723 — a GYM's feedback lives in the Platyplus store, not the intervals feel/RPE, so check the RIGHT store for it
+    // (else the coach reviewed a gym as "no feedback" even after she'd logged it, and never waited when she hadn't).
+    awaitingFeedback: a.coach_tick == null && daysAgo != null && daysAgo >= 0 && daysAgo <= 1
+      && (/weight|strength|gym|workout/i.test(String(a.type || ''))
+        ? !gymHasFeedback(req.user, { date, activityId: a.id })
+        : (a.feel == null && a.icu_rpe == null && !(req.user.activityFeedback && req.user.activityFeedback[String(a.id)]))),
   } })
   res.json({ connected: true, activities })
 })
@@ -3650,7 +3658,7 @@ app.put('/api/activity/:id/public-text', apiAuth, async (req, res) => {
   if (typeof req.body.description === 'string') {
     // Always sign the public description with the brand tagline (JM 2026-07-16), idempotently.
     let d = scrubPrivate(req.body.description.slice(0, 3960).trimEnd())
-    if (d && !/powered by platyplus/i.test(d)) d = `${d}\n\nPowered by Platyplus`
+    if (d && !/powered by platyplus/i.test(d)) d = `${d}\n\nPowered by Platyplus [>ಠ ▭ ಠ<]` // #724 (JM) — a little platypus face on the signature
     payload.description = d
   }
   if (!Object.keys(payload).length) return res.status(400).json({ error: 'name or description required' })

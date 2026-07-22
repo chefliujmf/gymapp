@@ -438,7 +438,11 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
 // the DEDICATED /review page (NOT History — JM's directive). Keeps Today clean while making feedback stick.
 export function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
   const { user } = useAuth() // #review-skip — the skipped-sessions count must not include what the athlete dismissed
-  const n = incompleteFeedback(acts, new Set((user?.feedbackSkips || []).map(String))).length
+  // #723 — GYM feedback lives in the Platyplus store (invisible to the intervals-based endurance nag), so a completed
+  // gym never nagged and the coach reviewed it as "no feedback". The server computes the gym gaps from the real store.
+  const [gymGaps, setGymGaps] = useState(0)
+  useEffect(() => { authApi.gymReviewGaps().then((g) => setGymGaps(g.length)).catch(() => setGymGaps(0)) }, [])
+  const n = incompleteFeedback(acts, new Set((user?.feedbackSkips || []).map(String))).length + gymGaps
   if (!n) return null
   return (
     <Link to="/review" className="fbban" style={{ textDecoration: 'none', color: 'var(--text)', margin: '10px 0 12px' }}>
