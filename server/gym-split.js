@@ -229,6 +229,17 @@ const WARMUP_POOL = ['Leg swings', 'Arm circles', 'Cat cow', "World's greatest s
 const COOLDOWN_POOL = ['Standing quad stretch', 'Hamstring stretch', 'Figure-4 glute stretch', 'Chest doorway stretch', 'Calf stretch', 'Pigeon stretch', "Child's pose", 'Cobra stretch']
 const UNILATERAL_RE = /\bsingle|one[- ]?arm|one[- ]?leg|split squat|bulgarian|\blunge|step[- ]?up|pistol|side plank|pallof|suitcase|figure-4|quad stretch|hamstring stretch|calf stretch|pigeon|90-?90|\bswings\b/i
 // order the session's patterns so the SPORT-EMPHASIS priorities come first (legs for a cyclist, pull for a swimmer)
+// #691 — a stable equipment group index from the exercise NAME (barbell station → dumbbell → kettlebell → cable →
+// machine → bodyweight), so same-equipment moves cluster and the athlete isn't ping-ponging between stations.
+function EQUIP_ORDER(name) {
+  const n = String(name || '').toLowerCase()
+  if (/barbell|\bbar\b|trap ?bar|\bez\b|landmine/.test(n)) return 0
+  if (/dumbbell|\bdb\b/.test(n)) return 1
+  if (/kettlebell|\bkb\b|goblet/.test(n)) return 2
+  if (/cable|\bband\b|banded/.test(n)) return 3
+  if (/machine|\bsmith\b|leg press|pulldown|\bcable row\b/.test(n)) return 4
+  return 5 // bodyweight / other
+}
 function orderByEmphasis(patterns, emph) {
   if (!emph) return patterns.slice()
   const pri = new Set(emph.priority)
@@ -275,6 +286,11 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
     if (primaries < maxPrimaries) { primaries++; return mk(name, 'main', { mode: 'reps', reps: hi, sets: 3, tempo: rs.tempo }) } // PRIMARY compound — heavy, focus rep scheme
     return mk(name, 'main', { mode: 'reps', reps: accReps, sets: 2 }) // beyond the cap → moderate ACCESSORY (keeps coverage, less volume)
   })
+  // #691 — group same-EQUIPMENT moves to cut station-switching, WITHOUT breaking the training order: heavy PRIMARIES
+  // (sets 3) stay first in their sport-emphasis order (do the big lifts fresh, legs-first for a cyclist); ONLY the
+  // ACCESSORIES that follow are re-grouped by equipment. Key = original index for primaries, equipment rank for the rest.
+  main.map((e, i) => (e._rank = (e.sets === 3 && e.mode === 'reps') ? i : 1000 + EQUIP_ORDER(e.name)))
+  main.sort((a, b) => a._rank - b._rank).forEach((e) => delete e._rank)
   // #692 — sport-specific EXTRAS (runner plyo, swimmer shoulder-health prehab), deduped
   const extras = (emph && emph.extras ? emph.extras : []).filter((x) => !used.has(String(x.name).toLowerCase())).map((x) => { used.add(String(x.name).toLowerCase()); return { name: x.name, section: 'main', mode: x.mode || 'reps', ...(x.reps ? { reps: x.reps } : {}), ...(x.sets ? { sets: x.sets } : {}), ...(x.seconds ? { seconds: x.seconds } : {}), ...(x.eachSide ? { eachSide: true } : {}) } })
   // COOL-DOWN — 2 stretches, TIMED
