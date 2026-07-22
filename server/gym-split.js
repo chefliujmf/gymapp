@@ -308,6 +308,24 @@ export function stripGymDurationProse(text) {
   return text.replace(GYM_DURATION_RE, '').replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').replace(/[ \t]+\n/g, '\n').trim()
 }
 
+// #706 — the coach often gives consecutive gym sessions the SAME generic title ("Upper-Body & Trunk Strength" on two
+// weeks), so the calendar shows identical entries (JM). Code-enforce distinct titles: sessions that share a base title
+// get a clean A/B/C series in DATE order (matching the assembler's slot convention). Pure; mutates plan.title; returns
+// the count changed. `gymPlans` = the future gym plans to reconcile.
+const GYM_TITLE_LETTER_RE = /\s+[A-Z]$/
+export function dedupeGymTitles(gymPlans) {
+  const base = (t) => String(t || 'Strength').replace(GYM_TITLE_LETTER_RE, '').trim() || 'Strength'
+  const groups = new Map()
+  for (const p of gymPlans || []) { if (!p) continue; const b = base(p.title); if (!groups.has(b)) groups.set(b, []); groups.get(b).push(p) }
+  let changed = 0
+  for (const [b, group] of groups) {
+    if (group.length < 2) { const p = group[0]; if (p.title !== b && GYM_TITLE_LETTER_RE.test(String(p.title || ''))) { p.title = b; changed++ } continue }
+    group.sort((a, c) => String(a.date || '').localeCompare(String(c.date || '')))
+    group.forEach((p, i) => { const t = `${b} ${String.fromCharCode(65 + Math.min(i, 25))}`; if (p.title !== t) { p.title = t; changed++ } })
+  }
+  return changed
+}
+
 // render the assignment for the prompt block: the split + each session's patterns (with a fresh accessory each).
 export function gymBalanceLines(assign) {
   const perSession = assign.days.map((pats, i) => `Session ${i + 1}: ${pats.map((p) => `${LABEL[p] || p} (e.g. ${assign.rotations[p]})`).join(' · ')}`).join('\n')

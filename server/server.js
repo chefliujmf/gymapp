@@ -31,7 +31,7 @@ import { weekShape } from './week-shape.js' // #613/#615 — code-decided week s
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
 import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, unit-tested clamp that ENFORCES the week shape on a plan
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
-import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
+import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile, goalPriorityFrame } from './perf-metrics.js' // #404; #669 goal-aware priority
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -1819,6 +1819,9 @@ async function reenforceShapeAll(user) {
     enforceTeenGym(user, p)
     if (JSON.stringify(p.exercises || []) !== ex0) gymTouched++
   }
+  // #706 — give consecutive same-title gym sessions a clean A/B/C series so the calendar never shows two identical
+  // "Full-Body Strength" entries (the coach keeps reusing one generic title). Reconciles across the whole future horizon.
+  gymTouched += dedupeGymTitles((user.plans || []).filter((x) => x && x.date >= today && x.sport === 'gym'))
   // #671 SAFETY — PRIVACY sweep over EVERY future plan's text. The #650 save-time scrub only catches NEW writes; a
   // pregnant athlete's STALE plans still leaked "pregnant/trimester" into descriptions that sync to intervals→Strava.
   // Scrub them here too, and re-push the changed ride/run/swim so the PUBLIC copy is clean, not just the DB.

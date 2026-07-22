@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module
-import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure, stripGymDurationProse } from '../server/gym-split.js'
+import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles } from '../server/gym-split.js'
 
 const flat = (a: any) => a.days.flat()
 
@@ -280,5 +280,26 @@ describe('#696 stripGymDurationProse — drop the session-duration phrase, keep 
     expect(stripGymDurationProse('Light carb + protein snack about 60-90 min before; water through.')).toBe('Light carb + protein snack about 60-90 min before; water through.')
     expect(stripGymDurationProse('roughly 50 minutes of quality work')).not.toMatch(/50 minutes/)
     expect(stripGymDurationProse('Hold each for ~30 s')).toBe('Hold each for ~30 s') // seconds untouched
+  })
+})
+
+describe('#706 dedupeGymTitles — no two identical gym titles on the calendar', () => {
+  it('gives same-title sessions a clean A/B/C series in DATE order', () => {
+    const plans = [
+      { date: '2026-08-03', title: 'Upper-Body & Trunk Strength' },
+      { date: '2026-07-27', title: 'Upper-Body & Trunk Strength' },
+      { date: '2026-07-20', title: 'Lower-Body Strength' }, // unique → untouched
+    ]
+    const n = dedupeGymTitles(plans)
+    expect(n).toBeGreaterThan(0)
+    const byDate = Object.fromEntries(plans.map((p) => [p.date, p.title]))
+    expect(byDate['2026-07-27']).toBe('Upper-Body & Trunk Strength A') // earlier date = A
+    expect(byDate['2026-08-03']).toBe('Upper-Body & Trunk Strength B')
+    expect(byDate['2026-07-20']).toBe('Lower-Body Strength')           // unique kept
+  })
+  it('is idempotent (re-running keeps the same A/B, does not stack letters)', () => {
+    const plans = [{ date: '2026-07-27', title: 'Full-Body Strength A' }, { date: '2026-08-03', title: 'Full-Body Strength B' }]
+    expect(dedupeGymTitles(plans)).toBe(0)
+    expect(plans.map((p) => p.title)).toEqual(['Full-Body Strength A', 'Full-Body Strength B'])
   })
 })
