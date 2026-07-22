@@ -10,7 +10,7 @@ import { paceOf, bestPaceCurve, paceZoneSecs, PZONES, PZONE_PCT } from '../run-a
 import { useAuth } from '../auth/AuthContext'
 import { zoneColor, MiniProfile } from '../ui'
 import { plannedLoad } from '../workout-summary'
-import { findCoachPlan, getCoachPlan, gymFeedbackKeys, findGymLogForPlan, type CoachPlan } from '../plan'
+import { findCoachPlan, getCoachPlan, gymFeedbackKeys, findGymLogForPlan, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
 import { addDays } from '../move-dates'
 import { getSetting, type WorkoutLog } from '../db'
 import { bestE1rmByExercise } from '../strength'
@@ -393,10 +393,16 @@ export default function ActivityDetail() {
     const dISO = (a.start_date_local || '').slice(0, 10)
     const gymLog = gymLogs == null ? undefined
       : (plan ? findGymLogForPlan(plan, gymLogs) : null) || gymLogs.find((l) => l.date === dISO && /strength|gym/i.test(String((l as { discipline?: string }).discipline || ''))) || null
+    // #701 — device-recorded gym with NO in-app log → fall back to the PLAN's exercises as "what you did" + an
+    // add-weights prompt, so the completed activity view is complete (Option A) instead of empty.
+    const planNoWeights = gymLogs != null && !gymLog && (plan?.exercises?.length ?? 0) > 0
     const exLogs = gymLog && gymLog.exNames && gymLog.exNames.length
       ? gymLog.exNames.map((name, i) => ({ name, exId: gymLog.exIds?.[i], sets: gymLog.sets?.[i] || [] }))
-      : gymLog ? Object.keys(gymLog.sets || {}).map((k) => ({ name: `Exercise ${Number(k) + 1}`, sets: gymLog.sets![Number(k)] || [] })) : []
+      : gymLog ? Object.keys(gymLog.sets || {}).map((k) => ({ name: `Exercise ${Number(k) + 1}`, sets: gymLog.sets![Number(k)] || [] }))
+      : planNoWeights ? plan!.exercises!.map((x) => ({ name: x.name, exId: x.exId, sets: [] }))
+      : []
     const durMin = (gymLog?.duration) || (a.moving_time ? Math.round(a.moving_time / 60) : 0)
+    const addWeights = plan ? () => { setGymSession(gymSessionFromPlan(plan)); navigate('/gym-session/play') } : undefined
     const bestE1rm = gymLogs ? bestE1rmByExercise(gymLogs) : undefined
     const fk = gymFeedbackKeys({ date: dISO, planId: plan?.id, activityId: a.id })
     const avgHr = a.average_heartrate || (a as { icu_average_hr?: number }).icu_average_hr || deviceHr // #695 — fall back to the day's device (Coros) HR
@@ -422,7 +428,7 @@ export default function ActivityDetail() {
           </div>
         </div>
         {gymLogs == null ? <p className="meta">Loading session…</p>
-          : <GymSummary minutes={durMin} exercises={exLogs} review={review} note={note} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={dISO} planId={plan?.id} avgHr={avgHr} />}
+          : <GymSummary minutes={durMin} exercises={exLogs} review={review} note={note} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={dISO} planId={plan?.id} avgHr={avgHr} plannedNoWeights={planNoWeights} onAddWeights={addWeights} />}
         {/* #700 — HR curve, same treatment as a ride/run's HR line. */}
         {hrChart && (
           <>
