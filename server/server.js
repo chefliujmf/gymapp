@@ -28,12 +28,12 @@ import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
-import { assignArchetypeBlock, keyFromTitle } from './archetypes.js' // #620 — code-decided VARIETY (assign archetypes, don't hope the LLM varies)
+import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
 import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, unit-tested clamp that ENFORCES the week shape on a plan
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
-import { assignWeeklyGym, gymBalanceLines } from './gym-split.js' // #636 — code-driven gym muscle-group BALANCE (arms guaranteed) + accessory rotation
+import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save)
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
-import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile } from './perf-metrics.js' // #404
+import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile, goalPriorityFrame } from './perf-metrics.js' // #404; #669 goal-aware priority
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
 import { planCapViolation } from './plan-cap.js'
 import { localDate } from './tz.js'
@@ -732,7 +732,7 @@ async function maybeCoachBenchmarkAdapt(user, change, source) {
   user.lastBenchAdaptAt = Date.now(); save(store)
   const src = source === 'manual' ? 'the athlete set it themselves in Platyplus' : 'imported from intervals.icu'
   const msg = `The athlete's ${change.label} just changed from ${Math.round(change.from)} to ${Math.round(change.to)} (${change.dir}) — ${src}. Their ${change.group} training zones move with it (each workout's % target stays, but the real watts/paces shift). Re-evaluate the UPCOMING plan with list_schedule: confirm it still fits, and adjust intensity/load ONLY if this change is big enough to matter. Then send ONE short, encouraging notify acknowledging the new ${change.label} (${Math.round(change.to)}) and what — if anything — you changed. Be concise; decide and act.`
-  runCoachTask(user, msg).catch((e) => console.error('[bench-adapt] ' + (e.message || e)))
+  runCoachTask(user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[bench-adapt] ' + (e.message || e)))
 }
 app.put('/auth/sport-stat', auth, async (req, res) => {
   const r = await applySportStat(req.user, req.body || {}); res.status(r.status).json(r.body)
@@ -856,7 +856,7 @@ app.post('/auth/checkin', auth, (req, res) => {
       const removedStr = removals.map((r) => `"${r.title}" (${r.sport}, was planned ${r.date})`).join('; ')
       const missBlock = removedStr ? ` RECENTLY MISSED — acknowledge it inside this SAME single notification (do NOT send a second one): the athlete did not complete ${removals.length > 1 ? 'these planned sessions' : 'this planned session'} — ${removedStr} — so ${removals.length > 1 ? 'they were' : 'it was'} removed from the calendar. Handle it with CARE, in this order: (1) call get_recent_activities first — if they actually trained something else instead (an off-plan ride/run/gym), CREDIT it warmly and reassure them their training is on track; don't call it "missed". (2) If they genuinely did nothing AND their fitness/freshness is trending below where their goal needs it (read get_wellness), name it — but be VERY respectful, compassionate and diplomatic: life happens, never guilt-trip, scold, or shame. Acknowledge it kindly, then gently PERSUADE and MOTIVATE by pointing to the ONE specific upcoming session that gets them back on track and why it matters to their goal. (3) If their load is still fine despite the skip, just note the removal lightly and reassure. Weave this into the plain-language notification, warmly.` : ''
       const msg = `Morning check-in is in for today (${today}) — energy ${ci.energy}/5, sleep ${ci.sleep}/5, soreness ${ci.soreness}/5 (5 = very sore)${poor ? ' — this reads run-down' : ''}. This is the ONE coach notification the athlete gets after checking in — keep it to TODAY; the rest of their plan is kept up to date separately and SILENTLY (no push), so don't re-plan the whole week here. Overnight HRV/sleep from their watch often hasn't synced to intervals this early, so decide from (a) this subjective check-in and (b) their freshness / form — read get_wellness. Look at TODAY's planned session(s) with list_schedule and make a STICK-OR-ADJUST call: if they're ready, keep the plan; if run-down, EASE today — cut intensity/volume, swap to recovery, or move it — with the tools. Then send EXACTLY ONE notify that explains in PLAIN language what you did and why, e.g. "I moved your Thursday ride to Friday and shortened it to 45 min because your legs are sore" or "Sticking with today's easy spin — you're recovered."${missBlock} Write it so a non-athlete understands: NO abbreviations or jargon (never "TTE", "CTL", "ATL", "IF", "NP", "VI", "Form", "eFTP" — say "how fresh you are", "your threshold power", etc.). One notify only. Don't ask questions — decide and act.`
-      runCoachTask(req.user, msg).catch((e) => console.error('[checkin-decide] ' + (e.message || e)))
+      runCoachTask(req.user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[checkin-decide] ' + (e.message || e)))
     }
   } catch (e) { console.error('[checkin-decide] trigger ' + e.message) }
 })
@@ -1109,6 +1109,12 @@ app.get('/api/athlete-metrics', apiAuth, async (req, res) => {
   res.json(out)
 })
 
+// #600 — FRAME the review on the activity's OWN terms. The coach was inventing surrounding-day context ("Easy Z2 the
+// day after gym" when no gym happened, "coming off Saturday's long ride" unverified). Only reference an ADJACENT session
+// when it's confirmed in get_recent_activities / the calendar — never assume it. Shared across all 3 review triggers
+// (single-activity, plan, daily pass) so the rule can't drift. Extends the SAY=DO discipline from the future "next" to
+// the review's framing. Keep it ONE tight sentence (token-thrift #590 — it ships on every review turn).
+const REVIEW_OWN_TERMS = 'FRAME the session on its OWN terms: only mention an adjacent session ("the day after X", "coming off Y", yesterday/tomorrow) when you have VERIFIED it in get_recent_activities or the calendar — NEVER assume surrounding-day context (no "day after gym" unless a gym session is actually on record). #625/#676 — WHAT\'S NEXT (the review\'s `next`) = the OBJECTIVE this session moves the athlete toward + how it advanced it; NEVER name, list, or schedule the upcoming workouts ("Tomorrow: Threshold 4×10 … then Sat long ride" is exactly WRONG — the plan lives elsewhere). Talk the goal, not the calendar.'
 // #364/#589 — the async coach review of a completed session (best-effort; only if a coach is set up). EXTRACTED so the
 // feedback POST *and* the #589 retry (a stuck/failed review — e.g. the coach was down when feedback was saved) share ONE
 // trigger. Returns false when there's nothing to run (no coach / no feedback), so the caller can tell the user.
@@ -1116,15 +1122,15 @@ function triggerActivityReview(user, id, fb, icuActivityId) {
   if (!fb || !(user.coachProfile && user.coachProfile.trim())) return false
   const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
   const rid = icuActivityId || id
-  const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${rid}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${rid}") with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${rid}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. Be concise; decide and act.`
-  runCoachTask(user, msg).catch((e) => console.error('[activity-review] ' + (e.message || e)))
+  const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${rid}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${rid}") with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${rid}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. ${REVIEW_OWN_TERMS} Be concise; decide and act.`
+  runCoachTask(user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[activity-review] ' + (e.message || e)))
   return true
 }
 function triggerPlanReview(user, plan, fb) {
   if (!fb || !(user.coachProfile && user.coachProfile.trim())) return false
   const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
-  const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}", and activityId if it matched a device activity) with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). If it matched a device activity, ALSO set a PUBLIC-safe title + description with set_activity_text (activity id from get_recent_activities) — workout/route/effort only, NO health/score/plan. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. Be concise; don't ask questions — just review and act.`
-  runCoachTask(user, msg).catch((e) => console.error('[coach-review] ' + (e.message || e)))
+  const msg = `The athlete just completed their planned ${plan.sport || 'workout'} "${plan.title || ''}" on ${plan.date}. Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}. Review how it went: read the completed activity (get_recent_activities) and recent check-ins if useful, then call save_coach_review (date ${plan.date}, sport "${plan.sport || ''}", planId "${plan.id}", and activityId if it matched a device activity) with a one-line verdict, 2-4 short takeaways, and what's next (this auto-posts your note to the intervals Notes thread). If it matched a device activity, ALSO set a PUBLIC-safe title + description with set_activity_text (activity id from get_recent_activities) — workout/route/effort only, NO health/score/plan. If the feedback warrants it (pain/niggle, "too hard", poor feel, or RPE well above target), adjust the UPCOMING plan with the tools and use notify to tell them what changed and why. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. ${REVIEW_OWN_TERMS} Be concise; don't ask questions — just review and act.`
+  runCoachTask(user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[coach-review] ' + (e.message || e)))
   return true
 }
 // #589 — RETRY a stuck/failed coach review. When feedback was saved but no review ever landed (e.g. the coach was down),
@@ -1575,7 +1581,7 @@ app.post('/auth/plans/handle-missed', auth, async (req, res) => {
     const list = missed.map((p) => `"${p.title}" (${p.sport}, planned ${p.date}, id ${p.id})`).join('; ')
     const ids = missed.map((p) => p.id).join(', ')
     const msg = `The athlete MISSED ${missed.length} planned session${missed.length > 1 ? 's' : ''} (now past, not completed): ${list}. Reassess the REST OF THIS WEEK (list_schedule): if a missed session still matters for the plan, MOVE it to a free upcoming day that fits their availability + the one-session-per-day rule; if the week's stimulus is already covered or there's no room, DROP it. EITHER WAY, remove each missed workout from the calendar now with remove_workout (ids: ${ids}) so it doesn't linger. Keep easy days easy; never stack two hard days. Do this SILENTLY — do NOT call notify / push (#498, JM 2026-07-15): the athlete gets their ONE coach notification at check-in, so this background cleanup must never send a surprise second morning push. Just fix the calendar and stop. Don't nag or ask questions.`
-    runCoachTask(user, msg).catch((e) => console.error('[missed-handler] ' + (e.message || e)))
+    runCoachTask(user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[missed-handler] ' + (e.message || e)))
   }
   res.json({ missed: missed.length, paired, gc })
 })
@@ -1655,6 +1661,11 @@ const CHAT_DENY = 'Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,Task,Notebo
 // chat-helper instead of spawning locally. Set on QA/prod; unset in dev.
 const CHAT_HELPER_URL = process.env.CHAT_HELPER_URL || ''
 const CHAT_HELPER_SECRET = process.env.CHAT_HELPER_SECRET || ''
+// #634 COST — model TIERING (skill commercialization-cost). Cheap passes (reviews/sharpen/check-in touch) → Haiku;
+// the quality-critical plan BUILD → COACH_BUILD_MODEL (null = the helper/CLI default = Opus, pending the A/B/simulation).
+// Both overridable by env so the simulation can vary them without a code change.
+const COACH_CHEAP_MODEL = process.env.COACH_CHEAP_MODEL || 'haiku'
+const COACH_BUILD_MODEL = process.env.COACH_BUILD_MODEL || null
 const coachIdentity = (name) => `You are ${name}, a personal training & nutrition coach inside the Platyplus app, helping ONE user (the signed-in account) with THEIR own plan. Use ONLY the provided platyplus tools to create or adjust their workouts, rides, runs, meals, mind sessions and notes. You cannot modify the app, read files, run commands, or access any other user. **CONFIDENTIALITY (absolute):** everything about this athlete — their profile, coach-memory, data, plan, and anything they tell you — is STRICTLY PRIVATE to them. NEVER reference, compare to, or bring up ANY other person (another athlete, a family member, another user, "someone else I coach") in your coaching; you have ONLY this athlete's information and you coach ONLY them. What you learn about one person NEVER carries to anyone else. When you schedule or change something, do it with the tools, then confirm in one short sentence what you changed (e.g. "Added a Push day to Thursday."). TITLE + describe every workout by its TRAINING content and purpose ("Full-Body Strength", "Sweet-Spot 3×12", "Easy Aerobic Run") — NEVER after the weather or a theme (no "Rain Day", "Hot Day", "Windy Ride"); weather only informs indoor/outdoor + intensity + fuel, it is never the name. Be concise, practical and encouraging.
 
 FORMAT FOR A PHONE (never a wall of text): lead with the answer in one line. If the reply runs beyond ~3 sentences, break it up — use a short **bold** mini-header per topic and hyphen "- " bullets for lists (days, steps, options). Keep bullets to one line each. Markdown renders (**bold**, "- " bullets, "## " headers); don't use tables or code blocks. Prefer 2-4 tight sections over one long paragraph.`
@@ -1732,6 +1743,18 @@ function enforceShapeIntensity(user, plan) {
 // #631 — TEEN gym safety, ENFORCED in code (not just prompted): an under-18 should never be given MAXIMAL / near-1-RM
 // loading (heavy low-rep singles/doubles). Any MAIN-set exercise prescribed under 5 reps (near-maximal) is floored to
 // 5 reps (submaximal, technique-safe). Warm-up/cool-down untouched. Growth-plate + technique-development safety.
+// #649 — ENFORCE the #648 gym rep scheme in code (it was only injected into the prompt, so the LLM could still
+// save a cyclist 3×10). Resolve the athlete's gym focus and clamp each MAIN compound lift's reps into that focus's
+// band (support 3-6 · strength 3-5 · muscle 6-12 …). Accessories/arms untouched. Runs at save + in the daily sweep.
+// enforceTeenGym runs AFTER this so an under-18's teen floor (≥5) always wins over a low support-scheme rep.
+function enforceGymRepScheme(user, plan) {
+  if (!plan || plan.sport !== 'gym') return
+  const obj = ((user.info && user.info.goals && user.info.goals.notes) || '').trim()
+  const focus = resolveGymFocus({ mainSport: user.info && user.info.mainSport, sports: user.sports || [], goal: obj })
+  const n = clampMainReps(plan.exercises || [], focus)
+  if (n) console.log(`[gym-reps] ${user.username || ''} "${plan.title}" — clamped ${n} main lift(s) into ${focus} rep scheme`)
+}
+
 function enforceTeenGym(user, plan) {
   if (!plan || plan.sport !== 'gym') return
   const dob = user.info && user.info.dob
@@ -1752,10 +1775,30 @@ async function reenforceShapeAll(user) {
   const future = (user.plans || []).filter((p) => p && p.date >= today && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim')).sort((a, b) => String(a.date).localeCompare(String(b.date)))
   const touched = []
   for (const p of future) { const t0 = p.title, seg0 = JSON.stringify(p.segments || []); enforceShapeIntensity(user, p); if (p.title !== t0 || JSON.stringify(p.segments || []) !== seg0) touched.push(p) }
-  if (touched.length) {
+  // #649 — GYM has no shape/intensity clamp, but stale gym plans keep a wrong REP SCHEME (a cyclist's old 3×10) and
+  // the teen floor. Sweep every future gym plan through the code enforcement too (no intervals push — gym has no model).
+  let gymTouched = 0
+  for (const p of (user.plans || []).filter((x) => x && x.date >= today && x.sport === 'gym')) {
+    const ex0 = JSON.stringify(p.exercises || [])
+    enforceGymRepScheme(user, p)
+    if (Array.isArray(p.exercises)) { const r = enforceGymStructure(p.exercises); if (r.deduped || r.retimed) p.exercises = r.exercises } // #687-enforce — dedup + hold→timed on stale gym plans
+    enforceTeenGym(user, p)
+    if (JSON.stringify(p.exercises || []) !== ex0) gymTouched++
+  }
+  // #671 SAFETY — PRIVACY sweep over EVERY future plan's text. The #650 save-time scrub only catches NEW writes; a
+  // pregnant athlete's STALE plans still leaked "pregnant/trimester" into descriptions that sync to intervals→Strava.
+  // Scrub them here too, and re-push the changed ride/run/swim so the PUBLIC copy is clean, not just the DB.
+  const privacyTouched = []
+  for (const p of (user.plans || []).filter((x) => x && x.date >= today)) {
+    let ch = false
+    for (const k of ['title', 'notes', 'objective', 'success']) { if (typeof p[k] === 'string') { const v = scrubPrivate(p[k]); if (v !== p[k]) { p[k] = v; ch = true } } }
+    if (ch) { privacyTouched.push(p); if (!touched.includes(p) && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim')) touched.push(p) }
+  }
+  if (touched.length || gymTouched || privacyTouched.length) {
+    if (privacyTouched.length) console.log(`[privacy-sweep] ${user.username || ''} — scrubbed ${privacyTouched.length} plan(s)`)
     save(store)
-    // B2 (#620) — a clamped session must also re-push to intervals, else the sweet-spot/threshold version stays on
-    // the athlete's Garmin/intervals calendar even though Platyplus relabeled it. prod-only (pushPlanToIcu no-ops on QA).
+    // B2 (#620) — a clamped/scrubbed session must also re-push to intervals, else the old version stays on the
+    // athlete's Garmin/intervals calendar even though Platyplus fixed it. prod-only (pushPlanToIcu no-ops on QA).
     for (const p of touched.slice(0, 20)) { try { await pushPlanToIcu(user, p) } catch (e) { console.error('[reenforce-push] ' + (e.message || e)) } }
   }
 }
@@ -1783,7 +1826,12 @@ function athleteArchetypeBlock(user) {
     return `Week ${i + 1}: quality day${wk.quality.length !== 1 ? 's' : ''} → ${q}\n  easy-day cues → ${e}`
   }).join('\n')
   const noun = sport === 'run' ? 'Run' : sport === 'swim' ? 'Swim' : 'Spin'
-  return `\n\n# THIS BLOCK'S VARIETY — MANDATORY, GET IT RIGHT THIS PASS. The archetypes below are ASSIGNED per day, not suggestions. Build EACH quality day AS its named archetype — its ACTUAL structure, never a generic sweet-spot/tempo block for all of them (Strides = 6-8 × 20 s relaxed accelerations tacked onto an easy run, NOT a sustained effort; Over-Unders = alternate just-over / just-under threshold; Fartlek = unstructured surges by feel; Hill Reps = short hard uphills; Tempo = one sustained moderate block) — and TITLE each session after its archetype. Give EACH easy day its assigned cue as the title and match the run to it (cadence / trail / conversational / strides) — it is WRONG to name two easy days the same "Easy Aerobic ${noun}". You still author the specific paces / targets / terrain for THIS athlete — that IS the individualization; the DOSE is fixed by THIS WEEK'S SHAPE above, this fixes the FLAVOR.\n${lines}\nBuild these EXACTLY, on THIS pass — a plan where the quality days repeat one shape, or the easy days share one title, is a FAILED plan; do not save it. Space quality days apart with easy between.`
+  // #652 — size threshold/sweet-spot rep LENGTH from THIS athlete's TTE (not a fixed 3×15 template), when the block
+  // has a threshold-type quality day + a usable TTE. user.tte is the stored benchmark (valid for ride/run threshold).
+  const THRESHOLD_KEYS = new Set(['threshold', 'sweetspot', 'overunder', 'tempo', 'mpace', 'hills'])
+  const hasThresholdWork = block.some((wk) => wk.quality.some((a) => THRESHOLD_KEYS.has(a.key)))
+  const sizing = hasThresholdWork && (sport === 'ride' || sport === 'run') ? thresholdSizing(user.tte, sport) : null
+  return `\n\n# THIS BLOCK'S VARIETY — MANDATORY, GET IT RIGHT THIS PASS. The archetypes below are ASSIGNED per day, not suggestions. Build EACH quality day AS its named archetype — its ACTUAL structure, never a generic sweet-spot/tempo block for all of them (Strides = 6-8 × 20 s relaxed accelerations tacked onto an easy run, NOT a sustained effort; Over-Unders = alternate just-over / just-under threshold; Fartlek = unstructured surges by feel; Hill Reps = short hard uphills; Tempo = one sustained moderate block) — and TITLE each session after its archetype. Give EACH easy day its assigned cue as the title and match the run to it (cadence / trail / conversational / strides) — it is WRONG to name two easy days the same "Easy Aerobic ${noun}". You still author the specific paces / targets / terrain for THIS athlete — that IS the individualization; the DOSE is fixed by THIS WEEK'S SHAPE above, this fixes the FLAVOR.\n${lines}\nBuild these EXACTLY, on THIS pass — a plan where the quality days repeat one shape, or the easy days share one title, is a FAILED plan; do not save it. Space quality days apart with easy between.${sizing ? '\n' + sizing : ''}`
 }
 
 function buildSystemPrompt(user) {
@@ -1852,9 +1900,16 @@ function buildSystemPrompt(user) {
     // recent cadence; a MUSCLE goal → hypertrophy split (upper/lower or PPL), an endurance-support 1×/wk → full-body.
     const gymFrom = addDays(localTodayInTz(user.icuTimezone), -14)
     const gymPerWeek = Math.max(1, Math.round((user.plans || []).filter((p) => p && p.sport === 'gym' && p.date >= gymFrom).length / 2))
-    const gymFocus = /muscle|hypertroph|build|physique|bodybuild|mass|bigger/.test((obj || '').toLowerCase()) ? 'hypertrophy' : 'support'
-    const gymAssign = assignWeeklyGym({ sessionsPerWeek: gymPerWeek, focus: gymFocus, recentExercises: recentGymEx })
-    tail += `\n\n# THIS WEEK'S GYM BALANCE — MANDATORY (frequency + goal aware, evidence-based). ${gymBalanceLines(gymAssign)}\nRules: hit each major muscle ~2×/week when the goal is muscle (a 1-2×/wk endurance-support athlete gets FULL-BODY instead — cover everything in the session). **ARMS (biceps + triceps) + a loaded carry are REQUIRED wherever the split allows, never dropped** (they were being forgotten). Keep the 1-3 MAIN compound lifts STABLE week-to-week so the athlete can TRACK PROGRESS (load/reps trending — don't churn the mains); ROTATE the ACCESSORIES to the fresh options above (don't repeat last session's). Balance = stable mains (progress) + rotated accessories (anti-boredom) + full coverage. Look up all moves in ONE search_exercises(queries=[…]) call.`
+    // #648 — resolve the REAL 5-way focus (mainSport × goal), not a binary muscle/support regex, so support_build /
+    // strength each get their own REP SCHEME. An endurance main sport → support (heavy low-rep), never a hypertrophy default.
+    const gymFocus = resolveGymFocus({ mainSport: ms, sports, goal: obj })
+    const gymAssign = assignWeeklyGym({ sessionsPerWeek: gymPerWeek, focus: gymFocus, recentExercises: recentGymEx, mainSport: ms, sports }) // #658 sport-adaptive selection
+    // #687 — the code ASSEMBLES each session fully (exercises, sections, sets/reps, mode, title) tailored to THIS
+    // athlete. The coach builds EXACTLY these — resolve exIds + author cues only. Kills LLM-selection failures.
+    const gymSessions = gymAssign.days.map((day, i) => assembleGymSession({ focus: gymFocus, mainSport: ms, sports, patterns: day, recentExercises: recentGymEx, sessionIndex: i }))
+    const dose = (e) => e.mode === 'timed' ? `${e.seconds}s${e.eachSide ? ' each side' : ''}` : `${e.sets || 3}×${e.reps}${e.eachSide ? ' each side' : ''}${e.tempo ? ` @ tempo ${e.tempo}` : ''}`
+    const renderSess = (s, i) => { const of = (sec) => s.exercises.filter((e) => e.section === sec).map((e) => `${e.name} (${dose(e)})`).join(' · '); return `Session ${i + 1} — TITLE: "${s.title}"\n  WARM-UP (timed): ${of('warmup')}\n  MAIN: ${of('main')}\n  COOL-DOWN (timed): ${of('cooldown')}` }
+    tail += `\n\n# THIS WEEK'S GYM SESSIONS — BUILD EXACTLY THESE (assembled in code for THIS athlete: sport + focus + equipment + history; ${gymAssign.spw} session${gymAssign.spw !== 1 ? 's' : ''}/week). Each session is FULLY COMPOSED — the exercises, sections, sets/reps, mode, and title are DECIDED. For EACH, call create_workout with THESE exact exercises: resolve each NAME to a real exId via ONE batched search_exercises (respect the athlete's OWNED equipment — swap to an equivalent they own if a listed move needs gear they lack, keeping the same movement + section + mode), keep the section / mode / sets / reps / tempo / each-side AS GIVEN, and use the given TITLE. Author ONLY: a one-line FORM cue per lift, one whole-session tip, and the coaching shell (objective + success + fuel). Do NOT add, drop, reorder, or re-section exercises; NEVER turn a timed move into reps or repeat a move across sections. ${gymBalanceLines(gymAssign).split('\n').filter((l) => /REP SCHEME|SPORT EMPHASIS/.test(l)).join(' ')}\n${gymSessions.map(renderSess).join('\n')}`
   }
   // #swim-tri — TRIATHLON: multi-sport planning layer. Apply Friel periodization keyed to the athlete's stated A-race.
   if (sports.includes('triathlon')) {
@@ -1931,7 +1986,10 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const pfAll = user.profileFocus || {}
     const pfKey = (user.sports || []).includes('cycling') ? 'cycling' : (user.sports || []).includes('running') ? 'running' : (user.sports || []).includes('swimming') ? 'swimming' : Object.keys(pfAll)[0]
     const pf = pfKey && Array.isArray(pfAll[pfKey]) ? pfAll[pfKey].filter((f) => f && !/mostly the efforts ARE the data/i.test(f)) : []
-    if (pf.length) tail += `\n\n# DEVELOPMENT PRIORITIES — computed from THIS athlete's OWN numbers (TTE / W′ / EF); this is the exact focus they see on their Stats page, so the PLAN must reflect it. Spend the week's quality-day budget on THESE, and choose the # THIS BLOCK'S VARIETY archetypes to serve them (don't schedule generic quality that ignores their limiter):\n- ${pf.slice(0, 4).join('\n- ')}`
+    // #669 — GOAL-AWARE: weight the priorities by what the GOAL demands (respect the user's needs), not weakness alone.
+    const goalText = `${(user.info?.goals?.notes) || ''} ${((user.info?.goals?.focus) || []).join(' ')} ${user.info?.objective || ''}`.trim()
+    const goalFrame = goalPriorityFrame(goalText)
+    if (pf.length) tail += `\n\n# DEVELOPMENT PRIORITIES — computed from THIS athlete's OWN numbers (TTE / W′ / EF); this is the exact focus they see on their Stats page, so the PLAN must reflect it. ${goalFrame} Spend the week's quality-day budget accordingly, and choose the # THIS BLOCK'S VARIETY archetypes to serve them (don't schedule generic quality that ignores this):\n- ${pf.slice(0, 4).join('\n- ')}`
   }
   // #626 — PERIODIZATION: where this week sits in the meso-cycle, so the coach PROGRESSES load week-over-week
   // (build → build → peak → recovery) + TAPERS into an A-race. Skip for maintenance (pregnancy) — not a build.
@@ -1974,7 +2032,7 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   p += `\n\n# IF THEY'RE NEW / JUST STARTING (from their profile, or no load history yet) — RAMP IN: build easy volume + consistency first, at MOST 1 quality day early, hold intensity submaximal for the first few weeks, then progress as they absorb it. An ambitious goal does NOT mean 2 hard days in week one for a beginner. Volume before intensity.`
   }
   // #284 — gym prescription depth: tempo (time-under-tension) + per-lift + session tips.
-  p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): for each lift set sets×reps and ALWAYS set a TEMPO on strength lifts — 4 digits eccentric-pauseBottom-concentric-pauseTop, e.g. "3-1-1-0" = 3s lower · 1s pause · 1s lift · 0s top (slower eccentric ⇒ more time-under-tension ⇒ hypertrophy/control; faster ⇒ power). Default to "3-1-1-0" for main + accessory strength work; only omit tempo for pure mobility/holds/plyometrics. This is REQUIRED, not optional — the app shows it as a chip. Add a one-line FORM tip per lift, and ONE whole-session \`tip\`. Don't set weight — the app fills it from the athlete's e1RM. Keep tips short and practical.`
+  p += `\n\n# GYM PRESCRIPTION DEPTH (create_workout): set sets×reps + a TEMPO on every strength lift, taking the REPS, %1RM load, and TEMPO from THIS WEEK'S GYM BALANCE rep scheme above — do NOT default everything to 8-12 / "3-1-1-0". Tempo = 4 digits eccentric-pauseBottom-concentric-pauseTop; use the scheme's tempo: an EXPLOSIVE/fast concentric (e.g. "3-0-1-0") for endurance-support / strength / power MAINS (fast bar-speed intent builds force with little mass — a cyclist's/runner's legs go HEAVY + LOW-rep, never to failure), and a slower eccentric "3-1-1-0" only for a hypertrophy/muscle goal. PRIMARY compound lifts follow the scheme's mains rep row; ACCESSORIES/arms may run the moderate accessory reps. Omit tempo only for pure mobility/holds/plyometrics. REQUIRED (the app shows it as a chip). Add a one-line FORM tip per lift + ONE whole-session \`tip\`. Don't set weight — the app fills it from the athlete's e1RM (it already targets the right %1RM for the rep count). Keep tips short.`
   // #491 — Eat & Mind deactivated: tell the coach up-front so it plans training+recovery only (the server also
   // hard-rejects meal/mind/supplement items). Placed before the DIET/FUEL/MIND blocks so it overrides them for planning.
   if (EAT_MIND_OFF) p += `\n\n# EAT & MIND ARE DEACTIVATED right now (the app was simplified). Do NOT schedule OR suggest meals, recipes, supplements, or mind / meditation / yoga sessions — the server rejects those calendar items and they'd be orphaned with no section to show them. Plan TRAINING + RECOVERY only. Treat any DIET / FUEL-TARGET / MIND guidance below as reference for chat answers ONLY, never as a cue to create calendar items. (You may still answer a nutrition or mindfulness question briefly in chat.)`
@@ -2062,13 +2120,17 @@ function writeSysPromptFile(prompt) {
   writeFileSync(f, prompt)
   return f
 }
-async function runCoachTask(user, message) {
+// #634 COST — per-pass MODEL tiering: the quality-critical plan BUILD runs on the strong model; the cheap passes
+// (reviews, sharpen, check-in touch) run on Haiku (~¼ cost). Pass opts.model ('haiku' | 'sonnet' | 'opus'); omit to
+// use the helper/CLI default. See skill `commercialization-cost`.
+async function runCoachTask(user, message, opts = {}) {
   const systemPrompt = buildSystemPrompt(user)
+  const model = opts.model || null
   if (CHAT_HELPER_URL) {
     const hr = await fetch(CHAT_HELPER_URL + '/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-chat-secret': CHAT_HELPER_SECRET },
-      body: JSON.stringify({ message, token: user.apiToken, coach: user.coachName || 'Coach', systemPrompt }),
+      body: JSON.stringify({ message, token: user.apiToken, coach: user.coachName || 'Coach', systemPrompt, model }),
     })
     if (!hr.ok || !hr.body) throw new Error('coach helper ' + hr.status)
     const reader = hr.body.getReader()
@@ -2079,7 +2141,7 @@ async function runCoachTask(user, message) {
     const mcpConfig = JSON.stringify({ mcpServers: { platyplus: { command: 'node', args: [MCP_PATH], env: { PLATYPLUS_URL: CHAT_BASE, PLATYPLUS_TOKEN: user.apiToken } } } })
     const spFile = writeSysPromptFile(systemPrompt)
     const cleanup = () => { try { unlinkSync(spFile) } catch { /* gone */ } }
-    const args = ['-p', message, '--output-format', 'stream-json', '--verbose', '--mcp-config', mcpConfig, '--allowedTools', 'mcp__platyplus', '--disallowedTools', CHAT_DENY, '--append-system-prompt-file', spFile]
+    const args = ['-p', message, '--output-format', 'stream-json', '--verbose', ...(model ? ['--model', model] : []), '--mcp-config', mcpConfig, '--allowedTools', 'mcp__platyplus', '--disallowedTools', CHAT_DENY, '--append-system-prompt-file', spFile]
     const proc = spawn(CLAUDE_BIN, args, { env: process.env })
     proc.stdin?.end()
     const killer = setTimeout(() => { proc.kill('SIGKILL'); reject(new Error('coach task timeout')) }, 600000) // #608 — match the chat-helper: a strength adapt's full rebuild (many search_exercises + creates) needs >240s
@@ -2579,6 +2641,11 @@ async function upsertPlan(user, body, actor = 'coach') {
   // effort (95% is NEVER easy — any sport). Fixes it at the source so the DB, the app view, AND the intervals
   // push are all sane, even when the coach fat-fingers the %.
   enforceShapeIntensity(user, plan) // #615 — ENFORCE the week-shape ceiling + quality-day count IN CODE (the prompt was ignored)
+  enforceGymRepScheme(user, plan) // #649 — ENFORCE the #648 gym rep scheme (support cyclist mains 3-6, not 3×10) — before the teen floor
+  if (plan && plan.sport === 'gym' && Array.isArray(plan.exercises)) { // #687-enforce — dedup the same movement across sections + force holds to timed (the assembled frame is ignored by the LLM)
+    const r = enforceGymStructure(plan.exercises)
+    if (r.deduped || r.retimed) { plan.exercises = r.exercises; console.log(`[gym-structure] ${user.username || ''} "${plan.title}" — deduped ${r.deduped}, retimed ${r.retimed}`) }
+  }
   enforceTeenGym(user, plan) // #631 — under-18: floor near-maximal gym sets to submaximal (no 1-RM loading)
   // #650 — PRIVACY (safety): strip pregnancy/postpartum terms from anything the athlete or the public could read
   // (the title pushes to intervals → Strava). Enforced in code, not just prompted. No-op for normal copy.
@@ -2848,7 +2915,9 @@ function searchExercises(q, limit, equipment) {
       .sort((a, b) => (b.ov - a.ov) || (rankExerciseHit(b.e, n) - rankExerciseHit(a.e, n)))
       .map((x) => x.e)
   }
-  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, equipment: e.equipment, image: e.image, video: e.video }))
+  // #664 — surface the derived TYPE hints so the coach copies them onto the plan instead of guessing (timed vs reps,
+  // each-side, loadable). A plank comes back timed:true, a single-arm row eachSide:true, a goblet squat loaded:true.
+  return list.slice(0, Math.min(Number(limit) || 20, 100)).map((e) => ({ id: e.id, name: e.name, category: e.category, equipment: e.equipment, image: e.image, video: e.video, ...(e.timed ? { timed: true, seconds: e.seconds || 40 } : {}), ...(e.eachSide ? { eachSide: true } : {}), ...(e.loaded ? { loaded: true } : {}) }))
 }
 // Recipe + mind/movement catalogs — let the coach PICK real Platyplus content by id
 // (for fuel meals + meditation/yoga/pilates sessions), mirroring the exercise catalog.
@@ -3617,16 +3686,22 @@ function roundOutMsg(today) {
 function sharpenMsg(today) {
   return `Daily METRICS-SHARPEN pass (${today}) — keep the athlete's benchmarks HONEST, without demanding tests. Their threshold power / pace, CP·W′ (or CS·D′), VO₂max, TTE and max-HR are in your profile; each is only as good as the last quality effort behind it, and EVERYTHING you prescribe scales from them. Review freshness: get_recent_activities and, for EACH anchor, ask "is there a recent effort that would set it?" — a tempo/threshold effort for the threshold; a hard ~5-min effort for VO₂max/MAP; short near-max reps for W′/D′; an all-out finish for max-HR. For any anchor with NO recent effort behind it (e.g. weeks of only easy rides → the threshold is really a guess), fold ONE targeted, LOW-COST refining effort into the rolling ${DAILY_HORIZON}-day plan (list_schedule → create_ride/run/workout) — NEVER an all-out max test, never a dreaded 20-min: cycling → one 8–15 min hard sustained effort up a climb/segment when fresh (intervals reads eFTP straight from it), or a structured 2×8 only if they'd like a cleaner number; running → a hard 20 min or a 5 k / parkrun; gym → a heavy 3–5 rep top set. Just ENOUGH to re-read the anchor. Rules: at most ONE such effort per pass — pick the STALEST, most important anchor; place it on a day they're FRESH, within their weekly training-day + recovery limits, and never stacked against another hard day; if every anchor already has a recent effort behind it, change nothing. This pass is SILENT (background upkeep — no push; the athlete gets only their one check-in ping). When you DO add one, its title/description explains WHY in plain words ("one harder 15-minute stretch so I can dial in the hardest pace you can hold"), never "to update your FTP". Be concise.`
 }
-async function runDailyAdapt(user, pass) {
+async function runDailyAdapt(user, pass, opts = {}) { // #634 — opts.buildModel lets the simulation A/B the build model
+  const today = await athleteToday(user)
+  // #671 SAFETY — run the enforcement sweep FIRST (privacy scrub + shape/fartlek relabel + gym rep-scheme of STALE
+  // plans), so a pregnant/teen athlete's EXISTING plans are guaranteed clean even if the slow coach build below hangs
+  // or times out (#608) and never reaches the end-of-function sweep. It runs AGAIN at the end for what the build writes.
+  // Pure + fast (no LLM), so it's cheap to guarantee up front — safety must never depend on the LLM pass completing.
+  try { await reenforceShapeAll(user) } catch (e) { console.error(`[reenforce-pre ${user.username || ''}] ${e.message || e}`) }
   try {
-    const today = await athleteToday(user)
     // #610/#612 — the coach BUILDS + individualizes the plan in ONE pass (skeleton removed #516; multi-pass fill
     // loop removed #612 — it was spawning up to 5 EXTRA coach runs = minutes wasted). The single pass owns the full
     // ~2-week horizon (its prompt makes filling to the window end the first job); at most ONE fallback top-up if it
     // still comes up badly short, never a 5-deep loop.
     const covOf = () => horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON)
-    await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()))
-    if (covOf().tail >= 4) await runCoachTask(user, horizonFillMsg(today, covOf())) // single top-up only
+    const buildModel = opts.buildModel || COACH_BUILD_MODEL
+    await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()), { model: buildModel }) // #634 — the BUILD (quality-critical); model set by env/opts, default Opus
+    if (covOf().tail >= 4) await runCoachTask(user, horizonFillMsg(today, covOf()), { model: buildModel }) // single top-up, same tier as the build
     // 2) REVIEWS + 3) ROUND-OUT — their OWN focused passes, ONCE/day (dedup) so we don't re-spawn the coach
     //    for them on both the early AND refine passes.
     user.dailyAdapt = user.dailyAdapt || {}
@@ -3634,8 +3709,8 @@ async function runDailyAdapt(user, pass) {
       user.dailyAdapt.extras = today; save(store)
       // #613 — the sharpen pass INJECTS a hard effort; SKIP it on a maintenance week (pregnancy / consistency
       // block with 0 quality days) so it can't stack a quality day the shape deliberately excluded.
-      if (athleteWeekShape(user).qualityDays > 0) await runCoachTask(user, sharpenMsg(today)) // #508 — review benchmarks + fold ONE refining effort into the plan
-      await runCoachTask(user, reviewMsg(today))
+      if (athleteWeekShape(user).qualityDays > 0) await runCoachTask(user, sharpenMsg(today), { model: COACH_CHEAP_MODEL }) // #634 — cheap pass on Haiku
+      await runCoachTask(user, reviewMsg(today), { model: COACH_CHEAP_MODEL }) // #634 — reviews on Haiku (cheap, quality-tolerant)
       // #JM 2026-07-15 — round-out (recovery/fuel/mind) pass REMOVED: Eat & Mind are off and recovery ITEMS are parked.
       // #629 — and per #623 recovery is NO LONGER written on the workout either (the description is objective + success +
       // fuelling only; the `recovery`/`mind` shell fields are unused + unrendered). So no recovery channel runs right now;
@@ -3699,7 +3774,7 @@ async function dailyAdaptTick() {
 // Run the daily adaptation on demand (testing / "adapt now"). #367
 app.post('/api/coach/daily-adapt', apiAuth, (req, res) => {
   if (!req.user.coachProfile || !String(req.user.coachProfile).trim()) return res.status(400).json({ error: 'coach not set up (no coachProfile)' })
-  runDailyAdapt(req.user, req.body?.pass === 'refine' ? 'refine' : 'early')
+  runDailyAdapt(req.user, req.body?.pass === 'refine' ? 'refine' : 'early', { buildModel: req.body?.buildModel }) // #634 — buildModel for the simulation A/B
   res.status(202).json({ ok: true, running: true })
 })
 // #372 — re-mirror all FUTURE plans to intervals so they pick up the computed planned LOAD (or any

@@ -23,9 +23,9 @@ describe('Stats hub groups (#193)', () => {
     expect(perSport).toHaveLength(0)
   })
 
-  it('triathlon unlocks both Cycling and Running', () => {
+  it('triathlon unlocks Triathlon + all three sports', () => {
     const { perSport } = statsGroups(['triathlon'])
-    expect(labels(perSport)).toEqual(['Cycling', 'Running'])
+    expect(labels(perSport)).toEqual(['Triathlon', 'Cycling', 'Running', 'Swimming'])
   })
 
   it('History is always global; routes are correct', () => {

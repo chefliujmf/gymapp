@@ -163,15 +163,19 @@ export interface MuscleVolume { muscle: string; total: number; perWeek: number; 
 // #534 — the GYM ENGINE is sport+goal-adaptive. Volume targets are GOAL-DEPENDENT (docs/strength-coaching.md §2):
 // a flat 10–20 band is a hypertrophy prescription and wrongly flags an endurance athlete as "low" forever.
 export type GymFocus = 'muscle' | 'strength' | 'support_build' | 'support' | 'health'
-export interface FocusSpec { low: number; high: number; label: string; note: string }
+// #648 — reps/%1RM/intent are the PRIMARY-lift REP SCHEME per focus (mirror of server/gym-split.js REP_SCHEME — keep
+// in sync). low/high = weekly SETS/muscle. So each focus carries BOTH its volume dose AND its rep/load prescription.
+export interface FocusSpec { low: number; high: number; label: string; note: string; reps: string; pctLow: number; pctHigh: number; intent: string }
 export const GYM_FOCUS: Record<GymFocus, FocusSpec> = {
-  muscle: { low: 10, high: 20, label: 'Build muscle', note: '10–20 hard sets/muscle a week drives growth (Schoenfeld).' },
-  strength: { low: 6, high: 12, label: 'Get stronger', note: 'Heavier (>85% 1-RM), fewer reps — intensity over volume (NSCA).' },
+  muscle: { low: 10, high: 20, label: 'Build muscle', note: '10–20 hard sets/muscle a week drives growth (Schoenfeld).', reps: '6–12', pctLow: 67, pctHigh: 85, intent: 'Close to failure (1–3 in reserve), controlled eccentric, progressive overload.' },
+  strength: { low: 6, high: 12, label: 'Get stronger', note: 'Heavier (>85% 1-RM), fewer reps — intensity over volume (NSCA).', reps: '3–5', pctLow: 85, pctHigh: 95, intent: 'Heavy, crisp technique, long rests — intensity over volume.' },
   // #534 — endurance-first athlete who ALSO wants muscle (JM: "you can build lean muscle in cycling"). A real
   // hypertrophy dose, but lower/dosed so it doesn't wreck the sport — concurrent hypertrophy.
-  support_build: { low: 6, high: 12, label: 'Lean muscle + sport', note: 'Build lean muscle while your sport stays #1 — a real hypertrophy dose, dosed and scheduled around key sessions (concurrent training).' },
-  support: { low: 2, high: 8, label: 'Support my sport', note: 'Maintenance dose — a little holds strength; keep it clear of key sessions (concurrent training).' },
-  health: { low: 2, high: 12, label: 'Health', note: 'Hit all major muscles ~2×/week (ACSM).' },
+  support_build: { low: 6, high: 12, label: 'Lean muscle + sport', note: 'Build lean muscle while your sport stays #1 — a real hypertrophy dose, dosed and scheduled around key sessions (concurrent training).', reps: '4–6 mains / 6–12 accessories', pctLow: 75, pctHigh: 87, intent: 'Heavy mains for carry-over + dosed hypertrophy on accessories.' },
+  // #648 — endurance main sport, no muscle intent: HEAVY, LOW-rep, fast concentric — force + economy, minimal mass
+  // (Rønnestad & Mujika 2014, Beattie 2014, Vikmoen 2016). NOT 3×10 hypertrophy.
+  support: { low: 2, high: 8, label: 'Support my sport', note: 'Maintenance dose — a little holds strength; keep it clear of key sessions (concurrent training).', reps: '3–6', pctLow: 80, pctHigh: 90, intent: 'Heavy, drive up fast, not to failure — force + economy, minimal mass.' },
+  health: { low: 2, high: 12, label: 'Health', note: 'Hit all major muscles ~2×/week (ACSM).', reps: '8–15', pctLow: 50, pctHigh: 75, intent: 'Comfortable, full range, all major groups ~2×/week.' },
 }
 
 /** Infer the athlete's GYM focus from their MAIN sport + objective (JM 2026-07-16). The explicit MAIN sport is the
@@ -179,7 +183,7 @@ export const GYM_FOCUS: Record<GymFocus, FocusSpec> = {
  *  the coach's job). With no main sport set, the objective decides, then the first sport; default health. */
 export function inferGymFocus(input: { mainSport?: string; sports?: string[]; goal?: string }): GymFocus {
   const goal = String(input.goal || '').toLowerCase()
-  const isEndurance = (s: string) => /cycl|ride|bike|\brun\b|jog|swim|tri|endurance|row/.test(s)
+  const isEndurance = (s: string) => /cycl|ride|bike|\brun|jog|swim|tri|endurance|row/.test(s)
   const goalMuscle = /muscle|hypertroph|bigger|\bmass\b|tone up|\bbulk\b|physique|\blean\b/.test(goal)
   const goalStrength = /\bstrong|1\s?-?rm|one[- ]rep|deadlift|squat|bench|powerlift/.test(goal)
   const goalEndurance = /\bftp\b|watt|\bpace\b|marathon|\brace\b|\bride\b|\brun\b|\bbike\b|cycl|endurance|triathlon|\bvo2\b/.test(goal)

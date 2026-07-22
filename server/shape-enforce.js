@@ -13,6 +13,14 @@ const TEMPO_TITLE = /\btempo\b/i
 // average, so they're inappropriate on a MAINTENANCE week (pregnancy) even when the average sits under the ceiling.
 // A maintenance athlete's fartlek/surge title is relabeled to a STEADY session (JM: "no fartlek for pregnancy").
 const SURGE_TITLE = /fartlek|surge|pick.?up|hill.?rep|\bsprint/i
+// #672 — when a maintenance athlete's surge session is relabeled to steady, the coach's DESCRIPTION prose can still
+// describe surges ("5 unstructured effort bursts by feel"), contradicting the new title + prescribing contraindicated
+// efforts. Neutralize that language so the body agrees with the relabeled title. Conservative + unit-tested.
+const SURGE_PROSE = /\b\d*\s*(?:short |unstructured |relaxed |quick )*(?:effort |hard |fast |all-?out )*(?:bursts?|surges?|pick.?ups?|accelerations?|sprints?|hard efforts?|hard reps?|fartlek)\b(?:\s+of\s+[^.,;]*)?/gi
+export function scrubSurgeProse(text) {
+  if (!text || typeof text !== 'string' || !SURGE_PROSE.test(text)) return text
+  return text.replace(SURGE_PROSE, 'steady running by feel').replace(/\bwith steady running by feel\b/gi, 'at a steady, comfortable effort').replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').trim()
+}
 
 const topOf = (segs) => Math.max(0, ...(segs || []).map((s) => Math.max(Number(s.powerStart) || 0, Number(s.powerEnd) || 0)))
 // a session counts as "moderate/quality" if its EFFORT is ≥ tempo OR its TITLE claims quality/tempo (the coach
@@ -58,6 +66,7 @@ export function enforceShape(shape, plan, siblings = []) {
     if ((Number(s.powerEnd) || 0) > effCeil) { s.powerEnd = effCeil; clamped++ }
   }
   // a maintenance athlete (pregnancy) must not carry a quality-claiming OR a surge/fartlek title (#632).
+  const wasSurge = shape.loadBand === 'maintenance' && SURGE_TITLE.test(plan.title || '')
   const titleLies = shape.loadBand === 'maintenance' && (QUALITY_TITLE.test(plan.title || '') || SURGE_TITLE.test(plan.title || ''))
   // an OVER-BUDGET tempo/quality session with NO segments still carries a "Tempo Run" title that must become easy —
   // clamped=0 (nothing to clamp) so without this the excess tempo title survives. This is the core "all tempo" fix.
@@ -68,5 +77,8 @@ export function enforceShape(shape, plan, siblings = []) {
     const t = honestTitle(effCeil, plan.sport, plan.date)
     if (t !== plan.title) { plan.title = t; changed = true }
   }
+  // #672 — neutralize surge/burst PROSE on ANY maintenance session (NOT gated on the current title being a surge — the
+  // title may already have been relabeled to "Tempo Run" in a prior sweep, orphaning the "effort bursts" prose forever).
+  if (shape.loadBand === 'maintenance') for (const k of ['objective', 'notes', 'success']) { if (typeof plan[k] === 'string') { const v = scrubSurgeProse(plan[k]); if (v !== plan[k]) { plan[k] = v; changed = true } } }
   return { changed, clamped, effCeil, overBudget }
 }

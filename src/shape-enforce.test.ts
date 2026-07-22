@@ -134,3 +134,15 @@ describe('#620 honestTitle — varied easy relabels, honest downgrades', () => {
     expect(honestTitle(85, 'run')).toBe('Tempo Run')
   })
 })
+
+describe('#672 scrubSurgeProse — description matches the relabeled steady title', () => {
+  // @ts-expect-error plain JS
+  const { scrubSurgeProse } = require('../server/shape-enforce.js')
+  it('neutralizes surge/burst prose on a maintenance session', () => {
+    expect(scrubSurgeProse('31 min easy run with 5 unstructured effort bursts of ~40s by feel.')).not.toMatch(/burst|surge|fartlek/i)
+    expect(scrubSurgeProse('Include 6 short surges of 20s.')).not.toMatch(/surge/i)
+  })
+  it('leaves steady/easy prose untouched', () => {
+    expect(scrubSurgeProse('Easy Z2 endurance, keep it conversational.')).toBe('Easy Z2 endurance, keep it conversational.')
+  })
+})

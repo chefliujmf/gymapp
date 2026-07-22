@@ -58,3 +58,23 @@ describe('athleteProfile (#404)', () => {
     expect(srv.athleteProfile({ sport: 'cycling', tte: 50 * 60, reserveKj: 10, reserveBig: 20 }).type).toBe('Diesel engine')
   })
 })
+
+describe('#669 goal-aware development priority — respect the goal, suggest weakness', () => {
+  const { goalDemands, goalPriorityFrame } = srv as unknown as { goalDemands: (s: string) => string[]; goalPriorityFrame: (s: string) => string }
+  it('maps the objective to event DEMANDS', () => {
+    expect(goalDemands('training for a 40k time trial')).toContain('threshold')
+    expect(goalDemands('training for a 40k time trial')).toContain('durability')
+    expect(goalDemands('win the local criterium')).toEqual(expect.arrayContaining(['sprint', 'repeatability']))
+    expect(goalDemands('run a fast 5k')).toContain('VO2')
+    expect(goalDemands('just get fit and stay consistent')).toEqual(['balanced'])
+    expect(goalDemands('')).toEqual(['balanced']) // no goal → balanced (raise the limiter)
+  })
+  it('all-rounder → raise the limiter; specialist → build around the goal + RESPECT the user, weakness only a SUGGESTION', () => {
+    expect(goalPriorityFrame('get fit')).toMatch(/RAISE THE LIMITER/)
+    const crit = goalPriorityFrame('win the crit')
+    expect(crit).toMatch(/DEMANDS/)
+    expect(crit).toMatch(/SUGGEST/)                       // may suggest an out-of-goal weakness
+    expect(crit).toMatch(/RESPECT their stated goal/)     // but respects the user's needs
+    expect(crit).not.toMatch(/RAISE THE LIMITER/)         // a specialist is NOT just "fix the weakness"
+  })
+})

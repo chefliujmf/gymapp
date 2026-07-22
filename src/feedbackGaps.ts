@@ -1,6 +1,10 @@
 import { ICU_FIELDS, ICU_FIELD_CODES } from './icu-fields'
 import type { IcuActivity } from './intervals'
 
+// #661 — a strength/gym activity, by its EXPLICIT intervals type (not the sportOfActivity catch-all, which defaults
+// anything unknown to 'gym'). Gym feedback lives in the Platyplus store, not on the intervals activity fields.
+const isStrengthActivity = (a: IcuActivity): boolean => /weight ?training|strength|\bgym\b|workout/i.test(String((a as unknown as { type?: string }).type || ''))
+
 // #340 — which finished sessions still need feedback? The CORE the coach needs is "how it felt" + RPE;
 // the intervals custom fields (Legs, Fuel, Pain, …) add richness but are optional, so they drive the
 // progress bar, NOT the nag (else every session flags). An activity "needs feedback" only when the core
@@ -41,6 +45,9 @@ export function incompleteFeedback(acts: IcuActivity[], skip?: Set<string>, sinc
   const cutoff = Number.isFinite(sinceDays) ? new Date(Date.now() - sinceDays * 86400000).toISOString().slice(0, 10) : ''
   return acts
     .map((act) => ({ act, status: feedbackStatus(act) }))
-    .filter((x) => x.status.needsFeedback && !(skip && skip.has(String((x.act as unknown as { id?: unknown }).id))) && dateOf(x.act).slice(0, 10) >= cutoff)
+    // #661 — EXCLUDE gym/strength: its feedback lives in the Platyplus store (keyed gym-<date>), NOT on the intervals
+    // activity's feel/icu_rpe — so feedbackStatus can NEVER see it and would nag forever even after the athlete rated
+    // it (JM re-asked on the day page). Gym feedback is captured inline at the session summary + reviewed there.
+    .filter((x) => x.status.needsFeedback && !isStrengthActivity(x.act) && !(skip && skip.has(String((x.act as unknown as { id?: unknown }).id))) && dateOf(x.act).slice(0, 10) >= cutoff)
     .sort((a, b) => dateOf(a.act).localeCompare(dateOf(b.act)))
 }

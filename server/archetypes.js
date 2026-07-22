@@ -110,3 +110,18 @@ export function assignArchetypeBlock({ sport = 'ride', qualityDays = 0, easyDays
   }
   return out
 }
+
+// #652 — size THRESHOLD / sweet-spot intervals from the athlete's TTE (time-to-exhaustion at threshold). This is a
+// DEVELOPMENTAL starting point, NOT a cap: TTE/durability is TRAINABLE, so the reps START near ~half the TTE and are
+// PROGRESSIVELY EXTENDED across the block (longer reps + more total time) to RAISE the TTE — you improve the number,
+// you don't just match it (Coggan/Seiler; Laursen & Buchheit, Science & Application of HIIT). WHICH quality to
+// prioritize (the athlete's LIMITER vs their strength) is decided by # DEVELOPMENT PRIORITIES — this only sizes the
+// threshold-family reps once chosen. Pure + unit-tested. Null when there's no usable TTE (archetype default stands).
+export function thresholdSizing(tteSec, sport = 'ride') {
+  const tteMin = Math.round((Number(tteSec) || 0) / 60)
+  if (!(tteMin >= 8 && tteMin <= 90)) return null
+  const repMin = Math.max(4, Math.min(20, Math.round(tteMin * 0.5)))
+  const totalMin = Math.round(tteMin * 1.2)
+  const reps = Math.max(2, Math.min(5, Math.max(1, Math.round(totalMin / repMin))))
+  return `INTERVAL SIZING — your current TTE ≈ ${tteMin} min. START threshold / sweet-spot reps near ~${repMin} min (about ${reps} reps, ≈${totalMin} min total) and PROGRESSIVELY EXTEND them across the block — longer reps + more total time at threshold — to RAISE your TTE. This is a floor to build FROM, not a ceiling that matches your current fitness; durability is trainable and the goal is to IMPROVE it. Attack the athlete's LIMITER per # DEVELOPMENT PRIORITIES, not their strength.`
+}

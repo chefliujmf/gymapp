@@ -6,7 +6,7 @@ import { FEEL, RPE, FIELDS } from './pages/PostWorkout'
 // #273/#285 — post-workout feedback capture for ANY completed session (device activity or gym),
 // keyed by an id. Feedback-first when unsubmitted; collapses to a one-line summary after. Saving
 // persists + triggers a coach review (server). Reuses the shared feel/RPE/fields model (#143).
-export default function ActivityFeedback({ id, sport, date, heading = 'How did it go?', icuExisting, icuNote, onSaved, reviewShownAbove = false, altIds = [] }: { id: string; sport: string; date: string; heading?: string; icuExisting?: { feel?: string; rpe?: number; fields: Record<string, string> } | null; icuNote?: string; onSaved?: () => void; reviewShownAbove?: boolean; altIds?: string[] }) {
+export default function ActivityFeedback({ id, sport, date, heading = 'How did it go?', icuExisting, icuNote, onSaved, reviewShownAbove = false, altIds = [], awaitReview = false }: { id: string; sport: string; date: string; heading?: string; icuExisting?: { feel?: string; rpe?: number; fields: Record<string, string> } | null; icuNote?: string; onSaved?: () => void; reviewShownAbove?: boolean; altIds?: string[]; awaitReview?: boolean }) {
   const [feel, setFeel] = useState<string | undefined>()
   const [rpe, setRpe] = useState<number | undefined>()
   const [fields, setFields] = useState<Record<string, string>>({})
@@ -33,7 +33,14 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
       else if (icuExisting || icuNote) { foundRef.current = true; setFeel(icuExisting?.feel); setRpe(icuExisting?.rpe); setFields(icuExisting?.fields || {}); if (icuNote) setNote(icuNote); setSaved(true); setFromIcu(true) } // already logged in intervals — show it, don't ask again
       setLoaded(true)
     })()
-    authApi.coachReviews().then((rs) => setReview(matchReview(rs))).catch(() => {}) // #364 show an existing review if there is one
+    // #364 show an existing review if there is one. #JM 2026-07-21 — a FRESH completion's review is async (~1-2 min);
+    // if it hasn't landed yet, WAIT for it (show "coach is reviewing…" + auto-poll) instead of flashing "Retry".
+    // Retry is only correct after a genuine give-up/error — the poll surfaces it after it exhausts its tries.
+    authApi.coachReviews().then((rs) => {
+      const m = matchReview(rs)
+      if (m) { setReview(m); return }
+      if (awaitReview) startReviewPoll('') // no review yet on a just-finished session → wait, don't offer Retry
+    }).catch(() => { if (awaitReview) startReviewPoll('') })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, altIds.join('|'), icuExisting, icuNote])
   const sportFields = FIELDS[sport] || FIELDS.gym

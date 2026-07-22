@@ -42,7 +42,7 @@ export default function PostWorkout() {
     authApi.coachReviews().then((r) => setReview(r.find((x) => x.planId === p.id) || r.find((x) => x.date === p.date && (x.sport === 'gym' || !x.sport)) || null)).catch(() => {})
   }, [p?.id, p?.date, p?.sport])
 
-  if (!p) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button><h1>Plan not found</h1><p className="meta">Open it from Today.</p></div>
+  if (!p) return <div className="page-head"><button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button><h1>Plan not found</h1><p className="meta">Open it from your Plan.</p></div>
   const sportFields = FIELDS[p.sport] || FIELDS.gym
 
   // #285 rich gym completed view (when a log exists) — replaces the bare feel/RPE form.
