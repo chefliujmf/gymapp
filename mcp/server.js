@@ -137,12 +137,17 @@ server.tool('set_thresholds',
 // SEPARATE items (schedule_meal/schedule_mind, each with a per-pick `why`); fuel.why
 // and mind.why here are the STRATEGY, not the picks.
 const COACHING = {
-  objective: z.string().optional().describe('one-line goal of the session'),
-  cues: z.array(z.string()).optional().describe('short in-session cues'),
+  // #738 (JM) — frame THIS session on its OWN terms: NEVER reference a past or future session ("with a rest day behind
+  // it", "after yesterday", "tomorrow…"). The app also code-scrubs these, but don't write them. The app renders these
+  // fields as SCANNABLE sections + bullets — keep each one tight (#737).
+  objective: z.string().optional().describe('one-line goal of THIS session ONLY — no reference to any other day/session'),
+  cues: z.array(z.string()).optional().describe('short in-session cues (each becomes a bullet)'),
   tip: z.string().optional().describe('one WHOLE-SESSION tip shown as a banner (e.g. "control the tempo — slow lowering builds strength; keep rests ~90-120s on the big lifts")'),
-  success: z.string().optional().describe('what "done well" looks like'),
+  success: z.string().optional().describe('what "done well" looks like (rendered as bullets)'),
   recovery: z.string().optional().describe('post / evening / next-AM recovery guidance'),
-  fuel: z.object({ why: z.string().optional().describe('Pre/During/Post fueling strategy'), supplements: z.string().optional() }).optional(),
+  // #739 (JM, liability) — fuelling is a GENERAL reference, not a personalised prescription. Keep it evidence-based +
+  // standard (e.g. carbs/h, fluid, protein ranges) and phrase it as a guide; the app labels it "general guide, adjust to you".
+  fuel: z.object({ why: z.string().optional().describe('Pre/During/Post fuelling as a GENERAL, evidence-based reference (ranges, not exact personal doses)'), supplements: z.string().optional() }).optional(),
   mind: z.object({ why: z.string().optional().describe('mental-focus theme') }).optional(),
 }
 const coachingOf = (a) => ({ objective: a.objective, cues: a.cues, tip: a.tip, success: a.success, recovery: a.recovery, fuel: a.fuel, mind: a.mind })
