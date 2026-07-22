@@ -25,7 +25,7 @@ const USE_PG = !!process.env.DATABASE_URL
 const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
-import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan } from './icu-match.js'
+import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan, mirrorBrokenPlans } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
@@ -2673,18 +2673,33 @@ async function deleteIcuEvent(user, plan) {
   if (!user.icuKey || !user.icuAthlete || !plan?.icuEventId) return // #456 — no athlete → never DELETE on the seed calendar
   try { await icuFetch(user, `/athlete/${user.icuAthlete}/events/${plan.icuEventId}`, { method: 'DELETE' }) } catch { /* best effort */ }
 }
-// #5026 (JM: "it has to be a PERFECT MIRROR") — READ-REPAIR: re-push any current/future Platyplus plan that never
-// reached intervals (no icuEventId). The write-through push (upsertPlan) is the primary path; this heals the ones that
-// failed transiently or (pre-tz-fix) were wrongly skipped as "past" at the UTC day-boundary. Idempotent + convergent
-// (keyed by external_id, no dupes). Triggered ON APP LOAD (`/auth/plans`) so it's responsive — the athlete opens the app
-// and the mirror repairs within that request — plus the daily tick as a slow backstop. Prod-only + a per-user cooldown
-// so a rapid-fire client can't spam intervals. Only the un-synced few are pushed (usually zero → instant no-op).
+// #5026 (JM: "it has to be a PERFECT MIRROR") — READ-REPAIR: re-push any current/future Platyplus plan that isn't
+// correctly mirrored in intervals. The write-through push (upsertPlan) is the primary path; this heals the ones that
+// slipped. Two failure modes (both #726 real on prod):
+//   (a) NEVER synced — no icuEventId (a transient push failure, or a pre-tz-fix "past" skip at the UTC day-boundary);
+//   (b) STALE mirror — the plan carries an icuEventId but that intervals event was DELETED there (JM's 07-22 "Threshold
+//       4×10" pointed at event 121594819, which was gone; the old healer only checked !icuEventId, so it skipped this
+//       and the day stayed missing FOREVER). We now fetch the current→horizon events window ONCE and treat a plan whose
+//       icuEventId is absent from it as broken too. pushPlanToIcu re-creates it (its own /events/{id} 404 → POST path).
+// Idempotent + convergent (keyed by external_id, no dupes). Triggered ON APP LOAD (`/auth/plans`) so it's responsive,
+// plus the daily tick as a slow backstop. Prod-only + a per-user cooldown so a rapid-fire client can't spam intervals.
 async function healMirror(user) {
   if (IS_STAGING || !user.icuKey || !user.icuAthlete) return
   const now = Date.now()
   if (user._mirrorHealAt && now - user._mirrorHealAt < 60_000) return // cooldown: at most once/min per user
   const today = icuToday(user)
-  const broken = (user.plans || []).filter((p) => p.date && p.date >= today && (p.origin || 'platyplus') === 'platyplus' && !p.icuEventId)
+  const future = (user.plans || []).filter((p) => p.date && p.date >= today && (p.origin || 'platyplus') === 'platyplus')
+  if (!future.length) return
+  // Fetch the events window ONCE so a "stale mirror" (event deleted in intervals) is detectable without a per-plan probe.
+  // If the fetch fails, `existing` stays null → we fall back to healing only the never-synced (!icuEventId) plans, which
+  // is always safe (no false re-push). #726.
+  const maxDate = future.reduce((m, p) => (p.date > m ? p.date : m), today)
+  let existing = null
+  try {
+    const evs = await icuGet(user, `/athlete/${user.icuAthlete}/events?oldest=${today}&newest=${maxDate}`)
+    if (Array.isArray(evs)) existing = new Set(evs.map((e) => e.id))
+  } catch { /* fall back to no-icuEventId-only heal below */ }
+  const broken = mirrorBrokenPlans(user.plans, today, existing) // #726 — never-synced OR stale (event deleted in intervals)
   if (!broken.length) return
   user._mirrorHealAt = now
   for (const p of broken) { try { await pushPlanToIcu(user, p) } catch (e) { console.error('[mirror-heal] ' + (e.message || e)) } }
