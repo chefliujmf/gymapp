@@ -69,7 +69,7 @@ describe('#620 shape-enforce — the rest of the athlete matrix (commercializati
   })
 
   it('BUILD cyclist (vo2 ceiling, 2 quality) → keeps 2 hard days untouched, clamps only a 3rd', () => {
-    const shape = weekShape({ goalFocus: 'performance', ctl: 60, trainingDays: 6 })
+    const shape = weekShape({ goalFocus: ['performance'], ctl: 60, trainingDays: 6 })
     expect(shape.qualityDays).toBeGreaterThanOrEqual(2)
     const week = [
       { id: 'a', date: '2026-07-21', sport: 'ride', title: 'VO2 5×3', ...seg(115) },

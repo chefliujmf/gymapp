@@ -16,7 +16,16 @@
   --accent-grad: linear-gradient(135deg, #4af28d, #1fb866);
   --glow: 0 10px 26px -6px rgba(52,224,125,0.45);
   --card-shadow: 0 10px 30px -12px rgba(0,0,0,0.6);
-  --danger: #ff5a5a;
+  --danger: #ff5a5a;         /* red — danger / error / stop */
+  --danger-2: #e0555f;       /* deeper red (matches inline uses) */
+  /* #757 (audit) — the semantic tokens the theme rule mandates but that were MISSING from :root, so every
+     var(--warn,#…) / var(--amber) / var(--cyan) silently fell back to a hardcoded (often off-palette) hex.
+     Defined once here → they now resolve app-wide. amber/warn = caution; cyan/info = info · device · REST. */
+  --amber: #f0b429;          /* amber — warning / caution */
+  --warn: #f0b429;           /* alias of --amber */
+  --cyan: #39c2d7;           /* cyan — info / device / rest */
+  --info: #39c2d7;           /* alias of --cyan */
+  --success: #34e07d;        /* alias of --accent (success) */
   --radius: 14px;
   --tab-h: 62px;
   --maxw: 720px;

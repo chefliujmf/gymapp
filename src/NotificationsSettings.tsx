@@ -44,9 +44,28 @@ export default function NotificationsSettings() {
 
   return (
     <div>
-      {/* #733 — per-TYPE control: which show in the bell (in-app, this device) and which buzz your phone. */}
-      <p className="meta" style={{ margin: '2px 2px 8px' }}>Choose what shows in the bell and what buzzes your phone.</p>
-      <div className="card push-card" style={{ marginBottom: 12 }}>
+      {/* #733 — per-TYPE control: which show in the bell (in-app) and which buzz your phone. #741b (JM "2 separate phone
+          controls, ouch") — ONE phone system: the master toggle leads, the grid's Phone column is gated by it. */}
+      <p className="meta" style={{ margin: '2px 2px 10px' }}>Choose what shows in the bell and what buzzes your phone.</p>
+      {supported && avail !== false ? (
+        <>
+          {iosNeedsInstall() && (
+            <div className="push-hint">
+              <span className="push-hint__i">📲</span>
+              <span><b>On iPhone:</b> add Platyplus to your Home Screen first (Share → <b>Add to Home Screen</b>), then turn this on. Safari tabs can’t get notifications.</span>
+            </div>
+          )}
+          <div className="card push-card" style={{ marginBottom: 12 }}>
+            <div className="push-row" onClick={toggleMaster} style={{ cursor: 'pointer' }}>
+              <span className="push-row__t"><b>📱 Phone notifications</b><span className="meta">Master — turn on to buzz your phone even when the app is closed, then pick which types in the Phone column below.</span></span>
+              <Sw on={here} />
+            </div>
+          </div>
+        </>
+      ) : (
+        <p className="meta" style={{ margin: '2px 2px 12px' }}>Phone notifications aren’t {supported ? 'available yet' : 'supported in this browser'} — you’ll still get everything in the bell.</p>
+      )}
+      <div className="card push-card">
         <div className="notif-pref-head"><span>Type</span><span>In-app</span><span>Phone</span></div>
         {NOTIF_TYPES.map((t) => {
           const phoneOn = t.hasPhone && here && !!prefs[t.key as keyof PushPrefs]
@@ -56,36 +75,12 @@ export default function NotificationsSettings() {
               <button className="notif-pref-sw" onClick={() => toggleInApp(t.key)} aria-label={`${t.label} in-app`}><Sw on={inApp[t.key] !== false} /></button>
               {t.hasPhone
                 ? <button className="notif-pref-sw" disabled={!here} onClick={() => here && toggleType(t.key as keyof PushPrefs)} aria-label={`${t.label} phone`}><Sw on={phoneOn} dim={!here} /></button>
-                : <span className="notif-pref-sw meta" style={{ fontSize: 16, opacity: .3 }}>—</span>}
+                : <span className="notif-pref-sw meta" style={{ fontSize: 16, opacity: .3 }} title="No phone push for this type yet">—</span>}
             </div>
           )
         })}
       </div>
-      {!here && <p className="meta" style={{ margin: '0 2px 12px', fontSize: 12 }}>Turn on <b>Phone notifications</b> below to enable the phone column.</p>}
-      {/* #511 — title comes from the Settings "Notifications" Collapsible now (moved from Profile, JM 2026-07-14). */}
-      {!supported ? (
-        <p className="meta" style={{ margin: '2px 2px 10px' }}>Phone notifications aren’t supported in this browser.</p>
-      ) : avail === false ? (
-        <p className="meta" style={{ margin: '2px 2px 10px' }}>Phone notifications aren’t available yet.</p>
-      ) : (
-        <>
-          <p className="meta" style={{ margin: '2px 2px 8px' }}>Get a heads-up on your phone when your coach changes your plan or reviews a workout — even when the app is closed.</p>
-          {iosNeedsInstall() && (
-            <div className="push-hint">
-              <span className="push-hint__i">📲</span>
-              <span><b>On iPhone:</b> add Platyplus to your Home Screen first (Share → <b>Add to Home Screen</b>), then turn this on. Safari tabs can’t get notifications.</span>
-            </div>
-          )}
-          {/* #733 — the master phone switch; the per-type phone column above enables once this is on. */}
-          <div className="card push-card">
-            <div className="push-row" onClick={toggleMaster} style={{ cursor: 'pointer' }}>
-              <span className="push-row__t"><b>Phone notifications</b><span className="meta">Master switch — turn on to allow the phone column above.</span></span>
-              <Sw on={here} />
-            </div>
-          </div>
-          {msg && <p className="meta" style={{ margin: '6px 2px 0', color: '#f6b73c' }}>{msg}</p>}
-        </>
-      )}
+      {msg && <p className="meta" style={{ margin: '6px 2px 0', color: '#f6b73c' }}>{msg}</p>}
     </div>
   )
 }

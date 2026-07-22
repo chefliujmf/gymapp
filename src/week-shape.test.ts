@@ -13,11 +13,23 @@ describe('weekShape — #613 the code-decided week structure (single source of t
     expect(HARD).not.toContain(s.intensityCeiling) // ceiling is tempo/endurance, never hard
   })
 
-  it('PREGNANT unknown trimester → first-trimester defaults (tempo ceiling, one moderate)', () => {
+  it('#748 FAIL-SAFE: PREGNANT unknown trimester → MOST conservative (T3 envelope: zero moderate, endurance ceiling)', () => {
     const s = weekShape({ pregnant: true, trimester: null })
     expect(s.qualityDays).toBe(0)
-    expect(s.moderateDays).toBe(1)
-    expect(s.intensityCeiling).toBe('tempo')
+    expect(s.moderateDays).toBe(0) // was 1 (T1) — unknown now defaults to the safest envelope
+    expect(s.intensityCeiling).toBe('endurance')
+  })
+  it('#744 FAIL-SAFE: an EMPTY/unrecognized goal → conservative base (1 quality, sweet-spot ceiling), NOT a VO2 build', () => {
+    const s = weekShape({ goalFocus: [], goalNotes: '' })
+    expect(s.loadBand).toBe('flat')
+    expect(s.qualityDays).toBe(1)
+    expect(s.intensityCeiling).toBe('sweetspot')
+  })
+  it('an EXPLICIT build/performance goal still gets the build band (2 quality, vo2)', () => {
+    const s = weekShape({ goalFocus: ['race'], goalNotes: 'get faster, raise my FTP' })
+    expect(s.loadBand).toBe('build')
+    expect(s.qualityDays).toBe(2)
+    expect(s.intensityCeiling).toBe('vo2')
   })
 
   it('PREGNANT 3rd trimester self-tapers to easy (zero moderate, endurance ceiling)', () => {

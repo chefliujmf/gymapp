@@ -62,13 +62,17 @@ export function weekShape(p = {}) {
 
   // ── PREGNANCY overrides everything: MAINTAIN, never build. ──────────────────────────────────────────
   if (pregnant) {
-    const t = trimester || 1 // unknown trimester → first-trimester defaults
+    // #748 (audit) FAIL-SAFE: an UNKNOWN trimester defaults to the MOST conservative envelope (T3), never the least
+    // (the old `|| 1` gave an athlete who may be in T2/T3 a T1 allowance). The profile gate makes the date mandatory;
+    // this is the backstop when it's still missing.
+    const t = trimester || 3
+    const tLabel = trimester ? `trimester ${trimester}` : 'trimester unknown → coached to the most conservative envelope'
     return {
       loadBand: 'maintenance',
       qualityDays: 0, // NO structured sweet-spot / threshold / VO2 intervals, ever
       moderateDays: t >= 3 ? 0 : 1, // at most ONE short light tempo (T1/T2); T3 self-selects down to easy
       intensityCeiling: t >= 3 ? 'endurance' : 'tempo',
-      rationale: `PREGNANCY (trimester ${t}) — MAINTENANCE, not a build. Most sessions EASY endurance + her strength (2–3 modified sessions/wk) + daily pelvic-floor. ${t >= 3 ? 'ZERO' : 'AT MOST ONE'} short light-moderate cardio session (tempo by RPE + the talk test); NEVER a structured sweet-spot/threshold/VO2 block, NEVER two quality days. Volume + intensity self-taper by trimester. Gauge by RPE + talk test, never HR.`,
+      rationale: `PREGNANCY (${tLabel}) — MAINTENANCE, not a build. Most sessions EASY endurance + her strength (2–3 modified sessions/wk) + daily pelvic-floor. ${t >= 3 ? 'ZERO' : 'AT MOST ONE'} short light-moderate cardio session (tempo by RPE + the talk test); NEVER a structured sweet-spot/threshold/VO2 block, NEVER two quality days. Volume + intensity self-taper by trimester. Gauge by RPE + talk test, never HR.`,
     }
   }
 
@@ -85,8 +89,8 @@ export function weekShape(p = {}) {
   // ── goal-driven band ─────────────────────────────────────────────────────────────────────────────
   let loadBand, qualityDays, intensityCeiling
   if (wantsBeginner) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'tempo' } // #710 — new athlete stated → ramp in: mostly easy, ≤1 light quality, ceiling below sweet-spot until a base is built
-  else if (wantsMaintain && !wantsBuild) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'sweetspot' } // consistency: 1 quality, keep fit
-  else { loadBand = 'build'; qualityDays = 2; intensityCeiling = 'vo2' } // default/build: 2 quality
+  else if (wantsBuild) { loadBand = 'build'; qualityDays = 2; intensityCeiling = 'vo2' } // #744 — a build/performance band requires an EXPLICIT signal (race/faster/FTP/PR/stronger/…)
+  else { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'sweetspot' } // #744 (audit) FAIL-SAFE: maintain OR NO clear goal → a conservative base (1 quality, ceiling sweet-spot), NEVER a VO2 build. An empty/unrecognized goal must not silently become 2× VO2.
 
   // NO fitness "beginner/advanced" CLASSIFICATION (JM 2026-07-20): don't bucket athletes. Everything is already
   // RELATIVE to their own numbers — zones are % of THEIR threshold (88% of a low FTP is appropriately easy), and
