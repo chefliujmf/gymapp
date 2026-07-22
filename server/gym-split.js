@@ -308,6 +308,32 @@ export function stripGymDurationProse(text) {
   return text.replace(GYM_DURATION_RE, '').replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').replace(/[ \t]+\n/g, '\n').trim()
 }
 
+// #712 (audit SAFETY) — a PREGNANT athlete at TRIMESTER 2+ must not do SUPINE (flat-on-back) or prone lifts; lying flat
+// compresses the vena cava (ACOG) and the assembler/coach can still surface a bench/floor-press/dead-bug. The prompt rule
+// is ignored, so ENFORCE at save: swap each supine/prone move to a safe UPRIGHT/incline equivalent (or drop if none maps).
+// Pure + unit-tested. Returns { exercises, changed }.
+const SUPINE_RE = /\b(bench press|floor press|chest press|lying|supine|dead ?bugs?|glute bridge|hip thrust|pullover|leg raises?|reverse crunch|crunch(es)?|sit[-\s]?ups?|toe touch)\b/i
+const SUPINE_SWAP = [
+  [/bench press|floor press|chest press/i, 'Incline Dumbbell Press'],
+  [/dead ?bugs?/i, 'Bird Dog'],
+  [/glute bridge|hip thrust/i, 'Standing Cable Pull-Through'],
+  [/pullover/i, 'Cable Straight-Arm Pulldown'],
+  [/reverse crunch|crunch(es)?|sit[-\s]?ups?|leg raises?|toe touch/i, 'Pallof Press'],
+]
+export function enforcePregnancyGym(exercises, trimester) {
+  if (!Array.isArray(exercises) || !(Number(trimester) >= 2)) return { exercises: exercises || [], changed: 0 }
+  let changed = 0
+  const out = []
+  for (const ex of exercises) {
+    const n = String((ex && ex.name) || '')
+    if (!SUPINE_RE.test(n)) { out.push(ex); continue }
+    const swap = SUPINE_SWAP.find(([re]) => re.test(n))
+    if (swap) { out.push({ ...ex, name: swap[1], eachSide: UNILATERAL_RE.test(swap[1]) || undefined }); changed++ }
+    else { changed++ } // no safe mapping → DROP the supine move (safer to omit than risk it)
+  }
+  return { exercises: out, changed }
+}
+
 // #706 — the coach often gives consecutive gym sessions the SAME generic title ("Upper-Body & Trunk Strength" on two
 // weeks), so the calendar shows identical entries (JM). Code-enforce distinct titles: sessions that share a base title
 // get a clean A/B/C series in DATE order (matching the assembler's slot convention). Pure; mutates plan.title; returns

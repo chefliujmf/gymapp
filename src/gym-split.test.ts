@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module
-import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles } from '../server/gym-split.js'
+import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from '../server/gym-split.js'
 
 const flat = (a: any) => a.days.flat()
 
@@ -301,5 +301,29 @@ describe('#706 dedupeGymTitles — no two identical gym titles on the calendar',
     const plans = [{ date: '2026-07-27', title: 'Full-Body Strength A' }, { date: '2026-08-03', title: 'Full-Body Strength B' }]
     expect(dedupeGymTitles(plans)).toBe(0)
     expect(plans.map((p) => p.title)).toEqual(['Full-Body Strength A', 'Full-Body Strength B'])
+  })
+})
+
+describe('#712 enforcePregnancyGym — no supine/flat-on-back lifts at trimester 2+', () => {
+  it('swaps supine moves to safe upright/incline variants at T2+', () => {
+    const ex = [
+      { name: 'Barbell Bench Press', section: 'main', mode: 'reps', reps: 5 },
+      { name: 'Dead Bug', section: 'main', mode: 'reps', reps: 12 },
+      { name: 'Glute Bridge', section: 'main', mode: 'reps', reps: 12 },
+      { name: 'Goblet Squat', section: 'main', mode: 'reps', reps: 8 }, // upright → kept
+    ]
+    const r = enforcePregnancyGym(ex, 2)
+    expect(r.changed).toBe(3)
+    const names = r.exercises.map((e: any) => e.name)
+    expect(names).toContain('Incline Dumbbell Press')  // bench → incline
+    expect(names).toContain('Bird Dog')                // dead bug → bird dog
+    expect(names).toContain('Standing Cable Pull-Through') // glute bridge → standing
+    expect(names).toContain('Goblet Squat')            // upright unchanged
+    expect(names).not.toContain('Barbell Bench Press')
+  })
+  it('is a NO-OP at trimester 1 (or non-pregnant / no trimester)', () => {
+    const ex = [{ name: 'Barbell Bench Press', section: 'main', mode: 'reps', reps: 5 }]
+    expect(enforcePregnancyGym(ex, 1).changed).toBe(0)
+    expect(enforcePregnancyGym(ex, null).changed).toBe(0)
   })
 })

@@ -31,7 +31,7 @@ import { weekShape } from './week-shape.js' // #613/#615 — code-decided week s
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
 import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, unit-tested clamp that ENFORCES the week shape on a plan
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
-import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
+import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile, goalPriorityFrame } from './perf-metrics.js' // #404; #669 goal-aware priority
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -452,8 +452,17 @@ app.put('/auth/avatar', auth, (req, res) => {
 
 // profile info (arbitrary general fields: displayName, etc.)
 app.put('/auth/profile', auth, (req, res) => {
+  const wasPregnant = !!(req.user.info && req.user.info.pregnant) // #711 — capture BEFORE the merge to detect true→false
   req.user.info = { ...(req.user.info || {}), ...(req.body || {}) }
   if (req.body && req.body.pregnant === true) { delete req.user.cyclePhase; delete req.user.cyclePhaseAt } // #427 — no menstrual cycle while pregnant; clear stale phase now
+  // #711 (audit SAFETY) — clearing pregnancy must ENTER the graded postpartum return by DEFAULT, not silently snap to a
+  // full build (2 quality + VO2) the week after birth. If she turns Pregnant OFF and hasn't set a birth date, stamp a
+  // provisional postpartumSince=today so weekShape uses the graded-return shape until ~12 wk (she can edit the date). This
+  // is a data-availability SAFETY default (opt-out), not a fitness classification.
+  if (wasPregnant && req.body && req.body.pregnant === false && !req.user.info.postpartumSince) {
+    req.user.info.postpartumSince = new Date().toISOString().slice(0, 10)
+    console.log(`[postpartum-default] ${req.user.username || ''} — pregnancy cleared with no birth date → provisional postpartumSince=today (graded return)`)
+  }
   if (typeof req.body.email === 'string' && req.body.email.includes('@')) req.user.email = req.body.email.toLowerCase()
   if (typeof req.body.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
   if (Array.isArray(req.body.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)
@@ -1789,16 +1798,36 @@ function enforceGymRepScheme(user, plan) {
   if (n) console.log(`[gym-reps] ${user.username || ''} "${plan.title}" — clamped ${n} main lift(s) into ${focus} rep scheme`)
 }
 
+// #712 — the athlete's current pregnancy trimester (female + info.pregnant), else null. Drives the supine-gym clamp.
+function pregnantTrimesterOf(user) {
+  if (!user || String(user.sex || '').toLowerCase() !== 'female' || !(user.info && user.info.pregnant)) return null
+  const pg = pregnancyStage(user.info, localTodayInTz(user && user.icuTimezone))
+  return pg ? pg.trimester : 1 // unknown stage → treat as T1 (clamp only fires at T2+)
+}
+// #712 (audit SAFETY) — swap/drop SUPINE gym moves for a pregnant T2+ athlete, on every save + sweep (the assembler/coach
+// can still surface a bench; the prompt rule is ignored, so ENFORCE it here — peer to enforceTeenGym).
+function enforcePregnancyGymPlan(user, plan) {
+  if (!plan || plan.sport !== 'gym' || !Array.isArray(plan.exercises)) return
+  const tri = pregnantTrimesterOf(user)
+  if (!(tri >= 2)) return
+  const r = enforcePregnancyGym(plan.exercises, tri)
+  if (r.changed) { plan.exercises = r.exercises; console.log(`[pregnancy-gym] ${user.username || ''} "${plan.title}" — swapped/dropped ${r.changed} supine move(s) (T${tri}+)`) }
+}
 function enforceTeenGym(user, plan) {
   if (!plan || plan.sport !== 'gym') return
   const dob = user.info && user.info.dob
   const age = dob ? Math.floor((Date.now() - new Date(dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
   if (age == null || age >= 18) return
+  // #714 (audit) — a teen must not lift near-maximal. Flooring reps only to 5 wasn't enough: clampMainReps sets support
+  // mains to 3-6 HEAVY reps, and the client derives the target WEIGHT from weightForReps(e1rm, reps) — so 5-6 reps ≈ 85%
+  // 1RM for a minor. Since REP COUNT is the load proxy, floor every teen WORKING set to ≥8 reps → the implied load drops
+  // to a submaximal, TECHNIQUE-focused band (~≤70-75% 1RM), per NSCA youth guidance. Overrides the support down-clamp.
+  const TEEN_MIN_REPS = 8
   let bumped = 0
   for (const ex of (plan.exercises || [])) {
-    if (ex && (ex.mode === 'reps' || ex.reps != null) && Number(ex.reps) > 0 && Number(ex.reps) < 5 && ex.section !== 'warmup' && ex.section !== 'cooldown') { ex.reps = 5; bumped++ }
+    if (ex && ex.mode !== 'timed' && Number(ex.reps) > 0 && Number(ex.reps) < TEEN_MIN_REPS && ex.section !== 'warmup' && ex.section !== 'cooldown') { ex.reps = TEEN_MIN_REPS; bumped++ }
   }
-  if (bumped) console.log(`[teen-gym] ${user.username || ''} "${plan.title}" — floored ${bumped} near-maximal set(s) to 5 reps (under-18: no maximal loading)`)
+  if (bumped) console.log(`[teen-gym] ${user.username || ''} "${plan.title}" — raised ${bumped} set(s) to ${TEEN_MIN_REPS}+ reps (under-18: submaximal/technique load, no near-maximal 1RM)`)
 }
 
 // #618 — the save-time clamp only fires on sessions the coach WRITES; stale ride/run sessions from an earlier run
@@ -1817,6 +1846,7 @@ async function reenforceShapeAll(user) {
     enforceGymRepScheme(user, p)
     if (Array.isArray(p.exercises)) { const r = enforceGymStructure(p.exercises); if (r.deduped || r.retimed) p.exercises = r.exercises } // #687-enforce — dedup + hold→timed on stale gym plans
     enforceTeenGym(user, p)
+    enforcePregnancyGymPlan(user, p) // #712 supine clamp
     if (JSON.stringify(p.exercises || []) !== ex0) gymTouched++
   }
   // #706 — give consecutive same-title gym sessions a clean A/B/C series so the calendar never shows two identical
@@ -2685,6 +2715,7 @@ async function upsertPlan(user, body, actor = 'coach') {
     const r = enforceGymStructure(plan.exercises)
     if (r.deduped || r.retimed) { plan.exercises = r.exercises; console.log(`[gym-structure] ${user.username || ''} "${plan.title}" — deduped ${r.deduped}, retimed ${r.retimed}`) }
   }
+  enforcePregnancyGymPlan(user, plan) // #712 (audit) — pregnant T2+ supine gym clamp
   enforceTeenGym(user, plan) // #631 — under-18: floor near-maximal gym sets to submaximal (no 1-RM loading)
   // #650 — PRIVACY (safety): strip pregnancy/postpartum terms from anything the athlete or the public could read
   // (the title pushes to intervals → Strava). Enforced in code, not just prompted. No-op for normal copy.
