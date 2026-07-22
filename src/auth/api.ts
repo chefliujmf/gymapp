@@ -193,7 +193,7 @@ export const authApi = {
   promoteProd: () => req<{ ok: boolean }>('/promote-prod', { method: 'POST' }),
   // Fan a Platyplus-recorded workout out to intervals (match-first, server-side, #122/#123).
   completeActivity: (a: { sport: string; title: string; date: string; startIso: string; durationSec: number; samples: { t: number; power?: number; cadence?: number; hr?: number }[] }) =>
-    req<{ status: string; icuId?: number | null; error?: string }>('/activity/complete', { method: 'POST', body: a }),
+    req<{ status: string; icuId?: number | null; avgHr?: number | null; durationSec?: number | null; error?: string }>('/activity/complete', { method: 'POST', body: a }), // #666 — avgHr/durationSec from a matched device activity
   // Manual activity entry (#129): parse an uploaded .fit/.gpx/.tcx, then fan the
   // entered/edited activity out to intervals (match-first). Local copy via logWorkout.
   parseActivityFile: (name: string, b64: string) => req<ParsedActivity>('/activity/parse', { method: 'POST', body: { name, b64 } }),

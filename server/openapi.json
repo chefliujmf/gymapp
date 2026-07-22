@@ -1065,7 +1065,7 @@
     "/auth/activity/complete": {
       "post": {
         "summary": "A Platyplus-recorded workout finished → fan out to intervals (match-first, #122/#123)",
-        "description": "Keeps the local Platyplus copy; checks intervals for a matching device activity (don't duplicate), else uploads a TCX built from the sample stream. No-op (local-only) when intervals isn't connected.",
+        "description": "Keeps the local Platyplus copy; checks intervals for a matching device activity (don't duplicate), else uploads a TCX built from the sample stream. On a match, PAIRS it to the Platyplus-planned event so intervals shows ONE linked entry (#666b, prod-only) and returns the device HR + duration (#666a). No-op (local-only) when intervals isn't connected.",
         "tags": ["activity"],
         "security": [{ "cookieAuth": [] }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": {
@@ -1077,7 +1077,7 @@
             "samples": { "type": "array", "items": { "type": "object", "properties": { "t": { "type": "number" }, "power": { "type": "number" }, "cadence": { "type": "number" }, "hr": { "type": "number" } } } }
           }
         } } } },
-        "responses": { "200": { "description": "status: uploaded | matched | local-only | no-stream | error" } }
+        "responses": { "200": { "description": "status: uploaded | matched | local-only | no-stream | error. On matched: { icuId, paired, avgHr, durationSec }." } }
       }
     },
     "/auth/activity/parse": {

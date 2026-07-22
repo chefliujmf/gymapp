@@ -20,6 +20,13 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
   // Match the coach review for this session (by date + sport; gym reviews may omit sport).
   const matchReview = (rs: CoachReview[]) => rs.find((r) => r.date === date && (r.sport === sport || (!r.sport && sport === 'gym'))) || null
   const foundRef = useRef(false) // once feedback is found under any key, don't reload (a later dep change won't clobber edits)
+  // #677 — snapshot the saved feedback when the athlete opens Edit, so Cancel can DISCARD changes and Save can SKIP a
+  // needless coach re-review when nothing actually changed (editing = free; only a real change costs an LLM review).
+  const editSnap = useRef<{ feel?: string; rpe?: number; fields: Record<string, string>; note: string } | null>(null)
+  const snapNow = () => ({ feel, rpe, fields, note })
+  const startEdit = () => { editSnap.current = snapNow(); setEditing(true) }
+  const cancelEdit = () => { const s = editSnap.current; if (s) { setFeel(s.feel); setRpe(s.rpe); setFields(s.fields); setNote(s.note) } setEditing(false) }
+  const unchanged = () => { const s = editSnap.current; return !!s && JSON.stringify(snapNow()) === JSON.stringify(s) }
   useEffect(() => {
     // Robust load: the canonical id first, then any LEGACY keys the same session may have been saved under (activity
     // id vs gym-date-workoutId, entered from different views) — so feedback never "vanishes". Re-runs when the
@@ -59,6 +66,8 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
     setTimeout(poll, 7000)
   }
   async function save() {
+    // #677 — editing but nothing changed → just close, DON'T re-post (the server would re-trigger a coach review = wasted LLM $).
+    if (editing && unchanged()) { setEditing(false); return }
     const prevAt = review?.at || ''
     await authApi.activityFeedback(id, { feel, rpe, fields, note, sport, date }).catch(() => {})
     setSaved(true); setEditing(false)
@@ -99,7 +108,7 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
       <div className="card pw-fbsum">
         <div className="pw-fbsum__top">
           <span className="pw-fbsum__h">✅ Your feedback{fromIcu ? ' · from intervals' : ''}</span>
-          <button className="auth-link" style={{ width: 'auto', padding: 0 }} onClick={() => setEditing(true)}>Edit</button>
+          <button className="auth-link" style={{ width: 'auto', padding: 0 }} onClick={startEdit}>Edit</button>
         </div>
         <div className="pw-fbsum__hl">{headline || '—'}</div>
         {tags.length > 0 && <div className="pw-fbsum__tags">{tags.map((t, i) => <span key={i} className="pw-tag">{t}</span>)}</div>}
@@ -123,7 +132,11 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
       ))}
       <div className="section-title">Anything else?</div>
       <textarea className="fb-ta" value={note} onChange={(e) => setNote(e.target.value)} placeholder="How the body felt, any niggles…" />
-      <button className="btn" style={{ marginTop: 14 }} onClick={save} disabled={!feel && !rpe}>Save &amp; get coach review</button>
+      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+        {/* width:auto overrides .btn's width:100% so flex sizing wins — else Cancel eats the row + Save is a sliver (#677 QA catch). */}
+        {editing && <button className="btn btn--ghost" style={{ flex: '0 0 auto', width: 'auto', padding: '0 18px' }} onClick={cancelEdit}>Cancel</button>}
+        <button className="btn" style={{ flex: 1, width: 'auto', minWidth: 0 }} onClick={save} disabled={!feel && !rpe}>{editing ? 'Save changes' : 'Save & get coach review'}</button>
+      </div>
     </div>
   )
 }

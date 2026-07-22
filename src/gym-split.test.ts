@@ -214,6 +214,31 @@ describe('#687 assembleGymSession — world-class, tailored, ALL personas, no ra
       if (uni) expect(uni.eachSide).toBe(true)
     }
   })
+  // #692 — runner = SINGLE-LEG + PLYOMETRIC; swimmer = shoulder-health prehab. Each an assertion per persona.
+  it('#692 runner leads with a UNILATERAL leg move and gets a plyometric extra', () => {
+    const r = (assembleGymSession as any)({ mainSport: 'running', focus: 'support', patterns: ['squat', 'hinge', 'hpush', 'core'] })
+    const firstMain = r.exercises.find((e: any) => e.section === 'main')
+    expect(/single|split squat|lunge/i.test(firstMain.name)).toBe(true)         // unilateral, not a bilateral back squat
+    expect(r.exercises.some((e: any) => /pogo|hop|bound|plyo/i.test(e.name))).toBe(true) // a plyometric extra is present
+  })
+  it('#692 swimmer leads with PULL and gets a shoulder-health prehab extra', () => {
+    const s = (assembleGymSession as any)({ mainSport: 'swimming', focus: 'support', patterns: ['squat', 'hinge', 'hpush', 'vpull', 'hpull', 'core'] })
+    const firstMain = s.exercises.find((e: any) => e.section === 'main')
+    expect(['vpull', 'hpull']).toContain(patternFromExercise(firstMain.name))
+    expect(s.exercises.some((e: any) => /external rotation|face pull|band pull|cuff|scap/i.test(e.name))).toBe(true)
+  })
+  // #691 — accessories grouped by EQUIPMENT to cut station-switching, WITHOUT displacing the heavy sport-emphasis primaries.
+  it('#691 heavy primaries stay emphasis-first (cyclist legs), accessories cluster by equipment', () => {
+    const c = (assembleGymSession as any)({ mainSport: 'cycling', sports: ['cycling'], focus: 'support_build', patterns: ['squat', 'hinge', 'hpush', 'hpull', 'core'] })
+    const mains = c.exercises.filter((e: any) => e.section === 'main')
+    // the FIRST two mains are still the leg primaries (equipment sort didn't reorder them ahead of sport emphasis)
+    expect(['squat', 'hinge']).toContain(patternFromExercise(mains[0].name))
+    expect(['squat', 'hinge']).toContain(patternFromExercise(mains[1].name))
+    // accessories (sets<3) that share equipment sit adjacently: the two dumbbell upper moves are consecutive
+    const names: string[] = mains.map((e: any) => e.name)
+    const dbIdx = names.map((n, i) => /dumbbell|\bdb\b/i.test(n) ? i : -1).filter((i) => i >= 0)
+    if (dbIdx.length >= 2) expect(dbIdx[dbIdx.length - 1] - dbIdx[0]).toBe(dbIdx.length - 1) // contiguous block
+  })
 })
 
 describe('#687-enforce enforceGymStructure — deterministic save-time fix (the LLM ignores the frame)', () => {

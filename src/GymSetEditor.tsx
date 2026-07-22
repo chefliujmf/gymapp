@@ -8,7 +8,7 @@ import { e1rm } from './strength'
 // to the server (PUT /auth/logs/:sid) — the SAME persistence History uses (Logs.tsx), so it's the one source of
 // truth. onSaved hands the new sets back so the parent's summary (volume/1RM/PRs) recomputes live.
 const LB = 2.2046226
-export default function GymSetEditor({ log, exNames, onSaved }: { log: WorkoutLog; exNames: string[]; onSaved?: (sets: Record<number, SetEntry[]>) => void }) {
+export default function GymSetEditor({ log, exNames, onSaved, onCancel }: { log: WorkoutLog; exNames: string[]; onSaved?: (sets: Record<number, SetEntry[]>) => void; onCancel?: () => void }) {
   const imp = (useLiveQuery(() => getSetting('units')) as string | undefined) === 'imperial'
   const unit = imp ? 'lb' : 'kg'
   const toDisp = (kg?: number) => kg == null ? '' : String(imp ? Math.round(kg * LB * 10) / 10 : kg)
@@ -29,6 +29,8 @@ export default function GymSetEditor({ log, exNames, onSaved }: { log: WorkoutLo
     if (log.sid) fetch(`/auth/logs/${log.sid}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ sets, volume, setsCompleted }) }).catch(() => {})
     setSaved(true); setTimeout(() => setSaved(false), 1600); onSaved?.(sets)
   }
+  // #678 — did anything actually change vs the loaded log? (so Cancel can warn-free discard + the Save gate is honest)
+  const dirty = JSON.stringify(sets) !== JSON.stringify(log.sets || {})
   const idxs = Object.keys(sets).map(Number).sort((a, b) => a - b)
   return (
     <div className="stack" style={{ gap: 10 }}>
@@ -49,7 +51,12 @@ export default function GymSetEditor({ log, exNames, onSaved }: { log: WorkoutLo
           </div>
         </div>
       ))}
-      <button className="btn" style={{ marginTop: 4 }} onClick={save} disabled={saved}>{saved ? 'Saved ✓' : 'Save changes'}</button>
+      {/* #678 — an explicit Cancel that DISCARDS edits + closes; Save stays disabled until something actually changes. */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        {/* width:auto overrides .btn's width:100% so flex sizing wins (else Cancel eats the row + Save is a sliver). */}
+        {onCancel && <button className="btn btn--ghost" style={{ flex: '0 0 auto', width: 'auto', padding: '0 18px' }} onClick={() => { setSets(JSON.parse(JSON.stringify(log.sets || {}))); onCancel() }}>Cancel</button>}
+        <button className="btn" style={{ flex: 1, width: 'auto', minWidth: 0 }} onClick={save} disabled={saved || !dirty}>{saved ? 'Saved ✓' : 'Save changes'}</button>
+      </div>
     </div>
   )
 }

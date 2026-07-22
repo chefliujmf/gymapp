@@ -113,10 +113,12 @@ const SPORT_EMPHASIS = {
   cycling: { label: 'cyclist', priority: ['squat', 'hinge'],
     core: 'anti-rotation + anti-extension (Pallof, dead-bug, plank) for power transfer + sustained aero-position endurance — not crunches',
     cue: 'Heavy BILATERAL leg + posterior-chain strength (squat, hinge) is the priority; keep upper-body volume LOW (added mass costs watts/kg); no heavy spinal-fatigue right before a key ride.' },
-  running: { label: 'runner', priority: ['squat', 'hinge'],
+  running: { label: 'runner', priority: ['squat', 'hinge'], unilateral: true, // #692 — running is SINGLE-LEG → prefer unilateral leg variants + a plyo slot
+    extras: [{ name: 'Pogo Hops', mode: 'reps', reps: 10, sets: 3, note: 'reactive/plyometric — stiff ankles, quick ground contact' }],
     core: 'anti-rotation + hip/glute frontal-plane stability (bird-dog, side plank, monster walks) to resist gait rotation',
-    cue: 'Emphasize SINGLE-LEG strength (split squat, step-up, single-leg RDL — running is single-leg) + a weekly PLYOMETRIC/reactive slot (pogos, bounds, calf/ankle stiffness → economy, Beattie/Blagrove); low total volume near hard runs.' },
-  swimming: { label: 'swimmer', priority: ['vpull', 'hpull'],
+    cue: 'SINGLE-LEG strength (split squat, step-up, single-leg RDL — running is single-leg) + a PLYOMETRIC/reactive slot (pogos/bounds → tendon stiffness → economy, Beattie/Blagrove); low total volume near hard runs.' },
+  swimming: { label: 'swimmer', priority: ['vpull', 'hpull'], // #692 — add explicit SHOULDER-HEALTH prehab
+    extras: [{ name: 'Band External Rotation', mode: 'reps', reps: 15, sets: 2, eachSide: true, note: 'rotator-cuff / shoulder-health prehab' }],
     core: 'rotational + anti-rotation + streamline stiffness (hollow hold, Pallof, ab-rollout)',
     cue: 'UPPER PULL-dominant (pull-ups, lat pulldown, rows) + SHOULDER-HEALTH prehab (external rotation, scap/rotator-cuff, YTWs — swimmers’ shoulders are injury-prone); legs lighter unless sprint; balance the over-developed internal rotators with pull + external rotation.' },
   triathlon: { label: 'triathlete', priority: ['squat', 'hinge', 'vpull'],
@@ -143,7 +145,7 @@ export function patternFromExercise(name) {
   if (/\brow\b|face pull/.test(n)) return 'hpull'
   if (/overhead press|shoulder press|arnold|landmine|pike push/.test(n)) return 'vpush'
   if (/bench|push.?up|chest press|floor press|dip/.test(n)) return 'hpush'
-  if (/deadlift|hip thrust|swing|good ?morning|hinge|glute bridge/.test(n)) return 'hinge'
+  if (/deadlift|\brdl\b|hip thrust|swing|good ?morning|hinge|glute bridge/.test(n)) return 'hinge'
   if (/squat|lunge|leg press|step.?up|split squat/.test(n)) return 'squat'
   return null
 }
@@ -227,6 +229,17 @@ const WARMUP_POOL = ['Leg swings', 'Arm circles', 'Cat cow', "World's greatest s
 const COOLDOWN_POOL = ['Standing quad stretch', 'Hamstring stretch', 'Figure-4 glute stretch', 'Chest doorway stretch', 'Calf stretch', 'Pigeon stretch', "Child's pose", 'Cobra stretch']
 const UNILATERAL_RE = /\bsingle|one[- ]?arm|one[- ]?leg|split squat|bulgarian|\blunge|step[- ]?up|pistol|side plank|pallof|suitcase|figure-4|quad stretch|hamstring stretch|calf stretch|pigeon|90-?90|\bswings\b/i
 // order the session's patterns so the SPORT-EMPHASIS priorities come first (legs for a cyclist, pull for a swimmer)
+// #691 — a stable equipment group index from the exercise NAME (barbell station → dumbbell → kettlebell → cable →
+// machine → bodyweight), so same-equipment moves cluster and the athlete isn't ping-ponging between stations.
+function EQUIP_ORDER(name) {
+  const n = String(name || '').toLowerCase()
+  if (/barbell|\bbar\b|trap ?bar|\bez\b|landmine/.test(n)) return 0
+  if (/dumbbell|\bdb\b/.test(n)) return 1
+  if (/kettlebell|\bkb\b|goblet/.test(n)) return 2
+  if (/cable|\bband\b|banded/.test(n)) return 3
+  if (/machine|\bsmith\b|leg press|pulldown|\bcable row\b/.test(n)) return 4
+  return 5 // bodyweight / other
+}
 function orderByEmphasis(patterns, emph) {
   if (!emph) return patterns.slice()
   const pri = new Set(emph.priority)
@@ -264,16 +277,25 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
   const maxPrimaries = f === 'support' ? 3 : f === 'support_build' ? 4 : f === 'strength' ? 4 : f === 'health' ? 3 : 6 // muscle → 6
   let primaries = 0
   const main = orderByEmphasis(patterns, emph).map((pat) => {
-    const name = pick(PATTERNS[pat] || [pat])
+    // #692 — a SINGLE-LEG-sport (runner) prefers the UNILATERAL leg variant (Bulgarian/lunge/single-leg-RDL)
+    const menu = (emph && emph.unilateral && (pat === 'squat' || pat === 'hinge')) ? (PATTERNS[pat] || []).filter((m) => UNILATERAL_RE.test(m)).concat(PATTERNS[pat] || []) : (PATTERNS[pat] || [pat])
+    const name = pick(menu)
     if (pat === 'core') return /hold|plank|carry/i.test(name) ? mk(name, 'main', { mode: 'timed', seconds: 40 }) : mk(name, 'main', { mode: 'reps', reps: 12, sets: 2 })
     if (pat === 'carry') return mk(name, 'main', { mode: 'timed', seconds: 40, sets: 2 })
     if (pat === 'arms') return mk(name, 'main', { mode: 'reps', reps: accReps, sets: 2 }) // accessory — moderate reps
     if (primaries < maxPrimaries) { primaries++; return mk(name, 'main', { mode: 'reps', reps: hi, sets: 3, tempo: rs.tempo }) } // PRIMARY compound — heavy, focus rep scheme
     return mk(name, 'main', { mode: 'reps', reps: accReps, sets: 2 }) // beyond the cap → moderate ACCESSORY (keeps coverage, less volume)
   })
+  // #691 — group same-EQUIPMENT moves to cut station-switching, WITHOUT breaking the training order: heavy PRIMARIES
+  // (sets 3) stay first in their sport-emphasis order (do the big lifts fresh, legs-first for a cyclist); ONLY the
+  // ACCESSORIES that follow are re-grouped by equipment. Key = original index for primaries, equipment rank for the rest.
+  main.map((e, i) => (e._rank = (e.sets === 3 && e.mode === 'reps') ? i : 1000 + EQUIP_ORDER(e.name)))
+  main.sort((a, b) => a._rank - b._rank).forEach((e) => delete e._rank)
+  // #692 — sport-specific EXTRAS (runner plyo, swimmer shoulder-health prehab), deduped
+  const extras = (emph && emph.extras ? emph.extras : []).filter((x) => !used.has(String(x.name).toLowerCase())).map((x) => { used.add(String(x.name).toLowerCase()); return { name: x.name, section: 'main', mode: x.mode || 'reps', ...(x.reps ? { reps: x.reps } : {}), ...(x.sets ? { sets: x.sets } : {}), ...(x.seconds ? { seconds: x.seconds } : {}), ...(x.eachSide ? { eachSide: true } : {}) } })
   // COOL-DOWN — 2 stretches, TIMED
   const cooldown = [pick(COOLDOWN_POOL), pick(COOLDOWN_POOL)].map((n) => mk(n, 'cooldown', { mode: 'timed', seconds: 30 }))
-  return { title: sessionTitle(patterns, emph, sessionIndex), focus: f, emphasis: emph ? emph.label : null, exercises: [...warmup, ...main, ...cooldown] }
+  return { title: sessionTitle(patterns, emph, sessionIndex), focus: f, emphasis: emph ? emph.label : null, exercises: [...warmup, ...main, ...extras, ...cooldown] }
 }
 
 // render the assignment for the prompt block: the split + each session's patterns (with a fresh accessory each).
