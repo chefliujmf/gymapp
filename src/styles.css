@@ -764,7 +764,10 @@ select.search { appearance: none; -webkit-appearance: none; }
 .gp2-gck { width:34px; height:34px; flex:none; border-radius:50%; border:2px solid rgba(255,255,255,.18); background:transparent; color:rgba(255,255,255,.25); font-size:15px; font-weight:800; cursor:pointer; }
 .gp2-gck.on { background:var(--accent,#34e07d); border-color:var(--accent,#34e07d); color:var(--on-accent,#06210f); }
 .gp2-gck:active { transform:scale(.92); }
-.gp2-gridcta { display:flex; gap:10px; align-items:center; padding:10px 0 calc(6px + env(safe-area-inset-bottom)); }
+/* #668 — pin the primary CTA to the bottom of the scrollable grid so it's ALWAYS on-screen (a tall set grid used to
+   push "Log set → rest" / Finish below the fold). Sticky footer inside gp2-gridwrap, opaque bg so grid rows don't
+   bleed through, a hairline + fade above it to read as a floating action bar. */
+.gp2-gridcta { position:sticky; bottom:0; z-index:2; display:flex; gap:10px; align-items:center; padding:10px 0 calc(6px + env(safe-area-inset-bottom)); background:var(--bg); border-top:1px solid var(--line); box-shadow:0 -14px 18px -12px var(--bg); }
 .gp2-gridcta .gp2-done { flex:1; flex-basis:auto; }
 .gp2-dot { width:8px; height:8px; border-radius:999px; background:rgba(255,255,255,.2); border:none; padding:0; cursor:pointer; transition:width .15s; }
 .gp2-dot.on { background:rgba(255,255,255,.5); }
