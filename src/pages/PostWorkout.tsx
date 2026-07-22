@@ -68,7 +68,7 @@ export default function PostWorkout() {
           <div style={{ marginTop: 8 }}>
             <button className="btn btn--ghost" onClick={() => setEditSets((v) => !v)}>{editSets ? 'Done editing' : '✏️ Edit sets'}</button>
             {editSets && <div className="card" style={{ padding: '12px 14px', marginTop: 8 }}>
-              <GymSetEditor log={gymLog} exNames={gymLog.exNames || []} onSaved={(s) => setGymLog((g) => g ? { ...g, sets: s } : g)} />
+              <GymSetEditor log={gymLog} exNames={gymLog.exNames || []} onSaved={(s) => setGymLog((g) => g ? { ...g, sets: s } : g)} onCancel={() => setEditSets(false)} />
             </div>}
           </div>
         )}

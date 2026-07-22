@@ -1154,6 +1154,9 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
   const plan = (req.user.plans || []).find((p) => p.id === req.params.id)
   if (!plan) return res.status(404).json({ error: 'plan not found' })
   const b = req.body || {}
+  // #677 — signature of the PRIOR feedback so an unchanged re-save doesn't re-fire a coach review (wasted LLM $).
+  const fbSig = (x) => x ? JSON.stringify({ feel: x.feel || '', rpe: x.rpe || 0, fields: x.fields || {}, note: (x.note || '').trim() }) : ''
+  const priorSig = fbSig(plan.feedback)
   plan.feedback = {
     feel: typeof b.feel === 'string' ? b.feel : undefined,
     rpe: Number(b.rpe) >= 1 && Number(b.rpe) <= 10 ? Number(b.rpe) : undefined,
@@ -1164,7 +1167,8 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
   save(store)
   res.json({ ok: true, feedback: plan.feedback })
   // #76/#589 — fire the async coach review (best-effort, non-blocking; extracted so the #589 retry reuses it).
-  triggerPlanReview(req.user, plan, plan.feedback)
+  // #677 — only when the feedback actually CHANGED.
+  if (fbSig(plan.feedback) !== priorSig) triggerPlanReview(req.user, plan, plan.feedback)
 })
 
 // #583 — a completed intervals ACTIVITY and the coach PLAN it fulfilled are ONE session for feedback. Map any sport
@@ -1268,6 +1272,10 @@ app.post('/auth/activity/:id/feedback', auth, async (req, res) => {
     at: Date.now(),
   }
   if (!req.user.activityFeedback) req.user.activityFeedback = {}
+  // #677 — did the CONTENT actually change vs what we already have? Re-saving identical feedback (JM re-opening Edit and
+  // hitting Save) must NOT re-fire a coach review — that's wasted LLM $. Compare the meaningful fields, ignore `at`.
+  const fbSig = (x) => x ? JSON.stringify({ feel: x.feel || '', rpe: x.rpe || 0, fields: x.fields || {}, note: (x.note || '').trim() }) : ''
+  const fbChanged = fbSig(req.user.activityFeedback[id]) !== fbSig(fb)
   req.user.activityFeedback[id] = fb
   audit(req.user, { actor: 'you', action: 'Logged feedback', target: fb.title || `${fb.sport || 'workout'} ${fb.date || ''}`.trim(), detail: [fb.feel && `felt ${fb.feel}`, fb.rpe && `RPE ${fb.rpe}`].filter(Boolean).join(' · '), kind: 'feedback' }) // #232
   // #583 — a completed activity + the coach PLAN it fulfilled are ONE session. Link them (either direction), MIRROR the
@@ -1318,7 +1326,8 @@ app.post('/auth/activity/:id/feedback', auth, async (req, res) => {
     if (fb.note && fb.note.trim()) syncActivityNote(req.user, icuActivityId, fb.note.trim()).catch((e) => console.error('[icu-note-write] ' + (e.message || e)))
   }
   // #364/#589 — async coach review of the activity (best-effort; extracted so the #589 retry reuses it).
-  triggerActivityReview(req.user, id, fb, icuActivityId)
+  // #677 — only when the feedback actually CHANGED (an unchanged re-save must not burn a fresh review).
+  if (fbChanged) triggerActivityReview(req.user, id, fb, icuActivityId)
 })
 
 // admin: user management
@@ -3241,6 +3250,13 @@ app.get('/api/intervals/activities', apiAuth, async (req, res) => {
     avgHR: a.average_heartrate ? Math.round(a.average_heartrate) : null, avgW: a.icu_average_watts ? Math.round(a.icu_average_watts) : null,
     load: a.icu_training_load ?? null, intensity: a.icu_intensity ?? null, rpe: a.icu_rpe ?? null, feel: a.feel ?? null, name: a.name,
     reviewed: a.coach_tick != null, coachTick: a.coach_tick ?? null, // #437 — the reviewed/NOT-reviewed tracker: has the coach ticked this activity yet (coach_tick 1-5)?
+    // #681 — GRACE so the coach doesn't review a fresh session BEFORE the athlete logs how it went (JM: a review landed
+    // with the "How did it go?" still empty, and the athlete's later submit then double-reviewed). awaitingFeedback =
+    // recent (today/yesterday), NOT reviewed, and no feel/RPE anywhere yet → the DAILY review pass SKIPS it and lets the
+    // athlete's submit drive the (one) review. Past the grace with still no feedback, it falls through to a data-only review.
+    awaitingFeedback: a.coach_tick == null && a.feel == null && a.icu_rpe == null
+      && !(req.user.activityFeedback && req.user.activityFeedback[String(a.id)])
+      && daysAgo != null && daysAgo >= 0 && daysAgo <= 1,
   } })
   res.json({ connected: true, activities })
 })
@@ -3689,7 +3705,7 @@ function horizonFillMsg(today, cov) {
 // #439 (JM idea) — SEPARATE focused pass per topic beats one giant prompt (the coach gave each partial
 // attention + ran out). REVIEWS pass:
 function reviewMsg(today) {
-  return `Daily REVIEW pass (${today}) — do ONLY activity reviews now. get_recent_activities flags each activity's \`reviewed\` status + its \`id\`: for any completed activity in the last week with \`reviewed:false\`, REVIEW it — save_coach_review with that exact \`id\` (a score + one-line verdict + 2-4 takeaways; ticks the Coach box + posts your note) and give it a public-safe title/description via set_activity_text. SKIP anything already \`reviewed:true\` (never re-review); cap at the few most recent so nothing piles up. WHAT'S NEXT = the OBJECTIVE, NOT the next workouts (JM 2026-07-21, reverses #580): end the review by connecting THIS session to what the athlete is BUILDING TOWARD — their goal + the number/quality this work moves (e.g. "this threshold work is growing how long you can hold your hardest effort, which is the limiter for your event"). Do NOT list, name, or preview their upcoming/scheduled sessions — "Today: Z2 spin … Tomorrow: Threshold 4×10 …" is exactly WRONG — and do NOT add recovery / sleep / logistics here. Keep the \`next\` field purely about the OBJECTIVE and how this session moves them toward it; nothing about tomorrow's calendar. **SHOW THEM THEIR PROGRESS (#631): when you can measure a concrete GAIN — get_metrics now vs a few weeks ago (threshold power/pace up, TTE up, EF up, CS·D′/CSS up) — STATE it plainly as a takeaway ("your threshold is up ~8 W in 6 weeks", "you're holding threshold ~4 min longer than a month ago"). The athlete should SEE their training working, not just be told "good job." Only claim a gain that's REAL in the numbers.** Don't CHANGE the plan in this pass, just reflect it truthfully. CALIBRATE each verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. Be concise.`
+  return `Daily REVIEW pass (${today}) — do ONLY activity reviews now. get_recent_activities flags each activity's \`reviewed\` status + its \`id\`: for any completed activity in the last week with \`reviewed:false\`, REVIEW it — save_coach_review with that exact \`id\` (a score + one-line verdict + 2-4 takeaways; ticks the Coach box + posts your note) and give it a public-safe title/description via set_activity_text. SKIP anything already \`reviewed:true\` (never re-review). ⚠️ ALSO SKIP any activity flagged \`awaitingFeedback:true\` — it's fresh (today/yesterday) and the athlete hasn't logged how it went yet; reviewing now would beat their input and then double-review when they submit. Leave it — their submit triggers the review, or it drops the flag after a day and you'll review it next pass. Cap at the few most recent so nothing piles up. WHAT'S NEXT = the OBJECTIVE, NOT the next workouts (JM 2026-07-21, reverses #580): end the review by connecting THIS session to what the athlete is BUILDING TOWARD — their goal + the number/quality this work moves (e.g. "this threshold work is growing how long you can hold your hardest effort, which is the limiter for your event"). Do NOT list, name, or preview their upcoming/scheduled sessions — "Today: Z2 spin … Tomorrow: Threshold 4×10 …" is exactly WRONG — and do NOT add recovery / sleep / logistics here. Keep the \`next\` field purely about the OBJECTIVE and how this session moves them toward it; nothing about tomorrow's calendar. **SHOW THEM THEIR PROGRESS (#631): when you can measure a concrete GAIN — get_metrics now vs a few weeks ago (threshold power/pace up, TTE up, EF up, CS·D′/CSS up) — STATE it plainly as a takeaway ("your threshold is up ~8 W in 6 weeks", "you're holding threshold ~4 min longer than a month ago"). The athlete should SEE their training working, not just be told "good job." Only claim a gain that's REAL in the numbers.** Don't CHANGE the plan in this pass, just reflect it truthfully. CALIBRATE each verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. Be concise.`
 }
 // ROUND-OUT pass — FUEL / MIND / RECOVERY around the (already-set) plan:
 function roundOutMsg(today) {
