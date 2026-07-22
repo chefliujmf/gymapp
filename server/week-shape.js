@@ -51,6 +51,11 @@ export function weekShape(p = {}) {
       qualityDays: early ? 0 : 1,
       moderateDays: early ? 1 : 0,
       intensityCeiling: early ? 'endurance' : 'sweetspot',
+      // #713 (audit) — the REAL early-postpartum risk is ground-reaction IMPACT (pelvic floor), not aerobic intensity. A
+      // ceiling-compliant easy RUN is still contraindicated before the floor is rebuilt. Carry an impact directive: NONE
+      // <6wk (no running/jumping — walk / bike / swim / elliptical), WALK-RUN 6-12wk. (Coached via the prompt; the hard
+      // modality-conversion clamp is a careful follow-up — auto-converting a run to a walk is risky.)
+      impact: early ? 'none' : 'walk_run',
       rationale: `POSTPARTUM (~${Math.round(postpartumWeeks)} wk) — a GRADED RETURN, not a build. ${early ? 'First ~6 weeks: rebuild base + PELVIC FLOOR + deep core, mostly EASY, no impact/rush, cleared by her clinician first (esp. after a C-section).' : 'Weeks 6–12: gradually reintroduce ONE quality day + impact as pelvic floor + core allow.'} Progress by how she FEELS + clinician guidance; watch for leaking, heaviness/pressure, or abdominal doming and back off if they appear. Ramp to a full build only after ~12 weeks and symptom-free.`,
     }
   }
