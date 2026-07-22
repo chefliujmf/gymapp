@@ -226,6 +226,9 @@ const makeSwim = wrap((a) => {
     id: a.id || newId(), date: a.date, sport: 'swim', title: a.title,
     notes: (a.notes ? a.notes + '\n' : '') + notesStr,
     moving_time: Math.round(durS), distanceM: distM, icu_training_load: Math.round(sTSS),
+    // #715 — send the STRUCTURED sets + the coach's freeform note so the SERVER can CLAMP each set's zone to the week
+    // ceiling (a maintenance/pregnant/teen swimmer can't be saved a sprint set) and re-derive notes/duration/load.
+    swimSets: a.sets, swimNote: a.notes || '',
     ...coachingOf(a),
   })
 })

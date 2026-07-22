@@ -30,6 +30,7 @@ import { readiness as computeReadiness, baselines as wellnessBaselines, forecast
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
 import { enforceShape, qualityEnduranceDates, concurrentGymCollisions } from './shape-enforce.js' // #615/#620 clamp · #717 concurrent-training separation
+import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
 import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
@@ -1838,6 +1839,14 @@ async function reenforceShapeAll(user) {
   const future = (user.plans || []).filter((p) => p && p.date >= today && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim')).sort((a, b) => String(a.date).localeCompare(String(b.date)))
   const touched = []
   for (const p of future) { const t0 = p.title, seg0 = JSON.stringify(p.segments || []); enforceShapeIntensity(user, p); if (p.title !== t0 || JSON.stringify(p.segments || []) !== seg0) touched.push(p) }
+  // #715 — sweep STALE swim plans through the zone clamp too (they carry no %-segments, so enforceShapeIntensity above
+  // is a no-op for them). A swim built in an earlier, harder week must be eased if the shape tightened (e.g. pregnancy).
+  const swimShape = athleteWeekShape(user), swimCss = user.sportSettings?.swimming?.thresholdPace
+  for (const p of future) {
+    if (p.sport !== 'swim' || !Array.isArray(p.swimSets) || !p.swimSets.length) continue
+    const r = enforceSwim(p.swimSets, swimShape.intensityCeiling, swimCss)
+    if (r.clamped) { p.swimSets = r.sets; p.notes = `${p.swimNote ? p.swimNote + '\n' : ''}${r.notes}`; p.moving_time = r.moving_time; p.distanceM = r.distanceM; p.icu_training_load = r.icu_training_load; if (!touched.includes(p)) touched.push(p) }
+  }
   // #649 — GYM has no shape/intensity clamp, but stale gym plans keep a wrong REP SCHEME (a cyclist's old 3×10) and
   // the teen floor. Sweep every future gym plan through the code enforcement too (no intervals push — gym has no model).
   let gymTouched = 0
@@ -2726,7 +2735,7 @@ async function upsertPlan(user, body, actor = 'coach') {
     ...(body.sport === 'gym'
       ? { rounds: Number(body.rounds) || 1, exercises: (Array.isArray(body.exercises) ? body.exercises : []).map(withDefaultTempo) }
       : body.sport === 'swim'
-      ? { segments: Array.isArray(body.segments) ? body.segments : [], moving_time: Number(body.moving_time) || undefined, distanceM: Number(body.distanceM) || undefined, icu_training_load: Number(body.icu_training_load) || undefined } // #614 — carry swim's time/distance/load so the push path (swim TSS) isn't silently dropped
+      ? { segments: Array.isArray(body.segments) ? body.segments : [], swimSets: Array.isArray(body.swimSets) ? body.swimSets : undefined, swimNote: typeof body.swimNote === 'string' ? body.swimNote : undefined, moving_time: Number(body.moving_time) || undefined, distanceM: Number(body.distanceM) || undefined, icu_training_load: Number(body.icu_training_load) || undefined } // #614 swim time/distance/load · #715 structured sets for the clamp
       : { ftp: Number(body.ftp) || undefined, segments: Array.isArray(body.segments) ? body.segments : [], indoor: body.indoor != null ? !!body.indoor : (i >= 0 ? user.plans[i]?.indoor : undefined) }), // #479 indoor(ERG=specific) vs outdoor(range); kept across updates unless the body sets it
   }
   // #331c — HARD guard: never persist an "easy/recovery/warm-up"-labelled run/ride segment at near-threshold
@@ -2739,6 +2748,18 @@ async function upsertPlan(user, body, actor = 'coach') {
     if (r.deduped || r.retimed) { plan.exercises = r.exercises; console.log(`[gym-structure] ${user.username || ''} "${plan.title}" — deduped ${r.deduped}, retimed ${r.retimed}`) }
   }
   enforcePregnancyGymPlan(user, plan) // #712 (audit) — pregnant T2+ supine gym clamp
+  // #715 (audit) — SWIM: clamp each set's zone to the week ceiling (like ride/run intensity) + re-derive the notes,
+  // duration, distance + sTSS from the CLAMPED sets. A maintenance/pregnant/teen swimmer can no longer be saved a sprint
+  // set no matter what the coach wrote — the exact enforcement ride/run already had, now first-class for swimming too.
+  if (plan.sport === 'swim' && Array.isArray(plan.swimSets) && plan.swimSets.length) {
+    const shape = athleteWeekShape(user)
+    const css = user.sportSettings?.swimming?.thresholdPace
+    const r = enforceSwim(plan.swimSets, shape.intensityCeiling, css)
+    plan.swimSets = r.sets
+    plan.notes = `${plan.swimNote ? plan.swimNote + '\n' : ''}${r.notes}` // rebuild the display text from the clamped sets
+    plan.moving_time = r.moving_time; plan.distanceM = r.distanceM; plan.icu_training_load = r.icu_training_load
+    if (r.clamped) console.log(`[swim-clamp] ${user.username || ''} "${plan.title}" — clamped ${r.clamped} set(s) to zone ≤${({ endurance: 2, tempo: 2, sweetspot: 3, threshold: 3, vo2: 5 })[shape.intensityCeiling] ?? 5} (ceiling ${shape.intensityCeiling})`)
+  }
   enforceTeenGym(user, plan) // #631 — under-18: floor near-maximal gym sets to submaximal (no 1-RM loading)
   // #650 — PRIVACY (safety): strip pregnancy/postpartum terms from anything the athlete or the public could read
   // (the title pushes to intervals → Strava). Enforced in code, not just prompted. No-op for normal copy.
