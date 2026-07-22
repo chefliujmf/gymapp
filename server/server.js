@@ -1883,7 +1883,11 @@ function athleteArchetypeBlock(user) {
   const shape = athleteWeekShape(user)
   const qd = (shape.qualityDays || 0) + (shape.moderateDays || 0) // moderate (pregnancy tempo) counts as its 1 slot
   const sports = (user.sports && user.sports.length) ? user.sports : (user.sport ? [user.sport] : [])
-  const sport = sports.includes('cycling') ? 'ride' : sports.includes('running') ? 'run' : sports.includes('swimming') ? 'swim' : (sports[0] === 'running' ? 'run' : 'ride')
+  // #716 (audit) — for a MULTI-SPORT athlete (triathlete) the archetype block was hardcoded to the bike; respect their
+  // stated MAIN sport so a run- or swim-focused triathlete gets the right discipline's variety (the TRIATHLON block below
+  // handles the 3-sport balance). (Full per-discipline archetype generation is the larger follow-on.)
+  const msSport = ({ running: 'run', swimming: 'swim', cycling: 'ride' })[String(user.info?.mainSport || '').toLowerCase()]
+  const sport = msSport || (sports.includes('cycling') ? 'ride' : sports.includes('running') ? 'run' : sports.includes('swimming') ? 'swim' : (sports[0] === 'running' ? 'run' : 'ride'))
   const trainingDays = Number(user.info && user.info.trainingDays) || 5
   const easyDays = Math.max(1, Math.min(5, trainingDays - qd - 1)) // rough: the rest of the endurance week is easy
   // recent archetype fingerprint = the last ~14 days of ride/run/swim plan TITLES mapped back to a key
@@ -1990,6 +1994,7 @@ function buildSystemPrompt(user) {
     tail += `\n\n# TRIATHLON — this athlete races triathlon (swim + bike + run as ONE season). Plan per coach-engine-triathlon.md.
 - **A-RACE & PHASE:** ${tgoal ? `Their goal, in their words: "${tgoal.slice(0, 300)}". Read the race DATE + DISTANCE from it (sprint / Olympic / 70.3 / Ironman).` : 'They have NOT stated a race yet — ASK for their A-race date + distance so you can periodize; until then hold a general base.'} Count back from race day and set the Friel phase (Prep → Base → Build → Peak → Race → Transition). Tell them which phase they're in and why.
 - **WEEKLY BALANCE:** program all THREE sports each week, biased to the athlete's LIMITER (weakest/most-race-costly discipline) and the race's demands — not an even split. Swim technique is high-frequency + low-load; bike carries the most training load; run is the most injury-costly so cap hard-run frequency. Each session goes to ITS OWN zones (ride % FTP, run pace off threshold, swim pace off CSS).
+- **SPREAD THE QUALITY (#716):** the # THIS WEEK'S SHAPE quality-day count is the TOTAL across all three sports — SPREAD it (roughly one key session PER discipline, weighted to the limiter), do NOT spend the whole quality allowance on the bike. Two hard bike days + zero hard swim/run is exactly the bike-only trap to avoid.
 - **BRICKS:** schedule bike→run bricks in Build/Peak to train the transition (legs off the bike). Keep the run portion controlled early in the block.
 - **TOTAL LOAD:** the three sports SHARE one recovery budget — sum load across all of them against the weekly band + this athlete's day/week caps; don't let three "moderate" days stack into an overload. Strength is periodized support (Hagerman): heavier in base, maintenance in build/peak, cut in race week.
 Use create_swim / create_ride / create_run / create_workout, each to its own zones, balanced to total load and periodized to the A-race.`
