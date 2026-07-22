@@ -106,5 +106,15 @@ export function enforceShape(shape, plan, siblings = []) {
   // #672 — neutralize surge/burst PROSE on ANY maintenance session (NOT gated on the current title being a surge — the
   // title may already have been relabeled to "Tempo Run" in a prior sweep, orphaning the "effort bursts" prose forever).
   if (shape.loadBand === 'maintenance') for (const k of ['objective', 'notes', 'success']) { if (typeof plan[k] === 'string') { const v = scrubSurgeProse(plan[k]); if (v !== plan[k]) { plan[k] = v; changed = true } } }
+  // #745 (audit) POSTPARTUM IMPACT — CODE-ENFORCED at save (was prompt-only). Early return (impact:'none', <6wk): a RUN
+  // is contraindicated (ground-reaction load on a healing pelvic floor) → force it to a non-impact EASY walk. Weeks 6-12
+  // (impact:'walk_run'): keep it a gentle walk-run capped to easy. The clamp above already lowered %; this fixes the
+  // MODALITY/label so a hard-looking "Tempo Run" can't survive as a run for an early-postpartum athlete.
+  if (plan.sport === 'run' && (shape.impact === 'none' || shape.impact === 'walk_run')) {
+    const cap = CEILING_PCT.endurance
+    for (const s of (plan.segments || [])) { if ((Number(s.powerStart) || 0) > cap) { s.powerStart = cap; clamped++; changed = true } if ((Number(s.powerEnd) || 0) > cap) { s.powerEnd = cap; clamped++; changed = true } }
+    const t = shape.impact === 'none' ? 'Gentle Walk' : 'Easy Walk-Run'
+    if (plan.title !== t) { plan.title = t; changed = true }
+  }
   return { changed, clamped, effCeil, overBudget }
 }

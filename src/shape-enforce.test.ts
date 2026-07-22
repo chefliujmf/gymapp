@@ -158,3 +158,24 @@ describe('#717 concurrent-training separation — detect heavy gym adjacent to a
     expect(concurrentGymCollisions(plans, '2026-07-30', 14).map((p: any) => p.date)).toEqual(['2026-07-31'])
   })
 })
+
+// #745 (audit) — POSTPARTUM impact is CODE-ENFORCED at save, not prompt-only.
+describe('postpartum impact clamp (#745)', () => {
+  it('early postpartum (<6wk, impact:none) → a hard RUN becomes a Gentle Walk, clamped to easy', () => {
+    const plan = { id: 'r', date: '2026-07-21', sport: 'run', title: 'Tempo Run 5×3', ...seg(100) }
+    const r = enforceShape({ impact: 'none', loadBand: 'flat', qualityDays: 1, moderateDays: 0, intensityCeiling: 'endurance' }, plan, [plan])
+    expect(r.changed).toBe(true)
+    expect(plan.title).toBe('Gentle Walk')
+    expect(plan.segments[0].powerStart).toBeLessThanOrEqual(75) // endurance ceiling
+  })
+  it('weeks 6-12 (impact:walk_run) → an Easy Walk-Run, capped to easy', () => {
+    const plan = { id: 'r', date: '2026-07-21', sport: 'run', title: 'Threshold Run', ...seg(100) }
+    enforceShape({ impact: 'walk_run', loadBand: 'flat', qualityDays: 1, moderateDays: 1, intensityCeiling: 'endurance' }, plan, [plan])
+    expect(plan.title).toBe('Easy Walk-Run')
+  })
+  it('a RIDE is untouched by the run-impact clamp', () => {
+    const plan = { id: 'b', date: '2026-07-21', sport: 'ride', title: 'Easy Spin', ...seg(60) }
+    enforceShape({ impact: 'none', loadBand: 'flat', qualityDays: 1, moderateDays: 0, intensityCeiling: 'endurance' }, plan, [plan])
+    expect(plan.title).toBe('Easy Spin')
+  })
+})
