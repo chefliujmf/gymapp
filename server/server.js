@@ -58,7 +58,7 @@ function mergeIcuSportSettings(existing, mapped, intervalsWins = false) {
   }
   return out
 }
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, gymTssFromRpe, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, cycleLoadModifier, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage, scrubPrivate } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage, #650 scrubPrivate, #719 cycleLoadModifier)
 import webpush from 'web-push' // #457 — phone push notifications
@@ -1148,6 +1148,22 @@ function gymSessionLine(user, date) {
   const dur = Number(log.duration) || 0
   return ` ACTUAL SESSION (from the app log — get_recent_activities does NOT carry gym set-detail, so trust THIS): ${exNames.length} exercises, ${sets} working sets, ${reps} reps${dur ? `, ${dur} min` : ''}. Heaviest sets: ${tops.slice(0, 6).join('; ')}. This is a REAL, substantial strength session — CALIBRATE to this VOLUME + load, NOT to the RPE alone. A LOW RPE here means the athlete was fresh/managing effort, NOT that the session was trivial — do NOT call a full multi-exercise, multi-set session with PRs a "light activation"/"movement day".`
 }
+// #729 — refine a COMPLETED gym's training load from the athlete's ACTUAL RPE (Friel Time×RPE), store it on the log,
+// and PUSH it to intervals so Form/CTL/ATL reflect real strength fatigue (not the flat 45/h planned estimate). Prod-only
+// (QA is read-only toward intervals). Updates whichever exists: the planned event's load and/or the matched activity's.
+async function refreshGymLoad(user, { date, rpe, plan, activityId } = {}) {
+  if (!Number(rpe) || !date) return
+  const log = (user.logs || []).find((l) => l && l.date === date && /strength|gym/i.test(String(l.discipline || '')))
+  const dur = (log && Number(log.duration)) || (plan ? Math.round(estimateGymSeconds(plan) / 60) : 0)
+  const tss = gymTssFromRpe(dur, rpe)
+  if (!tss) return
+  if (log && log.tss !== tss) { log.tss = tss; save(store) }
+  if (IS_STAGING || !user.icuKey || !user.icuAthlete) return // prod-only writes to the shared athlete (#381)
+  try {
+    if (plan && plan.icuEventId) await icuFetch(user, `/athlete/${user.icuAthlete}/events/${plan.icuEventId}`, { method: 'PUT', body: JSON.stringify({ icu_training_load: tss }) })
+    if (activityId && /^i?\d+$/.test(String(activityId))) await icuFetch(user, `/activity/${String(activityId)}`, { method: 'PUT', body: JSON.stringify({ icu_training_load: tss }) })
+  } catch (e) { console.error('[gym-load] ' + (e.message || e)) }
+}
 function triggerActivityReview(user, id, fb, icuActivityId) {
   if (!fb || !(user.coachProfile && user.coachProfile.trim())) return false
   const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
@@ -1201,6 +1217,8 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
   // #76/#589 — fire the async coach review (best-effort, non-blocking; extracted so the #589 retry reuses it).
   // #677 — only when the feedback actually CHANGED.
   if (fbSig(plan.feedback) !== priorSig) triggerPlanReview(req.user, plan, plan.feedback)
+  // #729 — a rated GYM session: recompute its load from the ACTUAL RPE (Friel) + feed Form/CTL. Best-effort, prod-only.
+  if (plan.sport === 'gym' && Number(plan.feedback.rpe)) refreshGymLoad(req.user, { date: String(plan.date).slice(0, 10), rpe: plan.feedback.rpe, plan }).catch(() => {})
 })
 
 // #583 — a completed intervals ACTIVITY and the coach PLAN it fulfilled are ONE session for feedback. Map any sport
@@ -1361,6 +1379,11 @@ app.post('/auth/activity/:id/feedback', auth, async (req, res) => {
   // #364/#589 — async coach review of the activity (best-effort; extracted so the #589 retry reuses it).
   // #677 — only when the feedback actually CHANGED (an unchanged re-save must not burn a fresh review).
   if (fbChanged) triggerActivityReview(req.user, id, fb, icuActivityId)
+  // #729 — a rated GYM session: recompute its load from the ACTUAL RPE (Friel) + feed Form/CTL. Best-effort, prod-only.
+  if (/gym|strength|weight/i.test(fb.sport || '') && Number(fb.rpe)) {
+    const gp = (req.user.plans || []).find((p) => p && p.sport === 'gym' && String(p.date).slice(0, 10) === (fb.date || ''))
+    refreshGymLoad(req.user, { date: fb.date, rpe: fb.rpe, plan: gp, activityId: icuActivityId }).catch(() => {})
+  }
 })
 
 // admin: user management

@@ -64,7 +64,7 @@ export default function PostWorkout() {
         <div className="page-head"><span className="eyebrow">Gym · ✓ Completed{durMin ? ` · ${durMin} min` : ''}</span><h1>{p.title}</h1></div>
         {(() => {
           const fk = gymFeedbackKeys({ date: gymLog.date, planId: p.id, activityId: act?.id, workoutId: gymLog.workoutId })
-          return <GymSummary minutes={durMin} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={gymLog.date} planId={p.id} activityId={act?.id != null ? String(act.id) : undefined} avgHr={(act as { icu_average_hr?: number; average_heartrate?: number } | undefined)?.icu_average_hr || (act as { average_heartrate?: number } | undefined)?.average_heartrate} />
+          return <GymSummary minutes={durMin} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={gymLog.date} planId={p.id} activityId={act?.id != null ? String(act.id) : undefined} avgHr={(act as { icu_average_hr?: number; average_heartrate?: number } | undefined)?.icu_average_hr || (act as { average_heartrate?: number } | undefined)?.average_heartrate} tss={gymLog.tss} />
         })()}
         {/* #591/#730 — edit a completed session's sets (fix a mistyped weight/rep → recompute). Gate on id OR sid so a
             server-sourced log (no local Dexie id, e.g. another device) is still editable, not just locally-recorded ones. */}

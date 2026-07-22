@@ -436,7 +436,7 @@ export default function ActivityDetail() {
           </div>
         </div>
         {gymLogs == null ? <p className="meta">Loading session…</p>
-          : <GymSummary minutes={durMin} exercises={exLogs} review={review} note={note} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={dISO} planId={plan?.id} avgHr={avgHr} plannedNoWeights={planNoWeights} onAddWeights={addWeights} />}
+          : <GymSummary minutes={durMin} exercises={exLogs} review={review} note={note} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={dISO} planId={plan?.id} avgHr={avgHr} tss={gymLog?.tss ?? (a as { icu_training_load?: number }).icu_training_load ?? undefined} plannedNoWeights={planNoWeights} onAddWeights={addWeights} />}
         {/* #727/#730 — the "Log what you did" / edit-weights sheet: mode-aware inputs, prefilled from the plan, kg/lbs per Settings. */}
         {gymLogs != null && exLogs.length > 0 && (
           logging ? (
