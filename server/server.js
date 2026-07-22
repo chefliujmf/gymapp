@@ -25,13 +25,15 @@ const USE_PG = !!process.env.DATABASE_URL
 const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
-import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan } from './icu-match.js'
+import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan, mirrorBrokenPlans } from './icu-match.js'
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
-import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, unit-tested clamp that ENFORCES the week shape on a plan
+import { enforceShape, qualityEnduranceDates, concurrentGymCollisions } from './shape-enforce.js' // #615/#620 clamp · #717 concurrent-training separation
+import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
+import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
-import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
+import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile, goalPriorityFrame } from './perf-metrics.js' // #404; #669 goal-aware priority
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -56,9 +58,9 @@ function mergeIcuSportSettings(existing, mapped, intervalsWins = false) {
   }
   return out
 }
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, gymTssFromRpe, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
-import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage, scrubPrivate } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage, #650 scrubPrivate)
+import { cycleContext, cycleLoadModifier, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage, scrubPrivate } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage, #650 scrubPrivate, #719 cycleLoadModifier)
 import webpush from 'web-push' // #457 — phone push notifications
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -452,8 +454,17 @@ app.put('/auth/avatar', auth, (req, res) => {
 
 // profile info (arbitrary general fields: displayName, etc.)
 app.put('/auth/profile', auth, (req, res) => {
+  const wasPregnant = !!(req.user.info && req.user.info.pregnant) // #711 — capture BEFORE the merge to detect true→false
   req.user.info = { ...(req.user.info || {}), ...(req.body || {}) }
   if (req.body && req.body.pregnant === true) { delete req.user.cyclePhase; delete req.user.cyclePhaseAt } // #427 — no menstrual cycle while pregnant; clear stale phase now
+  // #711 (audit SAFETY) — clearing pregnancy must ENTER the graded postpartum return by DEFAULT, not silently snap to a
+  // full build (2 quality + VO2) the week after birth. If she turns Pregnant OFF and hasn't set a birth date, stamp a
+  // provisional postpartumSince=today so weekShape uses the graded-return shape until ~12 wk (she can edit the date). This
+  // is a data-availability SAFETY default (opt-out), not a fitness classification.
+  if (wasPregnant && req.body && req.body.pregnant === false && !req.user.info.postpartumSince) {
+    req.user.info.postpartumSince = new Date().toISOString().slice(0, 10)
+    console.log(`[postpartum-default] ${req.user.username || ''} — pregnancy cleared with no birth date → provisional postpartumSince=today (graded return)`)
+  }
   if (typeof req.body.email === 'string' && req.body.email.includes('@')) req.user.email = req.body.email.toLowerCase()
   if (typeof req.body.coachName === 'string') req.user.coachName = req.body.coachName.trim().slice(0, 40)
   if (Array.isArray(req.body.sports)) req.user.sports = req.body.sports.filter((s) => typeof s === 'string').map((s) => s.toLowerCase().trim().slice(0, 20)).slice(0, 8)
@@ -1137,6 +1148,22 @@ function gymSessionLine(user, date) {
   const dur = Number(log.duration) || 0
   return ` ACTUAL SESSION (from the app log — get_recent_activities does NOT carry gym set-detail, so trust THIS): ${exNames.length} exercises, ${sets} working sets, ${reps} reps${dur ? `, ${dur} min` : ''}. Heaviest sets: ${tops.slice(0, 6).join('; ')}. This is a REAL, substantial strength session — CALIBRATE to this VOLUME + load, NOT to the RPE alone. A LOW RPE here means the athlete was fresh/managing effort, NOT that the session was trivial — do NOT call a full multi-exercise, multi-set session with PRs a "light activation"/"movement day".`
 }
+// #729 — refine a COMPLETED gym's training load from the athlete's ACTUAL RPE (Friel Time×RPE), store it on the log,
+// and PUSH it to intervals so Form/CTL/ATL reflect real strength fatigue (not the flat 45/h planned estimate). Prod-only
+// (QA is read-only toward intervals). Updates whichever exists: the planned event's load and/or the matched activity's.
+async function refreshGymLoad(user, { date, rpe, plan, activityId } = {}) {
+  if (!Number(rpe) || !date) return
+  const log = (user.logs || []).find((l) => l && l.date === date && /strength|gym/i.test(String(l.discipline || '')))
+  const dur = (log && Number(log.duration)) || (plan ? Math.round(estimateGymSeconds(plan) / 60) : 0)
+  const tss = gymTssFromRpe(dur, rpe)
+  if (!tss) return
+  if (log && log.tss !== tss) { log.tss = tss; save(store) }
+  if (IS_STAGING || !user.icuKey || !user.icuAthlete) return // prod-only writes to the shared athlete (#381)
+  try {
+    if (plan && plan.icuEventId) await icuFetch(user, `/athlete/${user.icuAthlete}/events/${plan.icuEventId}`, { method: 'PUT', body: JSON.stringify({ icu_training_load: tss }) })
+    if (activityId && /^i?\d+$/.test(String(activityId))) await icuFetch(user, `/activity/${String(activityId)}`, { method: 'PUT', body: JSON.stringify({ icu_training_load: tss }) })
+  } catch (e) { console.error('[gym-load] ' + (e.message || e)) }
+}
 function triggerActivityReview(user, id, fb, icuActivityId) {
   if (!fb || !(user.coachProfile && user.coachProfile.trim())) return false
   const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
@@ -1190,6 +1217,8 @@ app.post('/auth/plan/:id/feedback', auth, (req, res) => {
   // #76/#589 — fire the async coach review (best-effort, non-blocking; extracted so the #589 retry reuses it).
   // #677 — only when the feedback actually CHANGED.
   if (fbSig(plan.feedback) !== priorSig) triggerPlanReview(req.user, plan, plan.feedback)
+  // #729 — a rated GYM session: recompute its load from the ACTUAL RPE (Friel) + feed Form/CTL. Best-effort, prod-only.
+  if (plan.sport === 'gym' && Number(plan.feedback.rpe)) refreshGymLoad(req.user, { date: String(plan.date).slice(0, 10), rpe: plan.feedback.rpe, plan }).catch(() => {})
 })
 
 // #583 — a completed intervals ACTIVITY and the coach PLAN it fulfilled are ONE session for feedback. Map any sport
@@ -1209,6 +1238,7 @@ const siblingFeedbackId = (user, id) => {
   for (const [act, plan] of Object.entries(links)) if (plan === id) return act // id is a plan → its activity
   return null
 }
+// #723 — gym feedback lives in the Platyplus store, not the intervals activity. Pure helpers extracted + unit-tested.
 // #273 — post-workout feedback for a COMPLETED intervals ACTIVITY (device rides/runs that have no
 // Platyplus plan). Stored per-user keyed by activity id; triggers an async coach review (activityId).
 // #583 — feedback on the LINKED plan/activity counts as this session's, so no view re-nags for feedback already given.
@@ -1349,6 +1379,11 @@ app.post('/auth/activity/:id/feedback', auth, async (req, res) => {
   // #364/#589 — async coach review of the activity (best-effort; extracted so the #589 retry reuses it).
   // #677 — only when the feedback actually CHANGED (an unchanged re-save must not burn a fresh review).
   if (fbChanged) triggerActivityReview(req.user, id, fb, icuActivityId)
+  // #729 — a rated GYM session: recompute its load from the ACTUAL RPE (Friel) + feed Form/CTL. Best-effort, prod-only.
+  if (/gym|strength|weight/i.test(fb.sport || '') && Number(fb.rpe)) {
+    const gp = (req.user.plans || []).find((p) => p && p.sport === 'gym' && String(p.date).slice(0, 10) === (fb.date || ''))
+    refreshGymLoad(req.user, { date: fb.date, rpe: fb.rpe, plan: gp, activityId: icuActivityId }).catch(() => {})
+  }
 })
 
 // admin: user management
@@ -1523,6 +1558,12 @@ app.post('/auth/token/rotate', auth, admin, (req, res) => { req.user.apiToken = 
 
 // The app (session) reads its own plans for the Today merge-by-id.
 app.get('/auth/plans', auth, (req, res) => { healMirror(req.user).catch(() => {}); res.json(plansInRange(req.user, req.query.from, req.query.to)) }) // #5026 — sync-on-load: repair the intervals mirror when the athlete opens the plan view (fire-and-forget, cooldown-guarded)
+// #723 — completed GYM sessions (last 14d) that still lack feedback in the Platyplus store → the client banner nags them
+// (the endurance nag reads the intervals activity, which gym feedback never touches; without this, gyms never nagged).
+app.get('/auth/gym-review-gaps', auth, (req, res) => res.json(gymFeedbackGaps(req.user, localTodayInTz(req.user && req.user.icuTimezone))))
+// #735 — deliberate REST days (sticky; the coach can't re-fill them). GET the list; POST {date, rest} to mark/unmark.
+app.get('/auth/rest-days', auth, (req, res) => res.json(req.user.restDates || []))
+app.post('/auth/rest-day', auth, async (req, res) => { const r = await setRestDay(req.user, req.body && req.body.date, !!(req.body && req.body.rest), 'you'); res.status(r.status).json(r.body) })
 // #528 — fetch ONE plan by id (session auth) so an intervals "Open in Platyplus" deep link works COLD (no prior
 // Today load). Owner-scoped: only the authenticated user's own plan; a 404 means it isn't in THIS account
 // (e.g. the link was opened in a different user's session — the client shows a clearer message than "not found").
@@ -1789,16 +1830,36 @@ function enforceGymRepScheme(user, plan) {
   if (n) console.log(`[gym-reps] ${user.username || ''} "${plan.title}" — clamped ${n} main lift(s) into ${focus} rep scheme`)
 }
 
+// #712 — the athlete's current pregnancy trimester (female + info.pregnant), else null. Drives the supine-gym clamp.
+function pregnantTrimesterOf(user) {
+  if (!user || String(user.sex || '').toLowerCase() !== 'female' || !(user.info && user.info.pregnant)) return null
+  const pg = pregnancyStage(user.info, localTodayInTz(user && user.icuTimezone))
+  return pg ? pg.trimester : 1 // unknown stage → treat as T1 (clamp only fires at T2+)
+}
+// #712 (audit SAFETY) — swap/drop SUPINE gym moves for a pregnant T2+ athlete, on every save + sweep (the assembler/coach
+// can still surface a bench; the prompt rule is ignored, so ENFORCE it here — peer to enforceTeenGym).
+function enforcePregnancyGymPlan(user, plan) {
+  if (!plan || plan.sport !== 'gym' || !Array.isArray(plan.exercises)) return
+  const tri = pregnantTrimesterOf(user)
+  if (!(tri >= 2)) return
+  const r = enforcePregnancyGym(plan.exercises, tri)
+  if (r.changed) { plan.exercises = r.exercises; console.log(`[pregnancy-gym] ${user.username || ''} "${plan.title}" — swapped/dropped ${r.changed} supine move(s) (T${tri}+)`) }
+}
 function enforceTeenGym(user, plan) {
   if (!plan || plan.sport !== 'gym') return
   const dob = user.info && user.info.dob
   const age = dob ? Math.floor((Date.now() - new Date(dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
   if (age == null || age >= 18) return
+  // #714 (audit) — a teen must not lift near-maximal. Flooring reps only to 5 wasn't enough: clampMainReps sets support
+  // mains to 3-6 HEAVY reps, and the client derives the target WEIGHT from weightForReps(e1rm, reps) — so 5-6 reps ≈ 85%
+  // 1RM for a minor. Since REP COUNT is the load proxy, floor every teen WORKING set to ≥8 reps → the implied load drops
+  // to a submaximal, TECHNIQUE-focused band (~≤70-75% 1RM), per NSCA youth guidance. Overrides the support down-clamp.
+  const TEEN_MIN_REPS = 8
   let bumped = 0
   for (const ex of (plan.exercises || [])) {
-    if (ex && (ex.mode === 'reps' || ex.reps != null) && Number(ex.reps) > 0 && Number(ex.reps) < 5 && ex.section !== 'warmup' && ex.section !== 'cooldown') { ex.reps = 5; bumped++ }
+    if (ex && ex.mode !== 'timed' && Number(ex.reps) > 0 && Number(ex.reps) < TEEN_MIN_REPS && ex.section !== 'warmup' && ex.section !== 'cooldown') { ex.reps = TEEN_MIN_REPS; bumped++ }
   }
-  if (bumped) console.log(`[teen-gym] ${user.username || ''} "${plan.title}" — floored ${bumped} near-maximal set(s) to 5 reps (under-18: no maximal loading)`)
+  if (bumped) console.log(`[teen-gym] ${user.username || ''} "${plan.title}" — raised ${bumped} set(s) to ${TEEN_MIN_REPS}+ reps (under-18: submaximal/technique load, no near-maximal 1RM)`)
 }
 
 // #618 — the save-time clamp only fires on sessions the coach WRITES; stale ride/run sessions from an earlier run
@@ -1809,6 +1870,14 @@ async function reenforceShapeAll(user) {
   const future = (user.plans || []).filter((p) => p && p.date >= today && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim')).sort((a, b) => String(a.date).localeCompare(String(b.date)))
   const touched = []
   for (const p of future) { const t0 = p.title, seg0 = JSON.stringify(p.segments || []); enforceShapeIntensity(user, p); if (p.title !== t0 || JSON.stringify(p.segments || []) !== seg0) touched.push(p) }
+  // #715 — sweep STALE swim plans through the zone clamp too (they carry no %-segments, so enforceShapeIntensity above
+  // is a no-op for them). A swim built in an earlier, harder week must be eased if the shape tightened (e.g. pregnancy).
+  const swimShape = athleteWeekShape(user), swimCss = user.sportSettings?.swimming?.thresholdPace
+  for (const p of future) {
+    if (p.sport !== 'swim' || !Array.isArray(p.swimSets) || !p.swimSets.length) continue
+    const r = enforceSwim(p.swimSets, swimShape.intensityCeiling, swimCss)
+    if (r.clamped) { p.swimSets = r.sets; p.notes = `${p.swimNote ? p.swimNote + '\n' : ''}${r.notes}`; p.moving_time = r.moving_time; p.distanceM = r.distanceM; p.icu_training_load = r.icu_training_load; if (!touched.includes(p)) touched.push(p) }
+  }
   // #649 — GYM has no shape/intensity clamp, but stale gym plans keep a wrong REP SCHEME (a cyclist's old 3×10) and
   // the teen floor. Sweep every future gym plan through the code enforcement too (no intervals push — gym has no model).
   let gymTouched = 0
@@ -1817,8 +1886,16 @@ async function reenforceShapeAll(user) {
     enforceGymRepScheme(user, p)
     if (Array.isArray(p.exercises)) { const r = enforceGymStructure(p.exercises); if (r.deduped || r.retimed) p.exercises = r.exercises } // #687-enforce — dedup + hold→timed on stale gym plans
     enforceTeenGym(user, p)
+    enforcePregnancyGymPlan(user, p) // #712 supine clamp
     if (JSON.stringify(p.exercises || []) !== ex0) gymTouched++
   }
+  // #706 — give consecutive same-title gym sessions a clean A/B/C series so the calendar never shows two identical
+  // "Full-Body Strength" entries (the coach keeps reusing one generic title). Reconciles across the whole future horizon.
+  gymTouched += dedupeGymTitles((user.plans || []).filter((x) => x && x.date >= today && x.sport === 'gym'))
+  // #717 — DETECT concurrent-training collisions (heavy gym ±1 day from a quality endurance day) for visibility; the
+  // buildSystemPrompt separation block is the code-computed prevention (auto-moving is deliberately avoided as too risky).
+  const collisions = concurrentGymCollisions(user.plans || [], today, DAILY_HORIZON)
+  if (collisions.length) console.log(`[concurrent-collision] ${user.username || ''} — ${collisions.length} heavy gym session(s) ±1 day of a quality endurance day: ${collisions.map((p) => p.date).join(', ')}`)
   // #671 SAFETY — PRIVACY sweep over EVERY future plan's text. The #650 save-time scrub only catches NEW writes; a
   // pregnant athlete's STALE plans still leaked "pregnant/trimester" into descriptions that sync to intervals→Strava.
   // Scrub them here too, and re-push the changed ride/run/swim so the PUBLIC copy is clean, not just the DB.
@@ -1846,7 +1923,11 @@ function athleteArchetypeBlock(user) {
   const shape = athleteWeekShape(user)
   const qd = (shape.qualityDays || 0) + (shape.moderateDays || 0) // moderate (pregnancy tempo) counts as its 1 slot
   const sports = (user.sports && user.sports.length) ? user.sports : (user.sport ? [user.sport] : [])
-  const sport = sports.includes('cycling') ? 'ride' : sports.includes('running') ? 'run' : sports.includes('swimming') ? 'swim' : (sports[0] === 'running' ? 'run' : 'ride')
+  // #716 (audit) — for a MULTI-SPORT athlete (triathlete) the archetype block was hardcoded to the bike; respect their
+  // stated MAIN sport so a run- or swim-focused triathlete gets the right discipline's variety (the TRIATHLON block below
+  // handles the 3-sport balance). (Full per-discipline archetype generation is the larger follow-on.)
+  const msSport = ({ running: 'run', swimming: 'swim', cycling: 'ride' })[String(user.info?.mainSport || '').toLowerCase()]
+  const sport = msSport || (sports.includes('cycling') ? 'ride' : sports.includes('running') ? 'run' : sports.includes('swimming') ? 'swim' : (sports[0] === 'running' ? 'run' : 'ride'))
   const trainingDays = Number(user.info && user.info.trainingDays) || 5
   const easyDays = Math.max(1, Math.min(5, trainingDays - qd - 1)) // rough: the rest of the endurance week is easy
   // recent archetype fingerprint = the last ~14 days of ride/run/swim plan TITLES mapped back to a key
@@ -1942,7 +2023,9 @@ function buildSystemPrompt(user) {
     const gymAssign = assignWeeklyGym({ sessionsPerWeek: gymPerWeek, focus: gymFocus, recentExercises: recentGymEx, mainSport: ms, sports }) // #658 sport-adaptive selection
     // #687 — the code ASSEMBLES each session fully (exercises, sections, sets/reps, mode, title) tailored to THIS
     // athlete. The coach builds EXACTLY these — resolve exIds + author cues only. Kills LLM-selection failures.
-    const gymSessions = gymAssign.days.map((day, i) => assembleGymSession({ focus: gymFocus, mainSport: ms, sports, patterns: day, recentExercises: recentGymEx, sessionIndex: i }))
+    // #720 — GYM MESO-CYCLE week (0-3, deload on 3) from the calendar week, so the assembled sets PROGRESS then DELOAD.
+    const gymMesoWeek = Math.floor((Date.parse(today + 'T00:00:00Z') / 86400000 + 3) / 7) % 4
+    const gymSessions = gymAssign.days.map((day, i) => assembleGymSession({ focus: gymFocus, mainSport: ms, sports, patterns: day, recentExercises: recentGymEx, sessionIndex: i, mesoWeek: gymMesoWeek }))
     const dose = (e) => e.mode === 'timed' ? `${e.seconds}s${e.eachSide ? ' each side' : ''}` : `${e.sets || 3}×${e.reps}${e.eachSide ? ' each side' : ''}${e.tempo ? ` @ tempo ${e.tempo}` : ''}`
     const renderSess = (s, i) => { const of = (sec) => s.exercises.filter((e) => e.section === sec).map((e) => `${e.name} (${dose(e)})`).join(' · '); return `Session ${i + 1} — TITLE: "${s.title}"\n  WARM-UP (timed): ${of('warmup')}\n  MAIN: ${of('main')}\n  COOL-DOWN (timed): ${of('cooldown')}` }
     tail += `\n\n# THIS WEEK'S GYM SESSIONS — BUILD EXACTLY THESE (assembled in code for THIS athlete: sport + focus + equipment + history; ${gymAssign.spw} session${gymAssign.spw !== 1 ? 's' : ''}/week). Each session is FULLY COMPOSED — the exercises, sections, sets/reps, mode, and title are DECIDED. For EACH, call create_workout with THESE exact exercises: resolve each NAME to a real exId via ONE batched search_exercises (respect the athlete's OWNED equipment — swap to an equivalent they own if a listed move needs gear they lack, keeping the same movement + section + mode), keep the section / mode / sets / reps / tempo / each-side AS GIVEN, and use the given TITLE. Author ONLY: a one-line FORM cue per lift, one whole-session tip, and the coaching shell (objective + success + fuel). Do NOT add, drop, reorder, or re-section exercises; NEVER turn a timed move into reps or repeat a move across sections. ${gymBalanceLines(gymAssign).split('\n').filter((l) => /REP SCHEME|SPORT EMPHASIS/.test(l)).join(' ')}\n${gymSessions.map(renderSess).join('\n')}`
@@ -1953,6 +2036,7 @@ function buildSystemPrompt(user) {
     tail += `\n\n# TRIATHLON — this athlete races triathlon (swim + bike + run as ONE season). Plan per coach-engine-triathlon.md.
 - **A-RACE & PHASE:** ${tgoal ? `Their goal, in their words: "${tgoal.slice(0, 300)}". Read the race DATE + DISTANCE from it (sprint / Olympic / 70.3 / Ironman).` : 'They have NOT stated a race yet — ASK for their A-race date + distance so you can periodize; until then hold a general base.'} Count back from race day and set the Friel phase (Prep → Base → Build → Peak → Race → Transition). Tell them which phase they're in and why.
 - **WEEKLY BALANCE:** program all THREE sports each week, biased to the athlete's LIMITER (weakest/most-race-costly discipline) and the race's demands — not an even split. Swim technique is high-frequency + low-load; bike carries the most training load; run is the most injury-costly so cap hard-run frequency. Each session goes to ITS OWN zones (ride % FTP, run pace off threshold, swim pace off CSS).
+- **SPREAD THE QUALITY (#716):** the # THIS WEEK'S SHAPE quality-day count is the TOTAL across all three sports — SPREAD it (roughly one key session PER discipline, weighted to the limiter), do NOT spend the whole quality allowance on the bike. Two hard bike days + zero hard swim/run is exactly the bike-only trap to avoid.
 - **BRICKS:** schedule bike→run bricks in Build/Peak to train the transition (legs off the bike). Keep the run portion controlled early in the block.
 - **TOTAL LOAD:** the three sports SHARE one recovery budget — sum load across all of them against the weekly band + this athlete's day/week caps; don't let three "moderate" days stack into an overload. Strength is periodized support (Hagerman): heavier in base, maintenance in build/peak, cut in race week.
 Use create_swim / create_ride / create_run / create_workout, each to its own zones, balanced to total load and periodized to the A-race.`
@@ -2004,9 +2088,19 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   // an EXTRA session is a clearly-labelled OPTIONAL/BONUS (title it "(optional)" and note it's a bonus),
   // never part of the base load.
   const freq = Number(user.info?.trainingDays) || 0
-  if (freq > 0) p += `\n\n# WEEKLY TRAINING DAYS — HARD CAP of ${freq}/week (JM directive): the athlete trains on AT MOST ${freq} distinct days per calendar week (Mon–Sun). This is a HARD limit set in their profile, NOT a target to pad toward — NEVER schedule training on more than ${freq} days in any week, not even an "optional" or "bonus" extra. FEWER is fine when recovery or life calls for it; MORE is never allowed. Before you add a session, count the week's already-planned training days: if it's already at ${freq}, do NOT add a new day — MOVE an existing session instead, or combine into a day that's already training. If they explicitly ask for an extra day beyond ${freq}, tell them it would exceed their weekly cap and to raise it in their profile first. (Server enforces this too — a create that would exceed ${freq} is rejected.)`
+  if (freq > 0) p += `\n\n# WEEKLY TRAINING DAYS — TARGET ${freq}/week (and a hard ceiling) (JM #734): the athlete CHOSE ${freq} training days/week in their profile, so AIM to deliver ${freq} distinct training days each Mon–Sun week, placing the REST day(s) DELIBERATELY where they serve recovery + the week's key sessions. Going UNDER ${freq} is allowed ONLY as a deliberate recovery/objective decision you EXPLAIN to the athlete (e.g. "I'm keeping Friday easy/rest — Form is low after two hard days") — NEVER leave a day silently empty or quietly under-deliver their chosen frequency (an unexplained empty day reads as a bug). If the week is UNDER ${freq} and a day is empty with no genuine recovery reason, FILL it toward the target (respecting one-session-per-day + the concurrent-training spacing). ${freq} is ALSO a HARD CEILING: NEVER schedule MORE than ${freq} days, not even an "optional"/"bonus" extra — if the week is already at ${freq}, MOVE or COMBINE instead of adding a new day. If they ask for more than ${freq}, tell them to raise it in their profile first. (Server enforces the ceiling — a create beyond ${freq} is rejected.)`
+  // #735 — DELIBERATE rest days are OFF-LIMITS. The athlete SET these to rest; the server 409s any session you try to
+  // put on them, and they do NOT count toward the weekly training-days target (never re-fill a rest to hit the number).
+  const restDays = (user.restDates || []).filter((d) => d >= today).slice(0, 21)
+  if (restDays.length) p += `\n\n# REST DAYS — DO NOT SCHEDULE (JM #735): the athlete has set these as deliberate REST days: ${restDays.join(', ')}. NEVER place any session on them — they are OFF (the server rejects it). They do NOT count toward the weekly training-days target, so do not treat them as "empty days to fill". Only schedule one if the athlete EXPLICITLY asks to train that day, and then clear it first with clear_rest_day. When the athlete asks to REST a day (or move a session off it with nothing replacing it), call set_rest_day so the rest sticks.`
   // #345 — most athletes train ONCE a day. Never stack two sessions (e.g. a gym + a run) on the same
   // calendar day beyond this cap unless the athlete explicitly opts into doubles.
+  // #717 (audit) — CONCURRENT-TRAINING SEPARATION: code-COMPUTE the athlete's quality endurance days and hand the coach
+  // the exact list so it keeps HEAVY strength ≥1 day clear of them (interference blunts both). Stronger than a prose rule.
+  const qEndDays = qualityEnduranceDates(user.plans || [], today, DAILY_HORIZON)
+  if (qEndDays.length && (user.sports || []).includes('gym')) {
+    p += `\n\n# CONCURRENT-TRAINING SEPARATION (strength ↔ endurance): the athlete's QUALITY endurance days ahead are ${qEndDays.join(', ')}. Do NOT place a HEAVY gym session (heavy low-rep compound lifts) the day BEFORE or AFTER any of these — residual fatigue blunts BOTH the key endurance session and the lift (Rønnestad/Coffey interference). Put strength on an EASY-endurance or rest-adjacent day, ideally the SAME day AFTER a quality session (PM, if maxPerDay allows) or ≥1 clear day away. Lighter, technique/support gym is fine adjacent; the rule is about HEAVY loading.`
+  }
   const maxPerDay = Math.max(1, Number(user.info?.maxPerDay) || 1)
   p += `\n\n# ONE SESSION PER DAY (max ${maxPerDay}/day): the athlete trains at most ${maxPerDay} session${maxPerDay > 1 ? 's' : ''} per calendar day. ${maxPerDay === 1 ? 'Do NOT schedule two workouts on the same day (no gym + run, no ride + run together) — spread sessions across different days. If two efforts must share a day because time is tight, ask first or fold them into ONE combined session.' : `Never exceed ${maxPerDay} on any single day, and only double up when it genuinely serves the plan (e.g. AM/PM split).`} Respect their weekly availability + rest days when spacing them.`
   // #613 — THE WEEK'S SHAPE is decided in CODE (single source of truth), so the coach BUILDS to it instead of
@@ -2014,6 +2108,10 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   // consistency / teen / cycle-phase all fold into this one function → one authoritative quality-day count.
   const shape = athleteWeekShape(user)
   tail += `\n\n# THIS WEEK'S SHAPE — computed for THIS athlete; BUILD the plan to match it (do NOT add quality beyond this or exceed the ceiling): **${shape.qualityDays} structured quality day${shape.qualityDays !== 1 ? 's' : ''}/week${shape.moderateDays ? ` + up to ${shape.moderateDays} light-moderate (tempo) day` : ''}, intensity CEILING = ${shape.intensityCeiling} (never program harder than this), load band = ${shape.loadBand}.** ${shape.rationale} Space any quality days apart (easy days between); everything else is easy/endurance + their strength; leave genuine rest days blank.`
+  // #713 (audit SAFETY) — postpartum's real risk is IMPACT, not intensity: an "easy run" is still contraindicated before
+  // the pelvic floor is rebuilt. The shape's `impact` directive forbids/gates run modality.
+  if (shape.impact === 'none') tail += `\n\n# POSTPARTUM — IMPACT SAFETY: program NO running, jumping, or plyometrics right now. The pelvic floor + deep core are still rebuilding and the risk is ground-reaction IMPACT, not aerobic effort — a "ceiling-compliant easy run" is STILL contraindicated. Use NON-IMPACT modalities ONLY: walking, stationary bike, swimming, elliptical, plus pelvic-floor + deep-core work. Do NOT schedule any run/impact session. Progress by how she feels + clinician guidance; STOP signs (leaking, heaviness/pressure, abdominal doming) → ease off and refer to her pelvic-floor PT.`
+  else if (shape.impact === 'walk_run') tail += `\n\n# POSTPARTUM — IMPACT: reintroduce impact GRADUALLY. WALK-RUN intervals only (e.g. run 1 min / walk 2 min, building the run portion as tolerated) — NOT continuous running yet. Keep it easy; stop at any leaking / heaviness / pressure and defer to her pelvic-floor PT.`
   tail += athleteArchetypeBlock(user) // #620 — code-assigned archetype rotation (the FLAVOR of each quality/easy day)
   // #622 — DEVELOPMENT PRIORITIES: the SAME "what would move your numbers" focus the Stats card shows (stashed from
   // /api/athlete-metrics), so the PLAN targets it instead of the card promising quality the plan lacks (SAY=DO). Only
@@ -2050,7 +2148,9 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     tail += `\n\n# PROGRESS CHECK — is the training actually MOVING them toward their goal?${per.phase === 'recovery' ? ' **This is a RECOVERY week — the moment to assess it.**' : ''} Read get_metrics + get_wellness and compare their key numbers now (threshold power/pace, TTE, EF, CTL, and for runners/swimmers CS·D′/CSS) to a few weeks ago. Judge plainly whether they're progressing at the rate their goal needs. If a number has STALLED, CHANGE the stimulus next block — a stalled threshold ⇒ more time-at-threshold; a flat top end ⇒ more VO₂; a falling EF ⇒ more easy base + check recovery/fuel; a shrinking W′/D′ ⇒ short near-max work. If it's climbing, keep the thread. Fold the conclusion into how you shape the NEXT block, and it's what the review's objective talk (# next) should reference — the athlete should always be able to see their training is working.`
   }
   // #375/#613/#626 — the TSS target now comes from THE PROGRESSION above (periodized), not a flat band.
-  const budget = weeklyLoadBudget(user.ctl)
+  // #719 (audit) — fold the menstrual-phase load modifier into the budget so the cycle bias is CODE-ENFORCED on TSS.
+  const cycMod = (String(user.sex || '').toLowerCase() === 'female' && !user.info?.pregnant && user.cyclePhase && user.cyclePhaseAt && (Date.now() - new Date(user.cyclePhaseAt + 'T00:00:00Z').getTime()) < 6 * 86400000) ? cycleLoadModifier(user.cyclePhase) : 1
+  const budget = weeklyLoadBudget(user.ctl, cycMod)
   tail += shape.loadBand === 'build'
     ? `\n\n# WEEKLY LOAD BUDGET: aim for THIS week's periodized target${per && per.target ? ` (≈${per.target} TSS, the ${per.phase} week — see # THIS BLOCK'S PROGRESSION)` : ''}. A productive BUILD or PEAK week dips Form into the GREEN zone (~−10 to −20); a RECOVERY week should let Form rise back toward grey — that's correct, not junk. ${budget ? `Reference band (CTL≈${user.ctl}): flat ≈ ${budget.sustainable}, build ≈ ${budget.build}, peak ≈ ${budget.hard}, cap ≈ ${budget.cap} TSS.` : `Read CTL with get_wellness: flat ≈ CTL×7, build ≈ CTL×9-11.`} After planning, sum the week's TSS and check the Form forecast matches the phase.`
     : `\n\n# WEEKLY LOAD BUDGET — this is a ${shape.loadBand.toUpperCase()} week, NOT a build: hold load around ${budget ? `~${budget.sustainable} TSS (CTL≈${user.ctl}×7)` : 'CTL×7 (flat)'}. Do NOT chase Form into the −10..−20 build zone and do NOT add quality beyond the shape above — a mid/grey Form on an easy/maintenance week is CORRECT, not junk. Keep easy days genuinely easy.`
@@ -2603,18 +2703,33 @@ async function deleteIcuEvent(user, plan) {
   if (!user.icuKey || !user.icuAthlete || !plan?.icuEventId) return // #456 — no athlete → never DELETE on the seed calendar
   try { await icuFetch(user, `/athlete/${user.icuAthlete}/events/${plan.icuEventId}`, { method: 'DELETE' }) } catch { /* best effort */ }
 }
-// #5026 (JM: "it has to be a PERFECT MIRROR") — READ-REPAIR: re-push any current/future Platyplus plan that never
-// reached intervals (no icuEventId). The write-through push (upsertPlan) is the primary path; this heals the ones that
-// failed transiently or (pre-tz-fix) were wrongly skipped as "past" at the UTC day-boundary. Idempotent + convergent
-// (keyed by external_id, no dupes). Triggered ON APP LOAD (`/auth/plans`) so it's responsive — the athlete opens the app
-// and the mirror repairs within that request — plus the daily tick as a slow backstop. Prod-only + a per-user cooldown
-// so a rapid-fire client can't spam intervals. Only the un-synced few are pushed (usually zero → instant no-op).
+// #5026 (JM: "it has to be a PERFECT MIRROR") — READ-REPAIR: re-push any current/future Platyplus plan that isn't
+// correctly mirrored in intervals. The write-through push (upsertPlan) is the primary path; this heals the ones that
+// slipped. Two failure modes (both #726 real on prod):
+//   (a) NEVER synced — no icuEventId (a transient push failure, or a pre-tz-fix "past" skip at the UTC day-boundary);
+//   (b) STALE mirror — the plan carries an icuEventId but that intervals event was DELETED there (JM's 07-22 "Threshold
+//       4×10" pointed at event 121594819, which was gone; the old healer only checked !icuEventId, so it skipped this
+//       and the day stayed missing FOREVER). We now fetch the current→horizon events window ONCE and treat a plan whose
+//       icuEventId is absent from it as broken too. pushPlanToIcu re-creates it (its own /events/{id} 404 → POST path).
+// Idempotent + convergent (keyed by external_id, no dupes). Triggered ON APP LOAD (`/auth/plans`) so it's responsive,
+// plus the daily tick as a slow backstop. Prod-only + a per-user cooldown so a rapid-fire client can't spam intervals.
 async function healMirror(user) {
   if (IS_STAGING || !user.icuKey || !user.icuAthlete) return
   const now = Date.now()
   if (user._mirrorHealAt && now - user._mirrorHealAt < 60_000) return // cooldown: at most once/min per user
   const today = icuToday(user)
-  const broken = (user.plans || []).filter((p) => p.date && p.date >= today && (p.origin || 'platyplus') === 'platyplus' && !p.icuEventId)
+  const future = (user.plans || []).filter((p) => p.date && p.date >= today && (p.origin || 'platyplus') === 'platyplus')
+  if (!future.length) return
+  // Fetch the events window ONCE so a "stale mirror" (event deleted in intervals) is detectable without a per-plan probe.
+  // If the fetch fails, `existing` stays null → we fall back to healing only the never-synced (!icuEventId) plans, which
+  // is always safe (no false re-push). #726.
+  const maxDate = future.reduce((m, p) => (p.date > m ? p.date : m), today)
+  let existing = null
+  try {
+    const evs = await icuGet(user, `/athlete/${user.icuAthlete}/events?oldest=${today}&newest=${maxDate}`)
+    if (Array.isArray(evs)) existing = new Set(evs.map((e) => e.id))
+  } catch { /* fall back to no-icuEventId-only heal below */ }
+  const broken = mirrorBrokenPlans(user.plans, today, existing) // #726 — never-synced OR stale (event deleted in intervals)
   if (!broken.length) return
   user._mirrorHealAt = now
   for (const p of broken) { try { await pushPlanToIcu(user, p) } catch (e) { console.error('[mirror-heal] ' + (e.message || e)) } }
@@ -2638,6 +2753,17 @@ async function upsertPlan(user, body, actor = 'coach') {
   // uses actor 'you' and is exempt). Fire on a CREATE (i<0) AND on a coach MOVE onto another day (i≥0 with a changed
   // date) — the #5014 gap was that the old guard only ran on create, so the coach could MOVE a session onto a full day
   // and stack two (JM: "2 exercices on jul 11 while max is 1"). A same-day UPDATE (id + same date) stays exempt.
+  // #735 — a deliberate REST day is OFF-LIMITS to the coach (code-enforced, so the adapt/horizon-fill can't silently
+  // re-fill it). The athlete scheduling on it themselves (actor 'you') means they changed their mind → clear the marker.
+  if (isRestDate(user, body.date)) {
+    const cur0 = i >= 0 ? user.plans[i] : null
+    const isNewOrMovedOnto = i < 0 || (cur0 && String(cur0.date).slice(0, 10) !== String(body.date).slice(0, 10))
+    if (isNewOrMovedOnto) {
+      if (actor === 'coach') return { status: 409, body: { error: `${String(body.date).slice(0, 10)} is a deliberate REST day the athlete set — do NOT schedule on it. If they want to train that day instead, they clear the rest first (or ask you to, then use clear_rest_day).` } }
+      const d = String(body.date).slice(0, 10)
+      user.restDates = (user.restDates || []).filter((x) => x !== d); deleteRestNote(user, d).catch(() => {})
+    }
+  }
   if (actor === 'coach') {
     const cur = i >= 0 ? user.plans[i] : null
     const isCoachMove = !!(cur && cur.date !== body.date)
@@ -2670,7 +2796,7 @@ async function upsertPlan(user, body, actor = 'coach') {
     ...(body.sport === 'gym'
       ? { rounds: Number(body.rounds) || 1, exercises: (Array.isArray(body.exercises) ? body.exercises : []).map(withDefaultTempo) }
       : body.sport === 'swim'
-      ? { segments: Array.isArray(body.segments) ? body.segments : [], moving_time: Number(body.moving_time) || undefined, distanceM: Number(body.distanceM) || undefined, icu_training_load: Number(body.icu_training_load) || undefined } // #614 — carry swim's time/distance/load so the push path (swim TSS) isn't silently dropped
+      ? { segments: Array.isArray(body.segments) ? body.segments : [], swimSets: Array.isArray(body.swimSets) ? body.swimSets : undefined, swimNote: typeof body.swimNote === 'string' ? body.swimNote : undefined, moving_time: Number(body.moving_time) || undefined, distanceM: Number(body.distanceM) || undefined, icu_training_load: Number(body.icu_training_load) || undefined } // #614 swim time/distance/load · #715 structured sets for the clamp
       : { ftp: Number(body.ftp) || undefined, segments: Array.isArray(body.segments) ? body.segments : [], indoor: body.indoor != null ? !!body.indoor : (i >= 0 ? user.plans[i]?.indoor : undefined) }), // #479 indoor(ERG=specific) vs outdoor(range); kept across updates unless the body sets it
   }
   // #331c — HARD guard: never persist an "easy/recovery/warm-up"-labelled run/ride segment at near-threshold
@@ -2681,6 +2807,19 @@ async function upsertPlan(user, body, actor = 'coach') {
   if (plan && plan.sport === 'gym' && Array.isArray(plan.exercises)) { // #687-enforce — dedup the same movement across sections + force holds to timed (the assembled frame is ignored by the LLM)
     const r = enforceGymStructure(plan.exercises)
     if (r.deduped || r.retimed) { plan.exercises = r.exercises; console.log(`[gym-structure] ${user.username || ''} "${plan.title}" — deduped ${r.deduped}, retimed ${r.retimed}`) }
+  }
+  enforcePregnancyGymPlan(user, plan) // #712 (audit) — pregnant T2+ supine gym clamp
+  // #715 (audit) — SWIM: clamp each set's zone to the week ceiling (like ride/run intensity) + re-derive the notes,
+  // duration, distance + sTSS from the CLAMPED sets. A maintenance/pregnant/teen swimmer can no longer be saved a sprint
+  // set no matter what the coach wrote — the exact enforcement ride/run already had, now first-class for swimming too.
+  if (plan.sport === 'swim' && Array.isArray(plan.swimSets) && plan.swimSets.length) {
+    const shape = athleteWeekShape(user)
+    const css = user.sportSettings?.swimming?.thresholdPace
+    const r = enforceSwim(plan.swimSets, shape.intensityCeiling, css)
+    plan.swimSets = r.sets
+    plan.notes = `${plan.swimNote ? plan.swimNote + '\n' : ''}${r.notes}` // rebuild the display text from the clamped sets
+    plan.moving_time = r.moving_time; plan.distanceM = r.distanceM; plan.icu_training_load = r.icu_training_load
+    if (r.clamped) console.log(`[swim-clamp] ${user.username || ''} "${plan.title}" — clamped ${r.clamped} set(s) to zone ≤${({ endurance: 2, tempo: 2, sweetspot: 3, threshold: 3, vo2: 5 })[shape.intensityCeiling] ?? 5} (ceiling ${shape.intensityCeiling})`)
   }
   enforceTeenGym(user, plan) // #631 — under-18: floor near-maximal gym sets to submaximal (no 1-RM loading)
   // #650 — PRIVACY (safety): strip pregnancy/postpartum terms from anything the athlete or the public could read
@@ -2698,6 +2837,42 @@ async function upsertPlan(user, body, actor = 'coach') {
   save(store)
   const icu = await pushPlanToIcu(user, plan)
   return { status: i >= 0 ? 200 : 201, body: { ...plan, icu } }
+}
+// #735 — DELIBERATE REST days are STICKY. A rest the athlete asks for (chat → set_rest_day, or a UI toggle) is RECORDED
+// on `user.restDates` and MIRRORED to intervals as a "Rest day" NOTE (prod). The daily-adapt/horizon-fill + the coach
+// create-guard then REFUSE to schedule on it (code-enforced, not prompt-only #728) — so a rest can't be silently
+// re-filled (JM: "requested a rest today, now I see an activity again"). Reversible: training that day clears the marker.
+const isRestDate = (user, date) => Array.isArray(user && user.restDates) && user.restDates.includes(String(date || '').slice(0, 10))
+async function pushRestNote(user, date) { // intervals NOTE mirror (prod-only; QA is read-only toward intervals)
+  if (IS_STAGING || !user.icuKey || !user.icuAthlete) return
+  const ext = `rest-${date}`
+  try {
+    const evs = await icuGet(user, `/athlete/${user.icuAthlete}/events?oldest=${date}&newest=${date}`)
+    if (Array.isArray(evs) && evs.some((e) => e.external_id === ext)) return
+    await icuFetch(user, `/athlete/${user.icuAthlete}/events`, { method: 'POST', body: JSON.stringify({ start_date_local: date + 'T00:00:00', category: 'NOTE', name: 'Rest day 💤', external_id: ext, description: 'Planned rest — Platyplus' }) })
+  } catch (e) { console.error('[rest-note] ' + (e.message || e)) }
+}
+async function deleteRestNote(user, date) {
+  if (IS_STAGING || !user.icuKey || !user.icuAthlete) return
+  try {
+    const evs = await icuGet(user, `/athlete/${user.icuAthlete}/events?oldest=${date}&newest=${date}`)
+    for (const e of (Array.isArray(evs) ? evs : [])) if (e && e.external_id === `rest-${date}`) await icuFetch(user, `/athlete/${user.icuAthlete}/events/${e.id}`, { method: 'DELETE' }).catch(() => {})
+  } catch (e) { console.error('[rest-note-del] ' + (e.message || e)) }
+}
+// mark/unmark a day as a deliberate rest. rest=true also REMOVES any sessions already on that day (that's the point).
+async function setRestDay(user, date, rest, actor = 'you') {
+  const d = String(date || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { status: 400, body: { error: 'date (YYYY-MM-DD) required' } }
+  if (rest) {
+    for (const p of (user.plans || []).filter((p) => p && String(p.date).slice(0, 10) === d)) await deletePlanById(user, p.id, actor)
+    user.restDates = Array.from(new Set([...(user.restDates || []), d])).sort().slice(-160)
+    audit(user, { actor, action: 'Rest day', target: d, kind: 'plan' })
+    save(store); await pushRestNote(user, d).catch(() => {})
+  } else {
+    user.restDates = (user.restDates || []).filter((x) => x !== d)
+    save(store); await deleteRestNote(user, d).catch(() => {})
+  }
+  return { status: 200, body: { ok: true, date: d, rest: !!rest } }
 }
 async function deletePlanById(user, id, actor = 'coach') {
   const plan = (user.plans || []).find((x) => x.id === id)
@@ -3283,13 +3458,15 @@ app.get('/api/intervals/activities', apiAuth, async (req, res) => {
     avgHR: a.average_heartrate ? Math.round(a.average_heartrate) : null, avgW: a.icu_average_watts ? Math.round(a.icu_average_watts) : null,
     load: a.icu_training_load ?? null, intensity: a.icu_intensity ?? null, rpe: a.icu_rpe ?? null, feel: a.feel ?? null, name: a.name,
     reviewed: a.coach_tick != null, coachTick: a.coach_tick ?? null, // #437 — the reviewed/NOT-reviewed tracker: has the coach ticked this activity yet (coach_tick 1-5)?
-    // #681 — GRACE so the coach doesn't review a fresh session BEFORE the athlete logs how it went (JM: a review landed
-    // with the "How did it go?" still empty, and the athlete's later submit then double-reviewed). awaitingFeedback =
-    // recent (today/yesterday), NOT reviewed, and no feel/RPE anywhere yet → the DAILY review pass SKIPS it and lets the
-    // athlete's submit drive the (one) review. Past the grace with still no feedback, it falls through to a data-only review.
-    awaitingFeedback: a.coach_tick == null && a.feel == null && a.icu_rpe == null
-      && !(req.user.activityFeedback && req.user.activityFeedback[String(a.id)])
-      && daysAgo != null && daysAgo >= 0 && daysAgo <= 1,
+    // #681/#723 — the DAILY review pass must SKIP a session flagged awaitingFeedback. Two reasons fold into one flag:
+    //  (1) #723 (JM HARD RULE): NO feedback logged → NEVER review it (any age). A review REQUIRES the athlete's feedback;
+    //      the old code let it "fall through to a data-only review" past a 1-day grace — that's the wife's bug. Feedback
+    //      lives in the Platyplus store for EVERY sport (hasSessionFeedback), not the intervals feel/RPE.
+    //  (2) #681: even WITH feedback, if it's fresh (today/yesterday) and not yet reviewed, skip — the athlete's submit
+    //      already fired the (one) review; reviewing now would double it. Older + fed-back + unreviewed → the pass catches
+    //      it up. The save endpoint 409s a review without feedback regardless, so this flag can't be worked around.
+    awaitingFeedback: a.coach_tick == null && daysAgo != null && daysAgo >= 0
+      && (!hasSessionFeedback(req.user, { activityId: a.id, date, sport: a.type }) || daysAgo <= 1),
   } })
   res.json({ connected: true, activities })
 })
@@ -3518,10 +3695,19 @@ app.post('/api/coach/load-plan', apiAuth, async (req, res) => {
 // not intervals. Stored per-user; surfaced in-app (Progress takeaways + post-workout).
 // Keyed by date (+ optional planId/activityId) so re-POST updates. Mirror-to-intervals
 // is a follow-on (the planned-workout mirror already exists).
+// #735 — the coach marks/clears a deliberate REST day when the athlete asks (set_rest_day / clear_rest_day MCP tools).
+// Marking a rest REMOVES any session that day + records it sticky so no later adapt re-fills it.
+app.post('/api/rest-day', apiAuth, async (req, res) => { const r = await setRestDay(req.user, req.body && req.body.date, (req.body && req.body.rest) !== false, 'coach'); res.status(r.status).json(r.body) })
 app.post('/api/coach-review', apiAuth, (req, res) => {
   const b = req.body || {}
   const date = String(b.date || '').slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date (YYYY-MM-DD) is required' })
+  // #723 (JM HARD RULE, code-ENFORCED so there's "no way around it") — a coach review REQUIRES the athlete's feedback.
+  // The daily review pass used to review an un-fed-back session data-only past a 1-day grace (the wife saw a review she
+  // never gave feedback for). Reject the save unless the athlete has logged how it went (Platyplus store, all sports).
+  if (!hasSessionFeedback(req.user, { activityId: b.activityId, planId: b.planId, date, sport: b.sport })) {
+    return res.status(409).json({ error: 'no athlete feedback for this session yet — a review requires the athlete to log how it went first (never review a session data-only)' })
+  }
   if (!req.user.coachReviews) req.user.coachReviews = []
   const arr = (x) => Array.isArray(x) ? x.filter((s) => typeof s === 'string').map((s) => s.slice(0, 300)).slice(0, 8) : undefined
   const review = {
@@ -3572,7 +3758,7 @@ app.put('/api/activity/:id/public-text', apiAuth, async (req, res) => {
   if (typeof req.body.description === 'string') {
     // Always sign the public description with the brand tagline (JM 2026-07-16), idempotently.
     let d = scrubPrivate(req.body.description.slice(0, 3960).trimEnd())
-    if (d && !/powered by platyplus/i.test(d)) d = `${d}\n\nPowered by Platyplus`
+    if (d && !/powered by platyplus/i.test(d)) d = `${d}\n\nPowered by Platyplus [>ಠ ▭ ಠ<]` // #724 (JM) — a little platypus face on the signature
     payload.description = d
   }
   if (!Object.keys(payload).length) return res.status(400).json({ error: 'name or description required' })
@@ -3723,7 +3909,7 @@ function dailyAdaptMsg(today, pass, cov) {
     ? `Daily auto-adaptation — REFINE pass (${today}). Their overnight HRV/sleep/resting-HR has now LANDED in intervals — read it (get_wellness) + their check-in (get_checkins). If it changes today's readiness vs earlier, refine; if nothing meaningful changed, don't churn the plan.`
     : `Daily auto-adaptation — EARLY pass (${today}). Overnight HRV/sleep from their watch usually ISN'T synced this early, so decide from their FRESHNESS / Form (CTL−ATL, always available — get_wellness) + their latest check-in (get_checkins). You'll get a refine pass later once HRV/sleep lands.`
   const gap = cov && cov.tail >= 3
-    ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. The plan currently REACHES only ${cov.last || 'today'} — ${cov.tail} days SHORT of the ~2-week end (${cov.end}). EXTEND it to ~${cov.end}: add sessions from ${cov.firstEmpty} through ${cov.end}, UP TO (never beyond) their HARD weekly training-days cap + availability — leave genuine REST days blank.`
+    ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. The plan currently REACHES only ${cov.last || 'today'} — ${cov.tail} days SHORT of the ~2-week end (${cov.end}). EXTEND it to ~${cov.end}: add sessions from ${cov.firstEmpty} through ${cov.end}, FILLING toward their weekly training-days TARGET (place rest deliberately; a day stays blank only for a genuine recovery reason, never a silent gap) — never beyond that cap.`
     : ''
   return `${head}${gap} Then BUILD + adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule first). **INDIVIDUALIZE every session to THIS athlete — YOU own the plan, there is no template to copy.** Use their full profile + your per-sport & female-athlete engines: their SPORT(S) — only sports they actually do (a runner gets runs, a swimmer pool/CSS sets, a lifter gym; NEVER program a session they can't do, e.g. a ride for someone with no bike); SEX; AGE (a teen = technique + no maximal loading; masters = extra recovery); repro-state — if PREGNANT, coach MODERATE / MAINTAIN by RPE + talk test, trimester-adjusted, never max or to-exhaustion (apply your female-athlete pregnancy guidance), otherwise factor menstrual phase; their GOALS; fitness/experience; equipment. **Follow the computed # THIS WEEK'S SHAPE (in your system prompt) EXACTLY — its quality-day count + intensity ceiling are authoritative; never add a quality/hard day beyond it (this is how pregnancy stays maintenance).** Match load to how they're recovering + their weekly frequency/availability; keep ~${DAILY_HORIZON} days populated (never double-book / exceed max-per-day / exceed the HARD weekly training-days cap). Author each ride/run/swim as STRUCTURED steps (warmup/work/cooldown with real targets) so it's followable on their device.
 **VARY IT — MANDATORY, RIGHT THIS PASS:** your system prompt's **# THIS BLOCK'S VARIETY** block ASSIGNS the exact archetype for each quality day + the cue for each easy day. Build EACH day AS its assignment — its real structure + a title naming it — do NOT make every quality day the same shape and do NOT give two easy days the same title. Call **get_session_history** first to confirm you're not repeating the recent past either. This is a done-right-the-first-time build: no second pass will fix it, so vary + dose + individualize it correctly NOW. **Be efficient with tool calls** — read get_wellness + get_checkins + get_session_history + **get_metrics** in parallel, and look up ALL a gym session's moves in ONE search_exercises(\`queries=[…]\`) call, never one at a time.
@@ -3738,12 +3924,12 @@ This pass is ONLY the WORKOUT plan (no activity reviews / meals / mind / separat
 // #439 — FOCUSED horizon-fill (no reviews / fuel / mind distraction) so the coach actually populates the back
 // half of the ~2-week window. Used to re-drive it when one adapt pass left the horizon short.
 function horizonFillMsg(today, cov) {
-  return `HORIZON FILL — focused, non-negotiable. Your plan REACHES only ${cov.last || 'today'}, ${cov.tail} days short of the ~${DAILY_HORIZON}-day window end (${cov.end}). In THIS pass do ONE thing: EXTEND the plan out to ~${cov.end} — add training sessions across the days from ${cov.firstEmpty} through ${cov.end}, UP TO (never beyond) their HARD weekly training-days cap + availability, leaving genuine REST days blank (don't force a session onto every day). Use list_schedule to see how far it reaches, then create the sessions (ride/run/gym per their sports + how the block is shaping up; keep intensity sane + spaced). Do NOT review activities, add meals/mind/recovery, or churn existing sessions now — just extend the back half of the horizon. Be concise.`
+  return `HORIZON FILL — focused, non-negotiable. Your plan REACHES only ${cov.last || 'today'}, ${cov.tail} days short of the ~${DAILY_HORIZON}-day window end (${cov.end}). In THIS pass do ONE thing: EXTEND the plan out to ~${cov.end} — add training sessions across the days from ${cov.firstEmpty} through ${cov.end}, FILLING toward their weekly training-days TARGET (place rest deliberately; leave a day blank ONLY for a genuine recovery reason, never a silent gap; don't force a session onto every day past the target), never beyond that cap. Use list_schedule to see how far it reaches, then create the sessions (ride/run/gym per their sports + how the block is shaping up; keep intensity sane + spaced). Do NOT review activities, add meals/mind/recovery, or churn existing sessions now — just extend the back half of the horizon. Be concise.`
 }
 // #439 (JM idea) — SEPARATE focused pass per topic beats one giant prompt (the coach gave each partial
 // attention + ran out). REVIEWS pass:
 function reviewMsg(today) {
-  return `Daily REVIEW pass (${today}) — do ONLY activity reviews now. get_recent_activities flags each activity's \`reviewed\` status + its \`id\`: for any completed activity in the last week with \`reviewed:false\`, REVIEW it — save_coach_review with that exact \`id\` (a score + one-line verdict + 2-4 takeaways; ticks the Coach box + posts your note) and give it a public-safe title/description via set_activity_text. SKIP anything already \`reviewed:true\` (never re-review). ⚠️ ALSO SKIP any activity flagged \`awaitingFeedback:true\` — it's fresh (today/yesterday) and the athlete hasn't logged how it went yet; reviewing now would beat their input and then double-review when they submit. Leave it — their submit triggers the review, or it drops the flag after a day and you'll review it next pass. Cap at the few most recent so nothing piles up. #699 (JM) — do NOT write a "what's next" line: leave the \`next\` field EMPTY. The review reflects THIS session + the athlete's progress ONLY; never list, name, or preview upcoming/scheduled sessions, and no recovery/sleep/logistics here. #698 (JM) — NEVER mention "pump"/"no pump". **SHOW THEM THEIR PROGRESS (#631): when you can measure a concrete GAIN — get_metrics now vs a few weeks ago (threshold power/pace up, TTE up, EF up, CS·D′/CSS up) — STATE it plainly as a takeaway ("your threshold is up ~8 W in 6 weeks", "you're holding threshold ~4 min longer than a month ago"). The athlete should SEE their training working, not just be told "good job." Only claim a gain that's REAL in the numbers.** Don't CHANGE the plan in this pass, just reflect it truthfully. CALIBRATE each verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. Be concise.`
+  return `Daily REVIEW pass (${today}) — do ONLY activity reviews now. get_recent_activities flags each activity's \`reviewed\` status + its \`id\`: for any completed activity in the last week with \`reviewed:false\`, REVIEW it — save_coach_review with that exact \`id\` (a score + one-line verdict + 2-4 takeaways; ticks the Coach box + posts your note) and give it a public-safe title/description via set_activity_text. SKIP anything already \`reviewed:true\` (never re-review). ⚠️ NEVER review an activity flagged \`awaitingFeedback:true\` — the athlete has NOT logged how it went, and a review REQUIRES their feedback (there is NO data-only review; the server will 409 you if you try). Leave it — the athlete's feedback submit fires the review, and the flag clears once they've logged it. Only review sessions that have feedback AND \`reviewed:false\`. Cap at the few most recent so nothing piles up. #699 (JM) — do NOT write a "what's next" line: leave the \`next\` field EMPTY. The review reflects THIS session + the athlete's progress ONLY; never list, name, or preview upcoming/scheduled sessions, and no recovery/sleep/logistics here. #698 (JM) — NEVER mention "pump"/"no pump". **SHOW THEM THEIR PROGRESS (#631): when you can measure a concrete GAIN — get_metrics now vs a few weeks ago (threshold power/pace up, TTE up, EF up, CS·D′/CSS up) — STATE it plainly as a takeaway ("your threshold is up ~8 W in 6 weeks", "you're holding threshold ~4 min longer than a month ago"). The athlete should SEE their training working, not just be told "good job." Only claim a gain that's REAL in the numbers.** Don't CHANGE the plan in this pass, just reflect it truthfully. CALIBRATE each verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. Be concise.`
 }
 // ROUND-OUT pass — FUEL / MIND / RECOVERY around the (already-set) plan:
 function roundOutMsg(today) {
@@ -3769,7 +3955,7 @@ async function runDailyAdapt(user, pass, opts = {}) { // #634 — opts.buildMode
     // loop removed #612 — it was spawning up to 5 EXTRA coach runs = minutes wasted). The single pass owns the full
     // ~2-week horizon (its prompt makes filling to the window end the first job); at most ONE fallback top-up if it
     // still comes up badly short, never a 5-deep loop.
-    const covOf = () => horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON)
+    const covOf = () => horizonCoverage([...(user.plans || []).map((p) => p.date), ...(user.restDates || [])], today, DAILY_HORIZON)
     const buildModel = opts.buildModel || COACH_BUILD_MODEL
     await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()), { model: buildModel }) // #634 — the BUILD (quality-critical); model set by env/opts, default Opus
     if (covOf().tail >= 4) await runCoachTask(user, horizonFillMsg(today, covOf()), { model: buildModel }) // single top-up, same tier as the build
@@ -3833,7 +4019,7 @@ async function dailyAdaptTick() {
         // OR the coach has never built one. Otherwise skip the costly rebuild for the day. ~80% fewer full adapts.
         const lastFull = user.dailyAdapt.lastFull
         const daysSinceFull = lastFull ? Math.floor((Date.parse(today) - Date.parse(lastFull)) / 86400000) : 999
-        const tail = horizonCoverage((user.plans || []).map((p) => p.date), today, DAILY_HORIZON).tail
+        const tail = horizonCoverage([...(user.plans || []).map((p) => p.date), ...(user.restDates || [])], today, DAILY_HORIZON).tail
         const material = daysSinceFull >= 7 || tail >= 4
         user.dailyAdapt.done = today
         if (material) { user.dailyAdapt.lastFull = today; save(store); runDailyAdapt(user, 'refine') }

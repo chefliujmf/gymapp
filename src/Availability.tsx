@@ -41,7 +41,7 @@ export default function Availability() {
           onChange={(e) => setFreq(Math.max(0, Math.min(14, Math.round(Number(e.target.value) || 0))))} />
         <span className="meta">days / week</span>
       </div>
-      <p className="meta" style={{ margin: '0 2px 10px', opacity: .8, fontSize: 12 }}>A hard cap — your coach plans up to this many days, never more.</p>
+      <p className="meta" style={{ margin: '0 2px 10px', opacity: .8, fontSize: 12 }}>Your weekly target — your coach aims for this many days and places your rest day deliberately. It's also a hard cap (never more); fewer only when recovery calls for it, and it'll tell you why.</p>
 
       {/* #345 — most people train ONCE a day; the coach must not stack a gym + a run on the same day
           unless you say you can double. Default 1. */}

@@ -13,9 +13,10 @@ export interface GymExLog { name: string; exId?: string; sets: SetEntry[] }
 // by-exercise sets/PR cards + the feedback stack. Same #286 language as ActivityDetail (which is
 // device rides/runs); gym's "analysis" is the sets/PRs, not a power timeline. Used by the GymPlayer
 // done screen AND the revisit path (PostWorkout /feedback/:id).
-export default function GymSummary({ minutes, exercises, review, note, bestE1rm, feedbackId, feedbackDate, altFeedbackIds, planId, activityId, avgHr, awaitReview = false, plannedNoWeights = false, onAddWeights }: {
+export default function GymSummary({ minutes, exercises, review, note, bestE1rm, feedbackId, feedbackDate, altFeedbackIds, planId, activityId, avgHr, tss, awaitReview = false, plannedNoWeights = false, onAddWeights }: {
   minutes: number
   exercises: GymExLog[]
+  tss?: number             // #729 — the session's training LOAD (Friel Time×RPE once rated), shown so gym fatigue is visible
   review?: CoachReview | null
   note?: CoachNote | null
   bestE1rm?: Map<string, { e1rm: number; date: string }>
@@ -77,8 +78,10 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
       {/* #701 — device-recorded gym with no logged weights: a clear CTA to backfill them (drives PRs). */}
       {plannedNoWeights && onAddWeights && <button onClick={onAddWeights} className="btn btn--ghost" style={{ display: 'block', width: '100%', margin: '2px 0 4px' }}>✍️ Add the weights you lifted</button>}
       <div className="act-hero">{hero.map(([l, v]) => <div key={l} className="ht"><b>{v}</b><span>{l}</span></div>)}</div>
-      {(muscles.length > 0 || prCount > 0) && (
+      {(muscles.length > 0 || prCount > 0 || !!tss) && (
         <div className="act-chips">
+          {/* #729 — training LOAD so gym fatigue is visible + comparable to rides/runs (drives Form). */}
+          {!!tss && <span key="load" className="act-chip"><b>{Math.round(tss)}</b><span>TSS load</span></span>}
           {muscles.map((m) => <span key={m} className="act-chip"><b>{m}</b></span>)}
           {prCount > 0 && <span key="pr" className="act-chip"><b>{prCount}</b><span>PR{prCount > 1 ? 's' : ''} 🏅</span></span>}
         </div>

@@ -258,7 +258,12 @@ function sessionTitle(patterns, emph, sessionIndex) {
  * Assemble ONE tailored gym session. @param patterns the movement patterns for THIS session (from the split).
  * @returns { title, focus, emphasis, exercises:[{name,section,mode,reps?,sets?,seconds?,eachSide?,tempo?}] }
  */
-export function assembleGymSession({ focus = 'support', mainSport, sports = [], patterns = ['squat', 'hinge', 'hpush', 'hpull', 'core', 'arms'], recentExercises = [], sessionIndex = 0 } = {}) {
+// #720 (audit) — GYM MESO-CYCLE: gym must PROGRESS + DELOAD, not repeat identically. `mesoWeek` 0-3 in a 4-week block:
+// 0-1 accumulation (base) · 2 intensification (a touch heavier: primaries +1 set) · 3 DELOAD (cut volume ~45%). Since
+// the gym frame is "build EXACTLY these", the ramp/deload MUST be in the assembler, not the prompt. Pure + testable.
+export function gymMesoPhase(mesoWeek) { const w = ((Number(mesoWeek) % 4) + 4) % 4; return w === 3 ? 'deload' : w === 2 ? 'intensification' : 'accumulation' }
+export function assembleGymSession({ focus = 'support', mainSport, sports = [], patterns = ['squat', 'hinge', 'hpush', 'hpull', 'core', 'arms'], recentExercises = [], sessionIndex = 0, mesoWeek = 0 } = {}) {
+  const mesoPhase = gymMesoPhase(mesoWeek)
   const f = normFocus(focus)
   const rs = REP_SCHEME[f]
   const emph = sportEmphasis({ mainSport, sports })
@@ -275,7 +280,12 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
   // athlete gets a FOCUSED session (3-4 heavy compounds, sport-priority first — Rønnestad concurrent training), not 6;
   // compound patterns beyond the cap become moderate ACCESSORIES. Core/arms/carry are always accessories.
   const maxPrimaries = f === 'support' ? 3 : f === 'support_build' ? 4 : f === 'strength' ? 4 : f === 'health' ? 3 : 6 // muscle → 6
+  // #718 (audit) — HYPERTROPHY needs 10-20 sets/muscle/wk (Schoenfeld), but one primary/pattern @3 sets under-doses (~6/wk
+  // at 2× frequency). For muscle focus: primaries get 4 sets AND each primary pattern gets a 2nd movement (below) → ~7-8
+  // sets/muscle/session, ~14-16/wk. Strength stays low-volume/heavy (3 sets); endurance-support stays FOCUSED (3 sets).
+  const primarySets = (f === 'muscle' ? 4 : 3) + (mesoPhase === 'intensification' ? 1 : 0) // #720 — intensification week: +1 set
   let primaries = 0
+  const primaryInfo = []
   const main = orderByEmphasis(patterns, emph).map((pat) => {
     // #692 — a SINGLE-LEG-sport (runner) prefers the UNILATERAL leg variant (Bulgarian/lunge/single-leg-RDL)
     const menu = (emph && emph.unilateral && (pat === 'squat' || pat === 'hinge')) ? (PATTERNS[pat] || []).filter((m) => UNILATERAL_RE.test(m)).concat(PATTERNS[pat] || []) : (PATTERNS[pat] || [pat])
@@ -283,14 +293,25 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
     if (pat === 'core') return /hold|plank|carry/i.test(name) ? mk(name, 'main', { mode: 'timed', seconds: 40 }) : mk(name, 'main', { mode: 'reps', reps: 12, sets: 2 })
     if (pat === 'carry') return mk(name, 'main', { mode: 'timed', seconds: 40, sets: 2 })
     if (pat === 'arms') return mk(name, 'main', { mode: 'reps', reps: accReps, sets: 2 }) // accessory — moderate reps
-    if (primaries < maxPrimaries) { primaries++; return mk(name, 'main', { mode: 'reps', reps: hi, sets: 3, tempo: rs.tempo }) } // PRIMARY compound — heavy, focus rep scheme
+    if (primaries < maxPrimaries) { primaries++; primaryInfo.push({ pat, norm: normMovement(name) }); const e = mk(name, 'main', { mode: 'reps', reps: hi, sets: primarySets, tempo: rs.tempo }); e._primary = true; return e } // PRIMARY compound
     return mk(name, 'main', { mode: 'reps', reps: accReps, sets: 2 }) // beyond the cap → moderate ACCESSORY (keeps coverage, less volume)
   })
+  // #718 — MUSCLE: a 2nd DISTINCT movement per primary pattern (3 sets) to reach hypertrophy volume. Must have a DIFFERENT
+  // normalized movement than the primary, else the save-time enforceGymStructure dedups it away (Barbell Bench ≈ DB Bench).
+  if (f === 'muscle') { // #718 — keep the 2nd movements even on a deload (variety stays; #720 halves the SETS instead)
+    for (const { pat, norm } of primaryInfo) {
+      const fresh = (PATTERNS[pat] || []).find((m) => !used.has(m.toLowerCase()) && normMovement(m) !== norm)
+      if (!fresh) continue
+      used.add(fresh.toLowerCase()); main.push(mk(fresh, 'main', { mode: 'reps', reps: hi, sets: 3, tempo: rs.tempo }))
+    }
+  }
   // #691 — group same-EQUIPMENT moves to cut station-switching, WITHOUT breaking the training order: heavy PRIMARIES
-  // (sets 3) stay first in their sport-emphasis order (do the big lifts fresh, legs-first for a cyclist); ONLY the
-  // ACCESSORIES that follow are re-grouped by equipment. Key = original index for primaries, equipment rank for the rest.
-  main.map((e, i) => (e._rank = (e.sets === 3 && e.mode === 'reps') ? i : 1000 + EQUIP_ORDER(e.name)))
-  main.sort((a, b) => a._rank - b._rank).forEach((e) => delete e._rank)
+  // stay first in their sport-emphasis order (do the big lifts fresh, legs-first for a cyclist); ONLY the ACCESSORIES
+  // that follow are re-grouped by equipment. Key = original index for primaries, equipment rank for the rest.
+  main.map((e, i) => (e._rank = e._primary ? i : 1000 + EQUIP_ORDER(e.name)))
+  main.sort((a, b) => a._rank - b._rank).forEach((e) => { delete e._rank; delete e._primary })
+  // #720 — DELOAD week: cut working volume ~45% (halve the sets on every reps-mode main), timed mobility untouched.
+  if (mesoPhase === 'deload') for (const e of main) { if (e.mode !== 'timed' && Number(e.sets) > 0) e.sets = Math.max(1, Math.ceil(e.sets * 0.5)) }
   // #692 — sport-specific EXTRAS (runner plyo, swimmer shoulder-health prehab), deduped
   const extras = (emph && emph.extras ? emph.extras : []).filter((x) => !used.has(String(x.name).toLowerCase())).map((x) => { used.add(String(x.name).toLowerCase()); return { name: x.name, section: 'main', mode: x.mode || 'reps', ...(x.reps ? { reps: x.reps } : {}), ...(x.sets ? { sets: x.sets } : {}), ...(x.seconds ? { seconds: x.seconds } : {}), ...(x.eachSide ? { eachSide: true } : {}) } })
   // COOL-DOWN — 2 stretches, TIMED
@@ -306,6 +327,50 @@ const GYM_DURATION_RE = /\s*\b(?:about|approx\.?|approximately|around|roughly|~)
 export function stripGymDurationProse(text) {
   if (typeof text !== 'string' || !text) return text
   return text.replace(GYM_DURATION_RE, '').replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').replace(/[ \t]+\n/g, '\n').trim()
+}
+
+// #712 (audit SAFETY) — a PREGNANT athlete at TRIMESTER 2+ must not do SUPINE (flat-on-back) or prone lifts; lying flat
+// compresses the vena cava (ACOG) and the assembler/coach can still surface a bench/floor-press/dead-bug. The prompt rule
+// is ignored, so ENFORCE at save: swap each supine/prone move to a safe UPRIGHT/incline equivalent (or drop if none maps).
+// Pure + unit-tested. Returns { exercises, changed }.
+const SUPINE_RE = /\b(bench press|floor press|chest press|lying|supine|dead ?bugs?|glute bridge|hip thrust|pullover|leg raises?|reverse crunch|crunch(es)?|sit[-\s]?ups?|toe touch)\b/i
+const SUPINE_SWAP = [
+  [/bench press|floor press|chest press/i, 'Incline Dumbbell Press'],
+  [/dead ?bugs?/i, 'Bird Dog'],
+  [/glute bridge|hip thrust/i, 'Standing Cable Pull-Through'],
+  [/pullover/i, 'Cable Straight-Arm Pulldown'],
+  [/reverse crunch|crunch(es)?|sit[-\s]?ups?|leg raises?|toe touch/i, 'Pallof Press'],
+]
+export function enforcePregnancyGym(exercises, trimester) {
+  if (!Array.isArray(exercises) || !(Number(trimester) >= 2)) return { exercises: exercises || [], changed: 0 }
+  let changed = 0
+  const out = []
+  for (const ex of exercises) {
+    const n = String((ex && ex.name) || '')
+    if (!SUPINE_RE.test(n)) { out.push(ex); continue }
+    const swap = SUPINE_SWAP.find(([re]) => re.test(n))
+    if (swap) { out.push({ ...ex, name: swap[1], eachSide: UNILATERAL_RE.test(swap[1]) || undefined }); changed++ }
+    else { changed++ } // no safe mapping → DROP the supine move (safer to omit than risk it)
+  }
+  return { exercises: out, changed }
+}
+
+// #706 — the coach often gives consecutive gym sessions the SAME generic title ("Upper-Body & Trunk Strength" on two
+// weeks), so the calendar shows identical entries (JM). Code-enforce distinct titles: sessions that share a base title
+// get a clean A/B/C series in DATE order (matching the assembler's slot convention). Pure; mutates plan.title; returns
+// the count changed. `gymPlans` = the future gym plans to reconcile.
+const GYM_TITLE_LETTER_RE = /\s+[A-Z]$/
+export function dedupeGymTitles(gymPlans) {
+  const base = (t) => String(t || 'Strength').replace(GYM_TITLE_LETTER_RE, '').trim() || 'Strength'
+  const groups = new Map()
+  for (const p of gymPlans || []) { if (!p) continue; const b = base(p.title); if (!groups.has(b)) groups.set(b, []); groups.get(b).push(p) }
+  let changed = 0
+  for (const [b, group] of groups) {
+    if (group.length < 2) { const p = group[0]; if (p.title !== b && GYM_TITLE_LETTER_RE.test(String(p.title || ''))) { p.title = b; changed++ } continue }
+    group.sort((a, c) => String(a.date || '').localeCompare(String(c.date || '')))
+    group.forEach((p, i) => { const t = `${b} ${String.fromCharCode(65 + Math.min(i, 25))}`; if (p.title !== t) { p.title = t; changed++ } })
+  }
+  return changed
 }
 
 // render the assignment for the prompt block: the split + each session's patterns (with a fresh accessory each).

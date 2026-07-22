@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module
-import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure, stripGymDurationProse } from '../server/gym-split.js'
+import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from '../server/gym-split.js'
 
 const flat = (a: any) => a.days.flat()
 
@@ -280,5 +280,75 @@ describe('#696 stripGymDurationProse — drop the session-duration phrase, keep 
     expect(stripGymDurationProse('Light carb + protein snack about 60-90 min before; water through.')).toBe('Light carb + protein snack about 60-90 min before; water through.')
     expect(stripGymDurationProse('roughly 50 minutes of quality work')).not.toMatch(/50 minutes/)
     expect(stripGymDurationProse('Hold each for ~30 s')).toBe('Hold each for ~30 s') // seconds untouched
+  })
+})
+
+describe('#706 dedupeGymTitles — no two identical gym titles on the calendar', () => {
+  it('gives same-title sessions a clean A/B/C series in DATE order', () => {
+    const plans = [
+      { date: '2026-08-03', title: 'Upper-Body & Trunk Strength' },
+      { date: '2026-07-27', title: 'Upper-Body & Trunk Strength' },
+      { date: '2026-07-20', title: 'Lower-Body Strength' }, // unique → untouched
+    ]
+    const n = dedupeGymTitles(plans)
+    expect(n).toBeGreaterThan(0)
+    const byDate = Object.fromEntries(plans.map((p) => [p.date, p.title]))
+    expect(byDate['2026-07-27']).toBe('Upper-Body & Trunk Strength A') // earlier date = A
+    expect(byDate['2026-08-03']).toBe('Upper-Body & Trunk Strength B')
+    expect(byDate['2026-07-20']).toBe('Lower-Body Strength')           // unique kept
+  })
+  it('is idempotent (re-running keeps the same A/B, does not stack letters)', () => {
+    const plans = [{ date: '2026-07-27', title: 'Full-Body Strength A' }, { date: '2026-08-03', title: 'Full-Body Strength B' }]
+    expect(dedupeGymTitles(plans)).toBe(0)
+    expect(plans.map((p) => p.title)).toEqual(['Full-Body Strength A', 'Full-Body Strength B'])
+  })
+})
+
+describe('#712 enforcePregnancyGym — no supine/flat-on-back lifts at trimester 2+', () => {
+  it('swaps supine moves to safe upright/incline variants at T2+', () => {
+    const ex = [
+      { name: 'Barbell Bench Press', section: 'main', mode: 'reps', reps: 5 },
+      { name: 'Dead Bug', section: 'main', mode: 'reps', reps: 12 },
+      { name: 'Glute Bridge', section: 'main', mode: 'reps', reps: 12 },
+      { name: 'Goblet Squat', section: 'main', mode: 'reps', reps: 8 }, // upright → kept
+    ]
+    const r = enforcePregnancyGym(ex, 2)
+    expect(r.changed).toBe(3)
+    const names = r.exercises.map((e: any) => e.name)
+    expect(names).toContain('Incline Dumbbell Press')  // bench → incline
+    expect(names).toContain('Bird Dog')                // dead bug → bird dog
+    expect(names).toContain('Standing Cable Pull-Through') // glute bridge → standing
+    expect(names).toContain('Goblet Squat')            // upright unchanged
+    expect(names).not.toContain('Barbell Bench Press')
+  })
+  it('is a NO-OP at trimester 1 (or non-pregnant / no trimester)', () => {
+    const ex = [{ name: 'Barbell Bench Press', section: 'main', mode: 'reps', reps: 5 }]
+    expect(enforcePregnancyGym(ex, 1).changed).toBe(0)
+    expect(enforcePregnancyGym(ex, null).changed).toBe(0)
+  })
+})
+
+describe('#718 bodybuilder volume — hypertrophy gets 2nd movements, survives save-time dedup', () => {
+  it('a muscle-focus session has far more sets than a support session, and enforceGymStructure keeps them', () => {
+    const bb = (assembleGymSession as any)({ mainSport: 'gym', focus: 'muscle', patterns: ['hpush', 'vpush', 'hpull', 'arms', 'core'] })
+    const r = enforceGymStructure(bb.exercises)
+    const mains = r.exercises.filter((e: any) => e.section === 'main')
+    const sets = mains.reduce((s: number, e: any) => s + (e.sets || 0), 0)
+    expect(sets).toBeGreaterThanOrEqual(18)          // hypertrophy volume, not ~6
+    expect(r.deduped).toBe(0)                          // the 2nd movements are distinct → not dedup'd away
+    const sup = (assembleGymSession as any)({ mainSport: 'cycling', sports: ['cycling'], focus: 'support', patterns: ['squat', 'hinge', 'hpush', 'hpull', 'core'] })
+    const supSets = sup.exercises.filter((e: any) => e.section === 'main').reduce((s: number, e: any) => s + (e.sets || 0), 0)
+    expect(sets).toBeGreaterThan(supSets)              // endurance-support stays FOCUSED/low
+  })
+})
+
+describe('#720 gym meso-cycle — progress then deload, not identical every week', () => {
+  it('deload week cuts working volume vs accumulation; intensification adds sets', () => {
+    const acc = (assembleGymSession as any)({ mainSport: 'gym', focus: 'muscle', patterns: ['hpush', 'vpush', 'hpull', 'core'], mesoWeek: 0 })
+    const intens = (assembleGymSession as any)({ mainSport: 'gym', focus: 'muscle', patterns: ['hpush', 'vpush', 'hpull', 'core'], mesoWeek: 2 })
+    const deload = (assembleGymSession as any)({ mainSport: 'gym', focus: 'muscle', patterns: ['hpush', 'vpush', 'hpull', 'core'], mesoWeek: 3 })
+    const sets = (s: any) => s.exercises.filter((e: any) => e.section === 'main' && e.mode !== 'timed').reduce((a: number, e: any) => a + (e.sets || 0), 0)
+    expect(sets(deload)).toBeLessThan(sets(acc) * 0.7)   // deload ~45% cut
+    expect(sets(intens)).toBeGreaterThan(sets(acc))       // intensification heavier
   })
 })

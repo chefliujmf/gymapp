@@ -29,6 +29,32 @@ const topOf = (segs) => Math.max(0, ...(segs || []).map((s) => Math.max(Number(s
 // where a tempo title counted against OTHERS' budget but was never clamped itself, is what let ALL tempo through).
 export const isModerate = (p) => topOf(p && p.segments) >= CEILING_PCT.tempo || QUALITY_TITLE.test((p && p.title) || '') || TEMPO_TITLE.test((p && p.title) || '')
 
+// #717 (audit) — CONCURRENT-TRAINING interference: heavy strength ±1 day of a QUALITY endurance session blunts BOTH.
+// These pure helpers give buildSystemPrompt the exact quality-endurance dates to schedule strength away from, and let
+// the daily sweep DETECT a collision for logging. (Auto-moving is deliberately NOT done — too risky; the code-computed
+// constraint + detection is the safe enforcement layer.)
+const addDaysISO = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10)
+export function qualityEnduranceDates(plans, today, days = 14) {
+  const end = addDaysISO(today, days)
+  const out = new Set()
+  for (const p of plans || []) {
+    if (!p || !p.date || p.date < today || p.date > end) continue
+    if ((p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim') && isModerate(p)) out.add(p.date)
+  }
+  return [...out].sort()
+}
+// a gym plan is a HEAVY strength session if it carries low-rep main lifts (the interference-heavy kind).
+const isHeavyGym = (p) => p && p.sport === 'gym' && Array.isArray(p.exercises) && p.exercises.some((e) => e && e.mode !== 'timed' && Number(e.reps) > 0 && Number(e.reps) <= 6 && Number(e.sets) >= 3)
+export function concurrentGymCollisions(plans, today, days = 14) {
+  const q = new Set(qualityEnduranceDates(plans, today, days))
+  const out = []
+  for (const p of plans || []) {
+    if (!p || !p.date || p.date < today || !isHeavyGym(p)) continue
+    if (q.has(addDaysISO(p.date, -1)) || q.has(addDaysISO(p.date, 1))) out.push(p)
+  }
+  return out
+}
+
 // the HONEST title for an enforced ceiling %. Easy relabels ROTATE (a distinct cue per date) instead of a flat
 // "Easy Aerobic Run" every time; higher ceilings downgrade to the true level so a clamped title can't overstate.
 export function honestTitle(effCeil, sport, date) {

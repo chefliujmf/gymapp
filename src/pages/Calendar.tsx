@@ -12,7 +12,7 @@ import { localISO } from '../date'
 import { Plus, ChevronLeft, ChevronRight, Flag } from 'lucide-react'
 import { EntryMenu } from '../EntryMenu'
 import { AddSheet, colorFor, iconFor, type SheetType } from './AddSheet'
-import Today, { DayCheckinStrip, checkinVerdictTone } from './Today' // #488 — Plan DAY = full Today; per-day check-in strip/dot elsewhere
+import Today, { DayCheckinStrip, checkinVerdictTone, ToReviewCard } from './Today' // #488 — Plan DAY = full Today; #722 — the review nudge shows on ALL plan views
 import { authApi, type Checkin } from '../auth/api'
 import { orphanActivities } from '../orphan-activities'
 import { MovePicker } from './MovePicker'
@@ -58,6 +58,7 @@ export default function Calendar() {
   const [sel, setSel] = useState(qDay || localISO())
   const [events, setEvents] = useState<IcuEvent[]>([])
   const [activities, setActivities] = useState<IcuActivity[]>([])
+  const [reviewActs, setReviewActs] = useState<IcuActivity[]>([]) // #722 — recent (30d) activities for the review nudge, shown on ALL views (not just Day)
   const [plans, setPlans] = useState<CoachPlan[]>([])
   const [items, setItems] = useState<CalItem[]>([])
   const [checkins, setCheckins] = useState<Checkin[]>([]) // #488 — per-day check-ins for the visible range
@@ -117,6 +118,8 @@ export default function Calendar() {
     const [a, b] = range
     fetchEvents(a, b).then(setEvents).catch(() => setEvents([]))
     fetchActivities(a, b).then(setActivities).catch(() => setActivities([]))
+    // #722 — the review nudge counts RECENT missing-feedback sessions (last 30d), independent of the view's date range.
+    { const t = localISO(); fetchActivities(addDays(t, -30), t).then(setReviewActs).catch(() => {}) }
     syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then((pl) => { setPlans(pl); setCoachPlans(pl) }).catch(() => setPlans([])))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
     authApi.checkins(a, b).then(setCheckins).catch(() => setCheckins([])) // #488
@@ -279,6 +282,9 @@ export default function Calendar() {
           <button key={v} className={'cal-viewbtn' + (view === v ? ' cal-viewbtn--on' : '')} onClick={() => changeView(v)}>{label}</button>
         ))}
       </div>
+
+      {/* #722 — missing-feedback nudge lives at the PLAN level so it shows on Day, Week, Month AND Schedule (was Day-only). */}
+      <ToReviewCard acts={reviewActs} />
 
       {/* #488 — the DAY view is the merged Today screen (own day strip + Add), so skip Calendar's day title/nav there. */}
       {view !== 'day' && (

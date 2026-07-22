@@ -55,20 +55,24 @@ export default function PostWorkout() {
     // log. So a device-recorded gym always shows its real length, never a stale value. (#gym-duration-mirror)
     const devMin = Math.round((((act as { moving_time?: number; elapsed_time?: number } | undefined)?.moving_time || (act as { elapsed_time?: number } | undefined)?.elapsed_time || 0)) / 60)
     const durMin = devMin || gymLog.duration || 0
+    // #727 — per-exercise plan targets (mode/sets/reps/seconds/weight) → mode-aware inputs + seed the not-yet-logged ones.
+    const norm = (s: string) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const seed = exLogs.map((r) => { const px = p.exercises?.find((e) => norm(e.name) === norm(r.name)); return px ? { mode: px.mode, seconds: px.seconds, sets: px.sets, reps: px.reps, weight: px.weight, eachSide: px.eachSide } : {} })
     return (
       <div>
         <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>
         <div className="page-head"><span className="eyebrow">Gym · ✓ Completed{durMin ? ` · ${durMin} min` : ''}</span><h1>{p.title}</h1></div>
         {(() => {
           const fk = gymFeedbackKeys({ date: gymLog.date, planId: p.id, activityId: act?.id, workoutId: gymLog.workoutId })
-          return <GymSummary minutes={durMin} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={gymLog.date} planId={p.id} activityId={act?.id != null ? String(act.id) : undefined} avgHr={(act as { icu_average_hr?: number; average_heartrate?: number } | undefined)?.icu_average_hr || (act as { average_heartrate?: number } | undefined)?.average_heartrate} />
+          return <GymSummary minutes={durMin} exercises={exLogs} review={review} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={gymLog.date} planId={p.id} activityId={act?.id != null ? String(act.id) : undefined} avgHr={(act as { icu_average_hr?: number; average_heartrate?: number } | undefined)?.icu_average_hr || (act as { average_heartrate?: number } | undefined)?.average_heartrate} tss={gymLog.tss} />
         })()}
-        {/* #591 — edit a completed session's sets from the result page (fix a mistyped weight/rep → recompute). */}
-        {gymLog.id != null && (
+        {/* #591/#730 — edit a completed session's sets (fix a mistyped weight/rep → recompute). Gate on id OR sid so a
+            server-sourced log (no local Dexie id, e.g. another device) is still editable, not just locally-recorded ones. */}
+        {(gymLog.id != null || gymLog.sid) && (
           <div style={{ marginTop: 8 }}>
-            <button className="btn btn--ghost" onClick={() => setEditSets((v) => !v)}>{editSets ? 'Done editing' : '✏️ Edit sets'}</button>
+            <button className="btn btn--ghost" onClick={() => setEditSets((v) => !v)}>{editSets ? 'Done editing' : '✏️ Edit weights'}</button>
             {editSets && <div className="card" style={{ padding: '12px 14px', marginTop: 8 }}>
-              <GymSetEditor log={gymLog} exNames={gymLog.exNames || []} onSaved={(s) => setGymLog((g) => g ? { ...g, sets: s } : g)} onCancel={() => setEditSets(false)} />
+              <GymSetEditor log={gymLog} exNames={exLogs.map((r) => r.name)} seed={seed} showAll onSaved={(s) => setGymLog((g) => g ? { ...g, sets: s } : g)} onCancel={() => setEditSets(false)} />
             </div>}
           </div>
         )}

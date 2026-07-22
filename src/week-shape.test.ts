@@ -108,3 +108,36 @@ describe('#615 CEILING_PCT enforces the dose', () => {
     expect(CEILING_PCT[preg.intensityCeiling]).toBeLessThan(CEILING_PCT.threshold)
   })
 })
+
+describe('#710 explicit beginner/new-athlete → ramp-in shape (not an inferred data-gate)', () => {
+  it('an athlete who says they are new gets a conservative shape even with an ambitious goal', () => {
+    const s = weekShape({ goalNotes: "I'm a beginner, new to running, want to get faster eventually", trainingDays: 4 })
+    expect(s.loadBand).toBe('flat')
+    expect(s.qualityDays).toBeLessThanOrEqual(1)
+    expect(s.intensityCeiling).toBe('tempo') // below sweet-spot/vo2
+  })
+  it('a stated performance goal with NO beginner language stays a build', () => {
+    const s = weekShape({ goalNotes: 'raise my FTP and race a crit', trainingDays: 5 })
+    expect(s.loadBand).toBe('build')
+    expect(s.qualityDays).toBe(2)
+  })
+  it('"getting back into cycling after a while" ramps in', () => {
+    const s = weekShape({ goalNotes: 'getting back into cycling after a while off', trainingDays: 3 })
+    expect(s.loadBand).toBe('flat')
+    expect(s.intensityCeiling).toBe('tempo')
+  })
+})
+
+describe('#719 menstrual-cycle bias — only ease late-luteal/PMS, not the menstrual phase', () => {
+  it('MENSTRUAL phase keeps the quality day (low-hormone window is a green light, not a de-load)', () => {
+    const s = weekShape({ cyclePhase: 'menstrual', cycleFresh: true, goalNotes: 'raise my ftp', trainingDays: 5 })
+    expect(s.qualityDays).toBe(2)
+  })
+  it('LATE-LUTEAL / PMS eases the top end (one fewer quality day)', () => {
+    expect(weekShape({ cyclePhase: 'late_luteal', cycleFresh: true, goalNotes: 'raise ftp', trainingDays: 5 }).qualityDays).toBe(1)
+    expect(weekShape({ cyclePhase: 'pms', cycleFresh: true, goalNotes: 'raise ftp', trainingDays: 5 }).qualityDays).toBe(1)
+  })
+  it('a STALE phase (not fresh) does not bias the shape', () => {
+    expect(weekShape({ cyclePhase: 'late_luteal', cycleFresh: false, goalNotes: 'raise ftp', trainingDays: 5 }).qualityDays).toBe(2)
+  })
+})

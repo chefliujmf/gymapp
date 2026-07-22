@@ -189,6 +189,12 @@ export const authApi = {
   getActivityFeedback: (id: string) => req<{ feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; at?: number } | null>(`/activity/${encodeURIComponent(id)}/feedback`),
   activityFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; sport?: string; date?: string }) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   feedbackSkip: (id: string) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback-skip`, { method: 'POST' }),
+  // #723 — completed GYM sessions still lacking feedback (feedback lives in the Platyplus store, invisible to the
+  // intervals-based endurance nag) → the "to review" banner adds these so a gym never silently skips the loop.
+  gymReviewGaps: () => req<{ date: string; title: string; planId?: string }[]>('/gym-review-gaps'),
+  // #735 — deliberate REST days (sticky; the coach can't re-fill them). List them; mark/unmark a date.
+  restDays: () => req<string[]>('/rest-days'),
+  setRestDay: (date: string, rest: boolean) => req<{ ok: boolean; date: string; rest: boolean }>('/rest-day', { body: { date, rest } }),
   retryReview: (id: string) => req<{ ok: boolean; retrying: boolean }>(`/activity/${encodeURIComponent(id)}/review-retry`, { method: 'POST' }), // #589 — re-run a stuck coach review
   // #694 — the SERVER-side gym logs (device-independent): the Dexie copy is per-device, so the activity/plan detail
   // needs this to render a gym session's exercises/sets on a device that didn't record it (e.g. JM's browser vs phone).

@@ -1,6 +1,28 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, detectRepeat, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from '../server/icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, detectRepeat, plannedTss, plannedGymTss, gymTssFromRpe, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from '../server/icu-steps.js'
+import { gymTSSfromRPE } from './tss' // client gym-TSS method — must AGREE with the server mirror (#729)
+
+// #729 — Friel Time×RPE: the completed gym's REAL load from actual effort. The server helper MUST mirror the client's.
+describe('gymTssFromRpe — Friel Time×RPE book method (#729)', () => {
+  it('an easy and a hard session of the SAME length get different load', () => {
+    expect(gymTssFromRpe(60, 2)).toBeLessThan(gymTssFromRpe(60, 8)) // RPE2 (~20/h) << RPE8 (~56/h)
+    expect(gymTssFromRpe(60, 2)).toBe(20)
+    expect(gymTssFromRpe(60, 8)).toBe(56)
+  })
+  it('scales with duration', () => {
+    expect(gymTssFromRpe(30, 6)).toBe(Math.round((30 / 60) * 44))
+    expect(gymTssFromRpe(90, 6)).toBe(Math.round((90 / 60) * 44))
+  })
+  it('is 0 without a real duration or RPE (falls back to the bucket estimate upstream)', () => {
+    expect(gymTssFromRpe(0, 6)).toBe(0)
+    expect(gymTssFromRpe(60, 0)).toBe(0)
+    expect(gymTssFromRpe(60, undefined)).toBe(0)
+  })
+  it('AGREES with the client src/tss.ts gymTSSfromRPE for every RPE (one source of truth)', () => {
+    for (let rpe = 1; rpe <= 10; rpe++) expect(gymTssFromRpe(54, rpe)).toBe(gymTSSfromRPE(54, rpe))
+  })
+})
 
 // #434 — gym plans carry a LOAD so intervals Form/CTL counts strength (was pushed as 0).
 describe('plannedGymTss — gym LOAD from exercises (KB Friel ~45 TSS/h)', () => {

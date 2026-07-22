@@ -247,6 +247,16 @@ export function plannedGymTss(plan) {
   const PER_HOUR = 45 // KB (Friel): standard hypertrophy/maintenance ≈ 45 TSS/h. #81 refines by prescribed effort.
   return Math.max(1, Math.round((min / 60) * PER_HOUR))
 }
+// #729 — the Friel Time×RPE "book" method (joefrieltraining.com). Once the athlete RATES the completed session, use the
+// ACTUAL effort, not the flat 45/h planned estimate — so an easy and a brutal session of the same length get different
+// load (and Form/CTL). perHour ≈ 8 + RPE×6, clamped 10–70 (RPE4→~32, 6→~44, 8→~56, 10→~68). MUST mirror src/tss.ts
+// gymTSSfromRPE (the client manual-log path) so every gym-TSS in the app agrees. Pure + unit-tested.
+export function gymTssFromRpe(durationMin, rpe) {
+  const r = Math.max(1, Math.min(10, Number(rpe) || 0))
+  if (!(durationMin > 0) || !Number(rpe)) return 0
+  const perHour = Math.max(10, Math.min(70, Math.round(8 + r * 6)))
+  return Math.max(1, Math.round((durationMin / 60) * perHour))
+}
 
 // #414 — did PLATYPLUS push this intervals event? Every event we create carries `external_id = <plan id>`
 // (composeIcuEvent), and gym events also carry the "Open workout in Platyplus" deep-link. Athlete-created

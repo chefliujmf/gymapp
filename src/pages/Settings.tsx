@@ -69,8 +69,8 @@ export default function Settings() {
       </Collapsible>
 
       <Collapsible title="Preferences" subtitle="Units, calendar, demos" defaultOpen>
-        <ChipSetting title="Units" value={units ?? 'metric'} onPick={(v) => setSetting('units', v)}
-          options={[['metric', 'metric'], ['imperial', 'imperial']]} />
+        <ChipSetting title="Weight units" value={units ?? 'metric'} onPick={(v) => setSetting('units', v)}
+          hint="Switch weights between kilograms and pounds — applies to your gym logs, targets and history." options={[['metric', 'kg'], ['imperial', 'lbs']]} />
         <ChipSetting title="Calendar starts on" value={calView ?? 'month'} onPick={setCalView}
           options={[['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['schedule', 'Schedule']]} />
         <ChipSetting title="Exercise demos" value={stills ?? '0'} onPick={(v) => setSetting('exerciseStills', v)}

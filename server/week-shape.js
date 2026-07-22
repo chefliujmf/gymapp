@@ -51,6 +51,11 @@ export function weekShape(p = {}) {
       qualityDays: early ? 0 : 1,
       moderateDays: early ? 1 : 0,
       intensityCeiling: early ? 'endurance' : 'sweetspot',
+      // #713 (audit) — the REAL early-postpartum risk is ground-reaction IMPACT (pelvic floor), not aerobic intensity. A
+      // ceiling-compliant easy RUN is still contraindicated before the floor is rebuilt. Carry an impact directive: NONE
+      // <6wk (no running/jumping — walk / bike / swim / elliptical), WALK-RUN 6-12wk. (Coached via the prompt; the hard
+      // modality-conversion clamp is a careful follow-up — auto-converting a run to a walk is risky.)
+      impact: early ? 'none' : 'walk_run',
       rationale: `POSTPARTUM (~${Math.round(postpartumWeeks)} wk) — a GRADED RETURN, not a build. ${early ? 'First ~6 weeks: rebuild base + PELVIC FLOOR + deep core, mostly EASY, no impact/rush, cleared by her clinician first (esp. after a C-section).' : 'Weeks 6–12: gradually reintroduce ONE quality day + impact as pelvic floor + core allow.'} Progress by how she FEELS + clinician guidance; watch for leaking, heaviness/pressure, or abdominal doming and back off if they appear. Ramp to a full build only after ~12 weeks and symptom-free.`,
     }
   }
@@ -70,12 +75,17 @@ export function weekShape(p = {}) {
   const goalText = `${Array.isArray(goalFocus) ? goalFocus.join(' ') : ''} ${goalNotes || ''}`.toLowerCase()
   const wantsBuild = /ftp|faster|race|marathon|\bpr\b|performance|stronger|\bbuild\b|watts|vo2|threshold|hypertroph|compete|podium|personal best|\bpeak\b/.test(goalText)
   const wantsMaintain = /consist|stay fit|maintain|\btone\b|health|general fitness|feel good|habit/.test(goalText)
+  // #710 (JM 2026-07-22) — EXPLICIT beginner/new-athlete signal from the athlete's OWN words (NOT an inferred data-gate —
+  // JM removed the ctl<25 bucket; experience is captured explicitly). If they say they're new, RAMP IN conservatively
+  // regardless of an ambitious goal — you build a base before structured quality. This keeps dose goal/word-driven.
+  const wantsBeginner = /\bbeginner\b|\bnovice\b|new to (this|training|running|cycling|the gym|lifting|fitness|exercise|working ?out)|just start|starting out|never (trained|lifted|ran|run|exercised)|first[- ]?time|getting back into|returning to (running|training|cycling|the gym|fitness|exercise)|been a while|out of shape|couch ?to|complete(ly)? new|haven'?t (trained|run|exercised)/.test(goalText)
   const teen = ageYears != null && ageYears < 18
   const masters = ageYears != null && ageYears >= 55
 
   // ── goal-driven band ─────────────────────────────────────────────────────────────────────────────
   let loadBand, qualityDays, intensityCeiling
-  if (wantsMaintain && !wantsBuild) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'sweetspot' } // consistency: 1 quality, keep fit
+  if (wantsBeginner) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'tempo' } // #710 — new athlete stated → ramp in: mostly easy, ≤1 light quality, ceiling below sweet-spot until a base is built
+  else if (wantsMaintain && !wantsBuild) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'sweetspot' } // consistency: 1 quality, keep fit
   else { loadBand = 'build'; qualityDays = 2; intensityCeiling = 'vo2' } // default/build: 2 quality
 
   // NO fitness "beginner/advanced" CLASSIFICATION (JM 2026-07-20): don't bucket athletes. Everything is already
@@ -89,7 +99,11 @@ export function weekShape(p = {}) {
   if (masters && loadBand === 'build') { intensityCeiling = 'threshold' } // more recovery, ease the very top end
 
   // ── menstrual-cycle bias (non-pregnant female, fresh phase) ──────────────────────────────────────
-  if (cycleFresh && cyclePhase && /luteal|pms|menstrual|premenstrual/.test(String(cyclePhase).toLowerCase())) {
+  // #719 (audit) — only ease in LATE-LUTEAL / PMS (progesterone high, thermoregulation + perceived effort up). Do NOT
+  // cut a quality day for the MENSTRUAL phase: cycle.js rates it near-neutral and the low-hormone window is actually a
+  // GREEN LIGHT for hard work / PRs (contradiction the old /menstrual/ match created). Symptomatic menses is handled by
+  // her own check-in (readiness), not a blanket shape cut.
+  if (cycleFresh && cyclePhase && /late[-_ ]?luteal|pms|premenstr/.test(String(cyclePhase).toLowerCase())) {
     qualityDays = Math.max(1, qualityDays - 1) // ease the top end in late-luteal/PMS
     if (loadBand === 'build') loadBand = 'flat'
   }

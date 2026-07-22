@@ -60,10 +60,9 @@ export function CheckInCard({ day, onChange, compact = false }: { day: string; o
   // there"). The endpoint computes it for any date from that day's wellness + prior baselines. (Future
   // days never mount this card — they show a forecast instead.)
   useEffect(() => { let live = true; setRdy(null); setTouched(new Set()); authApi.readiness(day).then((r) => { if (live) setRdy(r) }).catch(() => {}); return () => { live = false } }, [day])
-  // #206: overnight HRV/sleep lands in intervals HOURS late (Coros→intervals lag), so a morning
-  // check shows none yet. Re-pull on app focus + a manual ⟳ so a later sync appears without a reload.
-  const [refreshing, setRefreshing] = useState(false)
-  const refreshRdy = () => { if (!isToday) return; setRefreshing(true); authApi.readiness(day).then(setRdy).catch(() => {}).finally(() => setRefreshing(false)) }
+  // #206: overnight HRV/sleep lands in intervals HOURS late (Coros→intervals lag), so a morning check shows none yet.
+  // We re-pull AUTOMATICALLY on app focus/visibility so a later sync appears without a reload. #725 (JM) — the manual
+  // ⟳ button was REMOVED: we control the integration and don't want it overused (the auto-refresh + daily pass cover it).
   useEffect(() => {
     if (!isToday) return
     const onVis = () => { if (document.visibilityState === 'visible') authApi.readiness(day).then(setRdy).catch(() => {}) }
@@ -210,7 +209,6 @@ export function CheckInCard({ day, onChange, compact = false }: { day: string; o
           {(rdy.today?.hrv != null || rdy.today?.restingHR != null || rdy.today?.sleepHours != null)
             ? <span className="wchip wchip--src" title="These values come from intervals.icu"><span className="wchip__up" aria-hidden="true">↑</span> intervals</span>
             : <span className="wchip wchip--wait">{isToday ? 'HRV/sleep not synced yet — auto-fills once your watch syncs' : 'No HRV/sleep for this day — scores are your own read'}</span>}
-          {isToday && <button className="wchip wchip--refresh" onClick={refreshRdy} disabled={refreshing} title="Re-check intervals for a newer Coros sync">{refreshing ? '…' : '⟳'}</button>}
         </div>
       )}
     </div>
@@ -436,9 +434,13 @@ function ItemCard({ it, onSwap, onRemove }: { it: CalItem; onSwap: () => void; o
 
 // #387/#442b — a compact "sessions to review" HEADLINE on Today (only when there ARE gaps); taps through to
 // the DEDICATED /review page (NOT History — JM's directive). Keeps Today clean while making feedback stick.
-function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
+export function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
   const { user } = useAuth() // #review-skip — the skipped-sessions count must not include what the athlete dismissed
-  const n = incompleteFeedback(acts, new Set((user?.feedbackSkips || []).map(String))).length
+  // #723 — GYM feedback lives in the Platyplus store (invisible to the intervals-based endurance nag), so a completed
+  // gym never nagged and the coach reviewed it as "no feedback". The server computes the gym gaps from the real store.
+  const [gymGaps, setGymGaps] = useState(0)
+  useEffect(() => { authApi.gymReviewGaps().then((g) => setGymGaps(g.length)).catch(() => setGymGaps(0)) }, [])
+  const n = incompleteFeedback(acts, new Set((user?.feedbackSkips || []).map(String))).length + gymGaps
   if (!n) return null
   return (
     <Link to="/review" className="fbban" style={{ textDecoration: 'none', color: 'var(--text)', margin: '10px 0 12px' }}>
@@ -473,6 +475,7 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
   const [err, setErr] = useState<string>()
   // #146: the Add sheet opens IN PLACE on Today (the same shared sheet the Plan page uses).
   const [sheet, setSheet] = useState<{ date: string } | null>(null)
+  const [restDays, setRestDays] = useState<string[]>([]) // #735 — deliberate rest days (sticky)
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const [rideTemplates, setRideTemplates] = useState<RideTemplate[]>([])
   const [ftp, setFtp] = useState(260)
@@ -485,6 +488,7 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
     syncIcuPlans(a, b).finally(() => fetchGymPlans(a, b).then((pl) => { setPlans(pl); setCoachPlans(pl) }))
     fetchActivities(a, b).then(setActivities).catch(() => setActivities([]))
     calApi.items(a, b).then(setItems).catch(() => setItems([]))
+    authApi.restDays().then(setRestDays).catch(() => setRestDays([])) // #735
   }, [])
   useEffect(() => { load() }, [load])
   // #293 one-time: re-reconcile a WIDE window (past 45d → future 30d) so EXISTING plans pick up the
@@ -641,7 +645,9 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
       {isFuture ? <ForecastCard key={selDay} day={selDay} rev={planRev} fmtDay={fmtDay} /> : <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />}
 
       {/* #387 — nudge to review completed sessions still missing feedback (links to the full list on Logs). */}
-      <ToReviewCard acts={activities} />
+      {/* #722 — when embedded in the Plan page, the nudge is rendered ONCE at the Calendar level (so it shows on Week/
+          Month/Schedule too, not just Day); standalone Today keeps its own. */}
+      {!embedded && <ToReviewCard acts={activities} />}
       {/* #457 — one-time opt-in for phone push (plan-change alerts). */}
       <PushNudge />
 
@@ -649,8 +655,12 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
 
       {/* #202 Today's plan (workouts + notes) with the readiness verdict banner */}
       <div className="cal-day-head" style={{ marginTop: 8 }}>
-        <div className="section-title" style={{ margin: 0 }}>{selDay === todayISO() ? "Today's plan" : fmtDay(selDay)}</div>
-        <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => swapOn(selDay)}><Plus size={16} /> Add</button>
+        <div className="section-title" style={{ margin: 0 }}>{selDay === todayISO() ? "Today's plan" : fmtDay(selDay)}{restDays.includes(selDay) ? <span className="meta" style={{ fontWeight: 400 }}> · 💤 Rest day</span> : null}</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {/* #735 — mark/clear a DELIBERATE rest day (sticky: the coach won't re-fill it). */}
+          <button className="btn btn--ghost" style={{ width: 'auto', padding: '8px 12px' }} title="A rest day your coach won't re-fill" onClick={() => authApi.setRestDay(selDay, !restDays.includes(selDay)).then(() => load()).catch(() => {})}>{restDays.includes(selDay) ? 'Clear rest' : '💤 Rest'}</button>
+          <button className="btn" style={{ width: 'auto', padding: '8px 14px' }} onClick={() => swapOn(selDay)}><Plus size={16} /> Add</button>
+        </div>
       </div>
       {err === 'NO_KEY' ? (
         <p className="meta">Connect intervals.icu in <Link to="/profile">Profile</Link> for your coach's plan — you can still add your own below.</p>

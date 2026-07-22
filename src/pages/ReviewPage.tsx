@@ -26,6 +26,10 @@ export default function ReviewPage() {
   const nav = useNavigate()
   const { user } = useAuth()
   const [acts, setActs] = useState<IcuActivity[]>([])
+  // #723 — completed GYM sessions still lacking feedback (feedback lives in the Platyplus store, invisible to the
+  // intervals-based endurance nag above) come from the server so a gym never silently drops out of the review loop.
+  const [gymGaps, setGymGaps] = useState<{ date: string; title: string; planId?: string }[]>([])
+  useEffect(() => { authApi.gymReviewGaps().then(setGymGaps).catch(() => {}) }, [])
   const [loaded, setLoaded] = useState(false)
   // #review-skip — sessions the athlete skips (server-persisted via user.feedbackSkips) + this session's local
   // skips, so a tapped row drops immediately without a refetch.
@@ -42,12 +46,26 @@ export default function ReviewPage() {
     <div>
       <button className="icon-btn" onClick={() => nav('/')} aria-label="Back to Today" style={{ marginBottom: 10 }}>‹</button>
       <div className="page-head">
-        <h1>To review{gaps.length ? ` · ${gaps.length}` : ''}</h1>
+        <h1>To review{gaps.length + gymGaps.length ? ` · ${gaps.length + gymGaps.length}` : ''}</h1>
         <p>Oldest first — a minute each, then your coach adapts your plan.</p>
       </div>
       {!loaded && <p className="meta">Loading…</p>}
-      {loaded && !gaps.length && <div className="empty"><div className="big">✅</div>All caught up — nothing to review.</div>}
+      {loaded && !gaps.length && !gymGaps.length && <div className="empty"><div className="big">✅</div>All caught up — nothing to review.</div>}
       <div className="stack">
+        {gymGaps.map((g) => (
+          <div key={`gym-${g.date}`} className="fbrow">
+            <Link to={g.planId ? `/coach/${g.planId}` : '/'} state={{ from: '/review' }} className="fbrow__lk">
+              <div className="fbrow__th">🏋️</div>
+              <div className="fbrow__b">
+                <div className="fbrow__t">{g.title || 'Strength session'} · {dayLabel(g.date + 'T12:00:00')}</div>
+                <div className="fbrow__m"><span className="fbmiss">how it felt</span></div>
+              </div>
+            </Link>
+            <div className="fbrow__acts">
+              <Link to={g.planId ? `/coach/${g.planId}` : '/'} state={{ from: '/review' }} className="fbrow__cta">Add →</Link>
+            </div>
+          </div>
+        ))}
         {gaps.map(({ act, status }) => {
           const stats = statLine(act)
           return (

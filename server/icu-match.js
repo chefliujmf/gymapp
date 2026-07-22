@@ -79,3 +79,14 @@ export function orphanIsMoveLeftover(ev, { liveIds, plans }) {
   const sport = eventSport(ev.type)
   return (plans || []).some((p) => p.date === date && p.sport === sport && p.icuEventId && String(p.icuEventId) !== evId && liveHas(liveIds, p.icuEventId))
 }
+
+// #726 — which current/future Platyplus-origin plans are NOT correctly mirrored in intervals, so healMirror re-pushes
+// them? Two failure modes: (a) NEVER synced (no icuEventId), and (b) STALE mirror — the plan carries an icuEventId but
+// that event was DELETED in intervals (the old healer only checked (a), so a deleted event left the day missing forever,
+// JM's 07-22 "Threshold 4×10" → event 121594819 gone). `existingEventIds` = a Set of the intervals event ids currently
+// in the today→horizon window (string/number-tolerant via liveHas); pass null when the events fetch failed → we heal
+// only mode (a), which is always safe (no false re-push). Pure + unit-tested.
+export function mirrorBrokenPlans(plans, today, existingEventIds) {
+  const future = (plans || []).filter((p) => p && p.date && String(p.date).slice(0, 10) >= today && (p.origin || 'platyplus') === 'platyplus')
+  return future.filter((p) => !p.icuEventId || (existingEventIds && !liveHas(existingEventIds, p.icuEventId)))
+}

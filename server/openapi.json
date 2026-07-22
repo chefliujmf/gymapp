@@ -488,6 +488,32 @@
         "responses": { "200": { "description": "{ missed: number }" } }
       }
     },
+    "/auth/rest-days": {
+      "get": {
+        "summary": "List the athlete's deliberate REST days (sticky; the coach won't re-fill them) — #735",
+        "tags": ["plans"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "ISO date strings", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "string" } } } } } }
+      }
+    },
+    "/auth/rest-day": {
+      "post": {
+        "summary": "Mark/unmark a day as a deliberate REST day (removes sessions there + makes it sticky) — #735",
+        "tags": ["plans"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["date"], "properties": { "date": { "type": "string", "description": "YYYY-MM-DD" }, "rest": { "type": "boolean", "description": "true = mark rest, false = clear" } } } } } },
+        "responses": { "200": { "description": "Updated" }, "400": { "description": "Bad date" } }
+      }
+    },
+    "/api/rest-day": {
+      "post": {
+        "summary": "Coach: mark/clear a deliberate REST day when the athlete asks (set_rest_day / clear_rest_day) — #735",
+        "tags": ["coach"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["date"], "properties": { "date": { "type": "string", "description": "YYYY-MM-DD" }, "rest": { "type": "boolean", "description": "defaults true" } } } } } },
+        "responses": { "200": { "description": "Updated" } }
+      }
+    },
     "/auth/plans/resync": {
       "post": {
         "summary": "Push every Platyplus-origin plan in a window OUT to intervals (dedup-aware re-sync button, #150)",

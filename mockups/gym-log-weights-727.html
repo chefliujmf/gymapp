@@ -1,0 +1,129 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#727 — Log what you did</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#f0b429;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05070a;color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:18px;display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+  .phone{width:390px;background:var(--bg);border-radius:26px;overflow:hidden;border:1px solid #23262d;box-shadow:0 12px 40px rgba(0,0,0,.5);display:flex;flex-direction:column;max-height:830px}
+  .lbl{width:390px;text-align:center;color:var(--dim);font-weight:700;font-size:13px;letter-spacing:.02em;margin-bottom:-10px}
+  .lbl.bad{color:#e0555f}.lbl.good{color:var(--accent)}
+  .top{display:flex;align-items:center;gap:10px;padding:16px 16px 10px}
+  .x{width:34px;height:34px;border-radius:50%;background:#20242d;display:grid;place-items:center;color:var(--dim);font-size:16px;flex:none}
+  .htitle{flex:1;text-align:center}
+  .htitle b{display:block;font-size:15px}
+  .htitle span{font-size:12.5px;color:var(--accent);font-weight:600}
+  .body{overflow-y:auto;padding:4px 14px 12px;flex:1}
+  .lede{color:var(--dim);font-size:13px;margin:6px 4px 14px;line-height:1.4}
+  .lede b{color:var(--text)}
+  .ex{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;padding:11px 12px;margin-bottom:9px}
+  .ex__top{display:flex;align-items:center;gap:9px}
+  .thumb{width:40px;height:40px;border-radius:9px;background:#2b303b;flex:none;display:grid;place-items:center;font-size:17px}
+  .ex__name{flex:1;min-width:0}
+  .ex__name b{font-size:14.5px;display:block}
+  .ex__name .plan{font-size:12px;color:var(--dim)}
+  .ex__name .plan .tempo{color:var(--accent);font-weight:600}
+  .bw{font-size:11.5px;color:var(--dim);background:#20242d;border:1px solid var(--line);padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .done{width:26px;height:26px;border-radius:7px;background:rgba(52,224,125,.14);border:1px solid rgba(52,224,125,.4);display:grid;place-items:center;color:var(--accent);font-size:13px;flex:none}
+  .inputs{display:flex;align-items:center;gap:8px;margin-top:10px}
+  .fld{flex:1;display:flex;align-items:center;background:#14171d;border:1px solid var(--line);border-radius:9px;padding:7px 10px;gap:6px}
+  .fld input{background:none;border:none;color:var(--text);font-size:16px;font-weight:700;width:100%;outline:none;font-family:inherit}
+  .fld input.filled{color:var(--accent)}
+  .fld .u{font-size:11px;color:var(--dim);font-weight:600;white-space:nowrap}
+  .x2{color:var(--dim);font-weight:700;font-size:13px}
+  .allsets{font-size:11.5px;color:var(--dim);margin-top:7px}
+  .allsets b{color:var(--text)}
+  .mode-tag{font-size:11px;color:var(--dim);font-weight:700;letter-spacing:.02em;margin:14px 4px 7px;text-transform:none}
+  .mode-tag span{font-weight:500;color:#6b7280}
+  .fld.tm{flex:0 0 130px}
+  .addw{background:#181c22;border:1px dashed var(--line);color:var(--dim);border-radius:9px;padding:7px 12px;font-size:12.5px;font-weight:600;font-family:inherit;white-space:nowrap}
+  .addw.done2{border-style:solid;border-color:rgba(52,224,125,.35);color:var(--accent);background:rgba(52,224,125,.10)}
+  .foot{padding:12px 16px 18px;border-top:1px solid var(--line);background:#0c0e12}
+  .save{width:100%;background:var(--accent);color:#062012;border:none;border-radius:26px;padding:15px;font-size:16px;font-weight:800;font-family:inherit}
+  .foot .hint{text-align:center;color:var(--dim);font-size:11.5px;margin-top:8px}
+  /* before panel */
+  .before{padding:20px 16px}
+  .before h3{font-size:15px;margin:2px 0 6px}
+  .before .grn{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;align-items:center;gap:9px;margin-bottom:9px}
+  .before .grn .up{display:flex;flex-direction:column;gap:5px;margin-left:auto}
+  .before .grn .up span{width:30px;height:26px;border:1px solid var(--line);border-radius:7px;display:grid;place-items:center;color:var(--dim);font-size:12px}
+  .before .start{margin-top:14px;width:100%;background:var(--accent);color:#062012;border:none;border-radius:26px;padding:15px;font-size:15px;font-weight:800}
+  .xnote{color:#e0555f;font-size:12.5px;margin:14px 4px 0;line-height:1.4}
+</style>
+
+<div class="lbl bad">① NOW — tap "weights not logged" → the START-WORKOUT player (wrong)</div>
+<div class="phone">
+  <div class="top"><div class="x">✕</div><div class="htitle"><b>Full-Body Strength</b><span>~46 min · 13 exercises</span></div></div>
+  <div class="before">
+    <h3>Plan · reorder with ↑↓ · targets from your recent lifts</h3>
+    <div class="grn"><div class="thumb">🧘</div><div class="ex__name"><b>Inchworm</b><div class="plan">3×5 · ~5 min · <span class="tempo" style="color:var(--accent)">tempo 3-1-1-0</span></div></div><div class="up"><span>↑</span><span>↓</span></div></div>
+    <div class="grn"><div class="thumb">🦵</div><div class="ex__name"><b>Leg swings</b><div class="plan">3×10 each side · ~5 min</div></div><div class="up"><span>↑</span><span>↓</span></div></div>
+    <div class="grn"><div class="thumb">🏋️</div><div class="ex__name"><b>Dumbbell floor chest press</b><div class="plan">2×10 · ~3 min</div></div><div class="up"><span>↑</span><span>↓</span></div></div>
+    <div class="xnote">✕ She already DID this session — but it drops her into reorder + a big "Start workout ~46 min". She just wants to note the loads she lifted, not redo it.</div>
+    <button class="start">▶ Start workout · ~46 min</button>
+  </div>
+</div>
+
+<div class="lbl good">② PROPOSED — "Log what you did" (no restart, no reorder)</div>
+<div class="phone">
+  <div class="top"><div class="x">✕</div><div class="htitle"><b>Log what you did</b><span>Full-Body Strength · done</span></div></div>
+  <div class="body">
+    <div class="lede">Fill in what you actually did — I'll track your PRs. <b>No need to redo the workout.</b> Each row shows the field that fits it: <b>weight × reps</b>, <b>reps</b>, or <b>time</b>.</div>
+
+    <!-- MODE 1: LOADED reps → weight × reps -->
+    <div class="mode-tag">🏋️ loaded · weight × reps</div>
+    <div class="ex">
+      <div class="ex__top"><div class="thumb">🏋️</div><div class="ex__name"><b>Dumbbell floor chest press</b><div class="plan">planned 2×10 · <span class="tempo">tempo 3-1-1-0</span></div></div></div>
+      <div class="inputs">
+        <div class="fld"><input class="filled" value="20" inputmode="decimal"><span class="u">kg</span></div>
+        <span class="x2">×</span>
+        <div class="fld"><input class="filled" value="10" inputmode="numeric"><span class="u">reps</span></div>
+      </div>
+      <div class="allsets">Applies to all <b>2 sets</b> · tap to vary per set</div>
+    </div>
+
+    <div class="ex">
+      <div class="ex__top"><div class="thumb">🏋️</div><div class="ex__name"><b>Dumbbell single-arm row</b><div class="plan">planned 3×12 each side</div></div></div>
+      <div class="inputs">
+        <div class="fld"><input class="filled" value="22.5" inputmode="decimal"><span class="u">kg</span></div>
+        <span class="x2">×</span>
+        <div class="fld"><input value="12" inputmode="numeric"><span class="u">reps/side</span></div>
+      </div>
+      <div class="allsets">Applies to all <b>3 sets</b> · tap to vary per set</div>
+    </div>
+
+    <!-- MODE 2: BODYWEIGHT reps → reps only, weight OPTIONAL -->
+    <div class="mode-tag">🤸 bodyweight · reps <span>(add weight only if you loaded it)</span></div>
+    <div class="ex">
+      <div class="ex__top"><div class="thumb">🤸</div><div class="ex__name"><b>Push-up</b><div class="plan">planned 3×12</div></div></div>
+      <div class="inputs">
+        <div class="fld"><input value="12" inputmode="numeric"><span class="u">reps</span></div>
+        <button class="addw">＋ weight</button>
+      </div>
+      <div class="allsets">Applies to all <b>3 sets</b> · tap to vary per set</div>
+    </div>
+
+    <!-- MODE 3: TIMED → time (mm:ss), no reps/weight -->
+    <div class="mode-tag">⏱️ timed hold · duration</div>
+    <div class="ex">
+      <div class="ex__top"><div class="thumb">⏱️</div><div class="ex__name"><b>Plank saw</b><div class="plan">planned 3 × 40s hold</div></div></div>
+      <div class="inputs">
+        <div class="fld tm"><input class="filled" value="0:45" inputmode="numeric"><span class="u">min:sec</span></div>
+      </div>
+      <div class="allsets">Applies to all <b>3 sets</b> · tap to vary per set</div>
+    </div>
+
+    <!-- Mobility warm-up: its own mode (reps each side), prefilled — leave as-is or tweak -->
+    <div class="mode-tag">🧘 mobility · reps</div>
+    <div class="ex">
+      <div class="ex__top"><div class="thumb">🦵</div><div class="ex__name"><b>Leg swings</b><div class="plan">planned 3×10 each side</div></div></div>
+      <div class="inputs">
+        <div class="fld"><input value="10" inputmode="numeric"><span class="u">reps/side</span></div>
+        <button class="addw done2">✓ as planned</button>
+      </div>
+    </div>
+  </div>
+  <div class="foot">
+    <button class="save">Save what I lifted</button>
+    <div class="hint">Saves to this completed session · updates your PRs</div>
+  </div>
+</div>
