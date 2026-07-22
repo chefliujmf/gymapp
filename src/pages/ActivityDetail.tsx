@@ -397,6 +397,13 @@ export default function ActivityDetail() {
     // #707 — TITLE: prefer the coach PLAN title / the clean intervals name over the messy gym-LOG title (which carried a
     // stale "(windy — gym instead of ride)" substitution note, JM). Strip any trailing "(…)" parenthetical as a safety net.
     const gymTitle = (plan?.title || a.name || gymLog?.title || 'Strength').replace(/\s*\([^)]*\)\s*$/, '').trim() || 'Strength'
+    // #700 — HR CURVE like a ride/run (JM: "HR not shown like other activity types" = they get a graph, gym only got a
+    // number). The viewed activity carries an HR stream even when its summary avg is blank; render it as a line with
+    // avg + peak. (If this activity has none, deviceHr still fills the hero number from the paired Coros activity.)
+    const hrNums = (streams.heartrate || []).filter((x): x is number => x != null && Number(x) > 0)
+    const hrAvg = hrNums.length ? Math.round(hrNums.reduce((s, v) => s + v, 0) / hrNums.length) : null
+    const hrPeak = hrNums.length ? Math.round(Math.max(...hrNums)) : null
+    const hrChart: (number | null)[] | null = hrNums.length >= 10 ? ds(streams.heartrate || [], 60) : null
     return (
       <div>
         <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -409,6 +416,15 @@ export default function ActivityDetail() {
         </div>
         {gymLogs == null ? <p className="meta">Loading session…</p>
           : <GymSummary minutes={durMin} exercises={exLogs} review={review} note={note} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={dISO} planId={plan?.id} avgHr={avgHr} />}
+        {/* #700 — HR curve, same treatment as a ride/run's HR line. */}
+        {hrChart && (
+          <>
+            <div className="section-title" style={{ marginTop: 16 }}>Heart rate <span className="meta" style={{ fontWeight: 400 }}>· avg {hrAvg} · peak {hrPeak} bpm</span></div>
+            <div className="card" style={{ padding: '12px 14px' }}>
+              <TrendChart height={90} unit=" bpm" labels={hrChart.map((_, i) => { const n = hrChart.length; const m = Math.round((i / Math.max(1, n - 1)) * (durMin || 0)); return (i === 0 || i === n - 1 || i === Math.floor(n / 2)) ? `${m}m` : '' })} series={[{ label: '', color: '#ff5d6c', data: hrChart, area: true }]} />
+            </div>
+          </>
+        )}
       </div>
     )
   }
