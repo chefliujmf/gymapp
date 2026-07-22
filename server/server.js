@@ -3039,7 +3039,22 @@ app.post('/auth/activity/complete', auth, async (req, res) => {
     const match = await icuFindMatch(req.user, { date, sport })
     // #666 — device (Coros) recorded it → don't dup, AND return its HR + duration so the Platyplus session shows them
     // (JM: a gym had a coach review but "no HR data" because the device activity's HR was never pulled in).
-    if (match) return res.json({ status: 'matched', icuId: match.id, avgHr: Math.round(match.average_heartrate || 0) || null, durationSec: Math.round(match.moving_time || match.elapsed_time || 0) || null })
+    if (match) {
+      // #666b — collapse the ghost: PAIR the completed device activity to its Platyplus-planned event so intervals
+      // shows ONE linked entry, not a planned shell + a separate done activity (JM: "still unlinked gym activities in
+      // intervals"). The existing #346 pairing only ran later on app-load; do it AT completion. PROD-only write (QA
+      // plans carry no icuEventId since push is a no-op there — belt-and-suspenders !IS_STAGING guard). Idempotent.
+      let paired = false
+      try {
+        const norm = (s) => /ride|cycl|bike/i.test(s) ? 'ride' : /run/i.test(s) ? 'run' : /swim/i.test(s) ? 'swim' : /gym|weight|strength/i.test(s) ? 'gym' : String(s || '')
+        const plan = (req.user.plans || []).find((p) => p.date === date && p.icuEventId && norm(p.sport) === norm(sport))
+        if (!IS_STAGING && plan && match.paired_event_id == null) {
+          paired = await pairActivityToPlan(req.user, match.id, plan.icuEventId)
+          if (paired) { req.user.activityLinks = req.user.activityLinks || {}; req.user.activityLinks[String(match.id)] = plan.id; await save(store) }
+        }
+      } catch (e) { console.error('[complete-pair] ' + (e.message || e)) }
+      return res.json({ status: 'matched', icuId: match.id, paired, avgHr: Math.round(match.average_heartrate || 0) || null, durationSec: Math.round(match.moving_time || match.elapsed_time || 0) || null })
+    }
     const samples = Array.isArray(b.samples) ? b.samples.slice(0, 60000) : []
     if (!samples.length) return res.json({ status: 'no-stream' }) // nothing to upload (e.g. gym handled separately)
     const startIso = typeof b.startIso === 'string' ? b.startIso : new Date(date + 'T12:00:00Z').toISOString()
