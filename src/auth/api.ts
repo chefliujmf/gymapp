@@ -190,6 +190,9 @@ export const authApi = {
   activityFeedback: (id: string, data: { feel?: string; rpe?: number; fields?: Record<string, string>; note?: string; sport?: string; date?: string }) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: data }),
   feedbackSkip: (id: string) => req<{ ok: boolean }>(`/activity/${encodeURIComponent(id)}/feedback-skip`, { method: 'POST' }),
   retryReview: (id: string) => req<{ ok: boolean; retrying: boolean }>(`/activity/${encodeURIComponent(id)}/review-retry`, { method: 'POST' }), // #589 — re-run a stuck coach review
+  // #694 — the SERVER-side gym logs (device-independent): the Dexie copy is per-device, so the activity/plan detail
+  // needs this to render a gym session's exercises/sets on a device that didn't record it (e.g. JM's browser vs phone).
+  serverLogs: () => req<Array<Record<string, unknown>>>('/logs'),
   promoteProd: () => req<{ ok: boolean }>('/promote-prod', { method: 'POST' }),
   // Fan a Platyplus-recorded workout out to intervals (match-first, server-side, #122/#123).
   completeActivity: (a: { sport: string; title: string; date: string; startIso: string; durationSec: number; samples: { t: number; power?: number; cadence?: number; hr?: number }[] }) =>

@@ -10,10 +10,12 @@ import { paceOf, bestPaceCurve, paceZoneSecs, PZONES, PZONE_PCT } from '../run-a
 import { useAuth } from '../auth/AuthContext'
 import { zoneColor, MiniProfile } from '../ui'
 import { plannedLoad } from '../workout-summary'
-import { findCoachPlan, getCoachPlan, gymFeedbackKeys, type CoachPlan } from '../plan'
-import { getSetting } from '../db'
+import { findCoachPlan, getCoachPlan, gymFeedbackKeys, findGymLogForPlan, type CoachPlan } from '../plan'
+import { getSetting, type WorkoutLog } from '../db'
+import { bestE1rmByExercise } from '../strength'
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
+import GymSummary from '../GymSummary'
 import CoachVerdict from '../CoachVerdict'
 
 // #54 Power tab: mean-max power curve + time-in-zone, computed from the watts stream.
@@ -243,6 +245,14 @@ export default function ActivityDetail() {
   const [review, setReview] = useState<CoachReview | null>(null)
   const [note, setNote] = useState<CoachNote | null>(null)
   const [icuComment, setIcuComment] = useState<string>()
+  // #694 — for a GYM activity, load the SERVER-side workout logs (device-independent) so we can render the real gym
+  // session (exercises/sets/reps/time) instead of the empty intervals stub + a ride's power/GPS scaffolding (JM: "today's
+  // workout mentions power and gps, it's a gym"). Server logs so it shows on ANY device, not just the phone that recorded.
+  const [gymLogs, setGymLogs] = useState<WorkoutLog[] | null>(null)
+  useEffect(() => {
+    if (!a || sportOfActivity(a) !== 'gym') return
+    authApi.serverLogs().then((ls) => setGymLogs(ls as unknown as WorkoutLog[])).catch(() => setGymLogs([]))
+  }, [a])
   useEffect(() => {
     if (!id) return
     setLoading(true)
@@ -354,6 +364,36 @@ export default function ActivityDetail() {
   const heroSet = new Set(hero.map((h) => h[0]))
   for (const s of stats) { if (hero.length >= 4) break; if (!heroSet.has(s[0])) { hero.push(s); heroSet.add(s[0]) } }
   const chips = stats.filter(([l]) => !heroSet.has(l))
+
+  // #694 — GYM activity: render the REAL strength session (from the server log) via the same GymSummary the post-workout
+  // page uses — exercises, sets, reps, time, HR if present, PRs — and NONE of the ride/run scaffolding (power, GPS,
+  // Norm power, "No GPS or sensor data"). Those don't apply to a gym and were leaking in (JM). Wait for the log fetch.
+  if (sportOfActivity(a) === 'gym') {
+    const dISO = (a.start_date_local || '').slice(0, 10)
+    const gymLog = gymLogs == null ? undefined
+      : (plan ? findGymLogForPlan(plan, gymLogs) : null) || gymLogs.find((l) => l.date === dISO && /strength|gym/i.test(String((l as { discipline?: string }).discipline || ''))) || null
+    const exLogs = gymLog && gymLog.exNames && gymLog.exNames.length
+      ? gymLog.exNames.map((name, i) => ({ name, exId: gymLog.exIds?.[i], sets: gymLog.sets?.[i] || [] }))
+      : gymLog ? Object.keys(gymLog.sets || {}).map((k) => ({ name: `Exercise ${Number(k) + 1}`, sets: gymLog.sets![Number(k)] || [] })) : []
+    const durMin = (gymLog?.duration) || (a.moving_time ? Math.round(a.moving_time / 60) : 0)
+    const bestE1rm = gymLogs ? bestE1rmByExercise(gymLogs) : undefined
+    const fk = gymFeedbackKeys({ date: dISO, planId: plan?.id, activityId: a.id })
+    const avgHr = a.average_heartrate || (a as { icu_average_hr?: number }).icu_average_hr
+    return (
+      <div>
+        <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back">‹</button>
+          <div className="act-thumb thumb--gym" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Dumbbell strokeWidth={1.75} /></div>
+          <div style={{ minWidth: 0 }}>
+            <span className="eyebrow">Strength{a.start_date_local ? ` · ${new Date(a.start_date_local).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}</span>
+            <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gymLog?.title || a.name || 'Strength'}</h1>
+          </div>
+        </div>
+        {gymLogs == null ? <p className="meta">Loading session…</p>
+          : <GymSummary minutes={durMin} exercises={exLogs} review={review} note={note} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={dISO} planId={plan?.id} activityId={String(a.id)} avgHr={avgHr} />}
+      </div>
+    )
+  }
 
   return (
     <div>
