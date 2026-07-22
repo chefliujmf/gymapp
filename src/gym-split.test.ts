@@ -327,3 +327,17 @@ describe('#712 enforcePregnancyGym — no supine/flat-on-back lifts at trimester
     expect(enforcePregnancyGym(ex, null).changed).toBe(0)
   })
 })
+
+describe('#718 bodybuilder volume — hypertrophy gets 2nd movements, survives save-time dedup', () => {
+  it('a muscle-focus session has far more sets than a support session, and enforceGymStructure keeps them', () => {
+    const bb = (assembleGymSession as any)({ mainSport: 'gym', focus: 'muscle', patterns: ['hpush', 'vpush', 'hpull', 'arms', 'core'] })
+    const r = enforceGymStructure(bb.exercises)
+    const mains = r.exercises.filter((e: any) => e.section === 'main')
+    const sets = mains.reduce((s: number, e: any) => s + (e.sets || 0), 0)
+    expect(sets).toBeGreaterThanOrEqual(18)          // hypertrophy volume, not ~6
+    expect(r.deduped).toBe(0)                          // the 2nd movements are distinct → not dedup'd away
+    const sup = (assembleGymSession as any)({ mainSport: 'cycling', sports: ['cycling'], focus: 'support', patterns: ['squat', 'hinge', 'hpush', 'hpull', 'core'] })
+    const supSets = sup.exercises.filter((e: any) => e.section === 'main').reduce((s: number, e: any) => s + (e.sets || 0), 0)
+    expect(sets).toBeGreaterThan(supSets)              // endurance-support stays FOCUSED/low
+  })
+})

@@ -275,7 +275,12 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
   // athlete gets a FOCUSED session (3-4 heavy compounds, sport-priority first — Rønnestad concurrent training), not 6;
   // compound patterns beyond the cap become moderate ACCESSORIES. Core/arms/carry are always accessories.
   const maxPrimaries = f === 'support' ? 3 : f === 'support_build' ? 4 : f === 'strength' ? 4 : f === 'health' ? 3 : 6 // muscle → 6
+  // #718 (audit) — HYPERTROPHY needs 10-20 sets/muscle/wk (Schoenfeld), but one primary/pattern @3 sets under-doses (~6/wk
+  // at 2× frequency). For muscle focus: primaries get 4 sets AND each primary pattern gets a 2nd movement (below) → ~7-8
+  // sets/muscle/session, ~14-16/wk. Strength stays low-volume/heavy (3 sets); endurance-support stays FOCUSED (3 sets).
+  const primarySets = f === 'muscle' ? 4 : 3
   let primaries = 0
+  const primaryInfo = []
   const main = orderByEmphasis(patterns, emph).map((pat) => {
     // #692 — a SINGLE-LEG-sport (runner) prefers the UNILATERAL leg variant (Bulgarian/lunge/single-leg-RDL)
     const menu = (emph && emph.unilateral && (pat === 'squat' || pat === 'hinge')) ? (PATTERNS[pat] || []).filter((m) => UNILATERAL_RE.test(m)).concat(PATTERNS[pat] || []) : (PATTERNS[pat] || [pat])
@@ -283,14 +288,23 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
     if (pat === 'core') return /hold|plank|carry/i.test(name) ? mk(name, 'main', { mode: 'timed', seconds: 40 }) : mk(name, 'main', { mode: 'reps', reps: 12, sets: 2 })
     if (pat === 'carry') return mk(name, 'main', { mode: 'timed', seconds: 40, sets: 2 })
     if (pat === 'arms') return mk(name, 'main', { mode: 'reps', reps: accReps, sets: 2 }) // accessory — moderate reps
-    if (primaries < maxPrimaries) { primaries++; return mk(name, 'main', { mode: 'reps', reps: hi, sets: 3, tempo: rs.tempo }) } // PRIMARY compound — heavy, focus rep scheme
+    if (primaries < maxPrimaries) { primaries++; primaryInfo.push({ pat, norm: normMovement(name) }); const e = mk(name, 'main', { mode: 'reps', reps: hi, sets: primarySets, tempo: rs.tempo }); e._primary = true; return e } // PRIMARY compound
     return mk(name, 'main', { mode: 'reps', reps: accReps, sets: 2 }) // beyond the cap → moderate ACCESSORY (keeps coverage, less volume)
   })
+  // #718 — MUSCLE: a 2nd DISTINCT movement per primary pattern (3 sets) to reach hypertrophy volume. Must have a DIFFERENT
+  // normalized movement than the primary, else the save-time enforceGymStructure dedups it away (Barbell Bench ≈ DB Bench).
+  if (f === 'muscle') {
+    for (const { pat, norm } of primaryInfo) {
+      const fresh = (PATTERNS[pat] || []).find((m) => !used.has(m.toLowerCase()) && normMovement(m) !== norm)
+      if (!fresh) continue
+      used.add(fresh.toLowerCase()); main.push(mk(fresh, 'main', { mode: 'reps', reps: hi, sets: 3, tempo: rs.tempo }))
+    }
+  }
   // #691 — group same-EQUIPMENT moves to cut station-switching, WITHOUT breaking the training order: heavy PRIMARIES
-  // (sets 3) stay first in their sport-emphasis order (do the big lifts fresh, legs-first for a cyclist); ONLY the
-  // ACCESSORIES that follow are re-grouped by equipment. Key = original index for primaries, equipment rank for the rest.
-  main.map((e, i) => (e._rank = (e.sets === 3 && e.mode === 'reps') ? i : 1000 + EQUIP_ORDER(e.name)))
-  main.sort((a, b) => a._rank - b._rank).forEach((e) => delete e._rank)
+  // stay first in their sport-emphasis order (do the big lifts fresh, legs-first for a cyclist); ONLY the ACCESSORIES
+  // that follow are re-grouped by equipment. Key = original index for primaries, equipment rank for the rest.
+  main.map((e, i) => (e._rank = e._primary ? i : 1000 + EQUIP_ORDER(e.name)))
+  main.sort((a, b) => a._rank - b._rank).forEach((e) => { delete e._rank; delete e._primary })
   // #692 — sport-specific EXTRAS (runner plyo, swimmer shoulder-health prehab), deduped
   const extras = (emph && emph.extras ? emph.extras : []).filter((x) => !used.has(String(x.name).toLowerCase())).map((x) => { used.add(String(x.name).toLowerCase()); return { name: x.name, section: 'main', mode: x.mode || 'reps', ...(x.reps ? { reps: x.reps } : {}), ...(x.sets ? { sets: x.sets } : {}), ...(x.seconds ? { seconds: x.seconds } : {}), ...(x.eachSide ? { eachSide: true } : {}) } })
   // COOL-DOWN — 2 stretches, TIMED
