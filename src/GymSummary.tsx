@@ -45,12 +45,11 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
   const prCount = rows.filter((e) => e.pr).length
 
   // #601 — VOLUME dropped from the gym recap (JM: tonnage isn't actionable for a user or the coach).
-  const hero: [string, string][] = [
-    ['Exercises', String(rows.length || '—')],
-    ['Sets', String(totSets || '—')],
-    ['Reps', String(totReps || '—')],
-    ['Time', `${minutes} min`],
-  ]
+  // #700 — when HR is present, show it in the HERO row like a ride/run (JM: "HR not shown like other activities") — it
+  // takes the 4th slot; reps still show in the insight line below so nothing's lost.
+  const hero: [string, string][] = avgHr
+    ? [['Exercises', String(rows.length || '—')], ['Sets', String(totSets || '—')], ['Time', `${minutes} min`], ['Avg HR', `${Math.round(avgHr)} bpm`]]
+    : [['Exercises', String(rows.length || '—')], ['Sets', String(totSets || '—')], ['Reps', String(totReps || '—')], ['Time', `${minutes} min`]]
   // #602 — insight stays FACTUAL. No generic nutrition/recovery prescription (JM: risky without the athlete's
   // metabolism/goals — the coach review above has that context and personalises it). Just the training recap.
   const insight = totSets > 0
@@ -69,10 +68,9 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
         </div>
       )}
       <div className="act-hero">{hero.map(([l, v]) => <div key={l} className="ht"><b>{v}</b><span>{l}</span></div>)}</div>
-      {(muscles.length > 0 || prCount > 0 || !!avgHr) && (
+      {(muscles.length > 0 || prCount > 0) && (
         <div className="act-chips">
           {muscles.map((m) => <span key={m} className="act-chip"><b>{m}</b></span>)}
-          {avgHr ? <span key="hr" className="act-chip"><b>{Math.round(avgHr)}</b><span>bpm avg</span></span> : null}
           {prCount > 0 && <span key="pr" className="act-chip"><b>{prCount}</b><span>PR{prCount > 1 ? 's' : ''} 🏅</span></span>}
         </div>
       )}

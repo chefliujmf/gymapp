@@ -33,7 +33,8 @@ export default function CoachVerdict({ review, note }: { review?: CoachReview | 
       <div className="pw-vtop"><span className="pw-vh">💬 Your coach</span>{v.score != null && <span className="pw-score">Score {v.score}/10</span>}</div>
       {v.verdict && <p className="pw-vp">{v.verdict}</p>}
       {v.takeaways.map((t, i) => <div key={i} className="pw-vli">• {t}</div>)}
-      {v.next && <div className="pw-vli">📈 <b>Next:</b> {v.next}</div>}
+      {/* #699 — the "Next:" line is removed (JM): a post-workout review should reflect the session + progress, not
+          preview the calendar; the plan lives elsewhere. Coach prompts also stop emitting it. */}
       {v.rest.length > 0 && (
         <details className="pw-more">
           <summary>Recovery &amp; full note</summary>
