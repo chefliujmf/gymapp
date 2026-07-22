@@ -3,7 +3,7 @@
 // coach messages, system alerts…) and each item is clearly labelled.
 import { releases } from './data/releases'
 
-export type NotifKind = 'release' | 'reminder' | 'coach' | 'review' | 'report' | 'activity' | 'system'
+export type NotifKind = 'release' | 'reminder' | 'coach' | 'review' | 'report' | 'activity' | 'achievement' | 'missed' | 'system'
 
 export interface Notification {
   id: string
@@ -24,7 +24,9 @@ export const KIND_META: Record<NotifKind, { label: string; icon: string; color: 
   coach: { label: 'Coach update', icon: '🧑‍🏫', color: '#a855f7' },
   review: { label: 'Coach review', icon: '💬', color: '#a855f7' },
   report: { label: 'Your report', icon: '🐛', color: '#22c55e' }, // #5003 — a user's own bug/idea report update (NOT a coach note)
-  activity: { label: 'New activity', icon: '🏅', color: '#f6c445' },
+  activity: { label: 'New activity', icon: '🚴', color: '#39c2d7' },
+  achievement: { label: 'Achievement', icon: '🏅', color: '#f6c445' }, // #733 — a PR / streak milestone
+  missed: { label: 'Missed session', icon: '📌', color: '#e0555f' }, // #733 — a planned session went unlogged
   system: { label: 'System', icon: '⚙️', color: '#9aa3b2' },
 }
 

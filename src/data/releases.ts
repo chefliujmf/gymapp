@@ -4,6 +4,19 @@ export interface Release { date: string; title: string; items: string[] }
 
 export const releases: Release[] = [
   {
+    date: '2026-07-22',
+    title: 'Stronger gym tracking, rest days & outdoor-first coaching',
+    items: [
+      'Log or edit the weights you lifted right from a completed workout — barbell, bodyweight reps, or a timed hold, each with the right field',
+      'Switch weights between kg and lbs in Settings',
+      'Your strength sessions now count toward your fitness & fatigue (training load), like rides and runs — with a load shown on each gym recap',
+      'Set a rest day and your coach keeps it — no more surprise session on your day off',
+      'Your coach plans outdoor by default, and only moves you indoors when the weather really calls for it',
+      'Completed gym sessions now show in your “to review” list so nothing slips',
+      'Your weekly training-days number is a target your coach aims for, placing your rest day on purpose',
+    ],
+  },
+  {
     date: '2026-06-23',
     title: 'Big update — coach, progress, sensors & more',
     items: [

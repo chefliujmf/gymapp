@@ -2528,10 +2528,10 @@ function icuFetch(user, path, opts = {}) {
 // per-pick `why`, the plan carries the strategy `why`. Returns '' when there's nothing.
 function renderCoachBrief(plan, items = []) {
   const L = []
-  if (plan.objective) L.push(`Objective: ${plan.objective}`)
+  if (plan.objective) L.push(`Objective: ${stripTimeRefs(plan.objective)}`) // #738 — never reference a past/future session
   const meals = items.filter((it) => it.type === 'meal')
   if (plan.fuel?.why || plan.fuel?.supplements || meals.length) {
-    L.push('\n## Fueling')
+    L.push('\n## Fuel · general guide, adjust to you') // #739 — fuelling framed as a reference, not a prescription
     if (plan.fuel?.why) L.push(plan.fuel.why)
     for (const m of meals) L.push(`• ${m.mealType ? m.mealType + ': ' : ''}${m.title}${m.kcal ? ` (${m.kcal} kcal)` : ''}${m.why ? ` — ${m.why}` : ''}`)
     if (plan.fuel?.supplements) L.push(`Supplements: ${plan.fuel.supplements}`)
@@ -2543,18 +2543,38 @@ function renderCoachBrief(plan, items = []) {
     for (const s of mind) L.push(`• ${s.title}${s.minutes ? ` (${s.minutes} min)` : ''}${s.why ? ` — ${s.why}` : ''}`)
   }
   if (plan.recovery) L.push(`\n## Recovery\n${plan.recovery}`)
-  if (plan.success) L.push(`\n## Success\n${plan.success}`)
-  if (Array.isArray(plan.cues) && plan.cues.length) L.push(`\n## Cues\n${plan.cues.map((c) => `• ${c}`).join('\n')}`)
+  if (plan.success) L.push(`\n## Success\n${stripTimeRefs(plan.success)}`)
+  if (Array.isArray(plan.cues) && plan.cues.length) L.push(`\n## Cues\n${plan.cues.map((c) => `• ${stripTimeRefs(c)}`).join('\n')}`)
   return L.length ? L.join('\n') + '\n\n— authored in Platyplus' : ''
 }
-// #157 — a SHORT coaching note (below a divider) instead of the full brief dump; the full plan lives in Platyplus.
+// #736 (JM, platform-first) — the Platyplus link + ownership note lead the intervals description, so the FIRST thing the
+// athlete reads pulls them back into Platyplus (where the full plan, meals & mind live). Keeps the "Planned in Platyplus"
+// phrase so the round-trip strip (#378) still catches it.
+function platyplusHeader(plan) {
+  return `📋 Planned in Platyplus — open it for the full plan, meals & mind:\n${ORIGIN}/coach/${encodeURIComponent(plan.id)}\n(Edit in Platyplus — changes made here get replaced.)`
+}
+// #738 (JM) — a PLANNED workout is framed on its OWN terms: NEVER reference a past or future session. Scrub the obvious
+// past/future phrases the LLM slips in ("now with a full extra rest day behind it", "after yesterday's…", "tomorrow…").
+function stripTimeRefs(s) {
+  return String(s || '')
+    .replace(/,?\s*(now\s+)?with (a|an|the)?\s*(full\s*)?(extra\s*)?rest days?\s+behind (it|this|you)\b/gi, '')
+    .replace(/,?\s*(coming off|after|following|behind|on top of|building on)\s+(yesterday|last\s+\w+|the\s+\w+day|your\s+(last|previous|recent)\b)[^.,;]*/gi, '')
+    .replace(/,?\s*(tomorrow|the next day|later (this|next) week|earlier (this|last) week|ahead of \w+day)[^.,;]*/gi, '')
+    .replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').replace(/^[\s,;–—-]+/, '').trim()
+}
+// #737 (JM) — split a run-on phrase ("Before: …; During: …; After: …") into readable bullets.
+function asBullets(text) {
+  return String(text).split(/\s*;\s*|(?<=[.!?])\s+(?=[A-Z])/).map((x) => x.trim()).filter(Boolean).map((x) => `• ${x}`).join('\n')
+}
+// #737 (JM) — the coaching note as SCANNABLE sections + bullets (not a wall of text). Info must be fast to acquire.
+// #739 (JM, liability) — fuelling is framed as a GENERAL reference ("adjust to you"), never a personalised prescription.
 function shortCoachNote(plan) {
-  const L = []
-  if (plan.objective) L.push(`Objective: ${plan.objective}`)
-  if (plan.fuel?.why) L.push(`Fuel: ${plan.fuel.why}`)
-  if (Array.isArray(plan.cues) && plan.cues.length) L.push(`Cues: ${plan.cues.join('; ')}`)
-  L.push(`Full plan · meals · mind → ${ORIGIN}/coach/${encodeURIComponent(plan.id)}`)
-  return '\n─────────── coach notes ───────────\n' + L.join('\n')
+  const S = []
+  if (plan.objective) S.push(`OBJECTIVE\n• ${stripTimeRefs(plan.objective)}`)
+  if (plan.success) S.push(`WHAT SUCCESS LOOKS LIKE\n${asBullets(stripTimeRefs(plan.success))}`)
+  if (plan.fuel?.why) S.push(`FUEL · general guide, everyone differs — adjust to you\n${asBullets(plan.fuel.why)}`)
+  if (Array.isArray(plan.cues) && plan.cues.length) S.push(`CUES\n${plan.cues.map((c) => `• ${stripTimeRefs(c)}`).join('\n')}`)
+  return S.length ? '─────── coach notes ───────\n' + S.join('\n\n') : ''
 }
 // intervals/Wahoo won't render a single step longer than this — split + interpolate.
 // Map a plan to an intervals calendar event. Rides carry POWER (%ftp) steps, runs carry PACE
@@ -2590,8 +2610,9 @@ function planToIcuEvent(plan, items = []) {
     const dispSegs = (plan.sport === 'ride' && !plan.indoor) ? bandSteadyPower(segs) : segs
     const native = nativeWorkoutText(dispSegs, isRun)
     if (!isRun && dispSegs.length) ev.workout_doc = { steps: dispSegs.flatMap((s) => encodeStep(s, false)) }
-    // #588 — Platyplus owns the plan: label it so the athlete edits in Platyplus, not here (a change made in intervals is reverted on the next sync). Re-composed each push, so it never accumulates.
-    ev.description = [native, stripDerivedWorkout(stripPlatyplusLinks(plan.notes)), shortCoachNote(plan), '📋 Planned in Platyplus — edit it there (changes made here are replaced).'].filter(Boolean).join('\n\n')
+    // #736/#588 — Platyplus link + ownership note FIRST (drives the athlete back into Platyplus; edits here are reverted
+    // on the next sync). Re-composed each push, so it never accumulates. #737 — the coach note is sectioned + bulleted.
+    ev.description = [platyplusHeader(plan), native, stripDerivedWorkout(stripPlatyplusLinks(plan.notes)), shortCoachNote(plan)].filter(Boolean).join('\n\n')
   } else if (plan.sport === 'swim') {
     // #swim-tri — swim plans are distance sets (create_swim precomputes duration/distance/sTSS). No power/pace
     // workout_doc (intervals' swim model differs); push a Swim event carrying the LOAD so Form/CTL counts it.

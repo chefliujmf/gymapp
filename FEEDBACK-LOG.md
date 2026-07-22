@@ -3551,3 +3551,8 @@ activityFeedback, or plan/gym id → plan.feedback). Client (`ActivityFeedback.t
 review is saved but none landed and we're not polling, it shows a **"🔁 Retry coach review"** button that re-triggers +
 re-polls. Covers both the timeout case AND opening an old session whose review never came. Typechecks; testing end-to-end
 now that the coach is back.
+
+736. 🔨 [built] **Platyplus link + ownership note lead the intervals coach-notes, not buried at the bottom (JM 2026-07-22, platform-first).** `platyplusHeader` now goes FIRST in the pushed event description (drives the athlete back into Platyplus); the old bottom label removed; `stripPlatyplusLinks` broadened so the new header round-trips without accumulating. Ties skill `platform-first` (NEW). Route: server.js planToIcuEvent + icu-steps.js.
+737. 🔨 [built] **Coach notes reorganized into scannable SECTIONS + BULLETS (JM 2026-07-22, "easy + fast to acquire").** `shortCoachNote` renders OBJECTIVE / WHAT SUCCESS LOOKS LIKE / FUEL / CUES as headed sections with bullets (`asBullets` splits run-on fuel strings); the app formats from the structured fields so it's code-enforced. Route: server.js.
+738. 🔨 [built] **NO past/future workout references in coach notes (JM 2026-07-22, "extra rest day behind it — forbidden").** `stripTimeRefs` scrubs "with a rest day behind it / after yesterday / tomorrow…" from objective/success/cues; coach tool desc reinforces "THIS session ONLY". Route: server.js + mcp/server.js.
+739. 🔨 [built] **Fuelling framed as a science-sound GENERAL reference, not a personal prescription (JM 2026-07-22, liability).** Fuel section labelled "general guide, everyone differs — adjust to you"; coach tool desc: evidence-based ranges, not exact personal doses. Route: server.js + mcp/server.js.

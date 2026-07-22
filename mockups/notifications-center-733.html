@@ -1,0 +1,93 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#733 — Notifications center</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#f0b429;--cyan:#39c2d7;--violet:#a78bfa;--danger:#e0555f;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05070a;color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:20px;display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{display:flex;flex-direction:column;gap:8px;align-items:center}
+  .lbl{color:var(--dim);font-weight:700;font-size:12.5px;letter-spacing:.02em;text-align:center;max-width:400px}
+  .lbl.bad{color:#e0796f}.lbl.good{color:var(--accent)}
+  .panel{width:400px;background:linear-gradient(180deg,#16191f,#101318);border:1px solid #23262d;border-radius:16px;box-shadow:0 14px 44px rgba(0,0,0,.55);overflow:hidden}
+  /* top bar mimic */
+  .bar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);background:#0c0e12}
+  .bar .logo{font-weight:800}.bar .logo span{color:var(--accent)}
+  .bar .bell{margin-left:auto;position:relative;width:34px;height:34px;border-radius:50%;background:#20242d;display:grid;place-items:center}
+  .bar .dot{position:absolute;top:7px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px #0c0e12}
+  /* header */
+  .nhead{display:flex;align-items:center;gap:8px;padding:12px 14px 10px}
+  .nhead strong{font-size:15px}
+  .nhead .sp{margin-left:auto;display:flex;gap:7px}
+  .btn-s{font-size:12px;font-weight:700;color:var(--dim);background:#1b1f27;border:1px solid var(--line);border-radius:9px;padding:6px 11px;display:inline-flex;align-items:center;gap:5px}
+  .btn-s.gear{padding:6px 9px}
+  .sect{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);padding:8px 14px 4px}
+  /* row */
+  .row{display:flex;gap:10px;padding:11px 14px;border-top:1px solid var(--line);position:relative}
+  .row.unread{background:rgba(52,224,125,.045)}
+  .row.unread::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+  .ic{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;font-size:15px}
+  .b{flex:1;min-width:0}
+  .chip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 8px}
+  .r-title{font-weight:700;font-size:13.5px;margin:5px 0 2px}
+  .r-body{font-size:12px;color:var(--dim);line-height:1.4}
+  .r-time{font-size:11px;color:#6b7280;margin-top:3px}
+  .r-x{color:#5a6472;font-size:15px;align-self:flex-start;padding:2px 2px 2px 6px;flex:none}
+  .score{margin-left:auto;font-size:11px;font-weight:800;color:var(--accent);background:#34e07d22;border:1px solid #34e07d55;border-radius:999px;padding:2px 9px;height:fit-content}
+  ul.mini{margin:5px 0 0;padding-left:16px}ul.mini li{font-size:12px;color:var(--text);line-height:1.45}
+  /* settings panel */
+  .s-lede{font-size:12.5px;color:var(--dim);padding:10px 14px;line-height:1.45}
+  .s-grid{padding:0 12px 12px}
+  .s-head{display:grid;grid-template-columns:1fr 54px 54px;gap:6px;padding:4px 6px;font-size:10.5px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+  .s-head span:last-child,.s-head span:nth-child(2){text-align:center}
+  .s-row{display:grid;grid-template-columns:1fr 54px 54px;gap:6px;align-items:center;background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:11px;padding:9px 12px;margin-bottom:7px}
+  .s-row .t b{font-size:13px;display:block}
+  .s-row .t span{font-size:11px;color:var(--dim)}
+  .sw{width:34px;height:20px;border-radius:999px;background:#2b303b;position:relative;justify-self:center}
+  .sw.on{background:var(--accent)}
+  .sw i{position:absolute;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s;left:2px}
+  .sw.on i{left:16px}
+  .sw.dim{opacity:.4}
+  .new-tag{font-size:9.5px;font-weight:800;color:var(--violet);background:#a78bfa22;border:1px solid #a78bfa55;border-radius:5px;padding:1px 5px;margin-left:5px;vertical-align:middle}
+</style>
+
+<div class="col">
+  <div class="lbl bad">① NOW — a plain dropdown: no Clear-all, no Settings, no per-item dismiss, one global "seen"</div>
+  <div class="panel">
+    <div class="bar"><span class="logo">platy<span>plus</span></span><div class="bell">🔔<span class="dot"></span></div></div>
+    <div class="nhead"><strong>Notifications</strong></div>
+    <div class="row"><div class="ic" style="background:#34e07d22">💬</div><div class="b"><span class="chip" style="color:var(--accent);background:#34e07d22">Coach review</span><div class="r-title">Coach reviewed your gym ›</div><div class="r-body">Strong full-body session, clean form.</div><div class="r-time">Tue Jul 21 · 7:37 PM</div></div></div>
+    <div class="row"><div class="ic" style="background:#39c2d722">🚴</div><div class="b"><span class="chip" style="color:var(--cyan);background:#39c2d722">New activity</span><div class="r-title">Ride synced ›</div><div class="r-time">Mon Jul 20 · 6:02 PM</div></div></div>
+    <div class="row"><div class="ic" style="background:#a78bfa22">✨</div><div class="b"><span class="chip" style="color:var(--violet);background:#a78bfa22">What's new</span><div class="r-title">Simpler daily check-in</div><div class="r-time">Jun 23</div></div></div>
+  </div>
+</div>
+
+<div class="col">
+  <div class="lbl good">② PROPOSED — Notifications center: Clear all · ⚙ Settings · unread rail · per-item dismiss</div>
+  <div class="panel">
+    <div class="bar"><span class="logo">platy<span>plus</span></span><div class="bell">🔔<span class="dot"></span></div></div>
+    <div class="nhead"><strong>Notifications</strong><div class="sp"><button class="btn-s">Clear all</button><button class="btn-s gear">⚙ Settings</button></div></div>
+    <div class="sect">Unread</div>
+    <div class="row unread"><div class="ic" style="background:#34e07d22">💬</div><div class="b"><div style="display:flex;align-items:center"><span class="chip" style="color:var(--accent);background:#34e07d22">Coach review</span><span class="score">8/10</span></div><div class="r-title">Coach reviewed your gym ›</div><div class="r-body">Strong full-body session, clean form, loads held across all reps.</div><div class="r-time">Tue Jul 21 · 7:37 PM</div></div><div class="r-x">✕</div></div>
+    <div class="row unread"><div class="ic" style="background:#a78bfa22">✨</div><div class="b"><span class="chip" style="color:var(--violet);background:#a78bfa22">What's new</span><div class="r-title">Stronger gym tracking, rest days & outdoor-first coaching</div><ul class="mini"><li>Log or edit weights on a completed workout</li><li>Switch kg ↔ lbs · gym now counts toward Form</li><li>Set a rest day and your coach keeps it</li></ul><div class="r-time">Today</div></div><div class="r-x">✕</div></div>
+    <div class="sect">Earlier</div>
+    <div class="row"><div class="ic" style="background:#39c2d722">🚴</div><div class="b"><span class="chip" style="color:var(--cyan);background:#39c2d722">New activity</span><div class="r-title">Ride synced ›</div><div class="r-time">Mon Jul 20 · 6:02 PM</div></div><div class="r-x">✕</div></div>
+    <div class="row"><div class="ic" style="background:#f0b42922">⏰</div><div class="b"><span class="chip" style="color:var(--amber);background:#f0b42922">Reminder</span><div class="r-title">You're ready for today ›</div><div class="r-time">Wed Jul 22 · 5:55 PM</div></div><div class="r-x">✕</div></div>
+  </div>
+</div>
+
+<div class="col">
+  <div class="lbl good">③ PROPOSED — the ⚙ Settings: per-TYPE (in-app + phone), with New releases as a type. Answers "more types to add?"</div>
+  <div class="panel">
+    <div class="nhead"><strong>Notification types</strong></div>
+    <div class="s-lede">Choose what shows in the bell and what buzzes your phone. (New rows vs today are tagged <span class="new-tag">NEW</span>.)</div>
+    <div class="s-grid">
+      <div class="s-head"><span>Type</span><span>In-app</span><span>Phone</span></div>
+      <div class="s-row"><div class="t"><b>Coach reviews</b><span>A completed workout gets reviewed</span></div><div class="sw on"><i></i></div><div class="sw on"><i></i></div></div>
+      <div class="s-row"><div class="t"><b>Plan changes</b><span>Your coach adapts your plan</span></div><div class="sw on"><i></i></div><div class="sw on"><i></i></div></div>
+      <div class="s-row"><div class="t"><b>Daily reminder</b><span>Nudge to check in + see today</span></div><div class="sw on"><i></i></div><div class="sw"><i></i></div></div>
+      <div class="s-row"><div class="t"><b>New releases <span class="new-tag">NEW</span></b><span>What's new — new features only</span></div><div class="sw on"><i></i></div><div class="sw"><i></i></div></div>
+      <div class="s-row"><div class="t"><b>New activity <span class="new-tag">NEW</span></b><span>A watch/device session synced</span></div><div class="sw on"><i></i></div><div class="sw"><i></i></div></div>
+      <div class="s-row"><div class="t"><b>Achievements & PRs <span class="new-tag">NEW</span></b><span>A personal best or streak</span></div><div class="sw on"><i></i></div><div class="sw"><i></i></div></div>
+      <div class="s-row"><div class="t"><b>Missed session <span class="new-tag">NEW</span></b><span>A planned session went unlogged</span></div><div class="sw on"><i></i></div><div class="sw"><i></i></div></div>
+    </div>
+  </div>
+</div>
