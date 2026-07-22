@@ -3543,6 +3543,11 @@ app.put('/api/activity/:id/public-text', apiAuth, async (req, res) => {
     payload.description = d
   }
   if (!Object.keys(payload).length) return res.status(400).json({ error: 'name or description required' })
+  // ⚠️ SAFETY — QA shares the REAL prod athlete (i28814) and activity ids are GLOBAL, so a QA write here would alter
+  // the athlete's actual Strava title/description. QA is READ-ONLY toward intervals: skip the write but return the
+  // payload so the coach's set_activity_text still "succeeds" and the intended text is visible/testable (only PROD
+  // publishes). This endpoint was missing the guard every other intervals write has (CLAUDE.md: guard with !IS_STAGING).
+  if (IS_STAGING) return res.json({ ok: true, staged: true, ...payload })
   try {
     const r = await icuFetch(req.user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
     if (!r.ok) return res.status(502).json({ error: 'intervals rejected the update', status: r.status })
