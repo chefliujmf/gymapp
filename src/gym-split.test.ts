@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module
-import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure } from '../server/gym-split.js'
+import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure, stripGymDurationProse } from '../server/gym-split.js'
 
 const flat = (a: any) => a.days.flat()
 
@@ -271,5 +271,14 @@ describe('#687-enforce enforceGymStructure — deterministic save-time fix (the 
     const r = (enforceGymStructure as any)(ex)
     expect(r.deduped).toBe(0); expect(r.retimed).toBe(0)
     expect(r.exercises.length).toBe(4)
+  })
+})
+
+describe('#696 stripGymDurationProse — drop the session-duration phrase, keep fuelling timing', () => {
+  it('strips a qualified session length but keeps a "… before" fuelling timing and seconds', () => {
+    expect(stripGymDurationProse('Primary lifts HEAVY. Arms/core moderate. About 55-60 min.')).toBe('Primary lifts HEAVY. Arms/core moderate.')
+    expect(stripGymDurationProse('Light carb + protein snack about 60-90 min before; water through.')).toBe('Light carb + protein snack about 60-90 min before; water through.')
+    expect(stripGymDurationProse('roughly 50 minutes of quality work')).not.toMatch(/50 minutes/)
+    expect(stripGymDurationProse('Hold each for ~30 s')).toBe('Hold each for ~30 s') // seconds untouched
   })
 })

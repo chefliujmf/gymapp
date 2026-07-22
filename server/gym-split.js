@@ -298,6 +298,16 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
   return { title: sessionTitle(patterns, emph, sessionIndex), focus: f, emphasis: emph ? emph.label : null, exercises: [...warmup, ...main, ...extras, ...cooldown] }
 }
 
+// #696 — a PLANNED gym description must NOT restate the SESSION DURATION (JM: "why have it in the description?" — the
+// header already shows it, and a hand-written "About 55-60 min" also contradicted the computed estimate). Strip a
+// QUALIFIED session-length phrase ("about 55-60 min", "~1 hour", "roughly 50 minutes") but KEEP fuelling/timing that
+// happens to mention minutes ("a snack about 60-90 min BEFORE") via a before/after/prior lookahead. Pure + tested.
+const GYM_DURATION_RE = /\s*\b(?:about|approx\.?|approximately|around|roughly|~)\s+\d{1,3}\s*(?:(?:[-–]|\s+to\s+)\s*\d{1,3}\s*)?(?:min(?:ute)?s?|hours?|hrs?)\b\.?(?!\s*(?:before|after|prior|post|pre|ahead)\b)/gi
+export function stripGymDurationProse(text) {
+  if (typeof text !== 'string' || !text) return text
+  return text.replace(GYM_DURATION_RE, '').replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').replace(/[ \t]+\n/g, '\n').trim()
+}
+
 // render the assignment for the prompt block: the split + each session's patterns (with a fresh accessory each).
 export function gymBalanceLines(assign) {
   const perSession = assign.days.map((pats, i) => `Session ${i + 1}: ${pats.map((p) => `${LABEL[p] || p} (e.g. ${assign.rotations[p]})`).join(' · ')}`).join('\n')
