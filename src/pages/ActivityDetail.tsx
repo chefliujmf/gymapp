@@ -11,6 +11,7 @@ import { useAuth } from '../auth/AuthContext'
 import { zoneColor, MiniProfile } from '../ui'
 import { plannedLoad } from '../workout-summary'
 import { findCoachPlan, getCoachPlan, gymFeedbackKeys, findGymLogForPlan, type CoachPlan } from '../plan'
+import { addDays } from '../move-dates'
 import { getSetting, type WorkoutLog } from '../db'
 import { bestE1rmByExercise } from '../strength'
 import { authApi, type CoachReview } from '../auth/api'
@@ -249,9 +250,23 @@ export default function ActivityDetail() {
   // session (exercises/sets/reps/time) instead of the empty intervals stub + a ride's power/GPS scaffolding (JM: "today's
   // workout mentions power and gps, it's a gym"). Server logs so it shows on ANY device, not just the phone that recorded.
   const [gymLogs, setGymLogs] = useState<WorkoutLog[] | null>(null)
+  // #695 — a gym often has TWO intervals entries for the same session: the DEVICE recording (Coros "Weight Training",
+  // carries the HR) AND an empty STRAVA duplicate / the planned event. Platyplus may be linked to the HR-less one, so
+  // the athlete sees "no HR" even though intervals shows it (JM's screenshot: 90 bpm on the Coros card). Find the day's
+  // device strength activity that actually HAS HR and source the HR from THERE, whichever duplicate we're viewing.
+  const [deviceHr, setDeviceHr] = useState<number | undefined>()
   useEffect(() => {
     if (!a || sportOfActivity(a) !== 'gym') return
     authApi.serverLogs().then((ls) => setGymLogs(ls as unknown as WorkoutLog[])).catch(() => setGymLogs([]))
+    if (a.average_heartrate) { setDeviceHr(undefined); return }
+    const d = (a.start_date_local || '').slice(0, 10)
+    if (!d) return
+    fetchActivities(addDays(d, -1), addDays(d, 1)).then((acts) => {
+      const sib = (Array.isArray(acts) ? acts : [])
+        .filter((x) => (x.start_date_local || '').slice(0, 10) === d && /weight|strength|gym|workout/i.test(String(x.type || '')) && x.average_heartrate)
+        .sort((x, y) => (y.average_heartrate || 0) - (x.average_heartrate || 0))[0]
+      if (sib?.average_heartrate) setDeviceHr(Math.round(sib.average_heartrate))
+    }).catch(() => {})
   }, [a])
   useEffect(() => {
     if (!id) return
@@ -378,7 +393,7 @@ export default function ActivityDetail() {
     const durMin = (gymLog?.duration) || (a.moving_time ? Math.round(a.moving_time / 60) : 0)
     const bestE1rm = gymLogs ? bestE1rmByExercise(gymLogs) : undefined
     const fk = gymFeedbackKeys({ date: dISO, planId: plan?.id, activityId: a.id })
-    const avgHr = a.average_heartrate || (a as { icu_average_hr?: number }).icu_average_hr
+    const avgHr = a.average_heartrate || (a as { icu_average_hr?: number }).icu_average_hr || deviceHr // #695 — fall back to the day's device (Coros) HR
     return (
       <div>
         <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
