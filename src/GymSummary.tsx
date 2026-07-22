@@ -63,7 +63,7 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
       <ActivityFeedback id={feedbackId} altIds={altFeedbackIds} sport="gym" date={feedbackDate} reviewShownAbove={!!review} awaitReview={awaitReview} />
       {(planId || activityId) && (
         <div className="done-links">
-          {planId && <Link className="done-link done-link--map" to={`/coach/${planId}`}>📋 Planned workout →</Link>}
+          {planId && <Link className="done-link done-link--map" to={`/coach/${planId}?planned=1`}>📋 Planned workout →</Link>}
           {activityId && <Link className="done-link" to={`/activity/${activityId}`}>📈 View activity (HR) →</Link>}
         </div>
       )}

@@ -464,7 +464,7 @@ export default function ActivityDetail() {
         return <ActivityFeedback id={fk.id} altIds={fk.altIds} sport={sportOfActivity(a)} date={dISO} icuExisting={readIcuFeedback(a)} icuNote={icuComment} onSaved={afterSave} reviewShownAbove={!!review} />
       })()}
       <div className="links" style={{ margin: '6px 2px 12px' }}>
-        {plan && sportOfActivity(a) === 'gym' && <Link className="done-link done-link--map" to={`/coach/${plan.id}`}>📋 Planned workout →</Link>}
+        {plan && sportOfActivity(a) === 'gym' && <Link className="done-link done-link--map" to={`/coach/${plan.id}?planned=1`}>📋 Planned workout →</Link>}
         {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}
         {a.strava_id && <a className="done-link" href={`https://www.strava.com/activities/${a.strava_id}`} target="_blank" rel="noreferrer">Strava ↗</a>}
         {device && <span className="done-link" style={{ opacity: 0.7 }}>from {device}</span>}
