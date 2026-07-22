@@ -95,6 +95,7 @@ export interface RideTemplate {
 export interface SetEntry {
   weight?: number
   reps?: number
+  seconds?: number // #727 — a TIMED hold's duration (plank etc.); mutually exclusive with weight/reps, excluded from tonnage
   done: boolean
   warmup?: boolean // #591 (JeFit "W") — a warm-up set: logged, but excluded from working-set analytics + tonnage
 }

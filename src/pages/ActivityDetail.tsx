@@ -10,13 +10,14 @@ import { paceOf, bestPaceCurve, paceZoneSecs, PZONES, PZONE_PCT } from '../run-a
 import { useAuth } from '../auth/AuthContext'
 import { zoneColor, MiniProfile } from '../ui'
 import { plannedLoad } from '../workout-summary'
-import { findCoachPlan, getCoachPlan, gymFeedbackKeys, findGymLogForPlan, gymSessionFromPlan, setGymSession, type CoachPlan } from '../plan'
+import { findCoachPlan, getCoachPlan, gymFeedbackKeys, findGymLogForPlan, type CoachPlan } from '../plan'
 import { addDays } from '../move-dates'
 import { getSetting, type WorkoutLog } from '../db'
 import { bestE1rmByExercise } from '../strength'
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
 import GymSummary from '../GymSummary'
+import GymSetEditor from '../GymSetEditor' // #727/#730 — the mode-aware "log what you did" / edit-weights sheet on the completed view
 import CoachVerdict from '../CoachVerdict'
 
 // #54 Power tab: mean-max power curve + time-in-zone, computed from the watts stream.
@@ -256,6 +257,7 @@ export default function ActivityDetail() {
   // device strength activity that actually HAS HR and source the HR from THERE, whichever duplicate we're viewing.
   const [deviceHr, setDeviceHr] = useState<number | undefined>()
   const [deviceHrStream, setDeviceHrStream] = useState<(number | null)[] | null>(null) // #700 — the device activity's HR curve, for the graph
+  const [logging, setLogging] = useState(false) // #727/#730 — the "log what you did" / edit-weights sheet is open
   useEffect(() => {
     if (!a || sportOfActivity(a) !== 'gym') return
     authApi.serverLogs().then((ls) => setGymLogs(ls as unknown as WorkoutLog[])).catch(() => setGymLogs([]))
@@ -402,7 +404,13 @@ export default function ActivityDetail() {
       : planNoWeights ? plan!.exercises!.map((x) => ({ name: x.name, exId: x.exId, sets: [] }))
       : []
     const durMin = (gymLog?.duration) || (a.moving_time ? Math.round(a.moving_time / 60) : 0)
-    const addWeights = plan ? () => { setGymSession(gymSessionFromPlan(plan)); navigate('/gym-session/play') } : undefined
+    // #727 — per-exercise plan targets (mode/sets/reps/seconds/weight), matched by name → seed the rows + drive the
+    // MODE-aware inputs (weight×reps loaded · reps only · timed hold). Index-aligned with exLogs.
+    const norm = (s: string) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const seed = exLogs.map((r) => { const px = plan?.exercises?.find((e) => norm(e.name) === norm(r.name)); return px ? { mode: px.mode, seconds: px.seconds, sets: px.sets, reps: px.reps, weight: px.weight, eachSide: px.eachSide } : {} })
+    const hasLoggedSets = !!(gymLog && Object.values(gymLog.sets || {}).some((arr) => (arr || []).length))
+    // #727/#730 — open the MODE-AWARE editor on THIS completed view (log or edit the loads), never the start-workout player.
+    const addWeights = exLogs.length ? () => setLogging(true) : undefined
     const bestE1rm = gymLogs ? bestE1rmByExercise(gymLogs) : undefined
     const fk = gymFeedbackKeys({ date: dISO, planId: plan?.id, activityId: a.id })
     const avgHr = a.average_heartrate || (a as { icu_average_hr?: number }).icu_average_hr || deviceHr // #695 — fall back to the day's device (Coros) HR
@@ -429,6 +437,25 @@ export default function ActivityDetail() {
         </div>
         {gymLogs == null ? <p className="meta">Loading session…</p>
           : <GymSummary minutes={durMin} exercises={exLogs} review={review} note={note} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={dISO} planId={plan?.id} avgHr={avgHr} plannedNoWeights={planNoWeights} onAddWeights={addWeights} />}
+        {/* #727/#730 — the "Log what you did" / edit-weights sheet: mode-aware inputs, prefilled from the plan, kg/lbs per Settings. */}
+        {gymLogs != null && exLogs.length > 0 && (
+          logging ? (
+            <div style={{ marginTop: 14 }}>
+              <div className="section-title" style={{ marginBottom: 8 }}>{hasLoggedSets ? 'Edit your weights' : 'Log what you did'} <span className="meta" style={{ fontWeight: 400 }}>· fill in what you actually did</span></div>
+              <GymSetEditor
+                log={gymLog || ({ workoutId: 'gym-' + dISO, title: gymTitle, discipline: 'strength', duration: durMin, date: dISO, sets: {} } as WorkoutLog)}
+                exNames={exLogs.map((r) => r.name)}
+                seed={seed}
+                showAll
+                create={{ workoutId: gymLog?.workoutId || ('gym-' + dISO), title: gymTitle, discipline: 'strength', date: dISO, duration: durMin }}
+                onSaved={() => { setLogging(false); authApi.serverLogs().then((ls) => setGymLogs(ls as unknown as WorkoutLog[])).catch(() => {}) }}
+                onCancel={() => setLogging(false)}
+              />
+            </div>
+          ) : hasLoggedSets ? (
+            <button className="btn btn--ghost" style={{ marginTop: 10, width: '100%' }} onClick={() => setLogging(true)}>✍️ Edit weights</button>
+          ) : null
+        )}
         {/* #700 — HR curve, same treatment as a ride/run's HR line. */}
         {hrChart && (
           <>
