@@ -1550,7 +1550,11 @@ app.post('/auth/plans/handle-missed', auth, async (req, res) => {
   const actBySlot = {}
   if (user.icuKey) {
     const acts = await icuGet(user, `/athlete/${user.icuAthlete}/activities?oldest=${addDays(today, -60)}&newest=${today}`).catch(() => null)
-    for (const a of (Array.isArray(acts) ? acts : [])) { const k = slotKey((a.start_date_local || '').slice(0, 10), eventSport(a.type)); if (!actBySlot[k]) actBySlot[k] = a }
+    // #697 — a session can land in intervals TWICE (the DEVICE recording + an empty Strava/duplicate mirror). Prefer the
+    // one with REAL data (moving_time / HR) so the pairing attaches the RICH activity to the plan, not an empty stub —
+    // that's what left JM's gym as two cards (Coros "Weight Training" @90bpm + the planned event) instead of one.
+    const actScore = (x) => (Number(x.moving_time) > 0 ? 2 : 0) + (Number(x.average_heartrate) > 0 ? 1 : 0)
+    for (const a of (Array.isArray(acts) ? acts : [])) { const k = slotKey((a.start_date_local || '').slice(0, 10), eventSport(a.type)); if (!actBySlot[k] || actScore(a) > actScore(actBySlot[k])) actBySlot[k] = a }
   }
   // Completion with ±1-day tolerance (a session done a day early/late still counts) — so the GC NEVER deletes a
   // plan the athlete actually did on an adjacent day. Uses activities + local logs.
@@ -3026,7 +3030,11 @@ async function icuFindMatch(user, { date, sport }) {
   const acts = await icuGet(user, `/athlete/${ath}/activities?oldest=${date}&newest=${date}`)
   if (!Array.isArray(acts)) return null
   const want = /ride|cycl|bike/i.test(sport) ? /ride|cycl|bike/i : /run/i.test(sport) ? /run/i : /weight|strength|workout/i
-  return acts.find((a) => want.test(String(a.type || ''))) || null
+  // #697 — when the same session appears twice (device recording + empty duplicate), prefer the one carrying REAL
+  // data (moving_time / HR) so we match/pair/annotate the rich activity, not a stub.
+  const matches = acts.filter((a) => want.test(String(a.type || '')))
+  const score = (x) => (Number(x.moving_time) > 0 ? 2 : 0) + (Number(x.average_heartrate) > 0 ? 1 : 0)
+  return matches.sort((a, b) => score(b) - score(a))[0] || null
 }
 async function icuUploadTcx(user, tcx, name) {
   const ath = user.icuAthlete
