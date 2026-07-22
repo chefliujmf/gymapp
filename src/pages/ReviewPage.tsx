@@ -57,7 +57,7 @@ export default function ReviewPage() {
             <Link to={g.planId ? `/coach/${g.planId}` : '/'} state={{ from: '/review' }} className="fbrow__lk">
               <div className="fbrow__th">🏋️</div>
               <div className="fbrow__b">
-                <div className="fbrow__t">{g.title || 'Strength session'} · {dayLabel(g.date)}</div>
+                <div className="fbrow__t">{g.title || 'Strength session'} · {dayLabel(g.date + 'T12:00:00')}</div>
                 <div className="fbrow__m"><span className="fbmiss">how it felt</span></div>
               </div>
             </Link>
