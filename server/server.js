@@ -2094,6 +2094,11 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   // put on them, and they do NOT count toward the weekly training-days target (never re-fill a rest to hit the number).
   const restDays = (user.restDates || []).filter((d) => d >= today).slice(0, 21)
   if (restDays.length) p += `\n\n# REST DAYS — DO NOT SCHEDULE (JM #735): the athlete has set these as deliberate REST days: ${restDays.join(', ')}. NEVER place any session on them — they are OFF (the server rejects it). They do NOT count toward the weekly training-days target, so do not treat them as "empty days to fill". Only schedule one if the athlete EXPLICITLY asks to train that day, and then clear it first with clear_rest_day. When the athlete asks to REST a day (or move a session off it with nothing replacing it), call set_rest_day so the rest sticks.`
+  // #746 (audit) — TEEN SAFETY (under 18): the shape already caps intensity + the gym floors reps (submaximal, no 1-RM),
+  // but the biggest teen risk is ENERGY AVAILABILITY / RED-S — especially for distance runners. Hand the coach an
+  // explicit safety block so it never prescribes a deficit and watches for red flags.
+  const bpAge = user.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
+  if (bpAge != null && bpAge < 18) p += `\n\n# TEEN ATHLETE (~${bpAge}) — SAFETY FIRST (JM #746). This is a growing body: (1) TECHNIQUE + SUBMAXIMAL work, NEVER maximal loading, 1-RM tests, or near-max lifts (the gym enforces a rep floor). (2) NEVER prescribe a calorie deficit or a weight-loss goal — if their goal mentions losing weight/leaning out, redirect to FUELLING + performance + skills; under-fuelling a teen risks growth, bone health and RED-S. (3) ENERGY AVAILABILITY / RED-S is the #1 risk (distance runners especially): coach them to EAT ENOUGH to fuel training AND growth. Watch for red flags — stalled progress, unusual fatigue, bone/stress-fracture pain, restrictive eating, or (in girls) missed/irregular periods; if any appear, REDUCE load and advise seeing a clinician/sports-dietitian. (4) Keep it fun + sustainable — consistency + skill over intensity; long-term development beats short-term peaking.`
   // #345 — most athletes train ONCE a day. Never stack two sessions (e.g. a gym + a run) on the same
   // calendar day beyond this cap unless the athlete explicitly opts into doubles.
   // #717 (audit) — CONCURRENT-TRAINING SEPARATION: code-COMPUTE the athlete's quality endurance days and hand the coach
@@ -2137,7 +2142,11 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const weeksToRace = (rd && /^\d{4}-\d{2}-\d{2}$/.test(rd) && rd >= todayIso) ? Math.floor((Date.parse(isoMonday(rd)) - Date.parse(thisMon)) / (7 * 86400000)) : null
     const ageYears = (user.info && user.info.dob) ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
     const form = (typeof user.ctl === 'number' && typeof user.atl === 'number') ? user.ctl - user.atl : null // #630 — autoregulate off Form
-    per = periodizationPhase({ ctl: user.ctl, weeksSinceAnchor, weeksToRace, ageYears, form })
+    // #752 (audit) — a longer race needs a longer taper: widen the taper window for a 70.3 (~3wk) / Ironman (~4wk).
+    const raceName = String((user.info && user.info.raceName) || '').toLowerCase()
+    const taperWeeks = /ironman|140\.?6|full[- ]?distance/.test(raceName) ? 4 : /70\.?3|half[- ]?iron|half[- ]?distance/.test(raceName) ? 3 : 2
+    // #756 (audit) — pass loadBand so a flat/health goal never gets a peak/overload week.
+    per = periodizationPhase({ ctl: user.ctl, weeksSinceAnchor, weeksToRace, ageYears, form, loadBand: shape.loadBand, taperWeeks })
     // #630 — SEASON MACRO phase (when a race is set): far out = base (volume), mid = build (race intensity), close = peak.
     const macro = weeksToRace == null ? ''
       : weeksToRace > 16 ? ` SEASON MACRO = BASE (16+ wks out): emphasise aerobic VOLUME + durability, keep intensity moderate — save race-specific sharpening for later.`

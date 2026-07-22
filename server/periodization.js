@@ -45,15 +45,23 @@ function taperWeek(weeksToRace, b) {
  *   ageYears          number|null   masters (≥55) or teen (<18) ⇒ gentler peak + deeper recovery
  * @returns {{ phase, weekInCycle, target, note, weeksToRace }}
  */
-export function periodizationPhase({ ctl = null, weeksSinceAnchor = 0, weeksToRace = null, ageYears = null, form = null } = {}) {
+export function periodizationPhase({ ctl = null, weeksSinceAnchor = 0, weeksToRace = null, ageYears = null, form = null, loadBand = null, taperWeeks = 2 } = {}) {
   const b = weeklyLoadBudget(ctl)
-  if (weeksToRace != null && weeksToRace >= 0 && weeksToRace <= 2) return taperWeek(weeksToRace, b)
+  // #752 (audit) — the taper is DISTANCE-AWARE: a longer race needs a longer taper. `taperWeeks` (default 2) is widened
+  // by the caller for a 70.3 (~3) / Ironman (~3-4), so an IM athlete 3 weeks out gets a taper, not a peak week.
+  if (weeksToRace != null && weeksToRace >= 0 && weeksToRace <= taperWeeks) return taperWeek(Math.min(weeksToRace, 2), b)
   // #630 — AUTOREGULATION: the calendar wheel is not the boss of fatigue. If Form (CTL−ATL) is deep-negative the
   // athlete is dug into a hole; force an UNPLANNED recovery week regardless of where the fixed cycle says we are,
   // so the periodization responds to how they're actually absorbing load (this is what a world-class coach does).
   if (form != null && form <= -30) return {
     phase: 'recovery', weekInCycle: null, target: b ? Math.round(b.sustainable * 0.6) : null, weeksToRace,
     note: `UNPLANNED RECOVERY week — their freshness is deep-negative (Form ${Math.round(form)}), so they're dug into a fatigue hole: pull volume right back and keep it easy this week to climb out, whatever the calendar block said. Resume the build once Form recovers.`,
+  }
+  // #756 (audit) — a FLAT / MAINTENANCE goal (health · consistency · pregnancy) NEVER runs a peak/overload week: that
+  // contradicts the load-budget band and hands a "hardest week of the block" to someone who just wants to stay fit.
+  if (loadBand === 'flat' || loadBand === 'maintenance') return {
+    phase: 'steady', weekInCycle: null, target: b ? b.sustainable : null, weeksToRace,
+    note: 'STEADY consistency block — a health/maintenance goal, so NO peak or overload week: hold a repeatable weekly load and ease off if fatigued. Progress comes from consistency, not a hard peak.',
   }
   const easeTop = ageYears != null && (ageYears >= 55 || ageYears < 18) // masters or teen → gentler peak + deeper recovery
   const cycle = blockCycle(b, easeTop)
