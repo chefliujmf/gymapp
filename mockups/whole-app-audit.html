@@ -1,0 +1,157 @@
+<title>Platyplus — Whole-App Audit</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#191c24; --panel2:#21252f; --line:#2a3039;
+    --text:#eef1f4; --dim:#9298a6; --faint:#6b7280;
+    --accent:#34e07d; --crit:#ff5d6c; --high:#ff9f43; --med:#ffd45e; --low:#6b7280; --cyan:#4aa3ff;
+    --s1:#ff5d6c; --s2:#ff9f43; --s3:#ffd45e; --s4:#8fe36b; --s5:#34e07d;
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f6f8; --panel:#ffffff; --panel2:#eef1f5; --line:#dce1e8;
+    --text:#161a20; --dim:#5a626e; --faint:#8a92a0;
+  }
+  @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+    --bg:#f4f6f8; --panel:#ffffff; --panel2:#eef1f5; --line:#dce1e8;
+    --text:#161a20; --dim:#5a626e; --faint:#8a92a0;
+  }}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:28px 18px 80px}
+  .num{font-variant-numeric:tabular-nums}
+  .eyebrow{font-size:11.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent)}
+  h1{font-size:clamp(28px,6vw,42px);line-height:1.05;font-weight:850;margin:6px 0 4px;text-wrap:balance;letter-spacing:-.5px}
+  .sub{color:var(--dim);font-size:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+  section{margin-top:26px}
+  .sh{font-size:13px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+
+  /* hero grade */
+  .hero{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;margin-top:20px}
+  .grade{width:150px;height:150px;border-radius:50%;display:grid;place-items:center;position:relative;flex:none}
+  .grade b{font-size:46px;font-weight:850;line-height:1}
+  .grade span{font-size:12px;color:var(--dim);font-weight:700;letter-spacing:.5px}
+  .verdict{font-size:15px;color:var(--text)}
+  .verdict b{color:var(--accent)}
+  @media(max-width:560px){.hero{grid-template-columns:1fr;text-align:left}.grade{margin:0}}
+
+  /* dimension bars */
+  .dim{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .dim:last-child{border-bottom:0}
+  .dim .name{flex:0 0 132px;font-weight:700;font-size:14px}
+  .dim .track{flex:1;height:9px;border-radius:6px;background:var(--panel2);overflow:hidden}
+  .dim .fill{height:100%;border-radius:6px}
+  .dim .val{flex:0 0 42px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums;font-size:14px}
+  .dim .na{color:var(--faint);font-weight:600}
+
+  /* persona grid */
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
+  .p{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:10px 11px;display:flex;flex-direction:column;gap:3px}
+  .p .pt{font-size:12.5px;font-weight:700}
+  .p .pd{font-size:11px;color:var(--dim)}
+  .p .ps{margin-top:4px;font-size:12px;font-weight:800}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+
+  /* findings */
+  .find{background:var(--panel);border:1px solid var(--line);border-left-width:4px;border-radius:12px;padding:13px 15px;margin-bottom:10px}
+  .find .top{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+  .rank{font-weight:850;font-variant-numeric:tabular-nums;color:var(--faint);font-size:14px}
+  .chip{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+  .find h3{font-size:15px;font-weight:750;flex:1;min-width:200px}
+  .find .who{font-size:11px;color:var(--dim);font-weight:600}
+  .find p{font-size:13.5px;color:var(--dim);margin-top:7px}
+  .find .fix{font-size:13.5px;margin-top:7px;color:var(--text)}
+  .find .fix b{color:var(--accent)}
+
+  .callout{background:linear-gradient(180deg,rgba(52,224,125,.09),rgba(52,224,125,.03));border:1px solid rgba(52,224,125,.35);border-radius:16px;padding:20px}
+  .callout .k{font-size:11.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent)}
+  .callout h2{font-size:19px;margin:6px 0 8px;font-weight:800;text-wrap:balance}
+  .callout p{font-size:14px;color:var(--text)}
+  .note{font-size:12.5px;color:var(--faint);margin-top:8px}
+  a{color:var(--cyan)}
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Platyplus · Whole-app re-audit · 22 Jul 2026</div>
+  <h1>The engine is world-class for one athlete, and prose for the rest.</h1>
+  <div class="sub">19 agents · 12 engine personas × 6 app areas · 1.8M tokens · scored against the app's own "code decides, the LLM authors within it" thesis.</div>
+
+  <div class="hero">
+    <div class="grade" style="background:conic-gradient(var(--s2) 0 62%, var(--panel2) 62% 100%);">
+      <div style="position:absolute;inset:9px;border-radius:50%;background:var(--bg);display:grid;place-items:center">
+        <div style="text-align:center"><b class="num">62</b><br><span>/ 100</span></div>
+      </div>
+    </div>
+    <div class="verdict">
+      Platyplus honors its core principle — <b>safety &amp; dose enforced in code, not prompts</b> — to a world-class standard on <b>exactly one axis: endurance intensity for an adult ride/run athlete.</b> Everywhere else — the whole gym axis, all of swimming, triathlon, and every vulnerable persona (pregnant · postpartum · teen · masters) — those same rules are <b style="color:var(--high)">prompt-only</b>, and several defaults are <b style="color:var(--crit)">inverted toward danger</b>. It's a 4/5 product for the male cyclist it was born from, a 3/5 for most personas a launch will onboard. That gap — not any single bug — is the score.
+    </div>
+  </div>
+
+  <section>
+    <div class="sh">Dimension scores</div>
+    <div class="card">
+      <div class="dim"><span class="name">Coach engine</span><div class="track"><div class="fill" style="width:66%;background:var(--s3)"></div></div><span class="val num">3.3</span></div>
+      <div class="dim"><span class="name">UX flows</span><div class="track"><div class="fill" style="width:60%;background:var(--s3)"></div></div><span class="val num">3.0</span></div>
+      <div class="dim"><span class="name">Stats pages</span><div class="track"><div class="fill" style="width:60%;background:var(--s3)"></div></div><span class="val num">3.0</span></div>
+      <div class="dim"><span class="name">Navigation</span><div class="track"><div class="fill" style="width:60%;background:var(--s3)"></div></div><span class="val num">3.0</span></div>
+      <div class="dim"><span class="name">Profile</span><div class="track"><div class="fill" style="width:60%;background:var(--s3)"></div></div><span class="val num">3.0</span></div>
+      <div class="dim"><span class="name">Settings</span><div class="track"><div class="fill" style="width:60%;background:var(--s3)"></div></div><span class="val num">3.0</span></div>
+      <div class="dim"><span class="name">Admin</span><div class="track"><div class="fill" style="width:60%;background:var(--s3)"></div></div><span class="val num">3.0</span></div>
+    </div>
+    <div class="note">Score key — 1 broken/unsafe · 3 works but flawed / prompt-only · 5 world-class + code-enforced. Surface polish (rendered screens) is higher than the code scores: my prod walk found clean cards, wrapping chips, good contrast — the gaps here are structural, below the surface.</div>
+  </section>
+
+  <section>
+    <div class="sh">Coach engine · per persona</div>
+    <div class="pgrid">
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s4)"></span>Male cyclist · build</span><span class="pd">the app was born from him</span><span class="ps" style="color:var(--s4)">4 / 5</span></div>
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s4)"></span>Runner · performance</span><span class="pd">Daniels zones, 2-quality</span><span class="ps" style="color:var(--s4)">4 / 5</span></div>
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s4)"></span>Cyclist + muscle</span><span class="pd">support_build concurrent</span><span class="ps" style="color:var(--s4)">4 / 5</span></div>
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s3)"></span>Swimmer</span><span class="pd">shape clamp is a no-op</span><span class="ps" style="color:var(--s3)">3 / 5</span></div>
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s3)"></span>Triathlete</span><span class="pd">collapses to bike-only</span><span class="ps" style="color:var(--s3)">3 / 5</span></div>
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s3)"></span>Female · cycle</span><span class="pd">phase bias prompt-only</span><span class="ps" style="color:var(--s3)">3 / 5</span></div>
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s3)"></span>Pregnant runner</span><span class="pd">gym contraindication un-clamped</span><span class="ps" style="color:var(--s3)">3 / 5</span></div>
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s3)"></span>Postpartum runner</span><span class="pd">no-date → full build</span><span class="ps" style="color:var(--s3)">3 / 5</span></div>
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s3)"></span>Teen runner</span><span class="pd">reps floored, load isn't</span><span class="ps" style="color:var(--s3)">3 / 5</span></div>
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s3)"></span>Masters cyclist</span><span class="pd">ceiling enforced, rest prose</span><span class="ps" style="color:var(--s3)">3 / 5</span></div>
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s3)"></span>Beginner · no data</span><span class="pd">default = most aggressive</span><span class="ps" style="color:var(--s3)">3 / 5</span></div>
+      <div class="p"><span class="pt"><span class="dot" style="background:var(--s3)"></span>Bodybuilder</span><span class="pd">under-doses volume ½</span><span class="ps" style="color:var(--s3)">3 / 5</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sh">Top findings · ranked by severity × impact</div>
+
+    <div class="find" style="border-left-color:var(--crit)"><div class="top"><span class="rank num">1</span><span class="chip" style="background:rgba(255,93,108,.18);color:var(--crit)">Critical</span><h3>Swim shape-clamp is a complete no-op for real swim plans</h3><span class="who">swimmer</span></div><p><code>create_swim</code> emits only {time, distance, load} — zone discarded — and swim plans store <code>segments:[]</code>, so <code>enforceShape</code> clamps nothing. Every swim intensity/safety limit (incl. pregnant/teen swimmer) is prompt-only. A green unit test hides it by hand-injecting power segments create_swim never produces.</p><div class="fix"><b>Fix →</b> emit per-set zone→%CSS as a segment-equivalent and clamp at save under intensityCeiling; rewrite the test to feed real create_swim output.</div></div>
+
+    <div class="find" style="border-left-color:var(--high)"><div class="top"><span class="rank num">2</span><span class="chip" style="background:rgba(255,159,67,.18);color:var(--high)">High</span><h3>Beginner default is the MOST aggressive week (2 quality, VO2 ceiling)</h3><span class="who">beginner</span></div><p>weekShape only softens on a "maintain" keyword; a blank or ambitious goal falls to build/2/VO2 with nothing clamping it. The "conservative ramp-in" is prompt-only.</p><div class="fix"><b>Fix →</b> make the conservative shape the DEFAULT when there's no load history: flat, ≤1 quality, ceiling ≤ tempo, ramping only as absorbed load accrues.</div></div>
+
+    <div class="find" style="border-left-color:var(--high)"><div class="top"><span class="rank num">3</span><span class="chip" style="background:rgba(255,159,67,.18);color:var(--high)">High</span><h3>Postpartum with no birth-date degrades UNSAFELY to a full build</h3><span class="who">postpartum</span></div><p>The graded-return path only fires if <code>postpartumSince</code> is set (an optional field). Turn "Pregnant" off without a date → coached as normal → 2 quality + VO2.</p><div class="fix"><b>Fix →</b> on pregnant true→false, auto-set a provisional postpartumSince=today so clearing pregnancy enters the graded return by default (opt-out, not opt-in).</div></div>
+
+    <div class="find" style="border-left-color:var(--high)"><div class="top"><span class="rank num">4</span><span class="chip" style="background:rgba(255,159,67,.18);color:var(--high)">High</span><h3>Pregnant gym: no supine/T2+ contraindication is code-enforced</h3><span class="who">pregnant</span></div><p>The gym assembler gets no pregnant/trimester arg → resolves flat-supine bench/floor-press/dead-bug for a T2+ athlete, then the prompt says "build them exactly", overriding the "no supine" rule 30 lines above it.</p><div class="fix"><b>Fix →</b> pass pregnant+trimester into the assembler; at T2+ filter supine/prone patterns + add an enforcePregnancyGym save-clamp peer to enforceTeenGym.</div></div>
+
+    <div class="find" style="border-left-color:var(--high)"><div class="top"><span class="rank num">5</span><span class="chip" style="background:rgba(255,159,67,.18);color:var(--high)">High</span><h3>Postpartum clamps INTENSITY but not IMPACT — the real risk is un-gated</h3><span class="who">postpartum</span></div><p>Early-postpartum is clamped to 75% pace, but pelvic-floor risk is ground-reaction impact, not aerobic intensity — a ceiling-compliant easy run is still contraindicated pre-rebuild, and modality is never downgraded.</p><div class="fix"><b>Fix →</b> return an impact directive from weekShape (none &lt;6wk, walk-run 6–12wk) and enforce it by converting/blocking run modality, not just clamping %.</div></div>
+
+    <div class="find" style="border-left-color:var(--high)"><div class="top"><span class="rank num">6</span><span class="chip" style="background:rgba(255,159,67,.18);color:var(--high)">High</span><h3>Triathlete collapses to bike-only in three code layers</h3><span class="who">triathlete</span></div><p><code>['triathlon']</code> matches none of cycling/running/swimming, so archetype variety, dev-priorities, and the save clamp all fall through to "ride" + a flat global-2 cap. 2 of 3 sports get zero code service.</p><div class="fix"><b>Fix →</b> make archetype/systemPrompt/weekShape triathlon-aware: per-discipline archetypes, all three focus lists, ~1 quality/discipline by phase, clamp the lowest-priority discipline.</div></div>
+
+    <div class="find" style="border-left-color:var(--high)"><div class="top"><span class="rank num">7</span><span class="chip" style="background:rgba(255,159,67,.18);color:var(--high)">High</span><h3>Teen gym derates rep count but not LOAD — still ~85% 1RM</h3><span class="who">teen</span></div><p>enforceTeenGym only floors reps&lt;5→5; clampMainReps forces support mains to 3–6 @ 80–90% 1RM — the two passes combine to lock a minor into the heaviest zone, opposite of NSCA youth guidance.</p><div class="fix"><b>Fix →</b> a teen branch that caps %1RM (≤70–75%) and forces a technique band (≥8 reps), overriding the support down-clamp.</div></div>
+
+    <div class="find" style="border-left-color:var(--high)"><div class="top"><span class="rank num">8</span><span class="chip" style="background:rgba(255,159,67,.18);color:var(--high)">High</span><h3>Concurrent-training separation is prompt-only — heavy legs can precede a key ride</h3><span class="who">all endurance+gym</span></div><p>maxPerDay stops same-day stacking, but nothing prevents an adjacent-day interference collision — the defining requirement for every strength-supported endurance athlete.</p><div class="fix"><b>Fix →</b> a unit-tested check in reenforceShapeAll that detects heavy gym ±1 day from a quality endurance day and flags/moves it.</div></div>
+
+    <div class="find" style="border-left-color:var(--high)"><div class="top"><span class="rank num">9</span><span class="chip" style="background:rgba(255,159,67,.18);color:var(--high)">High</span><h3>Bodybuilder under-doses volume ~½ the engine's own 10–20 target</h3><span class="who">bodybuilder</span></div><p>set_gym_target advertises 10–20 sets/muscle and Stats judges against it, but the assembler plans ~6 — half the minimum effective hypertrophy volume, never scaled by focus. A say/do gap.</p><div class="fix"><b>Fix →</b> scale sets-per-primary + a 2nd movement on priority muscles for focus=muscle; unit-test weekly sets/muscle ≥ 10.</div></div>
+
+    <div class="find" style="border-left-color:var(--high)"><div class="top"><span class="rank num">10</span><span class="chip" style="background:rgba(255,159,67,.18);color:var(--high)">High</span><h3>Female menses cut a quality day — contradicts the engine's own science</h3><span class="who">female-cycle</span></div><p>weekShape de-loads the menstrual phase with no symptom check, but cycle.js rates it near-neutral and the female engine calls it a green light for PRs. The graded phase load modifier is never multiplied into any target.</p><div class="fix"><b>Fix →</b> restrict the cut to late-luteal (menstrual only if symptomatic); fold the phase modifier into weeklyLoadBudget so it's code-enforced.</div></div>
+
+    <div class="find" style="border-left-color:var(--high)"><div class="top"><span class="rank num">11</span><span class="chip" style="background:rgba(255,159,67,.18);color:var(--high)">High</span><h3>Gym never progresses week-to-week — no code periodization or deload</h3><span class="who">all gym</span></div><p>periodization.js is endurance-TSS only; the assembler hardcodes sets and emits the same reps every week. Double-progression + deload exist only as prose the fixed frame overrides.</p><div class="fix"><b>Fix →</b> a gym meso-cycle (accumulation→intensification→deload) feeding week index into the assembler so reps/%1RM ramp and deload cuts volume ~40–50%.</div></div>
+
+    <div class="find" style="border-left-color:var(--high)"><div class="top"><span class="rank num">12</span><span class="chip" style="background:rgba(255,159,67,.18);color:var(--high)">High</span><h3>App-wide: dead routes, split feedback stores, off-theme hex</h3><span class="who">ux · nav · stats · admin</span></div><p>Two disconnected feedback stores drop/re-prompt feedback; /more (Eat &amp; Mind) is a dead route; the Cycling stats page is near-empty &amp; gates out manual-FTP cyclists; a blind navigate(-1) dead-ends on deep-links; invented hex (incl. the exact <code>#3d7bff</code> blue the theme memory exists to kill) recurs in admin/stats.</p><div class="fix"><b>Fix →</b> mirror plan feedback into activityFeedback + unify the client store; fix/hide /more; give Cycling stats parity + a manual-FTP path; guard the back-button; sweep hex → theme tokens.</div></div>
+  </section>
+
+  <section>
+    <div class="callout">
+      <div class="k">Fix this first</div>
+      <h2>Close the code-enforcement gap on safety — before any new capability.</h2>
+      <p>The product's whole thesis is "prompt-only rules get ignored, so decide in code." That's honored for adult endurance intensity and abandoned everywhere a vulnerable or non-cyclist athlete lives. Workstream one is a <b>code-enforced safety floor</b>: (a) flip the inverted defaults so absence-of-input yields the <b>conservative</b> shape — beginner-no-history and postpartum-no-date must never resolve to 2× VO2 / full build; and (b) make the flagship save-time clamp actually run for swimming and for the gym (pregnancy · postpartum · teen-load). For a product onboarding whoever signs up, a dangerous default is worse than any missing feature.</p>
+      <div class="note">Full per-agent findings: workflow wf_73318176-998 journal · 12 engine personas + ux-flows, stats, navigation, profile, settings, admin.</div>
+    </div>
+  </section>
+</div>
