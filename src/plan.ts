@@ -44,11 +44,18 @@ export function estimateGymMinutes(p: Pick<CoachPlan, 'exercises' | 'rounds'>): 
   if (!exs.length) return 0
   let sec = 0
   for (const x of exs) {
-    const sets = x.sets && x.sets > 0 ? x.sets : 3
-    const rest = x.rest != null && x.rest >= 0 ? x.rest : 60 // s between sets
-    const work = (x.mode || 'reps') === 'timed'
+    const timed = (x.mode || 'reps') === 'timed'
+    // #696 — a timed mobility/hold is ONE round (was defaulting to 3 → warm-ups over-counted); a strength move is 3 sets.
+    const sets = x.sets && x.sets > 0 ? x.sets : (timed ? 1 : 3)
+    const reps = x.reps && x.reps > 0 ? x.reps : 10
+    // #696 — rest MUST scale with load: heavy low-rep lifts need 2-3 min between sets, not 60s (that undercounted a
+    // strength session by ~15 min → JM saw 42 min for a real ~55). Default by rep count when not explicitly set;
+    // timed holds just need a short transition.
+    const restDefault = timed ? 15 : reps <= 6 ? 150 : reps <= 12 ? 90 : 60
+    const rest = x.rest != null && x.rest >= 0 ? x.rest : restDefault
+    const work = timed
       ? (x.seconds && x.seconds > 0 ? x.seconds : 40)                     // timed hold
-      : (x.reps && x.reps > 0 ? x.reps : 10) * tempoSecPerRep(x.tempo)    // reps × tempo
+      : reps * tempoSecPerRep(x.tempo)                                    // reps × tempo
     sec += sets * work + sets * rest      // rest after each set (last ≈ transition to next move)
     sec += 20                              // per-exercise setup (find station / load)
   }

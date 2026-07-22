@@ -31,7 +31,7 @@ import { weekShape } from './week-shape.js' // #613/#615 — code-decided week s
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
 import { enforceShape } from './shape-enforce.js' // #615/#620 — the PURE, unit-tested clamp that ENFORCES the week shape on a plan
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
-import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save)
+import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile, goalPriorityFrame } from './perf-metrics.js' // #404; #669 goal-aware priority
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -1801,6 +1801,8 @@ async function reenforceShapeAll(user) {
   for (const p of (user.plans || []).filter((x) => x && x.date >= today)) {
     let ch = false
     for (const k of ['title', 'notes', 'objective', 'success']) { if (typeof p[k] === 'string') { const v = scrubPrivate(p[k]); if (v !== p[k]) { p[k] = v; ch = true } } }
+    // #696 — sweep the session-duration prose out of EXISTING gym plans too (JM's live 07-21 plan still carried "About 55-60 min").
+    if (p.sport === 'gym') for (const k of ['objective', 'success', 'notes']) { if (typeof p[k] === 'string') { const v = stripGymDurationProse(p[k]); if (v !== p[k]) { p[k] = v; ch = true } } }
     if (ch) { privacyTouched.push(p); if (!touched.includes(p) && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim')) touched.push(p) }
   }
   if (touched.length || gymTouched || privacyTouched.length) {
@@ -2659,6 +2661,8 @@ async function upsertPlan(user, body, actor = 'coach') {
   // #650 — PRIVACY (safety): strip pregnancy/postpartum terms from anything the athlete or the public could read
   // (the title pushes to intervals → Strava). Enforced in code, not just prompted. No-op for normal copy.
   for (const k of ['title', 'notes', 'objective', 'success']) if (typeof plan[k] === 'string') plan[k] = scrubPrivate(plan[k])
+  // #696 — a gym plan's description must not restate the session duration (the header carries it); strip it in code.
+  if (plan.sport === 'gym') for (const k of ['objective', 'success', 'notes']) if (typeof plan[k] === 'string') plan[k] = stripGymDurationProse(plan[k])
   if ((plan.sport === 'ride' || plan.sport === 'run') && Array.isArray(plan.segments) && plan.segments.length) { // #614 — power/pace clamp is for ride/run only, not swim
     const g = clampEasyEfforts(plan.title, plan.segments)
     if (g.clamped) { plan.segments = g.segments; console.log(`[clampEasyEfforts] ${user.username} "${plan.title}" — clamped ${g.clamped} easy segment(s) below ${'threshold'}`) }

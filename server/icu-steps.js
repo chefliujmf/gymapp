@@ -227,11 +227,14 @@ export function estimateGymSeconds(plan) {
   if (!exs.length) return 0
   let sec = 0
   for (const x of exs) {
-    const sets = Number(x.sets) > 0 ? Number(x.sets) : 3
-    const rest = x.rest != null && Number(x.rest) >= 0 ? Number(x.rest) : 60
-    const work = (x.mode || 'reps') === 'timed'
-      ? (Number(x.seconds) > 0 ? Number(x.seconds) : 40)
-      : (Number(x.reps) > 0 ? Number(x.reps) : 10) * gymTempoSec(x.tempo)
+    const timed = (x.mode || 'reps') === 'timed'
+    // #696 — mirror of src/plan.ts estimateGymMinutes: a timed hold is ONE round; strength is 3 sets; and rest MUST
+    // scale with load (heavy low-rep = 2-3 min, not a flat 60s that undercounted a real ~55-min session to 42).
+    const sets = Number(x.sets) > 0 ? Number(x.sets) : (timed ? 1 : 3)
+    const reps = Number(x.reps) > 0 ? Number(x.reps) : 10
+    const restDefault = timed ? 15 : reps <= 6 ? 150 : reps <= 12 ? 90 : 60
+    const rest = x.rest != null && Number(x.rest) >= 0 ? Number(x.rest) : restDefault
+    const work = timed ? (Number(x.seconds) > 0 ? Number(x.seconds) : 40) : reps * gymTempoSec(x.tempo)
     sec += sets * work + sets * rest + 20
   }
   sec *= (Number(plan.rounds) > 0 ? Number(plan.rounds) : 1)
