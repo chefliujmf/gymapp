@@ -258,7 +258,12 @@ function sessionTitle(patterns, emph, sessionIndex) {
  * Assemble ONE tailored gym session. @param patterns the movement patterns for THIS session (from the split).
  * @returns { title, focus, emphasis, exercises:[{name,section,mode,reps?,sets?,seconds?,eachSide?,tempo?}] }
  */
-export function assembleGymSession({ focus = 'support', mainSport, sports = [], patterns = ['squat', 'hinge', 'hpush', 'hpull', 'core', 'arms'], recentExercises = [], sessionIndex = 0 } = {}) {
+// #720 (audit) — GYM MESO-CYCLE: gym must PROGRESS + DELOAD, not repeat identically. `mesoWeek` 0-3 in a 4-week block:
+// 0-1 accumulation (base) · 2 intensification (a touch heavier: primaries +1 set) · 3 DELOAD (cut volume ~45%). Since
+// the gym frame is "build EXACTLY these", the ramp/deload MUST be in the assembler, not the prompt. Pure + testable.
+export function gymMesoPhase(mesoWeek) { const w = ((Number(mesoWeek) % 4) + 4) % 4; return w === 3 ? 'deload' : w === 2 ? 'intensification' : 'accumulation' }
+export function assembleGymSession({ focus = 'support', mainSport, sports = [], patterns = ['squat', 'hinge', 'hpush', 'hpull', 'core', 'arms'], recentExercises = [], sessionIndex = 0, mesoWeek = 0 } = {}) {
+  const mesoPhase = gymMesoPhase(mesoWeek)
   const f = normFocus(focus)
   const rs = REP_SCHEME[f]
   const emph = sportEmphasis({ mainSport, sports })
@@ -278,7 +283,7 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
   // #718 (audit) — HYPERTROPHY needs 10-20 sets/muscle/wk (Schoenfeld), but one primary/pattern @3 sets under-doses (~6/wk
   // at 2× frequency). For muscle focus: primaries get 4 sets AND each primary pattern gets a 2nd movement (below) → ~7-8
   // sets/muscle/session, ~14-16/wk. Strength stays low-volume/heavy (3 sets); endurance-support stays FOCUSED (3 sets).
-  const primarySets = f === 'muscle' ? 4 : 3
+  const primarySets = (f === 'muscle' ? 4 : 3) + (mesoPhase === 'intensification' ? 1 : 0) // #720 — intensification week: +1 set
   let primaries = 0
   const primaryInfo = []
   const main = orderByEmphasis(patterns, emph).map((pat) => {
@@ -293,7 +298,7 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
   })
   // #718 — MUSCLE: a 2nd DISTINCT movement per primary pattern (3 sets) to reach hypertrophy volume. Must have a DIFFERENT
   // normalized movement than the primary, else the save-time enforceGymStructure dedups it away (Barbell Bench ≈ DB Bench).
-  if (f === 'muscle') {
+  if (f === 'muscle') { // #718 — keep the 2nd movements even on a deload (variety stays; #720 halves the SETS instead)
     for (const { pat, norm } of primaryInfo) {
       const fresh = (PATTERNS[pat] || []).find((m) => !used.has(m.toLowerCase()) && normMovement(m) !== norm)
       if (!fresh) continue
@@ -305,6 +310,8 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
   // that follow are re-grouped by equipment. Key = original index for primaries, equipment rank for the rest.
   main.map((e, i) => (e._rank = e._primary ? i : 1000 + EQUIP_ORDER(e.name)))
   main.sort((a, b) => a._rank - b._rank).forEach((e) => { delete e._rank; delete e._primary })
+  // #720 — DELOAD week: cut working volume ~45% (halve the sets on every reps-mode main), timed mobility untouched.
+  if (mesoPhase === 'deload') for (const e of main) { if (e.mode !== 'timed' && Number(e.sets) > 0) e.sets = Math.max(1, Math.ceil(e.sets * 0.5)) }
   // #692 — sport-specific EXTRAS (runner plyo, swimmer shoulder-health prehab), deduped
   const extras = (emph && emph.extras ? emph.extras : []).filter((x) => !used.has(String(x.name).toLowerCase())).map((x) => { used.add(String(x.name).toLowerCase()); return { name: x.name, section: 'main', mode: x.mode || 'reps', ...(x.reps ? { reps: x.reps } : {}), ...(x.sets ? { sets: x.sets } : {}), ...(x.seconds ? { seconds: x.seconds } : {}), ...(x.eachSide ? { eachSide: true } : {}) } })
   // COOL-DOWN — 2 stretches, TIMED

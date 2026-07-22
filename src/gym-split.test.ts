@@ -341,3 +341,14 @@ describe('#718 bodybuilder volume — hypertrophy gets 2nd movements, survives s
     expect(sets).toBeGreaterThan(supSets)              // endurance-support stays FOCUSED/low
   })
 })
+
+describe('#720 gym meso-cycle — progress then deload, not identical every week', () => {
+  it('deload week cuts working volume vs accumulation; intensification adds sets', () => {
+    const acc = (assembleGymSession as any)({ mainSport: 'gym', focus: 'muscle', patterns: ['hpush', 'vpush', 'hpull', 'core'], mesoWeek: 0 })
+    const intens = (assembleGymSession as any)({ mainSport: 'gym', focus: 'muscle', patterns: ['hpush', 'vpush', 'hpull', 'core'], mesoWeek: 2 })
+    const deload = (assembleGymSession as any)({ mainSport: 'gym', focus: 'muscle', patterns: ['hpush', 'vpush', 'hpull', 'core'], mesoWeek: 3 })
+    const sets = (s: any) => s.exercises.filter((e: any) => e.section === 'main' && e.mode !== 'timed').reduce((a: number, e: any) => a + (e.sets || 0), 0)
+    expect(sets(deload)).toBeLessThan(sets(acc) * 0.7)   // deload ~45% cut
+    expect(sets(intens)).toBeGreaterThan(sets(acc))       // intensification heavier
+  })
+})
