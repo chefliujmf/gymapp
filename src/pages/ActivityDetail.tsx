@@ -255,17 +255,23 @@ export default function ActivityDetail() {
   // the athlete sees "no HR" even though intervals shows it (JM's screenshot: 90 bpm on the Coros card). Find the day's
   // device strength activity that actually HAS HR and source the HR from THERE, whichever duplicate we're viewing.
   const [deviceHr, setDeviceHr] = useState<number | undefined>()
+  const [deviceHrStream, setDeviceHrStream] = useState<(number | null)[] | null>(null) // #700 — the device activity's HR curve, for the graph
   useEffect(() => {
     if (!a || sportOfActivity(a) !== 'gym') return
     authApi.serverLogs().then((ls) => setGymLogs(ls as unknown as WorkoutLog[])).catch(() => setGymLogs([]))
-    if (a.average_heartrate) { setDeviceHr(undefined); return }
+    setDeviceHr(undefined); setDeviceHrStream(null)
+    if (a.average_heartrate) return // the viewed activity has its own HR (+ its own stream in `streams`)
     const d = (a.start_date_local || '').slice(0, 10)
     if (!d) return
     fetchActivities(addDays(d, -1), addDays(d, 1)).then((acts) => {
       const sib = (Array.isArray(acts) ? acts : [])
         .filter((x) => (x.start_date_local || '').slice(0, 10) === d && /weight|strength|gym|workout/i.test(String(x.type || '')) && x.average_heartrate)
         .sort((x, y) => (y.average_heartrate || 0) - (x.average_heartrate || 0))[0]
-      if (sib?.average_heartrate) setDeviceHr(Math.round(sib.average_heartrate))
+      if (sib?.average_heartrate) {
+        setDeviceHr(Math.round(sib.average_heartrate))
+        // #700 — pull the sibling device activity's HR STREAM so the gym gets an HR graph like a ride/run.
+        fetchActivityStreams(String(sib.id), ['heartrate']).then((s) => setDeviceHrStream(s.heartrate || null)).catch(() => {})
+      }
     }).catch(() => {})
   }, [a])
   useEffect(() => {
@@ -400,10 +406,11 @@ export default function ActivityDetail() {
     // #700 — HR CURVE like a ride/run (JM: "HR not shown like other activity types" = they get a graph, gym only got a
     // number). The viewed activity carries an HR stream even when its summary avg is blank; render it as a line with
     // avg + peak. (If this activity has none, deviceHr still fills the hero number from the paired Coros activity.)
-    const hrNums = (streams.heartrate || []).filter((x): x is number => x != null && Number(x) > 0)
+    const hrSrc = ((streams.heartrate || []).filter((x) => x != null && Number(x) > 0).length ? streams.heartrate : deviceHrStream) || []
+    const hrNums = hrSrc.filter((x): x is number => x != null && Number(x) > 0)
     const hrAvg = hrNums.length ? Math.round(hrNums.reduce((s, v) => s + v, 0) / hrNums.length) : null
     const hrPeak = hrNums.length ? Math.round(Math.max(...hrNums)) : null
-    const hrChart: (number | null)[] | null = hrNums.length >= 10 ? ds(streams.heartrate || [], 60) : null
+    const hrChart: (number | null)[] | null = hrNums.length >= 10 ? ds(hrSrc, 60) : null
     return (
       <div>
         <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
