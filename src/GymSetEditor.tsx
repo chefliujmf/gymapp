@@ -53,8 +53,9 @@ export default function GymSetEditor({ log, exNames, onSaved, onCancel }: { log:
       ))}
       {/* #678 — an explicit Cancel that DISCARDS edits + closes; Save stays disabled until something actually changes. */}
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-        {onCancel && <button className="btn btn--ghost" style={{ flex: '0 0 auto', padding: '0 18px' }} onClick={() => { setSets(JSON.parse(JSON.stringify(log.sets || {}))); onCancel() }}>Cancel</button>}
-        <button className="btn" style={{ flex: 1 }} onClick={save} disabled={saved || !dirty}>{saved ? 'Saved ✓' : 'Save changes'}</button>
+        {/* width:auto overrides .btn's width:100% so flex sizing wins (else Cancel eats the row + Save is a sliver). */}
+        {onCancel && <button className="btn btn--ghost" style={{ flex: '0 0 auto', width: 'auto', padding: '0 18px' }} onClick={() => { setSets(JSON.parse(JSON.stringify(log.sets || {}))); onCancel() }}>Cancel</button>}
+        <button className="btn" style={{ flex: 1, width: 'auto', minWidth: 0 }} onClick={save} disabled={saved || !dirty}>{saved ? 'Saved ✓' : 'Save changes'}</button>
       </div>
     </div>
   )

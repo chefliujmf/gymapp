@@ -133,8 +133,9 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
       <div className="section-title">Anything else?</div>
       <textarea className="fb-ta" value={note} onChange={(e) => setNote(e.target.value)} placeholder="How the body felt, any niggles…" />
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-        {editing && <button className="btn btn--ghost" style={{ flex: '0 0 auto', padding: '0 18px' }} onClick={cancelEdit}>Cancel</button>}
-        <button className="btn" style={{ flex: 1 }} onClick={save} disabled={!feel && !rpe}>{editing ? 'Save changes' : 'Save & get coach review'}</button>
+        {/* width:auto overrides .btn's width:100% so flex sizing wins — else Cancel eats the row + Save is a sliver (#677 QA catch). */}
+        {editing && <button className="btn btn--ghost" style={{ flex: '0 0 auto', width: 'auto', padding: '0 18px' }} onClick={cancelEdit}>Cancel</button>}
+        <button className="btn" style={{ flex: 1, width: 'auto', minWidth: 0 }} onClick={save} disabled={!feel && !rpe}>{editing ? 'Save changes' : 'Save & get coach review'}</button>
       </div>
     </div>
   )
