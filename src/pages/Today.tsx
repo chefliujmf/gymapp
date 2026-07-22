@@ -655,7 +655,7 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
 
       {/* #202 Today's plan (workouts + notes) with the readiness verdict banner */}
       <div className="cal-day-head" style={{ marginTop: 8 }}>
-        <div className="section-title" style={{ margin: 0 }}>{selDay === todayISO() ? "Today's plan" : fmtDay(selDay)}{restDays.includes(selDay) ? <span className="meta" style={{ fontWeight: 400 }}> · 💤 Rest day</span> : null}</div>
+        <div className="section-title" style={{ margin: 0 }}>{selDay === todayISO() ? "Today's plan" : fmtDay(selDay)}</div>
         <div style={{ display: 'flex', gap: 8 }}>
           {/* #735 — mark/clear a DELIBERATE rest day (sticky: the coach won't re-fill it). */}
           <button className="btn btn--ghost" style={{ width: 'auto', padding: '8px 12px' }} title="A rest day your coach won't re-fill" onClick={() => authApi.setRestDay(selDay, !restDays.includes(selDay)).then(() => load()).catch(() => {})}>{restDays.includes(selDay) ? 'Clear rest' : '💤 Rest'}</button>
@@ -669,6 +669,13 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
       ) : events === null ? (
         <p className="meta">Loading your plan…</p>
       ) : null}
+      {/* #740 (JM) — a deliberate rest day gets a prominent banner (the old marker was too subtle). */}
+      {restDays.includes(selDay) && (
+        <div className="rest-banner">
+          <span className="rest-banner__z">💤</span>
+          <div className="rest-banner__t"><b>Rest day</b><span>Recovery is training too — your coach is keeping this day clear.</span></div>
+        </div>
+      )}
       {hasWorkout && verdict && (
         <div className={'ready-banner ready-banner--' + verdict.tone}><span className="ready-banner__dot" />{verdict.text}</div>
       )}

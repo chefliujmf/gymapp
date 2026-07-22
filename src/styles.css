@@ -1250,6 +1250,13 @@ select.search { appearance: none; -webkit-appearance: none; }
 .notif-pref-row { display: grid; grid-template-columns: 1fr 52px 52px; gap: 6px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--line, #2a2f3a); }
 .notif-pref-sw { display: grid; place-items: center; background: none; border: none; cursor: pointer; padding: 0; }
 .notif-pref-sw:disabled { cursor: default; }
+/* #740 — a deliberate REST day banner (cyan = rest per the theme), prominent so it's not missed. */
+.rest-banner { display: flex; align-items: center; gap: 12px; margin: 10px 0 12px; padding: 14px 16px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(57,194,215,.16), rgba(57,194,215,.06)); border: 1px solid rgba(57,194,215,.4); }
+.rest-banner__z { font-size: 26px; line-height: 1; }
+.rest-banner__t { display: flex; flex-direction: column; gap: 2px; }
+.rest-banner__t b { font-size: 16px; color: var(--cyan, #39c2d7); }
+.rest-banner__t span { font-size: 12.5px; color: var(--text-dim, #9298a6); }
 .acct__item {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   padding: 10px 10px; border: none; background: none; cursor: pointer;
