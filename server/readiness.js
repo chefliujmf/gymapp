@@ -111,9 +111,13 @@ export function freshness({ atl, ctl, form, tsbBaseline, pregnant = false } = {}
 // "I don't go in green still"); too HIGH (past ~CTL×12) craters Form (overreach) — only as a NAMED overload
 // block + a following recovery week. Coach should VERIFY the week lands in green with the Form forecast, not
 // just trust the multiple (TSS→Form depends on distribution + starting Form).
-export function weeklyLoadBudget(ctl) {
+export function weeklyLoadBudget(ctl, loadModifier = 1) {
   if (ctl == null || !(Number(ctl) > 0)) return null
-  const c = Number(ctl)
+  // #719 (audit) — fold the menstrual-phase LOAD modifier into the budget so the cycle bias is CODE-ENFORCED on the
+  // actual TSS targets (ease late-luteal ~0.85, push follicular/ovulatory ~1.05), not just mentioned in prose. mod=1 =
+  // no-op (default / non-female / stale phase), so existing callers are unaffected.
+  const mod = Number(loadModifier) > 0 ? Number(loadModifier) : 1
+  const c = Number(ctl) * mod
   return { sustainable: Math.round(c * 7), build: Math.round(c * 9), hard: Math.round(c * 11), cap: Math.round(c * 12) }
 }
 

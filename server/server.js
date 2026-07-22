@@ -58,7 +58,7 @@ function mergeIcuSportSettings(existing, mapped, intervalsWins = false) {
 }
 import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
-import { cycleContext, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage, scrubPrivate } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage, #650 scrubPrivate)
+import { cycleContext, cycleLoadModifier, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage, scrubPrivate } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage, #650 scrubPrivate, #719 cycleLoadModifier)
 import webpush from 'web-push' // #457 — phone push notifications
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -2083,7 +2083,9 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     tail += `\n\n# PROGRESS CHECK — is the training actually MOVING them toward their goal?${per.phase === 'recovery' ? ' **This is a RECOVERY week — the moment to assess it.**' : ''} Read get_metrics + get_wellness and compare their key numbers now (threshold power/pace, TTE, EF, CTL, and for runners/swimmers CS·D′/CSS) to a few weeks ago. Judge plainly whether they're progressing at the rate their goal needs. If a number has STALLED, CHANGE the stimulus next block — a stalled threshold ⇒ more time-at-threshold; a flat top end ⇒ more VO₂; a falling EF ⇒ more easy base + check recovery/fuel; a shrinking W′/D′ ⇒ short near-max work. If it's climbing, keep the thread. Fold the conclusion into how you shape the NEXT block, and it's what the review's objective talk (# next) should reference — the athlete should always be able to see their training is working.`
   }
   // #375/#613/#626 — the TSS target now comes from THE PROGRESSION above (periodized), not a flat band.
-  const budget = weeklyLoadBudget(user.ctl)
+  // #719 (audit) — fold the menstrual-phase load modifier into the budget so the cycle bias is CODE-ENFORCED on TSS.
+  const cycMod = (String(user.sex || '').toLowerCase() === 'female' && !user.info?.pregnant && user.cyclePhase && user.cyclePhaseAt && (Date.now() - new Date(user.cyclePhaseAt + 'T00:00:00Z').getTime()) < 6 * 86400000) ? cycleLoadModifier(user.cyclePhase) : 1
+  const budget = weeklyLoadBudget(user.ctl, cycMod)
   tail += shape.loadBand === 'build'
     ? `\n\n# WEEKLY LOAD BUDGET: aim for THIS week's periodized target${per && per.target ? ` (≈${per.target} TSS, the ${per.phase} week — see # THIS BLOCK'S PROGRESSION)` : ''}. A productive BUILD or PEAK week dips Form into the GREEN zone (~−10 to −20); a RECOVERY week should let Form rise back toward grey — that's correct, not junk. ${budget ? `Reference band (CTL≈${user.ctl}): flat ≈ ${budget.sustainable}, build ≈ ${budget.build}, peak ≈ ${budget.hard}, cap ≈ ${budget.cap} TSS.` : `Read CTL with get_wellness: flat ≈ CTL×7, build ≈ CTL×9-11.`} After planning, sum the week's TSS and check the Form forecast matches the phase.`
     : `\n\n# WEEKLY LOAD BUDGET — this is a ${shape.loadBand.toUpperCase()} week, NOT a build: hold load around ${budget ? `~${budget.sustainable} TSS (CTL≈${user.ctl}×7)` : 'CTL×7 (flat)'}. Do NOT chase Form into the −10..−20 build zone and do NOT add quality beyond the shape above — a mid/grey Form on an easy/maintenance week is CORRECT, not junk. Keep easy days genuinely easy.`

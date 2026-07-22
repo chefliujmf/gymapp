@@ -127,3 +127,17 @@ describe('#710 explicit beginner/new-athlete → ramp-in shape (not an inferred 
     expect(s.intensityCeiling).toBe('tempo')
   })
 })
+
+describe('#719 menstrual-cycle bias — only ease late-luteal/PMS, not the menstrual phase', () => {
+  it('MENSTRUAL phase keeps the quality day (low-hormone window is a green light, not a de-load)', () => {
+    const s = weekShape({ cyclePhase: 'menstrual', cycleFresh: true, goalNotes: 'raise my ftp', trainingDays: 5 })
+    expect(s.qualityDays).toBe(2)
+  })
+  it('LATE-LUTEAL / PMS eases the top end (one fewer quality day)', () => {
+    expect(weekShape({ cyclePhase: 'late_luteal', cycleFresh: true, goalNotes: 'raise ftp', trainingDays: 5 }).qualityDays).toBe(1)
+    expect(weekShape({ cyclePhase: 'pms', cycleFresh: true, goalNotes: 'raise ftp', trainingDays: 5 }).qualityDays).toBe(1)
+  })
+  it('a STALE phase (not fresh) does not bias the shape', () => {
+    expect(weekShape({ cyclePhase: 'late_luteal', cycleFresh: false, goalNotes: 'raise ftp', trainingDays: 5 }).qualityDays).toBe(2)
+  })
+})

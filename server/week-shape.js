@@ -94,7 +94,11 @@ export function weekShape(p = {}) {
   if (masters && loadBand === 'build') { intensityCeiling = 'threshold' } // more recovery, ease the very top end
 
   // ── menstrual-cycle bias (non-pregnant female, fresh phase) ──────────────────────────────────────
-  if (cycleFresh && cyclePhase && /luteal|pms|menstrual|premenstrual/.test(String(cyclePhase).toLowerCase())) {
+  // #719 (audit) — only ease in LATE-LUTEAL / PMS (progesterone high, thermoregulation + perceived effort up). Do NOT
+  // cut a quality day for the MENSTRUAL phase: cycle.js rates it near-neutral and the low-hormone window is actually a
+  // GREEN LIGHT for hard work / PRs (contradiction the old /menstrual/ match created). Symptomatic menses is handled by
+  // her own check-in (readiness), not a blanket shape cut.
+  if (cycleFresh && cyclePhase && /late_?luteal|pms|premenstr/.test(String(cyclePhase).toLowerCase())) {
     qualityDays = Math.max(1, qualityDays - 1) // ease the top end in late-luteal/PMS
     if (loadBand === 'build') loadBand = 'flat'
   }
