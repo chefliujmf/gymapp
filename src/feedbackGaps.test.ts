@@ -32,9 +32,9 @@ describe('feedbackStatus', () => {
 describe('incompleteFeedback', () => {
   it('returns only core-incomplete activities, oldest first', () => {
     const acts = [
-      { id: 1, feel: 3, icu_rpe: 6, start_date_local: '2026-07-03' }, // complete
-      { id: 2, feel: 3, start_date_local: '2026-07-02' }, // missing RPE
-      { id: 3, start_date_local: '2026-07-01' }, // missing both
+      { id: 1, type: 'Ride', feel: 3, icu_rpe: 6, start_date_local: '2026-07-03' }, // complete
+      { id: 2, type: 'Ride', feel: 3, start_date_local: '2026-07-02' }, // missing RPE
+      { id: 3, type: 'Ride', start_date_local: '2026-07-01' }, // missing both
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ] as any
     const r = incompleteFeedback(acts, undefined, Infinity) // Infinity → ignore recency for the core-logic test
@@ -42,8 +42,8 @@ describe('incompleteFeedback', () => {
   })
   it('#review-skip — excludes activities the athlete skipped', () => {
     const acts = [
-      { id: 2, feel: 3, start_date_local: '2026-07-02' }, // missing RPE
-      { id: 3, start_date_local: '2026-07-01' }, // missing both
+      { id: 2, type: 'Ride', feel: 3, start_date_local: '2026-07-02' }, // missing RPE
+      { id: 3, type: 'Ride', start_date_local: '2026-07-01' }, // missing both
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ] as any
     expect(incompleteFeedback(acts, new Set(['3']), Infinity).map((x) => x.act.id)).toEqual([2]) // 3 skipped → gone
@@ -52,8 +52,8 @@ describe('incompleteFeedback', () => {
   it('#565 — old activities (past the recency window) do NOT flag', () => {
     const iso = (d: number) => new Date(Date.now() - d * 86400000).toISOString().slice(0, 10)
     const acts = [
-      { id: 'recent', start_date_local: iso(5) },   // 5 days ago, missing feedback → flags
-      { id: 'old', start_date_local: iso(90) },     // 90 days ago, missing feedback → stale, no flag
+      { id: 'recent', start_date_local: iso(5), type: 'Ride' },   // 5 days ago, missing feedback → flags
+      { id: 'old', start_date_local: iso(90), type: 'Ride' },     // 90 days ago, missing feedback → stale, no flag
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ] as any
     expect(incompleteFeedback(acts).map((x) => x.act.id)).toEqual(['recent']) // default 30d window drops the old one
@@ -66,5 +66,17 @@ describe('incompleteFeedback', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ] as any
     expect(incompleteFeedback(acts, undefined, Infinity).map((x) => x.act.id)).toEqual(['ride'])
+  })
+
+  it('#679 — a gym/other activity with ANY type (incl. one the old regex missed) NEVER nags', () => {
+    const acts = [
+      { id: 'ride', type: 'VirtualRide', start_date_local: new Date().toISOString().slice(0, 10) }, // endurance → nags
+      { id: 'gym1', type: 'WeightTraining', start_date_local: new Date().toISOString().slice(0, 10) },
+      { id: 'gym2', type: 'Workout', start_date_local: new Date().toISOString().slice(0, 10) },
+      { id: 'gym3', type: 'IndoorClimbing', start_date_local: new Date().toISOString().slice(0, 10) }, // odd type the #661 regex missed
+      { id: 'gym4', type: '', start_date_local: new Date().toISOString().slice(0, 10) }, // no type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ] as any
+    expect(incompleteFeedback(acts, undefined, Infinity).map((x) => x.act.id)).toEqual(['ride']) // ONLY the ride nags
   })
 })
