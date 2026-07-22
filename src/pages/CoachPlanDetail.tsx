@@ -73,6 +73,7 @@ export default function CoachPlanDetail() {
   const [doneActivity, setDoneActivity] = useState<IcuActivity | null>(null)
   useEffect(() => {
     if (!p || p.sport !== 'gym' || logs === undefined) return
+    if (forcePlanned) { setCheckedDone(true); return } // #708 — as-planned view requested: show the PLAN, never redirect to the completed /feedback view (JM: "planned workout should not have the feedback and all that shit")
     const done = findGymLogForPlan(p, logs || [])
     if (done) { navigate(`/feedback/${p.id}`, { replace: true }); return }
     let cancelled = false
@@ -82,7 +83,7 @@ export default function CoachPlanDetail() {
       setCheckedDone(true)
     }).catch(() => { if (!cancelled) setCheckedDone(true) })
     return () => { cancelled = true }
-  }, [p?.id, p?.date, p?.sport, logs, navigate])
+  }, [p?.id, p?.date, p?.sport, logs, navigate, forcePlanned])
 
   if (!p) {
     const back = <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Back" style={{ marginBottom: 10 }}>‹</button>

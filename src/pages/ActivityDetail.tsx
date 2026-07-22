@@ -255,17 +255,23 @@ export default function ActivityDetail() {
   // the athlete sees "no HR" even though intervals shows it (JM's screenshot: 90 bpm on the Coros card). Find the day's
   // device strength activity that actually HAS HR and source the HR from THERE, whichever duplicate we're viewing.
   const [deviceHr, setDeviceHr] = useState<number | undefined>()
+  const [deviceHrStream, setDeviceHrStream] = useState<(number | null)[] | null>(null) // #700 — the device activity's HR curve, for the graph
   useEffect(() => {
     if (!a || sportOfActivity(a) !== 'gym') return
     authApi.serverLogs().then((ls) => setGymLogs(ls as unknown as WorkoutLog[])).catch(() => setGymLogs([]))
-    if (a.average_heartrate) { setDeviceHr(undefined); return }
+    setDeviceHr(undefined); setDeviceHrStream(null)
+    if (a.average_heartrate) return // the viewed activity has its own HR (+ its own stream in `streams`)
     const d = (a.start_date_local || '').slice(0, 10)
     if (!d) return
     fetchActivities(addDays(d, -1), addDays(d, 1)).then((acts) => {
       const sib = (Array.isArray(acts) ? acts : [])
         .filter((x) => (x.start_date_local || '').slice(0, 10) === d && /weight|strength|gym|workout/i.test(String(x.type || '')) && x.average_heartrate)
         .sort((x, y) => (y.average_heartrate || 0) - (x.average_heartrate || 0))[0]
-      if (sib?.average_heartrate) setDeviceHr(Math.round(sib.average_heartrate))
+      if (sib?.average_heartrate) {
+        setDeviceHr(Math.round(sib.average_heartrate))
+        // #700 — pull the sibling device activity's HR STREAM so the gym gets an HR graph like a ride/run.
+        fetchActivityStreams(String(sib.id), ['heartrate']).then((s) => setDeviceHrStream(s.heartrate || null)).catch(() => {})
+      }
     }).catch(() => {})
   }, [a])
   useEffect(() => {
@@ -394,6 +400,17 @@ export default function ActivityDetail() {
     const bestE1rm = gymLogs ? bestE1rmByExercise(gymLogs) : undefined
     const fk = gymFeedbackKeys({ date: dISO, planId: plan?.id, activityId: a.id })
     const avgHr = a.average_heartrate || (a as { icu_average_hr?: number }).icu_average_hr || deviceHr // #695 — fall back to the day's device (Coros) HR
+    // #707 — TITLE: prefer the coach PLAN title / the clean intervals name over the messy gym-LOG title (which carried a
+    // stale "(windy — gym instead of ride)" substitution note, JM). Strip any trailing "(…)" parenthetical as a safety net.
+    const gymTitle = (plan?.title || a.name || gymLog?.title || 'Strength').replace(/\s*\([^)]*\)\s*$/, '').trim() || 'Strength'
+    // #700 — HR CURVE like a ride/run (JM: "HR not shown like other activity types" = they get a graph, gym only got a
+    // number). The viewed activity carries an HR stream even when its summary avg is blank; render it as a line with
+    // avg + peak. (If this activity has none, deviceHr still fills the hero number from the paired Coros activity.)
+    const hrSrc = ((streams.heartrate || []).filter((x) => x != null && Number(x) > 0).length ? streams.heartrate : deviceHrStream) || []
+    const hrNums = hrSrc.filter((x): x is number => x != null && Number(x) > 0)
+    const hrAvg = hrNums.length ? Math.round(hrNums.reduce((s, v) => s + v, 0) / hrNums.length) : null
+    const hrPeak = hrNums.length ? Math.round(Math.max(...hrNums)) : null
+    const hrChart: (number | null)[] | null = hrNums.length >= 10 ? ds(hrSrc, 60) : null
     return (
       <div>
         <div className="page-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -401,11 +418,20 @@ export default function ActivityDetail() {
           <div className="act-thumb thumb--gym" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Dumbbell strokeWidth={1.75} /></div>
           <div style={{ minWidth: 0 }}>
             <span className="eyebrow">Strength{a.start_date_local ? ` · ${new Date(a.start_date_local).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}</span>
-            <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gymLog?.title || a.name || 'Strength'}</h1>
+            <h1 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gymTitle}</h1>
           </div>
         </div>
         {gymLogs == null ? <p className="meta">Loading session…</p>
           : <GymSummary minutes={durMin} exercises={exLogs} review={review} note={note} bestE1rm={bestE1rm} feedbackId={fk.id} altFeedbackIds={fk.altIds} feedbackDate={dISO} planId={plan?.id} avgHr={avgHr} />}
+        {/* #700 — HR curve, same treatment as a ride/run's HR line. */}
+        {hrChart && (
+          <>
+            <div className="section-title" style={{ marginTop: 16 }}>Heart rate <span className="meta" style={{ fontWeight: 400 }}>· avg {hrAvg} · peak {hrPeak} bpm</span></div>
+            <div className="card" style={{ padding: '12px 14px' }}>
+              <TrendChart height={90} unit=" bpm" labels={hrChart.map((_, i) => { const n = hrChart.length; const m = Math.round((i / Math.max(1, n - 1)) * (durMin || 0)); return (i === 0 || i === n - 1 || i === Math.floor(n / 2)) ? `${m}m` : '' })} series={[{ label: '', color: '#ff5d6c', data: hrChart, area: true }]} />
+            </div>
+          </>
+        )}
       </div>
     )
   }
@@ -438,7 +464,7 @@ export default function ActivityDetail() {
         return <ActivityFeedback id={fk.id} altIds={fk.altIds} sport={sportOfActivity(a)} date={dISO} icuExisting={readIcuFeedback(a)} icuNote={icuComment} onSaved={afterSave} reviewShownAbove={!!review} />
       })()}
       <div className="links" style={{ margin: '6px 2px 12px' }}>
-        {plan && sportOfActivity(a) === 'gym' && <Link className="done-link done-link--map" to={`/coach/${plan.id}`}>📋 Planned workout →</Link>}
+        {plan && sportOfActivity(a) === 'gym' && <Link className="done-link done-link--map" to={`/coach/${plan.id}?planned=1`}>📋 Planned workout →</Link>}
         {a.id && <a className="done-link" href={`https://intervals.icu/activities/${a.id}`} target="_blank" rel="noreferrer">intervals ↗</a>}
         {a.strava_id && <a className="done-link" href={`https://www.strava.com/activities/${a.strava_id}`} target="_blank" rel="noreferrer">Strava ↗</a>}
         {device && <span className="done-link" style={{ opacity: 0.7 }}>from {device}</span>}

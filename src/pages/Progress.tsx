@@ -63,8 +63,8 @@ export default function Progress({ embedded }: { embedded?: boolean } = {}) {
   const logs = useLiveQuery(() => db.logs.orderBy('completedAt').toArray())
   const imp = (useLiveQuery(() => getSetting('units')) as string | undefined) === 'imperial'
   const [q, setQ] = useState('')
-  const [facet, setFacet] = useState('Needs attention')
-  const [from, setFrom] = useState(localISO(new Date(Date.now() - 56 * 86400000))) // #252 date filter (default 8 wk)
+  const [facet, setFacet] = useState('Recent') // #704 — default to a clear, non-confusing view (was "Needs attention")
+  const [from, setFrom] = useState(localISO(new Date(Date.now() - 42 * 86400000))) // #252/#702 date filter — 6 wk, MATCHES the "6 wk" preset so a chip is highlighted
   const [to, setTo] = useState(localISO())
   const [review, setReview] = useState<CoachReview | undefined>()
   // Pull the latest logs from the server on open, so a session logged/synced elsewhere shows without a full reload.
@@ -114,11 +114,18 @@ export default function Progress({ embedded }: { embedded?: boolean } = {}) {
     const weeks: { w: string; v: number }[] = []
     for (let m = monday(since); m.getTime() < until; m.setDate(m.getDate() + 7)) { const w = localISO(m); weeks.push({ w, v: wkVol.get(w) || 0 }) }
     if (!weeks.length) weeks.push({ w: weekKey(Date.now()), v: 0 })
-    return { unit, conv, summary, vols, mains, digest, lifts, weeks, count: L.length }
+    // #703 — a GLOBAL strength-progression read (like the ride/run stats show fitness trending), not a single session's
+    // review: of the lifts we can compare (≥2 sessions), how many are up / flat / down, the top mover, and how many stall.
+    const cmp = lifts.filter((l) => l.n >= 2)
+    const up = cmp.filter((l) => l.improve > 1).sort((a, b) => b.improve - a.improve)
+    const down = cmp.filter((l) => l.improve < -1)
+    const stalledN = lifts.filter((l) => l.stalled).length
+    const progression = cmp.length ? { up: up.length, total: cmp.length, top: up[0] || null, down: down.length, stalledN } : null
+    return { unit, conv, summary, vols, mains, digest, lifts, weeks, count: L.length, progression }
   }, [logs, imp, from, to])
 
   if (!logs) return null
-  const { unit, conv, summary, vols, mains, digest, lifts, count } = data
+  const { unit, conv, summary, vols, mains, digest, lifts, count, progression } = data
   const volScale = Math.max(6, ...vols.map((v) => v.perWeek))
   const hm = totalMinFmt(summary.totalMin)
 
@@ -127,8 +134,9 @@ export default function Progress({ embedded }: { embedded?: boolean } = {}) {
   if (GROUPS.includes(facet)) shown = shown.filter((l) => l.group === facet)
   else if (facet === 'PRs') shown = shown.filter((l) => l.prThisWeek)
   else if (facet === 'Recent') shown = [...shown].sort((a, b) => b.lastDate - a.lastDate)
+  else if (facet === 'Stalling') shown = shown.filter((l) => l.stalled) // #704 — concrete filter, not a vague "needs attention"
   else if (facet === 'A–Z') shown = [...shown].sort((a, b) => a.name.localeCompare(b.name))
-  else shown = [...shown].sort((a, b) => Number(b.stalled) - Number(a.stalled) || b.improve - a.improve) // Needs attention
+  else shown = [...shown].sort((a, b) => b.lastDate - a.lastDate)
   const list = shown.slice(0, 8)
 
   return (
@@ -146,7 +154,23 @@ export default function Progress({ embedded }: { embedded?: boolean } = {}) {
           <div style={{ flex: 1 }}><div style={statV}>{summary.perWeek}<small style={{ fontSize: 12, color: 'var(--text-dim)' }}>/wk</small></div><div style={statK}>consistency</div></div>
         </div>
 
-        {/* Coach insight — ALWAYS at the top (JM #526): the real review if the coach wrote one, else a synthesized line. */}
+        {/* #703 — GLOBAL strength progression FIRST (matches how ride/run stats lead with the fitness trend): how the
+            athlete's lifts are moving overall, not one session's review. Actionable, no "needs attention" jargon. */}
+        {progression && (
+          <div className="card" style={{ padding: '12px 14px' }}>
+            <div className="section-title" style={{ marginTop: 0 }}>Strength progression</div>
+            <div className="gp2-hl">
+              {progression.up > 0
+                ? <span><b style={{ color: 'var(--accent)' }}>Trending up</b> — {progression.up} of {progression.total} tracked lift{progression.total === 1 ? '' : 's'} improved this window{progression.top ? <>, led by <b>{progression.top.name}</b> {progression.top.improve > 0 ? '+' : ''}{progression.top.improve}%</> : ''}.</span>
+                : progression.down > 0
+                ? <span><b style={{ color: 'var(--warn,#ffb13d)' }}>Holding / dipping</b> — no lift is up this window and {progression.down} eased off. Add a small load or a set on your key lifts to get them moving.</span>
+                : <span>Steady — your lifts are holding. Nudge the load up ~2.5 kg on a lift that feels easy to keep progressing.</span>}
+            </div>
+            {progression.stalledN > 0 && <div className="gp2-hl">📉 <span>{progression.stalledN} lift{progression.stalledN === 1 ? '' : 's'} stalling — tap “Stalling” below to see which, and vary the rep range or add a set.</span></div>}
+          </div>
+        )}
+
+        {/* Coach insight — the real per-session review if the coach wrote one, BELOW the global progression. */}
         {review && (review.takeaways?.length || review.verdict || review.execution?.length || review.next) ? <>
           <div className="section-title">Coach takeaways<span className="meta"> · {new Date(review.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span></div>
           <div className="card" style={{ padding: '12px 14px' }}>
@@ -228,7 +252,8 @@ export default function Progress({ embedded }: { embedded?: boolean } = {}) {
           <div className="card" style={{ padding: 14 }}>
             <input className="search" placeholder={`🔍 Search ${lifts.length} exercises…`} value={q} onChange={(e) => setQ(e.target.value)} />
             <div className="chips" style={{ marginTop: 9 }}>
-              {['Needs attention', 'PRs', 'Recent', 'A–Z', ...GROUPS].map((f) => <button key={f} className={'chip' + (facet === f ? ' chip--active' : '')} onClick={() => setFacet(f)}>{f}</button>)}
+              {/* #704 — "Needs attention" renamed to the concrete "Stalling" (what it actually filters); no vague flag. */}
+              {['Recent', 'PRs', 'Stalling', 'A–Z', ...GROUPS].map((f) => <button key={f} className={'chip' + (facet === f ? ' chip--active' : '')} onClick={() => setFacet(f)}>{f}</button>)}
             </div>
             <div style={{ marginTop: 6 }}>
               {list.length === 0 ? <p className="meta" style={{ margin: '10px 2px' }}>No lifts match.</p> : list.map((l) => (
@@ -238,7 +263,9 @@ export default function Progress({ embedded }: { embedded?: boolean } = {}) {
                     {l.stalled && <span className="pill" style={{ marginLeft: 6, background: '#2a1d10', color: 'var(--warn,#ffb13d)', borderColor: '#5a4620' }}>stalled</span>}
                     <div className="meta" style={{ fontSize: 11 }}>{l.peak} {unit} e1RM · {l.n} session{l.n === 1 ? '' : 's'}</div></div>
                   <Spark pts={l.series} color={l.stalled ? '#ffb13d' : l.improve > 1 ? '#34e07d' : 'var(--text-dim)'} />
-                  <div className={'prog-lift__d ' + (l.improve > 0 ? 'up' : l.improve < 0 ? 'down' : '')}>{l.improve > 0 ? '+' : ''}{l.improve}%</div>
+                  {/* #705 — a bare "0%" is meaningless ("0% of what?"). Show the e1RM trend only when there's a real
+                      change AND ≥2 sessions to compare; otherwise "new" (single session) or "—" (genuinely flat). */}
+                  <div className={'prog-lift__d ' + (l.improve > 0 ? 'up' : l.improve < 0 ? 'down' : '')} title="e1RM change over this range">{l.n < 2 ? 'new' : l.improve === 0 ? '—' : `${l.improve > 0 ? '+' : ''}${l.improve}%`}</div>
                   <span className="prog-lift__chev">›</span>
                 </button>
               ))}

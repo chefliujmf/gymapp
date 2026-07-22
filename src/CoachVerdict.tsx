@@ -25,15 +25,20 @@ function fromNote(n: CoachNote): Norm {
   return { score: n.score, verdict, takeaways: takeaways.slice(0, 3), next: nextSec?.lines.join(' '), rest }
 }
 
+// #698 — the "pump" concept was removed; OLD stored reviews still say "no pump"/"zero pump". Scrub it at display so a
+// pre-fix review doesn't show it (new reviews already omit it). Trims the dangling phrase + tidies punctuation.
+const noPump = (s?: string) => (s || '').replace(/[,;]?\s*(?:with\s+)?(?:zero|no)\s+pump\b/gi, '').replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').replace(/^[\s,;—-]+/, '').trim()
+
 export default function CoachVerdict({ review, note }: { review?: CoachReview | null; note?: CoachNote | null }) {
   const v: Norm | null = review ? fromReview(review) : note ? fromNote(note) : null
   if (!v || !(v.verdict || v.takeaways.length || v.next || v.rest.length)) return null
   return (
     <div className="card pw-verdict">
       <div className="pw-vtop"><span className="pw-vh">💬 Your coach</span>{v.score != null && <span className="pw-score">Score {v.score}/10</span>}</div>
-      {v.verdict && <p className="pw-vp">{v.verdict}</p>}
-      {v.takeaways.map((t, i) => <div key={i} className="pw-vli">• {t}</div>)}
-      {v.next && <div className="pw-vli">📈 <b>Next:</b> {v.next}</div>}
+      {v.verdict && <p className="pw-vp">{noPump(v.verdict)}</p>}
+      {v.takeaways.map((t, i) => <div key={i} className="pw-vli">• {noPump(t)}</div>)}
+      {/* #699 — the "Next:" line is removed (JM): a post-workout review should reflect the session + progress, not
+          preview the calendar; the plan lives elsewhere. Coach prompts also stop emitting it. */}
       {v.rest.length > 0 && (
         <details className="pw-more">
           <summary>Recovery &amp; full note</summary>
