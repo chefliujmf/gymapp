@@ -26,9 +26,9 @@ export default function CoachKnowledge() {
       {/* #521 (JM 2026-07-15) — dropped the "What your coach knows about you" title; the user just enters their objective, the heading added nothing. */}
       {/* ── Your goal, in your own words (or just tell the coach in chat) ── */}
       <div style={GRP}>🎯 Your goal {saved && <span className="meta" style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>· Saved ✓</span>}</div>
-      <p className="meta" style={{ margin: '0 2px 8px' }}>What are you training for? Write it in your own words — or just tell your coach in chat and it'll ask what it needs.</p>
+      <p className="meta" style={{ margin: '0 2px 8px' }}>What are you training for, and where are you starting from? Write it in your own words — your goal AND a line on your experience (new to this? getting back into it? years of training?) so your coach ramps you in right. Or just tell your coach in chat.</p>
       <textarea className="search" style={{ minHeight: 68, resize: 'vertical', width: '100%' }} value={notes}
-        placeholder={'e.g. “stay consistent and raise my endurance — I don\'t want to bulk up.”'}
+        placeholder={'e.g. “new to running, want to build up to a 5k — haven\'t trained in years.”'}
         onChange={(e) => setNotes(e.target.value)} onBlur={(e) => save(e.target.value.trim())} />
 
       <div style={{ height: 1, background: '#2a2f3a', margin: '16px -16px 14px' }} />

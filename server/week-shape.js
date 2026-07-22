@@ -70,12 +70,17 @@ export function weekShape(p = {}) {
   const goalText = `${Array.isArray(goalFocus) ? goalFocus.join(' ') : ''} ${goalNotes || ''}`.toLowerCase()
   const wantsBuild = /ftp|faster|race|marathon|\bpr\b|performance|stronger|\bbuild\b|watts|vo2|threshold|hypertroph|compete|podium|personal best|\bpeak\b/.test(goalText)
   const wantsMaintain = /consist|stay fit|maintain|\btone\b|health|general fitness|feel good|habit/.test(goalText)
+  // #710 (JM 2026-07-22) — EXPLICIT beginner/new-athlete signal from the athlete's OWN words (NOT an inferred data-gate —
+  // JM removed the ctl<25 bucket; experience is captured explicitly). If they say they're new, RAMP IN conservatively
+  // regardless of an ambitious goal — you build a base before structured quality. This keeps dose goal/word-driven.
+  const wantsBeginner = /\bbeginner\b|\bnovice\b|new to (this|training|running|cycling|the gym|lifting|fitness|exercise|working ?out)|just start|starting out|never (trained|lifted|ran|run|exercised)|first[- ]?time|getting back into|returning to (running|training|cycling|the gym|fitness|exercise)|been a while|out of shape|couch ?to|complete(ly)? new|haven'?t (trained|run|exercised)/.test(goalText)
   const teen = ageYears != null && ageYears < 18
   const masters = ageYears != null && ageYears >= 55
 
   // ── goal-driven band ─────────────────────────────────────────────────────────────────────────────
   let loadBand, qualityDays, intensityCeiling
-  if (wantsMaintain && !wantsBuild) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'sweetspot' } // consistency: 1 quality, keep fit
+  if (wantsBeginner) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'tempo' } // #710 — new athlete stated → ramp in: mostly easy, ≤1 light quality, ceiling below sweet-spot until a base is built
+  else if (wantsMaintain && !wantsBuild) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'sweetspot' } // consistency: 1 quality, keep fit
   else { loadBand = 'build'; qualityDays = 2; intensityCeiling = 'vo2' } // default/build: 2 quality
 
   // NO fitness "beginner/advanced" CLASSIFICATION (JM 2026-07-20): don't bucket athletes. Everything is already

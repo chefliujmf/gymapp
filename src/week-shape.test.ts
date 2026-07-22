@@ -108,3 +108,22 @@ describe('#615 CEILING_PCT enforces the dose', () => {
     expect(CEILING_PCT[preg.intensityCeiling]).toBeLessThan(CEILING_PCT.threshold)
   })
 })
+
+describe('#710 explicit beginner/new-athlete → ramp-in shape (not an inferred data-gate)', () => {
+  it('an athlete who says they are new gets a conservative shape even with an ambitious goal', () => {
+    const s = weekShape({ goalNotes: "I'm a beginner, new to running, want to get faster eventually", trainingDays: 4 })
+    expect(s.loadBand).toBe('flat')
+    expect(s.qualityDays).toBeLessThanOrEqual(1)
+    expect(s.intensityCeiling).toBe('tempo') // below sweet-spot/vo2
+  })
+  it('a stated performance goal with NO beginner language stays a build', () => {
+    const s = weekShape({ goalNotes: 'raise my FTP and race a crit', trainingDays: 5 })
+    expect(s.loadBand).toBe('build')
+    expect(s.qualityDays).toBe(2)
+  })
+  it('"getting back into cycling after a while" ramps in', () => {
+    const s = weekShape({ goalNotes: 'getting back into cycling after a while off', trainingDays: 3 })
+    expect(s.loadBand).toBe('flat')
+    expect(s.intensityCeiling).toBe('tempo')
+  })
+})
