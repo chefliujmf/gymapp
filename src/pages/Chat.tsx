@@ -100,6 +100,10 @@ export default function Chat() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  // #(JM 2026-07-23) — the composer AUTO-GROWS with the text (up to the CSS max-height), then shrinks back when sent/cleared;
+  // the auto-grow JS had been lost so it was stuck at one row and long messages scrolled out of view. Grow on every change.
+  const taRef = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => { const el = taRef.current; if (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' } }, [input])
 
   // Returning from a setup page → pull the freshest profile so completed steps tick off.
   useEffect(() => { if (onboarding) refresh().catch(() => {}) }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -323,6 +327,7 @@ export default function Chat() {
 
       <div className="chat-input">
         <textarea
+          ref={taRef}
           value={input} onChange={(e) => setInput(e.target.value)} rows={1}
           placeholder={`Message ${coach}…`}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
