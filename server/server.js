@@ -2046,7 +2046,7 @@ function buildSystemPrompt(user) {
     // #687 — the code ASSEMBLES each session fully (exercises, sections, sets/reps, mode, title) tailored to THIS
     // athlete. The coach builds EXACTLY these — resolve exIds + author cues only. Kills LLM-selection failures.
     // #720 — GYM MESO-CYCLE week (0-3, deload on 3) from the calendar week, so the assembled sets PROGRESS then DELOAD.
-    const gymMesoWeek = Math.floor((Date.parse(today + 'T00:00:00Z') / 86400000 + 3) / 7) % 4
+    const gymMesoWeek = Math.floor((Date.parse(todayIso + 'T00:00:00Z') / 86400000 + 3) / 7) % 4
     const gymSessions = gymAssign.days.map((day, i) => assembleGymSession({ focus: gymFocus, mainSport: ms, sports, patterns: day, recentExercises: recentGymEx, sessionIndex: i, mesoWeek: gymMesoWeek }))
     const dose = (e) => e.mode === 'timed' ? `${e.seconds}s${e.eachSide ? ' each side' : ''}` : `${e.sets || 3}×${e.reps}${e.eachSide ? ' each side' : ''}${e.tempo ? ` @ tempo ${e.tempo}` : ''}`
     const renderSess = (s, i) => { const of = (sec) => s.exercises.filter((e) => e.section === sec).map((e) => `${e.name} (${dose(e)})`).join(' · '); return `Session ${i + 1} — TITLE: "${s.title}"\n  WARM-UP (timed): ${of('warmup')}\n  MAIN: ${of('main')}\n  COOL-DOWN (timed): ${of('cooldown')}` }
@@ -2124,7 +2124,7 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   // calendar day beyond this cap unless the athlete explicitly opts into doubles.
   // #717 (audit) — CONCURRENT-TRAINING SEPARATION: code-COMPUTE the athlete's quality endurance days and hand the coach
   // the exact list so it keeps HEAVY strength ≥1 day clear of them (interference blunts both). Stronger than a prose rule.
-  const qEndDays = qualityEnduranceDates(user.plans || [], today, DAILY_HORIZON)
+  const qEndDays = qualityEnduranceDates(user.plans || [], todayIso, DAILY_HORIZON)
   if (qEndDays.length && (user.sports || []).includes('gym')) {
     p += `\n\n# CONCURRENT-TRAINING SEPARATION (strength ↔ endurance): the athlete's QUALITY endurance days ahead are ${qEndDays.join(', ')}. Do NOT place a HEAVY gym session (heavy low-rep compound lifts) the day BEFORE or AFTER any of these — residual fatigue blunts BOTH the key endurance session and the lift (Rønnestad/Coffey interference). Put strength on an EASY-endurance or rest-adjacent day, ideally the SAME day AFTER a quality session (PM, if maxPerDay allows) or ≥1 clear day away. Lighter, technique/support gym is fine adjacent; the rule is about HEAVY loading.`
   }

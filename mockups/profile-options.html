@@ -1,0 +1,93 @@
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#ffb13d;--cyan:#38bdf8;--on-accent:#082015}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07090c;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:20px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{width:400px;max-width:100%}
+  .cap{font-size:13px;font-weight:800;color:var(--accent);margin:0 0 4px 2px}
+  .capd{font-size:11.5px;color:var(--text-dim);margin:0 0 11px 2px;line-height:1.4}
+  .phone{background:var(--bg);border-radius:20px;padding:14px 12px 20px;border:1px solid var(--line)}
+  h1{font-size:19px;font-weight:800}
+  .h1sub{color:var(--text-dim);font-size:12px;margin:1px 0 2px}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;padding:12px 13px;margin-top:10px}
+  .basics{border-color:rgba(52,224,125,.4)}
+  .stitle{font-size:14px;font-weight:800;display:flex;align-items:center;gap:7px}
+  .pill{font-size:9px;font-weight:800;color:var(--on-accent);background:var(--accent);border-radius:20px;padding:2px 7px}
+  .reqtag{font-size:9px;font-weight:800;color:var(--amber);border:1px solid var(--amber);border-radius:5px;padding:1px 5px;margin-left:6px}
+  .ssub{font-size:11px;color:var(--text-dim);margin:3px 0 9px;line-height:1.35}
+  .field{padding:9px 0;border-top:1px solid var(--line)}
+  .field:first-of-type{border-top:none;padding-top:1px}
+  .flabel{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-dim);margin-bottom:6px}
+  .chip{display:inline-block;font-size:11.5px;padding:5px 10px;border:1px solid var(--line);border-radius:18px;margin:0 4px 4px 0}
+  .chip.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700}
+  .star{color:#ffd24a}
+  .inp{background:#12151b;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;color:var(--text);width:100%}
+  .inp.sm{max-width:120px}
+  .ta{background:#12151b;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text);width:100%;min-height:40px}
+  .dim{color:var(--text-dim);font-size:12px}
+  .row{display:flex;align-items:center;gap:9px}
+  .acc{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:800;padding:11px 13px;background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;margin-top:10px}
+  .acc .cnt{font-size:10px;font-weight:800;color:var(--on-accent);background:var(--accent);border-radius:20px;padding:2px 8px}
+  .acc.closed{color:var(--text-dim)}
+  .chev{color:var(--text-dim)}
+  .sumrow{font-size:11.5px;color:var(--text-dim);margin-top:7px}
+  .chk{color:var(--accent);font-weight:800}
+</style>
+
+<!-- OPTION A -->
+<div class="col">
+  <p class="cap">Option A — "Basics" card is the single edit home</p>
+  <p class="capd">The 5 required fields live ONCE, editable, in a card at the very top. Removed from their old scattered spots. Rest of the page below, no repeats. (Recommended — matches what you approved, minus the duplication.)</p>
+  <div class="phone">
+    <h1>Profile</h1><div class="h1sub">You &amp; your coaching</div>
+    <div class="card row"><div style="width:36px;height:36px;border-radius:50%;background:#2a2f3a;display:flex;align-items:center;justify-content:center">🙂</div><div><b style="font-size:13px">xenia</b></div></div>
+    <div class="card basics">
+      <div class="stitle">The basics <span class="pill">needed for your plan</span></div>
+      <div class="ssub">Scales your dose, zones &amp; load. Set once, here.</div>
+      <div class="field"><div class="flabel">🚻 Sex</div><span class="chip">♂ Male</span><span class="chip on">♀ Female</span></div>
+      <div class="field"><div class="flabel">🎂 Date of birth</div><input class="inp sm" type="date" value="1992-08-16"></div>
+      <div class="field"><div class="flabel">🏅 Sport — ★ = main</div><span class="chip on">Running <span class="star">★</span></span><span class="chip">Cycling</span><span class="chip">Swim</span></div>
+      <div class="field"><div class="flabel">🎯 Your goal</div><textarea class="ta">Stay healthy &amp; strong through pregnancy.</textarea></div>
+      <div class="field"><div class="flabel">📅 Training days / week</div><input class="inp" style="max-width:60px;text-align:center" value="4"></div>
+    </div>
+    <div class="card"><div class="stitle">Your coach</div><div class="ssub">Name · notes · learn from check-ins</div></div>
+    <div class="card"><div class="stitle">Availability</div><div class="ssub">Sessions/day · time windows</div></div>
+    <div class="card"><div class="stitle">Body &amp; health</div><div class="ssub">Height · cycle &amp; pregnancy (private)</div></div>
+    <div class="card"><div class="stitle">Equipment · Location</div></div>
+  </div>
+</div>
+
+<!-- OPTION B -->
+<div class="col">
+  <p class="cap">Option B — Reorder in place, "Required" tags (no extra card)</p>
+  <p class="capd">No summary card at all. The existing sections are just REORDERED so the required ones come first (Identity → Sport → Goal → Availability), each tagged "Required." Optional sections follow. Zero duplication because nothing is added — only moved + labelled. (Lightest touch.)</p>
+  <div class="phone">
+    <h1>Profile</h1><div class="h1sub">You &amp; your coaching</div>
+    <div class="card row"><div style="width:36px;height:36px;border-radius:50%;background:#2a2f3a;display:flex;align-items:center;justify-content:center">🙂</div><div><b style="font-size:13px">xenia</b></div></div>
+    <div class="card"><div class="stitle">Identity <span class="reqtag">REQUIRED</span></div><div class="field"><div class="flabel">🚻 Sex</div><span class="chip on">♀ Female</span></div><div class="field"><div class="flabel">🎂 Date of birth</div><input class="inp sm" type="date" value="1992-08-16"></div></div>
+    <div class="card"><div class="stitle">Sport <span class="reqtag">REQUIRED</span></div><div style="margin-top:8px"><span class="chip on">Running <span class="star">★</span></span><span class="chip">Cycling</span><span class="chip">Swim</span></div></div>
+    <div class="card"><div class="stitle">Your goal <span class="reqtag">REQUIRED</span></div><textarea class="ta" style="margin-top:8px">Stay healthy &amp; strong through pregnancy.</textarea></div>
+    <div class="card"><div class="stitle">Weekly availability <span class="reqtag">REQUIRED</span></div><div class="ssub" style="margin-bottom:0">Training days · sessions/day · windows</div></div>
+    <div class="card"><div class="stitle">Your coach</div><div class="ssub" style="margin-bottom:0">Name · notes · learn</div></div>
+    <div class="card"><div class="stitle">Body · Equipment · Location</div><div class="ssub" style="margin-bottom:0">optional</div></div>
+  </div>
+</div>
+
+<!-- OPTION C -->
+<div class="col">
+  <p class="cap">Option C — Two accordions (progressive disclosure)</p>
+  <p class="capd">A collapsible "Finish your profile (5)" holding the 5 basics (auto-opens if incomplete), then a collapsible "More about you" for everything else. Shortest page for a returning user; a tap to expand each. Single source. (Best if you want the page to feel short.)</p>
+  <div class="phone">
+    <h1>Profile</h1><div class="h1sub">You &amp; your coaching</div>
+    <div class="card row"><div style="width:36px;height:36px;border-radius:50%;background:#2a2f3a;display:flex;align-items:center;justify-content:center">🙂</div><div><b style="font-size:13px">xenia</b></div></div>
+    <div class="acc" style="border-color:rgba(52,224,125,.4)"><span>Your basics <span class="cnt">5 / 5 ✓</span></span><span class="chev">▾</span></div>
+    <div class="card basics" style="margin-top:8px">
+      <div class="field" style="padding-top:1px"><div class="flabel">🚻 Sex</div><span class="chip on">♀ Female</span></div>
+      <div class="field"><div class="flabel">🎂 Date of birth</div><input class="inp sm" type="date" value="1992-08-16"></div>
+      <div class="field"><div class="flabel">🏅 Sport — ★ = main</div><span class="chip on">Running <span class="star">★</span></span><span class="chip">Cycling</span></div>
+      <div class="field"><div class="flabel">🎯 Goal</div><textarea class="ta">Stay healthy through pregnancy.</textarea></div>
+      <div class="field"><div class="flabel">📅 Training days / week</div><input class="inp" style="max-width:60px;text-align:center" value="4"></div>
+    </div>
+    <div class="acc closed"><span>More about you</span><span class="chev">▸</span></div>
+    <div class="sumrow" style="padding:0 4px">coach · availability · body &amp; health · equipment · location</div>
+  </div>
+</div>
