@@ -1279,6 +1279,8 @@ const fbFieldsFor = (sport) => (sport === 'run' ? ICU_FB_FIELDS_RUN : ICU_FB_FIE
 // #287 — post the athlete's free-text comment to the intervals activity MESSAGE thread (deduped:
 // skip if an identical comment already exists, so re-saving feedback doesn't spam duplicates).
 async function syncActivityNote(user, id, content) {
+  if (IS_STAGING) return // #audit CRITICAL — QA shares the REAL athlete i28814 + activity ids are global, so a comment
+  // posted from staging lands on the athlete's real intervals thread. Every intervals WRITE must bail on staging (#381).
   const existing = await icuFetch(user, `/activity/${id}/messages`).then((r) => (r.ok ? r.json() : [])).catch(() => [])
   if (Array.isArray(existing) && existing.some((m) => m && typeof m.content === 'string' && m.content.trim() === content)) return
   await icuFetch(user, `/activity/${id}/messages`, { method: 'POST', body: JSON.stringify({ content }) })
@@ -1835,7 +1837,10 @@ function enforceGymRepScheme(user, plan) {
 function pregnantTrimesterOf(user) {
   if (!user || String(user.sex || '').toLowerCase() !== 'female' || !(user.info && user.info.pregnant)) return null
   const pg = pregnancyStage(user.info, localTodayInTz(user && user.icuTimezone))
-  return pg ? pg.trimester : 1 // unknown stage → treat as T1 (clamp only fires at T2+)
+  // #748 (audit) FAIL-SAFE: an UNKNOWN gestational stage → treat as T3 (most conservative) so the supine-gym clamp FIRES
+  // (it only triggers at T2+). Defaulting to T1 failed OPEN — a pregnant athlete with no date who is actually in T2/T3
+  // got NO supine removal. The profile gate makes the date mandatory; this is the backstop.
+  return pg && pg.trimester ? pg.trimester : 3
 }
 // #712 (audit SAFETY) — swap/drop SUPINE gym moves for a pregnant T2+ athlete, on every save + sweep (the assembler/coach
 // can still surface a bench; the prompt rule is ignored, so ENFORCE it here — peer to enforceTeenGym).
@@ -3827,7 +3832,7 @@ async function postCoachNote(user, id, r) {
   // calendar/activity). It is NOT a boolean — {coach_tick:true} is rejected (Jackson can't parse a bool into
   // the int field); it wants 1-5 (coachTick maps our /10 score, null → neutral 3). Posting the note alone
   // does NOT set it — this write is what actually checks the box (#436, verified by round-trip on prod).
-  await icuFetch(user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify({ coach_tick: coachTick(score) }) }).catch((e) => console.error('[coach-tick] ' + (e.message || e)))
+  if (!IS_STAGING) await icuFetch(user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify({ coach_tick: coachTick(score) }) }).catch((e) => console.error('[coach-tick] ' + (e.message || e))) // #audit — never write coach_tick to the real shared athlete from staging
 }
 app.get('/api/exercises', apiAuth, (req, res) => {
   // #612 — BATCH search: `qs` = pipe-separated queries → one call returns a { query: results[] } map, so the coach
