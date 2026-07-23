@@ -59,7 +59,7 @@ function mergeIcuSportSettings(existing, mapped, intervalsWins = false) {
   }
   return out
 }
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, gymTssFromRpe, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, gymTssFromRpe, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent, effortCueFromSegments } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, cycleLoadModifier, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage, scrubPrivate } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage, #650 scrubPrivate, #719 cycleLoadModifier)
 import webpush from 'web-push' // #457 — phone push notifications
@@ -2933,6 +2933,13 @@ async function upsertPlan(user, body, actor = 'coach') {
   // effort (95% is NEVER easy — any sport). Fixes it at the source so the DB, the app view, AND the intervals
   // push are all sane, even when the coach fat-fingers the %.
   enforceShapeIntensity(user, plan) // #615 — ENFORCE the week-shape ceiling + quality-day count IN CODE (the prompt was ignored)
+  // #6 (audit) — NO-BENCHMARK athletes: %-of-threshold segments render to nothing on the watch, so code-append a concrete
+  // RPE / talk-test translation to the objective (the "coach by RPE" instruction was prompt-only). Ride needs an FTP; run
+  // needs a threshold pace — if THIS sport's benchmark is missing, add the by-feel cue (once) so the plan is followable.
+  if ((plan.sport === 'ride' || plan.sport === 'run') && Array.isArray(plan.segments) && plan.segments.length) {
+    const noBench = plan.sport === 'ride' ? !(Number(user.ftp) > 0) : !(Number(user.sportSettings?.running?.thresholdPace) > 0)
+    if (noBench) { const cue = effortCueFromSegments(plan.segments); if (cue && !String(plan.objective || '').includes('By feel')) plan.objective = `${plan.objective ? plan.objective.trim() + ' ' : ''}${cue}` }
+  }
   enforceGymRepScheme(user, plan) // #649 — ENFORCE the #648 gym rep scheme (support cyclist mains 3-6, not 3×10) — before the teen floor
   if (plan && plan.sport === 'gym' && Array.isArray(plan.exercises)) { // #687-enforce — dedup the same movement across sections + force holds to timed (the assembled frame is ignored by the LLM)
     const r = enforceGymStructure(plan.exercises)

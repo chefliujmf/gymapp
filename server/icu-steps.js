@@ -274,3 +274,28 @@ export function isPlatyplusPushedEvent(ev) {
   if (ev.external_id != null && String(ev.external_id).trim() !== '') return true
   return ev.type === 'WeightTraining' && /Open workout in Platyplus/i.test(ev.description || '')
 }
+
+// #6 (audit) — NO-BENCHMARK RPE FALLBACK. Ride/run segments are authored as %-of-threshold (powerStart/End). With no
+// FTP / threshold pace, those % resolve to nothing on the athlete's watch — the "coach by RPE" instruction is prompt-only
+// and the structured steps become blank targets. So for a benchmark-LESS athlete we code-append a concrete RPE + talk-test
+// translation of the session's efforts to the description, making the plan followable by feel. Pure + unit-tested.
+// The % thresholds mirror the zone model (endurance ≤75, tempo ≤85, sweet-spot ≤90, threshold ≤105, vo2 >105).
+export function effortForPct(pct) {
+  const p = Number(pct) || 0
+  if (p < 56) return { rpe: '1-2', feel: 'very easy, full conversation' }
+  if (p < 76) return { rpe: '3-4', feel: 'easy, conversational' }
+  if (p < 86) return { rpe: '5-6', feel: 'comfortably hard, only short sentences' }
+  if (p < 91) return { rpe: '6-7', feel: 'hard but controlled, a few words at a time' }
+  if (p <= 105) return { rpe: '7-8', feel: 'hard, barely able to talk' }
+  return { rpe: '9-10', feel: 'very hard to max, no talking' }
+}
+// Build a one-line by-feel cue from a plan's segments (the top + the easy floor), or null if there are no % segments.
+export function effortCueFromSegments(segments) {
+  const pcts = (segments || []).map((s) => Math.max(Number(s && s.powerStart) || 0, Number(s && s.powerEnd) || 0)).filter((x) => x > 0)
+  if (!pcts.length) return null
+  const top = effortForPct(Math.max(...pcts)), easy = effortForPct(Math.min(...pcts))
+  const hard = Math.max(...pcts) >= 86
+  return hard
+    ? `By feel (no benchmark set yet): the hard efforts are RPE ${top.rpe} — ${top.feel}; recover at RPE ${easy.rpe} between. Set your FTP/threshold in Stats to get exact targets.`
+    : `By feel (no benchmark set yet): keep it RPE ${top.rpe} — ${top.feel}. Set your FTP/threshold in Stats to get exact pace/power targets.`
+}
