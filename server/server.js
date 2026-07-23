@@ -2053,6 +2053,11 @@ function buildSystemPrompt(user) {
   // not cycling-for-everyone). Prefer the STRUCTURED fields (sport from onboarding, sex
   // from intervals.icu); fall back to a profile-text heuristic only when unset.
   const sports = user.sports && user.sports.length ? user.sports : (user.sport ? [user.sport] : [])
+  // #763 (audit sim) — is GYM the athlete's MAIN sport (a lifter / strength / bodybuilding athlete who does no
+  // endurance)? Their week is the assembled gym sessions, NOT an endurance quality-day shape — so the endurance
+  // "# THIS WEEK'S SHAPE" block below is SUPPRESSED for them (it prescribed nonsensical quality-endurance days and the
+  // coach stalled). Endurance + concurrent (endurance-main + gym) users are NOT gym-main → unchanged.
+  const gymMainSport = ['gym', 'strength'].includes((user.info && user.info.mainSport) || '') || (sports.length === 1 && ['gym', 'strength'].includes(sports[0]))
   // Inject each sport engine the athlete does (structured sport, else profile-text fallback).
   for (const e of SPORT_ENGINES) {
     const does = sports.length ? sports.some((sp) => e.sports.includes(sp)) : e.rx.test(prof)
@@ -2192,7 +2197,13 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   // reconciling contradictory prompt blocks (pregnancy vs "a build needs 2 quality days"). Pregnancy /
   // consistency / teen / cycle-phase all fold into this one function → one authoritative quality-day count.
   const shape = athleteWeekShape(user)
-  tail += `\n\n# THIS WEEK'S SHAPE — computed for THIS athlete; BUILD the plan to match it (do NOT add quality beyond this or exceed the ceiling): **${shape.qualityDays} structured quality day${shape.qualityDays !== 1 ? 's' : ''}/week${shape.moderateDays ? ` + up to ${shape.moderateDays} light-moderate (tempo) day` : ''}, intensity CEILING = ${shape.intensityCeiling} (never program harder than this), load band = ${shape.loadBand}.** ${shape.rationale} Space any quality days apart (easy days between); everything else is easy/endurance + their strength; leave genuine rest days blank.`
+  if (gymMainSport) {
+    // #763 — GYM is their sport: their week IS the assembled gym sessions (dosed to their GOAL via # GYM FOCUS —
+    // hypertrophy / strength-1RM / general, NEVER assume "get big"). No endurance quality-day shape, no cardio to invent.
+    tail += `\n\n# THIS WEEK — YOUR SPORT IS THE GYM. This athlete's ENTIRE training week is the **# THIS WEEK'S GYM SESSIONS** block above — build EVERY one of them with create_workout; THAT is the whole plan. Their dose (rep scheme, %1RM, weekly volume) follows their GOAL per # GYM FOCUS — a MUSCLE goal → hypertrophy (6-12 reps, higher volume), a STRENGTH / 1-RM goal → heavy low-rep strength (3-6 reps, >85% 1RM, low volume, long rests), general → moderate; do NOT default to hypertrophy for everyone. There is NO endurance quality-day count, intensity ceiling, or ride/run/swim here — do NOT invent cardio or leave the plan empty because there's "no shape". Fill the ${DAILY_HORIZON}-day horizon with their ${Number(user.info?.trainingDays) || 'planned'} gym days/week, spacing hard sessions with recovery/rest between them.`
+  } else {
+    tail += `\n\n# THIS WEEK'S SHAPE — computed for THIS athlete; BUILD the plan to match it (do NOT add quality beyond this or exceed the ceiling): **${shape.qualityDays} structured quality day${shape.qualityDays !== 1 ? 's' : ''}/week${shape.moderateDays ? ` + up to ${shape.moderateDays} light-moderate (tempo) day` : ''}, intensity CEILING = ${shape.intensityCeiling} (never program harder than this), load band = ${shape.loadBand}.** ${shape.rationale} Space any quality days apart (easy days between); everything else is easy/endurance + their strength; leave genuine rest days blank.`
+  }
   // #1 (audit-critical) — the CODE already overrode a teen's weight-loss goal to a conservative health shape; make the
   // redirect explicit + non-negotiable so the coach reframes to fuelling, never the scale.
   if (shape.teenWeightLossRedirect) tail += `\n\n# TEEN + WEIGHT-LOSS GOAL → REDIRECT (SAFETY, non-negotiable): this athlete is under 18 and their goal mentions losing weight. Do NOT program or coach toward weight loss / a calorie deficit / "leaning out" in ANY form (no extra volume "to burn calories", no cutting language in titles/descriptions/chat). The week is deliberately held at a conservative health shape. Redirect EVERY discussion to FUELLING ENOUGH to grow + train, building skills + performance, and consistency. Under-fuelling a growing body risks growth, bone health and RED-S. If they push on weight, gently explain why you focus on fuelling + performance instead, and if you see red flags (restrictive eating, stalled growth, missed periods, stress-fracture pain) advise a clinician / sports-dietitian.`
