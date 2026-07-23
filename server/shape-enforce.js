@@ -16,10 +16,24 @@ const SURGE_TITLE = /fartlek|surge|pick.?up|hill.?rep|\bsprint/i
 // #672 — when a maintenance athlete's surge session is relabeled to steady, the coach's DESCRIPTION prose can still
 // describe surges ("5 unstructured effort bursts by feel"), contradicting the new title + prescribing contraindicated
 // efforts. Neutralize that language so the body agrees with the relabeled title. Conservative + unit-tested.
-const SURGE_PROSE = /\b\d*\s*(?:short |unstructured |relaxed |quick )*(?:effort |hard |fast |all-?out )*(?:bursts?|surges?|pick.?ups?|accelerations?|sprints?|hard efforts?|hard reps?|fartlek)\b(?:\s+of\s+[^.,;]*)?/gi
+// #(JM 2026-07-23, science-checked vs docs/pregnancy-coaching.md → ACOG 804) — RELAXED short strides/accelerations are
+// APPROPRIATE for an accustomed pregnant runner (gauge by RPE/talk test; only MAXIMAL/exhaustive effort is out). The old
+// scrub wrongly neutralised "relaxed 20-second accelerations" (contradicting the strides in the segments) AND ate the
+// leading space ("20-second accelerations" → "20-secondsteady…"). Now the qualifier LEAD is captured (adjacent tokens
+// only, so a distant "easy run" can't shield a hard "effort burst"): KEEP a relaxed-qualified effort, but always
+// neutralise genuinely HARD surge/fartlek/sprint language; preserve spacing; never double "by feel".
+const SURGE_PROSE = /\b((?:(?:short|unstructured|relaxed|quick|easy|light|smooth|gentle|controlled|effort|hard|fast|all-?out|seconds?|\d+)[\s-]*)*)(bursts?|surges?|pick.?ups?|accelerations?|sprints?|hard efforts?|hard reps?|fartlek)\b((?:\s+of\s+[^.,;]*)?)/gi
+const RELAXED_Q = /\b(relaxed|easy|light|smooth|gentle|controlled)\b/i
 export function scrubSurgeProse(text) {
-  if (!text || typeof text !== 'string' || !SURGE_PROSE.test(text)) return text
-  return text.replace(SURGE_PROSE, 'steady running by feel').replace(/\bwith steady running by feel\b/gi, 'at a steady, comfortable effort').replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').trim()
+  if (!text || typeof text !== 'string') return text
+  let changed = false
+  const out = text.replace(SURGE_PROSE, (m, lead, word) => {
+    if (String(word).toLowerCase() !== 'fartlek' && RELAXED_Q.test(lead)) return m // keep relaxed strides/accelerations (fartlek is always out)
+    changed = true
+    return 'steady running by feel'
+  })
+  if (!changed) return text
+  return out.replace(/\bwith steady running by feel\b/gi, 'at a steady, comfortable effort').replace(/(steady running by feel)(\s+by feel)\b/gi, '$1').replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').trim()
 }
 
 const topOf = (segs) => Math.max(0, ...(segs || []).map((s) => Math.max(Number(s.powerStart) || 0, Number(s.powerEnd) || 0)))

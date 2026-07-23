@@ -164,6 +164,18 @@ describe('#672 scrubSurgeProse — description matches the relabeled steady titl
   it('leaves steady/easy prose untouched', () => {
     expect(scrubSurgeProse('Easy Z2 endurance, keep it conversational.')).toBe('Easy Z2 endurance, keep it conversational.')
   })
+  // JM 2026-07-23 (ACOG 804) — relaxed short strides/accelerations are appropriate for an accustomed pregnant runner;
+  // the scrub must KEEP them (only hard surge/fartlek language is out) and must NOT mangle the spacing.
+  it('KEEPS relaxed strides/accelerations (science-approved) — and no longer jams the spacing', () => {
+    expect(scrubSurgeProse('finishing with 6 relaxed 20-second accelerations')).toBe('finishing with 6 relaxed 20-second accelerations')
+    expect(scrubSurgeProse('6 relaxed 20-second strides — the touch of leg speed')).toMatch(/relaxed 20-second strides/)
+    expect(scrubSurgeProse('6 relaxed 20-second accelerations')).not.toMatch(/secondsteady/) // the reported mangle-bug is gone
+  })
+  it('a DISTANT "easy run" does not shield a genuinely hard effort burst from being neutralized', () => {
+    const out = scrubSurgeProse('31 min easy run with 5 unstructured effort bursts of ~40s by feel.')
+    expect(out).not.toMatch(/burst|surge|fartlek/i)
+    expect(out).not.toMatch(/\w{2,}steady|steady running by feel by feel/) // no jamming, no doubled "by feel"
+  })
 })
 
 describe('#717 concurrent-training separation — detect heavy gym adjacent to a quality endurance day', () => {
