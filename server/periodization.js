@@ -6,6 +6,24 @@
 
 import { weeklyLoadBudget } from './readiness.js'
 
+// #8 (audit) — the code taper + season macro fire ONLY from a structured info.raceDate, but the coach prompt invites the
+// athlete to type their A-race date in FREE-TEXT goal notes ("Ironman Nice on 2026-09-13", "race is September 13 2026").
+// So a triathlete who does exactly what the prompt says gets weeksToRace=null and NO taper into race day. Parse the
+// earliest FUTURE date out of the notes as a fallback. Requires an explicit YEAR (avoids ambiguous MM/DD guesses). Pure.
+const RD_MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 }
+const RD_MON = '(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?'
+const iso = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+export function parseRaceDate(text, todayIso) {
+  if (!text || typeof text !== 'string') return null
+  const t = text.toLowerCase()
+  const cands = []
+  for (const m of t.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)) cands.push(`${m[1]}-${m[2]}-${m[3]}`)
+  for (const m of t.matchAll(new RegExp(`\\b${RD_MON}\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s*(\\d{4})\\b`, 'g'))) { const mm = RD_MONTHS[m[1].slice(0, 3)]; const d = +m[2]; if (mm && d >= 1 && d <= 31) cands.push(iso(+m[3], mm, d)) }
+  for (const m of t.matchAll(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+${RD_MON},?\\s*(\\d{4})\\b`, 'g'))) { const mm = RD_MONTHS[m[2].slice(0, 3)]; const d = +m[1]; if (mm && d >= 1 && d <= 31) cands.push(iso(+m[3], mm, d)) }
+  const future = cands.filter((d) => /^\d{4}-\d{2}-(\d{2})$/.test(d) && +d.slice(5, 7) >= 1 && +d.slice(5, 7) <= 12 && (!todayIso || d >= todayIso) && !isNaN(Date.parse(d + 'T00:00:00Z'))).sort()
+  return future[0] || null
+}
+
 // The rolling 4-week block: two build weeks that ramp, a peak/overload week, then a real recovery week to absorb it.
 // Targets scale from the athlete's own CTL (via weeklyLoadBudget) — a beginner and a pro both get THEIR right numbers.
 // `easeTop` (masters / teen) softens the peak week + deepens the recovery — both ends of the age range recover slower

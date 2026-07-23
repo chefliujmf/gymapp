@@ -33,7 +33,7 @@ import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGy
 import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
 import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard
 import { requiredProfileGaps, REQUIRED_FIELDS } from './profile-gate.js' // #A — plan generation is gated on a minimal mandatory profile
-import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
+import { periodizationPhase, parseRaceDate } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES · #8 parse race date from free-text notes
 import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym, enforcePostpartumGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose · #2 postpartum plyo clamp
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile, goalPriorityFrame } from './perf-metrics.js' // #404; #669 goal-aware priority
@@ -2192,13 +2192,15 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const thisMon = isoMonday(todayIso)
     const anchorMon = isoMonday(user.onboardedAt ? new Date(user.onboardedAt).toISOString().slice(0, 10) : '2024-01-01')
     const weeksSinceAnchor = Math.max(0, Math.floor((Date.parse(thisMon) - Date.parse(anchorMon)) / (7 * 86400000)))
-    const rd = user.info && user.info.raceDate
+    // #8 (audit) — the taper must also fire when the athlete typed the date in FREE-TEXT goal notes (the prompt invites
+    // exactly that), not only the structured info.raceDate. Parse the notes as a fallback so a triathlete still tapers.
+    const raceName = `${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`.toLowerCase()
+    const rd = (user.info && user.info.raceDate) || parseRaceDate(`${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`, todayIso)
     const weeksToRace = (rd && /^\d{4}-\d{2}-\d{2}$/.test(rd) && rd >= todayIso) ? Math.floor((Date.parse(isoMonday(rd)) - Date.parse(thisMon)) / (7 * 86400000)) : null
     const ageYears = (user.info && user.info.dob) ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
     const form = (typeof user.ctl === 'number' && typeof user.atl === 'number') ? user.ctl - user.atl : null // #630 — autoregulate off Form
     // #752/#9 (audit) — a longer race needs a longer taper: widen for a 70.3 (~3wk) / Ironman (~4wk). Read the distance
     // from the race NAME **or the goal notes** (an athlete often types "Ironman Nice" in their goal, not the name field).
-    const raceName = `${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`.toLowerCase()
     const taperWeeks = /ironman|140\.?6|full[- ]?distance/.test(raceName) ? 4 : /70\.?3|half[- ]?iron|half[- ]?distance/.test(raceName) ? 3 : 2
     // #756 (audit) — pass loadBand so a flat/health goal never gets a peak/overload week.
     per = periodizationPhase({ ctl: user.ctl, weeksSinceAnchor, weeksToRace, ageYears, form, loadBand: shape.loadBand, taperWeeks })
