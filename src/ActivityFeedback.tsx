@@ -37,7 +37,14 @@ export default function ActivityFeedback({ id, sport, date, heading = 'How did i
       let f: Awaited<ReturnType<typeof authApi.getActivityFeedback>> = null
       for (const k of keys) { f = await authApi.getActivityFeedback(k).catch(() => null); if (f) break }
       if (f) { foundRef.current = true; setFeel(f.feel); setRpe(f.rpe); setFields(f.fields || {}); setNote(f.note || ''); setSaved(true) }
-      else if (icuExisting || icuNote) { foundRef.current = true; setFeel(icuExisting?.feel); setRpe(icuExisting?.rpe); setFields(icuExisting?.fields || {}); if (icuNote) setNote(icuNote); setSaved(true); setFromIcu(true) } // already logged in intervals — show it, don't ask again
+      else if (icuExisting || icuNote) {
+        // #(JM 2026-07-23) — pre-fill anything intervals synced, but only treat it as DONE ("don't ask again") when it
+        // carries the CORE rating (feel or RPE). A PARTIAL sync (e.g. just a "not needed" fuel field, no feel) must STILL
+        // prompt for the feel/RPE — otherwise the app silently skips asking AND the coach can't review it (a review
+        // requires real feedback). Previously ANY icu field suppressed the prompt, so a fuel-only sync looked "logged".
+        foundRef.current = true; setFeel(icuExisting?.feel); setRpe(icuExisting?.rpe); setFields(icuExisting?.fields || {}); if (icuNote) setNote(icuNote); setFromIcu(true)
+        setSaved(!!(icuExisting?.feel || icuExisting?.rpe))
+      }
       setLoaded(true)
     })()
     // #364 show an existing review if there is one. #JM 2026-07-21 — a FRESH completion's review is async (~1-2 min);

@@ -127,6 +127,8 @@ export function scrubPrivate(text) {
   if (!privateRe().test(text)) return text
   return text
     .replace(privateRe(), '')
+    .replace(/(\s)[-–—]+(?=\w)/g, '$1')            // #(audit sim) a removed compound ("pregnancy-safe"→"-safe") leaves a dangling hyphen glued to the next word — drop it
+    .replace(/(\w)[-–—]+(\s|$)/g, '$1$2')          // ...or trailing ("side-pregnancy"→"side-")
     .replace(/\s{2,}/g, ' ')                       // collapse doubled spaces left behind
     .replace(/\s+([.,;:!?)])/g, '$1')              // no space before punctuation
     .replace(/([([])\s+/g, '$1')                   // no space after an opening bracket

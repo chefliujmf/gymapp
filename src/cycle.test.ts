@@ -135,4 +135,10 @@ describe('#650 scrubPrivate — pregnancy/postpartum never reaches a title or pu
     expect(scrubPrivate(undefined)).toBe(undefined)
     expect(scrubPrivate(null)).toBe(null)
   })
+
+  it('(audit sim) strips a HYPHENATED private compound cleanly — no dangling hyphen', () => {
+    expect(scrubPrivate('~3 RIR throughout, pregnancy-safe.')).toBe('~3 RIR throughout, safe.')
+    expect(scrubPrivate('upright, pregnancy-safe patterns')).toBe('upright, safe patterns')
+    expect(scrubPrivate('a bump up in pace')).toBe('a bump up in pace') // no false positive
+  })
 })
