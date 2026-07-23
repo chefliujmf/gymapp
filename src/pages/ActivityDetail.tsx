@@ -179,6 +179,14 @@ const RUN_TL_ROWS = [
   { key: 'altitude', label: 'Altitude', unit: ' m', color: '#7a8699', area: true },
   { key: 'cadence', label: 'Cadence', unit: ' spm', color: '#4aa3ff', area: false },
 ] as const
+
+// #7 (audit) — a SWIM must render SWIM analytics, never the ride timeline (which showed stroke rate as " rpm" and a
+// "watch the knees on climbs" insight). Pace is /100 m, cadence is STROKE RATE, no altitude/power.
+const SWIM_TL_ROWS = [
+  { key: 'pace', label: 'Pace', unit: '/100m', color: '#38bdf8', area: true },
+  { key: 'heartrate', label: 'HR', unit: ' bpm', color: '#ff5d6c', area: false },
+  { key: 'cadence', label: 'Stroke rate', unit: ' spm', color: '#4aa3ff', area: false },
+] as const
 function RunTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity }) {
   const [cur, setCur] = useState<number | null>(null)
   const paceArr = (streams.velocity_smooth || []).map(paceOf)
@@ -210,6 +218,48 @@ function RunTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity 
           <div key={r.key} className="tl-card">
             <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}{stat(r.key)}</div>
             <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={150} axes unit={r.unit} fmt={r.key === 'pace' ? (v) => `${fmtPace(v)}/km` : undefined} invert={r.key === 'pace'} labels={timeLabels} xTicks={xTicks} cursor={cur} onHover={setCur} />
+            {ins && <div className="act-ins"><span className="tag">💡</span>{ins}</div>}
+          </div>
+        )
+      })}
+      <p className="meta" style={{ textAlign: 'center', fontSize: 11 }}>drag across to scrub — all charts move together</p>
+    </div>
+  )
+}
+
+// #7 (audit) — the SWIM timeline: pace/100 m (from the velocity stream), HR, and stroke rate — swim units + swim
+// insights (SWOLF context), never watts/altitude/cadence-as-rpm. Modeled on RunTimeline but pace is sec/100 m.
+function SwimTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity }) {
+  const [cur, setCur] = useState<number | null>(null)
+  const paceArr = (streams.velocity_smooth || []).map((v) => { const p = paceOf(v); return p == null ? null : p / 10 }) // sec/km → sec/100 m
+  const hasPace = paceArr.filter((v) => v != null).length > 1
+  const src: Record<string, (number | null)[] | undefined> = { pace: hasPace ? paceArr : undefined, heartrate: streams.heartrate, cadence: streams.cadence }
+  const rows = SWIM_TL_ROWS.filter((r) => ((src[r.key])?.length || 0) > 1)
+  if (!rows.length) return <p className="meta">No pace / HR / stroke data for this swim.</p>
+  const data: Record<string, (number | null)[]> = {}
+  for (const r of rows) data[r.key] = ds(src[r.key])
+  const timeArr = streams.time && streams.time.length > 1 ? ds(streams.time as number[]) : null
+  const totalSec = timeArr ? Number(timeArr[timeArr.length - 1]) || 0 : 0
+  const xTicks = totalSec > 0 ? minuteTicks(totalSec) : undefined
+  const timeLabels = timeArr ? timeArr.map((v) => (v == null ? '' : fmtElapsed(v as number))) : undefined
+  const nums = (key: string) => data[key].filter((x): x is number => x != null)
+  const avg = (key: string) => { const v = nums(key); return v.length ? v.reduce((a2, b) => a2 + b, 0) / v.length : 0 }
+  const stat = (key: string) => { const v = nums(key); if (!v.length) return ''; if (key === 'pace') return ` · avg ${fmtPace100(avg('pace'))} · best ${fmtPace100(Math.min(...v))}`; const a2 = Math.round(avg(key)); return ` · avg ${a2} · max ${Math.round(Math.max(...v))}` }
+  const swolf = (a as unknown as { average_swolf?: number }).average_swolf
+  const insight = (key: string): string | null => {
+    if (key === 'pace') { const v = nums('pace'); if (!v.length) return null; const drift = v.length > 20 ? (v.slice(-Math.floor(v.length / 3)).reduce((a2, b) => a2 + b, 0) / Math.floor(v.length / 3)) - (v.slice(0, Math.floor(v.length / 3)).reduce((a2, b) => a2 + b, 0) / Math.floor(v.length / 3)) : 0; return `Avg ${fmtPace100(avg('pace'))}/100 m — ${Math.abs(drift) < 3 ? 'evenly paced' : drift > 0 ? `faded ~${Math.round(drift)}s/100 m late` : `negative split — ${Math.round(-drift)}s/100 m quicker late`}` }
+    if (key === 'heartrate') { const mx = a.max_heartrate ? Math.round(a.max_heartrate) : Math.max(...nums('heartrate')); return `Avg ${Math.round(avg('heartrate'))} bpm, peaked ${mx}` }
+    if (key === 'cadence') { const c = Math.round(avg('cadence')); return `Avg ${c} strokes/min${swolf ? ` · SWOLF ${Math.round(swolf)} (stroke efficiency — lower is better)` : ''}` }
+    return null
+  }
+  return (
+    <div>
+      {rows.map((r) => {
+        const ins = insight(r.key)
+        return (
+          <div key={r.key} className="tl-card">
+            <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}{stat(r.key)}</div>
+            <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={150} axes unit={r.unit} fmt={r.key === 'pace' ? (v) => `${fmtPace100(v)}/100m` : undefined} invert={r.key === 'pace'} labels={timeLabels} xTicks={xTicks} cursor={cur} onHover={setCur} />
             {ins && <div className="act-ins"><span className="tag">💡</span>{ins}</div>}
           </div>
         )
@@ -328,7 +378,7 @@ export default function ActivityDetail() {
     setLinkBusy(true)
     try { await authApi.linkActivity({ activityId: String(a.id), planId, icuEventId }); await refresh() } catch { /* keep UI */ } finally { setLinkBusy(false); setPicking(false) }
   }
-  const hasTimeline = isRun
+  const hasTimeline = (isRun || isSwim)
     ? ((streams.velocity_smooth?.filter((v) => v != null).length || 0) > 1 || (streams.heartrate?.filter((v) => v != null).length || 0) > 1)
     : TL_ROWS.some((r) => ((streams[r.key] as unknown[] | undefined)?.length || 0) > 1)
   // the 3rd (analysis) tab: PACE for runs, POWER for rides
@@ -575,8 +625,8 @@ export default function ActivityDetail() {
         </div>
       )}
 
-      {activeTab === 'timeline' && (isRun ? <RunTimeline streams={streams} a={a} /> : <RideTimeline streams={streams} a={a} />)}
-      {activeTab === 'power' && (isRun ? <RunPace streams={streams} thrPace={thrPace} /> : <RidePower streams={streams} ftp={ftp} />)}
+      {activeTab === 'timeline' && (isSwim ? <SwimTimeline streams={streams} a={a} /> : isRun ? <RunTimeline streams={streams} a={a} /> : <RideTimeline streams={streams} a={a} />)}
+      {activeTab === 'power' && !isSwim && (isRun ? <RunPace streams={streams} thrPace={thrPace} /> : <RidePower streams={streams} ftp={ftp} />)}
       {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
     </div>
   )
