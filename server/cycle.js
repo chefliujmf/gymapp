@@ -115,8 +115,10 @@ export function pregnancyStage(info = {}, date) {
 // must NEVER appear in a workout TITLE / DESCRIPTION or the PUBLIC activity text (which syncs to Strava). The coach is
 // told this, but an LLM can slip — so strip the terms in code at every write chokepoint. Universal (these words never
 // belong in a fitness plan title/public text for anyone) + idempotent. Pure + unit-tested. NB: kept narrow to clear
-// pregnancy terms (no bare "bump"/"expecting") so it never mangles legit copy like "bump up the pace".
-const privateRe = () => /\b(pregnan\w*|prenatal|ante-?natal|trimesters?|postpartum|post-?partum|gestation\w*|baby[ -]?bump)\b/gi
+// pregnancy + menstrual-cycle terms (no bare "bump"/"period" — too ambiguous) so it never mangles legit copy like
+// "bump up the pace". #13 (audit) — menstrual status is PRIVATE too: scrub luteal/follicular/PMS/menstrual/ovulation
+// from any public activity text, same as pregnancy (they syncs to Strava). Bare "period" is left (a period of time).
+const privateRe = () => /\b(pregnan\w*|prenatal|ante-?natal|trimesters?|postpartum|post-?partum|gestation\w*|baby[ -]?bump|menstru\w*|luteal|follicular|ovulat\w*|premenstrual|PMS)\b/gi
 export function scrubPrivate(text) {
   if (!text || typeof text !== 'string') return text
   if (!privateRe().test(text)) return text

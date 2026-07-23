@@ -2162,8 +2162,9 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const weeksToRace = (rd && /^\d{4}-\d{2}-\d{2}$/.test(rd) && rd >= todayIso) ? Math.floor((Date.parse(isoMonday(rd)) - Date.parse(thisMon)) / (7 * 86400000)) : null
     const ageYears = (user.info && user.info.dob) ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
     const form = (typeof user.ctl === 'number' && typeof user.atl === 'number') ? user.ctl - user.atl : null // #630 — autoregulate off Form
-    // #752 (audit) — a longer race needs a longer taper: widen the taper window for a 70.3 (~3wk) / Ironman (~4wk).
-    const raceName = String((user.info && user.info.raceName) || '').toLowerCase()
+    // #752/#9 (audit) — a longer race needs a longer taper: widen for a 70.3 (~3wk) / Ironman (~4wk). Read the distance
+    // from the race NAME **or the goal notes** (an athlete often types "Ironman Nice" in their goal, not the name field).
+    const raceName = `${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`.toLowerCase()
     const taperWeeks = /ironman|140\.?6|full[- ]?distance/.test(raceName) ? 4 : /70\.?3|half[- ]?iron|half[- ]?distance/.test(raceName) ? 3 : 2
     // #756 (audit) — pass loadBand so a flat/health goal never gets a peak/overload week.
     per = periodizationPhase({ ctl: user.ctl, weeksSinceAnchor, weeksToRace, ageYears, form, loadBand: shape.loadBand, taperWeeks })
