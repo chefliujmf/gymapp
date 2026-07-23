@@ -1,0 +1,71 @@
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#ffb13d;--cyan:#38bdf8;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07090c;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:20px;display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+  .phone{width:430px;max-width:100%;background:var(--bg);border-radius:22px;padding:18px 16px 28px;border:1px solid var(--line)}
+  .cap{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin:0 0 10px 4px;font-weight:700}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:16px;padding:16px 16px;margin-bottom:14px}
+  .gate{border-color:rgba(52,224,125,.35);background:linear-gradient(160deg,rgba(52,224,125,.10),rgba(52,224,125,.02))}
+  h2{font-size:19px;font-weight:800;margin-bottom:6px;line-height:1.25}
+  .sub{color:var(--text-dim);font-size:14px;line-height:1.4;margin-bottom:14px}
+  .bar{height:7px;border-radius:6px;background:#2a2f3a;overflow:hidden;margin:2px 0 4px}
+  .bar > i{display:block;height:100%;background:var(--accent);border-radius:6px}
+  .barrow{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+  .barrow b{font-size:13px;color:var(--text-dim);white-space:nowrap}
+  .rows{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+  .row{display:flex;align-items:center;gap:12px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.015)}
+  .row .ic{width:30px;height:30px;border-radius:8px;background:#2a2f3a;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto}
+  .row .txt{flex:1;min-width:0}
+  .row .txt b{font-size:15px;font-weight:700;display:block}
+  .row .txt span{font-size:12.5px;color:var(--text-dim)}
+  .row.done{opacity:.6}
+  .chk{color:var(--accent);font-weight:800;font-size:17px}
+  .go{color:var(--accent);font-weight:700;font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:3px}
+  .softnote{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:11px 12px;border:1px dashed rgba(56,189,248,.4);border-radius:11px;background:rgba(56,189,248,.05)}
+  .softnote .ic{font-size:16px}
+  .softnote p{font-size:12.5px;color:var(--text-dim);line-height:1.45}
+  .softnote a{color:var(--cyan);text-decoration:none;font-weight:600}
+  .lbl{font-size:11px;color:var(--text-dim);text-align:center;margin:-6px 0 14px}
+  .day{display:flex;gap:7px;margin-bottom:14px}
+  .day .d{flex:1;text-align:center;padding:9px 0;border-radius:12px;background:#171b22;font-size:11px;color:var(--text-dim)}
+  .day .d.on{background:var(--accent);color:#07200f;font-weight:800}
+  .day .d b{display:block;font-size:15px;color:var(--text);margin-top:2px}
+  .day .d.on b{color:#07200f}
+</style>
+
+<div class="phone">
+  <p class="cap">A · incomplete — missing 2 basics (non-pregnant)</p>
+  <div class="day">
+    <div class="d">MON<b>20</b></div><div class="d on">TUE<b>21</b></div><div class="d">WED<b>22</b></div><div class="d">THU<b>23</b></div><div class="d">FRI<b>24</b></div>
+  </div>
+  <div class="card gate">
+    <h2>Finish your profile to get your plan 🎯</h2>
+    <p class="sub">Your coach needs a few basics to plan safely — dose, zones and load all scale from them.</p>
+    <div class="barrow"><div class="bar" style="flex:1"><i style="width:60%"></i></div><b>3 of 5</b></div>
+    <div class="rows">
+      <div class="row done"><span class="ic">🚻</span><div class="txt"><b>Sex</b><span>Female</span></div><span class="chk">✓</span></div>
+      <div class="row done"><span class="ic">🎂</span><div class="txt"><b>Date of birth</b><span>1988-11-17</span></div><span class="chk">✓</span></div>
+      <div class="row done"><span class="ic">🏅</span><div class="txt"><b>Main sport</b><span>Running</span></div><span class="chk">✓</span></div>
+      <div class="row"><span class="ic">🎯</span><div class="txt"><b>Your goal</b><span>Not set yet</span></div><span class="go">Add in Profile ›</span></div>
+      <div class="row"><span class="ic">📅</span><div class="txt"><b>Training days / week</b><span>Not set yet</span></div><span class="go">Add in Profile ›</span></div>
+    </div>
+  </div>
+  <p class="lbl">No “Required” badges, no period field. Each missing row jumps to its exact spot in Profile.</p>
+</div>
+
+<div class="phone">
+  <p class="cap">B · all 5 basics done + pregnant (no date shared)</p>
+  <div class="day">
+    <div class="d">MON<b>20</b></div><div class="d on">TUE<b>21</b></div><div class="d">WED<b>22</b></div><div class="d">THU<b>23</b></div><div class="d">FRI<b>24</b></div>
+  </div>
+  <!-- gate GONE — plan renders. Only a soft, optional note if pregnant-without-date -->
+  <div class="card">
+    <h2 style="font-size:17px">Today · Easy Z2 Endurance</h2>
+    <p class="sub" style="margin-bottom:0">45 min easy — conversational pace. Your plan is set to a gentle, pregnancy-safe envelope.</p>
+  </div>
+  <div class="softnote">
+    <span class="ic">🤍</span>
+    <p>You’re on a <b>gentle, pregnancy-safe plan</b> by default. Want it tuned to your stage? Add your <a>trimester</a> in Profile anytime — totally optional, and never shown anywhere public.</p>
+  </div>
+  <p class="lbl">Pregnant + no date = <b>never blocked</b>. Coach defaults to the safest envelope; the date stays optional.</p>
+</div>

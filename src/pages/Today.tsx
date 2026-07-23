@@ -654,6 +654,14 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
       {/* #223: today = check-in + live verdict; future = freshness FORECAST (no fake "fresh"); past = logged. */}
       {!gated && (isFuture ? <ForecastCard key={selDay} day={selDay} rev={planRev} fmtDay={fmtDay} /> : <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />)}
 
+      {/* #759 — pregnant + never shared a stage: NOT blocked (safe envelope by default), just a soft, optional invite to fine-tune. */}
+      {!gated && !!user?.info?.pregnant && !(user.info as { trimester?: number; dueDate?: string; pregnancyStart?: string }).trimester && !(user.info as { dueDate?: string }).dueDate && !(user.info as { pregnancyStart?: string }).pregnancyStart && (
+        <Link to="/profile#ob-cycle" className="preg-nudge">
+          <span className="preg-nudge__ic">🤍</span>
+          <span>You're on a <b>gentle, pregnancy-safe plan</b> by default. Want it tuned to your stage? Add your <b>trimester</b> anytime — optional, and never shown anywhere public.</span>
+        </Link>
+      )}
+
       {/* #387 — nudge to review completed sessions still missing feedback (links to the full list on Logs). */}
       {/* #722 — when embedded in the Plan page, the nudge is rendered ONCE at the Calendar level (so it shows on Week/
           Month/Schedule too, not just Day); standalone Today keeps its own. */}

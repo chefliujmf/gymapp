@@ -107,7 +107,10 @@ export function pregnancyStage(info = {}, date) {
   if (today && info.dueDate) weeks = (280 - Math.round((new Date(info.dueDate) - today) / 86400000)) / 7
   else if (today && info.pregnancyStart) weeks = Math.round((today - new Date(info.pregnancyStart)) / 86400000) / 7
   const w = weeks == null || !isFinite(weeks) ? null : Math.max(0, Math.min(43, Math.round(weeks * 10) / 10))
-  const trimester = w == null ? null : w < 14 ? 1 : w < 28 ? 2 : 3
+  let trimester = w == null ? null : w < 14 ? 1 : w < 28 ? 2 : 3
+  // #759/#4 (JM 2026-07-23) — she may not want to share an exact date. A coarse, low-disclosure `info.trimester` (1/2/3)
+  // is enough to pick the safe envelope; honour it as the fallback when no date resolves the week. (A real date wins.)
+  if (trimester == null && [1, 2, 3].includes(Number(info.trimester))) trimester = Number(info.trimester)
   return { pregnant: true, weeks: w, trimester, dueDate: info.dueDate || null }
 }
 

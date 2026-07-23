@@ -461,7 +461,10 @@ app.put('/auth/profile', auth, (req, res) => {
   // which flow straight into buildSystemPrompt + the 409 guard and defeat the "hard weekly ceiling". Enforce sane bounds.
   if (req.user.info.trainingDays != null && req.user.info.trainingDays !== '') req.user.info.trainingDays = Math.max(0, Math.min(7, Math.round(Number(req.user.info.trainingDays) || 0)))
   if (req.user.info.maxPerDay != null && req.user.info.maxPerDay !== '') req.user.info.maxPerDay = Math.max(1, Math.min(3, Math.round(Number(req.user.info.maxPerDay) || 1)))
+  // #759/#4 — optional coarse trimester (1/2/3); 0/empty clears it. Validate the low-disclosure marker.
+  if ('trimester' in req.body) { const t = Math.round(Number(req.body.trimester) || 0); req.user.info.trimester = [1, 2, 3].includes(t) ? t : undefined }
   if (req.body && req.body.pregnant === true) { delete req.user.cyclePhase; delete req.user.cyclePhaseAt } // #427 — no menstrual cycle while pregnant; clear stale phase now
+  if (req.body && req.body.pregnant === false) { delete req.user.info.trimester; delete req.user.info.dueDate; delete req.user.info.pregnancyStart } // #759 — leaving pregnancy clears the stage markers
   // #711 (audit SAFETY) — clearing pregnancy must ENTER the graded postpartum return by DEFAULT, not silently snap to a
   // full build (2 quality + VO2) the week after birth. If she turns Pregnant OFF and hasn't set a birth date, stamp a
   // provisional postpartumSince=today so weekShape uses the graded-return shape until ~12 wk (she can edit the date). This
@@ -1787,16 +1790,21 @@ const SPORT_ENGINES = [
 // the system prompt and the daily-adapt orchestration (sharpen gate) agree on how many quality days this athlete
 // gets — no more contradiction between passes.
 function athleteWeekShape(user) {
-  const isFemale = user && user.sex === 'female'
+  const info = (user && user.info) || {}
   const today = localTodayInTz(user && user.icuTimezone)
-  const pg = (isFemale && user.info && user.info.pregnant) ? pregnancyStage(user.info, today) : null
+  // #759/#3 (audit) FAIL-CLOSED, not fail-open: pregnancy/postpartum SAFETY keys on the explicit info.pregnant /
+  // info.postpartumSince TOGGLE ALONE — NOT sex==='female'. The old sex gate silently dropped the whole safe envelope
+  // for a pregnant user whose sex was unset/other (the audit-critical fail-open). The toggle is the source of truth;
+  // a non-pregnant person never has it set, and the worst case for a mis-set male is a harmless conservative envelope.
+  const pregnant = !!info.pregnant
+  const pg = pregnant ? pregnancyStage(info, today) : null
   const cycleFresh = !!(user && user.cyclePhaseAt && (Date.now() - new Date(user.cyclePhaseAt + 'T00:00:00Z').getTime()) < 6 * 86400000)
-  const age = (user && user.info && user.info.dob) ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
-  // #631 — postpartum weeks since birth (from info.postpartumSince), female + not currently pregnant → graded return
-  const ppSince = (isFemale && user.info && user.info.postpartumSince && !(user.info && user.info.pregnant)) ? user.info.postpartumSince : null
+  const age = info.dob ? Math.floor((Date.now() - new Date(info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
+  // #631 — postpartum weeks since birth (info.postpartumSince), not currently pregnant → graded return. Toggle-gated (#759).
+  const ppSince = (info.postpartumSince && !pregnant) ? info.postpartumSince : null
   const postpartumWeeks = (ppSince && /^\d{4}-\d{2}-\d{2}$/.test(ppSince)) ? Math.floor((Date.now() - new Date(ppSince + 'T00:00:00Z').getTime()) / (7 * 86400000)) : null
   return weekShape({
-    pregnant: !!(isFemale && user.info && user.info.pregnant), trimester: pg ? pg.trimester : null, postpartumWeeks,
+    pregnant, trimester: pg ? pg.trimester : null, postpartumWeeks,
     cyclePhase: user && user.cyclePhase, cycleFresh,
     goalFocus: user && user.info && user.info.goals && user.info.goals.focus,
     goalNotes: user && user.info && user.info.goals && user.info.goals.notes,
@@ -1838,13 +1846,16 @@ function enforceGymRepScheme(user, plan) {
   if (n) console.log(`[gym-reps] ${user.username || ''} "${plan.title}" — clamped ${n} main lift(s) into ${focus} rep scheme`)
 }
 
-// #712 — the athlete's current pregnancy trimester (female + info.pregnant), else null. Drives the supine-gym clamp.
+// #712 — the athlete's current pregnancy trimester, else null. Drives the supine-gym clamp.
 function pregnantTrimesterOf(user) {
-  if (!user || String(user.sex || '').toLowerCase() !== 'female' || !(user.info && user.info.pregnant)) return null
+  // #759/#3 (audit) FAIL-CLOSED: gate on the explicit info.pregnant TOGGLE alone, NOT sex==='female' — the sex gate
+  // silently disabled the supine clamp for a pregnant user whose sex was unset/other (audit-critical fail-open).
+  if (!user || !(user.info && user.info.pregnant)) return null
   const pg = pregnancyStage(user.info, localTodayInTz(user && user.icuTimezone))
   // #748 (audit) FAIL-SAFE: an UNKNOWN gestational stage → treat as T3 (most conservative) so the supine-gym clamp FIRES
-  // (it only triggers at T2+). Defaulting to T1 failed OPEN — a pregnant athlete with no date who is actually in T2/T3
-  // got NO supine removal. The profile gate makes the date mandatory; this is the backstop.
+  // (it only triggers at T2+). Defaulting to T1 failed OPEN. Since #759 the date is OPTIONAL (no gate), so this
+  // no-date→T3 backstop is now the PRIMARY guarantee, not just a fallback: a pregnant athlete who shares no date still
+  // gets the most conservative supine removal.
   return pg && pg.trimester ? pg.trimester : 3
 }
 // #712 (audit SAFETY) — swap/drop SUPINE gym moves for a pregnant T2+ athlete, on every save + sweep (the assembler/coach
@@ -2013,10 +2024,14 @@ function buildSystemPrompt(user) {
     if (does && e.text) p += '\n\n' + e.text
   }
   const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
-  if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
+  // #759/#3 (audit) — pregnancy/postpartum SAFETY keys on the explicit toggle, NOT sex==='female' (the sex gate failed
+  // OPEN for a pregnant user whose sex was unset). When pregnant, the female-athlete guidance (§6, referenced below) must
+  // load regardless of the sex field.
+  const pregnant = !!(user.info && user.info.pregnant)
+  if ((isFemale || pregnant) && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
   // #329/#427 — this athlete's CURRENT repro-state block. PREGNANCY overrides everything (there is no
   // cycle); otherwise the menstrual cycle phase (from intervals, stashed by /auth/readiness) biases the PLAN.
-  if (isFemale && user.info && user.info.pregnant) {
+  if (pregnant) {
     const pg = pregnancyStage(user.info, todayIso) // #448 local today, not UTC
     const wk = pg && pg.weeks != null ? `~week ${pg.weeks} (trimester ${pg.trimester})` : 'trimester unknown — ASK her due date (EDD) or last-period date to tailor by trimester; use first-trimester defaults until then'
     tail += `\n\n# PREGNANCY — she is PREGNANT (${wk}). This OVERRIDES cycle-phase logic: there is NO menstrual cycle now, do NOT program by cycle phase. Apply the pregnancy protocol in your female-athlete guidance (§6). Core rules: goal is MAINTAIN health & fitness, never build/PR/max efforts. **SHAPE the week as MAINTENANCE, not a build: MOST sessions are EASY / endurance + her strength work; AT MOST ONE lightly-moderate session per week (a short tempo by RPE + talk test — NOT a structured sweet-spot / threshold / VO2 interval block). NEVER two "quality" days in a week — two sweet-spots or thresholds is a BUILD stimulus, which pregnancy is not.** Gauge intensity by RPE + the TALK TEST, not heart rate (pregnancy raises resting HR ~10-20 bpm); her in-app **Freshness/readiness already DOWN-WEIGHTS the HR-derived load ratio** (ACWR) for exactly this reason (#536), so trust that score + her RPE/check-in over raw load numbers — a MID Freshness on a light day is normal maintenance, not a warning; do not chase a "low" load reading with more volume; no Valsalva/breath-holding (exhale on the effort, keep ~2-3 reps in reserve); ${pg && pg.trimester >= 2 ? 'NO supine (flat-on-back) work, use incline/side-lying/upright versions, and watch for abdominal doming; ' : ''}avoid overheating (cool + hydrate, especially hot-humid days), fall/contact/collision risk, and sprinting; keep pelvic-floor + deep-core awareness. DEFER to her clinician / pelvic-floor PT. If she reports any STOP sign (vaginal bleeding, fluid leak, calf pain or swelling, chest pain, dizziness/faintness, a headache that won't clear, regular contractions, reduced fetal movement) tell her to STOP and contact her clinician. Frame everything on health & function, never weight or "getting the body back". **PRIVACY — pregnancy is PRIVATE: NEVER write "pregnancy/pregnant/trimester/prenatal/expecting/baby/bump" or anything implying it in a workout TITLE, a DESCRIPTION, a plan name, or the public activity text (set_activity_text). It must not appear ANYWHERE others could see. Apply the adjustments SILENTLY and name sessions by their normal training content ("Easy Aerobic Run", "Z2 Endurance"), never by the reason.**`
