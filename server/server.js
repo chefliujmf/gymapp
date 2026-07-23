@@ -2088,7 +2088,15 @@ function buildSystemPrompt(user) {
     // #637 — SPLIT by FREQUENCY + FOCUS + sport (evidence, ~2×/wk per muscle for growth): gym sessions/week from the
     // recent cadence; a MUSCLE goal → hypertrophy split (upper/lower or PPL), an endurance-support 1×/wk → full-body.
     const gymFrom = addDays(localTodayInTz(user.icuTimezone), -14)
-    const gymPerWeek = Math.max(1, Math.round((user.plans || []).filter((p) => p && p.sport === 'gym' && p.date >= gymFrom).length / 2))
+    // #763 (audit sim) — when GYM is the MAIN sport, the athlete trains gym MOST days, so the session count must come from
+    // their weekly TRAINING-DAYS, not from how many gym plans already exist. The old `existing gym plans / 2` was a
+    // chicken-and-egg feedback loop: a fresh gym-main user (0 existing) got just 1 assembled session while training 5×/wk,
+    // mismatching the horizon (5 training days) — so the coach built nothing coherent. Support gym (endurance main sport)
+    // keeps the derived count (1-ish is right for support). Only gym-MAIN changes; endurance/support users are untouched.
+    const gymIsMain = ['gym', 'strength'].includes(ms) || ((sports || []).length === 1 && ['gym', 'strength'].includes((sports || [])[0]))
+    const gymPerWeek = gymIsMain
+      ? Math.max(1, Math.min(6, Number(user.info?.trainingDays) || 3))
+      : Math.max(1, Math.round((user.plans || []).filter((p) => p && p.sport === 'gym' && p.date >= gymFrom).length / 2))
     // #648 — resolve the REAL 5-way focus (mainSport × goal), not a binary muscle/support regex, so support_build /
     // strength each get their own REP SCHEME. An endurance main sport → support (heavy low-rep), never a hypertrophy default.
     const gymFocus = resolveGymFocus({ mainSport: ms, sports, goal: obj })
