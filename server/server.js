@@ -1965,12 +1965,15 @@ async function reenforceShapeAll(user) {
   // pregnant athlete's STALE plans still leaked "pregnant/trimester" into descriptions that sync to intervals→Strava.
   // Scrub them here too, and re-push the changed ride/run/swim so the PUBLIC copy is clean, not just the DB.
   const privacyTouched = []
-  for (const p of (user.plans || []).filter((x) => x && x.date >= today)) {
+  // #(audit sim 2026-07-23) — PRIVACY is NOT date-scoped: a PAST plan with "pregnancy-safe" in its text is still visible
+  // in-app (and may already have synced), and the old future-only filter never cleaned it (Xenia's 07-16/07-21 gym plans
+  // still read "pregnancy-safe"). Scrub EVERY plan (all dates); only re-PUSH future ride/run/swim to intervals.
+  for (const p of (user.plans || [])) {
     let ch = false
     for (const k of ['title', 'notes', 'objective', 'success']) { if (typeof p[k] === 'string') { const v = scrubPrivate(p[k]); if (v !== p[k]) { p[k] = v; ch = true } } }
     // #696 — sweep the session-duration prose out of EXISTING gym plans too (JM's live 07-21 plan still carried "About 55-60 min").
     if (p.sport === 'gym') for (const k of ['objective', 'success', 'notes']) { if (typeof p[k] === 'string') { const v = stripGymDurationProse(p[k]); if (v !== p[k]) { p[k] = v; ch = true } } }
-    if (ch) { privacyTouched.push(p); if (!touched.includes(p) && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim')) touched.push(p) }
+    if (ch) { privacyTouched.push(p); if (!touched.includes(p) && p.date >= today && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim')) touched.push(p) }
   }
   if (touched.length || gymTouched || privacyTouched.length) {
     if (privacyTouched.length) console.log(`[privacy-sweep] ${user.username || ''} — scrubbed ${privacyTouched.length} plan(s)`)
