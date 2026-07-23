@@ -2823,11 +2823,17 @@ async function upsertPlan(user, body, actor = 'coach') {
   // low-rep strength session ±1 day of a QUALITY endurance day blunts BOTH adaptations (Rønnestad/Coffey), so the coach
   // can't place one there — reject it (409) and it must move ≥1 day clear (or lighten the reps). Only the coach path is
   // gated (a person can double-book themselves). A same-id UPDATE that doesn't change the collision is allowed through.
-  if (actor === 'coach' && isHeavyGym(body)) {
-    const bd = String(body.date).slice(0, 10)
-    // quality-endurance days within ±1 of the gym's date (exclude the gym's own id so a re-save doesn't self-collide).
-    const near = qualityEnduranceDates((user.plans || []).filter((p) => p.id !== body.id), addDays(bd, -1), 2)
-    if (near.size) return { status: 409, body: { error: `A HEAVY strength session can't sit within a day of a quality endurance session (${[...near].join(', ')}) — the interference blunts both adaptations. Move this gym ≥1 day clear, or make it lighter / higher-rep support work.` } }
+  if (actor === 'coach' && body.sport === 'gym' && Array.isArray(body.exercises)) {
+    // #audit — check the POST-rep-clamp plan: a SUPPORT cyclist's 3×10 mains get clamped to 3×6 (= heavy) by
+    // enforceGymRepScheme AFTER this point, so a raw 3×10 would slip the guard then become heavy + adjacent. Preview the
+    // clamp on a CLONE so the collision check sees the plan as it will actually be stored.
+    const preview = { ...body, exercises: body.exercises.map((e) => ({ ...e })) }
+    try { enforceGymRepScheme(user, preview) } catch { /* preview only */ }
+    if (isHeavyGym(preview)) {
+      const bd = String(body.date).slice(0, 10)
+      const near = qualityEnduranceDates((user.plans || []).filter((p) => p.id !== body.id), addDays(bd, -1), 2) // quality-endurance days within ±1
+      if (near.size) return { status: 409, body: { error: `A HEAVY strength session can't sit within a day of a quality endurance session (${[...near].join(', ')}) — the interference blunts both adaptations. Move this gym ≥1 day clear, or make it lighter / higher-rep support work.` } }
+    }
   }
   if (actor === 'coach') {
     const cur = i >= 0 ? user.plans[i] : null
