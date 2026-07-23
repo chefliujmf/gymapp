@@ -2354,11 +2354,12 @@ async function runCoachTask(user, message, opts = {}) {
   const systemPrompt = buildSystemPrompt(user)
   const model = opts.model || null
   if (CHAT_HELPER_URL) {
-    // #763 (audit sim) — a coach task that HANGS (e.g. a gym adapt stuck resolving exercises) must not block forever:
-    // the CHAT_HELPER path had NO timeout, so a stuck run left the adapt hung + the coach process orphaned. Abort after
-    // ~5 min (a real build finishes in ~1-2 min; this is the safety net, matching the local-spawn killer's intent).
+    // #763 (audit sim) — a coach task that truly HANGS must not block forever (the CHAT_HELPER path had NO timeout). But
+    // a FULL from-scratch build (a fresh user with an empty plan → 14 days of new sessions, many creates) legitimately
+    // takes several minutes (#608: a strength rebuild needs >240s) — so the abort must MATCH the local-spawn killer's
+    // 600s, not undercut it. An earlier 300s value wrongly aborted real builds right as the coach loaded its create tool.
     const ac = new AbortController()
-    const killer = setTimeout(() => ac.abort(), 300000)
+    const killer = setTimeout(() => ac.abort(), 600000)
     try {
       const hr = await fetch(CHAT_HELPER_URL + '/chat', {
         method: 'POST',
