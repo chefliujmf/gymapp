@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server modules, no types
-import { enforceShape, isModerate, honestTitle, QUALITY_TITLE, qualityEnduranceDates, concurrentGymCollisions } from '../server/shape-enforce.js'
+import { enforceShape, isModerate, honestTitle, QUALITY_TITLE, qualityEnduranceDates, concurrentGymCollisions, heavyGymDatesNear } from '../server/shape-enforce.js'
 // @ts-expect-error
 import { weekShape } from '../server/week-shape.js'
 
@@ -156,6 +156,25 @@ describe('#717 concurrent-training separation — detect heavy gym adjacent to a
     ]
     expect(qualityEnduranceDates(plans, '2026-07-30', 14)).toEqual(['2026-08-01'])
     expect(concurrentGymCollisions(plans, '2026-07-30', 14).map((p: any) => p.date)).toEqual(['2026-07-31'])
+  })
+})
+
+// #4 (audit) — the SYMMETRIC endurance-side guard: a quality ride/run may NOT land within a day of a heavy gym.
+describe('#4 heavyGymDatesNear — the symmetric concurrent guard (endurance side)', () => {
+  const heavy = { id: 'g1', date: '2026-08-02', sport: 'gym', exercises: [{ mode: 'reps', reps: 5, sets: 3, name: 'Back Squat' }] }
+  const light = { id: 'g2', date: '2026-08-10', sport: 'gym', exercises: [{ mode: 'reps', reps: 12, sets: 3, name: 'Curl' }] }
+  const plans = [heavy, light]
+  it('finds the heavy gym the day before/after (±1) a candidate quality date', () => {
+    expect(heavyGymDatesNear(plans, '2026-08-03', 'ride-x')).toEqual(['2026-08-02']) // day AFTER the heavy gym → collision
+    expect(heavyGymDatesNear(plans, '2026-08-01', 'ride-x')).toEqual(['2026-08-02']) // day BEFORE → collision
+    expect(heavyGymDatesNear(plans, '2026-08-02', 'ride-x')).toEqual(['2026-08-02']) // same day → collision
+  })
+  it('ignores a light gym and days ≥2 apart', () => {
+    expect(heavyGymDatesNear(plans, '2026-08-05', 'ride-x')).toEqual([]) // 3 days clear
+    expect(heavyGymDatesNear(plans, '2026-08-11', 'ride-x')).toEqual([]) // adjacent to the LIGHT gym only → allowed
+  })
+  it('excludes the same-id plan (a move is judged vs the OTHERS)', () => {
+    expect(heavyGymDatesNear([...plans, { id: 'me', date: '2026-08-02', sport: 'gym', exercises: [{ mode: 'reps', reps: 4, sets: 4, name: 'Deadlift' }] }], '2026-08-02', 'me')).toEqual(['2026-08-02']) // still finds g1, not itself
   })
 })
 

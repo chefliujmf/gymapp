@@ -49,6 +49,14 @@ export function qualityEnduranceDates(plans, today, days = 14) {
 }
 // a gym plan is a HEAVY strength session if it carries low-rep main lifts (the interference-heavy kind).
 export const isHeavyGym = (p) => p && p.sport === 'gym' && Array.isArray(p.exercises) && p.exercises.some((e) => e && e.mode !== 'timed' && Number(e.reps) > 0 && Number(e.reps) <= 6 && Number(e.sets) >= 3)
+// #4 SYMMETRIC — the heavy-gym dates within ±1 day of `date` (excludes `exceptId`, so a same-id move is judged vs the
+// OTHERS). Mirrors qualityEnduranceDates for the endurance-side save guard: block a quality ride/run landing next to a
+// heavy strength day. Pure + unit-tested.
+export function heavyGymDatesNear(plans, date, exceptId) {
+  const iso = String(date).slice(0, 10)
+  const adj = new Set([addDaysISO(iso, -1), iso, addDaysISO(iso, 1)])
+  return [...new Set((plans || []).filter((p) => p && p.id !== exceptId && isHeavyGym(p) && adj.has(String(p.date).slice(0, 10))).map((p) => String(p.date).slice(0, 10)))].sort()
+}
 export function concurrentGymCollisions(plans, today, days = 14) {
   const q = new Set(qualityEnduranceDates(plans, today, days))
   const out = []

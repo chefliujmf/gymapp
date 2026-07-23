@@ -29,7 +29,7 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIs
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
-import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGym } from './shape-enforce.js' // #615/#620 clamp · #717/#4 concurrent-training separation
+import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGym, isModerate, heavyGymDatesNear } from './shape-enforce.js' // #615/#620 clamp · #717/#4 concurrent-training separation
 import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
 import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard
 import { requiredProfileGaps, REQUIRED_FIELDS } from './profile-gate.js' // #A — plan generation is gated on a minimal mandatory profile
@@ -2835,6 +2835,12 @@ async function upsertPlan(user, body, actor = 'coach') {
       const near = qualityEnduranceDates((user.plans || []).filter((p) => p.id !== body.id), addDays(bd, -1), 2) // quality-endurance days within ±1
       if (near.size) return { status: 409, body: { error: `A HEAVY strength session can't sit within a day of a quality endurance session (${[...near].join(', ')}) — the interference blunts both adaptations. Move this gym ≥1 day clear, or make it lighter / higher-rep support work.` } }
     }
+  }
+  // #4 (audit) — the SYMMETRIC case: a coach placing/moving a QUALITY endurance session onto a day adjacent to an
+  // existing HEAVY gym is the same interference — block it from the endurance side too (not just when the gym is saved).
+  if (actor === 'coach' && (body.sport === 'ride' || body.sport === 'run') && isModerate(body)) {
+    const heavy = heavyGymDatesNear(user.plans, body.date, body.id)
+    if (heavy.length) return { status: 409, body: { error: `A quality endurance session can't sit within a day of a heavy strength day (${heavy.join(', ')}) — the interference blunts both. Space them ≥1 day apart, or move this quality session.` } }
   }
   if (actor === 'coach') {
     const cur = i >= 0 ? user.plans[i] : null
