@@ -48,7 +48,7 @@ export function qualityEnduranceDates(plans, today, days = 14) {
   return [...out].sort()
 }
 // a gym plan is a HEAVY strength session if it carries low-rep main lifts (the interference-heavy kind).
-const isHeavyGym = (p) => p && p.sport === 'gym' && Array.isArray(p.exercises) && p.exercises.some((e) => e && e.mode !== 'timed' && Number(e.reps) > 0 && Number(e.reps) <= 6 && Number(e.sets) >= 3)
+export const isHeavyGym = (p) => p && p.sport === 'gym' && Array.isArray(p.exercises) && p.exercises.some((e) => e && e.mode !== 'timed' && Number(e.reps) > 0 && Number(e.reps) <= 6 && Number(e.sets) >= 3)
 export function concurrentGymCollisions(plans, today, days = 14) {
   const q = new Set(qualityEnduranceDates(plans, today, days))
   const out = []

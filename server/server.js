@@ -29,7 +29,7 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIs
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
-import { enforceShape, qualityEnduranceDates, concurrentGymCollisions } from './shape-enforce.js' // #615/#620 clamp · #717 concurrent-training separation
+import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGym } from './shape-enforce.js' // #615/#620 clamp · #717/#4 concurrent-training separation
 import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
 import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard
 import { requiredProfileGaps, REQUIRED_FIELDS } from './profile-gate.js' // #A — plan generation is gated on a minimal mandatory profile
@@ -2813,6 +2813,16 @@ async function upsertPlan(user, body, actor = 'coach') {
       const d = String(body.date).slice(0, 10)
       user.restDates = (user.restDates || []).filter((x) => x !== d); deleteRestNote(user, d).catch(() => {})
     }
+  }
+  // #4 (audit) — CONCURRENT-TRAINING interference is now CODE-ENFORCED at save, not just detected/prompted. A HEAVY
+  // low-rep strength session ±1 day of a QUALITY endurance day blunts BOTH adaptations (Rønnestad/Coffey), so the coach
+  // can't place one there — reject it (409) and it must move ≥1 day clear (or lighten the reps). Only the coach path is
+  // gated (a person can double-book themselves). A same-id UPDATE that doesn't change the collision is allowed through.
+  if (actor === 'coach' && isHeavyGym(body)) {
+    const bd = String(body.date).slice(0, 10)
+    // quality-endurance days within ±1 of the gym's date (exclude the gym's own id so a re-save doesn't self-collide).
+    const near = qualityEnduranceDates((user.plans || []).filter((p) => p.id !== body.id), addDays(bd, -1), 2)
+    if (near.size) return { status: 409, body: { error: `A HEAVY strength session can't sit within a day of a quality endurance session (${[...near].join(', ')}) — the interference blunts both adaptations. Move this gym ≥1 day clear, or make it lighter / higher-rep support work.` } }
   }
   if (actor === 'coach') {
     const cur = i >= 0 ? user.plans[i] : null
