@@ -27,7 +27,11 @@ const topOf = (segs) => Math.max(0, ...(segs || []).map((s) => Math.max(Number(s
 // mislabels — a title-only "Sweet Spot Run"/"Tempo Run" with soft or no segments must still count so the week's
 // allowance is real). Used SYMMETRICALLY for both the session being judged and its siblings (#620 — the asymmetry,
 // where a tempo title counted against OTHERS' budget but was never clamped itself, is what let ALL tempo through).
-export const isModerate = (p) => topOf(p && p.segments) >= CEILING_PCT.tempo || QUALITY_TITLE.test((p && p.title) || '') || TEMPO_TITLE.test((p && p.title) || '')
+// #7/#8 (audit) — a SWIM carries `swimSets` (CSS zones), NOT %-segments, and its title ("CSS 4×100", "Z4 Race-Pace")
+// doesn't match the ride/run QUALITY_TITLE regex, so swim was invisible to the moderate/quality COUNT + never clamped.
+// Count a swim as moderate when any working set is zone ≥ 3 (CSS/threshold and up).
+const swimIsModerate = (p) => Array.isArray(p && p.swimSets) && p.swimSets.some((s) => Number(s && s.zone) >= 3)
+export const isModerate = (p) => topOf(p && p.segments) >= CEILING_PCT.tempo || QUALITY_TITLE.test((p && p.title) || '') || TEMPO_TITLE.test((p && p.title) || '') || swimIsModerate(p)
 
 // #717 (audit) — CONCURRENT-TRAINING interference: heavy strength ±1 day of a QUALITY endurance session blunts BOTH.
 // These pure helpers give buildSystemPrompt the exact quality-endurance dates to schedule strength away from, and let
@@ -44,7 +48,7 @@ export function qualityEnduranceDates(plans, today, days = 14) {
   return [...out].sort()
 }
 // a gym plan is a HEAVY strength session if it carries low-rep main lifts (the interference-heavy kind).
-const isHeavyGym = (p) => p && p.sport === 'gym' && Array.isArray(p.exercises) && p.exercises.some((e) => e && e.mode !== 'timed' && Number(e.reps) > 0 && Number(e.reps) <= 6 && Number(e.sets) >= 3)
+export const isHeavyGym = (p) => p && p.sport === 'gym' && Array.isArray(p.exercises) && p.exercises.some((e) => e && e.mode !== 'timed' && Number(e.reps) > 0 && Number(e.reps) <= 6 && Number(e.sets) >= 3)
 export function concurrentGymCollisions(plans, today, days = 14) {
   const q = new Set(qualityEnduranceDates(plans, today, days))
   const out = []
@@ -106,5 +110,15 @@ export function enforceShape(shape, plan, siblings = []) {
   // #672 — neutralize surge/burst PROSE on ANY maintenance session (NOT gated on the current title being a surge — the
   // title may already have been relabeled to "Tempo Run" in a prior sweep, orphaning the "effort bursts" prose forever).
   if (shape.loadBand === 'maintenance') for (const k of ['objective', 'notes', 'success']) { if (typeof plan[k] === 'string') { const v = scrubSurgeProse(plan[k]); if (v !== plan[k]) { plan[k] = v; changed = true } } }
+  // #745 (audit) POSTPARTUM IMPACT — CODE-ENFORCED at save (was prompt-only). Early return (impact:'none', <6wk): a RUN
+  // is contraindicated (ground-reaction load on a healing pelvic floor) → force it to a non-impact EASY walk. Weeks 6-12
+  // (impact:'walk_run'): keep it a gentle walk-run capped to easy. The clamp above already lowered %; this fixes the
+  // MODALITY/label so a hard-looking "Tempo Run" can't survive as a run for an early-postpartum athlete.
+  if (plan.sport === 'run' && (shape.impact === 'none' || shape.impact === 'walk_run')) {
+    const cap = CEILING_PCT.endurance
+    for (const s of (plan.segments || [])) { if ((Number(s.powerStart) || 0) > cap) { s.powerStart = cap; clamped++; changed = true } if ((Number(s.powerEnd) || 0) > cap) { s.powerEnd = cap; clamped++; changed = true } }
+    const t = shape.impact === 'none' ? 'Gentle Walk' : 'Easy Walk-Run'
+    if (plan.title !== t) { plan.title = t; changed = true }
+  }
   return { changed, clamped, effCeil, overBudget }
 }

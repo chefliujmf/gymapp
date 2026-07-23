@@ -1,0 +1,80 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mandatory profile gate</title>
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#f0b429;--cyan:#39c2d7;--danger:#e0555f;--on:#082015}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05070a;color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:20px;display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{display:flex;flex-direction:column;gap:8px;align-items:center}
+  .lbl{color:var(--dim);font-weight:700;font-size:12.5px;text-align:center;max-width:390px}
+  .phone{width:390px;background:var(--bg);border-radius:24px;overflow:hidden;border:1px solid #23262d;box-shadow:0 14px 44px rgba(0,0,0,.5)}
+  .bar{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .bar .logo{font-weight:800}.bar .logo span{color:var(--accent)}
+  .body{padding:18px 16px 20px}
+  .hero{background:linear-gradient(150deg,rgba(52,224,125,.14),rgba(52,224,125,.03));border:1px solid rgba(52,224,125,.34);border-radius:14px;padding:15px 16px;margin-bottom:16px}
+  .hero h2{font-size:17px;margin-bottom:4px}.hero p{font-size:13px;color:var(--dim);line-height:1.5}
+  .prog{display:flex;align-items:center;gap:8px;margin:12px 0 6px}
+  .prog .track{flex:1;height:7px;background:#222732;border-radius:99px;overflow:hidden}
+  .prog .fill{height:100%;width:60%;background:var(--accent);border-radius:99px}
+  .prog b{font-size:12px;color:var(--dim)}
+  .fld{display:flex;align-items:center;gap:11px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;margin-bottom:9px;background:linear-gradient(160deg,var(--card1),var(--card2))}
+  .fld.miss{border-color:rgba(240,180,41,.5)}
+  .fld.done{border-color:rgba(52,224,125,.4)}
+  .ic{width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;font-size:15px;background:#2b303b}
+  .fb{flex:1;min-width:0}.fb b{font-size:14px;display:block}.fb span{font-size:12px;color:var(--dim)}
+  .val{font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap}
+  .req{font-size:10px;font-weight:800;color:var(--amber);border:1px solid var(--amber);border-radius:5px;padding:1px 6px;white-space:nowrap}
+  .chk{color:var(--accent);font-size:17px}
+  .cta{width:100%;background:var(--accent);color:var(--on);border:none;border-radius:26px;padding:15px;font-size:16px;font-weight:800;margin-top:8px}
+  .cta.dis{background:#232a26;color:#5c6b60}
+  .discl{font-size:11px;color:#6b7280;line-height:1.5;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#0d1015}
+  .discl b{color:var(--dim)}
+  /* pregnancy inline */
+  .preg{border:1px solid rgba(57,194,215,.4);background:linear-gradient(150deg,rgba(57,194,215,.12),rgba(57,194,215,.03));border-radius:12px;padding:13px;margin-bottom:9px}
+  .preg .row{display:flex;align-items:center;gap:10px}
+  .preg input{margin-left:auto;background:#12161d;border:1px solid var(--danger);border-radius:9px;padding:8px 11px;color:var(--text);font-size:14px;font-family:inherit;width:140px}
+  .preg .why{font-size:12px;color:var(--cyan);margin-top:8px;line-height:1.45}
+</style>
+
+<div class="col">
+  <div class="lbl">① Gate — no plan until the coach has the minimum it needs (safety)</div>
+  <div class="phone">
+    <div class="bar"><span class="logo">platy<span>plus</span></span></div>
+    <div class="body">
+      <div class="hero"><h2>A few basics, then your coach builds your plan 🎯</h2><p>Your coach needs these to plan safely — dose, zones and load all scale from them. It won't guess.</p>
+        <div class="prog"><div class="track"><div class="fill"></div></div><b>3 of 5</b></div>
+      </div>
+      <div class="fld done"><div class="ic">🚻</div><div class="fb"><b>Sex</b><span>Female</span></div><span class="chk">✓</span></div>
+      <div class="fld done"><div class="ic">🎂</div><div class="fb"><b>Date of birth</b><span>drives teen / masters safety</span></div><span class="chk">✓</span></div>
+      <div class="fld done"><div class="ic">🚴</div><div class="fb"><b>Main sport</b><span>Cycling</span></div><span class="chk">✓</span></div>
+      <div class="fld miss"><div class="ic">🎯</div><div class="fb"><b>Your goal</b><span>build / maintain / a race — tell the coach in your words</span></div><span class="req">Required</span></div>
+      <div class="fld miss"><div class="ic">📅</div><div class="fb"><b>Training days / week</b><span>how many days you want to train</span></div><span class="req">Required</span></div>
+      <button class="cta dis">Complete 2 more to build your plan</button>
+      <div class="discl"><b>Note:</b> Platyplus gives general fitness coaching, not medical advice. If you're pregnant, postpartum, injured, or have a health condition, check with your doctor before starting. You can adjust any session.</div>
+    </div>
+  </div>
+</div>
+
+<div class="col">
+  <div class="lbl">② Pregnancy → the date becomes MANDATORY (drives the trimester-safe plan)</div>
+  <div class="phone">
+    <div class="bar"><span class="logo">platy<span>plus</span></span></div>
+    <div class="body">
+      <div class="hero"><h2>A few basics, then your coach builds your plan 🎯</h2><p>Your coach needs these to plan safely. It won't guess.</p>
+        <div class="prog"><div class="track"><div class="fill" style="width:80%"></div></div><b>4 of 5</b></div>
+      </div>
+      <div class="fld done"><div class="ic">🚻</div><div class="fb"><b>Sex</b><span>Female</span></div><span class="chk">✓</span></div>
+      <div class="fld done"><div class="ic">🎂</div><div class="fb"><b>Date of birth</b><span>Aug 16, 1992</span></div><span class="chk">✓</span></div>
+      <div class="fld done"><div class="ic">🏃</div><div class="fb"><b>Main sport</b><span>Running</span></div><span class="chk">✓</span></div>
+      <div class="fld done"><div class="ic">🎯</div><div class="fb"><b>Goal</b><span>Stay active & healthy through pregnancy</span></div><span class="chk">✓</span></div>
+      <!-- pregnant toggled on → the date is now required inline -->
+      <div class="preg">
+        <div class="row"><div class="ic">🤰</div><div class="fb"><b>Pregnant</b><span>your plan switches to a safe maintenance mode</span></div></div>
+        <div class="row" style="margin-top:11px"><div class="ic">📆</div><div class="fb"><b>Due date <span class="req" style="margin-left:4px">Required</span></b><span>or last period — sets your trimester</span></div><input value="" placeholder="Due date"></div>
+        <div class="why">🔒 The date drives the trimester-specific safe limits (and stays private — never in any public activity). Without it we can't plan safely, so it's required.</div>
+      </div>
+      <div class="fld done"><div class="ic">📅</div><div class="fb"><b>Training days / week</b><span>4 days</span></div><span class="chk">✓</span></div>
+      <button class="cta dis">Enter your due date to build your plan</button>
+      <div class="discl"><b>Pregnancy note:</b> This is general activity guidance following ACOG-style principles, not medical advice. Get your provider's OK to exercise, stop if anything feels wrong, and tell your coach how you feel.</div>
+    </div>
+  </div>
+</div>

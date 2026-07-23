@@ -69,7 +69,7 @@ describe('#620 shape-enforce — the rest of the athlete matrix (commercializati
   })
 
   it('BUILD cyclist (vo2 ceiling, 2 quality) → keeps 2 hard days untouched, clamps only a 3rd', () => {
-    const shape = weekShape({ goalFocus: 'performance', ctl: 60, trainingDays: 6 })
+    const shape = weekShape({ goalFocus: ['performance'], ctl: 60, trainingDays: 6 })
     expect(shape.qualityDays).toBeGreaterThanOrEqual(2)
     const week = [
       { id: 'a', date: '2026-07-21', sport: 'ride', title: 'VO2 5×3', ...seg(115) },
@@ -90,9 +90,9 @@ describe('#620 shape-enforce — the rest of the athlete matrix (commercializati
     expect(topOf(week[0])).toBeLessThan(115) // never a maximal VO2 session for a teen
   })
 
-  it('TRIATHLETE (build, 2 quality) → the quality budget is GLOBAL across swim+bike+run, not per-sport', () => {
-    const shape = weekShape({ goalFocus: 'performance', goalNotes: 'race triathlon', ctl: 60, trainingDays: 6 })
-    expect(shape.qualityDays).toBe(2)
+  it('#3 TRIATHLETE (build) → a KEY quality session PER discipline (Friel), NOT a global 2 that deletes the 3rd sport', () => {
+    const shape = weekShape({ goalFocus: ['performance'], goalNotes: 'race triathlon', ctl: 60, trainingDays: 6 })
+    expect(shape.qualityDays).toBe(3) // one per discipline (swim + bike + run)
     const week = [
       { id: 'a', date: '2026-07-21', sport: 'swim', title: 'CSS Intervals', ...seg(100) },
       { id: 'b', date: '2026-07-22', sport: 'ride', title: 'Threshold 4×10', ...seg(100) },
@@ -100,7 +100,7 @@ describe('#620 shape-enforce — the rest of the athlete matrix (commercializati
       { id: 'd', date: '2026-07-26', sport: 'ride', title: 'Easy Spin', ...seg(60) },
     ]
     const out = sweep(shape, week)
-    expect(out.filter((p) => isModerate(p)).length).toBe(2) // 3 hard across 3 sports → capped at the 2-quality budget
+    expect(out.filter((p) => isModerate(p)).length).toBe(3) // all 3 discipline key sessions survive (a 4th hard would clamp)
   })
 
   it('PREGNANT: a fartlek/surge run is relabeled to steady (no surges in maintenance, #632)', () => {
@@ -156,5 +156,26 @@ describe('#717 concurrent-training separation — detect heavy gym adjacent to a
     ]
     expect(qualityEnduranceDates(plans, '2026-07-30', 14)).toEqual(['2026-08-01'])
     expect(concurrentGymCollisions(plans, '2026-07-30', 14).map((p: any) => p.date)).toEqual(['2026-07-31'])
+  })
+})
+
+// #745 (audit) — POSTPARTUM impact is CODE-ENFORCED at save, not prompt-only.
+describe('postpartum impact clamp (#745)', () => {
+  it('early postpartum (<6wk, impact:none) → a hard RUN becomes a Gentle Walk, clamped to easy', () => {
+    const plan = { id: 'r', date: '2026-07-21', sport: 'run', title: 'Tempo Run 5×3', ...seg(100) }
+    const r = enforceShape({ impact: 'none', loadBand: 'flat', qualityDays: 1, moderateDays: 0, intensityCeiling: 'endurance' }, plan, [plan])
+    expect(r.changed).toBe(true)
+    expect(plan.title).toBe('Gentle Walk')
+    expect(plan.segments[0].powerStart).toBeLessThanOrEqual(75) // endurance ceiling
+  })
+  it('weeks 6-12 (impact:walk_run) → an Easy Walk-Run, capped to easy', () => {
+    const plan = { id: 'r', date: '2026-07-21', sport: 'run', title: 'Threshold Run', ...seg(100) }
+    enforceShape({ impact: 'walk_run', loadBand: 'flat', qualityDays: 1, moderateDays: 1, intensityCeiling: 'endurance' }, plan, [plan])
+    expect(plan.title).toBe('Easy Walk-Run')
+  })
+  it('a RIDE is untouched by the run-impact clamp', () => {
+    const plan = { id: 'b', date: '2026-07-21', sport: 'ride', title: 'Easy Spin', ...seg(60) }
+    enforceShape({ impact: 'none', loadBand: 'flat', qualityDays: 1, moderateDays: 0, intensityCeiling: 'endurance' }, plan, [plan])
+    expect(plan.title).toBe('Easy Spin')
   })
 })

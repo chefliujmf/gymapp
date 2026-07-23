@@ -292,9 +292,9 @@ export default function Chat() {
         {msgs.length === 0 && (
           <div className="chat-empty">
             <div style={{ fontSize: 40 }}>💬</div>
-            <p>Ask {coach} to plan or adjust your training & meals.</p>
+            <p>Ask {coach} to plan or adjust your training.</p>
             <div className="chat-suggest">
-              {['Add a push day on Thursday', "What's on my plan this week?", 'Plan 3 high-protein dinners'].map((s) => (
+              {['Add a strength day on Thursday', "What's on my plan this week?", "I'm sore — can we ease this week?"].map((s) => (
                 <button key={s} className="chip" onClick={() => setInput(s)}>{s}</button>
               ))}
             </div>

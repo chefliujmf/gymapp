@@ -7,6 +7,8 @@ import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fet
 import { PowerBlocks, ZoneBlocks } from '../charts'
 import { incompleteFeedback } from '../feedbackGaps' // #387 — surface the "to review" count on Today
 import { useAuth } from '../auth/AuthContext' // #review-skip — exclude skipped sessions from the count
+import ProfileGate from '../ProfileGate' // #A — gate the plan on a complete profile
+import { requiredProfileGaps } from '../profile-fields'
 import { setPlanEvents, fetchGymPlans, syncIcuPlans, gymSessionFromPlan, setGymSession, setCoachPlans, type CoachPlan } from '../plan'
 import { setCurrentRide } from '../ride'
 import { calApi, type CalItem } from '../calendar'
@@ -117,7 +119,10 @@ export function CheckInCard({ day, onChange, compact = false }: { day: string; o
     if (!loaded || !rdy?.connected) return
     const fill: Partial<Checkin> = {}
     for (const k of ['energy', 'sleep', 'soreness'] as const) if (ci?.[k] == null && calc[k] != null) fill[k] = calc[k]
-    if (Object.keys(fill).length) set(fill)
+    // #15 (audit) — only PRE-FILL the display with the derived values; do NOT persist a check-in the athlete never
+    // touched (that auto-"completed" check-in was firing the coach's daily-adapt as if they'd actually checked in).
+    // The real save happens on their first tap (set() below). If they already have a saved check-in, leave it.
+    if (Object.keys(fill).length && !ci) setCi((c) => ({ ...(c || { date: day }), ...fill } as Checkin))
   }, [loaded, rdy]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!loaded) return null
   // Emoji faces, 1–5, ALWAYS visible (JM: must not be hidden or it gets skipped).
@@ -457,6 +462,8 @@ export function ToReviewCard({ acts }: { acts: IcuActivity[] }) {
 export default function Today({ embedded = false, initialDay, onDay }: { embedded?: boolean; initialDay?: string; onDay?: (d: string) => void } = {}) {
   // #302: the setup checklist (SetupChecklist) now owns the "meet your coach" + setup nudges.
   // #488 — embedded=true renders this as Plan's DAY view (no page-head); the selected day is driven by / synced to Plan.
+  const { user } = useAuth()
+  const gated = requiredProfileGaps(user).length > 0 // #A — plan is blocked until the mandatory basics are set
   const [selDay, setSelDay] = useState(initialDay || todayISO())
   useEffect(() => { if (initialDay && initialDay !== selDay) setSelDay(initialDay) }, [initialDay]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { onDay?.(selDay) }, [selDay]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -641,8 +648,11 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
 
       <WeekStrip selected={selDay} onSelect={setSelDay} marked={markedDays} />
 
+      {/* #A — until the mandatory basics are set, the coach won't plan: show the profile gate instead of the check-in + plan. */}
+      {gated && <ProfileGate />}
+
       {/* #223: today = check-in + live verdict; future = freshness FORECAST (no fake "fresh"); past = logged. */}
-      {isFuture ? <ForecastCard key={selDay} day={selDay} rev={planRev} fmtDay={fmtDay} /> : <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />}
+      {!gated && (isFuture ? <ForecastCard key={selDay} day={selDay} rev={planRev} fmtDay={fmtDay} /> : <CheckInCard key={selDay} day={selDay} onChange={setCheckin} />)}
 
       {/* #387 — nudge to review completed sessions still missing feedback (links to the full list on Logs). */}
       {/* #722 — when embedded in the Plan page, the nudge is rendered ONCE at the Calendar level (so it shows on Week/
@@ -653,7 +663,8 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
 
       {/* #673 — removed the "N logged today — see history" line (JM never asked for it). */}
 
-      {/* #202 Today's plan (workouts + notes) with the readiness verdict banner */}
+      {/* #202 Today's plan (workouts + notes) with the readiness verdict banner. #A — the whole plan region is hidden while the profile gate is up. */}
+      {!gated && <>
       <div className="cal-day-head" style={{ marginTop: 8 }}>
         <div className="section-title" style={{ margin: 0 }}>{selDay === todayISO() ? "Today's plan" : fmtDay(selDay)}</div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -690,6 +701,7 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
         <p className="meta">Nothing scheduled — tap Add, or enjoy a rest day.</p>
       ) : null}
 
+      </>}
       {/* Eat DEACTIVATED 2026-07-11 (JM: simplify the app) — the coach still gives fuel tips in an activity's
           description; we're just not developing the Eat section in Today for now. Flip `false` to re-enable. */}
       {SHOW_EAT && (fuelChips.length > 0 || daySupps.length > 0) && (

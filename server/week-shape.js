@@ -9,6 +9,7 @@
 
 // intensity ceiling, low → high (matches plan-skeleton ZONES + the sport engines' zone names)
 export const CEILINGS = ['recovery', 'endurance', 'tempo', 'sweetspot', 'threshold', 'vo2']
+const CEIL_RANK = Object.fromEntries(CEILINGS.map((c, i) => [c, i])) // #5 — order for "ease the ceiling one notch"
 // ceiling → max % of threshold (FTP / threshold-pace). Used by the SERVER-SIDE clamp so a maintenance/pregnancy
 // athlete physically can't be saved a session above their ceiling, no matter what the coach writes (#615 —
 // the prompt-only "0 quality days" was ignored by the LLM; this ENFORCES it). Build athletes: vo2=120 → nothing clamps.
@@ -38,37 +39,44 @@ export function weekShape(p = {}) {
     pregnant = false, trimester = null, postpartumWeeks = null,
     cyclePhase = null, cycleFresh = false,
     goalFocus = [], goalNotes = '',
-    trainingDays = 0, ageYears = null,
+    trainingDays = 0, ageYears = null, sports = [],
   } = p // NB: no `ctl` — fitness is NOT a classification here; it drives VOLUME via weeklyLoadBudget, not the week's shape
   const cap = (q) => (trainingDays > 0 ? Math.min(q, Math.max(1, trainingDays - 1)) : q) // never spend the whole week on quality
 
   // ── POSTPARTUM: a GRADED return, not a snap back to a build (#631). Pregnancy=false must NOT jump straight to 2 VO2
   //    days the week after birth — the deconditioned / pelvic-floor-vulnerable window needs a ramp. ────────────────
-  if (!pregnant && postpartumWeeks != null && postpartumWeeks >= 0 && postpartumWeeks < 12) {
+  // #10 (audit) — the return runs to ~16 wk (NOT a hard 12-wk cliff into a full VO2 build). Three tiers: <6 (no impact),
+  // 6-12 (walk-run), 12-16 (intermediate — up to threshold, full impact, but not a full VO2 build yet). It only snaps to
+  // the normal goal-driven band after ~16 wk + symptom-free.
+  if (!pregnant && postpartumWeeks != null && postpartumWeeks >= 0 && postpartumWeeks < 16) {
     const early = postpartumWeeks < 6
+    const mid = postpartumWeeks >= 12 // 12-16 wk — the ramp BACK, so the ceiling doesn't jump endurance→vo2 in one week
     return {
       loadBand: early ? 'maintenance' : 'flat',
       qualityDays: early ? 0 : 1,
       moderateDays: early ? 1 : 0,
-      intensityCeiling: early ? 'endurance' : 'sweetspot',
-      // #713 (audit) — the REAL early-postpartum risk is ground-reaction IMPACT (pelvic floor), not aerobic intensity. A
-      // ceiling-compliant easy RUN is still contraindicated before the floor is rebuilt. Carry an impact directive: NONE
-      // <6wk (no running/jumping — walk / bike / swim / elliptical), WALK-RUN 6-12wk. (Coached via the prompt; the hard
-      // modality-conversion clamp is a careful follow-up — auto-converting a run to a walk is risky.)
-      impact: early ? 'none' : 'walk_run',
-      rationale: `POSTPARTUM (~${Math.round(postpartumWeeks)} wk) — a GRADED RETURN, not a build. ${early ? 'First ~6 weeks: rebuild base + PELVIC FLOOR + deep core, mostly EASY, no impact/rush, cleared by her clinician first (esp. after a C-section).' : 'Weeks 6–12: gradually reintroduce ONE quality day + impact as pelvic floor + core allow.'} Progress by how she FEELS + clinician guidance; watch for leaking, heaviness/pressure, or abdominal doming and back off if they appear. Ramp to a full build only after ~12 weeks and symptom-free.`,
+      intensityCeiling: early ? 'endurance' : mid ? 'threshold' : 'sweetspot',
+      // #713 (audit) — the REAL early-postpartum risk is ground-reaction IMPACT (pelvic floor), not aerobic intensity.
+      // Impact directive: NONE <6wk (walk / bike / swim / elliptical), WALK-RUN 6-12wk, NORMAL from 12wk. Code-enforced
+      // in shape-enforce (a <6wk run is forced to a walk at save).
+      impact: early ? 'none' : mid ? null : 'walk_run',
+      rationale: `POSTPARTUM (~${Math.round(postpartumWeeks)} wk) — a GRADED RETURN, not a build. ${early ? 'First ~6 weeks: rebuild base + PELVIC FLOOR + deep core, mostly EASY, no impact/rush, cleared by her clinician first (esp. after a C-section).' : mid ? 'Weeks 12–16: ramping BACK — up to threshold + full impact, but NOT a full VO2 build yet; add intensity only while symptoms stay clear.' : 'Weeks 6–12: gradually reintroduce ONE quality day + impact as pelvic floor + core allow.'} Progress by how she FEELS + clinician guidance; watch for leaking, heaviness/pressure, or abdominal doming and back off if they appear. Ramp to a full build only after ~16 weeks and symptom-free.`,
     }
   }
 
   // ── PREGNANCY overrides everything: MAINTAIN, never build. ──────────────────────────────────────────
   if (pregnant) {
-    const t = trimester || 1 // unknown trimester → first-trimester defaults
+    // #748 (audit) FAIL-SAFE: an UNKNOWN trimester defaults to the MOST conservative envelope (T3), never the least
+    // (the old `|| 1` gave an athlete who may be in T2/T3 a T1 allowance). The profile gate makes the date mandatory;
+    // this is the backstop when it's still missing.
+    const t = trimester || 3
+    const tLabel = trimester ? `trimester ${trimester}` : 'trimester unknown → coached to the most conservative envelope'
     return {
       loadBand: 'maintenance',
       qualityDays: 0, // NO structured sweet-spot / threshold / VO2 intervals, ever
       moderateDays: t >= 3 ? 0 : 1, // at most ONE short light tempo (T1/T2); T3 self-selects down to easy
       intensityCeiling: t >= 3 ? 'endurance' : 'tempo',
-      rationale: `PREGNANCY (trimester ${t}) — MAINTENANCE, not a build. Most sessions EASY endurance + her strength (2–3 modified sessions/wk) + daily pelvic-floor. ${t >= 3 ? 'ZERO' : 'AT MOST ONE'} short light-moderate cardio session (tempo by RPE + the talk test); NEVER a structured sweet-spot/threshold/VO2 block, NEVER two quality days. Volume + intensity self-taper by trimester. Gauge by RPE + talk test, never HR.`,
+      rationale: `PREGNANCY (${tLabel}) — MAINTENANCE, not a build. Most sessions EASY endurance + her strength (2–3 modified sessions/wk) + daily pelvic-floor. ${t >= 3 ? 'ZERO' : 'AT MOST ONE'} short light-moderate cardio session (tempo by RPE + the talk test); NEVER a structured sweet-spot/threshold/VO2 block, NEVER two quality days. Volume + intensity self-taper by trimester. Gauge by RPE + talk test, never HR.`,
     }
   }
 
@@ -84,9 +92,20 @@ export function weekShape(p = {}) {
 
   // ── goal-driven band ─────────────────────────────────────────────────────────────────────────────
   let loadBand, qualityDays, intensityCeiling
-  if (wantsBeginner) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'tempo' } // #710 — new athlete stated → ramp in: mostly easy, ≤1 light quality, ceiling below sweet-spot until a base is built
-  else if (wantsMaintain && !wantsBuild) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'sweetspot' } // consistency: 1 quality, keep fit
-  else { loadBand = 'build'; qualityDays = 2; intensityCeiling = 'vo2' } // default/build: 2 quality
+  if (wantsBeginner) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'tempo' } // #710 — a STATED beginner OVERRIDES an ambitious goal → ramp in (checked FIRST)
+  else if (wantsBuild) { loadBand = 'build'; qualityDays = 2; intensityCeiling = 'vo2' } // #744 — a build/performance band requires an EXPLICIT signal (race/faster/FTP/PR/stronger/…)
+  // #6 (audit) — EVERYTHING that isn't an explicit BUILD goal (maintain · health · general-fitness · blank)
+  // gets the CONSERVATIVE base: 1 quality day, ceiling = TEMPO (not sweet-spot). A "general fitness"/beginner athlete
+  // must NOT be handed a real 93%-of-threshold structured quality day; a sweet-spot+ ceiling is EARNED by stating a build
+  // goal. (Not a fitness bucket — it keys off the athlete's stated GOAL, per JM's "numbers not categories".)
+  else { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'tempo' }
+
+  // #3 (audit; JM "follow the books/science") — a TRIATHLETE needs a KEY quality session in EACH discipline (Friel's
+  // triathlon periodization: swim technique/CSS + a bike key + a run key + a brick), not a single global 2-quality budget
+  // that silently deletes the 3rd discipline's intensity. On a BUILD week, allow ~1 per discipline (capped by the
+  // training-days budget). Maintenance/flat stay conservative; teen/masters caps below still apply on top.
+  const isTriathlete = (Array.isArray(sports) && (sports.includes('triathlon') || ['swimming', 'cycling', 'running'].every((s) => sports.includes(s)))) || /\btriathlon\b/.test(goalText)
+  if (isTriathlete && loadBand === 'build') qualityDays = cap(3)
 
   // NO fitness "beginner/advanced" CLASSIFICATION (JM 2026-07-20): don't bucket athletes. Everything is already
   // RELATIVE to their own numbers — zones are % of THEIR threshold (88% of a low FTP is appropriately easy), and
@@ -96,7 +115,13 @@ export function weekShape(p = {}) {
 
   // ── age adjustments ──────────────────────────────────────────────────────────────────────────────
   if (teen) { qualityDays = Math.min(qualityDays, 1); intensityCeiling = 'threshold' } // technique-first, submaximal, NO maximal loading
-  if (masters && loadBand === 'build') { intensityCeiling = 'threshold' } // more recovery, ease the very top end
+  // #5 (audit) — MASTERS (55+) get code-enforced extra recovery + an easier top end on EVERY band, not just build (a
+  // health-goal 60yo previously got the SAME shape as a 30yo). Ease the ceiling one notch below vo2 and cap quality at 1
+  // on non-build weeks so recovery is real, not just a rationale string.
+  if (masters) {
+    if (CEIL_RANK[intensityCeiling] > CEIL_RANK.threshold) intensityCeiling = 'threshold' // never a full vo2 grind
+    if (loadBand !== 'build') qualityDays = Math.min(qualityDays, 1) // extra recovery on flat/health weeks
+  }
 
   // ── menstrual-cycle bias (non-pregnant female, fresh phase) ──────────────────────────────────────
   // #719 (audit) — only ease in LATE-LUTEAL / PMS (progesterone high, thermoregulation + perceived effort up). Do NOT

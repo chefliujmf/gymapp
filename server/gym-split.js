@@ -333,7 +333,9 @@ export function stripGymDurationProse(text) {
 // compresses the vena cava (ACOG) and the assembler/coach can still surface a bench/floor-press/dead-bug. The prompt rule
 // is ignored, so ENFORCE at save: swap each supine/prone move to a safe UPRIGHT/incline equivalent (or drop if none maps).
 // Pure + unit-tested. Returns { exercises, changed }.
-const SUPINE_RE = /\b(bench press|floor press|chest press|lying|supine|dead ?bugs?|glute bridge|hip thrust|pullover|leg raises?|reverse crunch|crunch(es)?|sit[-\s]?ups?|toe touch)\b/i
+// #audit — the flat-on-back set the T2+ clamp removes (vena-cava compression + abdominal doming). Widened to cover
+// hollow hold / V-up / flutter kick / boat pose (the strength engine's own core rotation can surface a hollow hold).
+const SUPINE_RE = /\b(bench press|floor press|chest press|lying|supine|dead ?bugs?|glute bridge|hip thrust|pullover|leg raises?|reverse crunch|crunch(es)?|sit[-\s]?ups?|toe touch|hollow (hold|rock|body)|v[-\s]?ups?|flutter kicks?|boat pose|jackknife|scissor kicks?)\b/i
 const SUPINE_SWAP = [
   [/bench press|floor press|chest press/i, 'Incline Dumbbell Press'],
   [/dead ?bugs?/i, 'Bird Dog'],

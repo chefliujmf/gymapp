@@ -16,7 +16,16 @@
   --accent-grad: linear-gradient(135deg, #4af28d, #1fb866);
   --glow: 0 10px 26px -6px rgba(52,224,125,0.45);
   --card-shadow: 0 10px 30px -12px rgba(0,0,0,0.6);
-  --danger: #ff5a5a;
+  --danger: #ff5a5a;         /* red — danger / error / stop */
+  --danger-2: #e0555f;       /* deeper red (matches inline uses) */
+  /* #757 (audit) — the semantic tokens the theme rule mandates but that were MISSING from :root, so every
+     var(--warn,#…) / var(--amber) / var(--cyan) silently fell back to a hardcoded (often off-palette) hex.
+     Defined once here → they now resolve app-wide. amber/warn = caution; cyan/info = info · device · REST. */
+  --amber: #f0b429;          /* amber — warning / caution */
+  --warn: #f0b429;           /* alias of --amber */
+  --cyan: #39c2d7;           /* cyan — info / device / rest */
+  --info: #39c2d7;           /* alias of --cyan */
+  --success: #34e07d;        /* alias of --accent (success) */
   --radius: 14px;
   --tab-h: 62px;
   --maxw: 720px;
@@ -423,7 +432,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .ready-banner--mixed { background: rgba(255, 207, 92, 0.12); border: 1px solid rgba(255, 207, 92, 0.3); }
 .ready-banner--mixed .ready-banner__dot { background: #ffcf5c; }
 .ready-banner--low { background: rgba(122, 140, 255, 0.12); border: 1px solid rgba(122, 140, 255, 0.3); }
-.ready-banner--low .ready-banner__dot { background: #7a8cff; }
+.ready-banner--low .ready-banner__dot { background: var(--danger); }
 /* #202 section title with an icon/ⓘ inline */
 .section-title.sec-ico { display: flex; align-items: center; gap: 7px; }
 /* #202 Fuel — 2-column meal chips (WRAP grid, never side-scroll) */
@@ -1250,6 +1259,22 @@ select.search { appearance: none; -webkit-appearance: none; }
 .notif-pref-row { display: grid; grid-template-columns: 1fr 52px 52px; gap: 6px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--line, #2a2f3a); }
 .notif-pref-sw { display: grid; place-items: center; background: none; border: none; cursor: pointer; padding: 0; }
 .notif-pref-sw:disabled { cursor: default; }
+/* #A — mandatory profile gate (shown on Plan until the basics are set) */
+.pgate { margin: 6px 0 10px; }
+.pgate__hero { background: linear-gradient(150deg, rgba(52,224,125,.14), rgba(52,224,125,.03)); border: 1px solid rgba(52,224,125,.34); border-radius: 14px; padding: 15px 16px; margin-bottom: 14px; }
+.pgate__hero h2 { font-size: 17px; margin: 0 0 4px; } .pgate__hero p { font-size: 13px; color: var(--text-dim); line-height: 1.5; margin: 0; }
+.pgate__prog { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.pgate__prog .track { flex: 1; height: 7px; background: #222732; border-radius: 99px; overflow: hidden; } .pgate__prog .track i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.pgate__prog b { font-size: 12px; color: var(--text-dim); }
+.pgate__f { display: flex; align-items: center; gap: 11px; padding: 12px 13px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 9px; background: linear-gradient(160deg, var(--card1,#21252f), var(--card2,#191c24)); text-decoration: none; color: var(--text); }
+.pgate__f.miss { border-color: rgba(240,180,41,.5); } .pgate__f.done { border-color: rgba(52,224,125,.4); }
+.pgate__ic { width: 30px; height: 30px; border-radius: 8px; flex: none; display: grid; place-items: center; font-size: 15px; background: #2b303b; }
+.pgate__b { flex: 1; min-width: 0; } .pgate__b b { font-size: 14px; display: block; } .pgate__b span { font-size: 12px; color: var(--text-dim); }
+.pgate__req { font-size: 10px; font-weight: 800; color: var(--amber); border: 1px solid var(--amber); border-radius: 5px; padding: 2px 7px; white-space: nowrap; }
+.pgate__chk { color: var(--accent); font-size: 17px; }
+.pgate__cta.dis { background: #232a26; color: #6b7a70; box-shadow: none; }
+.pgate__discl { font-size: 11px; color: var(--text-dim); line-height: 1.5; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #0d1015; }
+.pgate__discl b { color: var(--text); }
 /* #740 — a deliberate REST day banner (cyan = rest per the theme), prominent so it's not missed. */
 .rest-banner { display: flex; align-items: center; gap: 12px; margin: 10px 0 12px; padding: 14px 16px; border-radius: 14px;
   background: linear-gradient(135deg, rgba(57,194,215,.16), rgba(57,194,215,.06)); border: 1px solid rgba(57,194,215,.4); }
@@ -1286,7 +1311,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .cal-ci-dot { position: absolute; top: 4px; right: 5px; width: 8px; height: 8px; border-radius: 50%; }
 .cal-ci-dot--good { background: #34e07d; }
 .cal-ci-dot--mixed { background: #ffcf5c; }
-.cal-ci-dot--low { background: #7a8cff; }
+.cal-ci-dot--low { background: var(--danger); }
 .cal-cell--dim { opacity: .42; }
 .cal-cell--sel { border-color: var(--accent, #34e07d); }
 .cal-num { font-size: 12px; font-weight: 600; line-height: 1; align-self: flex-start; padding: 1px 2px; }
@@ -1511,7 +1536,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .checkin__vdot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
 .checkin__verdict--good  { color: #34e07d; background: rgba(52,224,125,.14); border: 1px solid rgba(52,224,125,.34); }
 .checkin__verdict--mixed { color: #ffcf5c; background: rgba(255,207,92,.14); border: 1px solid rgba(255,207,92,.34); }
-.checkin__verdict--low   { color: #7a8cff; background: rgba(122,140,255,.14); border: 1px solid rgba(122,140,255,.34); }
+.checkin__verdict--low   { color: var(--danger); background: rgba(255,90,90,.14); border: 1px solid rgba(255,90,90,.34); }
 .mchip--over { box-shadow: inset 0 0 0 1px #ffcf5c; }
 .mchip__auto { font-size: 10px; font-weight: 700; color: #ffcf5c; opacity: .95; }
 .checkin__src--edit { color: #ffcf5c; }

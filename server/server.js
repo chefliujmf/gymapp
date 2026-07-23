@@ -29,9 +29,10 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIs
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
-import { enforceShape, qualityEnduranceDates, concurrentGymCollisions } from './shape-enforce.js' // #615/#620 clamp · #717 concurrent-training separation
+import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGym } from './shape-enforce.js' // #615/#620 clamp · #717/#4 concurrent-training separation
 import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
 import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard
+import { requiredProfileGaps, REQUIRED_FIELDS } from './profile-gate.js' // #A — plan generation is gated on a minimal mandatory profile
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
 import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
@@ -456,6 +457,10 @@ app.put('/auth/avatar', auth, (req, res) => {
 app.put('/auth/profile', auth, (req, res) => {
   const wasPregnant = !!(req.user.info && req.user.info.pregnant) // #711 — capture BEFORE the merge to detect true→false
   req.user.info = { ...(req.user.info || {}), ...(req.body || {}) }
+  // #754 (audit) — CLAMP the safety-critical caps server-side; a raw API PUT could store trainingDays=999 / maxPerDay=99,
+  // which flow straight into buildSystemPrompt + the 409 guard and defeat the "hard weekly ceiling". Enforce sane bounds.
+  if (req.user.info.trainingDays != null && req.user.info.trainingDays !== '') req.user.info.trainingDays = Math.max(0, Math.min(7, Math.round(Number(req.user.info.trainingDays) || 0)))
+  if (req.user.info.maxPerDay != null && req.user.info.maxPerDay !== '') req.user.info.maxPerDay = Math.max(1, Math.min(3, Math.round(Number(req.user.info.maxPerDay) || 1)))
   if (req.body && req.body.pregnant === true) { delete req.user.cyclePhase; delete req.user.cyclePhaseAt } // #427 — no menstrual cycle while pregnant; clear stale phase now
   // #711 (audit SAFETY) — clearing pregnancy must ENTER the graded postpartum return by DEFAULT, not silently snap to a
   // full build (2 quality + VO2) the week after birth. If she turns Pregnant OFF and hasn't set a birth date, stamp a
@@ -1278,6 +1283,8 @@ const fbFieldsFor = (sport) => (sport === 'run' ? ICU_FB_FIELDS_RUN : ICU_FB_FIE
 // #287 — post the athlete's free-text comment to the intervals activity MESSAGE thread (deduped:
 // skip if an identical comment already exists, so re-saving feedback doesn't spam duplicates).
 async function syncActivityNote(user, id, content) {
+  if (IS_STAGING) return // #audit CRITICAL — QA shares the REAL athlete i28814 + activity ids are global, so a comment
+  // posted from staging lands on the athlete's real intervals thread. Every intervals WRITE must bail on staging (#381).
   const existing = await icuFetch(user, `/activity/${id}/messages`).then((r) => (r.ok ? r.json() : [])).catch(() => [])
   if (Array.isArray(existing) && existing.some((m) => m && typeof m.content === 'string' && m.content.trim() === content)) return
   await icuFetch(user, `/activity/${id}/messages`, { method: 'POST', body: JSON.stringify({ content }) })
@@ -1794,6 +1801,7 @@ function athleteWeekShape(user) {
     goalFocus: user && user.info && user.info.goals && user.info.goals.focus,
     goalNotes: user && user.info && user.info.goals && user.info.goals.notes,
     ctl: user && user.ctl, trainingDays: Number(user && user.info && user.info.trainingDays) || 0, ageYears: age,
+    sports: (user && user.sports) || [], // #3 — a triathlete needs a key quality session PER discipline
   })
 }
 
@@ -1834,7 +1842,10 @@ function enforceGymRepScheme(user, plan) {
 function pregnantTrimesterOf(user) {
   if (!user || String(user.sex || '').toLowerCase() !== 'female' || !(user.info && user.info.pregnant)) return null
   const pg = pregnancyStage(user.info, localTodayInTz(user && user.icuTimezone))
-  return pg ? pg.trimester : 1 // unknown stage → treat as T1 (clamp only fires at T2+)
+  // #748 (audit) FAIL-SAFE: an UNKNOWN gestational stage → treat as T3 (most conservative) so the supine-gym clamp FIRES
+  // (it only triggers at T2+). Defaulting to T1 failed OPEN — a pregnant athlete with no date who is actually in T2/T3
+  // got NO supine removal. The profile gate makes the date mandatory; this is the backstop.
+  return pg && pg.trimester ? pg.trimester : 3
 }
 // #712 (audit SAFETY) — swap/drop SUPINE gym moves for a pregnant T2+ athlete, on every save + sweep (the assembler/coach
 // can still surface a bench; the prompt rule is ignored, so ENFORCE it here — peer to enforceTeenGym).
@@ -1873,10 +1884,21 @@ async function reenforceShapeAll(user) {
   // #715 — sweep STALE swim plans through the zone clamp too (they carry no %-segments, so enforceShapeIntensity above
   // is a no-op for them). A swim built in an earlier, harder week must be eased if the shape tightened (e.g. pregnancy).
   const swimShape = athleteWeekShape(user), swimCss = user.sportSettings?.swimming?.thresholdPace
+  const swimMaxQ = (swimShape.qualityDays || 0) + (swimShape.moderateDays || 0) // #8 — the week's shared quality budget
   for (const p of future) {
     if (p.sport !== 'swim' || !Array.isArray(p.swimSets) || !p.swimSets.length) continue
-    const r = enforceSwim(p.swimSets, swimShape.intensityCeiling, swimCss)
-    if (r.clamped) { p.swimSets = r.sets; p.notes = `${p.swimNote ? p.swimNote + '\n' : ''}${r.notes}`; p.moving_time = r.moving_time; p.distanceM = r.distanceM; p.icu_training_load = r.icu_training_load; if (!touched.includes(p)) touched.push(p) }
+    // #7/#8 (audit) — count HARD swim days toward the week's quality budget (shared with ride/run, via the now swim-aware
+    // isModerate) and force an OVER-BUDGET swim to EASY — its SETS + load + title, not just a mislabeled title. Without
+    // this a build swimmer could be saved 5+ CSS/Z4/Z5 sessions/week, none counted or clamped.
+    const mon = isoMonday(p.date), sun = addDays(mon, 6)
+    const otherMod = future.filter((q) => q !== p && q.date >= mon && q.date <= sun && isModerate(q)).length
+    const overBudget = isModerate(p) && otherMod >= swimMaxQ
+    const r = enforceSwim(p.swimSets, overBudget ? 'endurance' : swimShape.intensityCeiling, swimCss)
+    if (r.clamped || overBudget) {
+      p.swimSets = r.sets; p.notes = `${p.swimNote ? p.swimNote + '\n' : ''}${r.notes}`; p.moving_time = r.moving_time; p.distanceM = r.distanceM; p.icu_training_load = r.icu_training_load
+      if (overBudget) p.title = 'Easy Swim' // the sets are now easy, so the title must match (was left as "CSS 4×100")
+      if (!touched.includes(p)) touched.push(p)
+    }
   }
   // #649 — GYM has no shape/intensity clamp, but stale gym plans keep a wrong REP SCHEME (a cyclist's old 3×10) and
   // the teen floor. Sweep every future gym plan through the code enforcement too (no intervals push — gym has no model).
@@ -2093,6 +2115,11 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   // put on them, and they do NOT count toward the weekly training-days target (never re-fill a rest to hit the number).
   const restDays = (user.restDates || []).filter((d) => d >= today).slice(0, 21)
   if (restDays.length) p += `\n\n# REST DAYS — DO NOT SCHEDULE (JM #735): the athlete has set these as deliberate REST days: ${restDays.join(', ')}. NEVER place any session on them — they are OFF (the server rejects it). They do NOT count toward the weekly training-days target, so do not treat them as "empty days to fill". Only schedule one if the athlete EXPLICITLY asks to train that day, and then clear it first with clear_rest_day. When the athlete asks to REST a day (or move a session off it with nothing replacing it), call set_rest_day so the rest sticks.`
+  // #746 (audit) — TEEN SAFETY (under 18): the shape already caps intensity + the gym floors reps (submaximal, no 1-RM),
+  // but the biggest teen risk is ENERGY AVAILABILITY / RED-S — especially for distance runners. Hand the coach an
+  // explicit safety block so it never prescribes a deficit and watches for red flags.
+  const bpAge = user.info?.dob ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
+  if (bpAge != null && bpAge < 18) p += `\n\n# TEEN ATHLETE (~${bpAge}) — SAFETY FIRST (JM #746). This is a growing body: (1) TECHNIQUE + SUBMAXIMAL work, NEVER maximal loading, 1-RM tests, or near-max lifts (the gym enforces a rep floor). (2) NEVER prescribe a calorie deficit or a weight-loss goal — if their goal mentions losing weight/leaning out, redirect to FUELLING + performance + skills; under-fuelling a teen risks growth, bone health and RED-S. (3) ENERGY AVAILABILITY / RED-S is the #1 risk (distance runners especially): coach them to EAT ENOUGH to fuel training AND growth. Watch for red flags — stalled progress, unusual fatigue, bone/stress-fracture pain, restrictive eating, or (in girls) missed/irregular periods; if any appear, REDUCE load and advise seeing a clinician/sports-dietitian. (4) Keep it fun + sustainable — consistency + skill over intensity; long-term development beats short-term peaking.`
   // #345 — most athletes train ONCE a day. Never stack two sessions (e.g. a gym + a run) on the same
   // calendar day beyond this cap unless the athlete explicitly opts into doubles.
   // #717 (audit) — CONCURRENT-TRAINING SEPARATION: code-COMPUTE the athlete's quality endurance days and hand the coach
@@ -2136,7 +2163,12 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const weeksToRace = (rd && /^\d{4}-\d{2}-\d{2}$/.test(rd) && rd >= todayIso) ? Math.floor((Date.parse(isoMonday(rd)) - Date.parse(thisMon)) / (7 * 86400000)) : null
     const ageYears = (user.info && user.info.dob) ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
     const form = (typeof user.ctl === 'number' && typeof user.atl === 'number') ? user.ctl - user.atl : null // #630 — autoregulate off Form
-    per = periodizationPhase({ ctl: user.ctl, weeksSinceAnchor, weeksToRace, ageYears, form })
+    // #752/#9 (audit) — a longer race needs a longer taper: widen for a 70.3 (~3wk) / Ironman (~4wk). Read the distance
+    // from the race NAME **or the goal notes** (an athlete often types "Ironman Nice" in their goal, not the name field).
+    const raceName = `${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`.toLowerCase()
+    const taperWeeks = /ironman|140\.?6|full[- ]?distance/.test(raceName) ? 4 : /70\.?3|half[- ]?iron|half[- ]?distance/.test(raceName) ? 3 : 2
+    // #756 (audit) — pass loadBand so a flat/health goal never gets a peak/overload week.
+    per = periodizationPhase({ ctl: user.ctl, weeksSinceAnchor, weeksToRace, ageYears, form, loadBand: shape.loadBand, taperWeeks })
     // #630 — SEASON MACRO phase (when a race is set): far out = base (volume), mid = build (race intensity), close = peak.
     const macro = weeksToRace == null ? ''
       : weeksToRace > 16 ? ` SEASON MACRO = BASE (16+ wks out): emphasise aerobic VOLUME + durability, keep intensity moderate — save race-specific sharpening for later.`
@@ -2151,7 +2183,10 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   // #719 (audit) — fold the menstrual-phase load modifier into the budget so the cycle bias is CODE-ENFORCED on TSS.
   const cycMod = (String(user.sex || '').toLowerCase() === 'female' && !user.info?.pregnant && user.cyclePhase && user.cyclePhaseAt && (Date.now() - new Date(user.cyclePhaseAt + 'T00:00:00Z').getTime()) < 6 * 86400000) ? cycleLoadModifier(user.cyclePhase) : 1
   const budget = weeklyLoadBudget(user.ctl, cycMod)
-  tail += shape.loadBand === 'build'
+  // #753 (audit) — a brand-new athlete has NO CTL, so the budget is null and volume wasn't sized at all. Give a concrete
+  // conservative RAMP-IN instead of a vague "CTL×7": low easy volume, build gradually, coach by RPE (no threshold to anchor %).
+  if (!budget) tail += `\n\n# WEEKLY LOAD BUDGET — NO training history yet (no CTL). START CONSERVATIVE and ramp IN: a LOW weekly volume of mostly EASY sessions, building gradually (~10%/week). Coach by RPE / talk-test since there's no threshold to turn a %-target into real watts/pace yet. Do NOT prescribe a big load or two hard days early — build an aerobic base first; CTL + threshold establish over the first few weeks, then the budget individualizes.`
+  else tail += shape.loadBand === 'build'
     ? `\n\n# WEEKLY LOAD BUDGET: aim for THIS week's periodized target${per && per.target ? ` (≈${per.target} TSS, the ${per.phase} week — see # THIS BLOCK'S PROGRESSION)` : ''}. A productive BUILD or PEAK week dips Form into the GREEN zone (~−10 to −20); a RECOVERY week should let Form rise back toward grey — that's correct, not junk. ${budget ? `Reference band (CTL≈${user.ctl}): flat ≈ ${budget.sustainable}, build ≈ ${budget.build}, peak ≈ ${budget.hard}, cap ≈ ${budget.cap} TSS.` : `Read CTL with get_wellness: flat ≈ CTL×7, build ≈ CTL×9-11.`} After planning, sum the week's TSS and check the Form forecast matches the phase.`
     : `\n\n# WEEKLY LOAD BUDGET — this is a ${shape.loadBand.toUpperCase()} week, NOT a build: hold load around ${budget ? `~${budget.sustainable} TSS (CTL≈${user.ctl}×7)` : 'CTL×7 (flat)'}. Do NOT chase Form into the −10..−20 build zone and do NOT add quality beyond the shape above — a mid/grey Form on an easy/maintenance week is CORRECT, not junk. Keep easy days genuinely easy.`
   // #341 — weather-aware coaching for OUTDOOR sessions.
@@ -2783,6 +2818,22 @@ async function upsertPlan(user, body, actor = 'coach') {
       if (actor === 'coach') return { status: 409, body: { error: `${String(body.date).slice(0, 10)} is a deliberate REST day the athlete set — do NOT schedule on it. If they want to train that day instead, they clear the rest first (or ask you to, then use clear_rest_day).` } }
       const d = String(body.date).slice(0, 10)
       user.restDates = (user.restDates || []).filter((x) => x !== d); deleteRestNote(user, d).catch(() => {})
+    }
+  }
+  // #4 (audit) — CONCURRENT-TRAINING interference is now CODE-ENFORCED at save, not just detected/prompted. A HEAVY
+  // low-rep strength session ±1 day of a QUALITY endurance day blunts BOTH adaptations (Rønnestad/Coffey), so the coach
+  // can't place one there — reject it (409) and it must move ≥1 day clear (or lighten the reps). Only the coach path is
+  // gated (a person can double-book themselves). A same-id UPDATE that doesn't change the collision is allowed through.
+  if (actor === 'coach' && body.sport === 'gym' && Array.isArray(body.exercises)) {
+    // #audit — check the POST-rep-clamp plan: a SUPPORT cyclist's 3×10 mains get clamped to 3×6 (= heavy) by
+    // enforceGymRepScheme AFTER this point, so a raw 3×10 would slip the guard then become heavy + adjacent. Preview the
+    // clamp on a CLONE so the collision check sees the plan as it will actually be stored.
+    const preview = { ...body, exercises: body.exercises.map((e) => ({ ...e })) }
+    try { enforceGymRepScheme(user, preview) } catch { /* preview only */ }
+    if (isHeavyGym(preview)) {
+      const bd = String(body.date).slice(0, 10)
+      const near = qualityEnduranceDates((user.plans || []).filter((p) => p.id !== body.id), addDays(bd, -1), 2) // quality-endurance days within ±1
+      if (near.size) return { status: 409, body: { error: `A HEAVY strength session can't sit within a day of a quality endurance session (${[...near].join(', ')}) — the interference blunts both adaptations. Move this gym ≥1 day clear, or make it lighter / higher-rep support work.` } }
     }
   }
   if (actor === 'coach') {
@@ -3814,7 +3865,7 @@ async function postCoachNote(user, id, r) {
   // calendar/activity). It is NOT a boolean — {coach_tick:true} is rejected (Jackson can't parse a bool into
   // the int field); it wants 1-5 (coachTick maps our /10 score, null → neutral 3). Posting the note alone
   // does NOT set it — this write is what actually checks the box (#436, verified by round-trip on prod).
-  await icuFetch(user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify({ coach_tick: coachTick(score) }) }).catch((e) => console.error('[coach-tick] ' + (e.message || e)))
+  if (!IS_STAGING) await icuFetch(user, `/activity/${id}`, { method: 'PUT', body: JSON.stringify({ coach_tick: coachTick(score) }) }).catch((e) => console.error('[coach-tick] ' + (e.message || e))) // #audit — never write coach_tick to the real shared athlete from staging
 }
 app.get('/api/exercises', apiAuth, (req, res) => {
   // #612 — BATCH search: `qs` = pipe-separated queries → one call returns a { query: results[] } map, so the coach
@@ -3945,7 +3996,7 @@ This pass is ONLY the WORKOUT plan (no activity reviews / meals / mind / separat
 // #439 — FOCUSED horizon-fill (no reviews / fuel / mind distraction) so the coach actually populates the back
 // half of the ~2-week window. Used to re-drive it when one adapt pass left the horizon short.
 function horizonFillMsg(today, cov) {
-  return `HORIZON FILL — focused, non-negotiable. Your plan REACHES only ${cov.last || 'today'}, ${cov.tail} days short of the ~${DAILY_HORIZON}-day window end (${cov.end}). In THIS pass do ONE thing: EXTEND the plan out to ~${cov.end} — add training sessions across the days from ${cov.firstEmpty} through ${cov.end}, FILLING toward their weekly training-days TARGET (place rest deliberately; leave a day blank ONLY for a genuine recovery reason, never a silent gap; don't force a session onto every day past the target), never beyond that cap. Use list_schedule to see how far it reaches, then create the sessions (ride/run/gym per their sports + how the block is shaping up; keep intensity sane + spaced). Do NOT review activities, add meals/mind/recovery, or churn existing sessions now — just extend the back half of the horizon. Be concise.`
+  return `HORIZON FILL — focused, non-negotiable. Your plan REACHES only ${cov.last || 'today'}, ${cov.tail} days short of the ~${DAILY_HORIZON}-day window end (${cov.end}). In THIS pass do ONE thing: EXTEND the plan out to ~${cov.end} — add training sessions across the days from ${cov.firstEmpty} through ${cov.end}, FILLING toward their weekly training-days TARGET (place rest deliberately; leave a day blank ONLY for a genuine recovery reason, never a silent gap; don't force a session onto every day past the target), never beyond that cap. Use list_schedule to see how far it reaches, then create the sessions (ride/run/gym per their sports + how the block is shaping up; keep intensity sane + spaced). Do NOT review activities, add meals/mind/recovery, or churn existing sessions now — just extend the back half of the horizon. #758 (JM) — EVERY day in the horizon must be accounted for: a TRAINING session OR an explicit REST day. For each day you deliberately leave without a session (the rest days that bring the week to their target), call set_rest_day so it shows as a planned rest — NEVER leave a day silently empty. Be concise.`
 }
 // #439 (JM idea) — SEPARATE focused pass per topic beats one giant prompt (the coach gave each partial
 // attention + ran out). REVIEWS pass:
@@ -3965,6 +4016,11 @@ function sharpenMsg(today) {
   return `Daily METRICS-SHARPEN pass (${today}) — keep the athlete's benchmarks HONEST, without demanding tests. Their threshold power / pace, CP·W′ (or CS·D′), VO₂max, TTE and max-HR are in your profile; each is only as good as the last quality effort behind it, and EVERYTHING you prescribe scales from them. Review freshness: get_recent_activities and, for EACH anchor, ask "is there a recent effort that would set it?" — a tempo/threshold effort for the threshold; a hard ~5-min effort for VO₂max/MAP; short near-max reps for W′/D′; an all-out finish for max-HR. For any anchor with NO recent effort behind it (e.g. weeks of only easy rides → the threshold is really a guess), fold ONE targeted, LOW-COST refining effort into the rolling ${DAILY_HORIZON}-day plan (list_schedule → create_ride/run/workout) — NEVER an all-out max test, never a dreaded 20-min: cycling → one 8–15 min hard sustained effort up a climb/segment when fresh (intervals reads eFTP straight from it), or a structured 2×8 only if they'd like a cleaner number; running → a hard 20 min or a 5 k / parkrun; gym → a heavy 3–5 rep top set. Just ENOUGH to re-read the anchor. Rules: at most ONE such effort per pass — pick the STALEST, most important anchor; place it on a day they're FRESH, within their weekly training-day + recovery limits, and never stacked against another hard day; if every anchor already has a recent effort behind it, change nothing. This pass is SILENT (background upkeep — no push; the athlete gets only their one check-in ping). When you DO add one, its title/description explains WHY in plain words ("one harder 15-minute stretch so I can dial in the hardest pace you can hold"), never "to update your FTP". Be concise.`
 }
 async function runDailyAdapt(user, pass, opts = {}) { // #634 — opts.buildModel lets the simulation A/B the build model
+  // #A (audit #743/#748) — do NOT build a plan on missing basics (sex/DOB/sport/goal/training-days, + pregnancy date):
+  // that's how an unknown-age or empty-goal athlete fell through to an unsafe default. The client shows the profile gate;
+  // here we simply skip the build so no plan is generated from incomplete data.
+  const gaps = requiredProfileGaps(user)
+  if (gaps.length) { console.log(`[daily-adapt] skip ${user.username || user.id} — profile incomplete: ${gaps.join(',')}`); return { skipped: 'profile-incomplete', gaps } }
   const today = await athleteToday(user)
   // #671 SAFETY — run the enforcement sweep FIRST (privacy scrub + shape/fartlek relabel + gym rep-scheme of STALE
   // plans), so a pregnant/teen athlete's EXISTING plans are guaranteed clean even if the slow coach build below hangs

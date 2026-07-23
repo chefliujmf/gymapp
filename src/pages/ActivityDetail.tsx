@@ -276,10 +276,15 @@ export default function ActivityDetail() {
       }
     }).catch(() => {})
   }, [a])
+  // #755 — the ride's OWN recorded FTP (from intervals) is the most correct for its zone analysis; prefer it once loaded.
+  useEffect(() => { const af = (a as { icu_ftp?: number } | null)?.icu_ftp; if (af && af > 0) setFtp(af) }, [a])
   useEffect(() => {
     if (!id) return
     setLoading(true)
-    getSetting('ftp').then((v) => { if (v) setFtp(Number(v)) }).catch(() => {})
+    // #755 (audit) — use the REAL FTP for this ride's zones + power thumbnail, never a hardcoded 260: the account's
+    // cycling FTP, else the local setting (the activity's own icu_ftp wins once it loads, in the effect below).
+    const acctFtp = (user?.sportSettings?.cycling as { ftp?: number } | undefined)?.ftp
+    getSetting('ftp').then((v) => setFtp(Number(v) || acctFtp || 260)).catch(() => setFtp(acctFtp || 260))
     // #273: the coach's verdict + the athlete's own comment come from intervals messages.
     fetchActivityThread(id).then((t) => { setNote(t.coach); setIcuComment(t.comment) }).catch(() => {})
     Promise.all([fetchActivity(id), fetchActivityStreams(id)])

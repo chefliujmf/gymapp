@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown } from 'lucide-react'
@@ -39,8 +39,10 @@ function Collapsible({ title, subtitle, defaultOpen = false, id, children }: { t
 export default function Settings() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  // #310 onboarding: coach deep-links here (?onboard=1#ob-…) — open the group it sent you to.
-  const obHash = params.get('onboard') ? window.location.hash.replace('#', '') : ''
+  // #310 onboarding: coach deep-links here (?onboard=1#ob-…) — open the group it sent you to. #742 — ALSO honor a bare
+  // #ob-… hash (the notifications gear links to #ob-notifications) so any deep-link opens + scrolls to its exact section.
+  const obHash = (params.get('onboard') ? window.location.hash.replace('#', '') : '') || window.location.hash.replace('#', '')
+  useEffect(() => { if (obHash) { const el = document.getElementById(obHash); if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120) } }, [obHash])
   // Diet moved to Profile (#212) — it's a coaching input alongside Sports, not app config.
   const units = useLiveQuery(() => getSetting('units'))
   const calView = useLiveQuery(() => getSetting('calView'))
@@ -77,7 +79,7 @@ export default function Settings() {
           hint="Stills save data and load instantly; tap a video in a workout to pause it." options={[['0', 'Video'], ['1', 'Stills only']]} />
       </Collapsible>
 
-      <Collapsible title="Notifications" subtitle="Phone push · check-in reminders · coach updates">
+      <Collapsible title="Notifications" subtitle="Phone push · check-in reminders · coach updates" id="ob-notifications" defaultOpen={obHash === 'ob-notifications'}>
         <NotificationsSettings />
       </Collapsible>
 

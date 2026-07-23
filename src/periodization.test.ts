@@ -65,3 +65,20 @@ describe('#626 periodization — the meso-cycle the coach progresses through', (
     expect(BLOCK_PHASES).toEqual(['build', 'build', 'peak', 'recovery'])
   })
 })
+
+describe('periodization — audit fixes (#756 health-no-peak, #752 distance taper)', () => {
+  it('#756 a FLAT/MAINTENANCE goal never runs a peak week — returns steady', () => {
+    // even at week 3 of the cycle (which would be "peak") a flat goal holds steady
+    expect(periodizationPhase({ ctl: 50, weeksSinceAnchor: 2, loadBand: 'flat' }).phase).toBe('steady')
+    expect(periodizationPhase({ ctl: 50, weeksSinceAnchor: 2, loadBand: 'maintenance' }).phase).toBe('steady')
+  })
+  it('a build goal still cycles through peak', () => {
+    const phases = [0, 1, 2, 3].map((w) => periodizationPhase({ ctl: 50, weeksSinceAnchor: w, loadBand: 'build' }).phase)
+    expect(phases).toContain('peak')
+  })
+  it('#752 an Ironman athlete 3 weeks out is in TAPER (not peak) via a widened taper window', () => {
+    expect(periodizationPhase({ ctl: 60, weeksToRace: 3, loadBand: 'build', taperWeeks: 4 }).phase).toBe('taper')
+    // default 2-week taper: a short-race athlete 3 weeks out is NOT yet tapering
+    expect(periodizationPhase({ ctl: 60, weeksToRace: 3, loadBand: 'build', taperWeeks: 2 }).phase).not.toBe('taper')
+  })
+})
