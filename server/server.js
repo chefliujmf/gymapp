@@ -2201,7 +2201,8 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const pfKey = (user.sports || []).includes('cycling') ? 'cycling' : (user.sports || []).includes('running') ? 'running' : (user.sports || []).includes('swimming') ? 'swimming' : Object.keys(pfAll)[0]
     const pf = pfKey && Array.isArray(pfAll[pfKey]) ? pfAll[pfKey].filter((f) => f && !/mostly the efforts ARE the data/i.test(f)) : []
     // #669 — GOAL-AWARE: weight the priorities by what the GOAL demands (respect the user's needs), not weakness alone.
-    const goalText = `${(user.info?.goals?.notes) || ''} ${((user.info?.goals?.focus) || []).join(' ')} ${user.info?.objective || ''}`.trim()
+    const gf = user.info?.goals?.focus // #(audit sim) focus can be an ARRAY (legacy chips) OR a STRING — `.join` on a string crashes the coach ('.join is not a function'). Coerce safely (line 2253 guards; this one didn't).
+    const goalText = `${(user.info?.goals?.notes) || ''} ${Array.isArray(gf) ? gf.join(' ') : (gf || '')} ${user.info?.objective || ''}`.trim()
     const goalFrame = goalPriorityFrame(goalText)
     if (pf.length) tail += `\n\n# DEVELOPMENT PRIORITIES — computed from THIS athlete's OWN numbers (TTE / W′ / EF); this is the exact focus they see on their Stats page, so the PLAN must reflect it. ${goalFrame} Spend the week's quality-day budget accordingly, and choose the # THIS BLOCK'S VARIETY archetypes to serve them (don't schedule generic quality that ignores this):\n- ${pf.slice(0, 4).join('\n- ')}`
   }
