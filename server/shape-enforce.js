@@ -27,7 +27,11 @@ const topOf = (segs) => Math.max(0, ...(segs || []).map((s) => Math.max(Number(s
 // mislabels — a title-only "Sweet Spot Run"/"Tempo Run" with soft or no segments must still count so the week's
 // allowance is real). Used SYMMETRICALLY for both the session being judged and its siblings (#620 — the asymmetry,
 // where a tempo title counted against OTHERS' budget but was never clamped itself, is what let ALL tempo through).
-export const isModerate = (p) => topOf(p && p.segments) >= CEILING_PCT.tempo || QUALITY_TITLE.test((p && p.title) || '') || TEMPO_TITLE.test((p && p.title) || '')
+// #7/#8 (audit) — a SWIM carries `swimSets` (CSS zones), NOT %-segments, and its title ("CSS 4×100", "Z4 Race-Pace")
+// doesn't match the ride/run QUALITY_TITLE regex, so swim was invisible to the moderate/quality COUNT + never clamped.
+// Count a swim as moderate when any working set is zone ≥ 3 (CSS/threshold and up).
+const swimIsModerate = (p) => Array.isArray(p && p.swimSets) && p.swimSets.some((s) => Number(s && s.zone) >= 3)
+export const isModerate = (p) => topOf(p && p.segments) >= CEILING_PCT.tempo || QUALITY_TITLE.test((p && p.title) || '') || TEMPO_TITLE.test((p && p.title) || '') || swimIsModerate(p)
 
 // #717 (audit) — CONCURRENT-TRAINING interference: heavy strength ±1 day of a QUALITY endurance session blunts BOTH.
 // These pure helpers give buildSystemPrompt the exact quality-endurance dates to schedule strength away from, and let

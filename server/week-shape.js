@@ -9,6 +9,7 @@
 
 // intensity ceiling, low → high (matches plan-skeleton ZONES + the sport engines' zone names)
 export const CEILINGS = ['recovery', 'endurance', 'tempo', 'sweetspot', 'threshold', 'vo2']
+const CEIL_RANK = Object.fromEntries(CEILINGS.map((c, i) => [c, i])) // #5 — order for "ease the ceiling one notch"
 // ceiling → max % of threshold (FTP / threshold-pace). Used by the SERVER-SIDE clamp so a maintenance/pregnancy
 // athlete physically can't be saved a session above their ceiling, no matter what the coach writes (#615 —
 // the prompt-only "0 quality days" was ignored by the LLM; this ENFORCES it). Build athletes: vo2=120 → nothing clamps.
@@ -88,9 +89,13 @@ export function weekShape(p = {}) {
 
   // ── goal-driven band ─────────────────────────────────────────────────────────────────────────────
   let loadBand, qualityDays, intensityCeiling
-  if (wantsBeginner) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'tempo' } // #710 — new athlete stated → ramp in: mostly easy, ≤1 light quality, ceiling below sweet-spot until a base is built
+  if (wantsBeginner) { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'tempo' } // #710 — a STATED beginner OVERRIDES an ambitious goal → ramp in (checked FIRST)
   else if (wantsBuild) { loadBand = 'build'; qualityDays = 2; intensityCeiling = 'vo2' } // #744 — a build/performance band requires an EXPLICIT signal (race/faster/FTP/PR/stronger/…)
-  else { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'sweetspot' } // #744 (audit) FAIL-SAFE: maintain OR NO clear goal → a conservative base (1 quality, ceiling sweet-spot), NEVER a VO2 build. An empty/unrecognized goal must not silently become 2× VO2.
+  // #6 (audit) — EVERYTHING that isn't an explicit BUILD goal (maintain · health · general-fitness · blank)
+  // gets the CONSERVATIVE base: 1 quality day, ceiling = TEMPO (not sweet-spot). A "general fitness"/beginner athlete
+  // must NOT be handed a real 93%-of-threshold structured quality day; a sweet-spot+ ceiling is EARNED by stating a build
+  // goal. (Not a fitness bucket — it keys off the athlete's stated GOAL, per JM's "numbers not categories".)
+  else { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'tempo' }
 
   // NO fitness "beginner/advanced" CLASSIFICATION (JM 2026-07-20): don't bucket athletes. Everything is already
   // RELATIVE to their own numbers — zones are % of THEIR threshold (88% of a low FTP is appropriately easy), and
@@ -100,7 +105,13 @@ export function weekShape(p = {}) {
 
   // ── age adjustments ──────────────────────────────────────────────────────────────────────────────
   if (teen) { qualityDays = Math.min(qualityDays, 1); intensityCeiling = 'threshold' } // technique-first, submaximal, NO maximal loading
-  if (masters && loadBand === 'build') { intensityCeiling = 'threshold' } // more recovery, ease the very top end
+  // #5 (audit) — MASTERS (55+) get code-enforced extra recovery + an easier top end on EVERY band, not just build (a
+  // health-goal 60yo previously got the SAME shape as a 30yo). Ease the ceiling one notch below vo2 and cap quality at 1
+  // on non-build weeks so recovery is real, not just a rationale string.
+  if (masters) {
+    if (CEIL_RANK[intensityCeiling] > CEIL_RANK.threshold) intensityCeiling = 'threshold' // never a full vo2 grind
+    if (loadBand !== 'build') qualityDays = Math.min(qualityDays, 1) // extra recovery on flat/health weeks
+  }
 
   // ── menstrual-cycle bias (non-pregnant female, fresh phase) ──────────────────────────────────────
   // #719 (audit) — only ease in LATE-LUTEAL / PMS (progesterone high, thermoregulation + perceived effort up). Do NOT

@@ -1879,10 +1879,21 @@ async function reenforceShapeAll(user) {
   // #715 — sweep STALE swim plans through the zone clamp too (they carry no %-segments, so enforceShapeIntensity above
   // is a no-op for them). A swim built in an earlier, harder week must be eased if the shape tightened (e.g. pregnancy).
   const swimShape = athleteWeekShape(user), swimCss = user.sportSettings?.swimming?.thresholdPace
+  const swimMaxQ = (swimShape.qualityDays || 0) + (swimShape.moderateDays || 0) // #8 — the week's shared quality budget
   for (const p of future) {
     if (p.sport !== 'swim' || !Array.isArray(p.swimSets) || !p.swimSets.length) continue
-    const r = enforceSwim(p.swimSets, swimShape.intensityCeiling, swimCss)
-    if (r.clamped) { p.swimSets = r.sets; p.notes = `${p.swimNote ? p.swimNote + '\n' : ''}${r.notes}`; p.moving_time = r.moving_time; p.distanceM = r.distanceM; p.icu_training_load = r.icu_training_load; if (!touched.includes(p)) touched.push(p) }
+    // #7/#8 (audit) — count HARD swim days toward the week's quality budget (shared with ride/run, via the now swim-aware
+    // isModerate) and force an OVER-BUDGET swim to EASY — its SETS + load + title, not just a mislabeled title. Without
+    // this a build swimmer could be saved 5+ CSS/Z4/Z5 sessions/week, none counted or clamped.
+    const mon = isoMonday(p.date), sun = addDays(mon, 6)
+    const otherMod = future.filter((q) => q !== p && q.date >= mon && q.date <= sun && isModerate(q)).length
+    const overBudget = isModerate(p) && otherMod >= swimMaxQ
+    const r = enforceSwim(p.swimSets, overBudget ? 'endurance' : swimShape.intensityCeiling, swimCss)
+    if (r.clamped || overBudget) {
+      p.swimSets = r.sets; p.notes = `${p.swimNote ? p.swimNote + '\n' : ''}${r.notes}`; p.moving_time = r.moving_time; p.distanceM = r.distanceM; p.icu_training_load = r.icu_training_load
+      if (overBudget) p.title = 'Easy Swim' // the sets are now easy, so the title must match (was left as "CSS 4×100")
+      if (!touched.includes(p)) touched.push(p)
+    }
   }
   // #649 — GYM has no shape/intensity clamp, but stale gym plans keep a wrong REP SCHEME (a cyclist's old 3×10) and
   // the teen floor. Sweep every future gym plan through the code enforcement too (no intervals push — gym has no model).

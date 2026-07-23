@@ -19,11 +19,15 @@ describe('weekShape — #613 the code-decided week structure (single source of t
     expect(s.moderateDays).toBe(0) // was 1 (T1) — unknown now defaults to the safest envelope
     expect(s.intensityCeiling).toBe('endurance')
   })
-  it('#744 FAIL-SAFE: an EMPTY/unrecognized goal → conservative base (1 quality, sweet-spot ceiling), NOT a VO2 build', () => {
+  it('#744/#6 FAIL-SAFE: an EMPTY/unrecognized goal → conservative base (1 quality, TEMPO ceiling), NOT a build', () => {
     const s = weekShape({ goalFocus: [], goalNotes: '' })
     expect(s.loadBand).toBe('flat')
     expect(s.qualityDays).toBe(1)
-    expect(s.intensityCeiling).toBe('sweetspot')
+    expect(s.intensityCeiling).toBe('tempo') // #6 — was sweet-spot; a no-goal/general-fitness athlete shouldn't get a real quality day
+  })
+  it('#6 a "general fitness" goal → tempo ceiling (not a 93%-threshold sweet-spot quality day)', () => {
+    const s = weekShape({ goalFocus: [], goalNotes: 'just want to stay fit and healthy, general fitness' })
+    expect(s.intensityCeiling).toBe('tempo')
   })
   it('an EXPLICIT build/performance goal still gets the build band (2 quality, vo2)', () => {
     const s = weekShape({ goalFocus: ['race'], goalNotes: 'get faster, raise my FTP' })
@@ -151,5 +155,17 @@ describe('#719 menstrual-cycle bias — only ease late-luteal/PMS, not the menst
   })
   it('a STALE phase (not fresh) does not bias the shape', () => {
     expect(weekShape({ cyclePhase: 'late_luteal', cycleFresh: false, goalNotes: 'raise ftp', trainingDays: 5 }).qualityDays).toBe(2)
+  })
+})
+
+describe('#5 masters (55+) get code-enforced easing on every band', () => {
+  it('a health-goal masters cyclist ≠ a 30yo: ceiling eased + quality capped at 1', () => {
+    const m = weekShape({ ageYears: 60, goalFocus: [], goalNotes: 'stay healthy', trainingDays: 5 })
+    expect(m.qualityDays).toBeLessThanOrEqual(1)
+    expect(['recovery', 'endurance', 'tempo', 'sweetspot', 'threshold']).toContain(m.intensityCeiling) // never vo2
+  })
+  it('a masters BUILD athlete gets threshold ceiling (no full vo2 grind)', () => {
+    const m = weekShape({ ageYears: 60, goalFocus: ['race'], goalNotes: 'get faster', trainingDays: 6 })
+    expect(m.intensityCeiling).not.toBe('vo2')
   })
 })
