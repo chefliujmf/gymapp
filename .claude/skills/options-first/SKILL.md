@@ -57,6 +57,7 @@ Concretely: **when you start reworking a FAILED item, set it back to Building** 
 4. **Build only the chosen option.** If the user says "other"/tweaks, fold it in and re-confirm if it's a big shift.
 
 ## Mobile hard rules (non-negotiable — JM directives)
+- **PADDING on every section/card — content NEVER glued to the border (JM 2026-07-23).** ⚠️ `.card` in `styles.css` has **NO base padding** (the older cards set `padding` inline). So any NEW `.card`/section you add **MUST give itself padding** (≈`14px 16px`) — a title/text flush against the card edge is ugly + not best practice, and JM will catch it (the `.pbasics` "The basics" card shipped glued to the border). Verify a new section's inner padding in the browser before calling it done; never rely on `.card` to provide it.
 - **Contrast: never super-dark-grey text/elements on black (JM 2026-06-23).** Body/secondary text uses `--text` / `--text-dim`, not a near-black grey. Cards on the black bg need a visible border or lighter fill + real padding (don't let a card melt into the background). When in doubt, lift contrast.
 - **NO horizontal scroll, EVER.** Platyplus is mobile-first; off-screen content on a sideways-scrolling row is undiscoverable. Chip rows, filters, tabs, tag lists — they **WRAP** (`flex-wrap: wrap`), never `overflow-x: auto`/`nowrap`. (JM 2026-06-23: the Settings equipment chips scrolled sideways — chips off-screen. Fixed `.chips` to wrap globally.) If something genuinely can't wrap, that's a design-options conversation, not a horizontal-scroll default.
 

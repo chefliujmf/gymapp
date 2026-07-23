@@ -2201,7 +2201,8 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const pfKey = (user.sports || []).includes('cycling') ? 'cycling' : (user.sports || []).includes('running') ? 'running' : (user.sports || []).includes('swimming') ? 'swimming' : Object.keys(pfAll)[0]
     const pf = pfKey && Array.isArray(pfAll[pfKey]) ? pfAll[pfKey].filter((f) => f && !/mostly the efforts ARE the data/i.test(f)) : []
     // #669 — GOAL-AWARE: weight the priorities by what the GOAL demands (respect the user's needs), not weakness alone.
-    const goalText = `${(user.info?.goals?.notes) || ''} ${((user.info?.goals?.focus) || []).join(' ')} ${user.info?.objective || ''}`.trim()
+    const gf = user.info?.goals?.focus // #(audit sim) focus can be an ARRAY (legacy chips) OR a STRING — `.join` on a string crashes the coach ('.join is not a function'). Coerce safely (line 2253 guards; this one didn't).
+    const goalText = `${(user.info?.goals?.notes) || ''} ${Array.isArray(gf) ? gf.join(' ') : (gf || '')} ${user.info?.objective || ''}`.trim()
     const goalFrame = goalPriorityFrame(goalText)
     if (pf.length) tail += `\n\n# DEVELOPMENT PRIORITIES — computed from THIS athlete's OWN numbers (TTE / W′ / EF); this is the exact focus they see on their Stats page, so the PLAN must reflect it. ${goalFrame} Spend the week's quality-day budget accordingly, and choose the # THIS BLOCK'S VARIETY archetypes to serve them (don't schedule generic quality that ignores this):\n- ${pf.slice(0, 4).join('\n- ')}`
   }
@@ -2353,14 +2354,23 @@ async function runCoachTask(user, message, opts = {}) {
   const systemPrompt = buildSystemPrompt(user)
   const model = opts.model || null
   if (CHAT_HELPER_URL) {
-    const hr = await fetch(CHAT_HELPER_URL + '/chat', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-chat-secret': CHAT_HELPER_SECRET },
-      body: JSON.stringify({ message, token: user.apiToken, coach: user.coachName || 'Coach', systemPrompt, model }),
-    })
-    if (!hr.ok || !hr.body) throw new Error('coach helper ' + hr.status)
-    const reader = hr.body.getReader()
-    for (;;) { const { done } = await reader.read(); if (done) break } // drain to completion
+    // #763 (audit sim) — a coach task that truly HANGS must not block forever (the CHAT_HELPER path had NO timeout). But
+    // a FULL from-scratch build (a fresh user with an empty plan → 14 days of new sessions, many creates) legitimately
+    // takes several minutes (#608: a strength rebuild needs >240s) — so the abort must MATCH the local-spawn killer's
+    // 600s, not undercut it. An earlier 300s value wrongly aborted real builds right as the coach loaded its create tool.
+    const ac = new AbortController()
+    const killer = setTimeout(() => ac.abort(), 600000)
+    try {
+      const hr = await fetch(CHAT_HELPER_URL + '/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-chat-secret': CHAT_HELPER_SECRET },
+        body: JSON.stringify({ message, token: user.apiToken, coach: user.coachName || 'Coach', systemPrompt, model }),
+        signal: ac.signal,
+      })
+      if (!hr.ok || !hr.body) throw new Error('coach helper ' + hr.status)
+      const reader = hr.body.getReader()
+      for (;;) { const { done } = await reader.read(); if (done) break } // drain to completion
+    } finally { clearTimeout(killer) }
     return
   }
   await new Promise((resolve, reject) => {
