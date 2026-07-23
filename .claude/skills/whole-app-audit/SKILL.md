@@ -9,6 +9,9 @@ JM's standing ask (2026-07-22, restated): **"re-audit ALL sports for ALL persona
 
 This skill is the **review**; fixes it surfaces go to `FEEDBACK-LOG.md` (numbered) + the in-app backlog. It composes [[validate-athlete-types]] (the persona/engine matrix), [[coach-simulation]] (quality×cost), [[platyplus-testing]] + [[platyplus-browser-testing]] (the verification stack), [[platyplus-theme]] + [[options-first]]'s mobile rules (UX bar). Prior run: `mockups/whole-app-audit.html`, scored 62/100 — beat it or explain the regression.
 
+## ⚠️ SIMULATION IS MANDATORY — a code-only audit is not an audit (JM 2026-07-23, learned the hard way)
+An audit that only READS code is worthless for what matters most. Proof: an audit ran and scored 66/100 while the coach was **completely DOWN in prod** — every plan build threw `today is not defined` (a bare undefined var from an incomplete rename). The code-reading agents rationalized right past it; **one real simulation would have hit the crash on the first generated plan.** So: for EVERY persona you MUST **actually run the coach and review the CONTENT IT CREATES** — trigger a real `daily-adapt` on QA (`coach-simulation` mechanism), then open + grade the resulting plan/workouts (dose, safety, privacy, individualization, coaching craft). If you fan out with a Workflow, the workflow itself must EXECUTE the sims (call `POST /api/coach/daily-adapt` per persona, read the DB plan back) — NOT just spawn code-reading agents. Runtime simulation is the FIRST layer and the pass/fail gate; static code review is the second. No simulation ⇒ the audit is not done and its score is not trustworthy.
+
 ## Scope — the WHOLE app, two halves
 
 **A. Coach / engine LOGIC** (per [[validate-athlete-types]] — the world-class bar: individualized · evidence-based · CODE-ENFORCED · universal · safe):
