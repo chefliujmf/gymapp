@@ -34,7 +34,7 @@ import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the 
 import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard
 import { requiredProfileGaps, REQUIRED_FIELDS } from './profile-gate.js' // #A — plan generation is gated on a minimal mandatory profile
 import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
-import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
+import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym, enforcePostpartumGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose · #2 postpartum plyo clamp
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile, goalPriorityFrame } from './perf-metrics.js' // #404; #669 goal-aware priority
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -1867,6 +1867,20 @@ function enforcePregnancyGymPlan(user, plan) {
   const r = enforcePregnancyGym(plan.exercises, tri)
   if (r.changed) { plan.exercises = r.exercises; console.log(`[pregnancy-gym] ${user.username || ''} "${plan.title}" — swapped/dropped ${r.changed} supine move(s) (T${tri}+)`) }
 }
+// #2 (audit SAFETY) — the athlete's current postpartum IMPACT restriction (none <6wk / walk-run 6-12wk), toggle-driven
+// (info.postpartumSince, not sex). While restricted, strip plyometric/jump moves from a gym plan. Peer to the run clamp.
+function postpartumImpactRestricted(user) {
+  const info = (user && user.info) || {}
+  if (!info.postpartumSince || info.pregnant || !/^\d{4}-\d{2}-\d{2}$/.test(info.postpartumSince)) return false
+  const wk = Math.floor((Date.now() - new Date(info.postpartumSince + 'T00:00:00Z').getTime()) / (7 * 86400000))
+  return wk >= 0 && wk < 12 // <6wk (no impact) + 6-12wk (walk-run) → no plyometrics either
+}
+function enforcePostpartumGymPlan(user, plan) {
+  if (!plan || plan.sport !== 'gym' || !Array.isArray(plan.exercises)) return
+  if (!postpartumImpactRestricted(user)) return
+  const r = enforcePostpartumGym(plan.exercises, true)
+  if (r.changed) { plan.exercises = r.exercises; console.log(`[postpartum-gym] ${user.username || ''} "${plan.title}" — replaced ${r.changed} plyometric/jump move(s) with a low-impact substitute (pelvic-floor safe)`) }
+}
 function enforceTeenGym(user, plan) {
   if (!plan || plan.sport !== 'gym') return
   const dob = user.info && user.info.dob
@@ -1920,6 +1934,7 @@ async function reenforceShapeAll(user) {
     if (Array.isArray(p.exercises)) { const r = enforceGymStructure(p.exercises); if (r.deduped || r.retimed) p.exercises = r.exercises } // #687-enforce — dedup + hold→timed on stale gym plans
     enforceTeenGym(user, p)
     enforcePregnancyGymPlan(user, p) // #712 supine clamp
+    enforcePostpartumGymPlan(user, p) // #2 — postpartum plyometric/jump clamp
     if (JSON.stringify(p.exercises || []) !== ex0) gymTouched++
   }
   // #706 — give consecutive same-title gym sessions a clean A/B/C series so the calendar never shows two identical
@@ -2902,6 +2917,7 @@ async function upsertPlan(user, body, actor = 'coach') {
     if (r.deduped || r.retimed) { plan.exercises = r.exercises; console.log(`[gym-structure] ${user.username || ''} "${plan.title}" — deduped ${r.deduped}, retimed ${r.retimed}`) }
   }
   enforcePregnancyGymPlan(user, plan) // #712 (audit) — pregnant T2+ supine gym clamp
+  enforcePostpartumGymPlan(user, plan) // #2 (audit) — early/mid-postpartum: strip plyometric/jump moves (pelvic-floor impact)
   // #715 (audit) — SWIM: clamp each set's zone to the week ceiling (like ride/run intensity) + re-derive the notes,
   // duration, distance + sTSS from the CLAMPED sets. A maintenance/pregnant/teen swimmer can no longer be saved a sprint
   // set no matter what the coach wrote — the exact enforcement ride/run already had, now first-class for swimming too.

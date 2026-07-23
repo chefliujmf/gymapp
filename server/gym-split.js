@@ -357,6 +357,28 @@ export function enforcePregnancyGym(exercises, trimester) {
   return { exercises: out, changed }
 }
 
+// #2 (audit SAFETY, JM 2026-07-23) — an early/mid-POSTPARTUM athlete has an IMPACT restriction (none <6wk, walk-run
+// 6-12wk): the endurance clamp already forces a hard run to a walk, but the RUNNER gym template injects a mandatory
+// PLYOMETRIC/reactive slot (Pogo Hops, bounds), and nothing stripped it — so a healing pelvic floor got handed jumps.
+// Code-enforce it: while impact is restricted, replace any plyometric/jump move with a LOW-impact strength equivalent
+// (same intent, zero ground-reaction impact), on every save + sweep. Pure + unit-tested. NOT gated on sex (toggle-driven).
+const PLYO_RE = /\b(plyo\w*|pogo\w*|bound\w*|box ?jumps?|broad ?jumps?|depth ?jumps?|jump ?squats?|jumping|hops?|skater\w*|bounding|reactive|tuck ?jumps?|split ?jumps?|ballistic|snap ?downs?|lunge ?jumps?)\b/i
+export function enforcePostpartumGym(exercises, impactRestricted) {
+  if (!Array.isArray(exercises) || !impactRestricted) return { exercises: exercises || [], changed: 0 }
+  let changed = 0
+  const out = []
+  for (const ex of exercises) {
+    const n = String((ex && ex.name) || '')
+    if (!PLYO_RE.test(n)) { out.push(ex); continue }
+    // squat-pattern jump → bodyweight squat; everything else (pogos/hops/bounds/skaters) → calf raises (calf/tendon work,
+    // no impact). Keep it a real accessory so the session isn't left short.
+    const swapName = /squat/i.test(n) ? 'Bodyweight Squat' : 'Calf Raises'
+    out.push({ ...ex, name: swapName, mode: 'reps', reps: Number(ex && ex.reps) > 0 ? ex.reps : 12, note: 'postpartum — low-impact substitute (no jumping; pelvic-floor safe)' })
+    changed++
+  }
+  return { exercises: out, changed }
+}
+
 // #706 — the coach often gives consecutive gym sessions the SAME generic title ("Upper-Body & Trunk Strength" on two
 // weeks), so the calendar shows identical entries (JM). Code-enforce distinct titles: sessions that share a base title
 // get a clean A/B/C series in DATE order (matching the assembler's slot convention). Pure; mutates plan.title; returns
