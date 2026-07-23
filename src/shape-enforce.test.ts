@@ -90,9 +90,9 @@ describe('#620 shape-enforce — the rest of the athlete matrix (commercializati
     expect(topOf(week[0])).toBeLessThan(115) // never a maximal VO2 session for a teen
   })
 
-  it('TRIATHLETE (build, 2 quality) → the quality budget is GLOBAL across swim+bike+run, not per-sport', () => {
-    const shape = weekShape({ goalFocus: 'performance', goalNotes: 'race triathlon', ctl: 60, trainingDays: 6 })
-    expect(shape.qualityDays).toBe(2)
+  it('#3 TRIATHLETE (build) → a KEY quality session PER discipline (Friel), NOT a global 2 that deletes the 3rd sport', () => {
+    const shape = weekShape({ goalFocus: ['performance'], goalNotes: 'race triathlon', ctl: 60, trainingDays: 6 })
+    expect(shape.qualityDays).toBe(3) // one per discipline (swim + bike + run)
     const week = [
       { id: 'a', date: '2026-07-21', sport: 'swim', title: 'CSS Intervals', ...seg(100) },
       { id: 'b', date: '2026-07-22', sport: 'ride', title: 'Threshold 4×10', ...seg(100) },
@@ -100,7 +100,7 @@ describe('#620 shape-enforce — the rest of the athlete matrix (commercializati
       { id: 'd', date: '2026-07-26', sport: 'ride', title: 'Easy Spin', ...seg(60) },
     ]
     const out = sweep(shape, week)
-    expect(out.filter((p) => isModerate(p)).length).toBe(2) // 3 hard across 3 sports → capped at the 2-quality budget
+    expect(out.filter((p) => isModerate(p)).length).toBe(3) // all 3 discipline key sessions survive (a 4th hard would clamp)
   })
 
   it('PREGNANT: a fartlek/surge run is relabeled to steady (no surges in maintenance, #632)', () => {

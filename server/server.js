@@ -1801,6 +1801,7 @@ function athleteWeekShape(user) {
     goalFocus: user && user.info && user.info.goals && user.info.goals.focus,
     goalNotes: user && user.info && user.info.goals && user.info.goals.notes,
     ctl: user && user.ctl, trainingDays: Number(user && user.info && user.info.trainingDays) || 0, ageYears: age,
+    sports: (user && user.sports) || [], // #3 — a triathlete needs a key quality session PER discipline
   })
 }
 

@@ -39,7 +39,7 @@ export function weekShape(p = {}) {
     pregnant = false, trimester = null, postpartumWeeks = null,
     cyclePhase = null, cycleFresh = false,
     goalFocus = [], goalNotes = '',
-    trainingDays = 0, ageYears = null,
+    trainingDays = 0, ageYears = null, sports = [],
   } = p // NB: no `ctl` — fitness is NOT a classification here; it drives VOLUME via weeklyLoadBudget, not the week's shape
   const cap = (q) => (trainingDays > 0 ? Math.min(q, Math.max(1, trainingDays - 1)) : q) // never spend the whole week on quality
 
@@ -99,6 +99,13 @@ export function weekShape(p = {}) {
   // must NOT be handed a real 93%-of-threshold structured quality day; a sweet-spot+ ceiling is EARNED by stating a build
   // goal. (Not a fitness bucket — it keys off the athlete's stated GOAL, per JM's "numbers not categories".)
   else { loadBand = 'flat'; qualityDays = 1; intensityCeiling = 'tempo' }
+
+  // #3 (audit; JM "follow the books/science") — a TRIATHLETE needs a KEY quality session in EACH discipline (Friel's
+  // triathlon periodization: swim technique/CSS + a bike key + a run key + a brick), not a single global 2-quality budget
+  // that silently deletes the 3rd discipline's intensity. On a BUILD week, allow ~1 per discipline (capped by the
+  // training-days budget). Maintenance/flat stay conservative; teen/masters caps below still apply on top.
+  const isTriathlete = (Array.isArray(sports) && (sports.includes('triathlon') || ['swimming', 'cycling', 'running'].every((s) => sports.includes(s)))) || /\btriathlon\b/.test(goalText)
+  if (isTriathlete && loadBand === 'build') qualityDays = cap(3)
 
   // NO fitness "beginner/advanced" CLASSIFICATION (JM 2026-07-20): don't bucket athletes. Everything is already
   // RELATIVE to their own numbers — zones are % of THEIR threshold (88% of a low FTP is appropriately easy), and
