@@ -1273,6 +1273,7 @@ select.search { appearance: none; -webkit-appearance: none; }
 .pgate__add { font-size: 13px; font-weight: 700; color: var(--accent); white-space: nowrap; }
 /* #759 — "The basics" grouped card at the top of Profile */
 .pbasics.pbasics--todo { border-color: rgba(52, 224, 125, .35); }
+.pbasics { padding: 14px 16px; } /* #(JM 2026-07-23) — .card has NO base padding (the account card sets it inline), so a new .card section MUST add its own — the header was glued to the border */
 .pbasics__head { display: flex; align-items: center; gap: 9px; }
 .pbasics__head b { font-size: 15px; font-weight: 800; }
 .pbasics__pill { font-size: 10px; font-weight: 800; letter-spacing: .02em; color: var(--on-accent, #082015); background: var(--accent); border-radius: 20px; padding: 2px 9px; }
