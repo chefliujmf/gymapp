@@ -90,25 +90,26 @@ export function honestTitle(effCeil, sport, date) {
  * @returns {{changed:boolean, clamped:number, effCeil:number, overBudget:boolean}}
  */
 const ENDURANCE_SPORTS = new Set(['ride', 'run', 'swim']) // #620 — swim carries the same %threshold-pace segments, so it's clamped too
-export function enforceShape(shape, plan, siblings = []) {
-  if (!plan || !ENDURANCE_SPORTS.has(plan.sport)) return { changed: false, clamped: 0, effCeil: 0, overBudget: false }
-  const ceilPct = CEILING_PCT[shape.intensityCeiling] || CEILING_PCT.vo2
+// #5/#10 (audit) — is THIS endurance session over the week's quality budget, given its moderate siblings? ONE source of
+// truth for the ride/run clamp, the swim single-save, and the daily sweep. For a TRIATHLETE the budget is PER DISCIPLINE
+// (keep ~1 key session in EACH of swim/bike/run): a 2nd hard session in the SAME sport is over-budget, and the global cap
+// counts DISTINCT sports already keyed — NOT the raw count (else three front-loaded bike days eat the swim/run slots).
+// `modSiblings` = the same-week OTHER sessions that are already moderate (caller filters by week + isModerate + id).
+export function moderateOverBudget(plan, modSiblings, shape) {
+  if (!isModerate(plan)) return false
   const maxModerate = (shape.qualityDays || 0) + (shape.moderateDays || 0)
-  const modSiblings = siblings.filter((p) => p && p.id !== plan.id && ENDURANCE_SPORTS.has(p.sport) && isModerate(p))
-  const otherModerate = modSiblings.length
-  const thisIsModerate = isModerate(plan)
-  // #5 (audit) — for a TRIATHLETE the budget is PER DISCIPLINE: keep ~1 key session in EACH of swim/bike/run. A 2nd hard
-  // session in the SAME sport is clamped (freeing the slot for the other disciplines), and the GLOBAL cap counts DISTINCT
-  // sports already keyed — NOT the raw session count. Otherwise three front-loaded bike days consume the whole budget and
-  // a later swim/run key session gets clamped to easy even though it's the FIRST of its discipline (the bike-only trap).
-  let overBudget
   if (shape.perSportQuality) {
     const sameSport = modSiblings.filter((p) => p.sport === plan.sport).length
     const distinctOtherSports = new Set(modSiblings.map((p) => p.sport)).size
-    overBudget = thisIsModerate && (sameSport >= 1 || distinctOtherSports >= maxModerate)
-  } else {
-    overBudget = thisIsModerate && otherModerate >= maxModerate
+    return sameSport >= 1 || distinctOtherSports >= maxModerate
   }
+  return modSiblings.length >= maxModerate
+}
+export function enforceShape(shape, plan, siblings = []) {
+  if (!plan || !ENDURANCE_SPORTS.has(plan.sport)) return { changed: false, clamped: 0, effCeil: 0, overBudget: false }
+  const ceilPct = CEILING_PCT[shape.intensityCeiling] || CEILING_PCT.vo2
+  const modSiblings = siblings.filter((p) => p && p.id !== plan.id && ENDURANCE_SPORTS.has(p.sport) && isModerate(p))
+  const overBudget = moderateOverBudget(plan, modSiblings, shape)
   const effCeil = overBudget ? CEILING_PCT.endurance : ceilPct
   let clamped = 0
   for (const s of (plan.segments || [])) {

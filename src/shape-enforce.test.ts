@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server modules, no types
-import { enforceShape, isModerate, honestTitle, QUALITY_TITLE, qualityEnduranceDates, concurrentGymCollisions, heavyGymDatesNear } from '../server/shape-enforce.js'
+import { enforceShape, isModerate, honestTitle, QUALITY_TITLE, qualityEnduranceDates, concurrentGymCollisions, heavyGymDatesNear, moderateOverBudget } from '../server/shape-enforce.js'
 // @ts-expect-error
 import { weekShape } from '../server/week-shape.js'
 
@@ -215,5 +215,29 @@ describe('postpartum impact clamp (#745)', () => {
     const plan = { id: 'b', date: '2026-07-21', sport: 'ride', title: 'Easy Spin', ...seg(60) }
     enforceShape({ impact: 'none', loadBand: 'flat', qualityDays: 1, moderateDays: 0, intensityCeiling: 'endurance' }, plan, [plan])
     expect(plan.title).toBe('Easy Spin')
+  })
+})
+
+// #5/#10 — the shared over-budget rule (used by ride/run clamp, swim single-save, and the daily sweep).
+describe('#5/#10 moderateOverBudget — one budget rule for all endurance sports', () => {
+  const swimHard = { id: 's', sport: 'swim', swimSets: [{ zone: 4, reps: 4, distance: 100 }] }
+  const rideHard = (id: string) => ({ id, sport: 'ride', segments: [{ powerStart: 100 }] })
+  const runHard = (id: string) => ({ id, sport: 'run', segments: [{ powerStart: 100 }] })
+  it('NON-tri: over budget once the week already has maxModerate moderate siblings (any sport)', () => {
+    const shape = { qualityDays: 2, moderateDays: 0, perSportQuality: false }
+    expect(moderateOverBudget(swimHard, [rideHard('a')], shape)).toBe(false)          // 1 < 2
+    expect(moderateOverBudget(swimHard, [rideHard('a'), runHard('b')], shape)).toBe(true) // 2 >= 2
+  })
+  it('TRIATHLETE: a 2nd hard SAME-sport session is over budget; a FIRST-of-discipline is not (even behind 3 bikes)', () => {
+    const shape = { qualityDays: 3, moderateDays: 0, perSportQuality: true }
+    // swim is the FIRST swim, behind three hard bikes → NOT over budget (distinct other sports = {ride} = 1 < 3)
+    expect(moderateOverBudget(swimHard, [rideHard('a'), rideHard('b'), rideHard('c')], shape)).toBe(false)
+    // a 2nd swim with a swim already present → over budget (same-sport redundant)
+    expect(moderateOverBudget(swimHard, [{ id: 's0', sport: 'swim', swimSets: [{ zone: 4 }] }, rideHard('a')], shape)).toBe(true)
+    // all three disciplines already keyed → a 4th (would be a same-sport dup anyway) is over
+    expect(moderateOverBudget(runHard('r2'), [swimHard, rideHard('a'), runHard('r1')], shape)).toBe(true)
+  })
+  it('an EASY session is never over budget', () => {
+    expect(moderateOverBudget({ id: 'e', sport: 'ride', segments: [{ powerStart: 60 }] }, [rideHard('a'), runHard('b')], { qualityDays: 0, moderateDays: 0 })).toBe(false)
   })
 })

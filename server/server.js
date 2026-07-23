@@ -29,7 +29,7 @@ import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIs
 import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
-import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGym, isModerate, heavyGymDatesNear } from './shape-enforce.js' // #615/#620 clamp · #717/#4 concurrent-training separation
+import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGym, isModerate, heavyGymDatesNear, moderateOverBudget } from './shape-enforce.js' // #615/#620 clamp · #717/#4 concurrent-training separation · #5/#10 shared over-budget helper
 import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
 import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard
 import { requiredProfileGaps, REQUIRED_FIELDS } from './profile-gate.js' // #A — plan generation is gated on a minimal mandatory profile
@@ -1909,15 +1909,14 @@ async function reenforceShapeAll(user) {
   // #715 — sweep STALE swim plans through the zone clamp too (they carry no %-segments, so enforceShapeIntensity above
   // is a no-op for them). A swim built in an earlier, harder week must be eased if the shape tightened (e.g. pregnancy).
   const swimShape = athleteWeekShape(user), swimCss = user.sportSettings?.swimming?.thresholdPace
-  const swimMaxQ = (swimShape.qualityDays || 0) + (swimShape.moderateDays || 0) // #8 — the week's shared quality budget
   for (const p of future) {
     if (p.sport !== 'swim' || !Array.isArray(p.swimSets) || !p.swimSets.length) continue
     // #7/#8 (audit) — count HARD swim days toward the week's quality budget (shared with ride/run, via the now swim-aware
     // isModerate) and force an OVER-BUDGET swim to EASY — its SETS + load + title, not just a mislabeled title. Without
     // this a build swimmer could be saved 5+ CSS/Z4/Z5 sessions/week, none counted or clamped.
     const mon = isoMonday(p.date), sun = addDays(mon, 6)
-    const otherMod = future.filter((q) => q !== p && q.date >= mon && q.date <= sun && isModerate(q)).length
-    const overBudget = isModerate(p) && otherMod >= swimMaxQ
+    const modSibs = future.filter((q) => q !== p && q.date >= mon && q.date <= sun && isModerate(q))
+    const overBudget = moderateOverBudget(p, modSibs, swimShape) // #5/#10 — shared per-discipline budget rule
     const r = enforceSwim(p.swimSets, overBudget ? 'endurance' : swimShape.intensityCeiling, swimCss)
     if (r.clamped || overBudget) {
       p.swimSets = r.sets; p.notes = `${p.swimNote ? p.swimNote + '\n' : ''}${r.notes}`; p.moving_time = r.moving_time; p.distanceM = r.distanceM; p.icu_training_load = r.icu_training_load
@@ -2929,11 +2928,19 @@ async function upsertPlan(user, body, actor = 'coach') {
   if (plan.sport === 'swim' && Array.isArray(plan.swimSets) && plan.swimSets.length) {
     const shape = athleteWeekShape(user)
     const css = user.sportSettings?.swimming?.thresholdPace
-    const r = enforceSwim(plan.swimSets, shape.intensityCeiling, css)
+    // #10 (audit) — OVER-BUDGET check at SINGLE-SAVE, not just the daily sweep: a build swimmer could save a 3rd/4th
+    // CSS/Z5 session and it persisted at full intensity until the next day. Count this Mon–Sun week's moderate endurance
+    // siblings (swim-aware isModerate) against the quality budget — per-DISCIPLINE for a triathlete (#5) — and if it's
+    // over, enforce the EASY ceiling on the SETS + relabel, the same as ride/run.
+    const mon = isoMonday(plan.date), sun = addDays(mon, 6)
+    const wkMod = (user.plans || []).filter((q) => q && q.id !== plan.id && q.date >= mon && q.date <= sun && (q.sport === 'ride' || q.sport === 'run' || q.sport === 'swim') && isModerate(q))
+    const overBudget = moderateOverBudget(plan, wkMod, shape) // #5/#10 — shared per-discipline budget rule
+    const r = enforceSwim(plan.swimSets, overBudget ? 'endurance' : shape.intensityCeiling, css)
     plan.swimSets = r.sets
     plan.notes = `${plan.swimNote ? plan.swimNote + '\n' : ''}${r.notes}` // rebuild the display text from the clamped sets
     plan.moving_time = r.moving_time; plan.distanceM = r.distanceM; plan.icu_training_load = r.icu_training_load
-    if (r.clamped) console.log(`[swim-clamp] ${user.username || ''} "${plan.title}" — clamped ${r.clamped} set(s) to zone ≤${({ endurance: 2, tempo: 2, sweetspot: 3, threshold: 3, vo2: 5 })[shape.intensityCeiling] ?? 5} (ceiling ${shape.intensityCeiling})`)
+    if (overBudget) plan.title = 'Easy Swim' // the sets are now easy → the title must match (was left as "CSS 4×100")
+    if (r.clamped || overBudget) console.log(`[swim-clamp] ${user.username || ''} "${plan.title}" — ${overBudget ? 'OVER-BUDGET → easy; ' : ''}clamped ${r.clamped} set(s) (ceiling ${overBudget ? 'endurance' : shape.intensityCeiling})`)
   }
   enforceTeenGym(user, plan) // #631 — under-18: floor near-maximal gym sets to submaximal (no 1-RM loading)
   // #650 — PRIVACY (safety): strip pregnancy/postpartum terms from anything the athlete or the public could read
