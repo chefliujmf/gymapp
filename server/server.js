@@ -26,7 +26,7 @@ const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan, mirrorBrokenPlans } from './icu-match.js'
-import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
+import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage, readinessEase } from './readiness.js'
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
 import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGym, isModerate, heavyGymDatesNear, moderateOverBudget } from './shape-enforce.js' // #615/#620 clamp · #717/#4 concurrent-training separation · #5/#10 shared over-budget helper
@@ -863,6 +863,24 @@ app.post('/auth/checkin', auth, (req, res) => {
   try {
     const today = localTodayInTz(req.user.icuTimezone) // #347 — local today (cached tz), so a near-midnight check-in still fires
     const complete = ci.energy != null && ci.sleep != null && ci.soreness != null
+    // #4 (audit SAFETY) — CODE-ENFORCED readiness easing, ungated by coach-profile/staging (the old easing only happened
+    // if the LLM ran, so a wrecked athlete on QA or with no coach set up got none). A poor check-in eases TODAY's planned
+    // quality endurance session in code — 'rest' → easy, 'ease' → cap at tempo. Only ever REDUCES intensity. Runs once/day.
+    if (complete && ci.date === today && !ci.readinessEased) {
+      const ease = readinessEase(ci)
+      if (ease !== 'none') {
+        const easeShape = { intensityCeiling: ease === 'rest' ? 'endurance' : 'tempo', qualityDays: 0, moderateDays: ease === 'rest' ? 0 : 1, loadBand: 'flat' }
+        const todays = (req.user.plans || []).filter((p) => p && p.date === today && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim'))
+        const eased = []
+        for (const p of todays) {
+          if (p.sport === 'swim' && Array.isArray(p.swimSets) && p.swimSets.length) {
+            if (isModerate(p)) { const r = enforceSwim(p.swimSets, easeShape.intensityCeiling, req.user.sportSettings?.swimming?.thresholdPace); if (r.clamped) { p.swimSets = r.sets; p.notes = `${p.swimNote ? p.swimNote + '\n' : ''}${r.notes}`; p.moving_time = r.moving_time; p.distanceM = r.distanceM; p.icu_training_load = r.icu_training_load; p.title = 'Easy Swim'; eased.push(p) } }
+          } else { const r = enforceShape(easeShape, p, todays); if (r.changed) eased.push(p) }
+        }
+        ci.readinessEased = ease
+        if (eased.length) { save(store); console.log(`[readiness-ease] ${req.user.username || ''} — ${ease}: eased ${eased.length} session(s) on ${today}`); for (const p of eased) pushPlanToIcu(req.user, p).catch(() => {}) } // prod-only push (IS_STAGING no-op)
+      }
+    }
     // #498 (JM 2026-07-12) — the post-check-in coach trigger + its push notification fire on PROD ONLY, never QA/dev
     // (like the daily-adapt scheduler). So a check-in on staging never pushes a coach notification.
     if (!IS_STAGING && req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && !ci.coachDecided) {

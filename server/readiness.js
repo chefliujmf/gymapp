@@ -33,6 +33,21 @@ export const score100To5 = (s) => clamp(round1(s / 20), 1, 5)
 // #436 — a coach review score (/10, or null) → intervals' coach's-tick INTEGER rating 1–5 (what checks the
 // "Coach ✓" on the activity). Must be a whole 1–5; a null score (reviewed, no number) → a neutral 3.
 export const coachTick = (score10) => (score10 == null || Number.isNaN(Number(score10))) ? 3 : clamp(Math.round(Number(score10) / 2), 1, 5)
+
+// #4 (audit SAFETY) — a low-readiness day must ease the plan in CODE, not only when the LLM happens to (the old easing was
+// gated on !IS_STAGING AND a coach profile, so a wrecked athlete on QA or with no coach profile got NO easing — a
+// structural recovery rule left to the model). Grade the day's check-in into an easing action from the subjective 1-5s:
+//   'rest'  — genuinely wrecked (rock-bottom energy AND poor sleep, or very sore + drained): today's quality → easy.
+//   'ease'  — a clearly off day (any single strong signal): cap today's session at tempo, don't run a hard interval set.
+//   'none'  — normal, train as planned.
+// Conservative on purpose (one soft signal isn't a rest day); it only ever REDUCES intensity, never adds.
+export function readinessEase({ energy, sleep, soreness } = {}) {
+  const e = Number(energy), s = Number(sleep), so = Number(soreness)
+  const wrecked = (e <= 2 && s <= 2) || (e <= 2 && so >= 4) || (s <= 1 && so >= 4)
+  if (wrecked) return 'rest'
+  const off = e <= 2 || s <= 2 || so >= 4
+  return off ? 'ease' : 'none'
+}
 // Monotonic piecewise-linear map; clamps at the ends. pts = [[x,y]...] sorted by x.
 export function lerpMap(x, pts) {
   if (x == null) return null

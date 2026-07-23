@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { lnRMSSD, meanSd, zTo5, score100To5, coachTick, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, projectFormSeries, forecastFreshness, estimateVo2max as estimateVo2maxSrv, bestVo2maxEstimate, hrRatioVo2max, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, horizonCoverage } from '../server/readiness.js'
+import { lnRMSSD, meanSd, zTo5, score100To5, coachTick, lerpMap, baselines, freshness, energy, sleep, readiness, MIN_BASELINE_DAYS, calibrationOffset, learnedOffsets, applyOffset, MIN_CALIBRATION_DAYS, projectForm, projectFormSeries, forecastFreshness, estimateVo2max as estimateVo2maxSrv, bestVo2maxEstimate, hrRatioVo2max, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, horizonCoverage, readinessEase } from '../server/readiness.js'
 
 // #195 readiness math, grounded in docs/readiness-scores.md (WHOOP deep-dive 2026-06-28).
 
@@ -421,5 +421,28 @@ describe('applyOffset', () => {
     expect(applyOffset(1.2, -1)).toBe(1)
     expect(applyOffset(3, 0)).toBe(3)
     expect(applyOffset(null, 1)).toBeNull()
+  })
+})
+
+// #4 (audit) — code-enforced readiness easing severity from the subjective check-in.
+describe('#4 readinessEase — a poor check-in eases the plan in code (not only via the LLM)', () => {
+  it("'none' on a normal/good day", () => {
+    expect(readinessEase({ energy: 4, sleep: 4, soreness: 2 })).toBe('none')
+    expect(readinessEase({ energy: 3, sleep: 3, soreness: 3 })).toBe('none')
+    expect(readinessEase({ energy: 5, sleep: 5, soreness: 1 })).toBe('none')
+  })
+  it("'ease' on a single clearly-off signal", () => {
+    expect(readinessEase({ energy: 2, sleep: 4, soreness: 2 })).toBe('ease') // drained
+    expect(readinessEase({ energy: 4, sleep: 2, soreness: 2 })).toBe('ease') // poor sleep
+    expect(readinessEase({ energy: 4, sleep: 4, soreness: 4 })).toBe('ease') // very sore
+  })
+  it("'rest' when genuinely wrecked (multiple rock-bottom signals)", () => {
+    expect(readinessEase({ energy: 2, sleep: 2, soreness: 2 })).toBe('rest') // drained + poor sleep
+    expect(readinessEase({ energy: 1, sleep: 4, soreness: 5 })).toBe('rest') // drained + very sore
+    expect(readinessEase({ energy: 4, sleep: 1, soreness: 5 })).toBe('rest') // no sleep + very sore
+  })
+  it('only ever reduces — never fabricates an easing from missing data', () => {
+    expect(readinessEase({})).toBe('none')
+    expect(readinessEase({ energy: 3 })).toBe('none')
   })
 })
