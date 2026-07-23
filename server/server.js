@@ -2354,14 +2354,22 @@ async function runCoachTask(user, message, opts = {}) {
   const systemPrompt = buildSystemPrompt(user)
   const model = opts.model || null
   if (CHAT_HELPER_URL) {
-    const hr = await fetch(CHAT_HELPER_URL + '/chat', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-chat-secret': CHAT_HELPER_SECRET },
-      body: JSON.stringify({ message, token: user.apiToken, coach: user.coachName || 'Coach', systemPrompt, model }),
-    })
-    if (!hr.ok || !hr.body) throw new Error('coach helper ' + hr.status)
-    const reader = hr.body.getReader()
-    for (;;) { const { done } = await reader.read(); if (done) break } // drain to completion
+    // #763 (audit sim) — a coach task that HANGS (e.g. a gym adapt stuck resolving exercises) must not block forever:
+    // the CHAT_HELPER path had NO timeout, so a stuck run left the adapt hung + the coach process orphaned. Abort after
+    // ~5 min (a real build finishes in ~1-2 min; this is the safety net, matching the local-spawn killer's intent).
+    const ac = new AbortController()
+    const killer = setTimeout(() => ac.abort(), 300000)
+    try {
+      const hr = await fetch(CHAT_HELPER_URL + '/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-chat-secret': CHAT_HELPER_SECRET },
+        body: JSON.stringify({ message, token: user.apiToken, coach: user.coachName || 'Coach', systemPrompt, model }),
+        signal: ac.signal,
+      })
+      if (!hr.ok || !hr.body) throw new Error('coach helper ' + hr.status)
+      const reader = hr.body.getReader()
+      for (;;) { const { done } = await reader.read(); if (done) break } // drain to completion
+    } finally { clearTimeout(killer) }
     return
   }
   await new Promise((resolve, reject) => {
