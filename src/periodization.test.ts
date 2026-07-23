@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module
-import { periodizationPhase, BLOCK_PHASES } from '../server/periodization.js'
+import { periodizationPhase, BLOCK_PHASES, parseRaceDate } from '../server/periodization.js'
 
 describe('#626 periodization — the meso-cycle the coach progresses through', () => {
   it('rolls build → build → peak → recovery across the 4-week block', () => {
@@ -80,5 +80,27 @@ describe('periodization — audit fixes (#756 health-no-peak, #752 distance tape
     expect(periodizationPhase({ ctl: 60, weeksToRace: 3, loadBand: 'build', taperWeeks: 4 }).phase).toBe('taper')
     // default 2-week taper: a short-race athlete 3 weeks out is NOT yet tapering
     expect(periodizationPhase({ ctl: 60, weeksToRace: 3, loadBand: 'build', taperWeeks: 2 }).phase).not.toBe('taper')
+  })
+})
+
+// #8 (audit) — parse an A-race date out of free-text goal notes so the taper fires even when there's no structured raceDate.
+describe('#8 parseRaceDate — A-race date from free-text goal notes', () => {
+  const today = '2026-07-01'
+  it('reads an ISO date', () => {
+    expect(parseRaceDate('Ironman Nice on 2026-09-13, want to finish strong', today)).toBe('2026-09-13')
+  })
+  it('reads "Month DD YYYY" and "DD Month YYYY"', () => {
+    expect(parseRaceDate('my A race is September 13 2026', today)).toBe('2026-09-13')
+    expect(parseRaceDate('race day: 13 Sept 2026', today)).toBe('2026-09-13')
+    expect(parseRaceDate('Marathon on Oct 4th, 2026', today)).toBe('2026-10-04')
+  })
+  it('picks the EARLIEST future date + ignores past dates', () => {
+    expect(parseRaceDate('base race 2026-08-01 then A-race 2026-11-15', today)).toBe('2026-08-01')
+    expect(parseRaceDate('did one 2025-05-01, next is 2026-10-10', today)).toBe('2026-10-10') // past ignored
+  })
+  it('returns null when there is no parseable date (no year → too ambiguous)', () => {
+    expect(parseRaceDate('I want to race a half marathon someday', today)).toBeNull()
+    expect(parseRaceDate('race on 9/13', today)).toBeNull() // no year, ambiguous MM/DD → skip
+    expect(parseRaceDate('', today)).toBeNull()
   })
 })

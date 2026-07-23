@@ -69,6 +69,14 @@ describe('pregnancyStage (weeks + trimester)', () => {
   it('pregnant but no date → pregnant flag, weeks/trimester unknown (coach asks EDD)', () => {
     expect(pregnancyStage({ pregnant: true }, '2026-07-08')).toEqual({ pregnant: true, weeks: null, trimester: null, dueDate: null })
   })
+  it('#759/#4 — a coarse info.trimester (1/2/3) is the low-disclosure fallback when no date is shared', () => {
+    expect(pregnancyStage({ pregnant: true, trimester: 2 }, '2026-07-08')).toEqual({ pregnant: true, weeks: null, trimester: 2, dueDate: null })
+    expect(pregnancyStage({ pregnant: true, trimester: 3 }, '2026-07-08')!.trimester).toBe(3)
+    // an exact date WINS over the coarse pick
+    expect(pregnancyStage({ pregnant: true, trimester: 1, dueDate: '2026-11-25' }, '2026-07-08')!.trimester).toBe(2)
+    // a bogus trimester is ignored (stays unknown → caller's fail-safe applies)
+    expect(pregnancyStage({ pregnant: true, trimester: 9 }, '2026-07-08')!.trimester).toBeNull()
+  })
   it('derives weeks + trimester from the due date (EDD)', () => {
     expect(pregnancyStage({ pregnant: true, dueDate: '2026-11-25' }, '2026-07-08')).toMatchObject({ weeks: 20, trimester: 2 })
   })

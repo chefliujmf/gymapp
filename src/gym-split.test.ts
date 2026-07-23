@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module
-import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from '../server/gym-split.js'
+import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym, enforcePostpartumGym } from '../server/gym-split.js'
 
 const flat = (a: any) => a.days.flat()
 
@@ -350,5 +350,33 @@ describe('#720 gym meso-cycle — progress then deload, not identical every week
     const sets = (s: any) => s.exercises.filter((e: any) => e.section === 'main' && e.mode !== 'timed').reduce((a: number, e: any) => a + (e.sets || 0), 0)
     expect(sets(deload)).toBeLessThan(sets(acc) * 0.7)   // deload ~45% cut
     expect(sets(intens)).toBeGreaterThan(sets(acc))       // intensification heavier
+  })
+})
+
+// #2 (audit SAFETY) — early/mid-postpartum: plyometric/jump moves stripped (pelvic-floor impact), toggle-driven not sex.
+describe('#2 enforcePostpartumGym — no plyometrics/jumps while impact is restricted', () => {
+  const runnerGym = [
+    { name: 'Bulgarian Split Squat', mode: 'reps', reps: 8, sets: 3 },
+    { name: 'Pogo Hops', mode: 'reps', reps: 10, sets: 3 },      // the runner plyo slot
+    { name: 'Jump Squat', mode: 'reps', reps: 6, sets: 3 },       // squat-pattern jump
+    { name: 'Romanian Deadlift', mode: 'reps', reps: 8, sets: 3 },
+  ]
+  it('replaces plyometric + jump moves with a low-impact substitute when restricted', () => {
+    const r = enforcePostpartumGym(runnerGym.map((e) => ({ ...e })), true)
+    expect(r.changed).toBe(2)
+    const names = r.exercises.map((e: { name: string }) => e.name)
+    expect(names).toContain('Calf Raises')       // Pogo Hops → calf/tendon, no impact
+    expect(names).toContain('Bodyweight Squat')   // Jump Squat → squat pattern, no impact
+    expect(names).not.toContain('Pogo Hops')
+    expect(names).not.toContain('Jump Squat')
+    expect(names).toContain('Bulgarian Split Squat') // strength moves untouched
+    expect(names).toContain('Romanian Deadlift')
+  })
+  it('does NOTHING when impact is not restricted (>=12wk / not postpartum)', () => {
+    expect(enforcePostpartumGym(runnerGym.map((e) => ({ ...e })), false).changed).toBe(0)
+  })
+  it('catches the common plyometric vocabulary', () => {
+    const ex = ['Box Jumps', 'Broad Jump', 'Depth Jump', 'Skater Hops', 'Bounding', 'Tuck Jump', 'Lunge Jumps'].map((name) => ({ name, mode: 'reps', reps: 8, sets: 3 }))
+    expect(enforcePostpartumGym(ex, true).changed).toBe(7)
   })
 })

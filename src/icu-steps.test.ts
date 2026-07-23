@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module, no types
-import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, detectRepeat, plannedTss, plannedGymTss, gymTssFromRpe, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from '../server/icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, MAX_DOC_STEP_SECONDS, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, detectRepeat, plannedTss, plannedGymTss, gymTssFromRpe, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent, effortForPct, effortCueFromSegments } from '../server/icu-steps.js'
 import { gymTSSfromRPE } from './tss' // client gym-TSS method — must AGREE with the server mirror (#729)
 
 // #729 — Friel Time×RPE: the completed gym's REAL load from actual effort. The server helper MUST mirror the client's.
@@ -301,5 +301,30 @@ describe('#479 bandSteadyPower — outdoor rides get a rideable min–max RANGE,
   it('leaves a step that is already a range alone (no double-banding)', () => {
     const [s] = bandSteadyPower([{ duration: 600, powerStart: 62, powerEnd: 74, label: 'Endurance Z2' }])
     expect([s.powerStart, s.powerEnd]).toEqual([62, 74])
+  })
+})
+
+// #6 (audit) — no-benchmark RPE fallback: a followable by-feel cue when %-of-threshold segments can't resolve.
+describe('#6 effort cue (no-benchmark RPE fallback)', () => {
+  it('maps % of threshold to an RPE + talk-test band', () => {
+    expect(effortForPct(50).rpe).toBe('1-2')
+    expect(effortForPct(70).feel).toMatch(/easy, conversational/)
+    expect(effortForPct(83).rpe).toBe('5-6')   // tempo
+    expect(effortForPct(100).rpe).toBe('7-8')  // threshold
+    expect(effortForPct(120).rpe).toBe('9-10') // vo2+
+  })
+  it('builds a hard-session cue that names both the effort and the recovery RPE', () => {
+    const cue = effortCueFromSegments([{ powerStart: 60, powerEnd: 60 }, { powerStart: 100, powerEnd: 100 }, { powerStart: 55, powerEnd: 55 }])
+    expect(cue).toMatch(/hard efforts are RPE 7-8/)
+    expect(cue).toMatch(/recover at RPE/)
+    expect(cue).toMatch(/Set your FTP\/threshold in Stats/)
+  })
+  it('an easy session gets a single by-feel target', () => {
+    const cue = effortCueFromSegments([{ powerStart: 62, powerEnd: 62 }])
+    expect(cue).toMatch(/keep it RPE 3-4/)
+  })
+  it('returns null when there are no % segments (nothing to translate)', () => {
+    expect(effortCueFromSegments([])).toBeNull()
+    expect(effortCueFromSegments([{ powerStart: 0 }])).toBeNull()
   })
 })

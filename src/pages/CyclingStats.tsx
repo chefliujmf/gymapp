@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
 import { BenchmarksCard } from '../Benchmarks'
@@ -21,7 +21,7 @@ export default function CyclingStats({ embedded }: { embedded?: boolean } = {}) 
       {!isCycling ? (
         <p className="meta">Add Cycling in <span style={{ color: 'var(--accent)' }}>Profile</span> to see your power stats.</p>
       ) : !user?.hasIcuKey ? (
-        <p className="meta">Connect intervals.icu in <span style={{ color: 'var(--accent)' }}>Profile</span> to see your power curve & FTP.</p>
+        <p className="meta">Connect intervals.icu in <Link to="/settings#ob-connect" style={{ color: 'var(--accent)' }}>Settings → Connections</Link> to see your power curve &amp; FTP.</p>
       ) : (
         <>
           {/* #385 — same polished benchmark cards as Global, filtered to cycling (FTP · VO₂max · Max HR). */}

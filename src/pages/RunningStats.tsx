@@ -67,7 +67,7 @@ export default function RunningStats({ embedded }: { embedded?: boolean } = {}) 
           {/* #385/#398 — the benchmark cards (Threshold pace · VO₂max · Max HR) are the single source: each shows the
               value + confidence and taps open a sheet to edit (manual value) / switch manual↔computed. No duplicate cell. */}
           <BenchmarksCard only={['thresholdPace', 'cs', 'dPrime', 'tteRun']} profile="running" />{/* #512 — VO₂max + Max HR are whole-body, NOT per-sport → they live in the overall Stats benchmarks, not here */}
-          {vo2 && hrRatioMismatch &&<p className="meta" style={{ margin: '10px 2px 6px', color: '#f0b145' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones & predictions.</p>}
+          {vo2 && hrRatioMismatch &&<p className="meta" style={{ margin: '10px 2px 6px', color: 'var(--amber)' }}>⚠️ Your VDOT ({vdot}) from pace is lower than your HR suggests (~{vo2.value}) — your <b>threshold pace may be set too slow/stale</b>. Update it for accurate zones &amp; predictions.</p>}
 
           {/* #508 — the pace-duration / season-compare curve is PARKED for the roadmap (JM 2026-07-13: "not good
               enough yet"). SeasonCompare + PaceCurveChart are kept in the codebase for when it returns. */}

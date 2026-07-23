@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server modules, no types
-import { enforceShape, isModerate, honestTitle, QUALITY_TITLE, qualityEnduranceDates, concurrentGymCollisions, heavyGymDatesNear } from '../server/shape-enforce.js'
+import { enforceShape, isModerate, honestTitle, QUALITY_TITLE, qualityEnduranceDates, concurrentGymCollisions, heavyGymDatesNear, moderateOverBudget } from '../server/shape-enforce.js'
 // @ts-expect-error
 import { weekShape } from '../server/week-shape.js'
 
@@ -103,6 +103,25 @@ describe('#620 shape-enforce — the rest of the athlete matrix (commercializati
     expect(out.filter((p) => isModerate(p)).length).toBe(3) // all 3 discipline key sessions survive (a 4th hard would clamp)
   })
 
+  it('#5 TRIATHLETE bike-only trap → three front-loaded hard BIKE days do NOT starve the swim + run key sessions', () => {
+    const shape = weekShape({ goalFocus: ['performance'], goalNotes: 'race triathlon', ctl: 60, trainingDays: 6 })
+    const week = [
+      { id: 'b1', date: '2026-07-20', sport: 'ride', title: 'Threshold 4×10', ...seg(100) },
+      { id: 'b2', date: '2026-07-21', sport: 'ride', title: 'VO2 5×3', ...seg(118) },
+      { id: 'b3', date: '2026-07-22', sport: 'ride', title: 'Sweet-Spot 3×15', ...seg(90) },
+      { id: 'sw', date: '2026-07-24', sport: 'swim', title: 'CSS 400s', ...seg(100) },
+      { id: 'rn', date: '2026-07-25', sport: 'run', title: 'Threshold Run', ...seg(100) },
+    ]
+    const out = sweep(shape, week)
+    const moderate = out.filter((p) => isModerate(p))
+    expect(moderate.length).toBe(3) // exactly the per-discipline budget survives
+    // one per sport — the swim + run are NOT clamped to easy by the three bikes
+    expect(new Set(moderate.map((p) => p.sport))).toEqual(new Set(['ride', 'swim', 'run']))
+    expect(isModerate(out.find((p) => p.id === 'sw')!)).toBe(true) // swim key session preserved
+    expect(isModerate(out.find((p) => p.id === 'rn')!)).toBe(true) // run key session preserved
+    expect(out.filter((p) => p.sport === 'ride' && isModerate(p)).length).toBe(1) // only ONE bike key kept
+  })
+
   it('PREGNANT: a fartlek/surge run is relabeled to steady (no surges in maintenance, #632)', () => {
     const shape = weekShape({ pregnant: true, trimester: 1, goalFocus: 'consistency', trainingDays: 4 })
     const week = [{ id: 'a', date: '2026-08-04', sport: 'run', title: 'Fartlek Run', ...seg(80) }]
@@ -144,6 +163,18 @@ describe('#672 scrubSurgeProse — description matches the relabeled steady titl
   })
   it('leaves steady/easy prose untouched', () => {
     expect(scrubSurgeProse('Easy Z2 endurance, keep it conversational.')).toBe('Easy Z2 endurance, keep it conversational.')
+  })
+  // JM 2026-07-23 (ACOG 804) — relaxed short strides/accelerations are appropriate for an accustomed pregnant runner;
+  // the scrub must KEEP them (only hard surge/fartlek language is out) and must NOT mangle the spacing.
+  it('KEEPS relaxed strides/accelerations (science-approved) — and no longer jams the spacing', () => {
+    expect(scrubSurgeProse('finishing with 6 relaxed 20-second accelerations')).toBe('finishing with 6 relaxed 20-second accelerations')
+    expect(scrubSurgeProse('6 relaxed 20-second strides — the touch of leg speed')).toMatch(/relaxed 20-second strides/)
+    expect(scrubSurgeProse('6 relaxed 20-second accelerations')).not.toMatch(/secondsteady/) // the reported mangle-bug is gone
+  })
+  it('a DISTANT "easy run" does not shield a genuinely hard effort burst from being neutralized', () => {
+    const out = scrubSurgeProse('31 min easy run with 5 unstructured effort bursts of ~40s by feel.')
+    expect(out).not.toMatch(/burst|surge|fartlek/i)
+    expect(out).not.toMatch(/\w{2,}steady|steady running by feel by feel/) // no jamming, no doubled "by feel"
   })
 })
 
@@ -196,5 +227,29 @@ describe('postpartum impact clamp (#745)', () => {
     const plan = { id: 'b', date: '2026-07-21', sport: 'ride', title: 'Easy Spin', ...seg(60) }
     enforceShape({ impact: 'none', loadBand: 'flat', qualityDays: 1, moderateDays: 0, intensityCeiling: 'endurance' }, plan, [plan])
     expect(plan.title).toBe('Easy Spin')
+  })
+})
+
+// #5/#10 — the shared over-budget rule (used by ride/run clamp, swim single-save, and the daily sweep).
+describe('#5/#10 moderateOverBudget — one budget rule for all endurance sports', () => {
+  const swimHard = { id: 's', sport: 'swim', swimSets: [{ zone: 4, reps: 4, distance: 100 }] }
+  const rideHard = (id: string) => ({ id, sport: 'ride', segments: [{ powerStart: 100 }] })
+  const runHard = (id: string) => ({ id, sport: 'run', segments: [{ powerStart: 100 }] })
+  it('NON-tri: over budget once the week already has maxModerate moderate siblings (any sport)', () => {
+    const shape = { qualityDays: 2, moderateDays: 0, perSportQuality: false }
+    expect(moderateOverBudget(swimHard, [rideHard('a')], shape)).toBe(false)          // 1 < 2
+    expect(moderateOverBudget(swimHard, [rideHard('a'), runHard('b')], shape)).toBe(true) // 2 >= 2
+  })
+  it('TRIATHLETE: a 2nd hard SAME-sport session is over budget; a FIRST-of-discipline is not (even behind 3 bikes)', () => {
+    const shape = { qualityDays: 3, moderateDays: 0, perSportQuality: true }
+    // swim is the FIRST swim, behind three hard bikes → NOT over budget (distinct other sports = {ride} = 1 < 3)
+    expect(moderateOverBudget(swimHard, [rideHard('a'), rideHard('b'), rideHard('c')], shape)).toBe(false)
+    // a 2nd swim with a swim already present → over budget (same-sport redundant)
+    expect(moderateOverBudget(swimHard, [{ id: 's0', sport: 'swim', swimSets: [{ zone: 4 }] }, rideHard('a')], shape)).toBe(true)
+    // all three disciplines already keyed → a 4th (would be a same-sport dup anyway) is over
+    expect(moderateOverBudget(runHard('r2'), [swimHard, rideHard('a'), runHard('r1')], shape)).toBe(true)
+  })
+  it('an EASY session is never over budget', () => {
+    expect(moderateOverBudget({ id: 'e', sport: 'ride', segments: [{ powerStart: 60 }] }, [rideHard('a'), runHard('b')], { qualityDays: 0, moderateDays: 0 })).toBe(false)
   })
 })

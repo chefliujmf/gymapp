@@ -16,10 +16,24 @@ const SURGE_TITLE = /fartlek|surge|pick.?up|hill.?rep|\bsprint/i
 // #672 — when a maintenance athlete's surge session is relabeled to steady, the coach's DESCRIPTION prose can still
 // describe surges ("5 unstructured effort bursts by feel"), contradicting the new title + prescribing contraindicated
 // efforts. Neutralize that language so the body agrees with the relabeled title. Conservative + unit-tested.
-const SURGE_PROSE = /\b\d*\s*(?:short |unstructured |relaxed |quick )*(?:effort |hard |fast |all-?out )*(?:bursts?|surges?|pick.?ups?|accelerations?|sprints?|hard efforts?|hard reps?|fartlek)\b(?:\s+of\s+[^.,;]*)?/gi
+// #(JM 2026-07-23, science-checked vs docs/pregnancy-coaching.md → ACOG 804) — RELAXED short strides/accelerations are
+// APPROPRIATE for an accustomed pregnant runner (gauge by RPE/talk test; only MAXIMAL/exhaustive effort is out). The old
+// scrub wrongly neutralised "relaxed 20-second accelerations" (contradicting the strides in the segments) AND ate the
+// leading space ("20-second accelerations" → "20-secondsteady…"). Now the qualifier LEAD is captured (adjacent tokens
+// only, so a distant "easy run" can't shield a hard "effort burst"): KEEP a relaxed-qualified effort, but always
+// neutralise genuinely HARD surge/fartlek/sprint language; preserve spacing; never double "by feel".
+const SURGE_PROSE = /\b((?:(?:short|unstructured|relaxed|quick|easy|light|smooth|gentle|controlled|effort|hard|fast|all-?out|seconds?|\d+)[\s-]*)*)(bursts?|surges?|pick.?ups?|accelerations?|sprints?|hard efforts?|hard reps?|fartlek)\b((?:\s+of\s+[^.,;]*)?)/gi
+const RELAXED_Q = /\b(relaxed|easy|light|smooth|gentle|controlled)\b/i
 export function scrubSurgeProse(text) {
-  if (!text || typeof text !== 'string' || !SURGE_PROSE.test(text)) return text
-  return text.replace(SURGE_PROSE, 'steady running by feel').replace(/\bwith steady running by feel\b/gi, 'at a steady, comfortable effort').replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').trim()
+  if (!text || typeof text !== 'string') return text
+  let changed = false
+  const out = text.replace(SURGE_PROSE, (m, lead, word) => {
+    if (String(word).toLowerCase() !== 'fartlek' && RELAXED_Q.test(lead)) return m // keep relaxed strides/accelerations (fartlek is always out)
+    changed = true
+    return 'steady running by feel'
+  })
+  if (!changed) return text
+  return out.replace(/\bwith steady running by feel\b/gi, 'at a steady, comfortable effort').replace(/(steady running by feel)(\s+by feel)\b/gi, '$1').replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').trim()
 }
 
 const topOf = (segs) => Math.max(0, ...(segs || []).map((s) => Math.max(Number(s.powerStart) || 0, Number(s.powerEnd) || 0)))
@@ -90,13 +104,26 @@ export function honestTitle(effCeil, sport, date) {
  * @returns {{changed:boolean, clamped:number, effCeil:number, overBudget:boolean}}
  */
 const ENDURANCE_SPORTS = new Set(['ride', 'run', 'swim']) // #620 — swim carries the same %threshold-pace segments, so it's clamped too
+// #5/#10 (audit) — is THIS endurance session over the week's quality budget, given its moderate siblings? ONE source of
+// truth for the ride/run clamp, the swim single-save, and the daily sweep. For a TRIATHLETE the budget is PER DISCIPLINE
+// (keep ~1 key session in EACH of swim/bike/run): a 2nd hard session in the SAME sport is over-budget, and the global cap
+// counts DISTINCT sports already keyed — NOT the raw count (else three front-loaded bike days eat the swim/run slots).
+// `modSiblings` = the same-week OTHER sessions that are already moderate (caller filters by week + isModerate + id).
+export function moderateOverBudget(plan, modSiblings, shape) {
+  if (!isModerate(plan)) return false
+  const maxModerate = (shape.qualityDays || 0) + (shape.moderateDays || 0)
+  if (shape.perSportQuality) {
+    const sameSport = modSiblings.filter((p) => p.sport === plan.sport).length
+    const distinctOtherSports = new Set(modSiblings.map((p) => p.sport)).size
+    return sameSport >= 1 || distinctOtherSports >= maxModerate
+  }
+  return modSiblings.length >= maxModerate
+}
 export function enforceShape(shape, plan, siblings = []) {
   if (!plan || !ENDURANCE_SPORTS.has(plan.sport)) return { changed: false, clamped: 0, effCeil: 0, overBudget: false }
   const ceilPct = CEILING_PCT[shape.intensityCeiling] || CEILING_PCT.vo2
-  const maxModerate = (shape.qualityDays || 0) + (shape.moderateDays || 0)
-  const otherModerate = siblings.filter((p) => p && p.id !== plan.id && ENDURANCE_SPORTS.has(p.sport) && isModerate(p)).length
-  const thisIsModerate = isModerate(plan)
-  const overBudget = thisIsModerate && otherModerate >= maxModerate
+  const modSiblings = siblings.filter((p) => p && p.id !== plan.id && ENDURANCE_SPORTS.has(p.sport) && isModerate(p))
+  const overBudget = moderateOverBudget(plan, modSiblings, shape)
   const effCeil = overBudget ? CEILING_PCT.endurance : ceilPct
   let clamped = 0
   for (const s of (plan.segments || [])) {

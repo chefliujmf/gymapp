@@ -31,7 +31,7 @@ export default function CoachKnowledge() {
         placeholder={'e.g. “new to running, want to build up to a 5k — haven\'t trained in years.”'}
         onChange={(e) => setNotes(e.target.value)} onBlur={(e) => save(e.target.value.trim())} />
 
-      <div style={{ height: 1, background: '#2a2f3a', margin: '16px -16px 14px' }} />
+      <div style={{ height: 1, background: 'var(--line)', margin: '16px -16px 14px' }} />
 
       {/* ── It's learning ── */}
       <div style={GRP}>📈 It's learning <span className="meta" style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>from your training</span></div>

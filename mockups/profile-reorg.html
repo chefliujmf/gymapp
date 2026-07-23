@@ -1,0 +1,100 @@
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#ffb13d;--cyan:#38bdf8;--on-accent:#082015}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07090c;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:20px;display:flex;gap:26px;flex-wrap:wrap;justify-content:center}
+  .col{width:430px;max-width:100%}
+  .cap{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);margin:0 0 12px 2px;font-weight:700}
+  .phone{background:var(--bg);border-radius:22px;padding:16px 14px 26px;border:1px solid var(--line)}
+  .sub-head h1{font-size:22px;font-weight:800}
+  .sub-head p{color:var(--text-dim);font-size:13px;margin-top:2px}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:16px;padding:15px;margin-top:13px}
+  .basics{border-color:rgba(52,224,125,.35)}
+  .stitle{font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:3px}
+  .stitle .pill{font-size:10px;font-weight:800;color:var(--on-accent);background:var(--accent);border-radius:20px;padding:2px 8px;letter-spacing:.03em}
+  .ssub{font-size:12.5px;color:var(--text-dim);margin-bottom:12px;line-height:1.4}
+  .frow{display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--line)}
+  .frow:first-of-type{border-top:none}
+  .frow .ic{width:28px;height:28px;border-radius:8px;background:#2a2f3a;display:flex;align-items:center;justify-content:center;font-size:15px;flex:0 0 auto}
+  .frow .b{flex:1;min-width:0}
+  .frow .b b{font-size:14.5px;font-weight:700;display:block}
+  .frow .b span{font-size:12px;color:var(--text-dim)}
+  .frow .chk{color:var(--accent);font-size:16px;font-weight:800}
+  .frow .req{font-size:11px;font-weight:800;color:var(--amber);white-space:nowrap}
+  .grey{opacity:.55}
+  .dim{color:var(--text-dim);font-size:13px}
+  .chip{display:inline-block;font-size:12px;padding:5px 11px;border:1px solid var(--line);border-radius:20px;margin:3px 4px 0 0}
+  .chip.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700}
+  .note{font-size:11.5px;color:var(--text-dim);margin-top:10px;line-height:1.4}
+  .old .frow{opacity:.9}
+  .badnum{color:var(--amber);font-weight:800;font-size:11px}
+</style>
+
+<div class="col">
+  <p class="cap">▶ Proposed — "basics first," logical flow</p>
+  <div class="phone">
+    <div class="sub-head"><h1>Profile</h1><p>You &amp; your coaching</p></div>
+
+    <!-- account (unchanged) -->
+    <div class="card" style="display:flex;align-items:center;gap:12px">
+      <div style="width:44px;height:44px;border-radius:50%;background:#2a2f3a;display:flex;align-items:center;justify-content:center;font-size:20px">🙂</div>
+      <div><b style="font-size:15px">xenia</b><div class="dim">xenia@…  ·  athlete</div></div>
+    </div>
+
+    <!-- THE BASICS — the 5 gate fields, grouped + first -->
+    <div class="card basics">
+      <div class="stitle">The basics <span class="pill">needed for your plan</span></div>
+      <div class="ssub">Your coach scales dose, zones &amp; load from these. Everything else below is optional.</div>
+      <div class="frow"><span class="ic">🚻</span><div class="b"><b>Sex</b><span>Female</span></div><span class="chk">✓</span></div>
+      <div class="frow"><span class="ic">🎂</span><div class="b"><b>Date of birth</b><span>1992-08-16</span></div><span class="chk">✓</span></div>
+      <div class="frow"><span class="ic">🏅</span><div class="b"><b>Main sport</b><span>Running</span></div><span class="chk">✓</span></div>
+      <div class="frow"><span class="ic">🎯</span><div class="b"><b>Your goal</b><span>Stay healthy &amp; strong through pregnancy</span></div><span class="chk">✓</span></div>
+      <div class="frow"><span class="ic">📅</span><div class="b"><b>Training days / week</b><span>4 days</span></div><span class="chk">✓</span></div>
+    </div>
+
+    <div class="card">
+      <div class="stitle">Your coach</div>
+      <div class="ssub">Coach name · learn-from-check-ins · coaching notes</div>
+      <span class="chip on">Tadej</span><span class="chip">✎ notes</span><span class="chip on">📈 learn on</span>
+    </div>
+
+    <div class="card">
+      <div class="stitle">Availability detail</div>
+      <div class="ssub">Sessions/day · per-day time windows (training-days set above)</div>
+      <div class="dim">Mon–Sun sliders…</div>
+    </div>
+
+    <div class="card">
+      <div class="stitle">Body &amp; health</div>
+      <div class="ssub">Height · cycle &amp; pregnancy (optional, always private)</div>
+      <div class="dim">Height 168 cm · 💚 pregnancy-safe coaching on</div>
+    </div>
+
+    <div class="card">
+      <div class="stitle">Equipment · location</div>
+      <div class="ssub">Owned gear · city for weather-aware coaching</div>
+      <span class="chip on">treadmill</span><span class="chip on">dumbbells</span><span class="chip">📍 Montréal</span>
+    </div>
+
+    <div class="card" style="border-style:dashed">
+      <div class="dim">↪ Connect intervals.icu → <b style="color:var(--cyan)">Settings</b>  ·  FTP / thresholds → <b style="color:var(--accent)">Stats</b></div>
+    </div>
+    <p class="note">Every required basic is at the top, in <b>identity → sport → goal → availability</b> order, each with its own ✓. The "finish your profile" links now land on the exact field. Nothing removed — just reordered + grouped.</p>
+  </div>
+</div>
+
+<div class="col">
+  <p class="cap">Today — the 5 basics scattered (audit: positions 6·8·9·10·13)</p>
+  <div class="phone old">
+    <div class="sub-head"><h1>Profile</h1><p>You &amp; your coaching</p></div>
+    <div class="card"><div class="dim">Account (avatar · email · role)</div></div>
+    <div class="card"><div class="dim">⚡ "Unlock more from your data" gap card <span class="badnum">→ points to fields not on Profile</span></div></div>
+    <div class="card"><div class="stitle" style="font-size:14px">Your coach</div><div class="frow" style="border:none;padding-top:6px"><span class="ic">🎯</span><div class="b"><b>Your goal</b> <span class="badnum">#6 — buried in the coach card, before you've said who you are</span></div></div></div>
+    <div class="card"><div class="frow" style="border:none;padding-top:2px"><span class="ic">🏅</span><div class="b"><b>Sports you do</b> <span class="badnum">#8 · main-sport ★ only shows with ≥2 sports</span></div></div></div>
+    <div class="card"><div class="frow" style="border:none;padding:2px 0"><span class="ic">🚻</span><div class="b"><b>About you — Sex</b> <span class="badnum">#9</span></div></div>
+      <div class="frow"><span class="ic">🎂</span><div class="b"><b>Date of birth</b> <span class="badnum">#10 — hidden inside "Height &amp; birth date"; the gate link lands one section too high</span></div></div></div>
+    <div class="card"><div class="dim">Cycle · Location…</div></div>
+    <div class="card"><div class="frow" style="border:none;padding:2px 0"><span class="ic">📅</span><div class="b"><b>Weekly availability — training days</b> <span class="badnum">#13 — dead last</span></div></div></div>
+    <div class="card"><div class="dim">Equipment</div></div>
+    <p class="note">Required fields hit in the order goal → sport → sex → dob → training-days, with three optional sections interleaved, and no "required" cue anywhere.</p>
+  </div>
+</div>

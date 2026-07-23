@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
+import { REQUIRED_FIELDS, requiredProfileGaps } from '../profile-fields'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getSetting, setSetting } from '../db'
 import { authApi, type User } from '../auth/api'
@@ -74,19 +75,21 @@ function cyclePhaseOf(start?: string, len = 28): { day: number; phase: string } 
   return { day, phase }
 }
 function CycleFields({ user, refresh }: { user: User; refresh: () => Promise<void> }) {
-  const info = (user.info || {}) as { cycleStart?: string; cycleLength?: number; pregnant?: boolean; postpartumSince?: string }
+  const info = (user.info || {}) as { cycleStart?: string; cycleLength?: number; pregnant?: boolean; postpartumSince?: string; trimester?: number; dueDate?: string }
   const [start, setStart] = useState(info.cycleStart || '')
   const [len, setLen] = useState<number>(info.cycleLength || 28)
   const [ppSince, setPpSince] = useState(info.postpartumSince || '') // #631 — recent birth date → graded return
+  const [due, setDue] = useState(info.dueDate || '') // #759/#4 — optional exact due date
   const [saved, setSaved] = useState(false)
-  const save = (patch: { cycleStart?: string; cycleLength?: number; pregnant?: boolean; postpartumSince?: string }) => { authApi.saveProfile(patch).then(() => { refresh().catch(() => {}); setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {}) }
+  const save = (patch: { cycleStart?: string; cycleLength?: number; pregnant?: boolean; postpartumSince?: string; trimester?: number; dueDate?: string }) => { authApi.saveProfile(patch).then(() => { refresh().catch(() => {}); setSaved(true); setTimeout(() => setSaved(false), 1500) }).catch(() => {}) }
   const pregnant = !!info.pregnant
+  const tri = Number(info.trimester) || 0
   const ph = cyclePhaseOf(start, len)
   // #422 — if intervals wellness already gives us the phase (she logs her period there), SHOW it and
   // don't prompt her to re-enter. Manual fields stay as a fallback for athletes who don't log it.
   const icuPhase = user.cyclePhase ? String(user.cyclePhase).replace(/_/g, ' ') : null
   return (
-    <div style={{ marginTop: 6 }}>
+    <div style={{ marginTop: 6 }} id="ob-cycle">
       <div className="section-title" style={{ fontSize: 13 }}>Cycle &amp; pregnancy <span className="meta" style={{ fontWeight: 400 }}>· optional{saved ? ' · Saved ✓' : ''}</span></div>
       {/* #427 — Pregnant toggle: switches the coach to pregnancy mode + pauses menstrual-cycle tracking. Private (never shown on workouts). */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: '2px 2px 8px' }}>
@@ -94,7 +97,19 @@ function CycleFields({ user, refresh }: { user: User; refresh: () => Promise<voi
         <span style={{ color: 'var(--text)', fontSize: 14 }}>Pregnant</span>
       </label>
       {pregnant ? (
-        <p className="meta" style={{ margin: '2px 2px 4px', color: 'var(--accent)' }}>Your coach is adapting your training for pregnancy — health &amp; function first, and menstrual-cycle tracking is paused. This stays private: it's never shown on your workout titles or descriptions.</p>
+        <>
+          <p className="meta" style={{ margin: '2px 2px 8px', color: 'var(--accent)' }}>Your coach is adapting your training for pregnancy — health &amp; function first, and menstrual-cycle tracking is paused. This stays private: it's never shown on your workout titles or descriptions.</p>
+          {/* #759/#4 — OPTIONAL, low-disclosure stage. You're never required to share a date; pick a trimester (or add a date) only to fine-tune. Default without either = the gentlest, safest envelope. */}
+          <div className="meta" style={{ margin: '0 2px 6px' }}>Which trimester? <span style={{ fontWeight: 400 }}>Optional — helps tailor the plan. Skip it and your coach keeps you in the gentlest, safest range. Always private.</span></div>
+          <div className="chips" style={{ margin: '0 2px 8px' }}>
+            {([[1, '1st'], [2, '2nd'], [3, '3rd']] as [number, string][]).map(([v, label]) => (
+              <button key={v} className={'chip' + (tri === v ? ' chip--active' : '')} onClick={() => save({ trimester: tri === v ? 0 : v })}>{label} trimester</button>
+            ))}
+          </div>
+          <label className="meta" style={{ display: 'flex', flexDirection: 'column', gap: 3, margin: '0 2px 4px' }}>Or an exact due date <span style={{ fontWeight: 400 }}>(optional — most precise; private)</span>
+            <input type="date" className="search" style={{ maxWidth: 160 }} value={due} onChange={(e) => { setDue(e.target.value); save({ dueDate: e.target.value }) }} />
+          </label>
+        </>
       ) : (
         <>
           {icuPhase && (
@@ -148,10 +163,53 @@ function FuelFields({ user, refresh }: { user: User; refresh: () => Promise<void
   )
 }
 
+// #759 (audit — Profile flow) — the 5 gate basics were scattered across positions 6/8/9/10/13. Group them into ONE
+// "The basics" card at the TOP, in identity → sport → goal → availability order, each with a ✓/Add cue that deep-links to
+// its exact section below (the real edit surface stays; this is the overview + prominence the audit asked for). When
+// everything's set it stays as a compact all-✓ card so a returning user sees "basics done" at a glance.
+function ProfileBasics({ user }: { user: User | null | undefined }) {
+  const gaps = new Set(requiredProfileGaps(user))
+  const info = (user?.info || {}) as Record<string, unknown>
+  const left = gaps.size
+  const val = (k: string): string => {
+    if (k === 'sex') return user?.sex === 'female' ? 'Female' : user?.sex === 'male' ? 'Male' : ''
+    if (k === 'dob') return String(info.dob || '')
+    if (k === 'mainSport') { const s = String(info.mainSport || (Array.isArray(user?.sports) ? user!.sports![0] : '') || ''); return s ? s[0].toUpperCase() + s.slice(1) : '' }
+    if (k === 'trainingDays') return info.trainingDays ? `${info.trainingDays} days / week` : ''
+    if (k === 'goal') { const g = (info.goals || {}) as { focus?: string; notes?: string }; return (g.notes || g.focus || (user as { coachProfile?: string } | undefined)?.coachProfile || '').slice(0, 60) }
+    return ''
+  }
+  return (
+    <div className={'card pbasics' + (left ? ' pbasics--todo' : '')}>
+      <div className="pbasics__head"><b>The basics</b><span className={'pbasics__pill' + (left ? '' : ' done')}>{left ? 'needed for your plan' : 'complete ✓'}</span></div>
+      <p className="pbasics__sub">Your coach scales dose, zones &amp; load from these. Everything below is optional.</p>
+      {REQUIRED_FIELDS.map((f) => {
+        const missing = gaps.has(f.key)
+        return (
+          <Link key={f.key} to={'/profile' + (f.section ? `#${f.section}` : '')} className={'pbasics__row' + (missing ? ' miss' : '')}>
+            <span className="pbasics__ic">{f.icon}</span>
+            <span className="pbasics__b"><b>{f.label}</b><span>{missing ? f.hint : val(f.key)}</span></span>
+            {missing ? <span className="pbasics__add">Add ›</span> : <span className="pbasics__chk">✓</span>}
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function Profile() {
   const navigate = useNavigate()
   const { user, refresh } = useAuth()
   const gaps = dataGaps(user)
+  // #742/#759 — a deep-link like /profile#ob-sport (from the "finish your profile" pointer or a nudge) must land ON that
+  // section, not the page top. Scroll the hash target into view once the page has painted.
+  useEffect(() => {
+    const id = window.location.hash?.replace('#', '')
+    if (!id) return
+    const t = setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 140)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // #1002 (JM: "my coach name under profile was removed") — the field read ONLY the device-local cache, so a cleared/
   // other/synced-late browser showed BLANK though the server still holds it (JM's is "Tadej"). Fall back to the SERVER
   // value (`user.coachName`, the source of truth) whenever the local cache is empty — the name can never look "removed".
@@ -233,6 +291,9 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* #759 (audit) — the 5 required basics, grouped + FIRST, each deep-linking to its exact section below. */}
+      <ProfileBasics user={user} />
+
       {/* Unlock nudge — turn missing-data dead-ends into a clear to-do (dataGaps.ts) */}
       {gaps.length > 0 && (
         <div className="card gapcard">
@@ -240,7 +301,7 @@ export default function Profile() {
           {gaps.map((g) => (
             <div key={g.key} className="gapcard__row"><b>{g.label}</b><span> → {g.unlocks}</span></div>
           ))}
-          <div className="gapcard__hint">Set these below{!user?.hasIcuKey ? ' — connecting intervals.icu fills most of them automatically' : ''}.</div>
+          <div className="gapcard__hint">Each opens where you set it{!user?.hasIcuKey ? ' — connecting intervals.icu in Settings fills most automatically' : ''}.</div>
         </div>
       )}
 

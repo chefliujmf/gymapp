@@ -26,15 +26,15 @@ const save = (s) => (USE_PG ? pgSave(s) : fileSave(s))
 import { stravaConfigured, userStravaConnected, stravaAuthorizeUrl, stravaExchangeCode, stravaActivities } from './strava.js'
 import { parseActivityFile } from './activity-parse.js'
 import { eventMatchesPlan, eventSport, slotKey, planDroppedByReconcile, orphanIsMoveLeftover, userMovedPlatyplusPlan, mirrorBrokenPlans } from './icu-match.js'
-import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage } from './readiness.js'
+import { readiness as computeReadiness, baselines as wellnessBaselines, forecastFreshness, projectFormSeries, bestVo2maxEstimate, weeklyLoadBudget, isoMonday, defaultLoadPlan, recentRestDows, periodizedLoads, coachTick, horizonCoverage, readinessEase } from './readiness.js'
 import { weekShape } from './week-shape.js' // #613/#615 — code-decided week structure (the DOSE); the ceiling clamp lives in shape-enforce.js
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
-import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGym, isModerate, heavyGymDatesNear } from './shape-enforce.js' // #615/#620 clamp · #717/#4 concurrent-training separation
+import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGym, isModerate, heavyGymDatesNear, moderateOverBudget } from './shape-enforce.js' // #615/#620 clamp · #717/#4 concurrent-training separation · #5/#10 shared over-budget helper
 import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
 import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard
 import { requiredProfileGaps, REQUIRED_FIELDS } from './profile-gate.js' // #A — plan generation is gated on a minimal mandatory profile
-import { periodizationPhase } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES
-import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose
+import { periodizationPhase, parseRaceDate } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES · #8 parse race date from free-text notes
+import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym, enforcePostpartumGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose · #2 postpartum plyo clamp
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile, goalPriorityFrame } from './perf-metrics.js' // #404; #669 goal-aware priority
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -59,7 +59,7 @@ function mergeIcuSportSettings(existing, mapped, intervalsWins = false) {
   }
   return out
 }
-import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, gymTssFromRpe, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent } from './icu-steps.js'
+import { encodeStep, flattenIcuStepsSrv, paceFromPowerPct, clampEasyEfforts, normalizeRamps, bandSteadyPower, nativeWorkoutText, plannedTss, plannedGymTss, gymTssFromRpe, estimateGymSeconds, stripPlatyplusLinks, stripDerivedWorkout, isPlatyplusPushedEvent, effortCueFromSegments } from './icu-steps.js'
 import { weatherGuidance } from './weather.js'
 import { cycleContext, cycleLoadModifier, normalizePhase, phaseFromDay, phaseFromHistory, pregnancyStage, scrubPrivate } from './cycle.js' // #329 (#422 phaseFromHistory, #427 pregnancyStage, #650 scrubPrivate, #719 cycleLoadModifier)
 import webpush from 'web-push' // #457 — phone push notifications
@@ -461,7 +461,10 @@ app.put('/auth/profile', auth, (req, res) => {
   // which flow straight into buildSystemPrompt + the 409 guard and defeat the "hard weekly ceiling". Enforce sane bounds.
   if (req.user.info.trainingDays != null && req.user.info.trainingDays !== '') req.user.info.trainingDays = Math.max(0, Math.min(7, Math.round(Number(req.user.info.trainingDays) || 0)))
   if (req.user.info.maxPerDay != null && req.user.info.maxPerDay !== '') req.user.info.maxPerDay = Math.max(1, Math.min(3, Math.round(Number(req.user.info.maxPerDay) || 1)))
+  // #759/#4 — optional coarse trimester (1/2/3); 0/empty clears it. Validate the low-disclosure marker.
+  if ('trimester' in req.body) { const t = Math.round(Number(req.body.trimester) || 0); req.user.info.trimester = [1, 2, 3].includes(t) ? t : undefined }
   if (req.body && req.body.pregnant === true) { delete req.user.cyclePhase; delete req.user.cyclePhaseAt } // #427 — no menstrual cycle while pregnant; clear stale phase now
+  if (req.body && req.body.pregnant === false) { delete req.user.info.trimester; delete req.user.info.dueDate; delete req.user.info.pregnancyStart } // #759 — leaving pregnancy clears the stage markers
   // #711 (audit SAFETY) — clearing pregnancy must ENTER the graded postpartum return by DEFAULT, not silently snap to a
   // full build (2 quality + VO2) the week after birth. If she turns Pregnant OFF and hasn't set a birth date, stamp a
   // provisional postpartumSince=today so weekShape uses the graded-return shape until ~12 wk (she can edit the date). This
@@ -860,6 +863,24 @@ app.post('/auth/checkin', auth, (req, res) => {
   try {
     const today = localTodayInTz(req.user.icuTimezone) // #347 — local today (cached tz), so a near-midnight check-in still fires
     const complete = ci.energy != null && ci.sleep != null && ci.soreness != null
+    // #4 (audit SAFETY) — CODE-ENFORCED readiness easing, ungated by coach-profile/staging (the old easing only happened
+    // if the LLM ran, so a wrecked athlete on QA or with no coach set up got none). A poor check-in eases TODAY's planned
+    // quality endurance session in code — 'rest' → easy, 'ease' → cap at tempo. Only ever REDUCES intensity. Runs once/day.
+    if (complete && ci.date === today && !ci.readinessEased) {
+      const ease = readinessEase(ci)
+      if (ease !== 'none') {
+        const easeShape = { intensityCeiling: ease === 'rest' ? 'endurance' : 'tempo', qualityDays: 0, moderateDays: ease === 'rest' ? 0 : 1, loadBand: 'flat' }
+        const todays = (req.user.plans || []).filter((p) => p && p.date === today && (p.sport === 'ride' || p.sport === 'run' || p.sport === 'swim'))
+        const eased = []
+        for (const p of todays) {
+          if (p.sport === 'swim' && Array.isArray(p.swimSets) && p.swimSets.length) {
+            if (isModerate(p)) { const r = enforceSwim(p.swimSets, easeShape.intensityCeiling, req.user.sportSettings?.swimming?.thresholdPace); if (r.clamped) { p.swimSets = r.sets; p.notes = `${p.swimNote ? p.swimNote + '\n' : ''}${r.notes}`; p.moving_time = r.moving_time; p.distanceM = r.distanceM; p.icu_training_load = r.icu_training_load; p.title = 'Easy Swim'; eased.push(p) } }
+          } else { const r = enforceShape(easeShape, p, todays); if (r.changed) eased.push(p) }
+        }
+        ci.readinessEased = ease
+        if (eased.length) { save(store); console.log(`[readiness-ease] ${req.user.username || ''} — ${ease}: eased ${eased.length} session(s) on ${today}`); for (const p of eased) pushPlanToIcu(req.user, p).catch(() => {}) } // prod-only push (IS_STAGING no-op)
+      }
+    }
     // #498 (JM 2026-07-12) — the post-check-in coach trigger + its push notification fire on PROD ONLY, never QA/dev
     // (like the daily-adapt scheduler). So a check-in on staging never pushes a coach notification.
     if (!IS_STAGING && req.user.coachProfile && req.user.coachProfile.trim() && ci.date === today && complete && !ci.coachDecided) {
@@ -1787,16 +1808,21 @@ const SPORT_ENGINES = [
 // the system prompt and the daily-adapt orchestration (sharpen gate) agree on how many quality days this athlete
 // gets — no more contradiction between passes.
 function athleteWeekShape(user) {
-  const isFemale = user && user.sex === 'female'
+  const info = (user && user.info) || {}
   const today = localTodayInTz(user && user.icuTimezone)
-  const pg = (isFemale && user.info && user.info.pregnant) ? pregnancyStage(user.info, today) : null
+  // #759/#3 (audit) FAIL-CLOSED, not fail-open: pregnancy/postpartum SAFETY keys on the explicit info.pregnant /
+  // info.postpartumSince TOGGLE ALONE — NOT sex==='female'. The old sex gate silently dropped the whole safe envelope
+  // for a pregnant user whose sex was unset/other (the audit-critical fail-open). The toggle is the source of truth;
+  // a non-pregnant person never has it set, and the worst case for a mis-set male is a harmless conservative envelope.
+  const pregnant = !!info.pregnant
+  const pg = pregnant ? pregnancyStage(info, today) : null
   const cycleFresh = !!(user && user.cyclePhaseAt && (Date.now() - new Date(user.cyclePhaseAt + 'T00:00:00Z').getTime()) < 6 * 86400000)
-  const age = (user && user.info && user.info.dob) ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
-  // #631 — postpartum weeks since birth (from info.postpartumSince), female + not currently pregnant → graded return
-  const ppSince = (isFemale && user.info && user.info.postpartumSince && !(user.info && user.info.pregnant)) ? user.info.postpartumSince : null
+  const age = info.dob ? Math.floor((Date.now() - new Date(info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
+  // #631 — postpartum weeks since birth (info.postpartumSince), not currently pregnant → graded return. Toggle-gated (#759).
+  const ppSince = (info.postpartumSince && !pregnant) ? info.postpartumSince : null
   const postpartumWeeks = (ppSince && /^\d{4}-\d{2}-\d{2}$/.test(ppSince)) ? Math.floor((Date.now() - new Date(ppSince + 'T00:00:00Z').getTime()) / (7 * 86400000)) : null
   return weekShape({
-    pregnant: !!(isFemale && user.info && user.info.pregnant), trimester: pg ? pg.trimester : null, postpartumWeeks,
+    pregnant, trimester: pg ? pg.trimester : null, postpartumWeeks,
     cyclePhase: user && user.cyclePhase, cycleFresh,
     goalFocus: user && user.info && user.info.goals && user.info.goals.focus,
     goalNotes: user && user.info && user.info.goals && user.info.goals.notes,
@@ -1838,13 +1864,16 @@ function enforceGymRepScheme(user, plan) {
   if (n) console.log(`[gym-reps] ${user.username || ''} "${plan.title}" — clamped ${n} main lift(s) into ${focus} rep scheme`)
 }
 
-// #712 — the athlete's current pregnancy trimester (female + info.pregnant), else null. Drives the supine-gym clamp.
+// #712 — the athlete's current pregnancy trimester, else null. Drives the supine-gym clamp.
 function pregnantTrimesterOf(user) {
-  if (!user || String(user.sex || '').toLowerCase() !== 'female' || !(user.info && user.info.pregnant)) return null
+  // #759/#3 (audit) FAIL-CLOSED: gate on the explicit info.pregnant TOGGLE alone, NOT sex==='female' — the sex gate
+  // silently disabled the supine clamp for a pregnant user whose sex was unset/other (audit-critical fail-open).
+  if (!user || !(user.info && user.info.pregnant)) return null
   const pg = pregnancyStage(user.info, localTodayInTz(user && user.icuTimezone))
   // #748 (audit) FAIL-SAFE: an UNKNOWN gestational stage → treat as T3 (most conservative) so the supine-gym clamp FIRES
-  // (it only triggers at T2+). Defaulting to T1 failed OPEN — a pregnant athlete with no date who is actually in T2/T3
-  // got NO supine removal. The profile gate makes the date mandatory; this is the backstop.
+  // (it only triggers at T2+). Defaulting to T1 failed OPEN. Since #759 the date is OPTIONAL (no gate), so this
+  // no-date→T3 backstop is now the PRIMARY guarantee, not just a fallback: a pregnant athlete who shares no date still
+  // gets the most conservative supine removal.
   return pg && pg.trimester ? pg.trimester : 3
 }
 // #712 (audit SAFETY) — swap/drop SUPINE gym moves for a pregnant T2+ athlete, on every save + sweep (the assembler/coach
@@ -1855,6 +1884,20 @@ function enforcePregnancyGymPlan(user, plan) {
   if (!(tri >= 2)) return
   const r = enforcePregnancyGym(plan.exercises, tri)
   if (r.changed) { plan.exercises = r.exercises; console.log(`[pregnancy-gym] ${user.username || ''} "${plan.title}" — swapped/dropped ${r.changed} supine move(s) (T${tri}+)`) }
+}
+// #2 (audit SAFETY) — the athlete's current postpartum IMPACT restriction (none <6wk / walk-run 6-12wk), toggle-driven
+// (info.postpartumSince, not sex). While restricted, strip plyometric/jump moves from a gym plan. Peer to the run clamp.
+function postpartumImpactRestricted(user) {
+  const info = (user && user.info) || {}
+  if (!info.postpartumSince || info.pregnant || !/^\d{4}-\d{2}-\d{2}$/.test(info.postpartumSince)) return false
+  const wk = Math.floor((Date.now() - new Date(info.postpartumSince + 'T00:00:00Z').getTime()) / (7 * 86400000))
+  return wk >= 0 && wk < 12 // <6wk (no impact) + 6-12wk (walk-run) → no plyometrics either
+}
+function enforcePostpartumGymPlan(user, plan) {
+  if (!plan || plan.sport !== 'gym' || !Array.isArray(plan.exercises)) return
+  if (!postpartumImpactRestricted(user)) return
+  const r = enforcePostpartumGym(plan.exercises, true)
+  if (r.changed) { plan.exercises = r.exercises; console.log(`[postpartum-gym] ${user.username || ''} "${plan.title}" — replaced ${r.changed} plyometric/jump move(s) with a low-impact substitute (pelvic-floor safe)`) }
 }
 function enforceTeenGym(user, plan) {
   if (!plan || plan.sport !== 'gym') return
@@ -1884,15 +1927,14 @@ async function reenforceShapeAll(user) {
   // #715 — sweep STALE swim plans through the zone clamp too (they carry no %-segments, so enforceShapeIntensity above
   // is a no-op for them). A swim built in an earlier, harder week must be eased if the shape tightened (e.g. pregnancy).
   const swimShape = athleteWeekShape(user), swimCss = user.sportSettings?.swimming?.thresholdPace
-  const swimMaxQ = (swimShape.qualityDays || 0) + (swimShape.moderateDays || 0) // #8 — the week's shared quality budget
   for (const p of future) {
     if (p.sport !== 'swim' || !Array.isArray(p.swimSets) || !p.swimSets.length) continue
     // #7/#8 (audit) — count HARD swim days toward the week's quality budget (shared with ride/run, via the now swim-aware
     // isModerate) and force an OVER-BUDGET swim to EASY — its SETS + load + title, not just a mislabeled title. Without
     // this a build swimmer could be saved 5+ CSS/Z4/Z5 sessions/week, none counted or clamped.
     const mon = isoMonday(p.date), sun = addDays(mon, 6)
-    const otherMod = future.filter((q) => q !== p && q.date >= mon && q.date <= sun && isModerate(q)).length
-    const overBudget = isModerate(p) && otherMod >= swimMaxQ
+    const modSibs = future.filter((q) => q !== p && q.date >= mon && q.date <= sun && isModerate(q))
+    const overBudget = moderateOverBudget(p, modSibs, swimShape) // #5/#10 — shared per-discipline budget rule
     const r = enforceSwim(p.swimSets, overBudget ? 'endurance' : swimShape.intensityCeiling, swimCss)
     if (r.clamped || overBudget) {
       p.swimSets = r.sets; p.notes = `${p.swimNote ? p.swimNote + '\n' : ''}${r.notes}`; p.moving_time = r.moving_time; p.distanceM = r.distanceM; p.icu_training_load = r.icu_training_load
@@ -1909,6 +1951,7 @@ async function reenforceShapeAll(user) {
     if (Array.isArray(p.exercises)) { const r = enforceGymStructure(p.exercises); if (r.deduped || r.retimed) p.exercises = r.exercises } // #687-enforce — dedup + hold→timed on stale gym plans
     enforceTeenGym(user, p)
     enforcePregnancyGymPlan(user, p) // #712 supine clamp
+    enforcePostpartumGymPlan(user, p) // #2 — postpartum plyometric/jump clamp
     if (JSON.stringify(p.exercises || []) !== ex0) gymTouched++
   }
   // #706 — give consecutive same-title gym sessions a clean A/B/C series so the calendar never shows two identical
@@ -2013,10 +2056,14 @@ function buildSystemPrompt(user) {
     if (does && e.text) p += '\n\n' + e.text
   }
   const isFemale = user.sex ? user.sex === 'female' : /\b(female|woman|she\/her)\b/i.test(prof)
-  if (isFemale && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
+  // #759/#3 (audit) — pregnancy/postpartum SAFETY keys on the explicit toggle, NOT sex==='female' (the sex gate failed
+  // OPEN for a pregnant user whose sex was unset). When pregnant, the female-athlete guidance (§6, referenced below) must
+  // load regardless of the sex field.
+  const pregnant = !!(user.info && user.info.pregnant)
+  if ((isFemale || pregnant) && COACH_ENGINE_FEMALE) p += '\n\n' + COACH_ENGINE_FEMALE
   // #329/#427 — this athlete's CURRENT repro-state block. PREGNANCY overrides everything (there is no
   // cycle); otherwise the menstrual cycle phase (from intervals, stashed by /auth/readiness) biases the PLAN.
-  if (isFemale && user.info && user.info.pregnant) {
+  if (pregnant) {
     const pg = pregnancyStage(user.info, todayIso) // #448 local today, not UTC
     const wk = pg && pg.weeks != null ? `~week ${pg.weeks} (trimester ${pg.trimester})` : 'trimester unknown — ASK her due date (EDD) or last-period date to tailor by trimester; use first-trimester defaults until then'
     tail += `\n\n# PREGNANCY — she is PREGNANT (${wk}). This OVERRIDES cycle-phase logic: there is NO menstrual cycle now, do NOT program by cycle phase. Apply the pregnancy protocol in your female-athlete guidance (§6). Core rules: goal is MAINTAIN health & fitness, never build/PR/max efforts. **SHAPE the week as MAINTENANCE, not a build: MOST sessions are EASY / endurance + her strength work; AT MOST ONE lightly-moderate session per week (a short tempo by RPE + talk test — NOT a structured sweet-spot / threshold / VO2 interval block). NEVER two "quality" days in a week — two sweet-spots or thresholds is a BUILD stimulus, which pregnancy is not.** Gauge intensity by RPE + the TALK TEST, not heart rate (pregnancy raises resting HR ~10-20 bpm); her in-app **Freshness/readiness already DOWN-WEIGHTS the HR-derived load ratio** (ACWR) for exactly this reason (#536), so trust that score + her RPE/check-in over raw load numbers — a MID Freshness on a light day is normal maintenance, not a warning; do not chase a "low" load reading with more volume; no Valsalva/breath-holding (exhale on the effort, keep ~2-3 reps in reserve); ${pg && pg.trimester >= 2 ? 'NO supine (flat-on-back) work, use incline/side-lying/upright versions, and watch for abdominal doming; ' : ''}avoid overheating (cool + hydrate, especially hot-humid days), fall/contact/collision risk, and sprinting; keep pelvic-floor + deep-core awareness. DEFER to her clinician / pelvic-floor PT. If she reports any STOP sign (vaginal bleeding, fluid leak, calf pain or swelling, chest pain, dizziness/faintness, a headache that won't clear, regular contractions, reduced fetal movement) tell her to STOP and contact her clinician. Frame everything on health & function, never weight or "getting the body back". **PRIVACY — pregnancy is PRIVATE: NEVER write "pregnancy/pregnant/trimester/prenatal/expecting/baby/bump" or anything implying it in a workout TITLE, a DESCRIPTION, a plan name, or the public activity text (set_activity_text). It must not appear ANYWHERE others could see. Apply the adjustments SILENTLY and name sessions by their normal training content ("Easy Aerobic Run", "Z2 Endurance"), never by the reason.**`
@@ -2135,6 +2182,9 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
   // consistency / teen / cycle-phase all fold into this one function → one authoritative quality-day count.
   const shape = athleteWeekShape(user)
   tail += `\n\n# THIS WEEK'S SHAPE — computed for THIS athlete; BUILD the plan to match it (do NOT add quality beyond this or exceed the ceiling): **${shape.qualityDays} structured quality day${shape.qualityDays !== 1 ? 's' : ''}/week${shape.moderateDays ? ` + up to ${shape.moderateDays} light-moderate (tempo) day` : ''}, intensity CEILING = ${shape.intensityCeiling} (never program harder than this), load band = ${shape.loadBand}.** ${shape.rationale} Space any quality days apart (easy days between); everything else is easy/endurance + their strength; leave genuine rest days blank.`
+  // #1 (audit-critical) — the CODE already overrode a teen's weight-loss goal to a conservative health shape; make the
+  // redirect explicit + non-negotiable so the coach reframes to fuelling, never the scale.
+  if (shape.teenWeightLossRedirect) tail += `\n\n# TEEN + WEIGHT-LOSS GOAL → REDIRECT (SAFETY, non-negotiable): this athlete is under 18 and their goal mentions losing weight. Do NOT program or coach toward weight loss / a calorie deficit / "leaning out" in ANY form (no extra volume "to burn calories", no cutting language in titles/descriptions/chat). The week is deliberately held at a conservative health shape. Redirect EVERY discussion to FUELLING ENOUGH to grow + train, building skills + performance, and consistency. Under-fuelling a growing body risks growth, bone health and RED-S. If they push on weight, gently explain why you focus on fuelling + performance instead, and if you see red flags (restrictive eating, stalled growth, missed periods, stress-fracture pain) advise a clinician / sports-dietitian.`
   // #713 (audit SAFETY) — postpartum's real risk is IMPACT, not intensity: an "easy run" is still contraindicated before
   // the pelvic floor is rebuilt. The shape's `impact` directive forbids/gates run modality.
   if (shape.impact === 'none') tail += `\n\n# POSTPARTUM — IMPACT SAFETY: program NO running, jumping, or plyometrics right now. The pelvic floor + deep core are still rebuilding and the risk is ground-reaction IMPACT, not aerobic effort — a "ceiling-compliant easy run" is STILL contraindicated. Use NON-IMPACT modalities ONLY: walking, stationary bike, swimming, elliptical, plus pelvic-floor + deep-core work. Do NOT schedule any run/impact session. Progress by how she feels + clinician guidance; STOP signs (leaking, heaviness/pressure, abdominal doming) → ease off and refer to her pelvic-floor PT.`
@@ -2159,13 +2209,15 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const thisMon = isoMonday(todayIso)
     const anchorMon = isoMonday(user.onboardedAt ? new Date(user.onboardedAt).toISOString().slice(0, 10) : '2024-01-01')
     const weeksSinceAnchor = Math.max(0, Math.floor((Date.parse(thisMon) - Date.parse(anchorMon)) / (7 * 86400000)))
-    const rd = user.info && user.info.raceDate
+    // #8 (audit) — the taper must also fire when the athlete typed the date in FREE-TEXT goal notes (the prompt invites
+    // exactly that), not only the structured info.raceDate. Parse the notes as a fallback so a triathlete still tapers.
+    const raceName = `${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`.toLowerCase()
+    const rd = (user.info && user.info.raceDate) || parseRaceDate(`${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`, todayIso)
     const weeksToRace = (rd && /^\d{4}-\d{2}-\d{2}$/.test(rd) && rd >= todayIso) ? Math.floor((Date.parse(isoMonday(rd)) - Date.parse(thisMon)) / (7 * 86400000)) : null
     const ageYears = (user.info && user.info.dob) ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
     const form = (typeof user.ctl === 'number' && typeof user.atl === 'number') ? user.ctl - user.atl : null // #630 — autoregulate off Form
     // #752/#9 (audit) — a longer race needs a longer taper: widen for a 70.3 (~3wk) / Ironman (~4wk). Read the distance
     // from the race NAME **or the goal notes** (an athlete often types "Ironman Nice" in their goal, not the name field).
-    const raceName = `${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`.toLowerCase()
     const taperWeeks = /ironman|140\.?6|full[- ]?distance/.test(raceName) ? 4 : /70\.?3|half[- ]?iron|half[- ]?distance/.test(raceName) ? 3 : 2
     // #756 (audit) — pass loadBand so a flat/health goal never gets a peak/overload week.
     per = periodizationPhase({ ctl: user.ctl, weeksSinceAnchor, weeksToRace, ageYears, form, loadBand: shape.loadBand, taperWeeks })
@@ -2881,23 +2933,39 @@ async function upsertPlan(user, body, actor = 'coach') {
   // effort (95% is NEVER easy — any sport). Fixes it at the source so the DB, the app view, AND the intervals
   // push are all sane, even when the coach fat-fingers the %.
   enforceShapeIntensity(user, plan) // #615 — ENFORCE the week-shape ceiling + quality-day count IN CODE (the prompt was ignored)
+  // #6 (audit) — NO-BENCHMARK athletes: %-of-threshold segments render to nothing on the watch, so code-append a concrete
+  // RPE / talk-test translation to the objective (the "coach by RPE" instruction was prompt-only). Ride needs an FTP; run
+  // needs a threshold pace — if THIS sport's benchmark is missing, add the by-feel cue (once) so the plan is followable.
+  if ((plan.sport === 'ride' || plan.sport === 'run') && Array.isArray(plan.segments) && plan.segments.length) {
+    const noBench = plan.sport === 'ride' ? !(Number(user.ftp) > 0) : !(Number(user.sportSettings?.running?.thresholdPace) > 0)
+    if (noBench) { const cue = effortCueFromSegments(plan.segments); if (cue && !String(plan.objective || '').includes('By feel')) plan.objective = `${plan.objective ? plan.objective.trim() + ' ' : ''}${cue}` }
+  }
   enforceGymRepScheme(user, plan) // #649 — ENFORCE the #648 gym rep scheme (support cyclist mains 3-6, not 3×10) — before the teen floor
   if (plan && plan.sport === 'gym' && Array.isArray(plan.exercises)) { // #687-enforce — dedup the same movement across sections + force holds to timed (the assembled frame is ignored by the LLM)
     const r = enforceGymStructure(plan.exercises)
     if (r.deduped || r.retimed) { plan.exercises = r.exercises; console.log(`[gym-structure] ${user.username || ''} "${plan.title}" — deduped ${r.deduped}, retimed ${r.retimed}`) }
   }
   enforcePregnancyGymPlan(user, plan) // #712 (audit) — pregnant T2+ supine gym clamp
+  enforcePostpartumGymPlan(user, plan) // #2 (audit) — early/mid-postpartum: strip plyometric/jump moves (pelvic-floor impact)
   // #715 (audit) — SWIM: clamp each set's zone to the week ceiling (like ride/run intensity) + re-derive the notes,
   // duration, distance + sTSS from the CLAMPED sets. A maintenance/pregnant/teen swimmer can no longer be saved a sprint
   // set no matter what the coach wrote — the exact enforcement ride/run already had, now first-class for swimming too.
   if (plan.sport === 'swim' && Array.isArray(plan.swimSets) && plan.swimSets.length) {
     const shape = athleteWeekShape(user)
     const css = user.sportSettings?.swimming?.thresholdPace
-    const r = enforceSwim(plan.swimSets, shape.intensityCeiling, css)
+    // #10 (audit) — OVER-BUDGET check at SINGLE-SAVE, not just the daily sweep: a build swimmer could save a 3rd/4th
+    // CSS/Z5 session and it persisted at full intensity until the next day. Count this Mon–Sun week's moderate endurance
+    // siblings (swim-aware isModerate) against the quality budget — per-DISCIPLINE for a triathlete (#5) — and if it's
+    // over, enforce the EASY ceiling on the SETS + relabel, the same as ride/run.
+    const mon = isoMonday(plan.date), sun = addDays(mon, 6)
+    const wkMod = (user.plans || []).filter((q) => q && q.id !== plan.id && q.date >= mon && q.date <= sun && (q.sport === 'ride' || q.sport === 'run' || q.sport === 'swim') && isModerate(q))
+    const overBudget = moderateOverBudget(plan, wkMod, shape) // #5/#10 — shared per-discipline budget rule
+    const r = enforceSwim(plan.swimSets, overBudget ? 'endurance' : shape.intensityCeiling, css)
     plan.swimSets = r.sets
     plan.notes = `${plan.swimNote ? plan.swimNote + '\n' : ''}${r.notes}` // rebuild the display text from the clamped sets
     plan.moving_time = r.moving_time; plan.distanceM = r.distanceM; plan.icu_training_load = r.icu_training_load
-    if (r.clamped) console.log(`[swim-clamp] ${user.username || ''} "${plan.title}" — clamped ${r.clamped} set(s) to zone ≤${({ endurance: 2, tempo: 2, sweetspot: 3, threshold: 3, vo2: 5 })[shape.intensityCeiling] ?? 5} (ceiling ${shape.intensityCeiling})`)
+    if (overBudget) plan.title = 'Easy Swim' // the sets are now easy → the title must match (was left as "CSS 4×100")
+    if (r.clamped || overBudget) console.log(`[swim-clamp] ${user.username || ''} "${plan.title}" — ${overBudget ? 'OVER-BUDGET → easy; ' : ''}clamped ${r.clamped} set(s) (ceiling ${overBudget ? 'endurance' : shape.intensityCeiling})`)
   }
   enforceTeenGym(user, plan) // #631 — under-18: floor near-maximal gym sets to submaximal (no 1-RM loading)
   // #650 — PRIVACY (safety): strip pregnancy/postpartum terms from anything the athlete or the public could read
