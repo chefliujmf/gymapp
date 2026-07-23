@@ -1271,6 +1271,21 @@ select.search { appearance: none; -webkit-appearance: none; }
 .pgate__ic { width: 30px; height: 30px; border-radius: 8px; flex: none; display: grid; place-items: center; font-size: 15px; background: #2b303b; }
 .pgate__b { flex: 1; min-width: 0; } .pgate__b b { font-size: 14px; display: block; } .pgate__b span { font-size: 12px; color: var(--text-dim); }
 .pgate__add { font-size: 13px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+/* #759 — "The basics" grouped card at the top of Profile */
+.pbasics.pbasics--todo { border-color: rgba(52, 224, 125, .35); }
+.pbasics__head { display: flex; align-items: center; gap: 9px; }
+.pbasics__head b { font-size: 15px; font-weight: 800; }
+.pbasics__pill { font-size: 10px; font-weight: 800; letter-spacing: .02em; color: var(--on-accent, #082015); background: var(--accent); border-radius: 20px; padding: 2px 9px; }
+.pbasics__pill.done { color: var(--accent); background: rgba(52, 224, 125, .13); }
+.pbasics__sub { font-size: 12.5px; color: var(--text-dim); line-height: 1.4; margin: 4px 0 4px; }
+.pbasics__row { display: flex; align-items: center; gap: 11px; padding: 11px 0; border-top: 1px solid var(--line); text-decoration: none; color: var(--text); }
+.pbasics__row:first-of-type { border-top: none; }
+.pbasics__ic { width: 28px; height: 28px; border-radius: 8px; background: #2a2f3a; display: flex; align-items: center; justify-content: center; font-size: 15px; flex: 0 0 auto; }
+.pbasics__b { flex: 1; min-width: 0; }
+.pbasics__b b { font-size: 14.5px; font-weight: 700; display: block; }
+.pbasics__b span { font-size: 12px; color: var(--text-dim); }
+.pbasics__chk { color: var(--accent); font-size: 16px; font-weight: 800; }
+.pbasics__add { font-size: 12.5px; font-weight: 700; color: var(--accent); white-space: nowrap; }
 .preg-nudge { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0 4px; padding: 11px 12px; border: 1px dashed rgba(56, 189, 248, .4); border-radius: 11px; background: rgba(56, 189, 248, .05); color: var(--text-dim); font-size: 12.5px; line-height: 1.45; text-decoration: none; }
 .preg-nudge b { color: var(--text); font-weight: 700; }
 .preg-nudge__ic { font-size: 16px; flex: 0 0 auto; }

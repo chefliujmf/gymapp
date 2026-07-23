@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
+import { REQUIRED_FIELDS, requiredProfileGaps } from '../profile-fields'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getSetting, setSetting } from '../db'
 import { authApi, type User } from '../auth/api'
@@ -162,6 +163,40 @@ function FuelFields({ user, refresh }: { user: User; refresh: () => Promise<void
   )
 }
 
+// #759 (audit — Profile flow) — the 5 gate basics were scattered across positions 6/8/9/10/13. Group them into ONE
+// "The basics" card at the TOP, in identity → sport → goal → availability order, each with a ✓/Add cue that deep-links to
+// its exact section below (the real edit surface stays; this is the overview + prominence the audit asked for). When
+// everything's set it stays as a compact all-✓ card so a returning user sees "basics done" at a glance.
+function ProfileBasics({ user }: { user: User | null | undefined }) {
+  const gaps = new Set(requiredProfileGaps(user))
+  const info = (user?.info || {}) as Record<string, unknown>
+  const left = gaps.size
+  const val = (k: string): string => {
+    if (k === 'sex') return user?.sex === 'female' ? 'Female' : user?.sex === 'male' ? 'Male' : ''
+    if (k === 'dob') return String(info.dob || '')
+    if (k === 'mainSport') { const s = String(info.mainSport || (Array.isArray(user?.sports) ? user!.sports![0] : '') || ''); return s ? s[0].toUpperCase() + s.slice(1) : '' }
+    if (k === 'trainingDays') return info.trainingDays ? `${info.trainingDays} days / week` : ''
+    if (k === 'goal') { const g = (info.goals || {}) as { focus?: string; notes?: string }; return (g.notes || g.focus || (user as { coachProfile?: string } | undefined)?.coachProfile || '').slice(0, 60) }
+    return ''
+  }
+  return (
+    <div className={'card pbasics' + (left ? ' pbasics--todo' : '')}>
+      <div className="pbasics__head"><b>The basics</b><span className={'pbasics__pill' + (left ? '' : ' done')}>{left ? 'needed for your plan' : 'complete ✓'}</span></div>
+      <p className="pbasics__sub">Your coach scales dose, zones &amp; load from these. Everything below is optional.</p>
+      {REQUIRED_FIELDS.map((f) => {
+        const missing = gaps.has(f.key)
+        return (
+          <Link key={f.key} to={'/profile' + (f.section ? `#${f.section}` : '')} className={'pbasics__row' + (missing ? ' miss' : '')}>
+            <span className="pbasics__ic">{f.icon}</span>
+            <span className="pbasics__b"><b>{f.label}</b><span>{missing ? f.hint : val(f.key)}</span></span>
+            {missing ? <span className="pbasics__add">Add ›</span> : <span className="pbasics__chk">✓</span>}
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function Profile() {
   const navigate = useNavigate()
   const { user, refresh } = useAuth()
@@ -256,6 +291,9 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* #759 (audit) — the 5 required basics, grouped + FIRST, each deep-linking to its exact section below. */}
+      <ProfileBasics user={user} />
+
       {/* Unlock nudge — turn missing-data dead-ends into a clear to-do (dataGaps.ts) */}
       {gaps.length > 0 && (
         <div className="card gapcard">
@@ -263,7 +301,7 @@ export default function Profile() {
           {gaps.map((g) => (
             <div key={g.key} className="gapcard__row"><b>{g.label}</b><span> → {g.unlocks}</span></div>
           ))}
-          <div className="gapcard__hint">Set these below{!user?.hasIcuKey ? ' — connecting intervals.icu fills most of them automatically' : ''}.</div>
+          <div className="gapcard__hint">Each opens where you set it{!user?.hasIcuKey ? ' — connecting intervals.icu in Settings fills most automatically' : ''}.</div>
         </div>
       )}
 
