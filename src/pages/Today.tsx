@@ -119,7 +119,10 @@ export function CheckInCard({ day, onChange, compact = false }: { day: string; o
     if (!loaded || !rdy?.connected) return
     const fill: Partial<Checkin> = {}
     for (const k of ['energy', 'sleep', 'soreness'] as const) if (ci?.[k] == null && calc[k] != null) fill[k] = calc[k]
-    if (Object.keys(fill).length) set(fill)
+    // #15 (audit) — only PRE-FILL the display with the derived values; do NOT persist a check-in the athlete never
+    // touched (that auto-"completed" check-in was firing the coach's daily-adapt as if they'd actually checked in).
+    // The real save happens on their first tap (set() below). If they already have a saved check-in, leave it.
+    if (Object.keys(fill).length && !ci) setCi((c) => ({ ...(c || { date: day }), ...fill } as Checkin))
   }, [loaded, rdy]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!loaded) return null
   // Emoji faces, 1–5, ALWAYS visible (JM: must not be hidden or it gets skipped).

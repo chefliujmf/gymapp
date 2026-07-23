@@ -457,6 +457,10 @@ app.put('/auth/avatar', auth, (req, res) => {
 app.put('/auth/profile', auth, (req, res) => {
   const wasPregnant = !!(req.user.info && req.user.info.pregnant) // #711 — capture BEFORE the merge to detect true→false
   req.user.info = { ...(req.user.info || {}), ...(req.body || {}) }
+  // #754 (audit) — CLAMP the safety-critical caps server-side; a raw API PUT could store trainingDays=999 / maxPerDay=99,
+  // which flow straight into buildSystemPrompt + the 409 guard and defeat the "hard weekly ceiling". Enforce sane bounds.
+  if (req.user.info.trainingDays != null && req.user.info.trainingDays !== '') req.user.info.trainingDays = Math.max(0, Math.min(7, Math.round(Number(req.user.info.trainingDays) || 0)))
+  if (req.user.info.maxPerDay != null && req.user.info.maxPerDay !== '') req.user.info.maxPerDay = Math.max(1, Math.min(3, Math.round(Number(req.user.info.maxPerDay) || 1)))
   if (req.body && req.body.pregnant === true) { delete req.user.cyclePhase; delete req.user.cyclePhaseAt } // #427 — no menstrual cycle while pregnant; clear stale phase now
   // #711 (audit SAFETY) — clearing pregnancy must ENTER the graded postpartum return by DEFAULT, not silently snap to a
   // full build (2 quality + VO2) the week after birth. If she turns Pregnant OFF and hasn't set a birth date, stamp a
