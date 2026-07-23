@@ -72,6 +72,20 @@ describe('weekShape — #613 the code-decided week structure (single source of t
     expect(s.intensityCeiling).not.toBe('vo2')
   })
 
+  it('#1 (SAFETY) TEEN + weight-loss goal → REDIRECTED to a conservative health shape + flagged', () => {
+    for (const notes of ['I want to lose weight', 'trying to lean out for the season', 'get shredded', 'lose 5kg']) {
+      const s = weekShape({ goalFocus: [], goalNotes: notes, ageYears: 16, trainingDays: 5 })
+      expect(s.teenWeightLossRedirect).toBe(true)
+      expect(s.loadBand).toBe('flat')
+      expect(s.qualityDays).toBeLessThanOrEqual(1)
+      expect(s.intensityCeiling).toBe('tempo') // never a hard band to "burn calories"
+    }
+    // an ADULT weight-loss goal is not force-redirected by THIS rule (no teen safety flag)
+    expect(weekShape({ goalFocus: [], goalNotes: 'lose weight', ageYears: 35, trainingDays: 5 }).teenWeightLossRedirect).toBe(false)
+    // a teen WITHOUT a weight-loss goal is not flagged
+    expect(weekShape({ goalFocus: ['performance'], goalNotes: 'run a faster 5k', ageYears: 15, trainingDays: 5 }).teenWeightLossRedirect).toBe(false)
+  })
+
   it('does NOT bucket by fitness — CTL never changes the week SHAPE (intensity is % of THEIR threshold, volume scales elsewhere)', () => {
     // JM 2026-07-20: forget "beginner vs advanced". A low-fitness athlete just has lower absolute numbers; the shape
     // (quality-day count + relative ceiling) is goal-driven and identical — the plan works to improve their numbers.

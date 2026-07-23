@@ -115,6 +115,13 @@ export function weekShape(p = {}) {
 
   // ── age adjustments ──────────────────────────────────────────────────────────────────────────────
   if (teen) { qualityDays = Math.min(qualityDays, 1); intensityCeiling = 'threshold' } // technique-first, submaximal, NO maximal loading
+  // #1 (audit-critical SAFETY) — a TEEN must NEVER be programmed for weight loss / an energy deficit (RED-S, growth,
+  // bone health; distance runners especially). If a teen's goal mentions losing weight/leaning out, HARD-override the
+  // shape to conservative health (never extra load "to burn calories") and flag it so the coach redirects to FUELLING +
+  // performance, not the scale. Code-enforced, not prompt-only. `wantsWeightLoss` is also surfaced for the coach block.
+  const wantsWeightLoss = /lose (weight|fat|\d+\s?(kg|lbs?|pounds?))|weight ?loss|lean out|leaner|slim down|drop (weight|pounds|lbs|kg|fat)|cut(ting)? (weight|fat)|burn fat|shred|get shredded|calorie deficit|\bdeficit\b|get skinny|thinner/.test(goalText)
+  const teenWeightLossRedirect = teen && wantsWeightLoss
+  if (teenWeightLossRedirect) { loadBand = 'flat'; qualityDays = Math.min(qualityDays, 1); intensityCeiling = 'tempo' }
   // #5 (audit) — MASTERS (55+) get code-enforced extra recovery + an easier top end on EVERY band, not just build (a
   // health-goal 60yo previously got the SAME shape as a 30yo). Ease the ceiling one notch below vo2 and cap quality at 1
   // on non-build weeks so recovery is real, not just a rationale string.
@@ -140,6 +147,8 @@ export function weekShape(p = {}) {
     qualityDays,
     moderateDays: 0,
     intensityCeiling,
-    rationale: `${bandWord} week — ${qualityDays} structured quality day${qualityDays !== 1 ? 's' : ''} (ceiling: ${intensityCeiling}), never back-to-back, easy days between; everything else easy/endurance + their strength. All intensities are % of THEIR own threshold and volume scales to THEIR fitness — the plan works to improve those numbers.${teen ? ' TEEN: technique-first, submaximal — no maximal/1-RM loading, no VO2 grinding.' : ''}${masters ? ' MASTERS: extra recovery, ease the very top end.' : ''}`,
+    perSportQuality: isTriathlete, // #5 — a triathlete's quality budget is PER DISCIPLINE (keep 1 swim + 1 bike + 1 run), not a global count the bike can eat
+    teenWeightLossRedirect, // #1 — a teen stated a weight-loss goal → the coach must redirect to fuelling+performance
+    rationale: `${bandWord} week — ${qualityDays} structured quality day${qualityDays !== 1 ? 's' : ''} (ceiling: ${intensityCeiling}), never back-to-back, easy days between; everything else easy/endurance + their strength. All intensities are % of THEIR own threshold and volume scales to THEIR fitness — the plan works to improve those numbers.${teen ? ' TEEN: technique-first, submaximal — no maximal/1-RM loading, no VO2 grinding.' : ''}${masters ? ' MASTERS: extra recovery, ease the very top end.' : ''}${teenWeightLossRedirect ? ' TEEN + weight-loss goal → REDIRECTED to health/maintenance: never program a deficit; coach fuelling + performance, not the scale.' : ''}`,
   }
 }

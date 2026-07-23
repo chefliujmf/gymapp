@@ -94,9 +94,21 @@ export function enforceShape(shape, plan, siblings = []) {
   if (!plan || !ENDURANCE_SPORTS.has(plan.sport)) return { changed: false, clamped: 0, effCeil: 0, overBudget: false }
   const ceilPct = CEILING_PCT[shape.intensityCeiling] || CEILING_PCT.vo2
   const maxModerate = (shape.qualityDays || 0) + (shape.moderateDays || 0)
-  const otherModerate = siblings.filter((p) => p && p.id !== plan.id && ENDURANCE_SPORTS.has(p.sport) && isModerate(p)).length
+  const modSiblings = siblings.filter((p) => p && p.id !== plan.id && ENDURANCE_SPORTS.has(p.sport) && isModerate(p))
+  const otherModerate = modSiblings.length
   const thisIsModerate = isModerate(plan)
-  const overBudget = thisIsModerate && otherModerate >= maxModerate
+  // #5 (audit) — for a TRIATHLETE the budget is PER DISCIPLINE: keep ~1 key session in EACH of swim/bike/run. A 2nd hard
+  // session in the SAME sport is clamped (freeing the slot for the other disciplines), and the GLOBAL cap counts DISTINCT
+  // sports already keyed — NOT the raw session count. Otherwise three front-loaded bike days consume the whole budget and
+  // a later swim/run key session gets clamped to easy even though it's the FIRST of its discipline (the bike-only trap).
+  let overBudget
+  if (shape.perSportQuality) {
+    const sameSport = modSiblings.filter((p) => p.sport === plan.sport).length
+    const distinctOtherSports = new Set(modSiblings.map((p) => p.sport)).size
+    overBudget = thisIsModerate && (sameSport >= 1 || distinctOtherSports >= maxModerate)
+  } else {
+    overBudget = thisIsModerate && otherModerate >= maxModerate
+  }
   const effCeil = overBudget ? CEILING_PCT.endurance : ceilPct
   let clamped = 0
   for (const s of (plan.segments || [])) {
