@@ -4121,6 +4121,70 @@ function roundOutMsg(today) {
 function sharpenMsg(today) {
   return `Daily METRICS-SHARPEN pass (${today}) — keep the athlete's benchmarks HONEST, without demanding tests. Their threshold power / pace, CP·W′ (or CS·D′), VO₂max, TTE and max-HR are in your profile; each is only as good as the last quality effort behind it, and EVERYTHING you prescribe scales from them. Review freshness: get_recent_activities and, for EACH anchor, ask "is there a recent effort that would set it?" — a tempo/threshold effort for the threshold; a hard ~5-min effort for VO₂max/MAP; short near-max reps for W′/D′; an all-out finish for max-HR. For any anchor with NO recent effort behind it (e.g. weeks of only easy rides → the threshold is really a guess), fold ONE targeted, LOW-COST refining effort into the rolling ${DAILY_HORIZON}-day plan (list_schedule → create_ride/run/workout) — NEVER an all-out max test, never a dreaded 20-min: cycling → one 8–15 min hard sustained effort up a climb/segment when fresh (intervals reads eFTP straight from it), or a structured 2×8 only if they'd like a cleaner number; running → a hard 20 min or a 5 k / parkrun; gym → a heavy 3–5 rep top set. Just ENOUGH to re-read the anchor. Rules: at most ONE such effort per pass — pick the STALEST, most important anchor; place it on a day they're FRESH, within their weekly training-day + recovery limits, and never stacked against another hard day; if every anchor already has a recent effort behind it, change nothing. This pass is SILENT (background upkeep — no push; the athlete gets only their one check-in ping). When you DO add one, its title/description explains WHY in plain words ("one harder 15-minute stretch so I can dial in the hardest pace you can hold"), never "to update your FTP". Be concise.`
 }
+// #763 — a basic, GOAL-appropriate objective per session so a code-composed gym session is complete + usable on its own.
+const GYM_OBJECTIVE = {
+  muscle: 'Build muscle: controlled reps, take the working sets close (1-3 in reserve), add load or reps over time.',
+  strength: 'Build maximal strength: heavy, crisp technique, long rests — quality over quantity, stay well short of failure.',
+  support: 'Support your main sport: heavy but fast/explosive on the mains, low reps, never to failure — strength without fatigue.',
+  support_build: 'Support + a little muscle: solid mains kept fast, moderate accessory volume, dosed around your key sessions.',
+  health: 'Full-body strength for health: comfortable full range, all major groups, leave a couple reps in reserve.',
+}
+// #763 — the LIGHT coach ENRICH pass: the gym sessions ALREADY EXIST (code-built) — the coach only adds the voice, never
+// the structure. It can't loop/fail because it isn't building anything.
+function gymEnrichMsg(today, n) {
+  return `Daily coach touch (${today}) — ${n} gym session${n !== 1 ? 's are' : ' is'} ALREADY BUILT + scheduled for this athlete (list_schedule shows them). Your ONLY job: add the coaching VOICE. For each gym session, re-call create_workout with its SAME id and the SAME exercises / sets / reps / tempo / order (change NONE of them — do NOT add, drop, reorder, or re-rep any move), attaching: a one-line FORM cue per main lift + one whole-session tip, and the coaching shell (objective + success criteria + a short fuelling cue for THAT session). Read one session first with list_schedule to get its exercises + id, then re-send them unchanged with your cues. Keep cues consistent + non-contradictory. Do NOT create new sessions, touch endurance, review activities, or set targets. Be concise — this is polish on an existing plan, not a rebuild.`
+}
+// #763 (JM-approved) — is GYM the athlete's MAIN sport (a lifter / strength / bodybuilding athlete, no endurance)?
+function isGymMainAthlete(user) {
+  const ms = (user && user.info && user.info.mainSport) || ''
+  const sports = (user && user.sports) || []
+  return ['gym', 'strength'].includes(ms) || (sports.length === 1 && ['gym', 'strength'].includes(sports[0]))
+}
+// #763 (JM-approved) — DEDICATED GYM-BUILD FLOW. The LLM coach reliably fails to build a full gym week for a gym-MAIN
+// athlete in one pass (it drowns in exercise search + never calls create_workout). So CODE composes the individualized
+// week (the #718 assembler: split · reps/%1RM BY GOAL · meso-progression · owned equipment), resolves exIds server-side
+// (searchExercises — no search loop), and SAVES the sessions deterministically → the plan is GUARANTEED built, can't loop/
+// fail. A light coach pass then adds the coaching voice. NOT the #516 skeleton: gym-only (endurance stays LLM-authored),
+// genuinely per-athlete, and the coach still authors every cue. Returns the built plans.
+async function buildGymWeek(user) {
+  const today = localTodayInTz(user && user.icuTimezone)
+  const ms = user.info && user.info.mainSport
+  const sports = user.sports || []
+  const obj = ((user.info && user.info.goals && user.info.goals.notes) || '').trim()
+  const focus = resolveGymFocus({ mainSport: ms, sports, goal: obj }) // GOAL-aware: strength → heavy low-rep, muscle → hypertrophy, etc.
+  const spw = Math.max(1, Math.min(6, Number(user.info && user.info.trainingDays) || 3))
+  const recentGymEx = (user.plans || []).filter((p) => p && p.sport === 'gym').slice(-4).flatMap((p) => (p.exercises || []).map((e) => e && e.name)).filter(Boolean)
+  const assign = assignWeeklyGym({ sessionsPerWeek: spw, focus, recentExercises: recentGymEx, mainSport: ms, sports })
+  const ownedEq = (Array.isArray(user.info && user.info.equipment) ? user.info.equipment : []).join(',')
+  // Dates: spw sessions per Mon–Sun week across the horizon; skip Sundays (default rest) + rest days + already-planned days.
+  const rest = new Set(user.restDates || [])
+  const taken = new Set((user.plans || []).filter((p) => p && p.date >= today).map((p) => p.date))
+  const weekCount = {}, dates = []
+  for (let d = 0; d < DAILY_HORIZON; d++) {
+    const date = addDays(today, d)
+    if (rest.has(date) || taken.has(date) || new Date(date + 'T00:00:00Z').getUTCDay() === 0) continue
+    const wk = isoMonday(date)
+    weekCount[wk] = (weekCount[wk] || 0)
+    if (weekCount[wk] >= spw) continue
+    weekCount[wk]++
+    dates.push(date)
+  }
+  const built = []
+  for (let i = 0; i < dates.length; i++) {
+    const patterns = assign.days[i % (assign.days.length || 1)]
+    const sess = assembleGymSession({ focus, mainSport: ms, sports, patterns, recentExercises: recentGymEx, sessionIndex: i, mesoWeek: Math.floor(i / spw) })
+    const exercises = (sess.exercises || []).map((e) => {
+      const hit = (searchExercises(e.name, 1, ownedEq) || [])[0] || (searchExercises(e.name, 1) || [])[0]
+      return hit ? { ...e, exId: hit.id, name: hit.name } : e
+    })
+    // a basic focus-appropriate objective so the session is COMPLETE + usable even if the light coach-enrich pass is skipped
+    const objective = GYM_OBJECTIVE[focus] || GYM_OBJECTIVE.muscle
+    const plan = { id: newId(), date: dates[i], sport: 'gym', title: sess.title, rounds: 1, exercises, objective }
+    try { const r = await upsertPlan(user, plan, 'coach'); if (!r || (r.status || 200) < 400) built.push(plan) } catch (e) { console.error(`[gym-build ${user.username || ''}] ${e.message || e}`) }
+  }
+  if (built.length) console.log(`[gym-build] ${user.username || ''} — code-composed ${built.length} gym session(s) (${focus}, ${spw}/wk)`)
+  return built
+}
 async function runDailyAdapt(user, pass, opts = {}) { // #634 — opts.buildModel lets the simulation A/B the build model
   // #A (audit #743/#748) — do NOT build a plan on missing basics (sex/DOB/sport/goal/training-days, + pregnancy date):
   // that's how an unknown-age or empty-goal athlete fell through to an unsafe default. The client shows the profile gate;
@@ -4140,8 +4204,15 @@ async function runDailyAdapt(user, pass, opts = {}) { // #634 — opts.buildMode
     // still comes up badly short, never a 5-deep loop.
     const covOf = () => horizonCoverage([...(user.plans || []).map((p) => p.date), ...(user.restDates || [])], today, DAILY_HORIZON)
     const buildModel = opts.buildModel || COACH_BUILD_MODEL
-    await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()), { model: buildModel }) // #634 — the BUILD (quality-critical); model set by env/opts, default Opus
-    if (covOf().tail >= 4) await runCoachTask(user, horizonFillMsg(today, covOf()), { model: buildModel }) // single top-up, same tier as the build
+    if (isGymMainAthlete(user)) {
+      // #763 (JM-approved) — GYM-MAIN: the LLM can't reliably build a full gym week in one pass, so CODE composes + saves
+      // it deterministically (individualized by the #718 assembler, goal-aware), then a LIGHT coach pass adds the voice.
+      const built = await buildGymWeek(user)
+      if (built.length) await runCoachTask(user, gymEnrichMsg(today, built.length), { model: COACH_CHEAP_MODEL }) // cheap: add cues to sessions that already exist (can't fail the structure)
+    } else {
+      await runCoachTask(user, dailyAdaptMsg(today, pass, covOf()), { model: buildModel }) // #634 — the BUILD (quality-critical); model set by env/opts, default Opus
+      if (covOf().tail >= 4) await runCoachTask(user, horizonFillMsg(today, covOf()), { model: buildModel }) // single top-up, same tier as the build
+    }
     // 2) REVIEWS + 3) ROUND-OUT — their OWN focused passes, ONCE/day (dedup) so we don't re-spawn the coach
     //    for them on both the early AND refine passes.
     user.dailyAdapt = user.dailyAdapt || {}
