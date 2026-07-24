@@ -185,7 +185,7 @@ export function CheckInCard({ day, onChange, compact = false }: { day: string; o
           ) })}
         </div>
         {verdict && (
-          <div className="checkin__coach">💬 Your coach has today's check-in</div>
+          <div className="checkin__coach">💬 Your coach has {isToday ? "today's" : 'this'} check-in</div>
         )}
       </div>
     )
@@ -262,15 +262,17 @@ const planIcon = (s: CoachPlan['sport']) => (s === 'ride' ? <Bike strokeWidth={1
 
 // #202: a plain-language readiness verdict from the day's check-in (Energy/Sleep/Freshness,
 // each 1–5; Freshness = 6 − soreness). Drives the banner on the plan. Null until checked in.
-function readinessVerdict(ci: Checkin | null): { tone: 'good' | 'mixed' | 'low'; text: string } | null {
+// #770 — `isToday` keeps the verdict from using today-anchored, action-framed copy on a PAST day (JM: viewing Jul 23
+// on Jul 24 read "good to train as planned"). A past day reports the check-in as HISTORY, present tense only for today.
+function readinessVerdict(ci: Checkin | null, isToday = true): { tone: 'good' | 'mixed' | 'low'; text: string } | null {
   if (!ci) return null
   const fresh = ci.soreness != null ? 6 - ci.soreness : null
   const vals = [ci.energy, ci.sleep, fresh].filter((x): x is number => x != null)
   if (!vals.length) return null
   const min = Math.min(...vals), avg = vals.reduce((a, b) => a + b, 0) / vals.length
-  if (min <= 2 || avg < 2.8) return { tone: 'low', text: 'A bit run-down — keep it easy and listen to your body today.' }
-  if (avg >= 3.8 && min >= 3) return { tone: 'good', text: "You're fresh — good to train as planned." }
-  return { tone: 'mixed', text: 'Moderately ready — train, but be ready to ease off.' }
+  if (min <= 2 || avg < 2.8) return { tone: 'low', text: isToday ? 'A bit run-down — keep it easy and listen to your body today.' : 'You read a bit run-down that day.' }
+  if (avg >= 3.8 && min >= 3) return { tone: 'good', text: isToday ? "You're fresh — good to train as planned." : 'You were fresh that day.' }
+  return { tone: 'mixed', text: isToday ? 'Moderately ready — train, but be ready to ease off.' : 'You were moderately ready that day.' }
 }
 // #488 — a light per-day check-in STRIP for Plan's week/schedule (Day keeps the full card). Reuses readinessVerdict
 // + CHECKIN_FACES. Future days render NOTHING (JM); a past day with no check-in reads "didn't check in"; tap → that day.
@@ -576,7 +578,7 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
   const orphanActs = activities.filter((a) => (a.start_date_local || '').slice(0, 10) === selDay && !coveredSports.has(sportOfActivity(a)))
   const hasWorkout = dayEvents.length > 0 || dayPlans.length > 0 || orphanActs.length > 0
   const isFuture = selDay > todayISO() // #223: future days forecast, not a live verdict
-  const verdict = isFuture ? null : readinessVerdict(checkin)
+  const verdict = isFuture ? null : readinessVerdict(checkin, selDay === todayISO()) // #770 — past days read as history, not "today"
   // The WeekStrip day dot marks ACTIVITY days only — run/ride/gym/yoga/pilates, planned or done (#66).
   // JM 2026-07-11: the dot is for ACTIVITIES, NOT food / meditation / recovery items — so `items` is excluded.
   const markedDays = new Set<string>([
