@@ -305,7 +305,7 @@ function PlannedVsCompleted({ plan, a, ftp, isRun, isSwim, avgPace, avgPace100, 
           <div className="pvc-det">{actualIF != null ? `${actualIF}% intensity` : ''}{diffMin != null && diffMin !== 0 ? `${actualIF != null ? ' · ' : ''}${diffMin > 0 ? '+' : ''}${diffMin} min vs plan` : ''}</div>
         </div>
       </div>
-      <div className="pvc-verdict"><span className="em">{verdict.e}</span><span>{verdict.t} <b>Coach review below reflects this plan.</b></span></div>
+      <div className="pvc-verdict"><span className="em">{verdict.e}</span><span>{verdict.t}</span></div>
     </div>
   )
 }
@@ -337,6 +337,7 @@ export default function ActivityDetail() {
   const [ftp, setFtp] = useState(260)
   const [efBaseline, setEfBaseline] = useState<number | null>(null) // #768 — recent-weeks average Efficiency Factor for THIS sport, so a chart read can say "efficiency up X% vs recent"
   const [review, setReview] = useState<CoachReview | null>(null)
+  const [reReviewing, setReReviewing] = useState(false) // #767 — after changing the linked plan, the coach re-reviews (async); poll + show it
   const [note, setNote] = useState<CoachNote | null>(null)
   const [icuComment, setIcuComment] = useState<string>()
   // #694 — for a GYM activity, load the SERVER-side workout logs (device-independent) so we can render the real gym
@@ -433,12 +434,27 @@ export default function ActivityDetail() {
     if (linkBusy) return
     setLinkBusy(true)
     const changed = planId && planId !== plan?.id // #767 — linking to a DIFFERENT plan than what's shown now
+    const prevAt = review?.at
     try {
       await authApi.linkActivity({ activityId: String(a.id), planId, icuEventId })
+      await refresh(); setPicking(false)
       // #767 — fixing a wrong link should CORRECT the review: re-run it against the newly-linked plan (#766b makes the
-      // review read the linked session; retryReview re-fires it). Only when linking to a genuinely different plan.
-      if (changed) { try { await authApi.retryReview(String(a.id)) } catch { /* best effort */ } }
-      await refresh()
+      // review read the linked session). The coach re-reviews ASYNC (~40s), so show a "re-reviewing" state + POLL the
+      // review until its timestamp changes, then swap it in — otherwise the athlete sees the stale review + thinks it
+      // "didn't change" (JM's report). Only when linking to a genuinely different plan.
+      if (changed) {
+        setReReviewing(true)
+        try {
+          await authApi.retryReview(String(a.id))
+          for (let i = 0; i < 22; i++) {
+            await new Promise((r) => setTimeout(r, 4000))
+            const rv = await authApi.coachReviews().catch(() => [] as CoachReview[])
+            const mine = rv.find((r) => r.activityId === String(a.id))
+            if (mine && mine.at !== prevAt) { setReview(mine); break }
+          }
+        } catch { /* best effort */ }
+        setReReviewing(false)
+      }
     } catch { /* keep UI */ } finally { setLinkBusy(false); setPicking(false) }
   }
   const hasTimeline = (isRun || isSwim)
@@ -607,6 +623,7 @@ export default function ActivityDetail() {
       {/* #503/#JM 2026-07-15 — MERGED TOP: coach verdict → your feedback → source links, ONE place (was: coach duplicated
           top+bottom, feedback + links buried at the bottom). reviewShownAbove drops the duplicate review + "See all" link. */}
       <CoachVerdict review={review} note={note} />
+      {reReviewing && <div className="act-rereview">🔄 Coach is re-reviewing this session against the newly-linked plan… this updates in a moment.</div>}
       {(() => {
         const dISO = (a.start_date_local || '').slice(0, 10)
         // gym feedback uses the shared resolver (plan id / activity id / date) so it's the SAME entry as the gym
