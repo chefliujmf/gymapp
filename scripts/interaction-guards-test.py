@@ -58,15 +58,22 @@ def check(name, got, want):
 def cleanup():
     for d in D:
         call("POST", "/api/rest-day", {"date": d, "rest": False})
-    for i in ("g_move", "g_move2", "g_cap1", "g_cap2", "g_rest", "g_conc_ride", "g_conc_gym", "g_wk1", "g_wk2", "g_wk3", "g_wk4"):
+    for i in ("g_move", "g_move2", "g_cap1", "g_cap2", "g_rest", "g_conc_ride", "g_conc_gym", "g_wk1", "g_wk2", "g_wk3", "g_wk4", "g_wk5", "g_wk6"):
         call("DELETE", "/api/plan/" + i)
 
 
 cleanup()
-print("=== 1) MAX-PER-DAY: a 2nd session on a full day is rejected ===")
+print("=== 1) MULTIPLE WORKOUTS: a 2nd SAME-SPORT session COMBINES (no stack, #431); a different-sport one hits the cap ===")
 call("POST", "/api/plan", ride(D[0], "g_cap1", "First Ride"))
-s, _ = call("POST", "/api/plan", ride(D[0], "g_cap2", "Second Ride"))  # 2nd on same day, new id
-check("2nd session same day -> 409", s, 409)
+s, _ = call("POST", "/api/plan", ride(D[0], "g_cap2", "Second Ride"))  # 2nd ride same day, new id -> re-plan, reuses slot
+check("2nd same-sport ride -> combined (2xx)", s < 400, True)
+# verify it did NOT stack two rides on the day
+sc, body = call("GET", f"/api/plans?from={D[0]}&to={D[0]}")
+rides = [p for p in (json.loads(body) if sc < 400 else []) if p.get("sport") == "ride"]
+check("day D[0] has exactly ONE ride (no stack)", len(rides), 1)
+# a DIFFERENT-sport 2nd session on the same day, past max-per-day (default 1), is rejected
+s, _ = call("POST", "/api/plan", gym(D[0], "g_cap2", heavy=False))
+check("different-sport 2nd on a full day -> 409", s, 409)
 
 print("=== 2) REST-DAY onto a PINNED session is rejected (non-pinned would clear) ===")
 call("POST", "/api/plan", ride(D[1], "g_rest", "Pinned Ride", pinned=True))
@@ -89,16 +96,17 @@ call("POST", "/api/plan", ride(D[4], "g_conc_ride", "Threshold 4x10", hard=True)
 s, _ = call("POST", "/api/plan", gym(D[5], "g_conc_gym", heavy=True))  # heavy gym next day
 check("heavy gym adjacent to quality ride -> 409", s, 409)
 
-print("=== 5) WEEKLY TRAINING-DAYS CAP: a session on a new day past the cap is rejected ===")
-# (persona-dependent: only asserts IF the persona has a low trainingDays cap; otherwise notes it)
-for i, d in enumerate([D[0], D[1], D[2], D[3]]):
-    call("POST", "/api/rest-day", {"date": d, "rest": False})
+print("=== 5) WEEKLY TRAINING-DAYS CAP: filling distinct days in one week eventually 409s at the cap ===")
+cleanup()  # clean the whole test week first so this is deterministic (persona trainingDays sets where it fires)
 r_status = []
-for i, d in enumerate([D[0], D[1], D[2], D[3]]):
+for i, d in enumerate([D[0], D[1], D[2], D[3], D[4], D[5]]):
     s, _ = call("POST", "/api/plan", ride(d, f"g_wk{i+1}", f"Day {i+1}"))
     r_status.append(s)
-capped = any(s == 409 for s in r_status)
-print(f"  [INFO] filling 4 distinct days -> statuses {r_status} ({'a cap fired (trainingDays<4)' if capped else 'no cap (trainingDays>=4 or unset)'})")
+capped_at = next((i + 1 for i, s in enumerate(r_status) if s == 409), None)
+if capped_at:
+    check(f"training-days cap fired (at day {capped_at})", True, True)
+else:
+    print(f"  [INFO] no cap in 6 days -> statuses {r_status} (persona trainingDays >= 6 or unset — set it lower to assert)")
 
 cleanup()
 print(f"\n=== RESULT: {PASS} passed, {FAIL} failed ===")
