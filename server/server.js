@@ -1195,7 +1195,15 @@ function triggerActivityReview(user, id, fb, icuActivityId) {
   const fields = Object.entries(fb.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
   const rid = icuActivityId || id
   const gymLine = /gym|strength/i.test(fb.sport || '') ? gymSessionLine(user, fb.date) : ''
-  const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${rid}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}.${gymLine} Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${rid}") with a one-line verdict + 2-4 short takeaways ONLY — leave the next field EMPTY (#699) (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${rid}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. ${REVIEW_OWN_TERMS} Be concise; decide and act.`
+  // #766b/#767 — tell the coach EXACTLY which planned session this activity fulfilled (the linked plan, else the same
+  // day's same-sport plan) so it reviews planned-vs-completed against the RIGHT session — NOT another day's workout.
+  const linkId = (user.activityLinks || {})[id] || (user.activityLinks || {})[String(rid)]
+  const plan = (linkId && (user.plans || []).find((p) => p.id === linkId))
+    || (user.plans || []).find((p) => String(p.date).slice(0, 10) === (fb.date || '') && sportGroupOf(p.sport) === sportGroupOf(fb.sport))
+  const planLine = plan
+    ? ` This ride FULFILLED the planned session "${plan.title}"${plan.objective ? ` — objective: ${plan.objective}` : ''}. COMPARE what they actually did to THAT plan (and ONLY that day's plan — do not reference any other day's session): if it matched the plan's intent, score + praise accordingly; if it differed (e.g. easier/harder than prescribed), say so honestly and let the score reflect it. Do NOT invent a different planned session than the one named here.`
+    : ` There is no planned session on record for this day — review the ride ON ITS OWN TERMS (do NOT compare it to any other day's planned session or invent one).`
+  const msg = `The athlete just completed a ${fb.sport || 'workout'} on ${fb.date || 'today'} (intervals activity ${rid}). Post-workout feedback — feel: ${fb.feel || '—'}, RPE: ${fb.rpe || '—'}/10${fields ? ', ' + fields : ''}${fb.note ? `, notes: "${fb.note}"` : ''}.${planLine}${gymLine} Review it: read the activity (get_recent_activities) + recent check-ins, then call save_coach_review (date ${fb.date || ''}, sport "${fb.sport || ''}", activityId "${rid}") with a one-line verdict + 2-4 short takeaways ONLY — leave the next field EMPTY (#699) (this auto-posts your note to the intervals Notes thread). ALSO give the activity a PUBLIC-safe title + description with set_activity_text (activityId "${rid}") — describe the workout/route/effort only, NO health/score/plan (that stays in the coach note). If the feedback warrants it (pain, "too hard", poor feel, high RPE), adjust the UPCOMING plan + notify. CALIBRATE the verdict to what was ACTUALLY done — match praise to real duration/volume/effort vs their norm; a tiny, very short, partial, or test session is a light opener/test, NOT a "solid"/"strong"/"great" session — name it honestly, never inflate. ${REVIEW_OWN_TERMS} Be concise; decide and act.`
   runCoachTask(user, msg, { model: COACH_CHEAP_MODEL }).catch((e) => console.error('[activity-review] ' + (e.message || e)))
   return true
 }
@@ -1314,9 +1322,18 @@ function backfillIcuFeedback(user, a) {
   if (!feel && !rpe) return false // no real athlete rating on the intervals side either → nothing to mirror
   const fb = { feel, rpe, fields: {}, note: '', sport: sportGroupOf(a.type), date: (a.start_date_local || '').slice(0, 10), at: Date.now(), fromIcu: true }
   user.activityFeedback[id] = fb
-  if (sib) user.activityFeedback[sib] = fb // mirror onto the linked plan id too, so neither view re-nags
+  // #766b — LINK the activity to the planned session it fulfilled (same local day + sport group), like the in-app
+  // feedback save does. Without this the review has no plan context, so the coach GUESSES which session it was and can
+  // compare the ride to the WRONG plan (JM: reviewed an easy Z2 against a "Threshold 4×10" that was actually another
+  // day). Mirror the feedback onto the plan id too so neither view re-nags. (#767 — planned-vs-completed correctness.)
+  user.activityLinks = user.activityLinks || {}
+  if (sib) { user.activityFeedback[sib] = fb }
+  else if (user.activityLinks[id] === undefined) {
+    const plan = (user.plans || []).find((p) => String(p.date).slice(0, 10) === fb.date && sportGroupOf(p.sport) === sportGroupOf(fb.sport))
+    if (plan) { user.activityLinks[id] = plan.id; user.activityFeedback[plan.id] = fb }
+  }
   save(store)
-  console.log(`[icu-feedback-backfill] ${user.username || ''} — mirrored intervals rating (feel ${feel || '—'}, rpe ${rpe || '—'}) into the store for ${id}`)
+  console.log(`[icu-feedback-backfill] ${user.username || ''} — mirrored intervals rating (feel ${feel || '—'}, rpe ${rpe || '—'}) into the store for ${id}${user.activityLinks[id] ? ` → linked plan ${user.activityLinks[id]}` : ''}`)
   return true
 }
 const ICU_FB_FIELDS = {
