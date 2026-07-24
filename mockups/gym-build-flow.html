@@ -1,0 +1,61 @@
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#ffb13d;--cyan:#38bdf8;--danger:#ff5d6c;--on-accent:#082015}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07090c;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:22px;display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{width:460px;max-width:100%}
+  .cap{font-size:13px;font-weight:800;margin:0 0 4px 2px}
+  .capd{font-size:11.5px;color:var(--text-dim);margin:0 0 12px 2px;line-height:1.45}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:12px}
+  .step{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+  .step:first-of-type{border-top:none}
+  .num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .num.code{background:var(--cyan)} .num.llm{background:var(--amber)}
+  .sbody b{font-size:13.5px} .sbody span{font-size:12px;color:var(--text-dim);display:block;margin-top:2px;line-height:1.45}
+  .tag{display:inline-block;font-size:9px;font-weight:800;border-radius:5px;padding:2px 6px;margin-left:6px}
+  .tag.code{color:#06222b;background:var(--cyan)} .tag.llm{color:#2a1c02;background:var(--amber)}
+  .h{font-size:14px;font-weight:800;margin-bottom:6px}
+  .sub{font-size:12px;color:var(--text-dim);margin-bottom:9px}
+  .day{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+  .day:first-of-type{border-top:none}
+  .dow{width:36px;font-size:11px;font-weight:800;color:var(--accent);flex:0 0 auto;padding-top:2px}
+  .dbody b{font-size:12.5px}.dbody span{font-size:10.5px;color:var(--text-dim);display:block;margin-top:2px}
+  .note{font-size:11px;color:var(--text-dim);margin-top:11px;line-height:1.5}
+  .warn{border:1px solid rgba(52,224,125,.35)}
+  .k{color:var(--cyan);font-weight:700}.l{color:var(--amber);font-weight:700}
+</style>
+
+<div class="col">
+  <p class="cap" style="color:var(--danger)">✗ NOW — one heavy LLM pass tries to do everything</p>
+  <p class="capd">For a gym-main athlete the coach must, in ONE turn: read data → resolve 30-50 exercise IDs → build 5 complex sessions. It drowns in exercise search, loads the wrong tools, and never calls create_workout. Result: 0 plans (3 fixes couldn't rescue it).</p>
+
+  <p class="cap good" style="color:var(--accent)">✓ PROPOSED — dedicated gym-build flow (code builds, coach coaches)</p>
+  <p class="capd">Split the mechanical build (deterministic, code) from the coaching voice (light LLM pass). Only for gym-MAIN athletes; endurance untouched.</p>
+  <div class="card warn">
+    <div class="step"><div class="num code">1</div><div class="sbody"><b>Assemble the week <span class="tag code">CODE</span></b><span>The existing #718 engine builds this athlete's individualized gym week — split · sets/reps by GOAL (strength 3-5 heavy · hypertrophy 6-12 · general) · meso-progression · owned equipment. Already the source of truth.</span></div></div>
+    <div class="step"><div class="num code">2</div><div class="sbody"><b>Resolve exercise IDs <span class="tag code">CODE</span></b><span>Match each move name → a real catalog exId (same matcher the /api/exercises endpoint uses, server-side). No LLM, no 30-call search loop.</span></div></div>
+    <div class="step"><div class="num code">3</div><div class="sbody"><b>Save the sessions <span class="tag code">CODE</span></b><span>Write all N gym days via upsertPlan (warm-up/cool-down/main, sets/reps/tempo/each-side). <b>The plan is now GUARANTEED built</b> — the coach can't loop or fail it.</span></div></div>
+    <div class="step"><div class="num llm">4</div><div class="sbody"><b>Coach adds the voice <span class="tag llm">LIGHT LLM</span></b><span>A focused pass: "these sessions exist — add a one-line form cue per lift + objective/success/fuel per session. Do NOT change the exercises/sets/reps." Can't fail the structure; just the human coaching layer.</span></div></div>
+  </div>
+  <p class="note"><b>Why this isn't the removed skeleton (#516):</b> #516 was a GENERIC endurance rotation forced on everyone. This is (a) <b>gym-only</b> — endurance stays fully LLM-authored; (b) genuinely <b>per-athlete</b> (the #718 assembler reads their sport/goal/equipment/history); (c) the coach still <b>individualizes the voice</b>. Code does the reliable mechanical part; the LLM does what it's good at.</p>
+</div>
+
+<div class="col">
+  <p class="cap good" style="color:var(--accent)">What it builds — goal-aware, deterministic</p>
+  <div class="card">
+    <div class="h">Bodybuilder <span style="font-size:10px;color:var(--amber)">· MUSCLE goal → hypertrophy</span></div>
+    <div class="sub">5 days · 6–12 reps · higher volume</div>
+    <div class="day"><span class="dow">MON</span><div class="dbody"><b>Push</b><span>Bench 4×8 · OHP 3×10 · Incline DB 3×12 · Lateral 3×15 · Triceps 3×12</span></div></div>
+    <div class="day"><span class="dow">TUE</span><div class="dbody"><b>Pull</b><span>Row 4×8 · Pull-Up 3×8 · Face Pull 3×15 · Curl 3×12</span></div></div>
+    <div class="day"><span class="dow">WED</span><div class="dbody"><b>Legs</b><span>Squat 4×8 · RDL 3×10 · Leg Press 3×12 · Calf 4×15</span></div></div>
+    <div class="day"><span class="dow">FRI/SAT</span><div class="dbody"><b>Upper B / Lower B</b><span>variation, arms + carry covered</span></div></div>
+  </div>
+  <div class="card">
+    <div class="h">Powerlifter <span style="font-size:10px;color:var(--amber)">· STRENGTH goal → heavy low-rep</span></div>
+    <div class="sub">4 days · 3–5 reps · &gt;85% 1RM · low volume · long rests</div>
+    <div class="day"><span class="dow">MON</span><div class="dbody"><b>Squat focus</b><span>Back Squat 5×3 · Pause Squat 3×4 · RDL 3×5 · core</span></div></div>
+    <div class="day"><span class="dow">WED</span><div class="dbody"><b>Bench focus</b><span>Bench 5×3 · Close-Grip 3×5 · Row 4×5 · OHP 3×5</span></div></div>
+    <div class="day"><span class="dow">FRI</span><div class="dbody"><b>Deadlift focus</b><span>Deadlift 5×3 · Deficit 3×4 · Front Squat 3×5</span></div></div>
+    <div class="day"><span class="dow">SAT</span><div class="dbody"><b>Accessory / hypertrophy</b><span>volume back-off + weak-point work</span></div></div>
+    <span class="note">Different program, same flow — the engine reads the GOAL, so a lifter never gets a bodybuilder split (your point).</span>
+  </div>
+</div>

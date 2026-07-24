@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — plain JS server module
-import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym, enforcePostpartumGym } from '../server/gym-split.js'
+import { assignWeeklyGym, patternFromExercise, GYM_PATTERNS, resolveGymFocus, repSchemeFor, gymBalanceLines, clampMainReps, mainsRepRange, sportEmphasis, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym, enforcePostpartumGym, goodExerciseMatch } from '../server/gym-split.js'
 
 const flat = (a: any) => a.days.flat()
 
@@ -378,5 +378,29 @@ describe('#2 enforcePostpartumGym — no plyometrics/jumps while impact is restr
   it('catches the common plyometric vocabulary', () => {
     const ex = ['Box Jumps', 'Broad Jump', 'Depth Jump', 'Skater Hops', 'Bounding', 'Tuck Jump', 'Lunge Jumps'].map((name) => ({ name, mode: 'reps', reps: 8, sets: 3 }))
     expect(enforcePostpartumGym(ex, true).changed).toBe(7)
+  })
+})
+
+describe('#763 goodExerciseMatch — reject weak fuzzy catalog hits (movement never wrong)', () => {
+  it('rejects a hit that shares only a weak incidental word', () => {
+    // the real bug: a warmup move fuzzy-matched a hamstring machine on the single word "leg"
+    expect(goodExerciseMatch('Leg Swings', 'Cable Seated Leg Curl')).toBe(false)
+    expect(goodExerciseMatch('Arm Circles', 'Cable Single Arm Pushdown')).toBe(false)
+  })
+  it('accepts a genuine match that shares the movement-defining word', () => {
+    expect(goodExerciseMatch('Barbell Bench Press', 'Cable Bench Press')).toBe(true)
+    expect(goodExerciseMatch('Deadlift', 'Barbell Deadlift')).toBe(true)
+    expect(goodExerciseMatch('Back Squat', 'Barbell Back Squat')).toBe(true)
+  })
+  it('requires the LAST significant token (the movement noun) to be present', () => {
+    expect(goodExerciseMatch('Dumbbell Row', 'Dumbbell Curl')).toBe(false) // shares "dumbbell" but not the movement
+  })
+})
+
+describe('#763 gym session title reflects the FOCUS (not always "Strength")', () => {
+  const legs = ['squat', 'hinge', 'core']
+  it('a hypertrophy (muscle) day is titled Hypertrophy, a strength day Strength', () => {
+    expect(assembleGymSession({ focus: 'muscle', patterns: legs, sessionIndex: 0 }).title).toMatch(/Hypertrophy/)
+    expect(assembleGymSession({ focus: 'strength', patterns: legs, sessionIndex: 0 }).title).toMatch(/Strength/)
   })
 })

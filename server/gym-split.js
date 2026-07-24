@@ -245,14 +245,34 @@ function orderByEmphasis(patterns, emph) {
   const pri = new Set(emph.priority)
   return patterns.slice().sort((a, b) => (pri.has(b) ? 1 : 0) - (pri.has(a) ? 1 : 0))
 }
-function sessionTitle(patterns, emph, sessionIndex) {
+function sessionTitle(patterns, emph, sessionIndex, focus) {
   const has = (p) => patterns.includes(p)
-  const base = (has('squat') || has('hinge')) && (has('hpush') || has('hpull') || has('vpush') || has('vpull')) ? 'Full-Body Strength'
-    : (has('squat') || has('hinge')) ? 'Lower-Body Strength'
-    : (has('hpush') || has('hpull') || has('vpush') || has('vpull')) ? 'Upper-Body Strength' : 'Strength'
+  // #763 — the day's NOUN reflects the FOCUS so a bodybuilder's 4×12 day isn't mislabelled "Strength".
+  const f = normFocus(focus)
+  const noun = f === 'muscle' ? 'Hypertrophy' : f === 'power' ? 'Power' : 'Strength'
+  const region = (has('squat') || has('hinge')) && (has('hpush') || has('hpull') || has('vpush') || has('vpull')) ? 'Full-Body'
+    : (has('squat') || has('hinge')) ? 'Lower-Body'
+    : (has('hpush') || has('hpull') || has('vpush') || has('vpull')) ? 'Upper-Body' : ''
+  const base = region ? `${region} ${noun}` : noun
   const slot = ['A', 'B', 'C', 'D'][((sessionIndex % 4) + 4) % 4]
   const tag = emph ? ({ cyclist: ' for Cycling', runner: ' for Running', swimmer: ' for Swimming', triathlete: ' for Tri' }[emph.label] || '') : ''
   return `${base} ${slot}${tag}`
+}
+// #763 — resolving an assembler exercise NAME to a catalog exId must NOT blindly adopt a weak fuzzy hit (a warmup
+// "Leg Swings" sharing only the word "leg" with "Cable Seated Leg Curl" wrongly became a hamstring machine). A hit is
+// a GENUINE match only when it shares the movement-DEFINING word (the last significant token: press/curl/squat/…) AND
+// enough of the intended name. When nothing genuine matches, keep the assembler's authoritative name (no exId → the UI
+// shows an emoji, but the movement is never wrong). Pure + exported so buildGymWeek's resolver is unit-testable.
+const NAME_STOP = new Set(['the', 'and', 'with', 'for', 'your', 'each', 'side'])
+function sigTokens(name) { return String(name || '').toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !NAME_STOP.has(t)) }
+export function goodExerciseMatch(intended, hitName) {
+  const want = sigTokens(intended)
+  if (!want.length) return false
+  const have = new Set(String(hitName || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean))
+  const last = want[want.length - 1] // the movement noun (press/curl/row/stretch…)
+  if (!have.has(last)) return false
+  const shared = want.filter((t) => have.has(t)).length
+  return shared >= Math.min(2, want.length)
 }
 /**
  * Assemble ONE tailored gym session. @param patterns the movement patterns for THIS session (from the split).
@@ -316,7 +336,7 @@ export function assembleGymSession({ focus = 'support', mainSport, sports = [], 
   const extras = (emph && emph.extras ? emph.extras : []).filter((x) => !used.has(String(x.name).toLowerCase())).map((x) => { used.add(String(x.name).toLowerCase()); return { name: x.name, section: 'main', mode: x.mode || 'reps', ...(x.reps ? { reps: x.reps } : {}), ...(x.sets ? { sets: x.sets } : {}), ...(x.seconds ? { seconds: x.seconds } : {}), ...(x.eachSide ? { eachSide: true } : {}) } })
   // COOL-DOWN — 2 stretches, TIMED
   const cooldown = [pick(COOLDOWN_POOL), pick(COOLDOWN_POOL)].map((n) => mk(n, 'cooldown', { mode: 'timed', seconds: 30 }))
-  return { title: sessionTitle(patterns, emph, sessionIndex), focus: f, emphasis: emph ? emph.label : null, exercises: [...warmup, ...main, ...extras, ...cooldown] }
+  return { title: sessionTitle(patterns, emph, sessionIndex, f), focus: f, emphasis: emph ? emph.label : null, exercises: [...warmup, ...main, ...extras, ...cooldown] }
 }
 
 // #696 — a PLANNED gym description must NOT restate the SESSION DURATION (JM: "why have it in the description?" — the

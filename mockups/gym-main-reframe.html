@@ -1,0 +1,56 @@
+<style>
+  :root{--text:#eef1f4;--text-dim:#9298a6;--accent:#34e07d;--bg:#0f1216;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#ffb13d;--cyan:#38bdf8;--danger:#ff5d6c;--on-accent:#082015}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07090c;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:22px;display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{width:440px;max-width:100%}
+  .cap{font-size:13px;font-weight:800;margin:0 0 3px 2px}
+  .cap.bad{color:var(--danger)} .cap.good{color:var(--accent)}
+  .capd{font-size:11.5px;color:var(--text-dim);margin:0 0 11px 2px;line-height:1.4}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:12px}
+  .blk{font-size:11.5px;line-height:1.5;font-family:ui-monospace,Menlo,monospace;color:var(--text-dim);background:#12151b;border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin:8px 0}
+  .blk b{color:var(--text)} .x{color:var(--danger);font-weight:700} .ok{color:var(--accent);font-weight:700}
+  .h{font-size:14px;font-weight:800;margin-bottom:4px}
+  .sub{font-size:12px;color:var(--text-dim);margin-bottom:8px}
+  .day{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+  .day:first-of-type{border-top:none}
+  .dow{width:38px;font-size:11px;font-weight:800;color:var(--accent);flex:0 0 auto;padding-top:2px}
+  .dbody b{font-size:13px}
+  .dbody span{font-size:11px;color:var(--text-dim);display:block;margin-top:2px}
+  .pill{display:inline-block;font-size:9px;font-weight:800;color:var(--on-accent);background:var(--accent);border-radius:20px;padding:2px 7px;margin-left:6px}
+  .note{font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.45}
+  .arrow{text-align:center;color:var(--danger);font-weight:800;font-size:12px;margin:2px 0}
+</style>
+
+<!-- BEFORE -->
+<div class="col">
+  <p class="cap bad">✗ NOW — what a gym-main athlete's coach receives</p>
+  <p class="capd">The prompt is endurance-framed. A lifter (does NO rides/runs) gets a quality-endurance shape that makes no sense, contradicting the "only build sports they do" rule.</p>
+  <div class="card">
+    <div class="blk"><b># THIS WEEK'S SHAPE</b> — <span class="x">2 structured QUALITY days/week, intensity CEILING = vo2, load band = build.</span> Space quality days apart; author each ride/run/swim as structured steps…</div>
+    <div class="blk"><b># THIS WEEK'S GYM SESSIONS</b> — build these gym sessions (assembled)… <span style="color:var(--text-dim)">[the real plan, but buried under the endurance shape]</span></div>
+    <div class="blk"><b># rule:</b> only build sports they actually do — a lifter gets gym; <span class="x">NEVER program a ride/run for someone with no bike/not a runner.</span></div>
+    <div class="arrow">▼ coach can't reconcile "2 quality endurance days" with "gym only"</div>
+    <div class="blk" style="border-color:var(--danger)"><span class="x">Result: reads context → STOPS → 0 plans built.</span> (Confirmed in the transcript: 5 reads, 0 create_workout, 309s, empty.)</div>
+  </div>
+</div>
+
+<!-- AFTER -->
+<div class="col">
+  <p class="cap good">✓ PROPOSED — gym-shape framing for a gym-main athlete</p>
+  <p class="capd">Detect gym-main → suppress the endurance shape, emit the gym engine's OWN week structure (already computed: split · meso-phase · volume), and make the gym sessions the primary, unambiguous build.</p>
+  <div class="card">
+    <div class="blk"><b># THIS WEEK — STRENGTH (their main sport):</b> <span class="ok">a 5-day PPL+Upper/Lower split, INTENSIFICATION week (meso 0-3), ~14-18 hard sets/muscle (Schoenfeld hypertrophy).</span> This IS their whole training week — there is no endurance quality-day count.</div>
+    <div class="blk"><b># BUILD THESE — non-negotiable:</b> <span class="ok">call create_workout for EACH assembled session below</span> (resolve names in one batched search_exercises). No rides/runs — gym is the sport.</div>
+    <div class="note">Endurance + concurrent (endurance+gym) users: <b>unchanged</b> — they still get the endurance shape + support gym. Only gym-MAIN reframes.</div>
+  </div>
+  <div class="card">
+    <div class="h">Intended bodybuilder week <span class="pill">what it should build</span></div>
+    <div class="sub">5 days · hypertrophy · full home gym · ~16 sets/muscle</div>
+    <div class="day"><span class="dow">MON</span><div class="dbody"><b>Push A</b><span>Bench 4×8 · OHP 3×10 · Incline DB 3×12 · Lateral Raise 3×15 · Triceps 3×12</span></div></div>
+    <div class="day"><span class="dow">TUE</span><div class="dbody"><b>Pull A</b><span>Barbell Row 4×8 · Pull-Up 3×8 · Face Pull 3×15 · Biceps Curl 3×12 · Rear Delt 3×15</span></div></div>
+    <div class="day"><span class="dow">WED</span><div class="dbody"><b>Legs</b><span>Back Squat 4×8 · RDL 3×10 · Leg Press 3×12 · Calf Raise 4×15 · Hanging Leg Raise 3×12</span></div></div>
+    <div class="day"><span class="dow">FRI</span><div class="dbody"><b>Upper B</b><span>Incline Bench 4×8 · Chest-Supported Row 3×10 · Arnold Press 3×12 · Cable Fly 3×15 · Arms superset 3×12</span></div></div>
+    <div class="day"><span class="dow">SAT</span><div class="dbody"><b>Lower B</b><span>Front Squat 4×8 · Hip Thrust 3×10 · Walking Lunge 3×12 · Leg Curl 3×12 · Calf 4×20</span></div></div>
+    <div class="note">Assembled by the existing #718 gym engine (split + volume + meso-progression already in code) — the reframe just makes the coach actually BUILD it instead of stalling on the endurance shape.</div>
+  </div>
+</div>
