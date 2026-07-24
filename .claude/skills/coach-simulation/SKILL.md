@@ -38,3 +38,15 @@ Build a table: **variant × (quality avg, $/adapt, $/user-mo)**. Pick the **high
 - Delete/clean fake QA users after (or keep a stable persona set for re-use).
 - One variable at a time (change only the model, or only the prompt) so the comparison is clean.
 - The code layer (dose/variety/periodization/enforcement) is the FRAME, not a skeleton — a cheaper model still authors individually within it; the sim measures whether that authoring holds up.
+
+## Interaction scenarios — test what a USER actually DOES (JM 2026-07-24, "test like crazy")
+Plan GENERATION is only half the sim. The #765-class bugs (a chat reschedule silently reverted by the next adapt) only surface when you simulate real user interactions with the coach + then verify the END STATE survives. For EACH persona, drive these and assert the DB + intervals match the request AND still match after the next `daily-adapt`:
+- **Move** a workout to another day ("move today's session to Friday") → it lands on the target day, the origin clears, and it's still there after an adapt (pinned, #765).
+- **Delete / skip** a workout ("drop tomorrow's ride") → removed, not silently re-added by horizon-fill.
+- **Substitute** ("do an easy ride instead of the threshold today") → today becomes the easy ride, the threshold moves/rebuilds elsewhere, both survive the adapt.
+- **Rest-day onto a workout day** ("make tomorrow a rest day") → the session is cleared/moved, the rest sticks (set_rest_day), no session left stacked on a "rest" day.
+- **Multiple workouts on one day** → the 2nd is REJECTED (max-per-day 409) → combine or move, never stack two.
+- **Exceed the weekly training-days cap** → adding a session on a new day past the cap 409s.
+- **Heavy gym adjacent to a quality endurance day** → concurrent-interference 409 (move ≥1 day clear).
+- **Re-request a pinned change** → the coach releases the pin (pinned:false) then changes; the adapt still can't revert it otherwise.
+The coach replying "done" is NOT a pass — VERIFY the calendar (list_schedule + the DB + intervals events) reflects it, and re-run the adapt to confirm it holds. A repeatable battery lives in `scripts/` (interaction guards: planCapViolation, trainingDays cap, rest-day guard, concurrent-interference, #765 pin). This is part of "test like crazy for all personas".

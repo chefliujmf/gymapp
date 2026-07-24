@@ -1,0 +1,129 @@
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--faint:#6b7280;--accent:#34e07d;--bg:#0b0e12;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#ffb13d;--cyan:#38bdf8;--danger:#ff5d6c;--on-accent:#082015}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:20px;display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{width:390px;max-width:100%}
+  .banner{font-size:12.5px;font-weight:800;margin:0 0 3px 2px;display:flex;gap:7px;align-items:center}
+  .banner .n{font-size:10px;font-weight:800;border-radius:5px;padding:2px 7px}
+  .bad .n{background:var(--danger);color:#2a0508}.rec .n{background:var(--cyan);color:#06222b}.good .n{background:var(--accent);color:var(--on-accent)}
+  .bad{color:var(--danger)}.rec{color:var(--cyan)}.good{color:var(--accent)}
+  .sub{font-size:11px;color:var(--dim);margin:0 0 12px 2px;line-height:1.45}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:11px}
+  .hero{display:flex;gap:8px;margin-bottom:10px}
+  .stat{flex:1;background:#12151b;border:1px solid var(--line);border-radius:9px;padding:7px 9px;text-align:center}
+  .stat .v{font-size:16px;font-weight:800}.stat .l{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin-top:1px}
+  /* NOW chip-bar */
+  .chipbar{display:flex;align-items:center;gap:9px;background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:11px;padding:9px 12px;margin-top:10px}
+  .chipbar .mini{width:44px;height:26px;background:#12151b;border-radius:5px;flex:none;position:relative;overflow:hidden}
+  .chipbar .mini svg{position:absolute;inset:0;width:100%;height:100%}
+  .chipbar .t{font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chipbar .t b{font-weight:700}.chipbar .t .m{color:var(--dim);font-size:11.5px}
+  .chipbar .x{margin-left:auto;color:var(--dim);font-size:15px;flex:none}
+  .arrow{color:var(--accent);font-weight:800;font-size:16px}
+  /* PROPOSED planned-vs-completed header */
+  .pvc{border:1px solid rgba(52,224,125,.28);background:linear-gradient(155deg,rgba(52,224,125,.09),rgba(56,189,248,.03))}
+  .pvc .top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .pvc .top .k{font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--accent);text-transform:uppercase}
+  .pvc .top .chg{margin-left:auto;font-size:11px;color:var(--cyan);font-weight:700;display:flex;gap:4px;align-items:center;border:1px solid rgba(56,189,248,.3);border-radius:20px;padding:3px 10px}
+  .pvc .rows{display:flex;gap:10px}
+  .pvc .side{flex:1;min-width:0}
+  .pvc .side .lab{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+  .pvc .side.planned .lab{color:var(--cyan)}.pvc .side.done .lab{color:var(--accent)}
+  .pvc .side .ttl{font-size:13.5px;font-weight:800;line-height:1.25;margin-bottom:4px}
+  .pvc .side .det{font-size:11px;color:var(--dim);line-height:1.5}
+  .pvc .side .det b{color:var(--text);font-weight:600}
+  .pvc .divider{width:1px;background:var(--line);flex:none}
+  .verdict{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);font-size:11.5px;color:var(--text);line-height:1.5;display:flex;gap:6px}
+  .verdict .em{flex:none}
+  /* header-line option */
+  .hline{display:flex;align-items:center;gap:9px;padding:10px 13px;border-radius:12px;border:1px solid rgba(52,224,125,.28);background:linear-gradient(160deg,rgba(52,224,125,.08),rgba(52,224,125,.02));margin-bottom:11px}
+  .hline .ic{font-size:16px;flex:none}
+  .hline .b{min-width:0;flex:1}
+  .hline .b .k{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);margin-bottom:1px}
+  .hline .b .t{font-size:14px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hline .b .m{font-size:11px;color:var(--dim);margin-top:1px}
+  .hline .chg{flex:none;font-size:11px;color:var(--cyan);font-weight:700;border:1px solid rgba(56,189,248,.3);border-radius:20px;padding:4px 11px}
+  /* change sheet */
+  .sheet{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-top:10px}
+  .sheet .h{font-size:13px;font-weight:800;margin-bottom:9px}
+  .opt{display:flex;align-items:center;gap:10px;background:#12151b;border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:7px}
+  .opt.sel{border-color:var(--accent);background:rgba(52,224,125,.07)}
+  .opt .t{flex:1;min-width:0}.opt .t b{font-size:12.5px}.opt .t .m{font-size:10.5px;color:var(--dim)}
+  .opt .r{font-size:10px;color:var(--faint)}
+  .rereview{margin-top:9px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.28);border-radius:10px;padding:9px 11px;font-size:11.5px;color:var(--text);line-height:1.45}
+  .rereview b{color:var(--cyan)}
+  .cta{margin-top:9px;width:100%;padding:10px;border-radius:10px;background:var(--accent);color:var(--on-accent);font-weight:800;font-size:12.5px;text-align:center}
+  .note{font-size:10.5px;color:var(--faint);margin:9px 2px 0;line-height:1.5}
+  .l1{color:var(--cyan)}.l2{color:var(--amber)}
+</style>
+
+<!-- ============ NOW ============ -->
+<div class="col">
+  <p class="banner bad"><span class="n">NOW</span> the linked plan today</p>
+  <p class="sub">It's a small chip-bar buried under the stats. The title's there but easy to miss, and there's no planned-vs-done context. To fix a wrong link you unlink (✕) then re-pick — and the coach's review does NOT re-run against the corrected plan.</p>
+  <div class="hero"><div class="stat"><div class="v">71<span style="font-size:10px">min</span></div><div class="l">Time</div></div><div class="stat"><div class="v">152<span style="font-size:10px">W</span></div><div class="l">Norm pwr</div></div><div class="stat"><div class="v">144</div><div class="l">Avg HR</div></div></div>
+  <div class="chipbar">
+    <div class="mini"><svg viewBox="0 0 44 26" preserveAspectRatio="none"><polyline fill="rgba(52,224,125,.2)" stroke="#34e07d" stroke-width="1" points="0,18 10,17 20,18 30,16 44,17"/></svg></div>
+    <div class="t"><b>Steady Z2 Endurance</b> <span class="m">· Z2 endurance · 65 min · ~44 TSS · planned</span></div>
+    <span class="x">✕</span>
+  </div>
+  <p class="note">✗ Hard to see what it was meant to be · no planned-vs-actual · changing a wrong link is fiddly + leaves a stale review.</p>
+</div>
+
+<!-- ============ OPTION A ============ -->
+<div class="col">
+  <p class="banner rec"><span class="n">OPTION A · RECOMMENDED</span></p>
+  <p class="sub"><b style="color:var(--text)">Planned → Completed header</b> at the top: what was prescribed vs what you did, side by side, so it's instantly clear. One tap to <b style="color:var(--text)">Change plan</b> — and changing it re-runs the coach's review against the corrected session.</p>
+
+  <div class="card pvc">
+    <div class="top"><span class="k">Planned → Completed</span><span class="chg">✎ Change</span></div>
+    <div class="rows">
+      <div class="side planned">
+        <div class="lab">📋 Planned</div>
+        <div class="ttl">Steady Z2 Endurance</div>
+        <div class="det"><b>~65 min</b> easy · target <b>58% FTP</b> · ~44 TSS</div>
+      </div>
+      <div class="divider"></div>
+      <div class="side done">
+        <div class="lab">✓ You did</div>
+        <div class="ttl">71 min · 152 W</div>
+        <div class="det"><b>58% FTP</b>, 88% in Z2 · +6 min over plan</div>
+      </div>
+    </div>
+    <div class="verdict"><span class="em">🎯</span><span>Nailed the planned Z2 — held the target zone, +6 min bonus. <b style="color:var(--accent)">Coach review below reflects this exact plan.</b></span></div>
+  </div>
+  <p class="note">✓ Instantly clear what the session was for + how you executed it. The coach review + the #768 chart reads sit below.</p>
+
+  <p class="banner rec" style="margin-top:16px"><span class="n">TAP "CHANGE"</span> — fixing a wrong link</p>
+  <div class="sheet">
+    <div class="h">Which session did this fulfil?</div>
+    <div class="opt"><span style="flex:none">📋</span><div class="t"><b>Steady Z2 Endurance</b><div class="m">Thu Jul 23 · same day</div></div><span class="r">linked</span></div>
+    <div class="opt sel"><span style="flex:none">📋</span><div class="t"><b>Threshold 4×10</b><div class="m">Fri Jul 24 · +1d</div></div><span class="r">✓ pick</span></div>
+    <div class="rereview">↻ <b>Re-review with the coach?</b> Changing the link will re-run your coach review against <b>Threshold 4×10</b>, so the verdict + score match the right session. <span style="color:var(--dim)">(on by default)</span></div>
+    <div class="cta">Link + re-review →</div>
+  </div>
+  <p class="note">✓ One flow: change the link AND correct the review in a tap. Reuses the server re-review endpoint we already built (#766).</p>
+</div>
+
+<!-- ============ OPTION B ============ -->
+<div class="col">
+  <p class="banner good"><span class="n">OPTION B</span> a clean header line</p>
+  <p class="sub">Lighter: one prominent "Fulfilled: [plan]" line at the top (not a full comparison card) + a Change action that re-reviews. Less screen space, still clear + fixes the flow.</p>
+
+  <div class="hline">
+    <span class="ic">📋</span>
+    <div class="b"><div class="k">Fulfilled your plan</div><div class="t">Steady Z2 Endurance</div><div class="m">~65 min easy · target 58% FTP · you did 71 min</div></div>
+    <span class="chg">✎ Change</span>
+  </div>
+  <div class="hero"><div class="stat"><div class="v">71<span style="font-size:10px">min</span></div><div class="l">Time</div></div><div class="stat"><div class="v">152<span style="font-size:10px">W</span></div><div class="l">Norm pwr</div></div><div class="stat"><div class="v">144</div><div class="l">Avg HR</div></div></div>
+  <p class="note">✓ Prominent title header at the top (what you asked). Same Change → re-review flow as A, just without the side-by-side comparison card.</p>
+
+  <p class="banner good" style="margin-top:16px"><span class="n">SAME</span> change → re-review flow</p>
+  <div class="sheet">
+    <div class="h">Change the linked plan</div>
+    <div class="opt sel"><span style="flex:none">📋</span><div class="t"><b>Threshold 4×10</b><div class="m">Fri Jul 24 · +1d</div></div><span class="r">✓ pick</span></div>
+    <div class="rereview">↻ Re-run the coach review against the new plan <span style="color:var(--dim)">(recommended)</span></div>
+    <div class="cta">Link + re-review →</div>
+  </div>
+  <p class="note">✓ Simplest. If you don't want the planned-vs-completed comparison, this just fixes the header + the change/re-review gap.</p>
+</div>
