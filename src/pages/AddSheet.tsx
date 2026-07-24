@@ -7,13 +7,13 @@ import { segmentsFromEndurance } from '../ride'
 import type { WorkoutTemplate, RideTemplate } from '../db'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
-import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, X, Upload, Waves, Pill, Moon } from 'lucide-react'
-import { authApi } from '../auth/api' // #759 — set a rest day from the + Add sheet
+import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, X, Upload, Waves, Pill, Moon, Flag } from 'lucide-react'
+import { authApi } from '../auth/api' // #759/#760 — set a rest day / add a season event from the + Add sheet
 
 // #198: which module each sport tab belongs to (others — meal/mind/recovery/supplement/note — are universal).
 const TAB_MODULE: Record<string, string> = { ride: 'cycling', run: 'running', swim: 'swimming', gym: 'strength' }
 
-export type SheetType = '' | 'ride' | 'run' | 'swim' | 'gym' | 'meal' | 'mind' | 'note' | 'recovery' | 'supplement'
+export type SheetType = '' | 'ride' | 'run' | 'swim' | 'gym' | 'meal' | 'mind' | 'note' | 'recovery' | 'supplement' | 'event' // #760 — season event
 
 export const colorFor = (s: string) => (s === 'cycling' || s === 'ride' ? '#34e07d' : s === 'running' || s === 'run' ? '#ffb13d' : s === 'swimming' || s === 'swim' ? '#38bdf8' : s === 'gym' ? '#7fd1ff' : s === 'meal' ? '#ff8fb1' : s === 'mind' ? '#b98cff' : s === 'recovery' ? '#ffcf5c' : s === 'supplement' ? '#4fc8e6' : '#9aa3b2')
 export const iconFor = (s: string, sz = 15) => (s === 'cycling' || s === 'ride' ? <Bike size={sz} /> : s === 'running' || s === 'run' ? <Footprints size={sz} /> : s === 'swimming' || s === 'swim' ? <Waves size={sz} /> : s === 'gym' ? <Dumbbell size={sz} /> : s === 'meal' ? <Salad size={sz} /> : s === 'mind' ? <Brain size={sz} /> : s === 'recovery' ? <Waves size={sz} /> : s === 'supplement' ? <Pill size={sz} /> : <StickyNote size={sz} />)
@@ -42,6 +42,11 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
   const [swimSort, setSwimSort] = useState<'default' | 'dist-asc' | 'dist-desc' | 'dur-asc'>('default')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  // #760 — season event form
+  const [evName, setEvName] = useState('')
+  const [evStart, setEvStart] = useState(date)
+  const [evEnd, setEvEnd] = useState('')
+  const [evJob, setEvJob] = useState<'peak' | 'ready' | 'block' | 'note'>('peak')
   const [count, setCount] = useState(0)
   const navigate = useNavigate()
 
@@ -86,6 +91,8 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
                 setBusy(true)
                 try { await authApi.setRestDay(date, true); onAdd(); onClose() } catch { setBusy(false) }
               }}><Moon size={22} /><span>Rest</span></button>
+              {/* #760 — a season EVENT (race/trip/camp) that shapes training. Opens a small form (name · when · job). */}
+              <button className="sheet-type" style={{ color: 'var(--gold, #ffcf5c)' }} onClick={() => setType('event')}><Flag size={22} /><span>Event</span></button>
             </div>
             {/* Import a COMPLETED activity (vs the planned items above) — #131. Opens the
                 Log-activity importer with this day prefilled; it offers to link a plan. */}
@@ -98,7 +105,35 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
           </>
         )}
 
-        {type && type !== 'note' && type !== 'supplement' && (
+        {/* #760 — season EVENT form: name (free text, the coach reads it) · when · one plain question (the job). */}
+        {type === 'event' && (
+          <div className="ev-form">
+            <div className="ev-fld"><div className="ev-lbl">Name <span className="ev-h">· your own words</span></div>
+              <input className="search" autoFocus placeholder="e.g. Chattanooga 70.3, Girona trip, powerlifting meet" value={evName} onChange={(e) => setEvName(e.target.value)} /></div>
+            <div className="ev-fld"><div className="ev-lbl">When <span className="ev-h">· a range = a trip / camp</span></div>
+              <div className="ev-when">
+                <input className="search" type="date" value={evStart} onChange={(e) => setEvStart(e.target.value)} />
+                <span className="ev-arr">→</span>
+                <input className="search" type="date" value={evEnd} placeholder="optional" onChange={(e) => setEvEnd(e.target.value)} />
+              </div></div>
+            <div className="ev-fld"><div className="ev-lbl">What is this to you?</div>
+              <div className="ev-jobs">
+                {([['peak', '🎯', 'A goal to peak for', 'be at my best that day'], ['ready', '💪', 'Something to be ready for', 'fit enough to enjoy it'], ['block', '🔋', 'A big block of training', 'the days are a load themselves'], ['note', '📌', 'Just on my calendar', 'keep my plan, work around it']] as const).map(([j, em, t, d]) => (
+                  <button key={j} type="button" className={'ev-job' + (evJob === j ? ' ev-job--sel' : '')} onClick={() => setEvJob(j)}>
+                    <span className="ev-job__em">{em}</span>
+                    <span className="ev-job__b"><span className="ev-job__t">{t}</span><span className="ev-job__d">{d}</span></span>
+                    <span className="ev-job__rad" />
+                  </button>
+                ))}
+              </div></div>
+            <button className="btn" disabled={busy || !evName.trim() || !evStart} onClick={async () => {
+              setBusy(true)
+              try { await authApi.setEvent({ name: evName.trim(), start: evStart, end: evEnd || undefined, job: evJob }); onAdd(); onClose() } catch { setBusy(false) }
+            }}>Add event →</button>
+          </div>
+        )}
+
+        {type && type !== 'note' && type !== 'supplement' && type !== 'event' && (
           <>
             <input className="search" autoFocus placeholder={`Search ${type}…`} value={q} onChange={(e) => setQ(e.target.value)} />
             {type === 'swim' && (

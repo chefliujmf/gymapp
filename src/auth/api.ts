@@ -1,6 +1,7 @@
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 
 export interface Passkey { id: string; label: string; createdAt: number }
+export interface SeasonEvent { id: string; name: string; start: string; end?: string; job: 'peak' | 'ready' | 'block' | 'note'; sport?: string; at?: number } // #760
 export interface CoachNotification { id: string; kind: 'coach'; subkind?: 'update' | 'review' | 'report'; date: string; at: string; title: string; body?: string; items?: string[]; link?: string; score?: number; read?: boolean }
 export interface CoachReview { id: string; date: string; planId?: string; activityId?: string; sport?: string; score?: number; verdict?: string; execution?: string[]; body?: string; mind?: { pattern?: string; cue?: string }; next?: string; recovery?: string; takeaways?: string[]; at: string }
 // #232 — activity & changes log entry
@@ -195,6 +196,10 @@ export const authApi = {
   // #735 — deliberate REST days (sticky; the coach can't re-fill them). List them; mark/unmark a date.
   restDays: () => req<string[]>('/rest-days'),
   setRestDay: (date: string, rest: boolean) => req<{ ok: boolean; date: string; rest: boolean }>('/rest-day', { body: { date, rest } }),
+  // #760 — season events (races/trips/camps)
+  events: () => req<SeasonEvent[]>('/events'),
+  setEvent: (body: { id?: string; name: string; start: string; end?: string; job: SeasonEvent['job']; sport?: string }) => req<SeasonEvent>('/events', { method: 'POST', body }),
+  deleteEvent: (id: string) => req<{ ok: boolean }>(`/events/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   retryReview: (id: string) => req<{ ok: boolean; retrying: boolean }>(`/activity/${encodeURIComponent(id)}/review-retry`, { method: 'POST' }), // #589 — re-run a stuck coach review
   // #694 — the SERVER-side gym logs (device-independent): the Dexie copy is per-device, so the activity/plan detail
   // needs this to render a gym session's exercises/sets on a device that didn't record it (e.g. JM's browser vs phone).
