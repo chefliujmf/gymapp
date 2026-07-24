@@ -264,6 +264,52 @@ function SwimTimeline({ streams, a, css }: { streams: ActivityStreams; a: IcuAct
   )
 }
 
+// #767 — PLANNED → COMPLETED header: what was prescribed vs what the athlete actually did, side by side, so it's
+// instantly clear WHAT the session was for + how it was executed. A "Change" affordance re-links (and re-reviews, via
+// setLink) if the wrong plan got attached. Ride/run/swim; gym has its own recap.
+function PlannedVsCompleted({ plan, a, ftp, isRun, isSwim, avgPace, avgPace100, onChange, busy }: {
+  plan: CoachPlan; a: IcuActivity; ftp: number; isRun: boolean; isSwim: boolean; avgPace: number | null; avgPace100: number | null; onChange: () => void; busy: boolean
+}) {
+  const secs = (plan.segments || []).reduce((s, x) => s + (x.duration || 0), 0)
+  const plannedMin = Math.round(secs / 60)
+  const pl = plan.segments?.length ? plannedLoad(plan.segments, ftp) : null
+  const plannedIF = pl ? Math.round(pl.if * 100) : null
+  const intens = pl ? (pl.if < 0.75 ? (isRun ? 'Easy' : 'Z2 endurance') : pl.if < 0.88 ? 'Tempo / SS' : 'Threshold+') : ''
+  const actualMin = a.moving_time ? Math.round(a.moving_time / 60) : null
+  const rawIF = a.icu_intensity ? (a.icu_intensity <= 1.5 ? a.icu_intensity * 100 : a.icu_intensity) : null
+  const actualIF = rawIF ? Math.round(rawIF) : null
+  const np = a.icu_weighted_avg_watts ? Math.round(a.icu_weighted_avg_watts) : null
+  const diffMin = (actualMin != null && plannedMin) ? actualMin - plannedMin : null
+  const ifDelta = (actualIF != null && plannedIF != null) ? actualIF - plannedIF : null
+  const verdict = ifDelta == null
+    ? { e: '📋', t: 'Logged against your plan.' }
+    : Math.abs(ifDelta) <= 4 && (diffMin == null || Math.abs(diffMin) <= 10)
+    ? { e: '🎯', t: 'Nailed the plan — right intensity and duration.' }
+    : ifDelta > 4
+    ? { e: '🔥', t: `Harder than planned (~${ifDelta}% more intensity) — a bigger dose than prescribed.` }
+    : { e: '🟢', t: `Easier than planned (~${-ifDelta}% less intensity) — good if that was the intent.` }
+  const actualStat = isSwim && avgPace100 ? `${fmtPace100(avgPace100)}/100m` : isRun && avgPace ? `${fmtPace(avgPace)}/km` : np ? `${np} W` : ''
+  return (
+    <div className="pvc-card">
+      <div className="pvc-top"><span className="pvc-k">Planned → Completed</span><button className="pvc-chg" onClick={onChange} disabled={busy}>✎ Change</button></div>
+      <div className="pvc-rows">
+        <Link to={`/coach/${plan.id}?planned=1`} className="pvc-side planned">
+          <div className="pvc-lab">📋 Planned</div>
+          <div className="pvc-ttl">{plan.title}</div>
+          <div className="pvc-det">~{plannedMin} min{intens ? ` · ${intens}` : ''}{plannedIF != null ? ` · target ${plannedIF}%` : ''}{pl?.tss ? ` · ~${pl.tss} TSS` : ''}</div>
+        </Link>
+        <div className="pvc-div" />
+        <div className="pvc-side done">
+          <div className="pvc-lab">✓ You did</div>
+          <div className="pvc-ttl">{actualMin != null ? `${actualMin} min` : '—'}{actualStat ? ` · ${actualStat}` : ''}</div>
+          <div className="pvc-det">{actualIF != null ? `${actualIF}% intensity` : ''}{diffMin != null && diffMin !== 0 ? `${actualIF != null ? ' · ' : ''}${diffMin > 0 ? '+' : ''}${diffMin} min vs plan` : ''}</div>
+        </div>
+      </div>
+      <div className="pvc-verdict"><span className="em">{verdict.e}</span><span>{verdict.t} <b>Coach review below reflects this plan.</b></span></div>
+    </div>
+  )
+}
+
 // Post-workout activity detail (#51 map + flyby, #54 analytics).
 export default function ActivityDetail() {
   const { id } = useParams()
@@ -374,7 +420,6 @@ export default function ActivityDetail() {
   const dISOplan = (a.start_date_local || '').slice(0, 10)
   const linkedId = user?.activityLinks?.[String(a.id)] // string | null | undefined
   const plan = linkedId === null ? undefined : linkedId ? getCoachPlan(linkedId) : findCoachPlan(dISOplan, sportOfActivity(a))
-  const isManualLink = !!linkedId // an explicit link the user chose (vs the auto-match)
   // candidate plans for the picker: same sport, within ±4 days, from the loaded coach plans.
   const nearbyPlans = (() => {
     try {
@@ -387,7 +432,14 @@ export default function ActivityDetail() {
   const setLink = async (planId: string | null, icuEventId?: string | null) => {
     if (linkBusy) return
     setLinkBusy(true)
-    try { await authApi.linkActivity({ activityId: String(a.id), planId, icuEventId }); await refresh() } catch { /* keep UI */ } finally { setLinkBusy(false); setPicking(false) }
+    const changed = planId && planId !== plan?.id // #767 — linking to a DIFFERENT plan than what's shown now
+    try {
+      await authApi.linkActivity({ activityId: String(a.id), planId, icuEventId })
+      // #767 — fixing a wrong link should CORRECT the review: re-run it against the newly-linked plan (#766b makes the
+      // review read the linked session; retryReview re-fires it). Only when linking to a genuinely different plan.
+      if (changed) { try { await authApi.retryReview(String(a.id)) } catch { /* best effort */ } }
+      await refresh()
+    } catch { /* keep UI */ } finally { setLinkBusy(false); setPicking(false) }
   }
   const hasTimeline = (isRun || isSwim)
     ? ((streams.velocity_smooth?.filter((v) => v != null).length || 0) > 1 || (streams.heartrate?.filter((v) => v != null).length || 0) > 1)
@@ -581,21 +633,11 @@ export default function ActivityDetail() {
       {sportOfActivity(a) !== 'gym' && (() => {
         const pm = plan && plan.sport === sportOfActivity(a) && plan.segments?.length ? plan : null
         if (pm) {
-          const secs = pm.segments!.reduce((s, x) => s + (x.duration || 0), 0)
-          const mins = Math.round(secs / 60)
-          const timeStr = mins >= 60 ? `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, '0')}` : `${mins} min`
-          const load = plannedLoad(pm.segments!, ftp)
-          const intens = load ? (load.if < 0.75 ? (isRun ? 'Easy' : 'Z2 endurance') : load.if < 0.88 ? 'Tempo / SS' : 'Threshold+') : ''
-          const sub = [intens, timeStr, load ? `~${load.tss} TSS` : null, isManualLink ? 'linked' : 'planned'].filter(Boolean).join(' · ')
+          // #767 — the Planned → Completed header (what was prescribed vs what you did) + Change (re-links + re-reviews).
           return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 11 }}>
-              <Link to={`/coach/${pm.id}?planned=1`} className="card" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', textDecoration: 'none', color: 'var(--text)' }}>
-                <span style={{ fontSize: 15, flex: 'none' }}>📋</span>
-                <div style={{ width: 46, height: 28, flex: 'none' }}><MiniProfile segs={pm.segments!} /></div>
-                <div style={{ minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b>{pm.title}</b> <span className="meta" style={{ fontSize: 11.5 }}>· {sub}</span></div>
-                <span style={{ marginLeft: 'auto', color: 'var(--accent)', fontWeight: 800, fontSize: 17, flex: 'none' }}>›</span>
-              </Link>
-              <button className="icon-btn" title="Unlink this planned workout" aria-label="Unlink planned workout" disabled={linkBusy} onClick={() => setLink(null)} style={{ flex: 'none' }}>✕</button>
+            <div style={{ marginTop: 11 }}>
+              <PlannedVsCompleted plan={pm} a={a} ftp={ftp} isRun={isRun} isSwim={isSwim} avgPace={avgPace} avgPace100={avgPace100} onChange={() => setPicking(true)} busy={linkBusy} />
+              <button className="pvc-unlink" disabled={linkBusy} onClick={() => setLink(null)}>✕ Unlink this planned workout</button>
             </div>
           )
         }
