@@ -31,7 +31,7 @@ import { weekShape } from './week-shape.js' // #613/#615 — code-decided week s
 import { assignArchetypeBlock, keyFromTitle, thresholdSizing } from './archetypes.js' // #620 — code-decided VARIETY; #652 — TTE-driven interval sizing
 import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGym, isModerate, heavyGymDatesNear, moderateOverBudget } from './shape-enforce.js' // #615/#620 clamp · #717/#4 concurrent-training separation · #5/#10 shared over-budget helper
 import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
-import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard
+import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback, fbHasContent } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard. #766 — fbHasContent to detect a missing store entry when mirroring intervals-side feel in.
 import { requiredProfileGaps, REQUIRED_FIELDS } from './profile-gate.js' // #A — plan generation is gated on a minimal mandatory profile
 import { periodizationPhase, parseRaceDate } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES · #8 parse race date from free-text notes
 import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym, enforcePostpartumGym, goodExerciseMatch } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose · #2 postpartum plyo clamp
@@ -1210,12 +1210,20 @@ function triggerPlanReview(user, plan, fb) {
 // #589 — RETRY a stuck/failed coach review. When feedback was saved but no review ever landed (e.g. the coach was down),
 // the athlete was stuck on "reviewing…" with no recourse. This re-runs the review from the STORED feedback. `id` = an
 // intervals activity id (in activityFeedback) OR a plan/gym id (plan.feedback).
-app.post('/auth/activity/:id/review-retry', auth, (req, res) => {
+app.post('/auth/activity/:id/review-retry', auth, async (req, res) => {
   const id = String(req.params.id)
-  const afb = (req.user.activityFeedback || {})[id]
+  let afb = (req.user.activityFeedback || {})[id]
   const plan = (req.user.plans || []).find((p) => p.id === id)
+  // #766 (fix A) — the athlete may have rated this on the Garmin/intervals side (feel synced in) with no in-app record.
+  // The app shows "Retry" because it trusts the intervals feel, but without a store entry this endpoint used to 404 and
+  // the coach gate would 409. If the id is an intervals activity with no store feedback, fetch it and MIRROR the
+  // intervals rating into the store, then review from that — so a Garmin-rated ride's Retry actually produces a review.
+  if (!fbHasContent(afb) && !(plan && fbHasContent(plan.feedback)) && /^i?\d+$/.test(id) && req.user.icuKey && req.user.icuAthlete) {
+    const a = await icuGet(req.user, `/activity/${id}`).catch(() => null)
+    if (a && backfillIcuFeedback(req.user, a)) afb = req.user.activityFeedback[id]
+  }
   let ok = false
-  if (afb) ok = triggerActivityReview(req.user, id, afb)
+  if (fbHasContent(afb)) ok = triggerActivityReview(req.user, id, afb)
   else if (plan && plan.feedback) ok = triggerPlanReview(req.user, plan, plan.feedback)
   else return res.status(404).json({ error: 'no saved feedback to review for this session' })
   if (!ok) return res.status(409).json({ error: 'set up your coach first' })
@@ -1285,6 +1293,32 @@ app.post('/auth/activity/:id/feedback-skip', auth, (req, res) => {
 // #273 — intervals feel scale + custom ACTIVITY_FIELD options (label → 1-based index intervals stores).
 // Keep in sync with src/icu-fields.ts.
 const ICU_FEEL_LABELS = ['Strong', 'Good', 'Normal', 'Poor', 'Weak']
+// #766 — map an intervals 1-based feel index back to its label ('Strong'..'Weak'). Inverse of the write-back at
+// POST /auth/activity/:id/feedback (payload.feel = ICU_FEEL_LABELS.indexOf(fb.feel)+1).
+const icuFeelLabel = (idx) => (Number(idx) >= 1 && Number(idx) <= ICU_FEEL_LABELS.length) ? ICU_FEEL_LABELS[Number(idx) - 1] : undefined
+// #766 (JM-approved fix A) — MIRROR an intervals-side rating into the Platyplus store. An activity rated on the
+// Garmin/intervals side (feel/RPE synced in) but never logged in-app has NO `activityFeedback` entry, so the review
+// gate (hasSessionFeedback #723), the daily review pass, and the Retry button all treat it as unrated → it can NEVER
+// be reviewed even though the athlete DID rate it. Backfilling a store record from the intervals feel/RPE makes all
+// three just work. `a` is a raw intervals activity (a.id, a.feel 1-based, a.icu_rpe, a.type, a.start_date_local).
+// Returns true if it created a record. Pure-ish (mutates user + saves); safe to call repeatedly (no-ops once present).
+function backfillIcuFeedback(user, a) {
+  if (!a || a.id == null) return false
+  const id = String(a.id)
+  if (!user.activityFeedback) user.activityFeedback = {}
+  if (fbHasContent(user.activityFeedback[id])) return false // already have a Platyplus record for it
+  const sib = siblingFeedbackId(user, id) // a linked plan may already carry the athlete's feedback
+  if (sib && fbHasContent(user.activityFeedback[sib])) return false
+  const feel = icuFeelLabel(a.feel)
+  const rpe = Number(a.icu_rpe) >= 1 && Number(a.icu_rpe) <= 10 ? Number(a.icu_rpe) : undefined
+  if (!feel && !rpe) return false // no real athlete rating on the intervals side either → nothing to mirror
+  const fb = { feel, rpe, fields: {}, note: '', sport: sportGroupOf(a.type), date: (a.start_date_local || '').slice(0, 10), at: Date.now(), fromIcu: true }
+  user.activityFeedback[id] = fb
+  if (sib) user.activityFeedback[sib] = fb // mirror onto the linked plan id too, so neither view re-nags
+  save(store)
+  console.log(`[icu-feedback-backfill] ${user.username || ''} — mirrored intervals rating (feel ${feel || '—'}, rpe ${rpe || '—'}) into the store for ${id}`)
+  return true
+}
 const ICU_FB_FIELDS = {
   'Legs Before': { code: 'LegsBefore', opts: ['fresh', 'normal', 'relaxed', 'heavy', 'sore', 'flat', 'tired'] },
   'Legs After': { code: 'LegsAfter', opts: ['strong', 'normal', 'tired OK', 'barely tired', 'heavy', 'sore', 'cooked'] },
@@ -3628,6 +3662,10 @@ app.get('/api/intervals/activities', apiAuth, async (req, res) => {
     const date = (a.start_date_local || '').slice(0, 10)
     const daysAgo = date ? Math.round((Date.parse(today + 'T00:00:00Z') - Date.parse(date + 'T00:00:00Z')) / 86400000) : null
     const when = daysAgo == null ? null : daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : daysAgo < 0 ? `in ${-daysAgo} day${daysAgo === -1 ? '' : 's'}` : `${daysAgo} days ago`
+    // #766 (fix A) — a PAST, still-UNREVIEWED activity the athlete rated on the Garmin/intervals side (feel/RPE synced
+    // in) has no Platyplus feedback record → the review gate below would forever flag it awaitingFeedback. Mirror the
+    // intervals rating into the store so hasSessionFeedback sees it and the pass can review it (bounded to the read window).
+    if (a.coach_tick == null && daysAgo != null && daysAgo >= 0) { try { backfillIcuFeedback(req.user, a) } catch (e) { console.error('[icu-feedback-backfill] ' + (e.message || e)) } }
     return {
     id: a.id, // #437 — the intervals activity id, so the coach can review/annotate THIS activity (save_coach_review activityId, set_activity_text). Was missing → the coach couldn't reliably get the id from the read (#436 caveat).
     date, daysAgo, when, // #5019 — `when`/`daysAgo` are authoritative: use them for "today/yesterday/N days ago", don't eyeball
