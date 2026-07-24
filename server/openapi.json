@@ -859,6 +859,15 @@
         "responses": { "202": { "description": "coach running" }, "400": { "description": "coach not set up" } }
       }
     },
+    "/api/coach/review-activity": {
+      "post": {
+        "summary": "Re-fire a single activity's coach review (Bearer, #766)",
+        "description": "Programmatic equivalent of the in-app Retry button: triggers the coach to review a completed activity. If the Platyplus store has no feedback but the intervals activity carries a feel/RPE (a Garmin-rated ride), it mirrors that in first (backfill), then fires the review (which also sets a public-safe title + description). 409 if there is genuinely no athlete rating.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["activityId"], "properties": { "activityId": { "type": "string", "description": "intervals activity id (e.g. i168584107)" } } } } } },
+        "responses": { "202": { "description": "review firing" }, "400": { "description": "activityId required" }, "409": { "description": "no feedback to review" } }
+      }
+    },
     "/api/plans/resync": {
       "post": {
         "summary": "Re-mirror all FUTURE plans to intervals (Bearer, #372)",

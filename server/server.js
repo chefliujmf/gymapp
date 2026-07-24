@@ -4347,6 +4347,22 @@ async function dailyAdaptTick() {
     } catch (e) { console.error(`[daily-adapt tick] ${user.username || ''} ${e.message || e}`) }
   }
 }
+// #766 — RE-FIRE a single activity's coach review server-side (bearer). The in-app Retry button is cookie-auth; this
+// is the programmatic/testing equivalent so a stuck review can be re-triggered without a browser session. Backfills the
+// feedback from the intervals-side rating (feel/RPE) if the Platyplus store has none (a Garmin-rated ride), then fires
+// the same triggerActivityReview the feedback-submit + Retry use. Returns 409 if there's genuinely no athlete rating.
+app.post('/api/coach/review-activity', apiAuth, async (req, res) => {
+  const id = String(req.body?.activityId || '')
+  if (!id) return res.status(400).json({ error: 'activityId required' })
+  let afb = (req.user.activityFeedback || {})[id]
+  if (!fbHasContent(afb) && /^i?\d+$/.test(id) && req.user.icuKey && req.user.icuAthlete) {
+    const a = await icuGet(req.user, `/activity/${id}`).catch(() => null)
+    if (a && backfillIcuFeedback(req.user, a)) afb = req.user.activityFeedback[id]
+  }
+  if (!fbHasContent(afb)) return res.status(409).json({ error: 'no athlete feedback (in-app or intervals feel/RPE) for this activity — nothing to review' })
+  const ok = triggerActivityReview(req.user, id, afb)
+  res.status(ok ? 202 : 409).json({ ok, activityId: id })
+})
 // Run the daily adaptation on demand (testing / "adapt now"). #367
 app.post('/api/coach/daily-adapt', apiAuth, (req, res) => {
   if (!req.user.coachProfile || !String(req.user.coachProfile).trim()) return res.status(400).json({ error: 'coach not set up (no coachProfile)' })
