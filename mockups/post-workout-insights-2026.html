@@ -1,0 +1,182 @@
+<style>
+  :root{
+    --text:#eef1f4;--dim:#9298a6;--faint:#6b7280;--accent:#34e07d;--bg:#0b0e12;
+    --card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#ffb13d;--cyan:#38bdf8;
+    --danger:#ff5d6c;--on-accent:#082015;--z1:#5a6472;--z2:#34e07d;--z3:#ffb13d;--z4:#ff8a3d;--z5:#ff5d6c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:20px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{width:390px;max-width:100%}
+  .banner{font-size:12.5px;font-weight:800;letter-spacing:.02em;margin:0 0 3px 2px;display:flex;align-items:center;gap:7px}
+  .banner .n{font-size:10px;font-weight:800;border-radius:5px;padding:2px 7px}
+  .bad .n{background:var(--danger);color:#2a0508}.good .n{background:var(--accent);color:var(--on-accent)}.rec .n{background:var(--cyan);color:#06222b}
+  .bad{color:var(--danger)}.good{color:var(--accent)}.rec{color:var(--cyan)}
+  .sub{font-size:11px;color:var(--dim);margin:0 0 11px 2px;line-height:1.45}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:11px}
+  .clabel{font-size:11px;font-weight:800;letter-spacing:.03em;color:var(--dim);margin-bottom:7px}
+  .clabel b{color:var(--text)}
+  .chart{height:82px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);position:relative;margin-bottom:2px;overflow:hidden}
+  .chart svg{position:absolute;inset:0;width:100%;height:100%}
+  .yax{position:absolute;left:-30px;top:0;bottom:0;width:28px;font-size:8px;color:var(--faint);display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding:2px 3px 14px 0}
+  .xax{font-size:8px;color:var(--faint);display:flex;justify-content:space-between;padding:1px 0 0 2px}
+  .chwrap{position:relative;margin-left:30px}
+  .ins-old{font-size:11.5px;color:var(--dim);margin-top:8px;display:flex;gap:6px;line-height:1.4}
+  .ins-old .em{font-size:12px}
+  .ins{margin-top:9px;padding:9px 10px;border-radius:9px;background:rgba(52,224,125,.06);border:1px solid rgba(52,224,125,.18)}
+  .ins .h{font-size:12.5px;font-weight:700;color:var(--text);line-height:1.4;margin-bottom:3px;display:flex;gap:6px}
+  .ins .h .em{flex:0 0 auto}
+  .ins .p{font-size:11px;color:var(--dim);line-height:1.5}
+  .ins .p b{color:var(--accent);font-weight:700}
+  .ins .p .amb{color:var(--amber);font-weight:700}
+  .lead{background:linear-gradient(155deg,rgba(52,224,125,.14),rgba(56,189,248,.05));border:1px solid rgba(52,224,125,.3)}
+  .lead .k{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--accent);text-transform:uppercase;margin-bottom:6px}
+  .lead .big{font-size:16px;font-weight:800;line-height:1.35;margin-bottom:8px}
+  .lead .row{display:flex;gap:8px;margin-bottom:9px;flex-wrap:wrap}
+  .chip{background:#12151b;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:11px;flex:1;min-width:88px}
+  .chip .cv{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+  .chip .cl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin-top:1px}
+  .chip .up{color:var(--accent)}.chip .flat{color:var(--cyan)}
+  .lead .why{font-size:11.5px;color:var(--dim);line-height:1.55}
+  .lead .why b{color:var(--text)}
+  .coach{display:flex;gap:10px;align-items:flex-start}
+  .avatar{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e8edf2,#8b95a5);flex:0 0 auto;margin-top:1px}
+  .coach .body .who{font-size:11px;font-weight:800;color:var(--accent);margin-bottom:3px}
+  .coach .body p{font-size:12.5px;line-height:1.55;color:var(--text)}
+  .coach .body p .amb{color:var(--amber);font-weight:600}.coach .body p .gr{color:var(--accent);font-weight:600}
+  .mini{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .mini .m{background:#12151b;border:1px solid var(--line);border-radius:20px;padding:3px 9px;font-size:10.5px;color:var(--dim)}
+  .mini .m b{color:var(--text)}
+  .note{font-size:10.5px;color:var(--faint);margin:9px 2px 0;line-height:1.5}
+  .zbar{display:flex;height:8px;border-radius:5px;overflow:hidden;margin:7px 0 2px}
+  .zbar span{display:block}
+  .zleg{font-size:9.5px;color:var(--dim);display:flex;gap:9px;flex-wrap:wrap;margin-top:4px}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:3px;vertical-align:middle}
+</style>
+
+<!-- ============ BEFORE ============ -->
+<div class="col">
+  <p class="banner bad"><span class="n">NOW</span> what the graph "comment" says today</p>
+  <p class="sub">Your real Z2 ride · 71 min · NP 152 W · 144 bpm · IF 0.61. The insight just re-states the number already on the chart.</p>
+
+  <div class="card">
+    <div class="clabel">POWER (W) · NP 152 · avg 152 · max 214</div>
+    <div class="chwrap">
+      <div class="yax"><span>240</span><span>120</span><span>0</span></div>
+      <div class="chart"><svg viewBox="0 0 300 82" preserveAspectRatio="none"><polyline fill="rgba(52,224,125,.10)" stroke="none" points="0,82 0,44 30,40 60,46 90,38 120,48 150,42 180,45 210,39 240,47 270,41 300,44 300,82"/><polyline fill="none" stroke="#34e07d" stroke-width="1.5" points="0,44 30,40 60,46 90,38 120,48 150,42 180,45 210,39 240,47 270,41 300,44"/></svg></div>
+      <div class="xax"><span>0:00</span><span>35:00</span><span>71:00</span></div>
+    </div>
+    <div class="ins-old"><span class="em">💡</span>NP 152 W · VI 1.05 — steady, even effort</div>
+  </div>
+  <div class="card">
+    <div class="clabel">HEART RATE (bpm) · avg 144 · max 158</div>
+    <div class="chwrap">
+      <div class="yax"><span>160</span><span>120</span><span>90</span></div>
+      <div class="chart"><svg viewBox="0 0 300 82" preserveAspectRatio="none"><polyline fill="none" stroke="#ff5d6c" stroke-width="1.5" points="0,60 30,50 60,46 90,44 120,43 150,42 180,41 210,40 240,40 270,39 300,38"/></svg></div>
+      <div class="xax"><span>0:00</span><span>35:00</span><span>71:00</span></div>
+    </div>
+    <div class="ins-old"><span class="em">💡</span>Avg 144 bpm, peaked 158 — effort held moderate for the session</div>
+  </div>
+  <p class="note">✗ Restates the stat. No comparison to your zones, your history, the plan, or any real analysis. "Says nothing you can't read off the chart."</p>
+</div>
+
+<!-- ============ OPTION A ============ -->
+<div class="col">
+  <p class="banner rec"><span class="n">OPTION A · RECOMMENDED</span></p>
+  <p class="sub"><b style="color:var(--text)">Computed insight engine</b> — every chart gets a real analytical read (decoupling · efficiency · zone quality · vs your history), plain-language. Instant, free, consistent — no LLM.</p>
+
+  <div class="card">
+    <div class="clabel">POWER (W) · NP 152 · avg 152 · max 214</div>
+    <div class="chwrap">
+      <div class="yax"><span>240</span><span>120</span><span>0</span></div>
+      <div class="chart"><svg viewBox="0 0 300 82" preserveAspectRatio="none"><polyline fill="rgba(52,224,125,.10)" stroke="none" points="0,82 0,44 30,40 60,46 90,38 120,48 150,42 180,45 210,39 240,47 270,41 300,44 300,82"/><polyline fill="none" stroke="#34e07d" stroke-width="1.5" points="0,44 30,40 60,46 90,38 120,48 150,42 180,45 210,39 240,47 270,41 300,44"/></svg></div>
+      <div class="xax"><span>0:00</span><span>35:00</span><span>71:00</span></div>
+    </div>
+    <div class="zbar"><span style="width:6%;background:var(--z1)"></span><span style="width:88%;background:var(--z2)"></span><span style="width:6%;background:var(--z3)"></span></div>
+    <div class="zleg"><span><i class="dot" style="background:var(--z2)"></i>88% Z2</span><span><i class="dot" style="background:var(--z1)"></i>6% Z1</span><span><i class="dot" style="background:var(--z3)"></i>6% Z3</span></div>
+    <div class="ins">
+      <div class="h"><span class="em">🎯</span>Textbook Z2 discipline — 88% of the ride dead-center endurance.</div>
+      <div class="p"><b>58% of your FTP</b>, only 6% spent above zone. Even pacing: 2nd-half power held within <b>1%</b> of the first — no fade. This is exactly the aerobic dose the plan asked for.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="clabel">HEART RATE (bpm) · avg 144 · max 158</div>
+    <div class="chwrap">
+      <div class="yax"><span>160</span><span>120</span><span>90</span></div>
+      <div class="chart"><svg viewBox="0 0 300 82" preserveAspectRatio="none"><polyline fill="none" stroke="#ff5d6c" stroke-width="1.5" points="0,60 30,50 60,46 90,44 120,43 150,42 180,41 210,40 240,40 270,39 300,38"/></svg></div>
+      <div class="xax"><span>0:00</span><span>35:00</span><span>71:00</span></div>
+    </div>
+    <div class="ins">
+      <div class="h"><span class="em">💪</span>Strong aerobic durability — HR barely drifted.</div>
+      <div class="p">Power:HR <b>decoupling just 2.8%</b> over 71 min (under 5% = well-developed base). Efficiency factor <b>1.06, up 4%</b> vs your 4-week average — your engine is getting more speed per beat. That's fitness moving the right way.</div>
+    </div>
+  </div>
+  <p class="note">✓ Decoupling, EF trend, time-in-zone, pacing split, benchmark % — all computed from the stream + your FTP + history. The coach's written review sits on top for the narrative.</p>
+</div>
+
+<!-- ============ OPTION B ============ -->
+<div class="col">
+  <p class="banner good"><span class="n">OPTION B</span> one headline "session read" card</p>
+  <p class="sub">The 3 things that matter, ranked + computed, in one strong card at the top. Charts stay clean with a short tag. Fast to scan.</p>
+
+  <div class="card lead">
+    <div class="k">Session read</div>
+    <div class="big">A clean aerobic-base session — and your durability is trending up. 💪</div>
+    <div class="row">
+      <div class="chip"><div class="cv">2.8%</div><div class="cl">HR decoupling</div></div>
+      <div class="chip"><div class="cv up">1.06 ↑4%</div><div class="cl">Efficiency vs 4wk</div></div>
+      <div class="chip"><div class="cv">88%</div><div class="cl">Time in Z2</div></div>
+    </div>
+    <div class="why"><b>Why it matters:</b> you held 152 W (58% FTP) with almost no cardiac drift and rising efficiency — the exact signal that your aerobic base is absorbing the work. Pacing was even (2nd half within 1% of the first). Nailed the planned Z2, +6 min bonus.</div>
+  </div>
+
+  <div class="card">
+    <div class="clabel">POWER (W) · NP 152 <b>· 88% in Z2</b></div>
+    <div class="chwrap">
+      <div class="yax"><span>240</span><span>120</span><span>0</span></div>
+      <div class="chart"><svg viewBox="0 0 300 82" preserveAspectRatio="none"><polyline fill="rgba(52,224,125,.10)" stroke="none" points="0,82 0,44 30,40 60,46 90,38 120,48 150,42 180,45 210,39 240,47 270,41 300,44 300,82"/><polyline fill="none" stroke="#34e07d" stroke-width="1.5" points="0,44 30,40 60,46 90,38 120,48 150,42 180,45 210,39 240,47 270,41 300,44"/></svg></div>
+      <div class="xax"><span>0:00</span><span>35:00</span><span>71:00</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="clabel">HEART RATE (bpm) · avg 144 <b>· drift 2.8%</b></div>
+    <div class="chwrap">
+      <div class="yax"><span>160</span><span>120</span><span>90</span></div>
+      <div class="chart"><svg viewBox="0 0 300 82" preserveAspectRatio="none"><polyline fill="none" stroke="#ff5d6c" stroke-width="1.5" points="0,60 30,50 60,46 90,44 120,43 150,42 180,41 210,40 240,40 270,39 300,38"/></svg></div>
+      <div class="xax"><span>0:00</span><span>35:00</span><span>71:00</span></div>
+    </div>
+  </div>
+  <p class="note">✓ Same computed engine as A, but the value is concentrated in one headline. Less reading, one strong takeaway.</p>
+</div>
+
+<!-- ============ OPTION C ============ -->
+<div class="col">
+  <p class="banner good"><span class="n">OPTION C</span> coach's read + metric chips</p>
+  <p class="sub">A short coach-VOICE paragraph interpreting the whole session vs your plan &amp; goal &amp; feel, with computed metric chips. Warmest, most personal — uses the LLM (small cost).</p>
+
+  <div class="card">
+    <div class="coach">
+      <div class="avatar"></div>
+      <div class="body">
+        <div class="who">Your coach</div>
+        <p>Exactly what today needed. You asked to swap the threshold to tomorrow and spin easy — and you <span class="gr">held it genuinely easy</span> (58% FTP, HR flat all the way). What I love: your <span class="gr">efficiency is up ~4%</span> from a month ago and HR barely drifted — the base work is paying off. You went <span class="amb">6 min long</span>, which is fine on an easy day. Fresh legs into tomorrow's 4×10.</p>
+      </div>
+    </div>
+    <div class="mini">
+      <span class="m">EF <b>1.06</b> ↑4%</span>
+      <span class="m">Decoupling <b>2.8%</b></span>
+      <span class="m">Z2 <b>88%</b></span>
+      <span class="m">58% FTP</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="clabel">POWER (W) · NP 152 · avg 152</div>
+    <div class="chwrap">
+      <div class="yax"><span>240</span><span>120</span><span>0</span></div>
+      <div class="chart"><svg viewBox="0 0 300 82" preserveAspectRatio="none"><polyline fill="rgba(52,224,125,.10)" stroke="none" points="0,82 0,44 30,40 60,46 90,38 120,48 150,42 180,45 210,39 240,47 270,41 300,44 300,82"/><polyline fill="none" stroke="#34e07d" stroke-width="1.5" points="0,44 30,40 60,46 90,38 120,48 150,42 180,45 210,39 240,47 270,41 300,44"/></svg></div>
+      <div class="xax"><span>0:00</span><span>35:00</span><span>71:00</span></div>
+    </div>
+  </div>
+  <p class="note">✓ Most human + ties to the plan/goal. Costs a small LLM call per activity (the review pass can author it — near-free on the cheap model).</p>
+</div>

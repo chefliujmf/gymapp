@@ -58,11 +58,18 @@ export default function GymSummary({ minutes, exercises, review, note, bestE1rm,
     : [['Exercises', String(rows.length || '—')], ['Sets', String(totSets || '—')], ['Reps', String(totReps || '—')], ['Time', `${minutes} min`]]
   // #602 — insight stays FACTUAL. No generic nutrition/recovery prescription (JM: risky without the athlete's
   // metabolism/goals — the coach review above has that context and personalises it). Just the training recap.
+  // #768 — a gym read that SAYS something: name the PR lift + progression, or the strength stimulus banked + how to
+  // progress it — not a bare set/rep count. FACTUAL only (#602: no tonnage per #601, no nutrition/recovery prescription).
+  const topPr = rows.filter((r) => r.pr && r.est > 0).sort((a, b) => b.est - a.est)[0]
+  const heaviest = rows.filter((r) => (r.sets[0]?.weight || 0) > 0).map((r) => ({ name: r.name, w: Math.max(...r.sets.map((s) => s.weight || 0)) })).sort((a, b) => b.w - a.w)[0]
+  const musclesTxt = muscles.length ? ` across ${muscles.length} muscle group${muscles.length > 1 ? 's' : ''}` : ''
   const insight = plannedNoWeights
-    ? `Recorded on your device${avgHr ? `, ${Math.round(avgHr)} bpm avg` : ''}. Add the weights you lifted and I'll track your PRs.`
+    ? `Recorded on your device${avgHr ? `, ${Math.round(avgHr)} bpm avg` : ''}. Add the weights you lifted and I'll track your strength PRs.`
     : totSets > 0
-    ? `${totSets} set${totSets > 1 ? 's' : ''} · ${totReps} rep${totReps > 1 ? 's' : ''}${prCount ? ` · ${prCount} PR${prCount > 1 ? 's' : ''} 🏅` : ''} logged. Your coach reviews it above.`
-    : `All ${rows.length} exercises done. Log your weights next time and I'll track your PRs.`
+    ? (topPr
+        ? `🏅 New estimated 1-rep max on ${topPr.name} — ${topPr.est} kg. That's progressive overload landing, the single biggest driver of strength. ${totSets} working sets${musclesTxt}, ${totReps} reps banked.`
+        : `${totSets} working set${totSets > 1 ? 's' : ''}${musclesTxt} · ${totReps} reps — a solid strength stimulus.${heaviest ? ` Top lift: ${heaviest.name} at ${heaviest.w} kg.` : ''} Nudge a load or a rep next session to keep the progression going.`)
+    : `All ${rows.length} exercises done. Log your weights next time and I'll track your 1-rep-max PRs.`
 
   return (
     <>
