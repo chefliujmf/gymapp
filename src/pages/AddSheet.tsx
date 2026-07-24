@@ -7,7 +7,8 @@ import { segmentsFromEndurance } from '../ride'
 import type { WorkoutTemplate, RideTemplate } from '../db'
 import { useAuth } from '../auth/AuthContext'
 import { hasModule } from '../modules'
-import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, X, Upload, Waves, Pill } from 'lucide-react'
+import { Bike, Dumbbell, Footprints, Salad, Brain, StickyNote, X, Upload, Waves, Pill, Moon } from 'lucide-react'
+import { authApi } from '../auth/api' // #759 — set a rest day from the + Add sheet
 
 // #198: which module each sport tab belongs to (others — meal/mind/recovery/supplement/note — are universal).
 const TAB_MODULE: Record<string, string> = { ride: 'cycling', run: 'running', swim: 'swimming', gym: 'strength' }
@@ -79,6 +80,12 @@ export function AddSheet({ date, substitute, lockType, ftp, templates, rideTempl
               {([['ride', 'Ride', Bike], ['run', 'Run', Footprints], ['swim', 'Swim', Waves], ['gym', 'Gym', Dumbbell], ['note', 'Note', StickyNote]] as const).filter(([t]) => !TAB_MODULE[t] || hasModule(sports, TAB_MODULE[t])).map(([t, label, Icon]) => (
                 <button key={t} className="sheet-type" style={{ color: colorFor(t) }} onClick={() => setType(t)}><Icon size={22} /><span>{label}</span></button>
               ))}
+              {/* #759 — REST DAY is a first-class, deliberate choice (recovery is programmed, not an empty day). One tap:
+                  set the day as a sticky rest (clears any session on it), so the athlete can drop their own rest day. */}
+              <button className="sheet-type" style={{ color: 'var(--cyan, #39c2d7)' }} disabled={busy} onClick={async () => {
+                setBusy(true)
+                try { await authApi.setRestDay(date, true); onAdd(); onClose() } catch { setBusy(false) }
+              }}><Moon size={22} /><span>Rest</span></button>
             </div>
             {/* Import a COMPLETED activity (vs the planned items above) — #131. Opens the
                 Log-activity importer with this day prefilled; it offers to link a plan. */}
