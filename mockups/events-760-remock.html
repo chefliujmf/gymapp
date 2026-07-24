@@ -1,0 +1,99 @@
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--faint:#6b7280;--accent:#34e07d;--bg:#0b0e12;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#f0b429;--gold:#ffcf5c;--cyan:#39c2d7;--danger:#ff5d6c;--on-accent:#082015}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:22px;display:flex;gap:24px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{width:400px;max-width:100%}
+  .banner{font-size:12.5px;font-weight:800;margin:0 0 3px 2px;display:flex;gap:7px;align-items:center;color:var(--cyan)}
+  .banner .n{font-size:10px;font-weight:800;border-radius:5px;padding:2px 7px;background:var(--cyan);color:#06222b}
+  .sub{font-size:11px;color:var(--dim);margin:0 0 12px 2px;line-height:1.45}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:11px}
+  .fh{font-size:15px;font-weight:800;margin-bottom:13px;display:flex;gap:8px;align-items:center}
+  .fld{margin-bottom:13px}
+  .lbl{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+  .lbl .h{font-weight:600;text-transform:none;letter-spacing:0;color:var(--faint)}
+  .inp{background:#12151b;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13.5px;color:var(--text)}
+  .inp small{display:block;color:var(--faint);font-size:10.5px;margin-top:3px;font-style:italic}
+  .row2{display:flex;gap:8px}.row2 .inp{flex:1}
+  .q{font-size:13px;font-weight:800;margin-bottom:8px}
+  .jobs{display:flex;flex-direction:column;gap:7px}
+  .job{display:flex;gap:11px;align-items:center;background:#12151b;border:1px solid var(--line);border-radius:11px;padding:11px 12px}
+  .job.sel{border-color:var(--accent);background:rgba(52,224,125,.07)}
+  .job .em{font-size:19px;flex:none;width:22px;text-align:center}
+  .job .b{min-width:0;flex:1}
+  .job .t{font-size:13.5px;font-weight:800}.job.sel .t{color:var(--accent)}
+  .job .d{font-size:10.5px;color:var(--faint);margin-top:1px}
+  .job .rad{flex:none;width:17px;height:17px;border-radius:50%;border:2px solid var(--line)}
+  .job.sel .rad{border-color:var(--accent);background:radial-gradient(circle,var(--accent) 42%,transparent 46%)}
+  .save{width:100%;margin-top:3px;padding:12px;border-radius:10px;background:var(--accent);color:var(--on-accent);font-weight:800;font-size:13.5px;text-align:center}
+  .note{font-size:10.5px;color:var(--faint);margin:9px 2px 0;line-height:1.55}
+  /* season / multi-event */
+  .season{background:linear-gradient(150deg,rgba(255,207,92,.12),rgba(240,180,41,.03));border:1px solid rgba(255,207,92,.3);border-radius:14px;padding:14px 15px;margin-bottom:11px}
+  .coachline{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5}
+  .coachav{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e8edf2,#8b95a5);flex:none}
+  .coachline b{color:var(--text)}.coachline .g{color:var(--accent);font-weight:700}.coachline .a{color:var(--amber);font-weight:700}
+  /* timeline */
+  .tl{margin:14px 0 4px;position:relative}
+  .tlbar{height:9px;border-radius:5px;display:flex;overflow:hidden;border:1px solid var(--line)}
+  .tlbar span{height:100%}
+  .b-build{background:var(--accent)}.b-peak{background:var(--amber)}.b-taper{background:var(--gold)}.b-rec{background:#39c2d755}
+  .tlmarks{position:relative;height:30px;margin-top:4px}
+  .mk{position:absolute;transform:translateX(-50%);text-align:center;font-size:8.5px;color:var(--dim)}
+  .mk .f{font-size:14px;display:block}
+  .tllabels{display:flex;justify-content:space-between;font-size:8px;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;margin-top:2px}
+  .evlist{margin-top:6px}
+  .evrow{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+  .evrow:first-child{border-top:none}
+  .evrow .ic{font-size:15px;flex:none;width:20px;text-align:center}
+  .evrow .b{flex:1;min-width:0}.evrow .t{font-size:12.5px;font-weight:700}.evrow .m{font-size:10px;color:var(--faint)}
+  .tag{flex:none;font-size:9px;font-weight:800;border-radius:5px;padding:2px 7px}
+  .tag.peak{background:var(--danger);color:#2a0508}.tag.ready{background:rgba(52,224,125,.25);color:var(--accent)}.tag.thru{background:rgba(240,180,41,.25);color:var(--amber)}
+</style>
+
+<!-- FORM -->
+<div class="col">
+  <p class="banner"><span class="n">A · FINAL</span> add an event — reworded, instantly clear</p>
+  <p class="sub">Name (free text, coach reads it) · When · and one plain question. Shown for your Girona trip.</p>
+
+  <div class="card">
+    <div class="fh">🏁 Add an event</div>
+    <div class="fld"><div class="lbl">Name <span class="h">· your own words</span></div>
+      <div class="inp">Girona cycling trip — lots of climbing<small>the coach reads this for the specifics</small></div></div>
+    <div class="fld"><div class="lbl">When</div><div class="row2"><div class="inp">Sat Oct 4</div><div class="inp">→ Oct 11</div></div></div>
+    <div class="fld">
+      <div class="q">What is this to you?</div>
+      <div class="jobs">
+        <div class="job"><span class="em">🎯</span><div class="b"><div class="t">A goal to peak for</div><div class="d">be at my best that day</div></div><span class="rad"></span></div>
+        <div class="job sel"><span class="em">💪</span><div class="b"><div class="t">Something to be ready for</div><div class="d">fit enough to enjoy it</div></div><span class="rad"></span></div>
+        <div class="job"><span class="em">🔋</span><div class="b"><div class="t">A big block of training</div><div class="d">the days are a load themselves</div></div><span class="rad"></span></div>
+        <div class="job"><span class="em">📌</span><div class="b"><div class="t">Just on my calendar</div><div class="d">keep my plan, work around it</div></div><span class="rad"></span></div>
+      </div>
+    </div>
+    <div class="save">Add event →</div>
+  </div>
+  <p class="note">✓ Four short lines, no jargon, no paragraph — you read them and know which is yours. The name holds the sport-specifics; the pick is the one lever the coach's periodization drives off.</p>
+</div>
+
+<!-- MULTIPLE EVENTS -->
+<div class="col">
+  <p class="banner"><span class="n">MANY EVENTS</span> close, far, stacked — handled</p>
+  <p class="sub">You can add as many as you like. The coach sees your whole season and sequences them by date; the nearest "peak" drives the phase now.</p>
+
+  <div class="season">
+    <div class="coachline"><span class="coachav"></span><span>You're <b>building toward your 70.3</b> (<span class="g">peak Sep 21</span>). The sprint in 2 weeks I'll <span class="a">train you through</span> — no taper, it's a hard tune-up. After the 70.3 you recover, then build into Girona.</span></div>
+    <div class="tl">
+      <div class="tlbar"><span class="b-build" style="width:40%"></span><span class="b-peak" style="width:12%"></span><span class="b-taper" style="width:14%"></span><span class="b-rec" style="width:10%"></span><span class="b-build" style="width:24%"></span></div>
+      <div class="tlmarks">
+        <div class="mk" style="left:14%"><span class="f">🔺</span>Sprint</div>
+        <div class="mk" style="left:60%"><span class="f">🏁</span>70.3</div>
+        <div class="mk" style="left:90%"><span class="f">🧭</span>Girona</div>
+      </div>
+      <div class="tllabels"><span>now</span><span>build</span><span>peak</span><span>taper→race</span><span>recover</span><span>build</span></div>
+    </div>
+    <div class="evlist">
+      <div class="evrow"><span class="ic">🔺</span><div class="b"><div class="t">Local Sprint Tri</div><div class="m">Aug 10 · in 2 wks · "be ready"</div></div><span class="tag thru">TRAIN THROUGH</span></div>
+      <div class="evrow"><span class="ic">🏁</span><div class="b"><div class="t">Chattanooga 70.3</div><div class="m">Sep 21 · in 8 wks · "peak for it"</div></div><span class="tag peak">A · PEAK</span></div>
+      <div class="evrow"><span class="ic">🧭</span><div class="b"><div class="t">Girona cycling trip</div><div class="m">Oct 4–11 · in 10 wks · "be ready"</div></div><span class="tag ready">READY</span></div>
+    </div>
+  </div>
+  <p class="note"><b>The rules the coach applies:</b> nearest peak drives the phase · far events wait (no premature peak) · two peaks too close ⇒ fully peak the priority, race the other on residual fitness + it tells you · a camp/trip near a race folds in as a build block. No A/B/C to pick — the job IS the priority (peak = A, ready = B, note = C).</p>
+</div>

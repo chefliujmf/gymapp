@@ -1,0 +1,135 @@
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--faint:#6b7280;--accent:#34e07d;--bg:#0b0e12;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#f0b429;--gold:#ffcf5c;--cyan:#39c2d7;--danger:#ff5d6c;--on-accent:#082015}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:20px;display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{width:380px;max-width:100%}
+  .banner{font-size:12.5px;font-weight:800;margin:0 0 3px 2px;display:flex;gap:7px;align-items:center}
+  .banner .n{font-size:10px;font-weight:800;border-radius:5px;padding:2px 7px}
+  .rec .n{background:var(--cyan);color:#06222b}.good .n{background:var(--accent);color:var(--on-accent)}
+  .rec{color:var(--cyan)}.good{color:var(--accent)}
+  .sub{font-size:11px;color:var(--dim);margin:0 0 12px 2px;line-height:1.45}
+  .phone{background:linear-gradient(180deg,#0e1116,#0b0e12);border:1px solid var(--line);border-radius:20px;padding:14px 13px}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin-bottom:10px}
+  /* add grid */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+  .tile{background:#12151b;border:1px solid var(--line);border-radius:11px;padding:12px 6px;text-align:center;font-size:11px;color:var(--dim);font-weight:700}
+  .tile.ev{border-color:rgba(240,180,41,.5);background:linear-gradient(160deg,rgba(240,180,41,.12),rgba(240,180,41,.03));color:var(--gold)}
+  .tile .ic{font-size:20px;display:block;margin-bottom:4px}
+  /* form */
+  .fh{font-size:14px;font-weight:800;margin-bottom:11px;display:flex;gap:7px;align-items:center}
+  .fld{margin-bottom:10px}
+  .lbl{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+  .inp{background:#12151b;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;color:var(--text)}
+  .inp.ph{color:var(--faint)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{background:#12151b;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:11.5px;color:var(--dim)}
+  .chip.sel{border-color:var(--gold);background:rgba(255,207,92,.1);color:var(--gold);font-weight:700}
+  /* priority */
+  .pri{display:flex;gap:7px}
+  .pbtn{flex:1;background:#12151b;border:1px solid var(--line);border-radius:9px;padding:8px 6px;text-align:center}
+  .pbtn .p{font-size:15px;font-weight:800}.pbtn .d{font-size:9px;color:var(--faint);margin-top:1px;line-height:1.3}
+  .pbtn.A{border-color:var(--danger);background:rgba(255,93,108,.09)}.pbtn.A .p{color:var(--danger)}
+  .save{width:100%;margin-top:6px;padding:11px;border-radius:10px;background:var(--gold);color:#2a1c02;font-weight:800;font-size:13px;text-align:center}
+  /* season banner */
+  .season{background:linear-gradient(150deg,rgba(255,207,92,.14),rgba(240,180,41,.04));border:1px solid rgba(255,207,92,.34);border-radius:14px;padding:13px 14px;margin-bottom:10px}
+  .season .top{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+  .season .flag{font-size:20px}
+  .season .nm{font-size:14px;font-weight:800}.season .cd{margin-left:auto;font-size:13px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
+  .season .ph{font-size:11.5px;color:var(--dim);line-height:1.5}.season .ph b{color:var(--text)}
+  .prog{height:6px;border-radius:4px;background:#0c0f14;border:1px solid var(--line);overflow:hidden;margin:8px 0 6px;display:flex}
+  .prog span{height:100%}
+  .prog .base{background:#39c2d755}.prog .build{background:var(--accent)}.prog .peak{background:var(--amber)}.prog .taper{background:var(--gold)}
+  .plabels{display:flex;justify-content:space-between;font-size:8.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em}
+  /* calendar event block */
+  .daychip{display:flex;gap:9px;align-items:center;background:linear-gradient(160deg,rgba(240,180,41,.13),rgba(240,180,41,.03));border:1px solid rgba(240,180,41,.4);border-radius:12px;padding:10px 12px}
+  .daychip .fl{font-size:17px;flex:none}
+  .daychip .b{min-width:0;flex:1}.daychip .b .t{font-size:13.5px;font-weight:800}.daychip .b .m{font-size:10.5px;color:var(--dim);margin-top:1px}
+  .daychip .pill{flex:none;font-size:9px;font-weight:800;color:#2a0508;background:var(--danger);border-radius:5px;padding:2px 6px}
+  .note{font-size:10.5px;color:var(--faint);margin:9px 2px 0;line-height:1.5}
+  .weekrow{display:flex;gap:4px;margin-top:8px}
+  .wd{flex:1;text-align:center;font-size:9px;color:var(--dim);background:#12151b;border:1px solid var(--line);border-radius:7px;padding:5px 2px}
+  .wd.evt{border-color:var(--gold);background:rgba(255,207,92,.12)}
+  .wd b{display:block;font-size:11px;color:var(--text)}
+</style>
+
+<!-- OPTION A -->
+<div class="col">
+  <p class="banner rec"><span class="n">RECOMMENDED</span> add an event, it drives your season</p>
+  <p class="sub">A structured EVENT (name · date · distance · A/B/C priority) — added from <b>+ Add</b>, rendered on the calendar, and the nearest <b>A-race</b> drives the periodization phases + a live countdown.</p>
+
+  <div class="phone">
+    <div style="font-size:11px;font-weight:800;color:var(--dim);margin:2px 2px 8px">+ ADD</div>
+    <div class="grid">
+      <div class="tile"><span class="ic">🚴</span>Ride</div>
+      <div class="tile"><span class="ic">🏃</span>Run</div>
+      <div class="tile"><span class="ic">🏊</span>Swim</div>
+      <div class="tile"><span class="ic">🏋️</span>Gym</div>
+      <div class="tile"><span class="ic">💤</span>Rest</div>
+      <div class="tile ev"><span class="ic">🏁</span>Event</div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <div class="fh">🏁 Add an event / race</div>
+      <div class="fld"><div class="lbl">Name</div><div class="inp">Chattanooga 70.3</div></div>
+      <div class="fld"><div class="lbl">Date</div><div class="inp">Sun · Sep 21, 2026</div></div>
+      <div class="fld"><div class="lbl">Type / distance</div>
+        <div class="chips"><span class="chip">5K</span><span class="chip">10K</span><span class="chip">Half</span><span class="chip">Marathon</span><span class="chip">Sprint Tri</span><span class="chip">Olympic</span><span class="chip sel">70.3</span><span class="chip">Ironman</span><span class="chip">Gran Fondo</span></div>
+      </div>
+      <div class="fld"><div class="lbl">Priority — how much the plan revolves around it</div>
+        <div class="pri">
+          <div class="pbtn A"><div class="p">A</div><div class="d">peak + taper for it</div></div>
+          <div class="pbtn"><div class="p">B</div><div class="d">train through, mini-taper</div></div>
+          <div class="pbtn"><div class="p">C</div><div class="d">just do it, no taper</div></div>
+        </div>
+      </div>
+      <div class="save">Add event →</div>
+    </div>
+  </div>
+  <p class="note">✓ One structured record. The A-race's weeks-to-go feeds `periodizationPhase` (already the anchor) instead of parsing it from free-text goal notes — so phases + taper are reliable, and B/C races get the right treatment.</p>
+</div>
+
+<!-- WHAT IT DRIVES -->
+<div class="col">
+  <p class="banner good"><span class="n">WHAT IT DRIVES</span> season countdown + phases</p>
+  <p class="sub">Once an A-race exists, the plan shows a live season banner (countdown + current phase) and the event renders on the calendar.</p>
+
+  <div class="phone">
+    <div class="season">
+      <div class="top"><span class="flag">🏁</span><span class="nm">Chattanooga 70.3</span><span class="cd">8 wks</span></div>
+      <div class="ph">You're in the <b>BUILD</b> phase — layering race-specific intensity on your base. Peak in ~3 weeks, then a <b>3-week taper</b> (70.3 distance).</div>
+      <div class="prog"><span class="base" style="width:38%"></span><span class="build" style="width:34%"></span><span class="peak" style="width:14%"></span><span class="taper" style="width:14%"></span></div>
+      <div class="plabels"><span>Base</span><span>Build ●</span><span>Peak</span><span>Taper</span></div>
+    </div>
+
+    <div style="font-size:11px;font-weight:800;color:var(--dim);margin:6px 2px 7px">SUN · SEP 21</div>
+    <div class="daychip">
+      <span class="fl">🏁</span>
+      <div class="b"><div class="t">Chattanooga 70.3</div><div class="m">A-race · 70.3 triathlon · race day</div></div>
+      <span class="pill">A</span>
+    </div>
+
+    <div style="font-size:11px;font-weight:800;color:var(--dim);margin:12px 2px 5px">SEP · MONTH VIEW</div>
+    <div class="weekrow">
+      <div class="wd"><b>15</b></div><div class="wd"><b>16</b></div><div class="wd"><b>17</b></div>
+      <div class="wd"><b>18</b></div><div class="wd"><b>19</b></div><div class="wd"><b>20</b></div>
+      <div class="wd evt"><b>21</b>🏁</div>
+    </div>
+  </div>
+  <p class="note">✓ The event is a real calendar block (gold/flag hue, A/B/C pill) on Day + Month + Week. The countdown + phase are computed from the nearest A-race — no guessing.</p>
+</div>
+
+<!-- OPTION B -->
+<div class="col">
+  <p class="banner good"><span class="n">OPTION B</span> manage events in Profile instead</p>
+  <p class="sub">Same structured event, but the ADD/EDIT lives in <b>Profile → Your season</b> (a list you manage), with the countdown banner + calendar blocks identical to A. Fewer +Add tiles; events feel like a season setting.</p>
+
+  <div class="phone">
+    <div class="card">
+      <div class="fh">🏁 Your season</div>
+      <div class="daychip" style="margin-bottom:8px"><span class="fl">🏁</span><div class="b"><div class="t">Chattanooga 70.3</div><div class="m">Sep 21 · 70.3 · in 8 weeks</div></div><span class="pill">A</span></div>
+      <div class="daychip" style="background:#12151b;border-color:var(--line)"><span class="fl" style="opacity:.7">🏁</span><div class="b"><div class="t">Local Sprint Tri</div><div class="m">Aug 10 · Sprint · in 2 weeks</div></div><span class="pill" style="background:var(--dim);color:#111">B</span></div>
+      <div class="save" style="background:transparent;border:1.5px dashed #34405a;color:var(--gold)">＋ Add an event</div>
+    </div>
+  </div>
+  <p class="note">✓ Better if you'd rather keep + Add for daily workouts and treat races as a season-planning thing. Recommendation is A (+ Add) since it's where you already schedule everything — but this is the toggle.</p>
+</div>

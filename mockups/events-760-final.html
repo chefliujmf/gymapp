@@ -1,0 +1,73 @@
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--faint:#6b7280;--accent:#34e07d;--bg:#0b0e12;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#f0b429;--gold:#ffcf5c;--cyan:#39c2d7;--danger:#ff5d6c;--on-accent:#082015}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:22px;display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{width:400px;max-width:100%}
+  .banner{font-size:12.5px;font-weight:800;margin:0 0 3px 2px;display:flex;gap:7px;align-items:center;color:var(--cyan)}
+  .banner .n{font-size:10px;font-weight:800;border-radius:5px;padding:2px 7px;background:var(--cyan);color:#06222b}
+  .sub{font-size:11px;color:var(--dim);margin:0 0 12px 2px;line-height:1.45}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:11px}
+  .fh{font-size:15px;font-weight:800;margin-bottom:13px;display:flex;gap:8px;align-items:center}
+  .fld{margin-bottom:13px}
+  .lbl{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+  .lbl .h{font-weight:600;text-transform:none;letter-spacing:0;color:var(--faint)}
+  .inp{background:#12151b;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13.5px;color:var(--text)}
+  .inp small{display:block;color:var(--faint);font-size:10.5px;margin-top:3px;font-style:italic}
+  .row2{display:flex;gap:8px}.row2 .inp{flex:1}
+  .toggle{font-size:10.5px;color:var(--cyan);margin-top:6px;font-weight:600}
+  /* job options */
+  .jobs{display:flex;flex-direction:column;gap:8px}
+  .job{display:flex;gap:11px;align-items:flex-start;background:#12151b;border:1px solid var(--line);border-radius:11px;padding:11px 12px;cursor:pointer}
+  .job.sel{border-color:var(--accent);background:rgba(52,224,125,.07)}
+  .job .em{font-size:19px;flex:none;width:24px;text-align:center;margin-top:1px}
+  .job .b{min-width:0}
+  .job .t{font-size:13.5px;font-weight:800}.job.sel .t{color:var(--accent)}
+  .job .d{font-size:11px;color:var(--dim);line-height:1.45;margin-top:2px}
+  .job .rad{margin-left:auto;flex:none;width:18px;height:18px;border-radius:50%;border:2px solid var(--line);margin-top:2px}
+  .job.sel .rad{border-color:var(--accent);background:radial-gradient(circle,var(--accent) 42%,transparent 46%)}
+  .save{width:100%;margin-top:3px;padding:12px;border-radius:10px;background:var(--accent);color:var(--on-accent);font-weight:800;font-size:13.5px;text-align:center}
+  .note{font-size:10.5px;color:var(--faint);margin:9px 2px 0;line-height:1.55}
+  .note b{color:var(--dim)}
+  /* empty state */
+  .empty{border:1.5px dashed #2c3540;background:transparent;border-radius:13px;padding:16px;text-align:center}
+  .empty .e{font-size:22px}.empty .t{font-size:12.5px;color:var(--dim);margin-top:5px;line-height:1.5}
+</style>
+
+<div class="col">
+  <p class="banner"><span class="n">A · FINAL</span> add an event — 3 fields, any sport</p>
+  <p class="sub">Name (free text, the coach reads it for all the nuance) · When · and the ONE structured lever: what the plan should DO. Shown for your Girona trip.</p>
+
+  <div class="card">
+    <div class="fh">🏁 Add an event</div>
+
+    <div class="fld">
+      <div class="lbl">Name <span class="h">· in your own words</span></div>
+      <div class="inp">Girona cycling trip — lots of climbing<small>the coach reads this: sport, terrain, distance, whatever matters</small></div>
+    </div>
+
+    <div class="fld">
+      <div class="lbl">When</div>
+      <div class="row2"><div class="inp">Sat Oct 4</div><div class="inp">→ Sat Oct 11</div></div>
+      <div class="toggle">↔ single day · or a range for a trip / camp</div>
+    </div>
+
+    <div class="fld">
+      <div class="lbl">What should the plan do for it? <span class="h">· the one thing the coach needs</span></div>
+      <div class="jobs">
+        <div class="job"><span class="em">🎯</span><div class="b"><div class="t">Peak for it</div><div class="d">Build, then taper — be at my absolute best on the day.</div></div><span class="rad"></span></div>
+        <div class="job sel"><span class="em">💪</span><div class="b"><div class="t">Get me ready for it</div><div class="d">Build the fitness to arrive capable and enjoy it — no taper (I'm not racing).</div></div><span class="rad"></span></div>
+        <div class="job"><span class="em">📌</span><div class="b"><div class="t">Just plan around it</div><div class="d">Keep my normal training — just account for the day(s) so nothing clashes.</div></div><span class="rad"></span></div>
+      </div>
+    </div>
+
+    <div class="save">Add event →</div>
+  </div>
+  <p class="note"><b>Why this shape:</b> the free-text NAME carries the specifics safely (the coach reads it); the JOB is the single deterministic lever the periodization code drives off (peak+taper · build-no-taper · note-only). No sport-specific fields, no invented "kind." Works identically for a 70.3, a powerlifting meet, an FTP test, a marathon, or a bike trip.</p>
+
+  <p class="banner" style="margin-top:18px"><span class="n">EMPTY</span> most days you have nothing — and that's fine</p>
+  <div class="empty">
+    <div class="e">🗓️</div>
+    <div class="t">No events? Nothing to see. The plan just runs its normal build→peak→recovery cycle. Events are optional — add one only when you've actually got something coming up.</div>
+  </div>
+  <p class="note">✓ Coach + MCP aware: <b>get_events</b> (coach reads your season), <b>create_event</b> (mention "Girona in October" in chat → it adds it), and a <b># SEASON</b> prompt block feeds the nearest event's weeks-to-go + job into periodization. No event ⇒ the block stays silent.</p>
+</div>

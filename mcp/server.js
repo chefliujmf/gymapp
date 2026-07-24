@@ -61,6 +61,16 @@ server.tool('list_schedule',
     return { plans, items }
   }))
 
+// #760 — SEASON events (races/trips/camps that shape training). READ them to sequence the plan; CREATE one when the
+// athlete mentions it in chat. See the `# SEASON` block in your prompt for the sequencing rules.
+server.tool('get_events',
+  'Read the athlete\'s upcoming SEASON events. Each: { name (free text — the SPECIFICS live here: distance, terrain), start, end?, job, sport? }. The `job` is what to DO about it: "peak" = build + peak + TAPER to be at their best on the day · "ready" = build the fitness to arrive capable, do NOT taper (a trip/adventure) · "block" = the event IS a big load (a camp), arrive fresh + program RECOVERY after · "note" = keep the normal plan, just don\'t clash. SEQUENCE by date; the nearest "peak" drives the current phase. Empty ⇒ no events, run the normal block cycle.',
+  {}, wrap(() => api('GET', '/api/events')))
+server.tool('create_event',
+  'Add a SEASON event when the athlete mentions one ("I\'ve got a 70.3 in September", "riding in Girona in October", "powerlifting meet Nov 8"). Put the SPECIFICS in `name` (their words — distance/terrain drive the taper + specificity). start = YYYY-MM-DD; end = optional (a multi-day trip/camp). job = peak (a race/target to be BEST for) | ready (a trip/adventure to be FIT for, no taper) | block (a camp / big-volume week) | note (just on the calendar). sport optional. Re-call with the same id to update. Confirm the date + job with the athlete if unsure rather than guessing.',
+  { name: z.string(), start: DATE, end: DATE.optional(), job: z.enum(['peak', 'ready', 'block', 'note']), sport: z.string().optional(), id: z.string().optional() },
+  wrap((a) => api('POST', '/api/events', { ...a })))
+
 // --- intervals.icu read-through (analytics live there, not in Platyplus) ----
 server.tool('get_wellness',
   "Read the athlete's recent intervals.icu wellness: Fitness (CTL), Fatigue (ATL), Form (CTL-ATL), resting HR, HRV, sleep hours/score, body weight. READ-ONLY and live from intervals.icu — returns { connected:false } if they haven't connected it, in which case adapt with what you have. Check this before changing load when recovery state matters.",

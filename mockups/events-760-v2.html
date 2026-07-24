@@ -1,0 +1,84 @@
+<style>
+  :root{--text:#eef1f4;--dim:#9298a6;--faint:#6b7280;--accent:#34e07d;--bg:#0b0e12;--card1:#21252f;--card2:#191c24;--line:#2a2f3a;--amber:#f0b429;--gold:#ffcf5c;--cyan:#39c2d7;--danger:#ff5d6c;--on-accent:#082015;--purple:#b98cff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:20px;display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{width:395px;max-width:100%}
+  .banner{font-size:12.5px;font-weight:800;margin:0 0 3px 2px;display:flex;gap:7px;align-items:center;color:var(--cyan)}
+  .banner .n{font-size:10px;font-weight:800;border-radius:5px;padding:2px 7px;background:var(--cyan);color:#06222b}
+  .sub{font-size:11px;color:var(--dim);margin:0 0 12px 2px;line-height:1.45}
+  .card{background:linear-gradient(160deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:13px;padding:13px 14px;margin-bottom:10px}
+  .fh{font-size:14px;font-weight:800;margin-bottom:12px;display:flex;gap:7px;align-items:center}
+  .fld{margin-bottom:11px}
+  .lbl{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+  .lbl .hint{font-weight:600;text-transform:none;letter-spacing:0;color:var(--faint)}
+  .inp{background:#12151b;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;color:var(--text)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{background:#12151b;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:11.5px;color:var(--dim);display:flex;gap:5px;align-items:center}
+  .chip.sel{border-color:var(--cyan);background:rgba(57,194,215,.1);color:var(--cyan);font-weight:700}
+  .chip.selg{border-color:var(--gold);background:rgba(255,207,92,.1);color:var(--gold);font-weight:700}
+  .kind{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .kbtn{background:#12151b;border:1px solid var(--line);border-radius:10px;padding:9px 10px;text-align:left}
+  .kbtn.sel{border-color:var(--gold);background:rgba(255,207,92,.08)}
+  .kbtn .kt{font-size:12.5px;font-weight:800}.kbtn.sel .kt{color:var(--gold)}
+  .kbtn .kd{font-size:9.5px;color:var(--faint);margin-top:2px;line-height:1.35}
+  .pri{display:flex;gap:7px}
+  .pbtn{flex:1;background:#12151b;border:1px solid var(--line);border-radius:9px;padding:8px 6px;text-align:center}
+  .pbtn .p{font-size:15px;font-weight:800}.pbtn .d{font-size:9px;color:var(--faint);margin-top:1px;line-height:1.3}
+  .pbtn.A{border-color:var(--danger);background:rgba(255,93,108,.09)}.pbtn.A .p{color:var(--danger)}
+  .save{width:100%;margin-top:4px;padding:11px;border-radius:10px;background:var(--gold);color:#2a1c02;font-weight:800;font-size:13px;text-align:center}
+  .note{font-size:10.5px;color:var(--faint);margin:9px 2px 0;line-height:1.55}
+  /* kind→plan table */
+  .krow{display:flex;gap:11px;padding:11px 0;border-top:1px solid var(--line)}
+  .krow:first-of-type{border-top:none}
+  .kem{font-size:20px;flex:none;width:26px;text-align:center}
+  .kbody{min-width:0}
+  .kbody .h{font-size:13px;font-weight:800}
+  .kbody .p{font-size:11px;color:var(--dim);line-height:1.5;margin-top:2px}
+  .kbody .p b{color:var(--text);font-weight:600}
+  .kbody .ex{font-size:10px;color:var(--faint);margin-top:3px;font-style:italic}
+</style>
+
+<!-- FORM (redesigned) -->
+<div class="col">
+  <p class="banner"><span class="n">A · REDESIGNED</span> capture what shapes the plan — any sport</p>
+  <p class="sub">Not a distance list. The coach needs: WHEN · WHICH SPORT · WHAT KIND (so it knows how to prepare you) · HOW HARD · PRIORITY. Shown filled for your <b>Girona cycling trip</b>.</p>
+
+  <div class="card">
+    <div class="fh">🏁 Add an event</div>
+    <div class="fld"><div class="lbl">Name</div><div class="inp">Girona cycling trip</div></div>
+    <div class="fld"><div class="lbl">When <span class="hint">· single day or a range for a trip/camp</span></div><div class="inp">Sat Oct 4 → Sat Oct 11, 2026</div></div>
+    <div class="fld"><div class="lbl">Sport <span class="hint">· from the sports you do</span></div>
+      <div class="chips"><span class="chip sel">🚴 Cycling</span><span class="chip">🏃 Running</span><span class="chip">🏊 Swim</span><span class="chip">🔺 Tri</span><span class="chip">🏋️ Strength</span></div>
+    </div>
+    <div class="fld"><div class="lbl">Kind <span class="hint">· how should the coach prepare you?</span></div>
+      <div class="kind">
+        <div class="kbtn"><div class="kt">🏁 Race</div><div class="kd">peak + taper to be fastest on the day</div></div>
+        <div class="kbtn sel"><div class="kt">🧭 Trip / adventure</div><div class="kd">build fitness to ARRIVE ready — no taper</div></div>
+        <div class="kbtn"><div class="kt">🏕️ Training camp</div><div class="kd">it IS a big load — recover after</div></div>
+        <div class="kbtn"><div class="kt">📏 Test / benchmark</div><div class="kd">freshen up, then measure</div></div>
+      </div>
+    </div>
+    <div class="fld"><div class="lbl">How demanding <span class="hint">· sizes the build + taper</span></div>
+      <div class="chips"><span class="chip">Casual</span><span class="chip selg">Big days — long + lots of climbing</span><span class="chip">All-out</span></div>
+    </div>
+    <div class="fld"><div class="lbl">Priority</div>
+      <div class="pri"><div class="pbtn A"><div class="p">A</div><div class="d">plan revolves around it</div></div><div class="pbtn"><div class="p">B</div><div class="d">train through</div></div><div class="pbtn"><div class="p">C</div><div class="d">just show up</div></div></div>
+    </div>
+    <div class="save">Add event →</div>
+  </div>
+  <p class="note">✓ Same 5 fields for every sport. A GYM meet = sport Strength + Kind Race + demand "1RM attempts" → the coach peaks strength + deloads into it. A running 10K, a 70.3, a bikepacking trip, a masters swim meet — all fit.</p>
+</div>
+
+<!-- KIND → PLAN -->
+<div class="col">
+  <p class="banner"><span class="n">WHY "KIND" NOT DISTANCE</span></p>
+  <p class="sub">The KIND is what actually changes the plan — a race and a trip on the same date need OPPOSITE prep. That's the field that matters.</p>
+
+  <div class="card">
+    <div class="krow"><div class="kem">🏁</div><div class="kbody"><div class="h">Race</div><div class="p"><b>Build → peak → taper.</b> Race-specific intensity, then trim volume so you're fresh + fast on race day. Taper length scales with the demand (a 5K ~few days, an Ironman ~3–4 wks).</div><div class="ex">Chattanooga 70.3 · a crit · a marathon · a powerlifting meet</div></div></div>
+    <div class="krow"><div class="kem">🧭</div><div class="kbody"><div class="h">Trip / adventure</div><div class="p"><b>Build the specific fitness, DON'T taper.</b> For Girona: ramp endurance + climbing durability so you can ride big days back-to-back and enjoy it — arrive fit, not peaked (you're not racing).</div><div class="ex">Girona cycling week · a hut-to-hut hike · a bikepacking trip</div></div></div>
+    <div class="krow"><div class="kem">🏕️</div><div class="kbody"><div class="h">Training camp</div><div class="p"><b>The camp IS the overload.</b> Keep the days before manageable so you arrive fresh enough to absorb it, then program a real RECOVERY block after — don't stack hard work on top.</div><div class="ex">A training week away · a big volume block</div></div></div>
+    <div class="krow"><div class="kem">📏</div><div class="kbody"><div class="h">Test / benchmark</div><div class="p"><b>Freshen, then measure.</b> A couple easy days into an FTP test / time trial / 1RM day so the number is real, not fatigue-masked. Feeds your benchmarks.</div><div class="ex">FTP test · CSS swim test · a 5K time trial</div></div></div>
+  </div>
+  <p class="note">✓ Only 4 kinds, but they cover everything + each drives a genuinely different plan. Distance/demand is the FINE-tune on top; the KIND is the lever.</p>
+</div>

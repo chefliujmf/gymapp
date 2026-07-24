@@ -868,6 +868,21 @@
         "responses": { "202": { "description": "review firing" }, "400": { "description": "activityId required" }, "409": { "description": "no feedback to review" } }
       }
     },
+    "/api/events": {
+      "get": {
+        "summary": "Read the athlete's season events (Bearer, #760)",
+        "description": "Upcoming races/trips/camps that shape training. Each: { id, name (free text with the specifics), start, end?, job (peak|ready|block|note), sport? }. The nearest 'peak' drives periodization; the coach sequences the rest.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "list of events" } }
+      },
+      "post": {
+        "summary": "Add/update a season event (Bearer, #760)",
+        "description": "Create an event when the athlete mentions one in chat. job: peak=race to be best for (build+peak+taper) · ready=trip/adventure to be fit for (build, no taper) · block=camp/big-volume (fresh before, recover after) · note=just on the calendar. Re-post with the same id to update.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name", "start", "job"], "properties": { "name": { "type": "string" }, "start": { "type": "string", "description": "YYYY-MM-DD" }, "end": { "type": "string", "description": "YYYY-MM-DD (optional, multi-day)" }, "job": { "type": "string", "enum": ["peak", "ready", "block", "note"] }, "sport": { "type": "string" }, "id": { "type": "string", "description": "pass to update" } } } } } },
+        "responses": { "201": { "description": "created" }, "200": { "description": "updated" }, "400": { "description": "invalid event" } }
+      }
+    },
     "/api/plans/resync": {
       "post": {
         "summary": "Re-mirror all FUTURE plans to intervals (Bearer, #372)",

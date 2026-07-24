@@ -33,6 +33,7 @@ import { enforceShape, qualityEnduranceDates, concurrentGymCollisions, isHeavyGy
 import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the week ceiling + re-derive notes/duration/load
 import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback, fbHasContent } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard. #766 — fbHasContent to detect a missing store entry when mirroring intervals-side feel in.
 import { requiredProfileGaps, REQUIRED_FIELDS } from './profile-gate.js' // #A — plan generation is gated on a minimal mandatory profile
+import { validateEvent, normEvent, seasonPromptBlock, nearestPeakEvent, taperWeeksForName } from './events.js' // #760 — structured season events drive periodization
 import { periodizationPhase, parseRaceDate } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES · #8 parse race date from free-text notes
 import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym, enforcePostpartumGym, goodExerciseMatch } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose · #2 postpartum plyo clamp
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
@@ -1643,6 +1644,27 @@ app.get('/auth/gym-review-gaps', auth, (req, res) => res.json(gymFeedbackGaps(re
 // #735 — deliberate REST days (sticky; the coach can't re-fill them). GET the list; POST {date, rest} to mark/unmark.
 app.get('/auth/rest-days', auth, (req, res) => res.json(req.user.restDates || []))
 app.post('/auth/rest-day', auth, async (req, res) => { const r = await setRestDay(req.user, req.body && req.body.date, !!(req.body && req.body.rest), 'you'); res.status(r.status).json(r.body) })
+
+// #760 — season EVENTS (races/trips/camps). Stored on user.events; drive periodization (nearest "peak" → weeksToRace)
+// + the coach's # SEASON block. Client uses the cookie routes; the coach's MCP uses the /api (bearer) mirrors below.
+const listEvents = (user) => (user.events || []).slice().sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0))
+const upsertEvent = (user, body) => {
+  const err = validateEvent(body); if (err) return { status: 400, body: { error: err } }
+  user.events = user.events || []
+  const i = body.id ? user.events.findIndex((e) => e.id === body.id) : -1
+  const ev = normEvent(body, i >= 0 ? body.id : (body.id || newId()))
+  if (i >= 0) user.events[i] = ev; else user.events.push(ev)
+  user.events = user.events.slice(-60) // sane cap
+  audit(user, { actor: 'you', action: i >= 0 ? 'Updated event' : 'Added event', target: ev.name, detail: `${ev.start}${ev.end && ev.end !== ev.start ? '–' + ev.end : ''} · ${ev.job}`, kind: 'event' })
+  save(store)
+  return { status: i >= 0 ? 200 : 201, body: ev }
+}
+const deleteEvent = (user, id) => { const before = (user.events || []).length; user.events = (user.events || []).filter((e) => e.id !== id); if (user.events.length !== before) save(store); return { ok: true } }
+app.get('/auth/events', auth, (req, res) => res.json(listEvents(req.user)))
+app.post('/auth/events', auth, (req, res) => { const r = upsertEvent(req.user, req.body || {}); res.status(r.status).json(r.body) })
+app.delete('/auth/events/:id', auth, (req, res) => res.json(deleteEvent(req.user, String(req.params.id))))
+app.get('/api/events', apiAuth, (req, res) => res.json(listEvents(req.user))) // coach reads the season
+app.post('/api/events', apiAuth, (req, res) => { const r = upsertEvent(req.user, req.body || {}); res.status(r.status).json(r.body) }) // coach adds one from chat
 // #528 — fetch ONE plan by id (session auth) so an intervals "Open in Platyplus" deep link works COLD (no prior
 // Today load). Owner-scoped: only the authenticated user's own plan; a 404 means it isn't in THIS account
 // (e.g. the link was opened in a different user's session — the client shows a clearer message than "not found").
@@ -2285,14 +2307,17 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     const weeksSinceAnchor = Math.max(0, Math.floor((Date.parse(thisMon) - Date.parse(anchorMon)) / (7 * 86400000)))
     // #8 (audit) — the taper must also fire when the athlete typed the date in FREE-TEXT goal notes (the prompt invites
     // exactly that), not only the structured info.raceDate. Parse the notes as a fallback so a triathlete still tapers.
-    const raceName = `${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`.toLowerCase()
-    const rd = (user.info && user.info.raceDate) || parseRaceDate(`${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`, todayIso)
+    // #760 — a structured "peak" EVENT is the AUTHORITATIVE race anchor (name carries the distance). Fall back to the
+    // legacy structured raceDate, then to free-text goal-note parsing, so periodization works for everyone.
+    const peakEv = nearestPeakEvent(user.events, todayIso)
+    const raceName = peakEv ? String(peakEv.name).toLowerCase() : `${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`.toLowerCase()
+    const rd = peakEv ? peakEv.start : ((user.info && user.info.raceDate) || parseRaceDate(`${(user.info && user.info.raceName) || ''} ${(user.info && user.info.goals && user.info.goals.notes) || ''}`, todayIso))
     const weeksToRace = (rd && /^\d{4}-\d{2}-\d{2}$/.test(rd) && rd >= todayIso) ? Math.floor((Date.parse(isoMonday(rd)) - Date.parse(thisMon)) / (7 * 86400000)) : null
     const ageYears = (user.info && user.info.dob) ? Math.floor((Date.now() - new Date(user.info.dob + 'T00:00:00Z').getTime()) / (365.25 * 86400000)) : null
     const form = (typeof user.ctl === 'number' && typeof user.atl === 'number') ? user.ctl - user.atl : null // #630 — autoregulate off Form
-    // #752/#9 (audit) — a longer race needs a longer taper: widen for a 70.3 (~3wk) / Ironman (~4wk). Read the distance
-    // from the race NAME **or the goal notes** (an athlete often types "Ironman Nice" in their goal, not the name field).
-    const taperWeeks = /ironman|140\.?6|full[- ]?distance/.test(raceName) ? 4 : /70\.?3|half[- ]?iron|half[- ]?distance/.test(raceName) ? 3 : 2
+    // #752/#9/#760 — a longer race needs a longer taper. From a "peak" event use its name (taperWeeksForName); else the
+    // legacy race name / goal notes (an athlete often types "Ironman Nice" in their goal, not the name field).
+    const taperWeeks = peakEv ? taperWeeksForName(peakEv.name) : (/ironman|140\.?6|full[- ]?distance/.test(raceName) ? 4 : /70\.?3|half[- ]?iron|half[- ]?distance/.test(raceName) ? 3 : 2)
     // #756 (audit) — pass loadBand so a flat/health goal never gets a peak/overload week.
     per = periodizationPhase({ ctl: user.ctl, weeksSinceAnchor, weeksToRace, ageYears, form, loadBand: shape.loadBand, taperWeeks })
     // #630 — SEASON MACRO phase (when a race is set): far out = base (volume), mid = build (race intensity), close = peak.
@@ -2305,6 +2330,9 @@ Use create_swim / create_ride / create_run / create_workout, each to its own zon
     // #627 (gap 2/4) — PROGRESS toward the GOAL, measured. Especially on the recovery week: is it actually working?
     tail += `\n\n# PROGRESS CHECK — is the training actually MOVING them toward their goal?${per.phase === 'recovery' ? ' **This is a RECOVERY week — the moment to assess it.**' : ''} Read get_metrics + get_wellness and compare their key numbers now (threshold power/pace, TTE, EF, CTL, and for runners/swimmers CS·D′/CSS) to a few weeks ago. Judge plainly whether they're progressing at the rate their goal needs. If a number has STALLED, CHANGE the stimulus next block — a stalled threshold ⇒ more time-at-threshold; a flat top end ⇒ more VO₂; a falling EF ⇒ more easy base + check recovery/fuel; a shrinking W′/D′ ⇒ short near-max work. If it's climbing, keep the thread. Fold the conclusion into how you shape the NEXT block, and it's what the review's objective talk (# next) should reference — the athlete should always be able to see their training is working.`
   }
+  // #760 — the athlete's structured SEASON events (races/trips/camps). Always emitted when events exist (even a
+  // non-peak "be ready"/"big block"/"just noted" the coach must sequence around); silent when there are none.
+  tail += seasonPromptBlock(user.events, todayIso)
   // #375/#613/#626 — the TSS target now comes from THE PROGRESSION above (periodized), not a flat band.
   // #719 (audit) — fold the menstrual-phase load modifier into the budget so the cycle bias is CODE-ENFORCED on TSS.
   const cycMod = (String(user.sex || '').toLowerCase() === 'female' && !user.info?.pregnant && user.cyclePhase && user.cyclePhaseAt && (Date.now() - new Date(user.cyclePhaseAt + 'T00:00:00Z').getTime()) < 6 * 86400000) ? cycleLoadModifier(user.cyclePhase) : 1
