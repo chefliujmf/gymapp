@@ -14,6 +14,7 @@ import { findCoachPlan, getCoachPlan, gymFeedbackKeys, findGymLogForPlan, type C
 import { addDays } from '../move-dates'
 import { getSetting, type WorkoutLog } from '../db'
 import { bestE1rmByExercise } from '../strength'
+import { rideInsights, runInsights, swimInsights, type ChartRead } from '../activity-insights' // #768 — computed post-workout insight engine
 import { authApi, type CoachReview } from '../auth/api'
 import ActivityFeedback from '../ActivityFeedback'
 import GymSummary from '../GymSummary'
@@ -101,7 +102,16 @@ const fmtElapsed = (s: number) => { s = Math.round(s); const h = Math.floor(s / 
 // #54/#286: stacked power/HR/altitude/cadence charts sharing ONE scrubber, each to the chart
 // standard — Y axis (dense ticks), round-minute TIME x-axis + gridlines, avg·max in the header,
 // and a COMPUTED coach insight line under each (the "insight per section" JM asked for).
-function RideTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity }) {
+// #768 — render a rich computed insight (a bold claim + a plain-language "what it means" line) under a chart.
+function InsightRead({ read }: { read: ChartRead }) {
+  return (
+    <div className="act-ins2">
+      <div className="h"><span className="em">{read.emoji}</span><span>{read.title}</span></div>
+      {read.detail && <div className="d">{read.detail}</div>}
+    </div>
+  )
+}
+function RideTimeline({ streams, a, ftp, efBaseline }: { streams: ActivityStreams; a: IcuActivity; ftp: number; efBaseline: number | null }) {
   const [cur, setCur] = useState<number | null>(null)
   const rows = TL_ROWS.filter((r) => ((streams[r.key] as unknown[] | undefined)?.length || 0) > 1)
   if (!rows.length) return <p className="meta">No power / HR / altitude data for this activity.</p>
@@ -112,23 +122,18 @@ function RideTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity
   const xTicks = totalSec > 0 ? minuteTicks(totalSec) : undefined
   const timeLabels = timeArr ? timeArr.map((v) => (v == null ? '' : fmtElapsed(v as number))) : undefined
   const stat = (key: string) => { const v = data[key].filter((x): x is number => x != null); if (!v.length) return ''; const avg = Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length); const mx = Math.round(Math.max(...v)); if (key === 'watts') { const np = a.icu_weighted_avg_watts ? Math.round(a.icu_weighted_avg_watts) : null; return `${np ? ` · NP ${np}` : ''} · avg ${avg} · max ${mx}` } return ` · avg ${avg} · max ${mx}` } // #567 — show NP + avg together (was avg only; NP was hidden in the insight)
-  const avg = (key: string) => { const v = data[key].filter((x): x is number => x != null); return v.length ? Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length) : 0 }
-  const insight = (key: string): string | null => {
-    if (key === 'watts') { const vi = a.icu_variability_index; const np = a.icu_weighted_avg_watts ? Math.round(a.icu_weighted_avg_watts) : null; if (vi) return `NP ${np ?? avg('watts')} W · VI ${vi.toFixed(2)} — ${vi >= 1.2 ? 'stochastic — lots of surges and coasts' : vi >= 1.08 ? 'somewhat variable — surges and easing' : 'steady, even effort'}`; return `Avg ${avg('watts')} W over the ride` }
-    if (key === 'heartrate') { const mx = a.max_heartrate ? Math.round(a.max_heartrate) : Math.max(...data.heartrate.filter((x): x is number => x != null)); return `Avg ${avg('heartrate')} bpm, peaked ${mx} — effort held ${avg('heartrate') / mx >= 0.85 ? 'high' : 'moderate'} for the session` }
-    if (key === 'altitude') { const g = a.total_elevation_gain ? Math.round(a.total_elevation_gain) : null; return g ? `${g} m climbed — ${g > 400 ? 'punchy up/down, hard to hold clean blocks' : g > 150 ? 'rolling terrain' : 'mostly flat'}` : null }
-    if (key === 'cadence') return `Avg ${avg('cadence')} rpm${avg('cadence') < 85 ? ' — grindy, watch the knees on climbs' : ''}`
-    return null
-  }
+  // #768 — COMPUTED insight per chart (decoupling · EF trend · zone quality · pacing split · benchmark %), from the FULL
+  // streams + the athlete's FTP + their recent EF baseline. Replaces the old one-line stat restatement.
+  const reads = rideInsights({ streams: { watts: streams.watts, heartrate: streams.heartrate, altitude: streams.altitude, cadence: streams.cadence }, np: a.icu_weighted_avg_watts, avgHr: a.average_heartrate, maxHr: a.max_heartrate, vi: a.icu_variability_index, ftp, elevGain: a.total_elevation_gain, efBaseline }).perChart
   return (
     <div>
       {rows.map((r) => {
-        const ins = insight(r.key)
+        const ins = reads[r.key]
         return (
           <div key={r.key} className="tl-card">
             <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}{stat(r.key)}</div>
             <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={150} axes unit={r.unit} labels={timeLabels} xTicks={xTicks} cursor={cur} onHover={setCur} />
-            {ins && <div className="act-ins"><span className="tag">💡</span>{ins}</div>}
+            {ins && <InsightRead read={ins} />}
           </div>
         )
       })}
@@ -187,7 +192,7 @@ const SWIM_TL_ROWS = [
   { key: 'heartrate', label: 'HR', unit: ' bpm', color: '#ff5d6c', area: false },
   { key: 'cadence', label: 'Stroke rate', unit: ' spm', color: '#4aa3ff', area: false },
 ] as const
-function RunTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity }) {
+function RunTimeline({ streams, a, thrPace, efBaseline }: { streams: ActivityStreams; a: IcuActivity; thrPace: number | null; efBaseline: number | null }) {
   const [cur, setCur] = useState<number | null>(null)
   const paceArr = (streams.velocity_smooth || []).map(paceOf)
   const hasPace = paceArr.filter((v) => v != null).length > 1
@@ -202,23 +207,17 @@ function RunTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity 
   const timeLabels = timeArr ? timeArr.map((v) => (v == null ? '' : fmtElapsed(v as number))) : undefined
   const nums = (key: string) => data[key].filter((x): x is number => x != null)
   const stat = (key: string) => { const v = nums(key); if (!v.length) return ''; if (key === 'pace') { const avg = v.reduce((a2, b) => a2 + b, 0) / v.length; return ` · avg ${fmtPace(avg)} · best ${fmtPace(Math.min(...v))}` } const avg = Math.round(v.reduce((a2, b) => a2 + b, 0) / v.length); return ` · avg ${avg} · max ${Math.round(Math.max(...v))}` }
-  const avg = (key: string) => { const v = nums(key); return v.length ? v.reduce((a2, b) => a2 + b, 0) / v.length : 0 }
-  const insight = (key: string): string | null => {
-    if (key === 'pace') { const v = nums('pace'); if (!v.length) return null; const drift = v.length > 20 ? (v.slice(-Math.floor(v.length / 3)).reduce((a2, b) => a2 + b, 0) / Math.floor(v.length / 3)) - (v.slice(0, Math.floor(v.length / 3)).reduce((a2, b) => a2 + b, 0) / Math.floor(v.length / 3)) : 0; return `Avg ${fmtPace(avg('pace'))}/km — ${Math.abs(drift) < 6 ? 'evenly paced, well controlled' : drift > 0 ? `faded ~${Math.round(drift)}s/km late (fuel/effort)` : `negative split — ${Math.round(-drift)}s/km quicker late`}` }
-    if (key === 'heartrate') { const mx = a.max_heartrate ? Math.round(a.max_heartrate) : Math.max(...nums('heartrate')); return `Avg ${Math.round(avg('heartrate'))} bpm, peaked ${mx}` }
-    if (key === 'altitude') { const g = a.total_elevation_gain ? Math.round(a.total_elevation_gain) : null; return g ? `${g} m climbed — ${g > 200 ? 'hilly, pace reads slower for the effort' : g > 60 ? 'rolling' : 'mostly flat'}` : null }
-    if (key === 'cadence') { const c = Math.round(avg('cadence')); return `Avg ${c} spm${c > 0 && c < 165 ? ' — a touch low; quick, light steps ease impact' : ''}` }
-    return null
-  }
+  // #768 — computed run insights (pace:HR decoupling · EF trend · zone quality · pacing split · % of threshold pace)
+  const reads = runInsights({ streams: { velocity_smooth: streams.velocity_smooth, heartrate: streams.heartrate, altitude: streams.altitude, cadence: streams.cadence }, avgHr: a.average_heartrate, maxHr: a.max_heartrate, thresholdPaceSecPerKm: thrPace, elevGain: a.total_elevation_gain, efBaseline }).perChart
   return (
     <div>
       {rows.map((r) => {
-        const ins = insight(r.key)
+        const ins = reads[r.key]
         return (
           <div key={r.key} className="tl-card">
             <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}{stat(r.key)}</div>
             <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={150} axes unit={r.unit} fmt={r.key === 'pace' ? (v) => `${fmtPace(v)}/km` : undefined} invert={r.key === 'pace'} labels={timeLabels} xTicks={xTicks} cursor={cur} onHover={setCur} />
-            {ins && <div className="act-ins"><span className="tag">💡</span>{ins}</div>}
+            {ins && <InsightRead read={ins} />}
           </div>
         )
       })}
@@ -229,7 +228,7 @@ function RunTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity 
 
 // #7 (audit) — the SWIM timeline: pace/100 m (from the velocity stream), HR, and stroke rate — swim units + swim
 // insights (SWOLF context), never watts/altitude/cadence-as-rpm. Modeled on RunTimeline but pace is sec/100 m.
-function SwimTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity }) {
+function SwimTimeline({ streams, a, css }: { streams: ActivityStreams; a: IcuActivity; css: number | null }) {
   const [cur, setCur] = useState<number | null>(null)
   const paceArr = (streams.velocity_smooth || []).map((v) => { const p = paceOf(v); return p == null ? null : p / 10 }) // sec/km → sec/100 m
   const hasPace = paceArr.filter((v) => v != null).length > 1
@@ -246,21 +245,17 @@ function SwimTimeline({ streams, a }: { streams: ActivityStreams; a: IcuActivity
   const avg = (key: string) => { const v = nums(key); return v.length ? v.reduce((a2, b) => a2 + b, 0) / v.length : 0 }
   const stat = (key: string) => { const v = nums(key); if (!v.length) return ''; if (key === 'pace') return ` · avg ${fmtPace100(avg('pace'))} · best ${fmtPace100(Math.min(...v))}`; const a2 = Math.round(avg(key)); return ` · avg ${a2} · max ${Math.round(Math.max(...v))}` }
   const swolf = (a as unknown as { average_swolf?: number }).average_swolf
-  const insight = (key: string): string | null => {
-    if (key === 'pace') { const v = nums('pace'); if (!v.length) return null; const drift = v.length > 20 ? (v.slice(-Math.floor(v.length / 3)).reduce((a2, b) => a2 + b, 0) / Math.floor(v.length / 3)) - (v.slice(0, Math.floor(v.length / 3)).reduce((a2, b) => a2 + b, 0) / Math.floor(v.length / 3)) : 0; return `Avg ${fmtPace100(avg('pace'))}/100 m — ${Math.abs(drift) < 3 ? 'evenly paced' : drift > 0 ? `faded ~${Math.round(drift)}s/100 m late` : `negative split — ${Math.round(-drift)}s/100 m quicker late`}` }
-    if (key === 'heartrate') { const mx = a.max_heartrate ? Math.round(a.max_heartrate) : Math.max(...nums('heartrate')); return `Avg ${Math.round(avg('heartrate'))} bpm, peaked ${mx}` }
-    if (key === 'cadence') { const c = Math.round(avg('cadence')); return `Avg ${c} strokes/min${swolf ? ` · SWOLF ${Math.round(swolf)} (stroke efficiency — lower is better)` : ''}` }
-    return null
-  }
+  // #768 — computed swim insights (% of CSS · SWOLF stroke efficiency · pacing split)
+  const reads = swimInsights({ streams: { velocity_smooth: streams.velocity_smooth, heartrate: streams.heartrate, cadence: streams.cadence }, avgHr: a.average_heartrate, cssPaceSecPer100: css, swolf }).perChart
   return (
     <div>
       {rows.map((r) => {
-        const ins = insight(r.key)
+        const ins = reads[r.key]
         return (
           <div key={r.key} className="tl-card">
             <div className="tl-clabel">{r.label.toUpperCase()}{r.unit}{stat(r.key)}</div>
             <TrendChart series={[{ label: r.label, data: data[r.key], color: r.color, area: r.area }]} height={150} axes unit={r.unit} fmt={r.key === 'pace' ? (v) => `${fmtPace100(v)}/100m` : undefined} invert={r.key === 'pace'} labels={timeLabels} xTicks={xTicks} cursor={cur} onHover={setCur} />
-            {ins && <div className="act-ins"><span className="tag">💡</span>{ins}</div>}
+            {ins && <InsightRead read={ins} />}
           </div>
         )
       })}
@@ -294,6 +289,7 @@ export default function ActivityDetail() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'timeline' | 'power'>('timeline')
   const [ftp, setFtp] = useState(260)
+  const [efBaseline, setEfBaseline] = useState<number | null>(null) // #768 — recent-weeks average Efficiency Factor for THIS sport, so a chart read can say "efficiency up X% vs recent"
   const [review, setReview] = useState<CoachReview | null>(null)
   const [note, setNote] = useState<CoachNote | null>(null)
   const [icuComment, setIcuComment] = useState<string>()
@@ -335,6 +331,21 @@ export default function ActivityDetail() {
     // cycling FTP, else the local setting (the activity's own icu_ftp wins once it loads, in the effect below).
     const acctFtp = (user?.sportSettings?.cycling as { ftp?: number } | undefined)?.ftp
     getSetting('ftp').then((v) => setFtp(Number(v) || acctFtp || 260)).catch(() => setFtp(acctFtp || 260))
+    // #768 — recent-weeks EF baseline for THIS sport (ride: NP/HR · run: speed×100/HR — matching the engine), so a
+    // chart read can show the efficiency TREND ("up 4% vs recent"). Excludes the current day. Best-effort; null = no trend.
+    ;(async () => {
+      const today = new Date().toISOString().slice(0, 10)
+      try {
+        const acts = await fetchActivities(addDays(today, -35), addDays(today, -1))
+        const efs: number[] = []
+        for (const x of (Array.isArray(acts) ? acts : [])) {
+          const sp = sportOfActivity(x as IcuActivity); const hr = Number((x as { average_heartrate?: number }).average_heartrate); if (!hr) continue
+          if (sp === 'ride') { const np = Number((x as { icu_weighted_avg_watts?: number }).icu_weighted_avg_watts); if (np > 0) efs.push(np / hr) }
+          else if (sp === 'run') { const dist = Number((x as { distance?: number }).distance), mt = Number((x as { moving_time?: number }).moving_time); if (dist > 0 && mt > 0) efs.push(((dist / mt) * 100) / hr) }
+        }
+        setEfBaseline(efs.length >= 2 ? efs.reduce((s, v) => s + v, 0) / efs.length : null)
+      } catch { setEfBaseline(null) }
+    })()
     // #273: the coach's verdict + the athlete's own comment come from intervals messages.
     fetchActivityThread(id).then((t) => { setNote(t.coach); setIcuComment(t.comment) }).catch(() => {})
     Promise.all([fetchActivity(id), fetchActivityStreams(id)])
@@ -625,7 +636,7 @@ export default function ActivityDetail() {
         </div>
       )}
 
-      {activeTab === 'timeline' && (isSwim ? <SwimTimeline streams={streams} a={a} /> : isRun ? <RunTimeline streams={streams} a={a} /> : <RideTimeline streams={streams} a={a} />)}
+      {activeTab === 'timeline' && (isSwim ? <SwimTimeline streams={streams} a={a} css={cssPace100} /> : isRun ? <RunTimeline streams={streams} a={a} thrPace={thrPace} efBaseline={efBaseline} /> : <RideTimeline streams={streams} a={a} ftp={ftp} efBaseline={efBaseline} />)}
       {activeTab === 'power' && !isSwim && (isRun ? <RunPace streams={streams} thrPace={thrPace} /> : <RidePower streams={streams} ftp={ftp} />)}
       {!tabs.length && <p className="meta">No GPS or sensor data for this activity{isIndoorActivity(a) ? ' (indoor)' : ''}.</p>}
     </div>
