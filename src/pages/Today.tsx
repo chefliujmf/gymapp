@@ -6,6 +6,7 @@ import { WeekStrip, MiniProfile, DoneStats } from '../ui'
 import { fetchEvents, deleteEvent, eventObjective, sportOf, flattenIcuSteps, fetchActivities, fetchActivityStreams, sportOfActivity, type IcuEvent, type IcuActivity } from '../intervals'
 import { PowerBlocks, ZoneBlocks } from '../charts'
 import { incompleteFeedback } from '../feedbackGaps' // #387 — surface the "to review" count on Today
+import { addDays } from '../move-dates' // #758 — horizon end for the "rest-by-default" empty day
 import { useAuth } from '../auth/AuthContext' // #review-skip — exclude skipped sessions from the count
 import ProfileGate from '../ProfileGate' // #A — gate the plan on a complete profile
 import { requiredProfileGaps } from '../profile-fields'
@@ -708,7 +709,17 @@ export default function Today({ embedded = false, initialDay, onDay }: { embedde
           {dayNotes.map((it) => <ItemCard key={it.id} it={it} onSwap={() => swapOn(selDay)} onRemove={() => removeItem(it)} />)}
         </div>
       ) : events !== null && !err ? (
-        <p className="meta">Nothing scheduled — tap Add, or enjoy a rest day.</p>
+        // #758 — no SILENT empty day: within the coach's planned horizon (today…+14d), an unplanned day reads as
+        // rest-by-default (recovery is part of the plan) with an invite to Add — so the whole horizon is train-or-rest.
+        // A past day, or a day beyond the horizon (not planned yet), keeps the plain "nothing scheduled" copy.
+        (selDay >= todayISO() && selDay <= addDays(todayISO(), 14)) ? (
+          <div className="rest-banner rest-banner--soft">
+            <span className="rest-banner__z">💤</span>
+            <div className="rest-banner__t"><b>Rest &amp; recover</b><span>No session planned for this day — recovery is part of the plan. Tap Add if you'd like to train.</span></div>
+          </div>
+        ) : (
+          <p className="meta">Nothing scheduled{selDay > todayISO() ? ' yet' : ''} — tap Add, or enjoy a rest day.</p>
+        )
       ) : null}
 
       </>}

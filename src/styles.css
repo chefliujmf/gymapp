@@ -1322,6 +1322,9 @@ select.search { appearance: none; -webkit-appearance: none; }
 /* #740 — a deliberate REST day banner (cyan = rest per the theme), prominent so it's not missed. */
 .rest-banner { display: flex; align-items: center; gap: 12px; margin: 10px 0 12px; padding: 14px 16px; border-radius: 14px;
   background: linear-gradient(135deg, rgba(57,194,215,.16), rgba(57,194,215,.06)); border: 1px solid rgba(57,194,215,.4); }
+/* #758 — softer "rest-by-default" for an unplanned horizon day (dimmer than a deliberate coach/athlete rest) */
+.rest-banner--soft { background: linear-gradient(135deg, rgba(57,194,215,.09), rgba(57,194,215,.03)); border-color: rgba(57,194,215,.22); }
+.rest-banner--soft .rest-banner__z { opacity: .8; }
 .rest-banner__z { font-size: 26px; line-height: 1; }
 .rest-banner__t { display: flex; flex-direction: column; gap: 2px; }
 .rest-banner__t b { font-size: 16px; color: var(--cyan, #39c2d7); }
