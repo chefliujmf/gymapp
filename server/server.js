@@ -2963,6 +2963,12 @@ async function upsertPlan(user, body, actor = 'coach') {
   if (actor === 'coach') {
     const cur = i >= 0 ? user.plans[i] : null
     const isCoachMove = !!(cur && cur.date !== body.date)
+    // #765 — a PINNED session (the athlete asked for it on this day) can't be MOVED by the coach/adapt. If the athlete
+    // explicitly wants it moved again, the coach releases the pin first (update in place with pinned:false), then moves.
+    // Blocks the daily-adapt from silently rescheduling a session the athlete deliberately placed.
+    if (isCoachMove && cur.pinned && body.pinned !== false) {
+      return { status: 409, body: { error: `"${cur.title || 'This session'}" is PINNED to ${String(cur.date).slice(0, 10)} — the athlete asked for it there, so don't move it. If they explicitly asked to move it again, first update it in place with pinned:false, then move it.` } }
+    }
     if (i < 0 || isCoachMove) {
       // #431 — on CREATE only, a same date+sport plan is a RE-PLAN → reuse its id (in-place update, no duplicate/orphan).
       // A MOVE keeps its own id (it IS an existing plan), so we skip the reuse and just cap-check it against the target day.
@@ -2989,6 +2995,11 @@ async function upsertPlan(user, body, actor = 'coach') {
     mind: body.mind && typeof body.mind === 'object' ? { why: String(body.mind.why || '') } : undefined,
     origin: i >= 0 ? (user.plans[i].origin || 'platyplus') : 'platyplus',
     icuEventId: i >= 0 ? user.plans[i].icuEventId : undefined,
+    // #765 — ATHLETE-PINNED: a session the athlete explicitly asked to place/move is STICKY (like a rest day). The
+    // body sets it (pinned:true when the coach acts on an explicit athlete reschedule; pinned:false to release it);
+    // otherwise it's preserved across updates. Enforced below (a pinned session can't be moved/removed/rest-dayed by
+    // the automated adapt) so the daily-adapt can't silently revert a change the athlete made. #765 root-cause fix.
+    pinned: body.pinned != null ? !!body.pinned : (i >= 0 ? user.plans[i].pinned : undefined),
     ...(body.sport === 'gym'
       ? { rounds: Number(body.rounds) || 1, exercises: (Array.isArray(body.exercises) ? body.exercises : []).map(withDefaultTempo) }
       : body.sport === 'swim'
@@ -3076,7 +3087,11 @@ async function setRestDay(user, date, rest, actor = 'you') {
   const d = String(date || '').slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { status: 400, body: { error: 'date (YYYY-MM-DD) required' } }
   if (rest) {
-    for (const p of (user.plans || []).filter((p) => p && String(p.date).slice(0, 10) === d)) await deletePlanById(user, p.id, actor)
+    const daySessions = (user.plans || []).filter((p) => p && String(p.date).slice(0, 10) === d)
+    // #765 — don't rest-day OVER a PINNED session on the coach/adapt path (the daily-adapt used set_rest_day to wipe a
+    // session the athlete had moved to that day). The athlete's own UI rest (actor 'you') wins; the coach releases first.
+    if (actor === 'coach' && daySessions.some((p) => p.pinned)) return { status: 409, body: { error: `${d} has a PINNED session the athlete asked for — do NOT set it as a rest day. If they explicitly asked to rest instead, release the pin first (update the session with pinned:false), then set the rest day.` } }
+    for (const p of daySessions) await deletePlanById(user, p.id, actor)
     user.restDates = Array.from(new Set([...(user.restDates || []), d])).sort().slice(-160)
     audit(user, { actor, action: 'Rest day', target: d, kind: 'plan' })
     save(store); await pushRestNote(user, d).catch(() => {})
@@ -3088,6 +3103,10 @@ async function setRestDay(user, date, rest, actor = 'you') {
 }
 async function deletePlanById(user, id, actor = 'coach') {
   const plan = (user.plans || []).find((x) => x.id === id)
+  // #765 — refuse to delete a PINNED session on the coach/adapt path (the daily-adapt used remove_workout to wipe a
+  // session the athlete had just moved in). The athlete's own UI delete (actor 'you') is allowed; the coach must
+  // release the pin first (update the plan with pinned:false) when the athlete explicitly asks to remove it.
+  if (plan && plan.pinned && actor === 'coach') { console.log(`[pin-guard] ${user.username || ''} — refused coach delete of PINNED "${plan.title}" (${plan.date})`); return false }
   await deleteIcuEvent(user, plan)
   user.plans = (user.plans || []).filter((x) => x.id !== id)
   // Cascade: drop any completed log tied to this plan so removing a workout can't
@@ -3097,6 +3116,7 @@ async function deletePlanById(user, id, actor = 'coach') {
   }
   if (plan) audit(user, { actor, action: 'Removed', target: plan.title, detail: `${plan.sport}${plan.date ? ' · ' + plan.date : ''}`, kind: 'plan' }) // #232
   save(store)
+  return true
 }
 
 // --- intervals.icu -> Platyplus import (reconcile) -------------------------
@@ -3397,7 +3417,11 @@ app.get('/api/session-history', apiAuth, (req, res) => {
   res.json({ from, to, note: 'archetype signal = titles; vary the next session vs these', sessions })
 })
 app.get('/api/plan/:id', apiAuth, (req, res) => { const p = (req.user.plans || []).find((x) => x.id === req.params.id); return p ? res.json(p) : res.status(404).json({ error: 'not found' }) })
-app.delete('/api/plan/:id', apiAuth, async (req, res) => { await deletePlanById(req.user, req.params.id); res.json({ ok: true }) })
+app.delete('/api/plan/:id', apiAuth, async (req, res) => {
+  const ok = await deletePlanById(req.user, req.params.id) // actor 'coach' (bearer = coach path)
+  if (ok === false) return res.status(409).json({ error: 'that session is PINNED by the athlete — do NOT remove it. If they explicitly asked to remove/replace it, first update it in place with pinned:false, then remove it.' }) // #765
+  res.json({ ok: true })
+})
 app.get('/api/strava/activities', apiAuth, async (req, res) => {
   if (!userStravaConnected(req.user)) return res.json([])
   try { res.json(await stravaActivities(req.user, Number(req.query.limit) || 15, () => save(store))) }
@@ -4127,7 +4151,7 @@ function dailyAdaptMsg(today, pass, cov) {
   const gap = cov && cov.tail >= 3
     ? ` **HORIZON — DO THIS FIRST (non-negotiable):** keep ~${DAILY_HORIZON} days planned ahead. The plan currently REACHES only ${cov.last || 'today'} — ${cov.tail} days SHORT of the ~2-week end (${cov.end}). EXTEND it to ~${cov.end}: add sessions from ${cov.firstEmpty} through ${cov.end}, FILLING toward their weekly training-days TARGET (place rest deliberately; a day stays blank only for a genuine recovery reason, never a silent gap) — never beyond that cap.`
     : ''
-  return `${head}${gap} Then BUILD + adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule first). **A NEW athlete with NO intervals history is the NORMAL case, NOT a blocker: if get_wellness / get_metrics / get_session_history come back empty, that's a brand-new athlete — still BUILD their full first week from their PROFILE + the # THIS WEEK'S SHAPE alone (their SPORT, GOAL, training-days, SEX and AGE are enough to author real sessions). NEVER leave the plan empty, produce no output, or defer because there's no data — a brand-new athlete needs their first week the MOST. Author it by RPE / talk-test + %-of-goal effort when they have no benchmark yet.** **INDIVIDUALIZE every session to THIS athlete — YOU own the plan, there is no template to copy.** Use their full profile + your per-sport & female-athlete engines: their SPORT(S) — only sports they actually do (a runner gets runs, a swimmer pool/CSS sets, a lifter gym; NEVER program a session they can't do, e.g. a ride for someone with no bike); SEX; AGE (a teen = technique + no maximal loading; masters = extra recovery); repro-state — if PREGNANT, coach MODERATE / MAINTAIN by RPE + talk test, trimester-adjusted, never max or to-exhaustion (apply your female-athlete pregnancy guidance), otherwise factor menstrual phase; their GOALS; fitness/experience; equipment. **Follow the computed # THIS WEEK'S SHAPE (in your system prompt) EXACTLY — its quality-day count + intensity ceiling are authoritative; never add a quality/hard day beyond it (this is how pregnancy stays maintenance).** Match load to how they're recovering + their weekly frequency/availability; keep ~${DAILY_HORIZON} days populated (never double-book / exceed max-per-day / exceed the HARD weekly training-days cap). Author each ride/run/swim as STRUCTURED steps (warmup/work/cooldown with real targets) so it's followable on their device.
+  return `${head}${gap} Then BUILD + adapt their plan for the NEXT ${DAILY_HORIZON} DAYS (list_schedule first). **A NEW athlete with NO intervals history is the NORMAL case, NOT a blocker: if get_wellness / get_metrics / get_session_history come back empty, that's a brand-new athlete — still BUILD their full first week from their PROFILE + the # THIS WEEK'S SHAPE alone (their SPORT, GOAL, training-days, SEX and AGE are enough to author real sessions). NEVER leave the plan empty, produce no output, or defer because there's no data — a brand-new athlete needs their first week the MOST. Author it by RPE / talk-test + %-of-goal effort when they have no benchmark yet.** **INDIVIDUALIZE every session to THIS athlete — YOU own the plan, there is no template to copy.** Use their full profile + your per-sport & female-athlete engines: their SPORT(S) — only sports they actually do (a runner gets runs, a swimmer pool/CSS sets, a lifter gym; NEVER program a session they can't do, e.g. a ride for someone with no bike); SEX; AGE (a teen = technique + no maximal loading; masters = extra recovery); repro-state — if PREGNANT, coach MODERATE / MAINTAIN by RPE + talk test, trimester-adjusted, never max or to-exhaustion (apply your female-athlete pregnancy guidance), otherwise factor menstrual phase; their GOALS; fitness/experience; equipment. **Follow the computed # THIS WEEK'S SHAPE (in your system prompt) EXACTLY — its quality-day count + intensity ceiling are authoritative; never add a quality/hard day beyond it (this is how pregnancy stays maintenance).** Match load to how they're recovering + their weekly frequency/availability; keep ~${DAILY_HORIZON} days populated (never double-book / exceed max-per-day / exceed the HARD weekly training-days cap). Author each ride/run/swim as STRUCTURED steps (warmup/work/cooldown with real targets) so it's followable on their device. **#765 — RESPECT PINNED SESSIONS: a session list_schedule shows as \`pinned:true\` was placed on that day at the ATHLETE'S explicit request. Do NOT move it, remove it, replace it, or rest-day over it — leave it exactly where it is (the server 409s any attempt anyway). Plan the rest of the horizon AROUND pinned days.**
 **VARY IT — MANDATORY, RIGHT THIS PASS:** your system prompt's **# THIS BLOCK'S VARIETY** block ASSIGNS the exact archetype for each quality day + the cue for each easy day. Build EACH day AS its assignment — its real structure + a title naming it — do NOT make every quality day the same shape and do NOT give two easy days the same title. Call **get_session_history** first to confirm you're not repeating the recent past either. This is a done-right-the-first-time build: no second pass will fix it, so vary + dose + individualize it correctly NOW. **Be efficient with tool calls** — read get_wellness + get_checkins + get_session_history + **get_metrics** in parallel, and look up ALL a gym session's moves in ONE search_exercises(\`queries=[…]\`) call, never one at a time.
 **PRESCRIBE FROM THE FULL PROFILE (get_metrics), not just one threshold number** — coach the WHOLE athlete's physiology: use their **TTE** (time they can hold threshold) to size interval DURATION — short TTE ⇒ shorter reps + extensive-threshold work (3×15–20 @ 90–95%) and ease their threshold toward the modelled value; long TTE ⇒ they can hold longer efforts, so raise the ceiling; use **W′ / D′** (anaerobic reserve) to size near-max reps/sprints; use the **EF trend** to judge whether the aerobic base is responding (rising EF ⇒ base is working, hold course). Combine this with their objective, sport, sex, age and repro-state (all in your prompt). This is what turns their numbers into the RIGHT session, and it's exactly the # DEVELOPMENT PRIORITIES above.
 **WORKOUT DESCRIPTION — YOU are the single author of every cue, so keep them CONSISTENT and never contradictory (a fuelling cue here must not clash with one anywhere else). Write the description for THIS session ONLY, in exactly this shape — three parts, nothing else:**
