@@ -34,7 +34,7 @@ import { enforceSwim } from './swim.js' // #715 — clamp swim set-zones to the 
 import { gymHasFeedback, gymFeedbackGaps, hasSessionFeedback } from './gym-feedback.js' // #723 — gym feedback lives in the Platyplus store (not intervals); one source of truth for the nag + coach grace + the no-feedback-no-review guard
 import { requiredProfileGaps, REQUIRED_FIELDS } from './profile-gate.js' // #A — plan generation is gated on a minimal mandatory profile
 import { periodizationPhase, parseRaceDate } from './periodization.js' // #626 — where THIS week sits in the meso-cycle (build/peak/recovery/taper) so the coach PROGRESSES · #8 parse race date from free-text notes
-import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym, enforcePostpartumGym } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose · #2 postpartum plyo clamp
+import { assignWeeklyGym, gymBalanceLines, resolveGymFocus, clampMainReps, assembleGymSession, enforceGymStructure, stripGymDurationProse, dedupeGymTitles, enforcePregnancyGym, enforcePostpartumGym, goodExerciseMatch } from './gym-split.js' // #636 balance · #648 rep scheme · #649 clamp · #687 assembler + enforceGymStructure (dedup/mode fix at save) · #696 strip session-duration prose · #2 postpartum plyo clamp
 import { runMigrations } from './migrations.js' // #519 — run-once data migrations (athlete-profile back-fill, etc.)
 import { tteFromPower, tteModelPower, tteFromPace, tteModelPace, efSummary, athleteProfile as computeAthleteProfile, goalPriorityFrame } from './perf-metrics.js' // #404; #669 goal-aware priority
 import { fromIcuSportSettings, icuPatchForGroup, runThresholdFromPaceCurve, tteAtThresholdSec, athleteBasicsPatch, significantBenchChange } from './sport-settings.js'
@@ -4174,8 +4174,11 @@ async function buildGymWeek(user) {
     const patterns = assign.days[i % (assign.days.length || 1)]
     const sess = assembleGymSession({ focus, mainSport: ms, sports, patterns, recentExercises: recentGymEx, sessionIndex: i, mesoWeek: Math.floor(i / spw) })
     const exercises = (sess.exercises || []).map((e) => {
-      const hit = (searchExercises(e.name, 1, ownedEq) || [])[0] || (searchExercises(e.name, 1) || [])[0]
-      return hit ? { ...e, exId: hit.id, name: hit.name } : e
+      // #763 — only adopt a catalog hit that GENUINELY matches (shares the movement-defining word); a weak fuzzy hit
+      // (a warmup "Leg Swings" → "Cable Seated Leg Curl") is rejected so we keep the assembler's correct name (no exId).
+      const good = (searchExercises(e.name, 6, ownedEq) || []).find((h) => goodExerciseMatch(e.name, h.name))
+        || (searchExercises(e.name, 6) || []).find((h) => goodExerciseMatch(e.name, h.name))
+      return good ? { ...e, exId: good.id, name: good.name } : e
     })
     // a basic focus-appropriate objective so the session is COMPLETE + usable even if the light coach-enrich pass is skipped
     const objective = GYM_OBJECTIVE[focus] || GYM_OBJECTIVE.muscle
